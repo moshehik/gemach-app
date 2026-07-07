@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
+import { FileText, Shirt } from 'lucide-react';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import CapacitySearchModal from '../../components/CapacitySearchModal';
 import ExportButtons from '../../components/ExportButtons';
@@ -236,24 +237,26 @@ export default function OrdersPage() {
                             {calculateOrderStatus(order)}
                           </span>
                         </td>
-                        <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
                           <Link 
                             href={`/orders/${order.orderId}`} 
                             className="btn btn-outline" 
-                            style={{ padding: '0.4rem 1rem', fontSize: '0.9rem', textDecoration: 'none', display: 'inline-block' }}
+                            style={{ padding: '0.5rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px' }}
                             onClick={(e) => e.stopPropagation()}
                             title="כרטיס הזמנה"
                           >
-                            פירוט
+                            <FileText size={18} />
                           </Link>
                           <Link 
                             href={`/rentals?orderId=${order.orderId}`} 
+                            target="_blank"
+                            rel="noopener noreferrer"
                             className="btn btn-primary" 
-                            style={{ padding: '0.4rem 0.6rem', fontSize: '1rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px' }}
+                            style={{ padding: '0.5rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px' }}
                             onClick={(e) => e.stopPropagation()}
                             title="מעבר להשכרה/החזרה"
                           >
-                            👗
+                            <Shirt size={18} />
                           </Link>
                         </td>
                       </tr>

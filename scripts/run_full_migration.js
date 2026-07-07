@@ -78,6 +78,9 @@ async function main() {
     runCommand('node scripts/migrate_prices.js', appRoot);
     runCommand('node scripts/seed_settings.js', appRoot);
 
+    updateStatus('running', 92, 'מסדר כתובות דוא"ל...');
+    runCommand('node scripts/migrate_emails.js', appRoot);
+
     // 5. Upload to GitHub / Vercel
     updateStatus('running', 95, 'מעלה נתונים לגיטהב ו-Vercel...');
     try {

@@ -24,6 +24,10 @@ model Customer {
   isDeleted        Boolean    @default(false) // לקוח_מחוק
   orders           Order[]
   payments         Payment[]
+
+  @@index([phone1])
+  @@index([phone2])
+  @@index([firstName, lastName])
 }
 
 model AuditLog {
@@ -34,6 +38,9 @@ model AuditLog {
   changesJson String    // JSON: {"phone1": {"from":"old","to":"new"}}
   createdAt   DateTime  @default(now())
   employeeId  Int?      // Optional: who made the change
+
+  @@index([entityType, entityId])
+  @@index([employeeId])
 }
 
 
@@ -60,6 +67,9 @@ model Employee {
   pageVisits     PageVisitLog[]
 
   shifts         Shift[]
+
+  @@index([phone1])
+  @@index([fullName])
 }
 
 model Shift {
@@ -78,6 +88,8 @@ model Shift {
   paymentMethod          String?   // אופן תשלום רצוי או בוצע
   notes                  String?   // תקלות / הערות
   isDeleted              Boolean   @default(false) // מחיקה רכה
+
+  @@index([employeeId])
 }
 
 model DressModel {
@@ -93,6 +105,8 @@ model DressModel {
   isDeleted        Boolean     @default(false) // מחוק
   deletedAt        DateTime?   // תאריך_מחיקה
   items            DressItem[]
+
+  @@index([priceCategory])
 }
 
 model DressItem {
@@ -114,6 +128,10 @@ model DressItem {
   isDeleted       Boolean     @default(false) // מחוק
   deletedAt       DateTime?   // תאריך_מחיקה
   orderItems      OrderItem[]
+
+  @@index([dressModelId])
+  @@index([dressBarcode])
+  @@index([barcodePrefix])
 }
 
 model Order {
@@ -145,6 +163,9 @@ model Order {
   items          OrderItem[]
   payments       Payment[]
   obligations    PaymentObligation[]
+
+  @@index([customerId])
+  @@index([paymentDate])
 }
 
 model Payment {
@@ -158,6 +179,9 @@ model Payment {
   paymentMethod String?   // אמצעי תשלום
   notes         String?   // הערות
   isDeleted     Boolean   @default(false) // נמחק
+
+  @@index([customerId])
+  @@index([orderId])
 }
 
 model PaymentObligation {
@@ -172,6 +196,8 @@ model PaymentObligation {
   isDeleted     Boolean   @default(false) // נמחק
   isRefund      Boolean   @default(false) // זיכוי
   isManual      Boolean   @default(true) // חיוב ידני
+
+  @@index([orderId])
 }
 
 model OrderItem {
@@ -208,6 +234,10 @@ model OrderItem {
   sleeveAlteration Int?    @default(0) // תיקון_שרוול
   alterationDetails String? // פירוט_תיקון
   alterationDone   Boolean @default(false) // בוצע_תיקון
+
+  @@index([orderId])
+  @@index([dressItemId])
+  @@index([barcode])
 }
 
 model PriceList {
@@ -253,4 +283,6 @@ model PageVisitLog {
   timestamp    DateTime  @default(now()) // Exact time of visit
   loadingError String?   // Details of any error that occurred
   isGuest      Boolean   @default(false)
+
+  @@index([employeeId])
 }

@@ -91,12 +91,20 @@ async function migrateData() {
     
     const itemBatch = [];
     for(const item of items) {
-      // Find model id by name if missing? The schema links by dressModelId but in earlier versions it might not.
+      const barcodePrefix = item['בר_קוד_קידומת'] ? parseInt(item['בר_קוד_קידומת'], 10) : null;
+      let dressModelId = null;
+      // Find the corresponding model id
+      const matchedModel = modelBatch.find(m => m.barcodePrefix === barcodePrefix || (m.name && m.name === item['שם_שמלה']));
+      if (matchedModel) {
+          dressModelId = matchedModel.id;
+      }
+      
       itemBatch.push({
         id: item['קוד'] || undefined,
+        dressModelId: dressModelId,
         dressName: item['שם_שמלה'],
         sizeText: item['מידה_טקסט'] || item['מידה'],
-        barcodePrefix: item['בר_קוד_קידומת'] ? parseInt(item['בר_קוד_קידומת'], 10) : null,
+        barcodePrefix: barcodePrefix,
         dressBarcode: item['בר_קוד_שמלה'] ? String(item['בר_קוד_שמלה']) : null,
         location: item['מיקום'],
         locationNum: item['מיקום_מס'] ? parseInt(item['מיקום_מס'], 10) : null,
