@@ -1,6 +1,11 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  /* config options here */
+  experimental: {
+    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
+    outputFileTracingIncludes: {
+      '/api/**/*': ['./prisma/dev.db'],
+    },
+  },
 };
 
 export default nextConfig;
