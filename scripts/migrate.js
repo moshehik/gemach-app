@@ -43,7 +43,7 @@ async function migrateData() {
     let count = 0;
     for (let i = 0; i < customerBatch.length; i += 2000) {
       const chunk = customerBatch.slice(i, i + 2000);
-      await prisma.customer.createMany({ data: chunk });
+      await prisma.customer.createMany({ data: chunk, skipDuplicates: true });
       count += chunk.length;
     }
     console.log(`Successfully migrated ${count} customers.`);
@@ -61,7 +61,7 @@ async function migrateData() {
       isActive: !isTrue(e['לא_פעיל'])
     }));
 
-    await prisma.employee.createMany({ data: employeeBatch });
+    await prisma.employee.createMany({ data: employeeBatch, skipDuplicates: true });
     console.log(`Successfully migrated ${employeeBatch.length} employees.`);
 
     // 3. Migrate Dress Models
@@ -80,7 +80,10 @@ async function migrateData() {
       notes: m['הערות'],
       inInspection: isTrue(m['הצג_בבדיקה'])
     }));
-    await prisma.dressModel.createMany({ data: modelBatch });
+    await prisma.dressModel.createMany({ 
+      data: modelBatch,
+      skipDuplicates: true
+    });
     console.log(`Successfully migrated ${modelBatch.length} dress models.`);
 
     // 4. Migrate Dress Items
@@ -108,7 +111,7 @@ async function migrateData() {
     count = 0;
     for (let i = 0; i < itemBatch.length; i += 2000) {
       const chunk = itemBatch.slice(i, i + 2000);
-      await prisma.dressItem.createMany({ data: chunk });
+      await prisma.dressItem.createMany({ data: chunk, skipDuplicates: true });
       count += chunk.length;
     }
     console.log(`Successfully migrated ${count} dress items.`);

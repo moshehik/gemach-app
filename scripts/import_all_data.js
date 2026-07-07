@@ -84,7 +84,7 @@ async function main() {
   let count = 0;
   for (let i = 0; i < orderBatch.length; i += 2000) {
     const chunk = orderBatch.slice(i, i + 2000);
-    await prisma.order.createMany({ data: chunk });
+    await prisma.order.createMany({ data: chunk, skipDuplicates: true });
     count += chunk.length;
     console.log(`Inserted ${count} / ${orderBatch.length} orders...`);
   }
@@ -122,7 +122,7 @@ async function main() {
   count = 0;
   for (let i = 0; i < itemBatch.length; i += 2000) {
     const chunk = itemBatch.slice(i, i + 2000);
-    await prisma.orderItem.createMany({ data: chunk });
+    await prisma.orderItem.createMany({ data: chunk, skipDuplicates: true });
     count += chunk.length;
     console.log(`Inserted ${count} / ${itemBatch.length} items...`);
   }
@@ -148,7 +148,7 @@ async function main() {
   count = 0;
   for (let i = 0; i < paymentBatch.length; i += 2000) {
     const chunk = paymentBatch.slice(i, i + 2000);
-    await prisma.paymentObligation.createMany({ data: chunk });
+    await prisma.paymentObligation.createMany({ data: chunk, skipDuplicates: true });
     count += chunk.length;
     console.log(`Inserted ${count} / ${paymentBatch.length} payments/obligations...`);
   }
