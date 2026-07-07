@@ -57,6 +57,9 @@ export async function GET(request, { params }) {
       return ob;
     });
 
+    const dressModels = await prisma.dressModel.findMany();
+    const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
+
     const itemIds = items.map(i => i.id);
     const auditLogs = await prisma.auditLog.findMany({
       where: {
@@ -67,11 +70,16 @@ export async function GET(request, { params }) {
     });
 
     const itemsWithLogs = items.map(item => {
-      const dress = item.dressItem?.dress;
+      let dressName = item.dressItem?.dress?.name;
+      const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
+      if (!dressName && prefix) {
+        dressName = dressModelMap.get(prefix);
+      }
+      
       return {
         ...item,
-        description: dress?.name 
-          ? `${dress.name} (קוד: ${dress.barcodePrefix || item.dressItem?.barcodePrefix || ''})` 
+        description: dressName 
+          ? `${dressName} (קוד: ${prefix || ''})` 
           : (item.description || 'פריט כללי'),
         auditLogs: auditLogs.filter(log => log.entityId === item.id)
       };
@@ -246,6 +254,9 @@ export async function PUT(request, { params }) {
       include: { dressItem: { include: { dress: true } } }
     });
     
+    const dressModels = await prisma.dressModel.findMany();
+    const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
+    
     const itemIds = items.map(i => i.id);
     const auditLogs = await prisma.auditLog.findMany({
       where: {
@@ -256,11 +267,16 @@ export async function PUT(request, { params }) {
     });
     
     const itemsWithLogs = items.map(item => {
-      const dress = item.dressItem?.dress;
+      let dressName = item.dressItem?.dress?.name;
+      const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
+      if (!dressName && prefix) {
+        dressName = dressModelMap.get(prefix);
+      }
+      
       return {
         ...item,
-        description: dress?.name 
-          ? `${dress.name} (קוד: ${dress.barcodePrefix || item.dressItem?.barcodePrefix || ''})` 
+        description: dressName 
+          ? `${dressName} (קוד: ${prefix || ''})` 
           : (item.description || 'פריט כללי'),
         auditLogs: auditLogs.filter(log => log.entityId === item.id)
       };

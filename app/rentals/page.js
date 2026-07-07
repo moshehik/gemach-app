@@ -11,6 +11,7 @@ export default function RentalsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [viewMode, setViewMode] = useState('pending'); // 'pending', 'active', 'returned', 'all'
+  const [isEmbed, setIsEmbed] = useState(false);
   
   const [advFilters, setAdvFilters] = useState({
     customerName: '', customerPhone: '', customerCity: '', 
@@ -39,6 +40,9 @@ export default function RentalsPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+      if (params.get('embed') === 'true') {
+        setIsEmbed(true);
+      }
       const orderIdParam = params.get('orderId');
       if (orderIdParam) {
         setSearch(orderIdParam);
@@ -354,7 +358,8 @@ export default function RentalsPage() {
 
   return (
     <main className="container rentals-page">
-      <div className="quick-return-bar">
+      <div style={{ display: isEmbed ? 'none' : 'block' }}>
+        <div className="quick-return-bar">
         <h2>החזרה מהירה</h2>
         <form onSubmit={handleQuickReturn} className="barcode-input-container" style={{ position: 'relative' }}>
           <input 
@@ -555,11 +560,19 @@ export default function RentalsPage() {
           );
         })}
       </div>
+      </div>
+
+      {isEmbed && loading && !selectedOrder && (
+        <div style={{ padding: '3rem', textAlign: 'center', fontSize: '1.2rem', color: '#666' }}>
+          טוען נתוני השכרה...
+        </div>
+      )}
+
 
       {selectedOrder && !duplicates && (
-        <div className="modal-overlay" onClick={() => setSelectedOrder(null)}>
-          <div className="modal-content" style={{ maxWidth: '900px' }} onClick={e => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setSelectedOrder(null)}>&times;</button>
+        <div className={isEmbed ? "" : "modal-overlay"} onClick={() => !isEmbed && setSelectedOrder(null)} style={isEmbed ? { padding: '1rem', background: 'transparent', minHeight: '100vh', width: '100%' } : {}}>
+          <div className={isEmbed ? "" : "modal-content"} style={isEmbed ? { maxWidth: '100%', width: '100%', margin: '0 auto', boxShadow: 'none', padding: '0', background: 'transparent' } : { maxWidth: '900px' }} onClick={e => e.stopPropagation()}>
+            {!isEmbed && <button className="modal-close" onClick={() => setSelectedOrder(null)}>&times;</button>}
             
             <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <div><strong style={{ color: 'var(--primary-color)' }}>הזמנה:</strong> #{selectedOrder.orderId}</div>
@@ -762,6 +775,7 @@ export default function RentalsPage() {
           </div>
         </div>
       )}
+
     </main>
   );
 }

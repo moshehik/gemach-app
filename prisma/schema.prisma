@@ -166,6 +166,8 @@ model Order {
 
   @@index([customerId])
   @@index([paymentDate])
+  @@index([eventDate])
+  @@index([orderDate])
 }
 
 model Payment {

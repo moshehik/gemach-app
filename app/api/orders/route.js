@@ -136,6 +136,9 @@ export async function GET(request) {
     
     const totalCount = await prisma.order.count({ where });
 
+    const dressModels = await prisma.dressModel.findMany();
+    const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
+
     const formattedOrders = orders.map(order => {
       const calculatedTotalAmount = order.obligations?.length > 0 
         ? order.obligations.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0) 
@@ -156,16 +159,24 @@ export async function GET(request) {
       isAbroad: order.isAbroad,
       fromDate: order.fromDate,
       toDate: order.toDate,
-      items: order.items.map(i => ({
-        id: i.id,
-        dressId: i.dressItem?.dress?.id,
-        itemId: i.dressItemId,
-        description: i.dressItem?.dress?.name ? `${i.dressItem.dress.name} (קוד: ${i.dressItem.dress.barcodePrefix || i.dressItem.barcodePrefix || ''}, מידה: ${i.sizeText || i.dressItem.sizeText || ''})` : (i.description || 'פריט כללי'),
-        price: i.price,
-        isTaken: i.isTaken,
-        isReturned: i.isReturned,
-        isDeleted: i.isDeleted
-      })),
+      items: order.items.map(i => {
+        let dressName = i.dressItem?.dress?.name;
+        const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+        if (!dressName && prefix) {
+          dressName = dressModelMap.get(prefix);
+        }
+        
+        return {
+          id: i.id,
+          dressId: i.dressItem?.dress?.id,
+          itemId: i.dressItemId,
+          description: dressName ? `${dressName} (קוד: ${prefix || ''}, מידה: ${i.sizeText || i.dressItem?.sizeText || ''})` : (i.description || 'פריט כללי'),
+          price: i.price,
+          isTaken: i.isTaken,
+          isReturned: i.isReturned,
+          isDeleted: i.isDeleted
+        };
+      }),
       customerName: order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לא ידוע'
     };
     });

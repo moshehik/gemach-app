@@ -1,27 +1,26 @@
 @echo off
-chcp 65001 >nul
-title מערכת עדכון לשרת
+title Vercel Update System
 echo ============================================
-echo    מערכת העלאת עדכונים לשרת האינטרנט
+echo    Website Update Uploader
 echo ============================================
 echo.
-echo מכין את הקבצים החדשים...
+echo Preparing files for update...
 git add .
 
-set /p commitMsg="הכנס תיאור קצר לעדכון (או פשוט לחץ אנטר): "
-if "%commitMsg%"=="" set commitMsg=עדכון אוטומטי
+set /p commitMsg="Enter short description (or press Enter for auto): "
+if "%commitMsg%"=="" set commitMsg="Auto Update"
 
 echo.
-echo שומר את העדכון...
+echo Saving update...
 git commit -m "%commitMsg%"
 
 echo.
-echo מעלה את הקבצים ל-GitHub (ומשם ל-Vercel)...
+echo Uploading to GitHub and Vercel...
 git push
 
 echo.
 echo ============================================
-echo !הקוד הועלה בהצלחה
-echo Vercel יעדכן את האתר באופן אוטומטי בתוך כ-2 דקות.
+echo Upload successful!
+echo Vercel will update the site automatically in ~2 minutes.
 echo ============================================
 pause

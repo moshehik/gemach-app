@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { FileText, FileSpreadsheet, Download, Sparkles, X, Loader2, FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
-export default function ExportButtons({ data = [], filename = 'export', columns = [] }) {
+export default function ExportButtons({ data = [], filename = 'export', columns = [], iconOnly = false }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -141,25 +141,28 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
     <>
       <button 
         onClick={() => setIsModalOpen(true)}
-        className="btn btn-primary"
+        className={iconOnly ? "btn btn-outline" : "btn btn-primary"}
         title="מערכת הורדה ל-XL ודוחות"
-        style={{ padding: '0.5rem 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', cursor: 'pointer' }}
+        style={iconOnly 
+          ? { padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ddd', color: '#8b5cf6', backgroundColor: '#f3e8ff', cursor: 'pointer' }
+          : { padding: '0.5rem 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', cursor: 'pointer' }}
       >
-        <FileDown size={18} />
-        <span>ייצוא ודוחות</span>
+        <FileDown size={iconOnly ? 22 : 18} />
+        {!iconOnly && <span>ייצוא ודוחות</span>}
       </button>
 
       {isModalOpen && (
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
           backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
-          display: 'flex', justifyContent: 'center', alignItems: 'center'
+          display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
+          paddingTop: '10vh', paddingBottom: '10vh'
         }}>
           <div style={{
             background: 'white', padding: '2rem', borderRadius: '12px',
             width: '90%', maxWidth: '500px', position: 'relative',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)', direction: 'rtl',
-            maxHeight: '90vh', overflowY: 'auto'
+            maxHeight: '80vh', overflowY: 'auto'
           }}>
             <button 
               onClick={() => setIsModalOpen(false)}

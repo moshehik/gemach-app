@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { FileText, Shirt } from 'lucide-react';
+import { FileText, Shirt, CalendarSearch, Plus, X } from 'lucide-react';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import CapacitySearchModal from '../../components/CapacitySearchModal';
 import ExportButtons from '../../components/ExportButtons';
@@ -28,6 +28,7 @@ export default function OrdersPage() {
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);
   const [showCapacitySearch, setShowCapacitySearch] = useState(false);
+  const [rentalModalUrl, setRentalModalUrl] = useState(null);
 
   const fetchOrders = useCallback(async () => {
     setLoading(true);
@@ -90,12 +91,39 @@ export default function OrdersPage() {
     <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ margin: 0, color: 'var(--primary-color)' }}>ניהול הזמנות ותשלומים</h1>
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button onClick={() => setShowCapacitySearch(true)} className="btn btn-outline" style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', fontWeight: 'bold' }}>
-            חיפוש תפוסה
+        <div style={{ display: 'flex', gap: '0.8rem' }}>
+          <button 
+             onClick={() => setShowCapacitySearch(true)} 
+             className="btn btn-outline" 
+             style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ddd', color: '#10b981', backgroundColor: '#ecfdf5', cursor: 'pointer' }}
+             title="חיפוש תפוסה"
+          >
+            <CalendarSearch size={22} />
           </button>
-          <Link href="/orders/new" className="btn btn-primary" style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', fontWeight: 'bold' }}>
-            + הזמנה חדשה
+
+          <ExportButtons 
+            data={orders.map(o => ({
+              ...o,
+              status: calculateOrderStatus(o)
+            }))} 
+            filename="הזמנות" 
+            columns={[
+              { key: 'orderId', label: 'קוד הזמנה' },
+              { key: 'customerName', label: 'לקוח' },
+              { key: 'totalAmount', label: 'סכום לחיוב' },
+              { key: 'totalPaid', label: 'סכום ששולם' },
+              { key: 'status', label: 'סטטוס' }
+            ]} 
+            iconOnly={true}
+          />
+
+          <Link 
+            href="/orders/new" 
+            className="btn btn-primary" 
+            style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#3b82f6', color: 'white' }}
+            title="הזמנה חדשה"
+          >
+            <Plus size={22} />
           </Link>
         </div>
       </div>
@@ -145,20 +173,6 @@ export default function OrdersPage() {
           </button>
         </div>
         <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <ExportButtons 
-            data={orders.map(o => ({
-              ...o,
-              status: calculateOrderStatus(o)
-            }))} 
-            filename="הזמנות" 
-            columns={[
-              { key: 'orderId', label: 'קוד הזמנה' },
-              { key: 'customerName', label: 'לקוח' },
-              { key: 'totalAmount', label: 'סכום לחיוב' },
-              { key: 'totalPaid', label: 'סכום ששולם' },
-              { key: 'status', label: 'סטטוס' }
-            ]} 
-          />
           <span>סה"כ רשומות: {totalCount}</span>
         </div>
       </div>
@@ -247,17 +261,17 @@ export default function OrdersPage() {
                           >
                             <FileText size={18} />
                           </Link>
-                          <Link 
-                            href={`/rentals?orderId=${order.orderId}`} 
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button 
                             className="btn btn-primary" 
-                            style={{ padding: '0.5rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px' }}
-                            onClick={(e) => e.stopPropagation()}
+                            style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: '#ecfdf5', color: '#10b981' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setRentalModalUrl(`/rentals?orderId=${order.orderId}&embed=true`);
+                            }}
                             title="מעבר להשכרה/החזרה"
                           >
                             <Shirt size={18} />
-                          </Link>
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -295,6 +309,43 @@ export default function OrdersPage() {
         isOpen={showCapacitySearch} 
         onClose={() => setShowCapacitySearch(false)} 
       />
+
+      {/* Rental Modal Overlay */}
+      {rentalModalUrl && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
+          backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1100,
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          backdropFilter: 'blur(4px)'
+        }} onClick={() => setRentalModalUrl(null)}>
+          <div style={{
+            background: '#f8fafc', width: '95%', height: '90%', borderRadius: '16px',
+            position: 'relative', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            display: 'flex', flexDirection: 'column'
+          }} onClick={e => e.stopPropagation()}>
+            <div style={{
+              padding: '1rem 1.5rem', background: 'white', borderBottom: '1px solid #e2e8f0',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+            }}>
+              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: 'bold' }}>מערכת השכרה והחזרה</h2>
+              <button 
+                onClick={() => setRentalModalUrl(null)}
+                style={{
+                  background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '36px', height: '36px',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b'
+                }}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <iframe 
+              src={rentalModalUrl} 
+              style={{ width: '100%', flex: 1, border: 'none' }}
+              title="מערכת השכרה"
+            />
+          </div>
+        </div>
+      )}
     </main>
   );
 }
