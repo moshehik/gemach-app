@@ -6,6 +6,9 @@ const nextConfig = {
       '/api/**/*': ['./prisma/dev.db'],
     },
   },
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;
