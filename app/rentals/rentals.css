@@ -1,0 +1,216 @@
+.rentals-page {
+  padding: 2rem 0;
+  animation: fadeIn 0.5s ease-out;
+}
+
+.quick-return-bar {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1), rgba(255, 255, 255, 0.9));
+  border: 1px solid var(--border-color);
+  border-radius: 16px;
+  padding: 2rem;
+  margin-bottom: 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+}
+
+.quick-return-bar h2 {
+  color: var(--primary-color);
+  margin-bottom: 1rem;
+}
+
+.barcode-input-container {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+}
+
+.barcode-input {
+  width: 100%;
+  padding: 1rem 1.5rem;
+  font-size: 1.5rem;
+  text-align: center;
+  border: 2px solid var(--border-color);
+  border-radius: 30px;
+  outline: none;
+  background: rgba(255, 255, 255, 0.9);
+  transition: all 0.3s ease;
+  letter-spacing: 2px;
+}
+
+.barcode-input:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 15px rgba(212, 175, 55, 0.3);
+  transform: scale(1.02);
+}
+
+.barcode-input.success-flash {
+  animation: flashSuccess 0.5s ease;
+}
+
+.barcode-input.error-flash {
+  animation: flashError 0.5s ease;
+}
+
+@keyframes flashSuccess {
+  0% { background: #e8f5e9; border-color: #4caf50; }
+  100% { background: white; border-color: var(--border-color); }
+}
+
+@keyframes flashError {
+  0% { background: #ffebee; border-color: #f44336; }
+  100% { background: white; border-color: var(--border-color); }
+}
+
+.orders-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.order-card {
+  background: var(--card-bg);
+  border: var(--glass-border);
+  border-radius: 16px;
+  padding: 1.5rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.order-card:hover {
+  transform: translateY(-5px);
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(212, 175, 55, 0.5);
+}
+
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.5rem;
+}
+
+.order-id {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.status-pill {
+  padding: 0.3rem 0.8rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.status-pending { background: #fff3e0; color: #e65100; }
+.status-active { background: #e3f2fd; color: #1565c0; }
+.status-completed { background: #e8f5e9; color: #2e7d32; }
+.status-warning { background: #ffebee; color: #c62828; }
+
+.modal-tabs {
+  display: flex;
+  border-bottom: 2px solid #eee;
+  margin-bottom: 1.5rem;
+}
+
+.modal-tab {
+  padding: 1rem 2rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+  cursor: pointer;
+  color: var(--text-muted);
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.modal-tab:hover {
+  color: var(--text-main);
+  background: rgba(0,0,0,0.02);
+}
+
+.modal-tab.active {
+  color: var(--primary-color);
+  border-bottom-color: var(--primary-color);
+}
+
+.items-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+}
+
+.items-table th, .items-table td {
+  padding: 1rem;
+  text-align: right;
+  border-bottom: 1px solid #eee;
+}
+
+.items-table th {
+  font-weight: 600;
+  color: var(--text-muted);
+  background: #f9f9f9;
+}
+
+.items-table tr.taken { background: rgba(76, 175, 80, 0.05); }
+.items-table tr.returned { background: rgba(33, 150, 243, 0.05); }
+.items-table tr.pending { background: transparent; }
+
+.action-buttons {
+  display: flex;
+  gap: 1rem;
+  margin-top: 2rem;
+  justify-content: flex-end;
+}
+
+/* Alteration Modal */
+.alteration-modal .modal-content {
+  max-width: 800px;
+}
+
+.alteration-option {
+  border: 2px solid #eee;
+  border-radius: 12px;
+  padding: 1.5rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.alteration-option:hover {
+  border-color: var(--primary-color);
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.alteration-details {
+  display: flex;
+  gap: 2rem;
+}
+
+.alteration-stat {
+  display: flex;
+  flex-direction: column;
+}
+
+.alteration-stat-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.alteration-stat-value {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+

@@ -1,0 +1,256 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Customer {
+  id               Int        @id @default(autoincrement()) // קוד_לקוח
+  firstName        String?    // שם_פרטי
+  lastName         String?    // שם_משפחה
+  phone1           String?    // טלפון_1
+  phone2           String?    // טלפון_2
+  city             String?    // עיר
+  street           String?    // רחוב
+  houseNum         Int?       // בית
+  email            String?    // מייל
+  emailSuffix      String?    // סיומת_מייל
+  notes            String?    // הערות
+  registrationDate String?    // תאריך_רישום
+  officeNotes      String?    // נתוני_משרד
+  isDeleted        Boolean    @default(false) // לקוח_מחוק
+  orders           Order[]
+  payments         Payment[]
+}
+
+model AuditLog {
+  id          Int       @id @default(autoincrement())
+  entityType  String    // "Customer", "Order", etc.
+  entityId    Int       // The ID of the changed entity
+  action      String    // "UPDATE", "CREATE", "DELETE"
+  changesJson String    // JSON: {"phone1": {"from":"old","to":"new"}}
+  createdAt   DateTime  @default(now())
+  employeeId  Int?      // Optional: who made the change
+}
+
+
+model Employee {
+  id             Int       @id @default(autoincrement()) // קוד_עובד
+  firstName      String?   // שם_פרטי
+  lastName       String?   // שם_משפחה
+  phone1         String?   // טלפון_1
+  phone2         String?   // טלפון_2
+  city           String?   // עיר
+  street         String?   // רחוב
+  houseNum       String?   // בית
+  email          String?   // מייל
+  joinDate       DateTime? // תאריך_כניסה_לארגון
+  fullName       String?   // שם_מלא
+  notes          String?   // הערות
+  emailSuffix    String?   // סיומת_מייל
+  roleId         Int?      // מס_מחלקה
+  password       String?   // סיסמא
+  isActive       Boolean   @default(true) // לא_פעיל
+  hourlyWage     Float?    // שכר_שעה
+  paymentMethod  String?   // אופן_תשלום
+  travelExpenses Boolean?  @default(false) // נסיעות
+  pageVisits     PageVisitLog[]
+
+  shifts         Shift[]
+}
+
+model Shift {
+  id                     Int       @id @default(autoincrement()) // קוד
+  employeeId             Int       // קוד_עובד
+  employee               Employee  @relation(fields: [employeeId], references: [id])
+  entryTime              DateTime? // שעת_כניסה
+  exitTime               DateTime? // שעת_יציאה
+  hebrewDate             String?   // תאריך_עברי
+
+  date                   DateTime? // תאריך המשמרת (ללא שעה) - Computed or mapped
+  totalMinutes           Int?      // סה"כ דקות מחושב
+  hourlyWageSnapshot     Float?    // שכר שעה רלוונטי לאותה משמרת
+  travelExpensesSnapshot Float?    // נסיעות לאותה משמרת
+  totalCalculated        Float?    // סה"כ לתשלום מחושב עבור המשמרת
+  paymentMethod          String?   // אופן תשלום רצוי או בוצע
+  notes                  String?   // תקלות / הערות
+  isDeleted              Boolean   @default(false) // מחיקה רכה
+}
+
+model DressModel {
+  id               Int         @id @default(autoincrement()) // קוד_שמלה
+  name             String?     @unique // שם_שמלה
+  barcodePrefix    Int?        // בר_קוד_קידומת
+  priceCategory    String?     // קטגורית_מחיר
+  notes            String?     // הערות
+  inInspection     Boolean     @default(false) // הצג_בבדיקה
+  imageUrl         String?     // נתיב לתמונה
+  entryDateToRepo  DateTime?   // תאריך_כניסה_למאגר
+  exitDateFromRepo DateTime?   // תאריך_יציאה_מהמאגר
+  isDeleted        Boolean     @default(false) // מחוק
+  deletedAt        DateTime?   // תאריך_מחיקה
+  items            DressItem[]
+}
+
+model DressItem {
+  id              Int         @id @default(autoincrement()) // קוד
+  barcodePrefix   Int?        // בר_קוד_קידומת
+  dressModelId    Int?        // קשר לדגם
+  dress           DressModel? @relation(fields: [dressModelId], references: [id], onUpdate: Cascade)
+  dressName       String?     // שם_שמלה (Legacy, pre-migration)
+  sizeText        String?     // מידה_טקסט
+  serialNumber    Int?        // מספר_סידורי
+  dressBarcode    String?     // בר_קוד_שמלה
+  location        String?     // מיקום
+  locationNum     Int?        // מיקום_מס
+  quantity        Int?        @default(1) // כמות
+  inRepair        Boolean     @default(false) // שמלה_בתיקון
+  notInUse        Boolean     @default(false) // לא_בשימוש
+  notInUseSince   DateTime?   // לא_בשימוש_מתאריך
+  entryDateToRepo DateTime?   // תאריך_כניסה_למאגר
+  isDeleted       Boolean     @default(false) // מחוק
+  deletedAt       DateTime?   // תאריך_מחיקה
+  orderItems      OrderItem[]
+}
+
+model Order {
+  id             Int         @id @default(autoincrement()) // קוד
+  orderId        Int         @unique // קוד_הזמנה
+  customerId     Int?        // Extracted manually if possible
+  customer       Customer?   @relation(fields: [customerId], references: [id])
+  totalAmount    Float?      // סכום
+  paymentDate    DateTime?   // תאריך_תשלום
+  paymentMethod  String?     // צורת_תשלום
+  status         String?     // סטטוס נגזר מהתשלום
+  notes          String?     // הערות
+  isPaid         Boolean     @default(false) // שולם
+  isDeleted      Boolean     @default(false) // מחוק - הזמנה מבוטלת
+  orderNotes     String?     // הערות_להזמנה
+  
+  // New fields from Access
+  eventDate        DateTime?   // תאריך אירוע לועזי
+  eventDateHebrew  String?     // תאריך אירוע עברי
+  returnDate       DateTime?   // עד תאריך (תאריך החזרה)
+  isWeekdayEvent   Boolean     @default(true) // אירוע חול
+  orderDate        DateTime?   // תאריך הזמנה
+  
+  // Custom occupancy fields (abroad/long term)
+  isAbroad         Boolean     @default(false) // אירוע חו"ל
+  fromDate         DateTime?   // מתאריך
+  toDate           DateTime?   // עד תאריך
+  
+  items          OrderItem[]
+  payments       Payment[]
+  obligations    PaymentObligation[]
+}
+
+model Payment {
+  id            Int       @id @default(autoincrement())
+  customerId    Int?
+  customer      Customer? @relation(fields: [customerId], references: [id])
+  orderId       Int?
+  order         Order?    @relation(fields: [orderId], references: [orderId])
+  amount        Float     // סכום התשלום
+  paymentDate   DateTime  @default(now()) // תאריך תשלום
+  paymentMethod String?   // אמצעי תשלום
+  notes         String?   // הערות
+  isDeleted     Boolean   @default(false) // נמחק
+}
+
+model PaymentObligation {
+  id            Int       @id @default(autoincrement())
+  orderId       Int
+  order         Order     @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
+  productId     Int?      // קוד_מוצר מהמחירון
+  amount        Float     // סכום לחיוב (מחיר * כמות)
+  quantity      Int       @default(1)
+  description   String?   // תיאור
+  createdAt     DateTime  @default(now())
+  isDeleted     Boolean   @default(false) // נמחק
+  isRefund      Boolean   @default(false) // זיכוי
+  isManual      Boolean   @default(true) // חיוב ידני
+}
+
+model OrderItem {
+  id          Int        @id @default(autoincrement()) // קוד
+  orderId     Int?       // קוד_הזמנה (relates to Order.orderId)
+  order       Order?     @relation(fields: [orderId], references: [orderId])
+  dressItemId Int?       // קוד_פריט
+  dressItem   DressItem? @relation(fields: [dressItemId], references: [id])
+  price       Float?     // מחיר (final price used historically)
+  quantity    Int?       @default(1) // כמות - תמיד 1
+  description String?    // תיאור
+  
+  // New fields from Access
+  sizeText    String?    // מידה_טקסט - the size selected
+  repairs     String?    // פירוט תיקונים
+  basePrice   Float?     // מחיר בסיס (לפני תיקונים)
+  finalPrice  Float?     // מחיר סופי
+  
+  // Rental/Return lifecycle fields (מיגרציה מאקסס)
+  barcode        String?   // ברקוד - the scanned barcode assigned at rental
+  barcodePrefix  Int?      // בר_קוד_קידומת - prefix portion of barcode
+  size           String?   // מידה - numeric size from barcode
+  isTaken        Boolean   @default(false) // נלקח - was the item physically taken
+  isReturned     Boolean   @default(false) // הוחזר - was the item returned
+  returnedOk     Boolean   @default(false) // חזר_תקין - returned in good condition
+  takenDate      DateTime? // תאריך_לקיחה
+  returnDate     DateTime? // תאריך_החזרה
+  isDeleted      Boolean   @default(false) // מחוק - soft delete
+  deletedAt      DateTime? // תאריך_מחיקה
+  
+  // Alteration tracking (תיקונים)
+  neckAlteration   Int?    @default(0) // תיקון_צוואר
+  lengthAlteration String? // תיקון_אורך
+  sleeveAlteration Int?    @default(0) // תיקון_שרוול
+  alterationDetails String? // פירוט_תיקון
+  alterationDone   Boolean @default(false) // בוצע_תיקון
+}
+
+model PriceList {
+  id          Int       @id @default(autoincrement()) // קוד
+  description String?   // תיאור
+  fromSize    Int?      // ממידה
+  toSize      Int?      // עד_מידה
+  price       Float?    // מחיר
+  startDate   DateTime? // תאריך_התחלת_מחיר
+  endDate     DateTime? // תאריך_סיום_מחיר
+  category    String?   // קטגוריה (links to DressModel.priceCategory)
+  deposit     Float?    // החזר
+}
+
+model SystemSetting {
+  id       Int     @id @default(autoincrement())
+  key      String  @unique // מפתח הגדרה
+  value    String? // ערך
+  name     String? // שם תצוגה
+  category String? // קטגוריה
+  notes    String? // הערות
+  type     String  @default("text") // סוג הפקד בממשק
+}
+
+model PriceRule {
+  id          Int       @id @default(autoincrement()) // קוד
+  description String?   // תיאור
+  minSize     Int?      // ממידה
+  maxSize     Int?      // עד_מידה
+  price       Float?    // מחיר
+  startDate   DateTime? // תאריך_התחלת_מחיר
+  endDate     DateTime? // תאריך_סיום_מחיר
+  category    String?   // קטגוריה
+  refund      Float?    // החזר
+}
+
+model PageVisitLog {
+  id           Int       @id @default(autoincrement())
+  pageUrl      String    // The path visited
+  employeeId   Int?      // Nullable, relates to Employee if logged in
+  employee     Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
+  employeeName String?   // Name of the employee or "אורח"
+  timestamp    DateTime  @default(now()) // Exact time of visit
+  loadingError String?   // Details of any error that occurred
+  isGuest      Boolean   @default(false)
+}

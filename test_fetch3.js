@@ -1,0 +1,1 @@
+fetch('http://localhost:3000/api/dresses?eventDate=2026-07-06T00:00:00.000Z').then(r => r.json()).then(d => { if (Array.isArray(d)) { console.log('Length:', d.length); } else { console.log('Error:', d); } }).catch(console.error);
