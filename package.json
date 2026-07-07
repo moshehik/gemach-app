@@ -23,7 +23,6 @@
   "devDependencies": {
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
-    "node-adodb": "^5.0.3",
     "prisma": "^5.22.0"
   }
 }
