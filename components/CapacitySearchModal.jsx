@@ -19,35 +19,73 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
   
   const [sizes, setSizes] = useState([]);
+  const [models, setModels] = useState([]);
 
-  // Fetch sizes when barcode changes (debounce or on blur would be better, but we can just fetch on blur)
-  const handleBarcodeBlur = async () => {
-    if (!barcodePrefix) return;
-    try {
-      const res = await fetch(`/api/inventory/sizes?barcodePrefix=${barcodePrefix}`);
-      if (res.ok) {
-        const data = await res.json();
-        setSizes(data.sizes || []);
+  useEffect(() => {
+    const fetchModels = async () => {
+      try {
+        const res = await fetch('/api/inventory/models');
+        if (res.ok) {
+          const data = await res.json();
+          setModels(data.models || []);
+        }
+      } catch (err) {
+        console.error('Error fetching models', err);
       }
-    } catch (e) {
-      console.error(e);
+    };
+    fetchModels();
+  }, []);
+
+  useEffect(() => {
+    if (!barcodePrefix) {
+      setSizes([]);
+      setSize('');
+      return;
     }
-  };
+    
+    const fetchSizes = async () => {
+      try {
+        const res = await fetch(`/api/inventory/sizes?barcodePrefix=${barcodePrefix}`);
+        if (res.ok) {
+          const data = await res.json();
+          setSizes(data.sizes || []);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchSizes();
+  }, [barcodePrefix]);
 
   const handleSearch = async (e) => {
     e.preventDefault();
-    if (!barcodePrefix || !size || !fromDate || !toDate) {
-      setError('יש להזין ברקוד, מידה, ותאריכים');
+    if (!barcodePrefix || !size) {
+      setError('יש להזין דגם ומידה');
       return;
     }
+
+    let searchFrom = fromDate;
+    let searchTo = toDate;
+    
+    if (!searchFrom) {
+      searchFrom = new Date().toISOString().split('T')[0];
+      setFromDate(searchFrom);
+    }
+    if (!searchTo) {
+      const d = new Date();
+      d.setMonth(d.getMonth() + 6);
+      searchTo = d.toISOString().split('T')[0];
+      setToDate(searchTo);
+    }
+
     setError('');
     setLoading(true);
     try {
       const params = new URLSearchParams({
         barcodePrefix,
         size,
-        fromDate,
-        toDate
+        fromDate: searchFrom,
+        toDate: searchTo
       });
       const res = await fetch(`/api/inventory/capacity?${params.toString()}`);
       const data = await res.json();
@@ -63,7 +101,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   return (
-    <div className="modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+    <div className="modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '5vh', paddingBottom: '5vh' }}>
       <div className="modal-content" style={{ width: '90%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#fff', borderRadius: '12px', padding: '2rem' }}>
         
         {/* Header */}
@@ -75,49 +113,68 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSearch} style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', alignItems: 'flex-end' }}>
-          <div style={{ flex: '1 1 150px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>קוד שמלה (קידומת)</label>
-            <input 
-              type="number" 
-              className="form-input" 
+        <form onSubmit={handleSearch} style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+          gap: '1.5rem', 
+          marginBottom: '2rem', 
+          alignItems: 'end',
+          backgroundColor: '#f8fafc',
+          padding: '1.5rem',
+          borderRadius: '12px',
+          border: '1px solid #e2e8f0'
+        }}>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>דגם</label>
+            <select 
+              className="form-select" 
               value={barcodePrefix} 
-              onChange={e => setBarcodePrefix(e.target.value)} 
-              onBlur={handleBarcodeBlur}
-              required 
-            />
+              onChange={e => {
+                setBarcodePrefix(e.target.value);
+                setSize('');
+              }} 
+              required
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+            >
+              <option value="">בחר דגם...</option>
+              {models.map(m => (
+                <option key={m.id || m.barcodePrefix} value={m.barcodePrefix}>
+                  {m.name} ({m.barcodePrefix})
+                </option>
+              ))}
+            </select>
           </div>
-          <div style={{ flex: '1 1 150px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>מידה</label>
-            <select className="form-select" value={size} onChange={e => setSize(e.target.value)} required>
-              <option value="">בחר מידה...</option>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>מידה</label>
+            <select 
+              className="form-select" 
+              value={size} 
+              onChange={e => setSize(e.target.value)} 
+              required
+              disabled={!barcodePrefix || sizes.length === 0}
+              style={{ 
+                width: '100%', 
+                padding: '0.75rem', 
+                borderRadius: '8px', 
+                border: '1px solid #cbd5e1', 
+                backgroundColor: (!barcodePrefix || sizes.length === 0) ? '#e2e8f0' : '#fff' 
+              }}
+            >
+              <option value="">{(!barcodePrefix) ? 'בחר דגם תחילה' : (sizes.length === 0 ? 'אין מידות לדגם' : 'בחר מידה...')}</option>
               {sizes.map(s => (
                 <option key={s} value={s}>{s}</option>
               ))}
-              {/* Fallback if api fails or not blurred yet */}
-              {!sizes.includes(size) && size && <option value={size}>{size}</option>}
             </select>
-            {/* Allow manual entry if dropdown is empty */}
-            {sizes.length === 0 && (
-              <input 
-                type="text" 
-                className="form-input" 
-                value={size} 
-                onChange={e => setSize(e.target.value)} 
-                placeholder="הקלד מידה..."
-                style={{ marginTop: '0.5rem' }}
-              />
-            )}
           </div>
-          <div style={{ flex: '1 1 200px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>מתאריך</label>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>מתאריך</label>
             <HebrewDatePicker value={fromDate} onChange={setFromDate} />
           </div>
-          <div style={{ flex: '1 1 200px' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>עד תאריך</label>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>עד תאריך</label>
             <HebrewDatePicker value={toDate} onChange={setToDate} />
           </div>
-          <button type="submit" className="btn btn-primary" style={{ flex: '0 0 auto', padding: '0.75rem 1.5rem' }} disabled={loading}>
+          <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', width: '100%', borderRadius: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center' }} disabled={loading}>
             {loading ? 'מחפש...' : <><Search size={18} style={{ marginLeft: '0.5rem' }} /> חפש</>}
           </button>
         </form>
@@ -143,93 +200,94 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
               </div>
             </div>
 
-            {results.occupiedCount > 0 ? (
-              <>
-                {/* View Toggle */}
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
-                    <button 
-                      onClick={() => setViewMode('list')}
-                      style={{ 
-                        padding: '0.5rem 1.5rem', 
-                        border: 'none', 
-                        borderRadius: '6px', 
-                        background: viewMode === 'list' ? '#fff' : 'transparent',
-                        boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                        cursor: 'pointer', fontWeight: viewMode === 'list' ? 'bold' : 'normal'
-                      }}
-                    >
-                      <List size={18} /> תצוגת רשימה
-                    </button>
-                    <button 
-                      onClick={() => setViewMode('calendar')}
-                      style={{ 
-                        padding: '0.5rem 1.5rem', 
-                        border: 'none', 
-                        borderRadius: '6px', 
-                        background: viewMode === 'calendar' ? '#fff' : 'transparent',
-                        boxShadow: viewMode === 'calendar' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                        cursor: 'pointer', fontWeight: viewMode === 'calendar' ? 'bold' : 'normal'
-                      }}
-                    >
-                      <CalendarIcon size={18} /> תצוגת לוח
-                    </button>
-                  </div>
-                </div>
-
-                {/* List View */}
-                {viewMode === 'list' && (
-                  <div className="table-responsive">
-                    <table className="table" style={{ width: '100%', textAlign: 'right' }}>
-                      <thead>
-                        <tr>
-                          <th>תאריך אירוע (לועזי)</th>
-                          <th>תאריך אירוע (עברי)</th>
-                          <th>שם לקוח</th>
-                          <th>כמות בתפוסה</th>
-                          <th>פעולות</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {results.occupiedOrders.map(order => (
-                          <tr key={order.id}>
-                            <td>{new Date(order.eventDate).toLocaleDateString('he-IL')}</td>
-                            <td>{order.eventDateHebrew || 'לא צוין'}</td>
-                            <td>{order.customerName}</td>
-                            <td>{order.quantity}</td>
-                            <td>
-                              <button 
-                                onClick={() => window.open(`/orders/${order.orderId}`, '_blank')}
-                                className="btn btn-outline"
-                                style={{ padding: '0.25rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                              >
-                                <ExternalLink size={14} /> פתח
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-
-                {/* Calendar View */}
-                {viewMode === 'calendar' && (
-                  <CapacityCalendar 
-                    fromDate={fromDate} 
-                    toDate={toDate} 
-                    occupiedOrders={results.occupiedOrders} 
-                  />
-                )}
-              </>
-            ) : (
-              <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
-                <CalendarIcon size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                <h3>אין הזמנות תפוסות בטווח התאריכים הנבחר</h3>
-                <p>הפריט פנוי לחלוטין בתאריכים אלו.</p>
+            {/* View Toggle */}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+                <button 
+                  type="button"
+                  onClick={() => setViewMode('list')}
+                  style={{ 
+                    padding: '0.5rem 1.5rem', 
+                    border: 'none', 
+                    borderRadius: '6px', 
+                    background: viewMode === 'list' ? '#fff' : 'transparent',
+                    boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    cursor: 'pointer', fontWeight: viewMode === 'list' ? 'bold' : 'normal'
+                  }}
+                >
+                  <List size={18} /> תצוגת רשימה
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => setViewMode('calendar')}
+                  style={{ 
+                    padding: '0.5rem 1.5rem', 
+                    border: 'none', 
+                    borderRadius: '6px', 
+                    background: viewMode === 'calendar' ? '#fff' : 'transparent',
+                    boxShadow: viewMode === 'calendar' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    display: 'flex', alignItems: 'center', gap: '0.5rem',
+                    cursor: 'pointer', fontWeight: viewMode === 'calendar' ? 'bold' : 'normal'
+                  }}
+                >
+                  <CalendarIcon size={18} /> תצוגת לוח
+                </button>
               </div>
+            </div>
+
+            {/* List View */}
+            {viewMode === 'list' && (
+              results.occupiedCount > 0 ? (
+                <div className="table-responsive">
+                  <table className="table" style={{ width: '100%', textAlign: 'right' }}>
+                    <thead>
+                      <tr>
+                        <th>תאריך אירוע (לועזי)</th>
+                        <th>תאריך אירוע (עברי)</th>
+                        <th>שם לקוח</th>
+                        <th>כמות בתפוסה</th>
+                        <th>פעולות</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {results.occupiedOrders.map(order => (
+                        <tr key={order.id}>
+                          <td>{new Date(order.eventDate).toLocaleDateString('he-IL')}</td>
+                          <td>{order.eventDateHebrew || 'לא צוין'}</td>
+                          <td>{order.customerName}</td>
+                          <td>{order.quantity}</td>
+                          <td>
+                            <button 
+                              type="button"
+                              onClick={() => window.open(`/orders/${order.orderId}`, '_blank')}
+                              className="btn btn-outline"
+                              style={{ padding: '0.25rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                            >
+                              <ExternalLink size={14} /> פתח
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
+                  <CalendarIcon size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
+                  <h3>אין הזמנות תפוסות בטווח התאריכים הנבחר</h3>
+                  <p>הפריט פנוי לחלוטין בתאריכים אלו.</p>
+                </div>
+              )
+            )}
+
+            {/* Calendar View */}
+            {viewMode === 'calendar' && (
+              <CapacityCalendar 
+                fromDate={fromDate || new Date().toISOString().split('T')[0]} 
+                toDate={toDate || new Date().toISOString().split('T')[0]} 
+                occupiedOrders={results.occupiedOrders} 
+              />
             )}
           </div>
         )}

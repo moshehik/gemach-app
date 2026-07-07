@@ -43,7 +43,7 @@ async function migrateData() {
     let count = 0;
     for (let i = 0; i < customerBatch.length; i += 2000) {
       const chunk = customerBatch.slice(i, i + 2000);
-      await prisma.customer.createMany({ data: chunk, skipDuplicates: true });
+      await prisma.customer.createMany({ data: chunk });
       count += chunk.length;
     }
     console.log(`Successfully migrated ${count} customers.`);
@@ -61,7 +61,7 @@ async function migrateData() {
       isActive: !isTrue(e['לא_פעיל'])
     }));
 
-    await prisma.employee.createMany({ data: employeeBatch, skipDuplicates: true });
+    await prisma.employee.createMany({ data: employeeBatch });
     console.log(`Successfully migrated ${employeeBatch.length} employees.`);
 
     // 3. Migrate Dress Models
@@ -80,10 +80,7 @@ async function migrateData() {
       notes: m['הערות'],
       inInspection: isTrue(m['הצג_בבדיקה'])
     }));
-    await prisma.dressModel.createMany({ 
-      data: modelBatch,
-      skipDuplicates: true
-    });
+    await prisma.dressModel.createMany({ data: modelBatch });
     console.log(`Successfully migrated ${modelBatch.length} dress models.`);
 
     // 4. Migrate Dress Items
@@ -102,6 +99,8 @@ async function migrateData() {
         barcodePrefix: item['בר_קוד_קידומת'] ? parseInt(item['בר_קוד_קידומת'], 10) : null,
         dressBarcode: item['בר_קוד_שמלה'] ? String(item['בר_קוד_שמלה']) : null,
         location: item['מיקום'],
+        locationNum: item['מיקום_מס'] ? parseInt(item['מיקום_מס'], 10) : null,
+        serialNumber: item['מספר_סידורי'] ? parseInt(item['מספר_סידורי'], 10) : null,
         quantity: item['כמות'] || 1,
         inRepair: isTrue(item['שמלה_בתיקון']),
         notInUse: isTrue(item['לא_בשימוש'])
@@ -111,7 +110,7 @@ async function migrateData() {
     count = 0;
     for (let i = 0; i < itemBatch.length; i += 2000) {
       const chunk = itemBatch.slice(i, i + 2000);
-      await prisma.dressItem.createMany({ data: chunk, skipDuplicates: true });
+      await prisma.dressItem.createMany({ data: chunk });
       count += chunk.length;
     }
     console.log(`Successfully migrated ${count} dress items.`);

@@ -11,6 +11,7 @@ export default function SettingsClient() {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
   const [error, setError] = useState(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
   
   // Local modifications before saving
   const [modified, setModified] = useState({});
@@ -30,6 +31,9 @@ export default function SettingsClient() {
       
       // Extract categories
       const cats = [...new Set(data.map(s => s.category).filter(Boolean))];
+      if (!cats.includes('תצוגה')) {
+        cats.unshift('תצוגה');
+      }
       setCategories(cats);
       if (cats.length > 0 && !activeTab) {
         setActiveTab(cats[0]);
@@ -83,6 +87,35 @@ export default function SettingsClient() {
     }
   };
 
+  const handleLogoUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingLogo(true);
+    setError(null);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      
+      const res = await fetch('/api/upload-logo', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'שגיאה בהעלאת הלוגו');
+      
+      setSaveMessage('הלוגו עודכן בהצלחה!');
+      localStorage.setItem('logo_timestamp', data.timestamp);
+      window.dispatchEvent(new CustomEvent('logoUpdated', { detail: data.timestamp }));
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -129,6 +162,28 @@ export default function SettingsClient() {
         )}
 
         <div className="space-y-8">
+          {activeTab === 'תצוגה' && (
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 py-4 border-b border-gray-50 last:border-0">
+              <div className="flex-1 max-w-2xl">
+                <label className="block text-base font-medium text-gray-900">
+                  לוגו מערכת
+                </label>
+                <p className="mt-1 text-sm text-gray-500">
+                  העלה לוגו חדש למערכת (מומלץ בפורמט PNG עם רקע שקוף)
+                </p>
+              </div>
+              <div className="sm:ml-6 flex-shrink-0 flex items-center gap-4">
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  onChange={handleLogoUpload} 
+                  disabled={uploadingLogo}
+                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+                />
+                {uploadingLogo && <Loader2 className="w-5 h-5 animate-spin text-blue-500" />}
+              </div>
+            </div>
+          )}
           {activeSettings.map(setting => {
             const currentValue = modified[setting.key] !== undefined ? modified[setting.key] : setting.value;
             const isBoolean = setting.type === 'boolean';

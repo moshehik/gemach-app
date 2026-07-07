@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { Trash2, Info } from 'lucide-react';
 
 export default function OrderPaymentsManager({ orderId, obligations = [], payments = [], onObligationsChange, onPaymentsChange, totalRequired, totalPaid, customer = {} }) {
   const [newObligation, setNewObligation] = useState({ description: '', amount: '' });
@@ -17,6 +18,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
   const [isProcessing, setIsProcessing] = useState(false);
   const [creditError, setCreditError] = useState('');
   const [settings, setSettings] = useState({});
+  const [selectedPaymentDetails, setSelectedPaymentDetails] = useState(null);
 
   useEffect(() => {
     fetch('/api/settings')
@@ -192,6 +194,49 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
     }
   };
 
+  const formatShortNotes = (notes) => {
+    if (!notes) return '-';
+    
+    try {
+      if (typeof notes === 'string' && notes.trim().startsWith('{')) {
+        const parsed = JSON.parse(notes);
+        if (parsed.Confirmation || parsed.TransactionId) {
+          return `אישור: ${parsed.Confirmation || parsed.TransactionId}`;
+        }
+        return 'נתוני סליקה מורחבים (ראה פרטים)';
+      }
+    } catch (e) {}
+
+    if (typeof notes === 'string') {
+      const match = notes.match(/אישור:\s*([a-zA-Z0-9]+)/);
+      if (match && match[1]) {
+        return `אישור: ${match[1]}`;
+      }
+      if (notes.length > 35) {
+        return notes.substring(0, 35) + '...';
+      }
+    }
+
+    return notes;
+  };
+
+  const getFullPaymentDetails = (p) => {
+    let formattedNotes = p.notes || 'אין';
+    try {
+      if (typeof p.notes === 'string' && p.notes.trim().startsWith('{')) {
+        const parsed = JSON.parse(p.notes);
+        formattedNotes = Object.entries(parsed)
+          .map(([k, v]) => `${k}: ${v}`)
+          .join('\n');
+      } else {
+        // If it's standard string with pipes, replace pipe with newline for better readability
+        formattedNotes = p.notes.split(' | ').join('\n');
+      }
+    } catch (e) {}
+
+    return `דיווח מלא על התשלום:\nאופן: ${p.paymentMethod || '-'}\nסכום: ₪${p.amount}\nתאריך: ${new Date(p.paymentDate).toLocaleString('he-IL')}\n\nהערות ופירוט מלא:\n${formattedNotes}`;
+  };
+
   const activeObligations = obligations.filter(o => !o.isDeleted);
   const activePayments = payments.filter(p => !p.isDeleted);
 
@@ -226,7 +271,9 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                     <td style={{ padding: '0.5rem', fontWeight: 'bold' }}>₪{obs.amount}</td>
                     <td style={{ padding: '0.5rem' }}>
                       {obs.isManual !== false && (
-                        <button onClick={() => removeObligation(obligations.indexOf(obs))} style={{ background: 'none', border: 'none', color: '#d32f2f', cursor: 'pointer', textDecoration: 'underline' }}>מחק</button>
+                        <button onClick={() => removeObligation(obligations.indexOf(obs))} style={{ background: 'none', border: 'none', color: '#d32f2f', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.2rem' }} title="מחק">
+                          <Trash2 size={18} />
+                        </button>
                       )}
                     </td>
                   </tr>
@@ -280,11 +327,15 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                     <td style={{ padding: '0.5rem' }}>{p.paymentMethod || '-'}</td>
                     <td style={{ padding: '0.5rem', fontSize: '0.85em' }}>{new Date(p.paymentDate).toLocaleString('he-IL')}</td>
                     <td style={{ padding: '0.5rem' }}>{p.employee?.firstName || 'מערכת'}</td>
-                    <td style={{ padding: '0.5rem' }}>{p.notes || '-'}</td>
+                    <td style={{ padding: '0.5rem' }}>{formatShortNotes(p.notes)}</td>
                     <td style={{ padding: '0.5rem', fontWeight: 'bold', color: '#2e7d32' }}>₪{p.amount}</td>
-                    <td style={{ padding: '0.5rem' }}>
-                      <button onClick={() => alert(`דיווח מלא על התשלום:\nאופן: ${p.paymentMethod}\nסכום: ₪${p.amount}\nהערות: ${p.notes || 'אין'}\nתאריך: ${new Date(p.paymentDate).toLocaleString('he-IL')}`)} style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', textDecoration: 'underline', marginLeft: '10px' }}>פרטים נוספים</button>
-                      <button onClick={() => removePayment(payments.indexOf(p))} style={{ background: 'none', border: 'none', color: '#d32f2f', cursor: 'pointer', textDecoration: 'underline' }}>מחק</button>
+                    <td style={{ padding: '0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <button onClick={() => setSelectedPaymentDetails(p)} style={{ background: 'none', border: 'none', color: '#3b82f6', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.2rem' }} title="פרטים נוספים">
+                        <Info size={18} />
+                      </button>
+                      <button onClick={() => removePayment(payments.indexOf(p))} style={{ background: 'none', border: 'none', color: '#d32f2f', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.2rem' }} title="מחק">
+                        <Trash2 size={18} />
+                      </button>
                     </td>
                   </tr>
                 ))}
@@ -423,6 +474,71 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                 style={{ padding: '0.5rem 1.5rem', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '4px', cursor: isProcessing ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               >
                 {isProcessing ? 'מעבד...' : 'חייב כרטיס'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {selectedPaymentDetails && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl' }}>
+          <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '500px', maxWidth: '90%', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh' }}>
+            <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>
+                פרטי תשלום מלאים
+              </h2>
+              <button onClick={() => setSelectedPaymentDetails(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '1rem', borderRadius: '8px' }}>
+              <div>
+                <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.2rem' }}>אופן תשלום</span>
+                <span style={{ fontWeight: '600', color: '#334155' }}>{selectedPaymentDetails.paymentMethod || '-'}</span>
+              </div>
+              <div>
+                <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.2rem' }}>סכום</span>
+                <span style={{ fontWeight: '600', color: '#16a34a', fontSize: '1.1rem' }}>₪{selectedPaymentDetails.amount}</span>
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.2rem' }}>תאריך</span>
+                <span style={{ color: '#334155' }}>{new Date(selectedPaymentDetails.paymentDate).toLocaleString('he-IL')}</span>
+              </div>
+            </div>
+
+            <div>
+              <h3 style={{ margin: '0 0 0.8rem 0', fontSize: '1.1rem', color: '#334155' }}>הערות ופירוט (נדרים פלוס / אחר)</h3>
+              <div style={{ background: '#f1f5f9', padding: '1rem', borderRadius: '8px', maxHeight: '350px', overflowY: 'auto' }}>
+                {(() => {
+                  const notes = selectedPaymentDetails.notes;
+                  if (!notes) return <span style={{ color: '#94a3b8' }}>אין הערות</span>;
+                  
+                  try {
+                    if (typeof notes === 'string' && notes.trim().startsWith('{')) {
+                      const parsed = JSON.parse(notes);
+                      return (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+                          {Object.entries(parsed).map(([k, v]) => (
+                            <div key={k} style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
+                              <strong style={{ width: '150px', color: '#475569', fontSize: '0.9rem', flexShrink: 0 }}>{k}:</strong>
+                              <span style={{ flex: 1, color: '#1e293b', wordBreak: 'break-word', fontSize: '0.95rem', direction: 'ltr', textAlign: 'right' }}>{String(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      );
+                    }
+                  } catch (e) {}
+                  
+                  return <div style={{ whiteSpace: 'pre-wrap', color: '#1e293b', lineHeight: '1.5' }}>{typeof notes === 'string' ? notes.split(' | ').join('\n') : String(notes)}</div>;
+                })()}
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+              <button 
+                onClick={() => setSelectedPaymentDetails(null)} 
+                style={{ padding: '0.6rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                סגור
               </button>
             </div>
           </div>

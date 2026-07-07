@@ -6,6 +6,11 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     const settings = await prisma.systemSetting.findMany({
+      where: {
+        key: {
+          not: 'BRAND_LOGO'
+        }
+      },
       orderBy: [
         { category: 'asc' },
         { id: 'asc' }

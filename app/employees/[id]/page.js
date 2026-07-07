@@ -280,10 +280,31 @@ export default function EmployeePage({ params }) {
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>דוא"ל</label>
               <input type="email" name="email" value={employee.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
-            </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>סיומת מייל</label>
-              <input type="text" name="emailSuffix" value={employee.emailSuffix || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              {(!employee.email || !employee.email.includes('@')) && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const currentEmail = employee.email || '';
+                      setEmployee(prev => ({ ...prev, email: currentEmail + '@gmail.com' }));
+                    }}
+                    style={{
+                      padding: '0.3rem 0.6rem',
+                      fontSize: '0.85rem',
+                      background: 'var(--primary-color)',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '12px',
+                      cursor: 'pointer',
+                      transition: 'opacity 0.2s'
+                    }}
+                    onMouseOver={(e) => e.target.style.opacity = '0.8'}
+                    onMouseOut={(e) => e.target.style.opacity = '1'}
+                  >
+                    השלם ל- @gmail.com
+                  </button>
+                </div>
+              )}
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>עיר</label>

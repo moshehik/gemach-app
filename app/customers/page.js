@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
+import ExportButtons from '../../components/ExportButtons';
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -134,8 +135,20 @@ export default function CustomersPage() {
             🔍
           </button>
         </div>
-        <div style={{ color: 'var(--text-muted)' }}>
-          סה"כ רשומות: {totalCount}
+        <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <ExportButtons 
+            data={customers} 
+            filename="לקוחות" 
+            columns={[
+              { key: 'id', label: 'קוד לקוח' },
+              { key: 'firstName', label: 'שם פרטי' },
+              { key: 'lastName', label: 'שם משפחה' },
+              { key: 'phone1', label: 'טלפון' },
+              { key: 'city', label: 'עיר' },
+              { key: 'email', label: 'דוא"ל' }
+            ]} 
+          />
+          <span>סה"כ רשומות: {totalCount}</span>
         </div>
       </div>
 

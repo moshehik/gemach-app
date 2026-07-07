@@ -1,6 +1,5 @@
 import prisma from '../lib/prisma';
 import DashboardCharts from './DashboardCharts';
-import LogoSettings from './LogoSettings';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,8 +79,6 @@ export default async function Dashboard() {
       </div>
 
       <DashboardCharts revenueByMethod={revenueByMethod} revenueTrend={revenueTrend} />
-      
-      <LogoSettings />
       
     </main>
   );

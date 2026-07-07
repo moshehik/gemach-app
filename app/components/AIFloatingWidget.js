@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bot, X, MessageSquare, Maximize2, Minimize2, Trash2 } from 'lucide-react';
+import { Bot, X, MessageSquare, Maximize2, Minimize2, Trash2, Mic, History } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 export default function AIFloatingWidget() {
@@ -14,9 +14,24 @@ export default function AIFloatingWidget() {
   const [showTableModal, setShowTableModal] = useState(false);
   const [modalTableData, setModalTableData] = useState(null);
   
+  const [isListening, setIsListening] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
+  const [chatSessions, setChatSessions] = useState([]);
+  
+  const recognitionRef = useRef(null);
+  
   const chatEndRef = useRef(null);
 
   useEffect(() => {
+    const savedSessions = localStorage.getItem('ai_employee_chat_sessions');
+    let sessions = [];
+    if (savedSessions) {
+      try {
+        sessions = JSON.parse(savedSessions);
+        setChatSessions(sessions);
+      } catch (e) {}
+    }
+
     const saved = localStorage.getItem('ai_employee_chat');
     if (saved) {
       try {
@@ -47,7 +62,15 @@ export default function AIFloatingWidget() {
   }, [messages, isOpen, loading]);
 
   const startNewChat = () => {
+    if (messages.length > 1) {
+      // Save current to sessions before clearing
+      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
+      const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
+      setChatSessions(updatedSessions);
+      localStorage.setItem('ai_employee_chat_sessions', JSON.stringify(updatedSessions));
+    }
     setMessages([{ role: 'assistant', content: 'שלום! אני עוזר ה-AI. כיצד אוכל לעזור לך למצוא נתונים במערכת?' }]);
+    setShowHistory(false);
   };
 
   const sendMessage = async (e) => {
@@ -121,6 +144,57 @@ export default function AIFloatingWidget() {
     );
   };
 
+  const toggleListen = (e) => {
+    if (e) e.preventDefault();
+    if (isListening) {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+      }
+      return;
+    }
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      alert("הדפדפן שלך אינו תומך בהקלטת קול.");
+      return;
+    }
+    
+    const recognition = new SpeechRecognition();
+    recognitionRef.current = recognition;
+    recognition.lang = 'he-IL';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    
+    recognition.onstart = () => setIsListening(true);
+    
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setInput((prev) => prev + (prev ? ' ' : '') + transcript);
+    };
+    
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+    };
+    
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+    
+    recognition.start();
+  };
+
+  const loadSession = (session) => {
+    if (messages.length > 1 && !chatSessions.find(s => s.id === session.id)) {
+      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
+      const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
+      setChatSessions(updatedSessions);
+      localStorage.setItem('ai_employee_chat_sessions', JSON.stringify(updatedSessions));
+    }
+    setMessages(session.messages);
+    setShowHistory(false);
+  };
+
   if (pathname === '/customer-interface') {
     return null;
   }
@@ -192,7 +266,10 @@ export default function AIFloatingWidget() {
             <span style={{ fontWeight: 'bold' }}>עוזר AI</span>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={clearChat} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title="נקה שיחה">
+            <button onClick={() => setShowHistory(!showHistory)} style={{ background: 'none', border: 'none', color: showHistory ? '#fcd34d' : 'white', cursor: 'pointer', opacity: 0.9 }} title="היסטוריית שיחות">
+              <History size={18} />
+            </button>
+            <button onClick={clearChat} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title="שיחה חדשה">
               <Trash2 size={18} />
             </button>
             <button onClick={() => setIsExpanded(!isExpanded)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title={isExpanded ? 'הקטן' : 'הגדל'}>
@@ -205,41 +282,72 @@ export default function AIFloatingWidget() {
         </div>
 
         {/* Chat Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#f9fafb' }}>
-          {messages.map((msg, idx) => (
-            <div key={idx} style={{
-              alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
-              backgroundColor: msg.role === 'user' ? 'var(--primary-color, #4338ca)' : 'white',
-              color: msg.role === 'user' ? 'white' : '#1f2937',
-              padding: '10px 14px',
-              borderRadius: '12px',
-              maxWidth: '85%',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              borderBottomRightRadius: msg.role === 'user' ? '0' : '12px',
-              borderBottomLeftRadius: msg.role === 'assistant' ? '0' : '12px',
-              fontSize: '0.95rem',
-              lineHeight: '1.4'
-            }}>
-              <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
-              {msg.tableData && renderTable(msg.tableData)}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#f9fafb', position: 'relative' }}>
+          {showHistory ? (
+            <div style={{ padding: '10px' }}>
+              <h3 style={{ marginTop: 0, color: '#374151', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
+              {chatSessions.length === 0 ? (
+                <div style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '10px' }}>אין היסטוריית שיחות שמורה.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                  {chatSessions.map((session) => (
+                    <div 
+                      key={session.id} 
+                      onClick={() => loadSession(session)}
+                      style={{
+                        padding: '12px', backgroundColor: 'white', border: '1px solid #e5e7eb',
+                        borderRadius: '8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px'
+                      }}
+                      onMouseOver={e => e.currentTarget.style.borderColor = '#6366f1'}
+                      onMouseOut={e => e.currentTarget.style.borderColor = '#e5e7eb'}
+                    >
+                      <span style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.9rem' }}>{session.date}</span>
+                      <span style={{ color: '#6b7280', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {session.messages.length > 1 ? session.messages[1].content : 'שיחה ריקה'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-          ))}
-          {loading && (
-            <div style={{
-              alignSelf: 'flex-end',
-              backgroundColor: 'white',
-              padding: '10px 14px',
-              borderRadius: '12px',
-              borderBottomLeftRadius: '0',
-              fontStyle: 'italic',
-              color: '#6b7280',
-              fontSize: '0.9rem',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
-            }}>
-              מעבד נתונים...
-            </div>
+          ) : (
+            <>
+              {messages.map((msg, idx) => (
+                <div key={idx} style={{
+                  alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
+                  backgroundColor: msg.role === 'user' ? 'var(--primary-color, #4338ca)' : 'white',
+                  color: msg.role === 'user' ? 'white' : '#1f2937',
+                  padding: '10px 14px',
+                  borderRadius: '12px',
+                  maxWidth: '85%',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                  borderBottomRightRadius: msg.role === 'user' ? '0' : '12px',
+                  borderBottomLeftRadius: msg.role === 'assistant' ? '0' : '12px',
+                  fontSize: '0.95rem',
+                  lineHeight: '1.4'
+                }}>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                  {msg.tableData && renderTable(msg.tableData)}
+                </div>
+              ))}
+              {loading && (
+                <div style={{
+                  alignSelf: 'flex-end',
+                  backgroundColor: 'white',
+                  padding: '10px 14px',
+                  borderRadius: '12px',
+                  borderBottomLeftRadius: '0',
+                  fontStyle: 'italic',
+                  color: '#6b7280',
+                  fontSize: '0.9rem',
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
+                }}>
+                  מעבד נתונים...
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </>
           )}
-          <div ref={chatEndRef} />
         </div>
 
         {/* Input Area */}
@@ -250,6 +358,21 @@ export default function AIFloatingWidget() {
           backgroundColor: 'white',
           gap: '8px'
         }}>
+          <button 
+            type="button" 
+            onClick={toggleListen}
+            style={{
+              background: isListening ? '#ef4444' : '#f3f4f6', 
+              color: isListening ? 'white' : '#4b5563', 
+              border: 'none', borderRadius: '50%', width: '42px', height: '42px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
+              animation: isListening ? 'pulse 1.5s infinite' : 'none'
+            }}
+            title="הקלט הודעה"
+          >
+            <Mic size={20} />
+          </button>
           <input 
             type="text" 
             value={input}

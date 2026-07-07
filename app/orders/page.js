@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import CapacitySearchModal from '../../components/CapacitySearchModal';
+import ExportButtons from '../../components/ExportButtons';
 
 export default function OrdersPage() {
   const [orders, setOrders] = useState([]);
@@ -142,13 +143,27 @@ export default function OrdersPage() {
             🔍
           </button>
         </div>
-        <div style={{ color: 'var(--text-muted)' }}>
-          סה"כ רשומות: {totalCount}
+        <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <ExportButtons 
+            data={orders.map(o => ({
+              ...o,
+              status: calculateOrderStatus(o)
+            }))} 
+            filename="הזמנות" 
+            columns={[
+              { key: 'orderId', label: 'קוד הזמנה' },
+              { key: 'customerName', label: 'לקוח' },
+              { key: 'totalAmount', label: 'סכום לחיוב' },
+              { key: 'totalPaid', label: 'סכום ששולם' },
+              { key: 'status', label: 'סטטוס' }
+            ]} 
+          />
+          <span>סה"כ רשומות: {totalCount}</span>
         </div>
       </div>
 
       {showAdvSearch && (
-        <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000 }}>
+        <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'flex-start', paddingTop: '10vh', paddingBottom: '10vh' }}>
           <div className="modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
             <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem' }}>חיפוש מתקדם</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>

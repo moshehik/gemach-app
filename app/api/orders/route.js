@@ -198,6 +198,7 @@ export async function POST(request) {
         orderId: data.orderId || nextOrderId,
         customerId: data.customerId ? parseInt(data.customerId) : null,
         totalAmount: data.totalAmount ? parseFloat(data.totalAmount) : null,
+        orderDate: new Date(),
         eventDate: data.eventDate ? new Date(data.eventDate) : null,
         eventDateHebrew: data.eventDateHebrew || null,
         returnDate: data.returnDate ? new Date(data.returnDate) : null,

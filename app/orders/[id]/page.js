@@ -3,11 +3,13 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { Save, CreditCard, ArrowRight } from 'lucide-react';
 import OrderGeneralDetails from '../../../components/orders/OrderGeneralDetails';
 import OrderItemsManager from '../../../components/orders/OrderItemsManager';
 import OrderPaymentsManager from '../../../components/orders/OrderPaymentsManager';
 import { calculateOrderStatus, getStatusColor } from '../../../lib/orderStatus';
 import HistoryViewer from '../../../components/HistoryViewer';
+import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 export default function OrderDetailsPage({ params }) {
   const router = useRouter();
@@ -154,6 +156,31 @@ export default function OrderDetailsPage({ params }) {
 
   const createdDate = order.orderDate || order.createdAt;
 
+  const handleExit = async () => {
+    if (totalRequired - totalPaid > 0) {
+      const pin = window.prompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת עובד או מנהל. אנא הזן סיסמת אישור:");
+      if (!pin) {
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin, requiredLevel: 'עובד' })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+          return;
+        }
+      } catch (err) {
+        alert('שגיאה באימות קוד עובד/מנהל.');
+        return;
+      }
+    }
+    router.push('/orders');
+  };
+
   return (
     <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
       
@@ -195,8 +222,8 @@ export default function OrderDetailsPage({ params }) {
           <div style={{ color: '#666', marginTop: '0.5rem', fontSize: '0.9rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <span>לקוח: <strong style={{ color: '#333' }}>{order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לא נבחר'}</strong></span>
             {order.customer?.phone1 && <span>טלפון: <span style={{ direction: 'ltr', display: 'inline-block' }}>{order.customer.phone1}</span></span>}
-            <span>תאריך אירוע: <strong style={{ color: '#333' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</strong></span>
-            <span>נוצר ב: {createdDate ? new Date(createdDate).toLocaleDateString('he-IL') : 'לא ידוע'}</span>
+            <span>תאריך אירוע: <strong style={{ color: '#333' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'} {order.eventDate ? `(${getHebrewDateString(order.eventDate)})` : ''}</strong></span>
+            <span>נוצר ב: {createdDate ? new Date(createdDate).toLocaleDateString('he-IL') : 'לא ידוע'} {createdDate ? `(${getHebrewDateString(createdDate)})` : ''}</span>
             <span style={{ borderRight: '1px solid #ccc', paddingRight: '1rem' }}>חובת תשלום: ₪{totalRequired} | שולם: ₪{totalPaid}</span>
           </div>
         </div>
@@ -207,36 +234,46 @@ export default function OrderDetailsPage({ params }) {
           <button 
             onClick={handleSave} 
             disabled={saving}
+            title="שמור שינויים"
             style={{ 
-              padding: '0.8rem 1.5rem', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '0.8rem', 
               background: 'var(--primary-color, #1976d2)', 
               color: 'white', 
               border: 'none', 
               borderRadius: '8px', 
-              fontSize: '1rem',
-              fontWeight: 'bold',
               cursor: saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.7 : 1,
               boxShadow: '0 4px 6px rgba(25, 118, 210, 0.2)',
               transition: 'all 0.2s'
             }}
           >
-            {saving ? 'שומר...' : 'שמור שינויים'}
+            {saving ? <div className="spinner" style={{ width: '24px', height: '24px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Save size={24} />}
           </button>
           
-          <button style={{ 
-            padding: '0.8rem 1.5rem', background: '#e8f5e9', color: '#2e7d32', border: '1px solid #c8e6c9', 
-            borderRadius: '8px', fontSize: '1rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' 
-          }}>
-            מעבר לתשלום (₪{totalRequired - totalPaid})
+          <button 
+            onClick={() => document.getElementById('payments-section')?.scrollIntoView({ behavior: 'smooth' })}
+            title={`מעבר לתשלום (₪${totalRequired - totalPaid})`}
+            style={{ 
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '0.8rem', background: '#e8f5e9', color: '#2e7d32', border: '1px solid #c8e6c9', 
+              borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' 
+            }}
+          >
+            <CreditCard size={24} />
           </button>
 
-          <Link href="/orders" style={{ 
-            padding: '0.8rem 1.5rem', background: '#f5f5f5', color: '#333', border: '1px solid #ddd', 
-            borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', transition: 'all 0.2s' 
-          }}>
-            חזרה לרשימה
-          </Link>
+          <button 
+            onClick={handleExit}
+            title="חזרה לרשימה"
+            style={{ 
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              padding: '0.8rem', background: '#f5f5f5', color: '#333', border: '1px solid #ddd', 
+              borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' 
+            }}
+          >
+            <ArrowRight size={24} />
+          </button>
         </div>
       </div>
 
@@ -256,16 +293,18 @@ export default function OrderDetailsPage({ params }) {
         />
 
         {/* Payments and Obligations Manager Component */}
-        <OrderPaymentsManager 
-          orderId={order.orderId}
-          obligations={obligations} 
-          payments={payments} 
-          onObligationsChange={setObligations} 
-          onPaymentsChange={setPayments} 
-          totalRequired={totalRequired} 
-          totalPaid={totalPaid} 
-          customer={order.customer}
-        />
+        <div id="payments-section">
+          <OrderPaymentsManager 
+            orderId={order.orderId}
+            obligations={obligations} 
+            payments={payments} 
+            onObligationsChange={setObligations} 
+            onPaymentsChange={setPayments} 
+            totalRequired={totalRequired} 
+            totalPaid={totalPaid} 
+            customer={order.customer}
+          />
+        </div>
 
         {/* History Viewer */}
         <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>

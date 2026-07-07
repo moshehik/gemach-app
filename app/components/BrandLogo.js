@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react';
 
 export default function BrandLogo() {
-  const [logoUrl, setLogoUrl] = useState('/logo.png');
+  const [logoUrl, setLogoUrl] = useState('/api/logo');
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
     // Check if we have a new timestamp in localStorage
     const ts = localStorage.getItem('logo_timestamp');
     if (ts) {
-      setLogoUrl(`/logo.png?v=${ts}`);
+      setLogoUrl(`/api/logo?v=${ts}`);
     }
   }, []);
 
@@ -18,7 +18,7 @@ export default function BrandLogo() {
   useEffect(() => {
     const handleLogoUpdate = (e) => {
       const ts = e.detail || Date.now();
-      setLogoUrl(`/logo.png?v=${ts}`);
+      setLogoUrl(`/api/logo?v=${ts}`);
       setHasError(false); // Reset error state to try loading the new logo
     };
     window.addEventListener('logoUpdated', handleLogoUpdate);

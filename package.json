@@ -4,10 +4,9 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "prisma generate && prisma db push --accept-data-loss && next build --webpack",
+    "build": "next build --webpack",
     "start": "next start",
-    "lint": "eslint",
-    "postinstall": "prisma generate"
+    "lint": "eslint"
   },
   "dependencies": {
     "@hebcal/core": "^6.6.0",
@@ -23,6 +22,7 @@
   "devDependencies": {
     "eslint": "^9",
     "eslint-config-next": "16.2.10",
+    "node-adodb": "^5.0.3",
     "prisma": "^5.22.0"
   }
 }

@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
-import { promises as fs } from 'fs';
-import path from 'path';
+import prisma from '@/app/lib/prisma';
 
 export async function POST(request) {
   try {
@@ -13,11 +12,16 @@ export async function POST(request) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
     
-    // Save to public/logo.png
-    const uploadDir = path.join(process.cwd(), 'public');
-    const filePath = path.join(uploadDir, 'logo.png');
+    // Convert to Base64
+    const mimeType = file.type || 'image/png';
+    const base64Data = `data:${mimeType};base64,${buffer.toString('base64')}`;
     
-    await fs.writeFile(filePath, buffer);
+    // Save to database instead of static public folder to avoid Next.js caching issues
+    await prisma.systemSetting.upsert({
+      where: { key: 'BRAND_LOGO' },
+      update: { value: base64Data },
+      create: { key: 'BRAND_LOGO', value: base64Data, name: 'לוגו מערכת' }
+    });
 
     return NextResponse.json({ success: true, timestamp: Date.now() });
   } catch (error) {

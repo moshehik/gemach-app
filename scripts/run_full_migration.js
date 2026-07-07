@@ -68,12 +68,30 @@ async function main() {
     updateStatus('running', 70, 'מייבא הזמנות ותשלומים (עשוי לקחת מספר דקות)...');
     runCommand('node scripts/import_all_data.js', appRoot);
 
+    updateStatus('running', 75, 'מייבא תאריכי פתיחת הזמנות...');
+    runCommand('node scripts/migrate_order_dates.js', appRoot);
+
+    updateStatus('running', 80, 'מייבא תשלומי ביצוע...');
+    runCommand('node scripts/migrate_payments.js', appRoot);
+
     updateStatus('running', 90, 'מייבא מחירונים והגדרות...');
     runCommand('node scripts/migrate_prices.js', appRoot);
     runCommand('node scripts/seed_settings.js', appRoot);
 
-    // 5. Complete
-    updateStatus('completed', 100, 'הייבוא הסתיים בהצלחה!');
+    // 5. Upload to GitHub / Vercel
+    updateStatus('running', 95, 'מעלה נתונים לגיטהב ו-Vercel...');
+    try {
+        const d = new Date();
+        const dateStr = d.toLocaleDateString('he-IL') + ' ' + d.toLocaleTimeString('he-IL');
+        runCommand('git add .', appRoot);
+        runCommand(`git commit -m "עדכון נתונים אוטומטי מהאקסס - ${dateStr}"`, appRoot);
+        runCommand('git push origin main', appRoot);
+    } catch (e) {
+        console.log('Git commit/push skipped (no changes or network error)');
+    }
+
+    // 6. Complete
+    updateStatus('completed', 100, 'הייבוא וההעלאה לשרת הסתיימו בהצלחה!');
 
   } catch (error) {
     console.error(error);

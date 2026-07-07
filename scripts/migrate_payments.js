@@ -81,7 +81,7 @@ async function main() {
   let count = 0;
   for (let i = 0; i < paymentBatch.length; i += 2000) {
     const chunk = paymentBatch.slice(i, i + 2000);
-    await prisma.payment.createMany({ data: chunk, skipDuplicates: true });
+    await prisma.payment.createMany({ data: chunk });
     count += chunk.length;
     console.log(`Inserted ${count} / ${paymentBatch.length} payments...`);
   }

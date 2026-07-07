@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { HDate } from '@hebcal/core';
 import { getHebrewDateString, getHebrewMonthYear } from '@/lib/hebrewDate';
-import { RefreshCw, Printer, Lock, Maximize, Bot, Mic } from 'lucide-react';
+import { RefreshCw, Printer, Lock, Maximize, Bot, Mic, History } from 'lucide-react';
 
 export default function CustomerInventoryViewer() {
   const router = useRouter();
@@ -28,8 +28,56 @@ export default function CustomerInventoryViewer() {
   const [aiMessages, setAiMessages] = useState([{ role: 'assistant', content: 'שלום! אני העוזר החכם של המערכת. איך אוכל לעזור לך?' }]);
   const [aiLoading, setAiLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [showAiHistory, setShowAiHistory] = useState(false);
+  const [aiChatSessions, setAiChatSessions] = useState([]);
+  
   const chatEndRef = useRef(null);
   const recognitionRef = useRef(null);
+
+  useEffect(() => {
+    const savedSessions = localStorage.getItem('ai_customer_chat_sessions');
+    if (savedSessions) {
+      try {
+        setAiChatSessions(JSON.parse(savedSessions));
+      } catch (e) {}
+    }
+
+    const saved = localStorage.getItem('ai_customer_chat');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.length > 0) setAiMessages(parsed);
+      } catch (e) {}
+    }
+  }, []);
+
+  useEffect(() => {
+    if (aiMessages.length > 0) {
+      localStorage.setItem('ai_customer_chat', JSON.stringify(aiMessages));
+    }
+  }, [aiMessages]);
+
+  const startNewAiChat = () => {
+    if (aiMessages.length > 1) {
+      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...aiMessages] };
+      const updatedSessions = [newSession, ...aiChatSessions].slice(0, 10);
+      setAiChatSessions(updatedSessions);
+      localStorage.setItem('ai_customer_chat_sessions', JSON.stringify(updatedSessions));
+    }
+    setAiMessages([{ role: 'assistant', content: 'שלום! אני העוזר החכם של המערכת. איך אוכל לעזור לך?' }]);
+    setShowAiHistory(false);
+  };
+
+  const loadAiSession = (session) => {
+    if (aiMessages.length > 1 && !aiChatSessions.find(s => s.id === session.id)) {
+      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...aiMessages] };
+      const updatedSessions = [newSession, ...aiChatSessions].slice(0, 10);
+      setAiChatSessions(updatedSessions);
+      localStorage.setItem('ai_customer_chat_sessions', JSON.stringify(updatedSessions));
+    }
+    setAiMessages(session.messages);
+    setShowAiHistory(false);
+  };
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -40,16 +88,20 @@ export default function CustomerInventoryViewer() {
     if(!aiInput.trim() || aiLoading) return;
     const userMsg = { role: 'user', content: aiInput.trim() };
     setAiInput('');
-    setAiMessages(prev => [...prev, userMsg]);
+    
+    const newMessages = [...aiMessages, userMsg];
+    setAiMessages(newMessages);
     setAiLoading(true);
 
     try {
+      const historyContext = newMessages.map(m => ({ role: m.role, content: m.content }));
+      
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           prompt: userMsg.content, 
-          history: aiMessages,
+          history: historyContext,
           context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ענה אך ורק לשאלות שקשורות להזמנות, מלאי, מחירים ותיקונים עבור לקוחות. אסור לך בשום אופן למסור מידע ניהולי (כמו סטטיסטיקות, רווחים, הכנסות, נתוני עובדים או מידע על לקוחות אחרים). אם הלקוח שואל שאלות לא קשורות או מבקש מידע חסוי, התנצל בנימוס ואמור שאין לך הרשאה לספק מידע זה ושהנך כאן רק לעזור בכל הקשור להזמנות השמלות של הלקוח.`
         }),
       });
@@ -701,7 +753,14 @@ export default function CustomerInventoryViewer() {
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <button 
-                onClick={() => setAiMessages([{ role: 'assistant', content: 'שלום! אני העוזר החכם של המערכת. איך אוכל לעזור לך?' }])} 
+                onClick={() => setShowAiHistory(!showAiHistory)} 
+                style={{ background: 'none', border: 'none', color: showAiHistory ? '#fcd34d' : 'white', cursor: 'pointer', fontSize: '18px' }}
+                title="היסטוריית שיחות"
+              >
+                <History size={18} />
+              </button>
+              <button 
+                onClick={startNewAiChat} 
                 style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '15px', padding: '4px 10px', color: 'white', cursor: 'pointer', fontSize: '12px' }}
                 title="התחל שיחה חדשה"
               >
@@ -712,46 +771,77 @@ export default function CustomerInventoryViewer() {
           </div>
           
           {/* Messages */}
-          <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: '#f9fafb' }}>
-            {aiMessages.map((msg, idx) => (
-              <div key={idx} style={{
-                alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
-                backgroundColor: msg.role === 'user' ? '#3b82f6' : 'white',
-                color: msg.role === 'user' ? 'white' : '#1f2937',
-                padding: '10px 15px', borderRadius: '12px', maxWidth: '90%',
-                boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                borderBottomRightRadius: msg.role === 'user' ? '0' : '12px',
-                borderBottomLeftRadius: msg.role === 'assistant' ? '0' : '12px',
-                border: msg.role === 'assistant' ? '1px solid #e5e7eb' : 'none'
-              }}>
-                <div style={{ whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.4' }}>{msg.content}</div>
-                {msg.tableData && msg.tableData.length > 0 && (
-                   <div style={{ marginTop: '10px', overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-                      <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', backgroundColor: 'white' }}>
-                        <thead>
-                          <tr style={{ background: '#f3f4f6' }}>
-                            {Object.keys(msg.tableData[0]).map(h => <th key={h} style={{ padding: '6px', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{h}</th>)}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {msg.tableData.map((row, i) => (
-                            <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                              {Object.keys(msg.tableData[0]).map(h => <td key={h} style={{ padding: '6px' }}>{row[h]}</td>)}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                   </div>
+          <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: '#f9fafb', position: 'relative' }}>
+            {showAiHistory ? (
+              <div style={{ padding: '5px' }}>
+                <h3 style={{ marginTop: 0, color: '#374151', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
+                {aiChatSessions.length === 0 ? (
+                  <div style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '10px' }}>אין היסטוריית שיחות שמורה.</div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                    {aiChatSessions.map((session) => (
+                      <div 
+                        key={session.id} 
+                        onClick={() => loadAiSession(session)}
+                        style={{
+                          padding: '12px', backgroundColor: 'white', border: '1px solid #e5e7eb',
+                          borderRadius: '8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px'
+                        }}
+                        onMouseOver={e => e.currentTarget.style.borderColor = '#6366f1'}
+                        onMouseOut={e => e.currentTarget.style.borderColor = '#e5e7eb'}
+                      >
+                        <span style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.9rem' }}>{session.date}</span>
+                        <span style={{ color: '#6b7280', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {session.messages.length > 1 ? session.messages[1].content : 'שיחה ריקה'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 )}
               </div>
-            ))}
-            {aiLoading && (
-              <div style={{ alignSelf: 'flex-end', backgroundColor: 'white', padding: '10px 15px', borderRadius: '12px', borderBottomLeftRadius: '0', border: '1px solid #e5e7eb', fontSize: '14px', color: '#6b7280' }}>
-                <span className="spinner" style={{ width: '12px', height: '12px', margin: '0 0 0 8px', display: 'inline-block', verticalAlign: 'middle', borderTopColor: '#3b82f6', borderWidth: '2px' }}></span>
-                מעבד נתונים...
-              </div>
+            ) : (
+              <>
+                {aiMessages.map((msg, idx) => (
+                  <div key={idx} style={{
+                    alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
+                    backgroundColor: msg.role === 'user' ? '#3b82f6' : 'white',
+                    color: msg.role === 'user' ? 'white' : '#1f2937',
+                    padding: '10px 15px', borderRadius: '12px', maxWidth: '90%',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
+                    borderBottomRightRadius: msg.role === 'user' ? '0' : '12px',
+                    borderBottomLeftRadius: msg.role === 'assistant' ? '0' : '12px',
+                    border: msg.role === 'assistant' ? '1px solid #e5e7eb' : 'none'
+                  }}>
+                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.4' }}>{msg.content}</div>
+                    {msg.tableData && msg.tableData.length > 0 && (
+                       <div style={{ marginTop: '10px', overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
+                          <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', backgroundColor: 'white' }}>
+                            <thead>
+                              <tr style={{ background: '#f3f4f6' }}>
+                                {Object.keys(msg.tableData[0]).map(h => <th key={h} style={{ padding: '6px', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{h}</th>)}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {msg.tableData.map((row, i) => (
+                                <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                                  {Object.keys(msg.tableData[0]).map(h => <td key={h} style={{ padding: '6px' }}>{row[h]}</td>)}
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                       </div>
+                    )}
+                  </div>
+                ))}
+                {aiLoading && (
+                  <div style={{ alignSelf: 'flex-end', backgroundColor: 'white', padding: '10px 15px', borderRadius: '12px', borderBottomLeftRadius: '0', border: '1px solid #e5e7eb', fontSize: '14px', color: '#6b7280' }}>
+                    <span className="spinner" style={{ width: '12px', height: '12px', margin: '0 0 0 8px', display: 'inline-block', verticalAlign: 'middle', borderTopColor: '#3b82f6', borderWidth: '2px' }}></span>
+                    מעבד נתונים...
+                  </div>
+                )}
+                <div ref={chatEndRef} />
+              </>
             )}
-            <div ref={chatEndRef} />
           </div>
 
           {/* Input */}

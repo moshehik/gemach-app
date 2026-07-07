@@ -14,8 +14,9 @@ export async function GET(request) {
     }
 
     const barcodePrefix = parseInt(barcodePrefixParam, 10);
-    const fromDate = new Date(fromDateParam);
-    const toDate = new Date(toDateParam);
+    // Adjust boundaries by 12 hours to safely cover timezone differences (Israel time is UTC+2 or UTC+3)
+    const fromDateLimit = new Date(new Date(fromDateParam).getTime() - 12 * 60 * 60 * 1000);
+    const toDateLimit = new Date(new Date(toDateParam).getTime() + 12 * 60 * 60 * 1000);
 
     // 1. In Stock (במלאי)
     // "ללא רזרבה ורק בשימוש" = location != 'רזרבה', notInUse == false, inRepair == false
@@ -26,9 +27,10 @@ export async function GET(request) {
         isDeleted: false,
         notInUse: false,
         inRepair: false,
-        location: {
-          not: 'רזרבה'
-        }
+        OR: [
+          { location: { not: 'רזרבה' } },
+          { location: null }
+        ]
       }
     });
     const inStock = inStockItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
@@ -50,13 +52,27 @@ export async function GET(request) {
     // Find all OrderItems for this barcode + size where Order date overlaps with requested range
     const occupiedOrdersList = await prisma.orderItem.findMany({
       where: {
-        barcodePrefix,
-        size: size, // Note: OrderItem uses 'size', DressItem uses 'sizeText'
+        OR: [
+          {
+            barcodePrefix: barcodePrefix,
+            size: size
+          },
+          {
+            barcodePrefix: barcodePrefix,
+            sizeText: size
+          },
+          {
+            dressItem: {
+              barcodePrefix: barcodePrefix,
+              sizeText: size
+            }
+          }
+        ],
         isDeleted: false,
         order: {
           isDeleted: false,
           eventDate: {
-            lte: toDate, // StartA <= EndB
+            lte: toDateLimit, // StartA <= EndB
           },
           // EndA >= StartB -> returnDate (if exists) >= fromDate, OR eventDate >= fromDate
         }
@@ -78,7 +94,7 @@ export async function GET(request) {
       if (!order) return false;
       const endDate = order.returnDate || order.eventDate;
       if (!endDate) return false;
-      return endDate >= fromDate;
+      return endDate >= fromDateLimit;
     });
 
     const occupiedCount = validOccupiedOrders.reduce((acc, item) => acc + (item.quantity || 1), 0);

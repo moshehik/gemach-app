@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import './rentals.css';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import { getHebrewDateString } from '../../lib/hebrewDate';
+import ExportButtons from '../../components/ExportButtons';
 
 export default function RentalsPage() {
   const [orders, setOrders] = useState([]);
@@ -63,8 +64,8 @@ export default function RentalsPage() {
       const hasAdvFilters = Object.values(advFilters).some(v => v !== '');
       if (!search && !hasAdvFilters) {
         if (viewMode === 'pending') activeParam = '&pendingOnly=true&excludeArchiveAndPast=true';
-        else if (viewMode === 'active') activeParam = '&activeOnly=true&excludeArchiveAndPast=true';
-        else if (viewMode === 'returned') activeParam = '&returnedOnly=true&excludeArchiveAndPast=true';
+        else if (viewMode === 'active') activeParam = '&activeOnly=true';
+        else if (viewMode === 'returned') activeParam = '&returnedOnly=true';
         else if (viewMode === 'archive') activeParam = '&archiveAndPastOnly=true';
         else if (viewMode === 'all') activeParam = '&excludeArchiveAndPast=true';
       }
@@ -477,6 +478,24 @@ export default function RentalsPage() {
         >
           ארכיון / עבר
         </button>
+        <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', paddingRight: '1rem' }}>
+          <ExportButtons 
+            data={orders.map(o => ({
+              ...o,
+              status: calculateOrderStatus(o),
+              eventDateFormatted: o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : 'לא צוין'),
+              itemsSummary: o.items ? o.items.filter(i => !i.isDeleted).map(i => `${i.description} (${i.barcode || 'ללא ברקוד'})`).join(' | ') : ''
+            }))} 
+            filename="השכרות" 
+            columns={[
+              { key: 'orderId', label: 'קוד הזמנה' },
+              { key: 'customerName', label: 'לקוח' },
+              { key: 'eventDateFormatted', label: 'תאריך אירוע' },
+              { key: 'status', label: 'סטטוס' },
+              { key: 'itemsSummary', label: 'פריטים' }
+            ]} 
+          />
+        </div>
       </div>
 
       <div className="orders-grid">
@@ -542,10 +561,18 @@ export default function RentalsPage() {
           <div className="modal-content" style={{ maxWidth: '900px' }} onClick={e => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setSelectedOrder(null)}>&times;</button>
             
-            <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
+            <div style={{ display: 'flex', gap: '2rem', marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <div><strong style={{ color: 'var(--primary-color)' }}>הזמנה:</strong> #{selectedOrder.orderId}</div>
               <div><strong>לקוח:</strong> {selectedOrder.customer ? `${selectedOrder.customer.firstName} ${selectedOrder.customer.lastName}` : ''}</div>
-              <div><strong>הערות:</strong> {selectedOrder.orderNotes || selectedOrder.notes || '-'}</div>
+              <div style={{ flex: 1 }}><strong>הערות:</strong> {selectedOrder.orderNotes || selectedOrder.notes || '-'}</div>
+              <button 
+                className="btn btn-outline" 
+                onClick={() => window.open(`/print/order?orderId=${selectedOrder.orderId}`, '_blank')}
+                style={{ padding: '0.4rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', whiteSpace: 'nowrap' }}
+                title="הדפס פרטי השכרה (מבוסס על 'השכרות פירוט')"
+              >
+                🖨️ הדפס
+              </button>
             </div>
 
             <div className="modal-tabs">
