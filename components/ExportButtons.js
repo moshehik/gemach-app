@@ -219,6 +219,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
               
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <button 
+                  type="button"
                   onClick={() => handleAIReport('excel')}
                   disabled={isLoading}
                   style={{ flex: 1, padding: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: '#9c27b0', color: 'white', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
@@ -227,6 +228,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                   <span>אקסל (AI)</span>
                 </button>
                 <button 
+                  type="button"
                   onClick={() => handleAIReport('pdf')}
                   disabled={isLoading}
                   style={{ flex: 1, padding: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: '#7b1fa2', color: 'white', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}

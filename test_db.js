@@ -1,1 +1,8 @@
-const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { console.log('Orders:', await prisma.order.count()); console.log('Items:', await prisma.orderItem.count()); await prisma.$disconnect(); } main();
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+async function count() {
+  console.log('Models: ' + await prisma.dressModel.count());
+  console.log('Items: ' + await prisma.dressItem.count());
+  console.log('Orders: ' + await prisma.order.count());
+}
+count().finally(() => prisma.$disconnect());

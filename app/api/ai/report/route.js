@@ -26,12 +26,19 @@ ${JSON.stringify(data)}
 
     let aiResponse = await generateContent(systemPrompt);
     
-    // Clean up potential markdown formatting
-    let jsonString = aiResponse.trim();
-    if (jsonString.startsWith('```json')) jsonString = jsonString.replace(/^```json/, '');
-    if (jsonString.startsWith('```')) jsonString = jsonString.replace(/^```/, '');
-    if (jsonString.endsWith('```')) jsonString = jsonString.replace(/```$/, '');
-    jsonString = jsonString.trim();
+    // Extract JSON using regex in case AI adds conversational text
+    let jsonString = aiResponse;
+    const jsonMatch = jsonString.match(/\[[\s\S]*\]/);
+    if (jsonMatch) {
+      jsonString = jsonMatch[0];
+    } else {
+      // Fallback: try to clean markdown if no array brackets found (e.g. if it returned a single object)
+      jsonString = jsonString.trim();
+      if (jsonString.startsWith('```json')) jsonString = jsonString.replace(/^```json\s*/, '');
+      if (jsonString.startsWith('```')) jsonString = jsonString.replace(/^```\s*/, '');
+      if (jsonString.endsWith('```')) jsonString = jsonString.replace(/\s*```$/, '');
+      jsonString = jsonString.trim();
+    }
 
     let processedData;
     try {
