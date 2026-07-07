@@ -25,6 +25,12 @@ async function migrateData() {
   console.log('Starting data migration from Excel exports to SQLite via Prisma...');
 
   try {
+    // 0. Clean up dependent tables first to avoid foreign key constraint errors
+    console.log('Cleaning dependent tables (Orders, Payments)...');
+    await prisma.payment.deleteMany({});
+    await prisma.orderItem.deleteMany({});
+    await prisma.order.deleteMany({});
+
     // 1. Migrate Customers
     console.log('Migrating Customers...');
     const customers = readExcelTable('לקוחות');
@@ -49,20 +55,27 @@ async function migrateData() {
     console.log(`Successfully migrated ${count} customers.`);
 
     // 2. Migrate Employees
-    console.log('Migrating Employees...');
+    console.log('Migrating Employees (Upserting to preserve logs)...');
     const employees = readExcelTable('עובדים');
-    await prisma.employee.deleteMany({});
     
-    const employeeBatch = employees.map(e => ({
-      id: e['קוד_עובד'] || undefined,
-      firstName: e['שם_פרטי'],
-      lastName: e['שם_משפחה'],
-      phone1: e['טלפון_1'],
-      isActive: !isTrue(e['לא_פעיל'])
-    }));
-
-    await prisma.employee.createMany({ data: employeeBatch });
-    console.log(`Successfully migrated ${employeeBatch.length} employees.`);
+    let empCount = 0;
+    for (const e of employees) {
+      const empData = {
+        firstName: e['שם_פרטי'] || '',
+        lastName: e['שם_משפחה'] || '',
+        phone1: e['טלפון_1'] || '',
+        isActive: !isTrue(e['לא_פעיל'])
+      };
+      if (e['קוד_עובד']) {
+         await prisma.employee.upsert({
+           where: { id: e['קוד_עובד'] },
+           update: empData,
+           create: { id: e['קוד_עובד'], ...empData }
+         });
+         empCount++;
+      }
+    }
+    console.log(`Successfully migrated ${empCount} employees.`);
 
     // 3. Migrate Dress Models
     console.log('Migrating Dress Models...');
@@ -72,14 +85,26 @@ async function migrateData() {
     await prisma.dressItem.deleteMany({});
     await prisma.dressModel.deleteMany({});
     
-    const modelBatch = models.map(m => ({
-      id: m['קוד_שמלה'] || undefined,
-      name: m['שם_שמלה'],
-      barcodePrefix: m['בר_קוד_קידומת'] ? parseInt(m['בר_קוד_קידומת'], 10) : null,
-      priceCategory: m['קטגורית_מחיר'],
-      notes: m['הערות'],
-      inInspection: isTrue(m['הצג_בבדיקה'])
-    }));
+    const usedModelNames = new Set();
+    const modelBatch = models.map(m => {
+      let baseName = m['שם_שמלה'] || `ללא שם - ${m['קוד_שמלה'] || Math.floor(Math.random() * 10000)}`;
+      let finalName = baseName;
+      let counter = 1;
+      while (usedModelNames.has(finalName)) {
+        finalName = `${baseName} (${counter})`;
+        counter++;
+      }
+      usedModelNames.add(finalName);
+      
+      return {
+        id: m['קוד_שמלה'] || undefined,
+        name: finalName,
+        barcodePrefix: m['בר_קוד_קידומת'] ? parseInt(m['בר_קוד_קידומת'], 10) : null,
+        priceCategory: m['קטגורית_מחיר'],
+        notes: m['הערות'],
+        inInspection: isTrue(m['הצג_בבדיקה'])
+      };
+    });
     await prisma.dressModel.createMany({ data: modelBatch });
     console.log(`Successfully migrated ${modelBatch.length} dress models.`);
 
