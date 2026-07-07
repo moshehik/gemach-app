@@ -21,6 +21,23 @@ function isTrue(val) {
   return val === true || val === 1 || String(val).toLowerCase() === 'yes' || String(val) === '1';
 }
 
+function parseExcelDate(dateStr) {
+  if (!dateStr) return null;
+  if (typeof dateStr === 'number') {
+    return new Date((dateStr - (25567 + 2)) * 86400 * 1000);
+  }
+  if (typeof dateStr === 'string') {
+    const parts = dateStr.split('/');
+    if (parts.length === 3) {
+      const d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}T12:00:00Z`);
+      if (!isNaN(d.getTime())) return d;
+    }
+    const d = new Date(dateStr);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
+}
+
 async function migrateData() {
   console.log('Starting data migration from Excel exports to SQLite via Prisma...');
 
@@ -102,7 +119,9 @@ async function migrateData() {
         barcodePrefix: m['בר_קוד_קידומת'] ? parseInt(m['בר_קוד_קידומת'], 10) : null,
         priceCategory: m['קטגורית_מחיר'],
         notes: m['הערות'],
-        inInspection: isTrue(m['הצג_בבדיקה'])
+        inInspection: isTrue(m['הצג_בבדיקה']),
+        entryDateToRepo: parseExcelDate(m['תאריך_כניסה_למאגר']) || new Date(),
+        exitDateFromRepo: parseExcelDate(m['תאריך_יציאה_מהמאגר']) || null
       };
     });
     await prisma.dressModel.createMany({ data: modelBatch });
@@ -136,7 +155,8 @@ async function migrateData() {
         serialNumber: item['מספר_סידורי'] ? parseInt(item['מספר_סידורי'], 10) : null,
         quantity: item['כמות'] || 1,
         inRepair: isTrue(item['שמלה_בתיקון']),
-        notInUse: isTrue(item['לא_בשימוש'])
+        notInUse: isTrue(item['לא_בשימוש']),
+        entryDateToRepo: parseExcelDate(item['תאריך_כניסה_למאגר']) || null
       });
     }
 
