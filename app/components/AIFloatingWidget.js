@@ -218,7 +218,7 @@ export default function AIFloatingWidget() {
           justifyContent: 'center',
           alignItems: 'center',
           cursor: 'pointer',
-          zIndex: 999,
+          zIndex: 99999,
           transition: 'transform 0.2s'
         }}
         onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
@@ -245,7 +245,7 @@ export default function AIFloatingWidget() {
         boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
         display: 'flex',
         flexDirection: 'column',
-        zIndex: 999,
+        zIndex: 99999,
         overflow: 'hidden',
         border: '1px solid #e5e7eb',
         transition: 'all 0.3s ease'
@@ -419,7 +419,7 @@ export default function AIFloatingWidget() {
           display: 'flex',
           justifyContent: 'center',
           alignItems: 'center',
-          zIndex: 1000,
+          zIndex: 100000,
           backdropFilter: 'blur(4px)'
         }}>
           <div style={{

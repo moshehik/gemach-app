@@ -176,7 +176,14 @@ export default function HomeDashboard() {
   };
 
   const exportTableToExcel = (data, filename) => {
-    const ws = XLSX.utils.json_to_sheet(data);
+    const cleanedData = data.map(row => {
+      const cleanRow = { ...row };
+      Object.keys(cleanRow).forEach(key => {
+        if (key.startsWith('_action')) delete cleanRow[key];
+      });
+      return cleanRow;
+    });
+    const ws = XLSX.utils.json_to_sheet(cleanedData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "נתונים");
     XLSX.writeFile(wb, filename + '.xlsx');
@@ -283,7 +290,7 @@ export default function HomeDashboard() {
                               {msg.data.some(r => r._actionUrl) && (
                                 <td style={{ padding: '0.5rem' }}>
                                   {row._actionUrl && row._actionLabel ? (
-                                    <Link href={row._actionUrl} style={{ background: '#ec4899', color: 'white', padding: '0.3rem 0.6rem', borderRadius: '8px', textDecoration: 'none', fontSize: '0.8rem', display: 'inline-block' }}>
+                                    <Link href={row._actionUrl} target="_blank" style={{ background: '#ec4899', color: 'white', padding: '0.3rem 0.6rem', borderRadius: '8px', textDecoration: 'none', fontSize: '0.8rem', display: 'inline-block' }}>
                                       {row._actionLabel}
                                     </Link>
                                   ) : null}
