@@ -62,7 +62,7 @@ export default function RecalculationsPage() {
       return;
     }
     
-    if (!confirm(`האם אתה בטוח שברצונך להחיל את השינויים על ${selectedIds.size} הזמנות? פעולה זו תעדכן את מסד הנתונים.`)) {
+    if (!(await window.customConfirm(`האם אתה בטוח שברצונך להחיל את השינויים על ${selectedIds.size} הזמנות? פעולה זו תעדכן את מסד הנתונים.`))) {
       return;
     }
 

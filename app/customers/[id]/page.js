@@ -4,6 +4,8 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import HistoryViewer from '@/components/HistoryViewer';
+import SendEmailModal from '@/components/SendEmailModal';
+import { Copy, Mail } from 'lucide-react';
 
 export default function CustomerPage({ params }) {
   const router = useRouter();
@@ -12,7 +14,7 @@ export default function CustomerPage({ params }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details');
   const [saving, setSaving] = useState(false);
-
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
   useEffect(() => {
     if (id === 'new') {
       setCustomer({ firstName: '', lastName: '', phone1: '', phone2: '', email: '', city: '', street: '', houseNum: '', notes: '' });
@@ -127,7 +129,19 @@ export default function CustomerPage({ params }) {
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>דוא"ל</label>
-              <input type="email" name="email" value={customer.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input type="email" name="email" value={customer.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+                {customer.email && (
+                  <>
+                    <button type="button" onClick={() => navigator.clipboard.writeText(customer.email)} title="העתק כתובת מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                      <Copy size={20} />
+                    </button>
+                    <button type="button" onClick={() => setEmailModalOpen(true)} title="שלח מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)' }}>
+                      <Mail size={20} />
+                    </button>
+                  </>
+                )}
+              </div>
               {(!customer.email || !customer.email.includes('@')) && (
                 <div style={{ marginTop: '0.5rem' }}>
                   <button
@@ -249,6 +263,15 @@ export default function CustomerPage({ params }) {
             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>אין היסטוריית תשלומים ללקוח זה.</div>
           )}
         </div>
+      )}
+
+      {id !== 'new' && (
+        <SendEmailModal 
+          isOpen={emailModalOpen} 
+          onClose={() => setEmailModalOpen(false)} 
+          defaultTo={customer.email} 
+          customerId={id} 
+        />
       )}
     </main>
   );

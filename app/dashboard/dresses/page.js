@@ -776,7 +776,7 @@ export default function DressesManagement() {
               <thead>
                 <tr style={{ borderBottom: '2px solid #ddd', background: '#f8f9fa' }}>
                   <th style={{ padding: '1rem' }}>תמונה</th>
-                  <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('barcodePrefix')}>קידומת ברקוד {catalogSort.key === 'barcodePrefix' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</th>
+                  <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('barcodePrefix')}>קוד {catalogSort.key === 'barcodePrefix' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</th>
                   {useModelNames && <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('name')}>שם דגם {catalogSort.key === 'name' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</th>}
                   <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('entryDateToRepo')}>תאריך כניסה {catalogSort.key === 'entryDateToRepo' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</th>
                   <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('itemsCount')}>כמות פריטים {catalogSort.key === 'itemsCount' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</th>
@@ -818,9 +818,9 @@ export default function DressesManagement() {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => { handleSaveModel().then(() => { fetchDresses(); setEditingDress(null); }); }}>
           <div style={{ background: '#f5f7fa', padding: '0', borderRadius: '12px', width: '95%', maxWidth: '1000px', maxHeight: '95vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
             
-            <div style={{ background: headerBgColor, color: 'white', padding: '1.5rem', borderRadius: '12px 12px 0 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
+            <div style={{ background: headerBgColor, color: 'white', padding: '1.5rem', borderRadius: '12px 12px 0 0', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
               <h2 style={{ margin: 0 }}>{isNewModel ? 'הוספת דגם חדש' : `כרטיס שמלה: ${useModelNames ? editingDress.name + ' (קוד: ' + (editingDress.barcodePrefix || 'אין') + ')' : editingDress.barcodePrefix}`}</h2>
-              <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
                 <button type="button" onClick={(e) => handleSaveModel(e)} style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
                   <Save size={18} /> שמור
                 </button>
@@ -848,10 +848,9 @@ export default function DressesManagement() {
             <div style={{ padding: '2rem' }}>
               <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', boxShadow: 'var(--shadow-sm)' }}>
                 <h3 style={{ marginBottom: '1rem', borderBottom: '2px solid #eee', paddingBottom: '0.5rem' }}>פרטי הדגם</h3>
-                <form onSubmit={handleSaveModel} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '2rem' }}>
+                <form onSubmit={handleSaveModel} style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
                   
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>תמונה</label>
+                  <div style={{ flex: '1 1 300px' }}>
                     {getImageSource(editingDress) ? (
                       <img src={getImageSource(editingDress)} alt="Preview" onError={(e) => {e.target.style.display='none'; e.target.nextSibling.style.display='flex';}} style={{ width: '100%', height: '250px', objectFit: 'contain', background: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee', marginBottom: '1rem' }} />
                     ) : null}
@@ -861,9 +860,9 @@ export default function DressesManagement() {
                     {uploading && <small style={{ color: 'var(--primary-color)', display: 'block', marginTop: '0.5rem' }}>מעלה תמונה...</small>}
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', alignContent: 'start' }}>
+                  <div style={{ flex: '2 1 400px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignContent: 'start' }}>
                     <div style={{ gridColumn: useModelNames ? '1 / -1' : '1' }}>
-                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>קידומת ברקוד / קוד דגם</label>
+                      <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>קוד</label>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <input type="number" value={editingDress.barcodePrefix || ''} onChange={e => setEditingDress({...editingDress, barcodePrefix: e.target.value})} className="filter-select" style={{ flex: 1 }} required={!useModelNames} disabled={!isNewModel} />
                         {isNewModel && (
@@ -951,8 +950,8 @@ export default function DressesManagement() {
                 <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '2px solid #eee', paddingBottom: '0.5rem' }}>
                     <h3 style={{ margin: 0 }}>פירוט שמלות (מלאי ומידות)</h3>
-                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.3rem', background: '#e0e0e0', padding: '0.2rem', borderRadius: '8px' }}>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', background: '#e0e0e0', padding: '0.2rem', borderRadius: '8px' }}>
                         <button type="button" onClick={() => setItemsFilterStatus('all')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'all' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'all' ? '#1976d2' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הכל"><List size={16} /> הכל</button>
                         <button type="button" onClick={() => setItemsFilterStatus('normal')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'normal' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'normal' ? '#2e7d32' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="רגיל"><CheckCircle size={16} /> רגיל</button>
                         <button type="button" onClick={() => setItemsFilterStatus('notInUse')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'notInUse' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'notInUse' ? '#f57c00' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא בשימוש"><XCircle size={16} /> לא בשימוש</button>

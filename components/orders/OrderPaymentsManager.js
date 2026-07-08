@@ -40,8 +40,8 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
     setNewObligation({ description: '', amount: '' });
   };
 
-  const removeObligation = (idx) => {
-    if (!window.confirm('האם אתה בטוח שברצונך למחוק חיוב זה?')) {
+  const removeObligation = async (idx) => {
+    if (!(await window.customConfirm('האם אתה בטוח שברצונך למחוק חיוב זה?'))) {
       return;
     }
     const updated = [...obligations];
@@ -69,7 +69,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
       const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
       if (level === 'מנהל' || level === 'עובד') {
         isCodeRequired = true;
-        const pin = window.prompt(`פעולה זו דורשת הרשאת ${level}. אנא הזן סיסמת אישור:`);
+        const pin = await window.customPrompt(`פעולה זו דורשת הרשאת ${level}. אנא הזן סיסמת אישור:`, '', '', 'password');
         if (!pin) {
           alert('אישור תשלום בוטל.');
           return;
@@ -94,7 +94,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
     }
 
     if (!isCodeRequired) {
-      if (!window.confirm('האם אתה בטוח שברצונך להוסיף תשלום זה?')) {
+      if (!(await window.customConfirm('האם אתה בטוח שברצונך להוסיף תשלום זה?'))) {
         return;
       }
     }
@@ -110,8 +110,8 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
     setNewPayment({ paymentMethod: 'מזומן', notes: '', amount: '' });
   };
 
-  const removePayment = (idx) => {
-    if (!window.confirm('האם אתה בטוח שברצונך למחוק תשלום זה?')) {
+  const removePayment = async (idx) => {
+    if (!(await window.customConfirm('האם אתה בטוח שברצונך למחוק תשלום זה?'))) {
       return;
     }
     const updated = [...payments];

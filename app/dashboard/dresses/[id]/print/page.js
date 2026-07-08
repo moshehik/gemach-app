@@ -95,7 +95,7 @@ export default function PrintDressCard() {
             {useModelNames ? dress.name : `דגם ${dress.barcodePrefix}`}
           </h2>
           <div style={{ fontSize: '1.1rem' }}>
-            <strong>קידומת ברקוד:</strong> {dress.barcodePrefix || '-'}
+            <strong>קוד:</strong> {dress.barcodePrefix || '-'}
           </div>
         </div>
         

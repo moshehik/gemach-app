@@ -1,1 +1,1 @@
-const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function main() { const models = await prisma.dressModel.findMany({ include: { items: true }, take: 2 }); console.log(JSON.stringify(models, null, 2)); } main().catch(console.error).finally(() => prisma.$disconnect());
+const { PrismaClient } = require(" @prisma/client\); const prisma = new PrismaClient(); async function main() { const m = await prisma.dressModel.findFirst({ include: { items: true } }); console.log(\Locally found:\, m.items.length); } main();

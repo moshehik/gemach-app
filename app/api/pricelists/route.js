@@ -1,9 +1,12 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
+import { checkAuth } from '../../../lib/auth';
+
 
 
 
 export async function GET() {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     try {
         const pricelists = await prisma.priceList.findMany({
             orderBy: [
@@ -19,6 +22,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     try {
         const data = await request.json();
         const priceList = await prisma.priceList.create({

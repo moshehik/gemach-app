@@ -1,13 +1,17 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FileText, Shirt, CalendarSearch, Plus, X } from 'lucide-react';
+import { FileText, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays } from 'lucide-react';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import CapacitySearchModal from '../../components/CapacitySearchModal';
 import ExportButtons from '../../components/ExportButtons';
+import AISearchBar from '../components/AISearchBar';
+import StatisticsModal from '../components/StatisticsModal';
 
 export default function OrdersPage() {
+  const router = useRouter();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
@@ -17,10 +21,11 @@ export default function OrdersPage() {
   const [limit] = useState(50);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [sort, setSort] = useState('orderId');
+  const [sort, setSort] = useState('eventDate');
   const [order, setOrder] = useState('desc');
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [filterStatus, setFilterStatus] = useState('all');
 
   const [advFilters, setAdvFilters] = useState({
     customerName: '', customerPhone: '', customerCity: '', 
@@ -30,6 +35,11 @@ export default function OrdersPage() {
   const [showCapacitySearch, setShowCapacitySearch] = useState(false);
   const [rentalModalUrl, setRentalModalUrl] = useState(null);
 
+  const [showStatistics, setShowStatistics] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiQueryUsed, setAiQueryUsed] = useState('');
+  const [isAiModeActive, setIsAiModeActive] = useState(false);
+
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
@@ -38,7 +48,8 @@ export default function OrdersPage() {
         limit: limit.toString(),
         search,
         sort,
-        order
+        order,
+        filterStatus
       });
       Object.entries(advFilters).forEach(([k, v]) => {
         if (v) queryParams.append(k, v);
@@ -59,16 +70,53 @@ export default function OrdersPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, sort, order, selectedOrder, advFilters]);
+  }, [page, limit, search, sort, order, selectedOrder, advFilters, filterStatus]);
 
   useEffect(() => {
     fetchOrders();
   }, [fetchOrders]);
 
   const handleSearch = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setSearch(searchInput);
     setPage(1);
+    setIsAiModeActive(false);
+  };
+
+  const handleAiSearch = async (query) => {
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/ai/smart-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: query, pageContext: 'orders' })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setOrders(result.data || []);
+        setTotalCount(result.data?.length || 0);
+        setTotalPages(1);
+        setIsAiModeActive(true);
+        setAiQueryUsed(result.query || '');
+      } else {
+        alert(result.error || 'שגיאה בחיפוש החכם');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('שגיאת תקשורת');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearch('');
+    setPage(1);
+    if (isAiModeActive) {
+      setIsAiModeActive(false);
+      fetchOrders();
+    }
   };
 
   const handleSort = (column) => {
@@ -85,13 +133,85 @@ export default function OrdersPage() {
     return <span style={{ marginRight: '4px' }}>{order === 'asc' ? '↑' : '↓'}</span>;
   };
 
+  const handleDeleteOrder = async (order, e) => {
+    e.stopPropagation();
+    const status = calculateOrderStatus(order);
+    if (status === 'הוחזר' || status === 'מושכר' || status === 'חלקית') {
+      alert('לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר');
+      return;
+    }
+    
+    if (await window.customConfirm('האם אתה בטוח שברצונך למחוק הזמנה זו?')) {
+      try {
+        const res = await fetch(`/api/orders/${order.orderId}`, {
+          method: 'DELETE',
+        });
+        if (res.ok) {
+          fetchOrders();
+        } else {
+          const data = await res.json();
+          alert(data.error || 'שגיאה במחיקת הזמנה');
+        }
+      } catch (err) {
+        console.error(err);
+        alert('שגיאה במחיקת הזמנה');
+      }
+    }
+  };
+
+  const fetchOrdersForExport = async (exportLimit) => {
+    try {
+      const queryParams = new URLSearchParams({
+        page: '1',
+        limit: exportLimit.toString(),
+        search,
+        sort,
+        order,
+        filterStatus
+      });
+      Object.entries(advFilters).forEach(([k, v]) => {
+        if (v) queryParams.append(k, v);
+      });
+      const res = await fetch(`/api/orders?${queryParams.toString()}`, { cache: 'no-store' });
+      const data = await res.json();
+      return (data.data || []).map(o => ({
+        ...o,
+        status: calculateOrderStatus(o)
+      }));
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  };
+
   const thStyle = { padding: '1rem', cursor: 'pointer', userSelect: 'none' };
 
   return (
     <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ margin: 0, color: 'var(--primary-color)' }}>ניהול הזמנות ותשלומים</h1>
-        <div style={{ display: 'flex', gap: '0.8rem' }}>
+        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
+          
+          {/* Status Filter Banner */}
+          <div style={{ display: 'flex', gap: '0.3rem', background: '#e0e0e0', padding: '0.2rem', borderRadius: '8px' }}>
+            <button onClick={() => { setFilterStatus('soon'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'soon' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'soon' ? '#f57c00' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בקרוב (החל מהיום ואילך)">
+              <CalendarDays size={20} />
+              <span style={{ fontWeight: filterStatus === 'soon' ? 'bold' : 'normal' }}>בקרוב</span>
+            </button>
+            <button onClick={() => { setFilterStatus('archive'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'archive' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'archive' ? '#1565c0' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="ארכיון / עבר">
+              <Archive size={20} />
+              <span style={{ fontWeight: filterStatus === 'archive' ? 'bold' : 'normal' }}>ארכיון/עבר</span>
+            </button>
+            <button onClick={() => { setFilterStatus('deleted'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוקים">
+              <Trash2 size={20} />
+              <span style={{ fontWeight: filterStatus === 'deleted' ? 'bold' : 'normal' }}>מחוק</span>
+            </button>
+            <button onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
+              <List size={20} />
+              <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
+            </button>
+          </div>
+
           <button 
              onClick={() => setShowCapacitySearch(true)} 
              className="btn btn-outline" 
@@ -113,8 +233,9 @@ export default function OrdersPage() {
               { key: 'totalAmount', label: 'סכום לחיוב' },
               { key: 'totalPaid', label: 'סכום ששולם' },
               { key: 'status', label: 'סטטוס' }
-            ]} 
+            ]}
             iconOnly={true}
+            onFetchData={fetchOrdersForExport}
           />
 
           <Link 
@@ -130,39 +251,17 @@ export default function OrdersPage() {
       
       {/* Search and Filters */}
       <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '500px' }}>
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <input 
-                type="text" 
-                placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                style={{ 
-                  width: '100%',
-                  padding: '0.75rem 2.5rem 0.75rem 1rem', 
-                  borderRadius: '24px', 
-                  border: '1px solid #ddd',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                  outline: 'none',
-                  fontSize: '1rem'
-                }}
-              />
-              {searchInput && (
-                <button 
-                  type="button"
-                  onClick={() => { setSearchInput(''); setSearch(''); setPage(1); }}
-                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: '1.2rem', padding: '0' }}
-                  title="נקה חיפוש"
-                >
-                  &times;
-                </button>
-              )}
-            </div>
-            <button type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0.75rem 1.5rem' }}>
-              חיפוש
-            </button>
-          </form>
+        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '600px' }}>
+          <AISearchBar 
+            placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onSearch={handleSearch}
+            onClear={handleClearSearch}
+            onAiSearch={handleAiSearch}
+            onStatistics={() => setShowStatistics(true)}
+            loading={aiLoading}
+          />
           <button 
             onClick={() => setShowAdvSearch(true)}
             className="btn btn-outline"
@@ -227,6 +326,8 @@ export default function OrdersPage() {
                     <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
                       <th style={thStyle} onClick={() => handleSort('orderId')}>קוד הזמנה <SortIcon column="orderId" /></th>
                       <th style={thStyle} onClick={() => handleSort('customerName')}>לקוח <SortIcon column="customerName" /></th>
+                      <th style={thStyle} onClick={() => handleSort('eventDate')}>תאריך אירוע <SortIcon column="eventDate" /></th>
+                      <th style={thStyle} onClick={() => handleSort('eventDateHebrew')}>תאריך עברי <SortIcon column="eventDateHebrew" /></th>
                       <th style={thStyle} onClick={() => handleSort('totalAmount')}>סכום לחיוב <SortIcon column="totalAmount" /></th>
                       <th style={thStyle} onClick={() => handleSort('totalPaid')}>סכום ששולם <SortIcon column="totalPaid" /></th>
                       <th style={thStyle} onClick={() => handleSort('status')}>סטטוס <SortIcon column="status" /></th>
@@ -235,9 +336,11 @@ export default function OrdersPage() {
                   </thead>
                   <tbody>
                     {orders.map(order => (
-                      <tr key={order.orderId} style={{ borderBottom: '1px solid #eee', transition: 'background 0.2s', cursor: 'pointer', background: selectedOrder?.orderId === order.orderId ? '#f5f5f5' : 'transparent' }} onClick={() => setSelectedOrder(order)}>
+                      <tr key={order.orderId} style={{ borderBottom: '1px solid #eee', transition: 'background 0.2s', cursor: 'pointer', background: selectedOrder?.orderId === order.orderId ? '#f5f5f5' : 'transparent' }} onClick={() => router.push(`/orders/${order.orderId}`)}>
                         <td style={{ padding: '1rem' }}>#{order.orderId}</td>
                         <td style={{ padding: '1rem', fontWeight: '500' }}>{order.customerName}</td>
+                        <td style={{ padding: '1rem' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : ''}</td>
+                        <td style={{ padding: '1rem' }}>{order.eventDateHebrew || ''}</td>
                         <td style={{ padding: '1rem' }}>₪{order.totalAmount}</td>
                         <td style={{ padding: '1rem', color: order.totalPaid >= order.totalAmount && order.totalAmount > 0 ? 'green' : 'inherit' }}>₪{order.totalPaid}</td>
                         <td style={{ padding: '1rem' }}>
@@ -272,6 +375,14 @@ export default function OrdersPage() {
                           >
                             <Shirt size={18} />
                           </button>
+                          <button 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: '1px solid #fee2e2', cursor: 'pointer', backgroundColor: '#fef2f2', color: '#ef4444' }}
+                            onClick={(e) => handleDeleteOrder(order, e)}
+                            title="מחיקת הזמנה"
+                          >
+                            <Trash2 size={18} />
+                          </button>
                         </td>
                       </tr>
                     ))}
@@ -282,7 +393,7 @@ export default function OrdersPage() {
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
                   <button 
                     className="btn btn-outline"
-                    disabled={page >= totalPages} 
+                    disabled={page >= totalPages || isAiModeActive} 
                     onClick={() => setPage(p => p + 1)}
                     style={{ padding: '0.5rem 1rem' }}
                   >
@@ -291,7 +402,7 @@ export default function OrdersPage() {
                   <span style={{ fontWeight: '500' }}>עמוד {page} מתוך {totalPages}</span>
                   <button 
                     className="btn btn-outline"
-                    disabled={page <= 1} 
+                    disabled={page <= 1 || isAiModeActive} 
                     onClick={() => setPage(p => p - 1)}
                     style={{ padding: '0.5rem 1rem' }}
                   >
@@ -346,6 +457,13 @@ export default function OrdersPage() {
           </div>
         </div>
       )}
+
+      <StatisticsModal 
+        isOpen={showStatistics} 
+        onClose={() => setShowStatistics(false)} 
+        pageContext="orders"
+        contextQuery={aiQueryUsed}
+      />
     </main>
   );
 }

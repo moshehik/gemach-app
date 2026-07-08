@@ -214,6 +214,26 @@ export default function AdminHubPage() {
           </div>
         </Link>
 
+        {/* Data Explorer Card */}
+        <Link href="/admin/data-explorer" style={{ textDecoration: 'none' }}>
+          <div className="dress-card" style={{
+            padding: '2.5rem',
+            background: 'linear-gradient(135deg, #14b8a6, #0d9488)',
+            color: 'white',
+            cursor: 'pointer',
+            transition: 'transform 0.3s',
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'center'
+          }}>
+            <h2 style={{ fontSize: '2rem', marginBottom: '1rem', color: 'white' }}>סייר נתונים ושאילתות</h2>
+            <p style={{ fontSize: '1.1rem', opacity: 0.9 }}>
+              צפייה בטבלאות המערכת, הורדת נתונים, והרצת שאילתות SQL מותאמות אישית.
+            </p>
+          </div>
+        </Link>
+
       </div>
     </div>
   );

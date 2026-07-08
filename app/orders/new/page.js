@@ -356,7 +356,7 @@ export default function NewOrderPage() {
       } else if (payment.method !== 'אשראי') {
         const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
         if (level === 'מנהל' || level === 'עובד') {
-          const pin = window.prompt(`פעולה זו דורשת הרשאת ${level}. אנא הזן סיסמת אישור:`);
+          const pin = await window.customPrompt(`פעולה זו דורשת הרשאת ${level}. אנא הזן סיסמת אישור:`, '', '', 'password');
           if (!pin) {
             alert('אישור תשלום בוטל.');
             return;

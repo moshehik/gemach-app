@@ -112,8 +112,8 @@ export default function AIFloatingWidget() {
     }
   };
 
-  const clearChat = () => {
-    if (confirm('האם אתה בטוח שברצונך לנקות את חלון השיחה?')) {
+  const clearChat = async () => {
+    if (await window.customConfirm('האם אתה בטוח שברצונך לנקות את חלון השיחה?')) {
       startNewChat();
     }
   };
@@ -375,6 +375,7 @@ export default function AIFloatingWidget() {
           </button>
           <input 
             type="text" 
+            autoFocus
             value={input}
             onChange={(e) => setInput(e.target.value)}
             placeholder="שאל שאלה..."

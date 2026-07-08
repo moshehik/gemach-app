@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
+import { checkAuth } from '../../../lib/auth';
+
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export async function GET(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
     const eventDateStr = searchParams.get('eventDate');
@@ -96,6 +99,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
     

@@ -296,3 +296,48 @@ export async function PUT(request, { params }) {
     );
   }
 }
+
+export async function DELETE(request, { params }) {
+  try {
+    const resolvedParams = await params;
+    const { id } = resolvedParams;
+    
+    const parsedId = parseInt(id);
+    if (isNaN(parsedId)) {
+      return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 });
+    }
+    
+    // Check if order can be deleted
+    const items = await prisma.orderItem.findMany({
+      where: { orderId: parsedId, isDeleted: false }
+    });
+
+    const hasRental = items.some(item => item.isTaken || item.isReturned);
+    if (hasRental) {
+      return NextResponse.json({ error: 'Cannot delete order with rental history' }, { status: 400 });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.order.update({
+        where: { orderId: parsedId },
+        data: { isDeleted: true }
+      });
+      await tx.orderItem.updateMany({
+        where: { orderId: parsedId },
+        data: { isDeleted: true }
+      });
+      await tx.paymentObligation.updateMany({
+        where: { orderId: parsedId },
+        data: { isDeleted: true }
+      });
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting order:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete order' },
+      { status: 500 }
+    );
+  }
+}

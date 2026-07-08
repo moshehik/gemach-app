@@ -1,10 +1,13 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
+import { checkAuth } from '../../../lib/auth';
+
 
 
 
 // Get attendance records, optionally filter by month and year
 export async function GET(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
@@ -46,6 +49,7 @@ export async function GET(request) {
 
 // Punch In / Punch Out
 export async function POST(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
     const { employeeId, password, action } = body; // action is 'IN' or 'OUT'

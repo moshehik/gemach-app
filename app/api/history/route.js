@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
+import { checkAuth } from '../../../lib/auth';
+
 
 export async function GET(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1', 10);
@@ -56,6 +59,7 @@ export async function GET(request) {
 }
 
 export async function DELETE(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
     const { ids, deleteAll, username, password } = body;

@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import ExportButtons from '../../components/ExportButtons';
+import AISearchBar from '../../components/AISearchBar';
+import StatisticsModal from '../../components/StatisticsModal';
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -23,6 +25,10 @@ export default function CustomersPage() {
     firstName: '', lastName: '', phone: '', city: '', email: ''
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiQueryUsed, setAiQueryUsed] = useState('');
+  const [isAiModeActive, setIsAiModeActive] = useState(false);
 
   const fetchCustomers = useCallback(async () => {
     setLoading(true);
@@ -57,9 +63,46 @@ export default function CustomersPage() {
   }, [fetchCustomers]);
 
   const handleSearch = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setSearch(searchInput);
     setPage(1);
+    setIsAiModeActive(false);
+  };
+
+  const handleAiSearch = async (query) => {
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/ai/smart-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: query, pageContext: 'customers' })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setCustomers(result.data || []);
+        setTotalCount(result.data?.length || 0);
+        setTotalPages(1);
+        setIsAiModeActive(true);
+        setAiQueryUsed(result.query || '');
+      } else {
+        alert(result.error || 'שגיאה בחיפוש החכם');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('שגיאת תקשורת');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearch('');
+    setPage(1);
+    if (isAiModeActive) {
+      setIsAiModeActive(false);
+      fetchCustomers();
+    }
   };
 
   const handleSort = (column) => {
@@ -74,6 +117,27 @@ export default function CustomersPage() {
   const SortIcon = ({ column }) => {
     if (sort !== column) return <span style={{ opacity: 0.3, marginRight: '4px' }}>⇅</span>;
     return <span style={{ marginRight: '4px' }}>{order === 'asc' ? '↑' : '↓'}</span>;
+  };
+
+  const fetchCustomersForExport = async (exportLimit) => {
+    try {
+      const queryParams = new URLSearchParams({
+        page: '1',
+        limit: exportLimit.toString(),
+        search,
+        sort,
+        order
+      });
+      Object.entries(advFilters).forEach(([k, v]) => {
+        if (v) queryParams.append(k, v);
+      });
+      const res = await fetch(`/api/customers?${queryParams.toString()}`, { cache: 'no-store' });
+      const data = await res.json();
+      return data.data || [];
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
   };
 
   const thStyle = { padding: '1rem', cursor: 'pointer', userSelect: 'none' };
@@ -93,39 +157,17 @@ export default function CustomersPage() {
       
       {/* Search and Filters */}
       <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '500px' }}>
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <input 
-                type="text" 
-                placeholder="חיפוש לקוח (שם, טלפון, עיר)..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                style={{ 
-                  width: '100%',
-                  padding: '0.75rem 2.5rem 0.75rem 1rem', 
-                  borderRadius: '24px', 
-                  border: '1px solid #ddd',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                  outline: 'none',
-                  fontSize: '1rem'
-                }}
-              />
-              {searchInput && (
-                <button 
-                  type="button"
-                  onClick={() => { setSearchInput(''); setSearch(''); setPage(1); }}
-                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: '1.2rem', padding: '0' }}
-                  title="נקה חיפוש"
-                >
-                  &times;
-                </button>
-              )}
-            </div>
-            <button type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0.75rem 1.5rem' }}>
-              חיפוש
-            </button>
-          </form>
+        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '600px' }}>
+          <AISearchBar 
+            placeholder="חיפוש לקוח (שם, טלפון, עיר)..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onSearch={handleSearch}
+            onClear={handleClearSearch}
+            onAiSearch={handleAiSearch}
+            onStatistics={() => setShowStatistics(true)}
+            loading={aiLoading}
+          />
           <button 
             onClick={() => setShowAdvSearch(true)}
             className="btn btn-outline"
@@ -147,6 +189,7 @@ export default function CustomersPage() {
               { key: 'city', label: 'עיר' },
               { key: 'email', label: 'דוא"ל' }
             ]} 
+            onFetchData={fetchCustomersForExport}
           />
           <span>סה"כ רשומות: {totalCount}</span>
         </div>
@@ -218,29 +261,35 @@ export default function CustomersPage() {
               </tbody>
             </table>
 
-            {/* Pagination Controls */}
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
               <button 
                 className="btn btn-outline"
-                disabled={page >= totalPages} 
+                disabled={page >= totalPages || isAiModeActive} 
                 onClick={() => setPage(p => p + 1)}
                 style={{ padding: '0.5rem 1rem' }}
               >
-                הבא &gt;
+                הבא
               </button>
-              <span style={{ fontWeight: '500' }}>עמוד {page} מתוך {totalPages}</span>
+              <span>עמוד {page} מתוך {totalPages}</span>
               <button 
                 className="btn btn-outline"
-                disabled={page <= 1} 
+                disabled={page <= 1 || isAiModeActive} 
                 onClick={() => setPage(p => p - 1)}
                 style={{ padding: '0.5rem 1rem' }}
               >
-                &lt; קודם
+                הקודם
               </button>
             </div>
           </>
         )}
       </div>
+
+      <StatisticsModal 
+        isOpen={showStatistics} 
+        onClose={() => setShowStatistics(false)} 
+        pageContext="customers"
+        contextQuery={aiQueryUsed}
+      />
     </main>
   );
 }

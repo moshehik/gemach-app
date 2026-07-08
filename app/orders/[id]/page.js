@@ -23,6 +23,7 @@ export default function OrderDetailsPage({ params }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
+  const [isUnlocked, setIsUnlocked] = useState(false);
 
   // Fetch Order
   useEffect(() => {
@@ -158,7 +159,7 @@ export default function OrderDetailsPage({ params }) {
 
   const handleExit = async () => {
     if (totalRequired - totalPaid > 0) {
-      const pin = window.prompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת עובד או מנהל. אנא הזן סיסמת אישור:");
+      const pin = await window.customPrompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת עובד או מנהל. אנא הזן סיסמת אישור:", '', '', 'password');
       if (!pin) {
         return;
       }
@@ -179,6 +180,29 @@ export default function OrderDetailsPage({ params }) {
       }
     }
     router.push('/orders');
+  };
+
+  const isPastEvent = order?.eventDate && new Date(order.eventDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0);
+  const isLocked = isPastEvent && !isUnlocked;
+
+  const handleUnlock = async () => {
+    const pin = await window.customPrompt("הזמנה זו נעולה כי תאריך האירוע עבר. נדרש אישור מנהל לעריכה. אנא הזן סיסמת מנהל:", '', '', 'password');
+    if (!pin) return;
+    try {
+      const res = await fetch('/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin, requiredLevel: 'מנהל' })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
+        return;
+      }
+      setIsUnlocked(true);
+    } catch (err) {
+      alert('שגיאה באימות קוד מנהל.');
+    }
   };
 
   return (
@@ -233,8 +257,8 @@ export default function OrderDetailsPage({ params }) {
           
           <button 
             onClick={handleSave} 
-            disabled={saving}
-            title="שמור שינויים"
+            disabled={saving || isLocked}
+            title={isLocked ? "הזמנה נעולה" : "שמור שינויים"}
             style={{ 
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '0.8rem', 
@@ -242,8 +266,8 @@ export default function OrderDetailsPage({ params }) {
               color: 'white', 
               border: 'none', 
               borderRadius: '8px', 
-              cursor: saving ? 'not-allowed' : 'pointer',
-              opacity: saving ? 0.7 : 1,
+              cursor: (saving || isLocked) ? 'not-allowed' : 'pointer',
+              opacity: (saving || isLocked) ? 0.7 : 1,
               boxShadow: '0 4px 6px rgba(25, 118, 210, 0.2)',
               transition: 'all 0.2s'
             }}
@@ -277,20 +301,32 @@ export default function OrderDetailsPage({ params }) {
         </div>
       </div>
 
-      {/* Main Content Grid */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         
-        {/* General Details Component */}
-        <OrderGeneralDetails order={order} onOrderChange={setOrder} />
+        {/* Protected Section (Locked if past event) */}
+        <div style={{ position: 'relative' }}>
+          {isLocked && (
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.4)', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(1px)', borderRadius: '12px' }}>
+              <button 
+                onClick={handleUnlock}
+                style={{ padding: '1rem 2rem', background: '#d32f2f', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}
+              >
+                🔒 הזמנה נעולה - לחץ לשחרור בעזרת סיסמת מנהל
+              </button>
+            </div>
+          )}
+          <div style={{ opacity: isLocked ? 0.7 : 1, pointerEvents: isLocked ? 'none' : 'auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+            <OrderGeneralDetails order={order} onOrderChange={setOrder} />
 
-        {/* Order Items Manager Component */}
-        <OrderItemsManager 
-          orderId={order.orderId}
-          order={order}
-          items={items} 
-          onItemsChange={setItems} 
-          onOrderUpdated={handleOrderUpdate}
-        />
+            <OrderItemsManager 
+              orderId={order.orderId}
+              order={order}
+              items={items} 
+              onItemsChange={setItems} 
+              onOrderUpdated={handleOrderUpdate}
+            />
+          </div>
+        </div>
 
         {/* Payments and Obligations Manager Component */}
         <div id="payments-section">

@@ -288,3 +288,20 @@ model PageVisitLog {
 
   @@index([employeeId])
 }
+
+model EmailLog {
+  id           Int      @id @default(autoincrement())
+  to           String
+  cc           String?
+  subject      String?
+  body         String?
+  fileName     String?
+  status       String
+  errorMessage String?
+  customerId   Int?
+  employeeId   Int?
+  sentAt       DateTime @default(now())
+
+  @@index([customerId])
+  @@index([employeeId])
+}

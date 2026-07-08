@@ -158,6 +158,15 @@ export default function OrderGeneralDetails({ order, onOrderChange }) {
                 onChange={(date) => handleChange('eventDate', date)} 
               />
             </div>
+            <div style={{ flex: 1, minWidth: '150px', display: 'flex', alignItems: 'center' }}>
+              <input 
+                type="text" 
+                placeholder='תאריך אירוע עברי (למשל: י"ב חשון תשפ"ה)'
+                value={order.eventDateHebrew || ''} 
+                onChange={(e) => handleChange('eventDateHebrew', e.target.value)}
+                style={{ ...inputStyle, padding: '0.65rem' }}
+              />
+            </div>
           </div>
         </div>
 

@@ -301,6 +301,7 @@ export default function AIPage() {
             </button>
             <input 
               type="text" 
+              autoFocus
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="שאל אותי על סטטיסטיקות או מידע מהמערכת (לדוגמה: כמה הזמנות יש בשנת 2024?)..."

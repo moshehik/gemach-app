@@ -2,10 +2,13 @@ import { NextResponse } from 'next/server';
 import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 import { recalculateOrderObligations } from '../../../lib/pricingEngine';
+import { checkAuth } from '../../../lib/auth';
+
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
     const search = searchParams.get('search') || '';
@@ -31,11 +34,15 @@ export async function GET(request) {
 
     const excludeArchiveAndPast = searchParams.get('excludeArchiveAndPast') === 'true';
     const archiveAndPastOnly = searchParams.get('archiveAndPastOnly') === 'true';
+    const filterStatus = searchParams.get('filterStatus') || 'all';
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     const where = {
+      ...(filterStatus === 'deleted' ? { isDeleted: true } : { isDeleted: false }),
+      ...(filterStatus === 'archive' ? { eventDate: { lt: today } } : {}),
+      ...(filterStatus === 'soon' ? { OR: [{ eventDate: null }, { eventDate: { gte: today } }] } : {}),
       ...(excludeArchiveAndPast ? {
         OR: [
           { eventDate: null },
@@ -195,6 +202,7 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const data = await request.json();
 

@@ -11,6 +11,12 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   const [size, setSize] = useState('');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
+  const [customerName, setCustomerName] = useState('');
+  const [employeeCode, setEmployeeCode] = useState('');
+  
+  const [showHistory, setShowHistory] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState('');
+  const [searchHistory, setSearchHistory] = useState([]);
   
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
@@ -20,6 +26,11 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   
   const [sizes, setSizes] = useState([]);
   const [models, setModels] = useState([]);
+
+  useEffect(() => {
+    const prev = JSON.parse(localStorage.getItem('capacity_search_history') || '[]');
+    setSearchHistory(prev);
+  }, []);
 
   useEffect(() => {
     const fetchModels = async () => {
@@ -91,6 +102,22 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה בחיפוש');
       setResults(data);
+
+      const newSearch = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        employeeCode,
+        customerName,
+        barcodePrefix,
+        size,
+        fromDate: searchFrom,
+        toDate: searchTo
+      };
+      const prev = JSON.parse(localStorage.getItem('capacity_search_history') || '[]');
+      const updated = [newSearch, ...prev].slice(0, 50); // Keep last 50
+      localStorage.setItem('capacity_search_history', JSON.stringify(updated));
+      setSearchHistory(updated);
+
     } catch (e) {
       setError(e.message);
     } finally {
@@ -106,11 +133,69 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
         
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
-          <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>חיפוש הזמנות תפוסה</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>חיפוש הזמנות תפוסה</h2>
+            <button type="button" onClick={() => setShowHistory(!showHistory)} className="btn btn-outline" style={{ padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.9rem' }}>
+              {showHistory ? 'הסתר חיפושים קודמים' : 'חיפושים קודמים'}
+            </button>
+          </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
             <X size={24} color="#666" />
           </button>
         </div>
+
+        {/* History */}
+        {showHistory && (
+          <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#334155' }}>היסטוריית חיפושים</h3>
+              <input 
+                type="text" 
+                placeholder="סינון לפי קוד עובד..." 
+                value={historyFilter}
+                onChange={e => setHistoryFilter(e.target.value)}
+                style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #ccc', minWidth: '200px' }}
+              />
+            </div>
+            <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
+              {searchHistory
+                .filter(h => !historyFilter || (h.employeeCode && h.employeeCode.includes(historyFilter)))
+                .map(h => {
+                  const modelName = models.find(m => m.barcodePrefix?.toString() === h.barcodePrefix?.toString())?.name || h.barcodePrefix;
+                  return (
+                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderBottom: '1px solid #e2e8f0', background: '#fff', marginBottom: '0.5rem', borderRadius: '6px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.9rem', flex: 1 }}>
+                        <span style={{ minWidth: '100px' }}><strong>עובד:</strong> {h.employeeCode || '---'}</span>
+                        <span style={{ minWidth: '120px' }}><strong>לקוח:</strong> {h.customerName || '---'}</span>
+                        <span style={{ minWidth: '120px' }}><strong>דגם:</strong> {modelName}</span>
+                        <span style={{ minWidth: '80px' }}><strong>מידה:</strong> {h.size}</span>
+                        <span style={{ color: '#64748b' }}>{new Date(h.timestamp).toLocaleString('he-IL')}</span>
+                      </div>
+                      <button 
+                        onClick={() => {
+                          setEmployeeCode(h.employeeCode || '');
+                          setCustomerName(h.customerName || '');
+                          setBarcodePrefix(h.barcodePrefix || '');
+                          setSize(h.size || '');
+                          setFromDate(h.fromDate || '');
+                          setToDate(h.toDate || '');
+                          setShowHistory(false);
+                          setResults(null);
+                        }}
+                        className="btn btn-primary"
+                        style={{ padding: '0.35rem 1rem', fontSize: '0.85rem', borderRadius: '6px' }}
+                      >
+                        בחר
+                      </button>
+                    </div>
+                  );
+                })}
+              {searchHistory.filter(h => !historyFilter || (h.employeeCode && h.employeeCode.includes(historyFilter))).length === 0 && (
+                <div style={{ textAlign: 'center', padding: '1rem', color: '#64748b' }}>לא נמצאו חיפושים</div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Form */}
         <form onSubmit={handleSearch} style={{ 
@@ -173,6 +258,26 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>עד תאריך</label>
             <HebrewDatePicker value={toDate} onChange={setToDate} />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>קוד עובד</label>
+            <input 
+              type="text" 
+              value={employeeCode} 
+              onChange={e => setEmployeeCode(e.target.value)} 
+              placeholder="אופציונלי"
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>שם לקוח</label>
+            <input 
+              type="text" 
+              value={customerName} 
+              onChange={e => setCustomerName(e.target.value)} 
+              placeholder="אופציונלי"
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
+            />
           </div>
           <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', width: '100%', borderRadius: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center' }} disabled={loading}>
             {loading ? 'מחפש...' : <><Search size={18} style={{ marginLeft: '0.5rem' }} /> חפש</>}
@@ -258,14 +363,16 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                           <td>{order.customerName}</td>
                           <td>{order.quantity}</td>
                           <td>
-                            <button 
-                              type="button"
-                              onClick={() => window.open(`/orders/${order.orderId}`, '_blank')}
+                            <a 
+                              href={`/orders/${order.orderId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
                               className="btn btn-outline"
-                              style={{ padding: '0.25rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
+                              style={{ padding: '0.25rem 0.75rem', display: 'flex', alignItems: 'center', gap: '0.25rem', textDecoration: 'none' }}
+                              onClick={(e) => e.stopPropagation()}
                             >
                               <ExternalLink size={14} /> פתח
-                            </button>
+                            </a>
                           </td>
                         </tr>
                       ))}

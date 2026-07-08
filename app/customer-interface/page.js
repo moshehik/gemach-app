@@ -863,7 +863,7 @@ export default function CustomerInventoryViewer() {
               <Mic size={20} className={isListening ? 'listening-pulse' : ''} />
             </button>
             <input 
-              type="text" value={aiInput} onChange={e => setAiInput(e.target.value)}
+              type="text" autoFocus value={aiInput} onChange={e => setAiInput(e.target.value)}
               placeholder="שמלה שיש לתאריך X במידות בערך 4,6..."
               style={{ flex: 1, padding: '10px 15px', borderRadius: '20px', border: '1px solid #d1d5db', outline: 'none', fontSize: '14px' }}
             />

@@ -4,7 +4,11 @@ import { useState, useEffect, useRef } from 'react';
 import './rentals.css';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import { getHebrewDateString } from '../../lib/hebrewDate';
+import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
+import { getHebrewDateString } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
+import AISearchBar from '../../components/AISearchBar';
+import StatisticsModal from '../../components/StatisticsModal';
 
 export default function RentalsPage() {
   const [orders, setOrders] = useState([]);
@@ -36,6 +40,11 @@ export default function RentalsPage() {
   const [duplicates, setDuplicates] = useState(null);
 
   const [expandedOrders, setExpandedOrders] = useState({});
+
+  const [showStatistics, setShowStatistics] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiQueryUsed, setAiQueryUsed] = useState('');
+  const [isAiModeActive, setIsAiModeActive] = useState(false);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -99,8 +108,41 @@ export default function RentalsPage() {
   };
 
   useEffect(() => {
-    fetchOrders();
-  }, [search, viewMode, advFilters]);
+    if (!isAiModeActive) {
+      fetchOrders();
+    }
+  }, [search, viewMode, advFilters, isAiModeActive]);
+
+  const handleAiSearch = async (query) => {
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/ai/smart-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: query, pageContext: 'rentals' })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setOrders(result.data || []);
+        setIsAiModeActive(true);
+        setAiQueryUsed(result.query || '');
+      } else {
+        alert(result.error || 'שגיאה בחיפוש החכם');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('שגיאת תקשורת');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearch('');
+    if (isAiModeActive) {
+      setIsAiModeActive(false);
+    }
+  };
 
   // Refocus modal barcode input when tab changes
   useEffect(() => {
@@ -381,25 +423,17 @@ export default function RentalsPage() {
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h1 style={{ color: 'var(--primary-color)' }}>ניהול השכרות והחזרות</h1>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div style={{ position: 'relative' }}>
-            <input 
-              type="text" 
-              placeholder="חיפוש חופשי..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              style={{ padding: '0.8rem 2.5rem 0.8rem 1.5rem', borderRadius: '30px', border: '1px solid #ddd', width: '300px' }}
-            />
-            {search && (
-              <button 
-                onClick={() => setSearch('')}
-                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: '1.2rem', padding: '0' }}
-                title="נקה חיפוש"
-              >
-                &times;
-              </button>
-            )}
-          </div>
+        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', maxWidth: '600px' }}>
+          <AISearchBar 
+            placeholder="חיפוש חופשי (הזמנה, לקוח, תאריך)..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onSearch={(e) => { e.preventDefault(); if(isAiModeActive) setIsAiModeActive(false); }}
+            onClear={handleClearSearch}
+            onAiSearch={handleAiSearch}
+            onStatistics={() => setShowStatistics(true)}
+            loading={aiLoading}
+          />
           <button 
             onClick={() => setShowAdvSearch(true)}
             className="btn btn-outline"
@@ -562,7 +596,14 @@ export default function RentalsPage() {
       </div>
       </div>
 
-      {isEmbed && loading && !selectedOrder && (
+      <StatisticsModal 
+        isOpen={showStatistics} 
+        onClose={() => setShowStatistics(false)} 
+        pageContext="rentals"
+        contextQuery={aiQueryUsed}
+      />
+    </main>
+  );     {isEmbed && loading && !selectedOrder && (
         <div style={{ padding: '3rem', textAlign: 'center', fontSize: '1.2rem', color: '#666' }}>
           טוען נתוני השכרה...
         </div>
@@ -776,6 +817,13 @@ export default function RentalsPage() {
         </div>
       )}
 
+      <StatisticsModal 
+        isOpen={showStatistics} 
+        onClose={() => setShowStatistics(false)} 
+        pageContext="rentals"
+        contextQuery={aiQueryUsed}
+      />
     </main>
   );
 }
+

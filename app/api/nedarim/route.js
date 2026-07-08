@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
 import { chargeNedarimPlus } from '../../lib/nedarim';
 import prisma from '../../lib/prisma'; // Optional: if you need to fetch mosadId from settings
+import { checkAuth } from '../../../lib/auth';
+
 
 export async function POST(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const data = await request.json();
     

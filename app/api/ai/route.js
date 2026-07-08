@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { generateContent } from '../../../lib/ai/gemini';
 import prisma from '../../lib/prisma';
+import { checkAuth } from '../../../lib/auth';
+
 
 const SCHEMA_CONTEXT = `
 Here is the SQLite database schema for the system:
@@ -33,6 +35,7 @@ Rules for SQL query generation:
 7. IMPORTANT: When selecting columns, ALWAYS use 'AS' to alias the column names into Hebrew. For example: SELECT firstName AS 'שם פרטי', lastName AS 'שם משפחה'. DO NOT return English column names in the output.`;
 
 export async function POST(req) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { prompt, history = [], context = '' } = await req.json();
 

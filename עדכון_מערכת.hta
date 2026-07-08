@@ -98,7 +98,7 @@
         var wsh = new ActiveXObject("WScript.Shell");
         
         // Setup working directory safely
-        var loc = unescape(document.location.href);
+        var loc = decodeURIComponent(document.location.href);
         loc = loc.replace("file:///", "").replace(/\//g, "\\");
         var currentDir = fso.GetParentFolderName(loc);
         wsh.CurrentDirectory = currentDir;
@@ -136,19 +136,19 @@
             var stream = fso.CreateTextFile(batFile, true);
             stream.WriteLine("@echo off");
             stream.WriteLine("chcp 65001 >nul"); // Capture git logs in UTF-8
-            stream.WriteLine("echo === Starting Deployment === > \"" + logFile + "\"");
-            stream.WriteLine("git add . >> \"" + logFile + "\" 2>&1");
-            stream.WriteLine("echo. >> \"" + logFile + "\"");
-            stream.WriteLine("echo === Committing === >> \"" + logFile + "\"");
+            stream.WriteLine("echo === Starting Deployment === > deploy_log.txt");
+            stream.WriteLine("git add . >> deploy_log.txt 2>&1");
+            stream.WriteLine("echo. >> deploy_log.txt");
+            stream.WriteLine("echo === Committing === >> deploy_log.txt");
             
             msg = msg.replace(/"/g, '""'); // escape quotes
-            stream.WriteLine("git commit -m \"" + msg + "\" >> \"" + logFile + "\" 2>&1");
-            stream.WriteLine("echo. >> \"" + logFile + "\"");
+            stream.WriteLine("git commit -m \"" + msg + "\" >> deploy_log.txt 2>&1");
+            stream.WriteLine("echo. >> deploy_log.txt");
             
-            stream.WriteLine("echo === Pushing to GitHub === >> \"" + logFile + "\"");
-            stream.WriteLine("git push >> \"" + logFile + "\" 2>&1");
-            stream.WriteLine("echo. >> \"" + logFile + "\"");
-            stream.WriteLine("echo === DONE_UPLOADING === >> \"" + logFile + "\"");
+            stream.WriteLine("echo === Pushing to GitHub === >> deploy_log.txt");
+            stream.WriteLine("git push >> deploy_log.txt 2>&1");
+            stream.WriteLine("echo. >> deploy_log.txt");
+            stream.WriteLine("echo === DONE_UPLOADING === >> deploy_log.txt");
             stream.Close();
 
             // Run hidden (0 = hidden window, false = don't wait)

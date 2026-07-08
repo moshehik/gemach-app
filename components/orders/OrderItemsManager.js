@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import OrderModelSelector from './OrderModelSelector';
 import OrderSizeSelector from './OrderSizeSelector';
+import { Info, Trash2, RotateCcw } from 'lucide-react';
 
 export default function OrderItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated }) {
   const [showDeleted, setShowDeleted] = useState(false);
@@ -236,12 +237,29 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                     <button 
                       onClick={() => toggleDeleted(originalIndex)}
                       style={{
-                        background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem',
-                        color: isDeletedRow ? '#999' : '#e53935'
+                        background: isDeletedRow ? '#f1f5f9' : '#fef2f2', 
+                        border: `1px solid ${isDeletedRow ? '#cbd5e1' : '#fecaca'}`,
+                        cursor: 'pointer', 
+                        color: isDeletedRow ? '#64748b' : '#ef4444',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '0.4rem',
+                        borderRadius: '50%',
+                        transition: 'all 0.2s ease',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                      }}
+                      onMouseOver={(e) => {
+                        e.currentTarget.style.backgroundColor = isDeletedRow ? '#e2e8f0' : '#fee2e2';
+                        e.currentTarget.style.borderColor = isDeletedRow ? '#94a3b8' : '#fca5a5';
+                      }}
+                      onMouseOut={(e) => {
+                        e.currentTarget.style.backgroundColor = isDeletedRow ? '#f1f5f9' : '#fef2f2';
+                        e.currentTarget.style.borderColor = isDeletedRow ? '#cbd5e1' : '#fecaca';
                       }}
                       title={isDeletedRow ? 'שחזר פריט' : 'מחק פריט'}
                     >
-                      {isDeletedRow ? '↺' : '×'}
+                      {isDeletedRow ? <RotateCcw size={16} strokeWidth={2.5} /> : <Trash2 size={16} strokeWidth={2.5} />}
                     </button>
                   </td>
                   <td style={{ padding: '0.5rem', fontWeight: 'bold', color: '#333' }}>
@@ -338,10 +356,30 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                     ) : (
                       <button 
                         onClick={() => setDetailsModalItem(item)}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.4rem', color: '#1976d2' }}
+                        style={{ 
+                          background: '#eff6ff', 
+                          border: '1px solid #bfdbfe',
+                          cursor: 'pointer', 
+                          color: '#3b82f6',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          padding: '0.4rem',
+                          borderRadius: '50%',
+                          transition: 'all 0.2s ease',
+                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                        }}
+                        onMouseOver={(e) => {
+                          e.currentTarget.style.backgroundColor = '#dbeafe';
+                          e.currentTarget.style.borderColor = '#93c5fd';
+                        }}
+                        onMouseOut={(e) => {
+                          e.currentTarget.style.backgroundColor = '#eff6ff';
+                          e.currentTarget.style.borderColor = '#bfdbfe';
+                        }}
                         title="פרטים נוספים"
                       >
-                        ℹ️
+                        <Info size={18} strokeWidth={2.5} />
                       </button>
                     )}
                   </td>

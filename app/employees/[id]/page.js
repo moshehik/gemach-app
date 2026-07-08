@@ -3,7 +3,8 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-
+import SendEmailModal from '@/components/SendEmailModal';
+import { Copy, Mail } from 'lucide-react';
 export default function EmployeePage({ params }) {
   const router = useRouter();
   const { id } = use(params);
@@ -11,7 +12,7 @@ export default function EmployeePage({ params }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details');
   const [saving, setSaving] = useState(false);
-
+  const [emailModalOpen, setEmailModalOpen] = useState(false);
   // Attendance specific states
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth());
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
@@ -279,7 +280,19 @@ export default function EmployeePage({ params }) {
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>דוא"ל</label>
-              <input type="email" name="email" value={employee.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input type="email" name="email" value={employee.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+                {employee.email && (
+                  <>
+                    <button type="button" onClick={() => navigator.clipboard.writeText(employee.email)} title="העתק כתובת מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                      <Copy size={20} />
+                    </button>
+                    <button type="button" onClick={() => setEmailModalOpen(true)} title="שלח מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)' }}>
+                      <Mail size={20} />
+                    </button>
+                  </>
+                )}
+              </div>
               {(!employee.email || !employee.email.includes('@')) && (
                 <div style={{ marginTop: '0.5rem' }}>
                   <button
@@ -510,6 +523,15 @@ export default function EmployeePage({ params }) {
             </div>
           </div>
         </div>
+      )}
+
+      {id !== 'new' && (
+        <SendEmailModal 
+          isOpen={emailModalOpen} 
+          onClose={() => setEmailModalOpen(false)} 
+          defaultTo={employee.email} 
+          employeeId={id} 
+        />
       )}
     </main>
   );

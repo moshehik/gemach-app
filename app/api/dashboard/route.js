@@ -1,7 +1,10 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
+import { checkAuth } from '../../../lib/auth';
+
 
 export async function GET() {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     // Basic Counts
     const totalCustomers = await prisma.customer.count({ where: { isDeleted: false } });

@@ -1,13 +1,19 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
+import { checkAuth } from '../../../lib/auth';
+
 
 export async function GET(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const showOnlyPending = searchParams.get('showOnlyPending') === 'true'; // false means show all
     const hideNoAlterations = searchParams.get('hideNoAlterations') === 'true'; // Relevant for print wizard "רשימת הזמנות ללא תיקונים"
+    const search = searchParams.get('search') || '';
+    const page = searchParams.get('page') ? parseInt(searchParams.get('page')) : null;
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')) : 60;
 
     // Base query for OrderItem
     const whereClause = {
@@ -105,7 +111,26 @@ export async function GET(request) {
       return dressA.localeCompare(dressB);
     });
 
-    return NextResponse.json(sortedItems);
+    let filteredItems = sortedItems;
+    if (search) {
+      const lowerSearch = search.toLowerCase();
+      filteredItems = sortedItems.filter(item => {
+        const custFirst = item.order?.customer?.firstName?.toLowerCase() || '';
+        const custLast = item.order?.customer?.lastName?.toLowerCase() || '';
+        const dressName = item.dressItem?.dress?.name?.toLowerCase() || item.dressItem?.dressName?.toLowerCase() || '';
+        const orderId = item.order?.orderId?.toString() || '';
+        return custFirst.includes(lowerSearch) || custLast.includes(lowerSearch) || dressName.includes(lowerSearch) || orderId.includes(lowerSearch);
+      });
+    }
+
+    if (page !== null) {
+      const total = filteredItems.length;
+      const totalPages = Math.ceil(total / limit) || 1;
+      const paginatedItems = filteredItems.slice((page - 1) * limit, page * limit);
+      return NextResponse.json({ data: paginatedItems, total, totalPages });
+    }
+
+    return NextResponse.json(filteredItems);
 
   } catch (error) {
     console.error('Error fetching alterations:', error);
