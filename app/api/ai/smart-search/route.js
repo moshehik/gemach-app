@@ -38,7 +38,7 @@ Your task is to generate ONLY a valid SQLite WHERE clause (without the WHERE key
 Be smart about variations. For example, if the user searches for the name "שיינועטר", use LIKE operators to cover variations like "שיינועטר", "שינוטר", "שיינאטר", etc. If the user searches for a date, handle it properly.
 
 Rules:
-1. ONLY output the SQLite condition. No markdown, no \`\`\`, no explanations.
+1. ONLY output the SQLite condition. Absolutely no markdown, no \`\`\`, no explanations.
 2. Ensure you use the exact column names from the schema.
 3. If searching text, use LIKE '%value%' or OR conditions.
 4. Remember that the table name is "${tableName}".
@@ -49,12 +49,18 @@ Example output for "משפחת כהן או לוי מירושלים":
 
     const aiResponse = await generateContent(`${systemPrompt}\n\nUser request: ${prompt}`);
     
+    console.log('AI Smart Search Raw Response:', aiResponse);
+    
     let whereClause = aiResponse.trim();
-    if (whereClause.startsWith('\`\`\`sql')) whereClause = whereClause.replace(/^\`\`\`sql/, '');
-    if (whereClause.startsWith('\`\`\`')) whereClause = whereClause.replace(/^\`\`\`/, '');
-    if (whereClause.endsWith('\`\`\`')) whereClause = whereClause.replace(/\`\`\`$/, '');
+    // Use regex to extract sql from markdown if it accidentally added it
+    const sqlMatch = whereClause.match(/```(?:sql)?([\s\S]*?)```/);
+    if (sqlMatch) {
+      whereClause = sqlMatch[1].trim();
+    }
+    
     whereClause = whereClause.replace(/^WHERE /i, '');
     whereClause = whereClause.trim();
+    console.log('AI Smart Search Cleaned Where Clause:', whereClause);
 
     // Default basic condition
     let finalCondition = `isDeleted = 0 AND (${whereClause})`;

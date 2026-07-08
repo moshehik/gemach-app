@@ -7,8 +7,8 @@ import { getHebrewDateString } from '../../lib/hebrewDate';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
-import AISearchBar from '../../components/AISearchBar';
-import StatisticsModal from '../../components/StatisticsModal';
+import AISearchBar from '../components/AISearchBar';
+import StatisticsModal from '../components/StatisticsModal';
 
 export default function RentalsPage() {
   const [orders, setOrders] = useState([]);
@@ -596,14 +596,7 @@ export default function RentalsPage() {
       </div>
       </div>
 
-      <StatisticsModal 
-        isOpen={showStatistics} 
-        onClose={() => setShowStatistics(false)} 
-        pageContext="rentals"
-        contextQuery={aiQueryUsed}
-      />
-    </main>
-  );     {isEmbed && loading && !selectedOrder && (
+      {isEmbed && loading && !selectedOrder && (
         <div style={{ padding: '3rem', textAlign: 'center', fontSize: '1.2rem', color: '#666' }}>
           טוען נתוני השכרה...
         </div>

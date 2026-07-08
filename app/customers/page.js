@@ -3,8 +3,8 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import ExportButtons from '../../components/ExportButtons';
-import AISearchBar from '../../components/AISearchBar';
-import StatisticsModal from '../../components/StatisticsModal';
+import AISearchBar from '../components/AISearchBar';
+import StatisticsModal from '../components/StatisticsModal';
 
 export default function CustomersPage() {
   const router = useRouter();
