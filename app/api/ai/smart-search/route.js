@@ -38,47 +38,71 @@ Your task is to generate ONLY a valid SQLite WHERE clause (without the WHERE key
 Be smart about variations. For example, if the user searches for the name "שיינועטר", use LIKE operators to cover variations like "שיינועטר", "שינוטר", "שיינאטר", etc. If the user searches for a date, handle it properly.
 
 Rules:
-1. ONLY output the SQLite condition. Absolutely no markdown, no \`\`\`, no explanations.
-2. Ensure you use the exact column names from the schema.
-3. If searching text, use LIKE '%value%' or OR conditions.
-4. Remember that the table name is "${tableName}".
+1. Your response MUST START with the exact prefix "SQL: ".
+2. ONLY output the SQLite condition. Absolutely no markdown, no \`\`\`, no explanations.
+3. Ensure you use the exact column names from the schema.
+4. If searching text, use LIKE '%value%' or OR conditions.
+5. Remember that the table name is "${tableName}".
 
 Example output for "משפחת כהן או לוי מירושלים":
-(lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%ירושלים%'
+SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%ירושלים%'
 `;
 
-    const aiResponse = await generateContent(`${systemPrompt}\n\nUser request: ${prompt}`);
+    let aiResponse = await generateContent(`${systemPrompt}\n\nUser request: ${prompt}`);
     
     console.log('AI Smart Search Raw Response:', aiResponse);
     
-    let whereClause = aiResponse.trim();
-    // Use regex to extract sql from markdown if it accidentally added it
-    const sqlMatch = whereClause.match(/```(?:sql)?([\s\S]*?)```/);
-    if (sqlMatch) {
-      whereClause = sqlMatch[1].trim();
-    }
-    
-    whereClause = whereClause.replace(/^WHERE /i, '');
-    whereClause = whereClause.trim();
+    const parseWhereClause = (response) => {
+       let clause = response.trim();
+       if (clause.startsWith('SQL:')) clause = clause.replace(/^SQL:\s*/i, '').trim();
+       
+       const sqlMatch = clause.match(/```(?:sql)?([\s\S]*?)```/);
+       if (sqlMatch) clause = sqlMatch[1].trim();
+       
+       clause = clause.replace(/^WHERE /i, '');
+       return clause.trim() || '1=1'; // Fallback to 1=1 if empty
+    };
+
+    let whereClause = parseWhereClause(aiResponse);
     console.log('AI Smart Search Cleaned Where Clause:', whereClause);
 
-    // Default basic condition
-    let finalCondition = `isDeleted = 0 AND (${whereClause})`;
-    
-    // Some tables don't have isDeleted
-    if (pageContext === 'dresses' || pageContext === 'rentals') {
-      finalCondition = whereClause;
-    }
+    const buildQuery = (clause) => {
+       let finalCondition = `isDeleted = 0 AND (${clause})`;
+       if (pageContext === 'dresses' || pageContext === 'rentals') {
+         finalCondition = clause;
+       }
+       return `SELECT * FROM "${tableName}" WHERE ${finalCondition} LIMIT 100;`;
+    };
 
-    const query = `SELECT * FROM "${tableName}" WHERE ${finalCondition} LIMIT 100;`;
-    
+    let query = buildQuery(whereClause);
     let data = [];
+    let querySuccess = false;
+
     try {
       data = await prisma.$queryRawUnsafe(query);
-    } catch (e) {
-      console.error('Smart search DB error:', e.message);
-      // Fallback or retry
-      return NextResponse.json({ error: 'שגיאה בביצוע חיפוש חכם.', details: e.message }, { status: 400 });
+      querySuccess = true;
+    } catch (dbError) {
+      console.error('Smart search DB error attempt 1:', dbError.message);
+      
+      // SELF HEALING RETRY
+      const retryPrompt = `${systemPrompt}\n\nUser request: ${prompt}\n\nYou generated this condition: ${whereClause}\nBut it failed with this SQLite error: ${dbError.message}\n\nPlease output ONLY a corrected SQLite condition starting with "SQL: " to fix this issue.`;
+      
+      let retryResponse = await generateContent(retryPrompt);
+      console.log('AI Smart Search Retry Response:', retryResponse);
+      
+      whereClause = parseWhereClause(retryResponse);
+      query = buildQuery(whereClause);
+      
+      try {
+         data = await prisma.$queryRawUnsafe(query);
+         querySuccess = true;
+      } catch (retryError) {
+         console.error('Smart search DB error attempt 2:', retryError.message);
+      }
+    }
+
+    if (!querySuccess) {
+       return NextResponse.json({ error: 'שגיאה בביצוע חיפוש חכם.', details: 'Query execution failed after retry' }, { status: 400 });
     }
 
     return NextResponse.json({ data, query });

@@ -4,8 +4,6 @@ import { useState, useEffect, useRef } from 'react';
 import './rentals.css';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import { getHebrewDateString } from '../../lib/hebrewDate';
-import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
-import { getHebrewDateString } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';

@@ -55,7 +55,8 @@ export default async function RootLayout({ children }) {
                 <NavigationArrows />
               </div>
               <div className="nav-links">
-                <Link href="/" className="nav-link">לקוחות</Link>
+                <Link href="/" className="nav-link">מערכת כללית</Link>
+                <Link href="/customers" className="nav-link">לקוחות</Link>
                 <Link href="/customer-interface" className="nav-link">זמינות לקוח</Link>
                 <Link href="/orders" className="nav-link">הזמנות ותשלומים</Link>
                 <Link href="/rentals" className="nav-link">השכרות והחזרות</Link>

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { generateContent } from '../../../lib/ai/gemini';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
+import { cookies } from 'next/headers';
 
 
 const SCHEMA_CONTEXT = `
@@ -46,8 +47,24 @@ export async function POST(req) {
     // Format history into a string
     const historyText = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n');
     
+    // Employee Classification Protections
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token');
+    let employeeContext = '';
+    if (token && token.value) {
+      const employee = await prisma.employee.findUnique({ where: { id: parseInt(token.value) } });
+      if (employee) {
+        // Assume roleId 1 is Manager/Admin. If not 1, restrict data.
+        if (employee.roleId !== 1 && employee.roleId !== 2) {
+          employeeContext = `\nCRITICAL SECURITY RULE: The current user is a standard employee (Role: ${employee.roleId}). Do NOT provide any sensitive financial data (such as total revenues, employee wages, or overall business statistics). Only answer questions related to daily operations like customers, orders, or dress inventory.`;
+        } else {
+          employeeContext = `\nUser Role: Manager/Admin. Full access to all data is permitted.`;
+        }
+      }
+    }
+
     // Step 1: Ask the AI for SQL or a direct answer
-    const initialPrompt = `${SYSTEM_PROMPT}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    const initialPrompt = `${SYSTEM_PROMPT}${employeeContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
     let aiResponse = await generateContent(initialPrompt);
     let tableData = null;
 
