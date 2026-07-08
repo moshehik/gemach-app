@@ -140,7 +140,7 @@ export default function HomeDashboard() {
         body: JSON.stringify({ 
           prompt: query, 
           context: 'User is in the general system home dashboard.',
-          history: updatedMessages.slice(0, -1).map(m => ({ role: m.role, text: m.content }))
+          history: updatedMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
         })
       });
       const result = await res.json();

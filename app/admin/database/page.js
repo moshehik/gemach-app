@@ -128,6 +128,22 @@ export default function DatabaseManagement() {
           </div>
         )}
       </div>
+
+      <div className="card" style={{ maxWidth: '600px', margin: '2rem auto', padding: '2rem' }}>
+        <h2 style={{ marginBottom: '1rem' }}>גיבוי נתונים (Export)</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
+          הורד גיבוי מלא של כל הנתונים במסד למחשב שלך כקובץ JSON. מומלץ לבצע גיבוי זה לפני ביצוע שינויים גדולים.
+        </p>
+
+        <a 
+          href="/api/admin/database/export" 
+          download 
+          className="btn-primary"
+          style={{ width: '100%', padding: '0.75rem', fontSize: '1.1rem', display: 'block', textAlign: 'center', textDecoration: 'none' }}
+        >
+          הורד גיבוי מלא (JSON)
+        </a>
+      </div>
     </div>
   );
 }

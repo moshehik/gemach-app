@@ -3,28 +3,37 @@ import { generateContent } from '../../../lib/ai/gemini';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 import { cookies } from 'next/headers';
+import fs from 'fs';
+import path from 'path';
 
+let cachedSchema = null;
+function getSchemaContext() {
+  if (cachedSchema) return cachedSchema;
+  try {
+    const schemaPath = path.join(process.cwd(), 'prisma', 'schema.prisma');
+    const fullSchema = fs.readFileSync(schemaPath, 'utf8');
+    // Strip comments to save tokens
+    const cleanSchema = fullSchema.replace(/\/\/.*/g, '').replace(/\n\s*\n/g, '\n').trim();
+    cachedSchema = `Here is the FULL PostgreSQL database schema for the system:\n\n${cleanSchema}`;
+    return cachedSchema;
+  } catch (e) {
+    console.error('Error reading schema', e);
+    return 'Error reading schema.';
+  }
+}
 
-const SCHEMA_CONTEXT = `
-Here is the PostgreSQL database schema for the system:
+const SYSTEM_PROMPT_BASE = `You are a helpful and smart AI assistant for the 'Gemach' system (a dress rental management system). 
+You have access to the FULL PostgreSQL database schema provided below.
 
-model Customer { id Int, firstName String, lastName String, phone1 String, phone2 String, city String, street String, houseNum Int, email String, notes String, isDeleted Boolean }
-model Order { id Int, orderId Int, customerId Int, totalAmount Float, paymentDate DateTime, paymentMethod String, status String, isPaid Boolean, isDeleted Boolean, eventDate DateTime, returnDate DateTime }
-model DressModel { id Int, name String, priceCategory String, inInspection Boolean }
-model DressItem { id Int, dressModelId Int, dressName String, barcodePrefix Int, sizeText String, serialNumber Int, dressBarcode String, location String, locationNum Int, quantity Int, inRepair Boolean, notInUse Boolean }
-model OrderItem { id Int, orderId Int, dressItemId Int, price Float, sizeText String, finalPrice Float, isTaken Boolean, isReturned Boolean, returnedOk Boolean }
-model Employee { id Int, firstName String, lastName String, roleId Int, isActive Boolean }
-model Shift { id Int, employeeId Int, entryTime DateTime, exitTime DateTime }
-model PriceList { id Int, description String, category String, price Float }
-`;
-
-const SYSTEM_PROMPT = `You are a helpful and smart AI assistant for the 'Gemach' system (a dress rental management system). 
-You have access to the PostgreSQL database schema shown below.
-${SCHEMA_CONTEXT}
-
-When the user asks a question that requires data from the database, you must FIRST output ONLY a valid PostgreSQL SQL query starting with the exact prefix "SQL: ". 
-For example, if asked "How many customers do we have?", output:
+When the user asks a question that requires data from the database, you must FIRST output one or more valid PostgreSQL SQL queries. 
+Each query MUST start with the exact prefix "SQL: " on a new line. 
+For example:
 SQL: SELECT COUNT(*) as "כמות לקוחות" FROM "Customer" WHERE "isDeleted" = false;
+
+If you need data from multiple tables that cannot be easily joined, you can output multiple queries.
+For example:
+SQL: SELECT * FROM "Customer" WHERE city='Jerusalem';
+SQL: SELECT * FROM "Order" WHERE "isPaid"=false;
 
 Rules for SQL query generation:
 1. Do NOT include markdown formatting or backticks (\`\`\`) around the SQL query.
@@ -34,7 +43,8 @@ Rules for SQL query generation:
 5. Be aware of the field names exactly as defined in the schema.
 6. If it's a general question that doesn't need database access, just answer it naturally in Hebrew without the "SQL: " prefix.
 7. IMPORTANT: When selecting columns, ALWAYS use 'AS' to alias the column names into Hebrew using double quotes. For example: SELECT "firstName" AS "שם פרטי", "lastName" AS "שם משפחה". DO NOT return English column names in the output.
-8. IMPORTANT: Feel free to use GROUP BY, JOINs, and aggregation functions (SUM, COUNT) if the user asks for grouped data, summaries, or cross-referenced data.`;
+8. IMPORTANT: Whenever querying orders or events, ALWAYS select "eventDateHebrew" as the primary date to display to the user, since the system prefers Hebrew dates.
+9. IMPORTANT: Feel free to use GROUP BY, JOINs, and aggregation functions (SUM, COUNT) if the user asks for grouped data, summaries, or cross-referenced data.`;
 
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -45,7 +55,6 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    // Format history into a string
     const historyText = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n');
     
     // Employee Classification Protections
@@ -55,7 +64,6 @@ export async function POST(req) {
     if (token && token.value) {
       const employee = await prisma.employee.findUnique({ where: { id: parseInt(token.value) } });
       if (employee) {
-        // Assume roleId 1 is Manager/Admin. If not 1, restrict data.
         if (employee.roleId !== 1 && employee.roleId !== 2) {
           employeeContext = `\nCRITICAL SECURITY RULE: The current user is a standard employee (Role: ${employee.roleId}). Do NOT provide any sensitive financial data (such as total revenues, employee wages, or overall business statistics). Only answer questions related to daily operations like customers, orders, or dress inventory.`;
         } else {
@@ -64,55 +72,66 @@ export async function POST(req) {
       }
     }
 
-    // Step 1: Ask the AI for SQL or a direct answer
-    const initialPrompt = `${SYSTEM_PROMPT}${employeeContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    const schemaText = getSchemaContext();
+    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${employeeContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    
     let aiResponse = await generateContent(initialPrompt);
     let tableData = null;
     let sqlQueryToReturn = null;
 
-    // Step 2: Check if the AI returned a SQL query
-    if (aiResponse.trim().startsWith('SQL:')) {
-      let sqlQuery = aiResponse.trim().replace(/^SQL:\s*/i, '').trim();
-      
-      // Clean up markdown
-      if (sqlQuery.startsWith('\`\`\`sql')) sqlQuery = sqlQuery.replace(/^\`\`\`sql/, '');
-      if (sqlQuery.startsWith('\`\`\`')) sqlQuery = sqlQuery.replace(/^\`\`\`/, '');
-      if (sqlQuery.endsWith('\`\`\`')) sqlQuery = sqlQuery.replace(/\`\`\`$/, '');
-      sqlQuery = sqlQuery.trim();
+    // Check if AI returned SQL queries
+    const sqlRegex = /SQL:\s*(.+)/gi;
+    let match;
+    const queries = [];
+    while ((match = sqlRegex.exec(aiResponse)) !== null) {
+      let q = match[1].trim();
+      if (q.startsWith('\`\`\`sql')) q = q.replace(/^\`\`\`sql/, '');
+      if (q.startsWith('\`\`\`')) q = q.replace(/^\`\`\`/, '');
+      if (q.endsWith('\`\`\`')) q = q.replace(/\`\`\`$/, '');
+      queries.push(q.trim());
+    }
 
-      let queryResult = null;
+    if (queries.length > 0) {
+      let combinedResults = [];
       let dbErrorStr = null;
 
       try {
-        console.log('AI generated SQL query:', sqlQuery);
-        queryResult = await prisma.$queryRawUnsafe(sqlQuery);
-        tableData = queryResult;
-        sqlQueryToReturn = sqlQuery;
+        for (let i = 0; i < queries.length; i++) {
+          console.log(`AI generated SQL query ${i + 1}:`, queries[i]);
+          const res = await prisma.$queryRawUnsafe(queries[i]);
+          combinedResults.push(res);
+        }
       } catch (dbError) {
         console.error('AI DB Query Error attempt 1:', dbError.message);
         dbErrorStr = dbError.message;
         
         // SELF HEALING RETRY
-        const retryPrompt = `${SYSTEM_PROMPT}\n\nUser Question: ${prompt}\n\nYou generated this SQL query: ${sqlQuery}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY a corrected PostgreSQL SQL query starting with "SQL: " to fix this issue.`;
+        const retryPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n\nUser Question: ${prompt}\n\nYou generated these SQL queries:\n${queries.join('\n')}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY corrected PostgreSQL SQL queries starting with "SQL: " to fix this issue.`;
         let retryResponse = await generateContent(retryPrompt);
         
-        if (retryResponse.trim().startsWith('SQL:')) {
-          let retrySql = retryResponse.trim().replace(/^SQL:\s*/i, '').trim();
-          if (retrySql.startsWith('\`\`\`sql')) retrySql = retrySql.replace(/^\`\`\`sql/, '');
-          if (retrySql.startsWith('\`\`\`')) retrySql = retrySql.replace(/^\`\`\`/, '');
-          if (retrySql.endsWith('\`\`\`')) retrySql = retrySql.replace(/\`\`\`$/, '');
-          retrySql = retrySql.trim();
-          
+        const retryQueries = [];
+        let rMatch;
+        while ((rMatch = sqlRegex.exec(retryResponse)) !== null) {
+          let rq = rMatch[1].trim();
+          if (rq.startsWith('\`\`\`sql')) rq = rq.replace(/^\`\`\`sql/, '');
+          if (rq.startsWith('\`\`\`')) rq = rq.replace(/^\`\`\`/, '');
+          if (rq.endsWith('\`\`\`')) rq = rq.replace(/\`\`\`$/, '');
+          retryQueries.push(rq.trim());
+        }
+
+        if (retryQueries.length > 0) {
           try {
-             console.log('AI generated Retry SQL query:', retrySql);
-             queryResult = await prisma.$queryRawUnsafe(retrySql);
-             tableData = queryResult;
-             sqlQuery = retrySql; // Update for the summary prompt
-             sqlQueryToReturn = retrySql;
-             dbErrorStr = null; // Success!
+            combinedResults = [];
+            for (let i = 0; i < retryQueries.length; i++) {
+              console.log(`AI generated Retry SQL query ${i + 1}:`, retryQueries[i]);
+              const res = await prisma.$queryRawUnsafe(retryQueries[i]);
+              combinedResults.push(res);
+            }
+            queries.splice(0, queries.length, ...retryQueries);
+            dbErrorStr = null;
           } catch (retryErr) {
-             console.error('AI DB Query Error attempt 2:', retryErr.message);
-             dbErrorStr = retryErr.message;
+            console.error('AI DB Query Error attempt 2:', retryErr.message);
+            dbErrorStr = retryErr.message;
           }
         }
       }
@@ -120,22 +139,32 @@ export async function POST(req) {
       if (dbErrorStr) {
          aiResponse = "מצטער, נתקלתי בשגיאה בעת שליפת הנתונים מהמסד (שגיאת תחביר שאילתה). אנא נסה לנסח את השאלה אחרת.";
       } else {
-        // Step 3: Ask the AI to summarize the result
+        // In the UI, we show the LAST successful query's results as the tableData
+        tableData = combinedResults[combinedResults.length - 1];
+        sqlQueryToReturn = queries.join('\\n');
+
         const followupPrompt = `The user asked: "${prompt}".
-You generated this SQL query: ${sqlQuery}
-The database returned this JSON result: ${JSON.stringify(queryResult, (key, value) => typeof value === 'bigint' ? value.toString() : value)}
+You executed the following SQL queries:
+${queries.join('\n')}
+
+The database returned these JSON results (in order):
+${JSON.stringify(combinedResults, (key, value) => typeof value === 'bigint' ? value.toString() : value)}
+
 Please provide a short, clear, and friendly natural language answer to the user in Hebrew based on these database results. 
 DO NOT tell the user you are showing a table, and DO NOT output raw JSON or Markdown tables. 
+DO NOT use any markdown formatting like asterisks (**) for bolding or bullet points. Use standard text and plain dashes (-) for lists.
+IMPORTANT: ALWAYS prefer using and displaying the Hebrew dates (like "ט' באב תשפ"ד") instead of Gregorian dates if they are available in the data.
 Summarize the information nicely as a helpful customer service representative. For example, instead of listing all items, say "יש לנו 5 שמלות מדגם זה במידות 38-42".`;
         
         aiResponse = await generateContent(followupPrompt);
       }
     }
 
-    return NextResponse.json({ response: aiResponse, tableData, sqlQuery: sqlQueryToReturn });
+    const safeData = tableData ? JSON.parse(JSON.stringify(tableData, (key, value) => typeof value === 'bigint' ? value.toString() : value)) : null;
+
+    return NextResponse.json({ response: aiResponse, data: safeData, sqlQuery: sqlQueryToReturn });
   } catch (error) {
     console.error('API Route Error:', error);
     return NextResponse.json({ error: 'Failed to generate response' }, { status: 500 });
   }
 }
-

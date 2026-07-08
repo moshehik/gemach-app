@@ -109,7 +109,8 @@ const FIELD_TRANSLATIONS = {
 const ACTION_TRANSLATIONS = {
   CREATE: 'יצירה',
   UPDATE: 'עדכון',
-  DELETE: 'מחיקה'
+  DELETE: 'מחיקה',
+  EMAIL_SENT: 'שליחת מייל'
 };
 
 export default function HistoryViewer({ entityType, entityId }) {
@@ -269,13 +270,13 @@ export default function HistoryViewer({ entityType, entityId }) {
                           {isEmptyFrom ? (
                             <span style={{ color: '#aaa' }}>-</span>
                           ) : (
-                            <span style={valueOldStyle}>
+                            <span style={key === 'body' || key === 'notes' ? { ...valueOldStyle, display: 'block', textAlign: 'right', direction: 'rtl' } : { ...valueOldStyle, direction: 'rtl' }}>
                               {formatValue(change.from)}
                             </span>
                           )}
                         </td>
                         <td style={{ ...tdStyle, borderRight: '1px solid #eaeaea' }}>
-                          <span style={valueNewStyle}>
+                          <span style={key === 'body' || key === 'notes' ? { ...valueNewStyle, display: 'block', textAlign: 'right', direction: 'rtl' } : { ...valueNewStyle, direction: 'rtl' }}>
                             {formatValue(change.to)}
                           </span>
                         </td>
@@ -288,7 +289,7 @@ export default function HistoryViewer({ entityType, entityId }) {
                       <td style={tdLabelStyle}>{label}</td>
                       <td style={{ ...tdStyle, borderRight: '1px solid #eaeaea', color: '#aaa', textAlign: 'center' }}>-</td>
                       <td style={{ ...tdStyle, borderRight: '1px solid #eaeaea' }}>
-                        <span style={valueNewStyle}>
+                        <span style={key === 'body' || key === 'notes' ? { ...valueNewStyle, display: 'block', textAlign: 'right', direction: 'rtl' } : { ...valueNewStyle, direction: 'rtl' }}>
                           {formatValue(change)}
                         </span>
                       </td>
@@ -318,7 +319,7 @@ export default function HistoryViewer({ entityType, entityId }) {
                     <tr key={key} style={{ transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fafafa'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                       <td style={tdLabelStyle}>{label}</td>
                       <td style={{ ...tdStyle, borderRight: '1px solid #eaeaea' }}>
-                        <span style={valueNewStyle}>
+                        <span style={key === 'body' || key === 'notes' ? { ...valueNewStyle, display: 'block', textAlign: 'right', direction: 'rtl' } : { ...valueNewStyle, direction: 'rtl' }}>
                           {formatValue(change)}
                         </span>
                       </td>

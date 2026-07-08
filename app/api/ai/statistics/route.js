@@ -11,15 +11,16 @@ const SCHEMA_MAP = {
 };
 
 const SYSTEM_PROMPT = `You are a helpful and smart AI statistics assistant for a dress rental management system. 
-You have access to the SQLite database.
-When the user asks a statistics question, you must FIRST output ONLY a valid SQLite SQL query starting with the exact prefix "SQL: ". 
+You have access to the PostgreSQL database.
+When the user asks a statistics question, you must FIRST output ONLY a valid PostgreSQL SQL query starting with the exact prefix "SQL: ". 
 
 Rules for SQL query generation:
 1. Do NOT include markdown formatting or backticks around the SQL query.
-2. The query must be valid SQLite syntax.
-3. Use double quotes for table names (e.g. "Order", "Customer").
-4. ALWAYS use 'AS' to alias column names into Hebrew. For example: SELECT COUNT(*) AS 'סה"כ לקוחות'.
-5. If it's a general question that doesn't need database access, just answer it naturally in Hebrew without the "SQL: " prefix.
+2. The query must be valid PostgreSQL syntax.
+3. Use double quotes for table names (e.g. "Order", "Customer") and camelCase column names (e.g. "firstName").
+4. Booleans must use true/false, not 1/0.
+5. ALWAYS use 'AS' to alias column names into Hebrew. For example: SELECT COUNT(*) AS 'סה"כ לקוחות'.
+6. If it's a general question that doesn't need database access, just answer it naturally in Hebrew without the "SQL: " prefix.
 `;
 
 export async function POST(req) {
@@ -56,7 +57,7 @@ export async function POST(req) {
         dbErrorStr = dbError.message;
         
         // Retry
-        const retryPrompt = `${SYSTEM_PROMPT}\nSchema:\n${schemaContext}\nUser Question: ${prompt}\n\nYou generated this SQL query: ${sqlQuery}\nBut it failed with this SQLite error: ${dbErrorStr}\n\nPlease output ONLY a corrected SQLite SQL query starting with "SQL: " to fix this issue.`;
+        const retryPrompt = `${SYSTEM_PROMPT}\nSchema:\n${schemaContext}\nUser Question: ${prompt}\n\nYou generated this SQL query: ${sqlQuery}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY a corrected PostgreSQL SQL query starting with "SQL: " to fix this issue.`;
         let retryResponse = await generateContent(retryPrompt);
         
         if (retryResponse.trim().startsWith('SQL:')) {

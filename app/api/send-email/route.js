@@ -108,7 +108,8 @@ export async function POST(request) {
             changesJson: JSON.stringify({
               subject: subject,
               to: to,
-              cc: cc
+              cc: cc,
+              body: emailBody
             }),
             employeeId: validEmployee.id,
             createdAt: new Date()

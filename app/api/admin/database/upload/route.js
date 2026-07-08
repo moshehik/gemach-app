@@ -33,11 +33,18 @@ export async function POST(req) {
     };
     await writeFile(statusFilePath, JSON.stringify(initialStatus));
 
-    // Spawn background process
-    const scriptPath = path.join(process.cwd(), 'scripts', 'run_full_migration.js');
+    // Skip on Vercel - MS Access migration requires Windows
+    if (process.env.VERCEL) {
+      return NextResponse.json({ success: false, message: 'Cannot run Access DB migration on Vercel (requires Windows)' }, { status: 400 });
+    }
+
+    // Spawn background process - bypass Turbopack static analysis
+    const p = 'scripts/run_full_migration.js';
+    const scriptPath = process.cwd() + '/' + p;
     
     // We use spawn and detach it so it runs in the background
-    const child = spawn('node', [scriptPath, tempFilePath], {
+    const childProcess = eval("require('child_process')");
+    const child = childProcess.spawn('node', [scriptPath, tempFilePath], {
       detached: true,
       stdio: 'ignore'
     });

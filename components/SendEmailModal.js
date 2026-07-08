@@ -22,8 +22,6 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
     }
   }, [defaultTo]);
 
-  if (!isOpen) return null;
-
   const [admins, setAdmins] = useState([]);
 
   useEffect(() => {
@@ -36,6 +34,8 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
       })
       .catch(console.error);
   }, []);
+
+  if (!isOpen) return null;
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));

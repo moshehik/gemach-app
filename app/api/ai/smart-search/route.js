@@ -34,15 +34,15 @@ export async function POST(req) {
 The user wants to search for data in the following table schema:
 ${schemaContext}
 
-Your task is to generate ONLY a valid SQLite WHERE clause (without the WHERE keyword itself) based on the user's natural language request.
+Your task is to generate ONLY a valid PostgreSQL WHERE clause (without the WHERE keyword itself) based on the user's natural language request.
 Be smart about variations. For example, if the user searches for the name "שיינועטר", use LIKE operators to cover variations like "שיינועטר", "שינוטר", "שיינאטר", etc. If the user searches for a date, handle it properly.
 
 Rules:
 1. Your response MUST START with the exact prefix "SQL: ".
-2. ONLY output the SQLite condition. Absolutely no markdown, no \`\`\`, no explanations.
-3. Ensure you use the exact column names from the schema.
+2. ONLY output the PostgreSQL condition. Absolutely no markdown, no \`\`\`, no explanations.
+3. Ensure you use the exact column names from the schema. Remember to use double quotes for camelCase column names like "firstName" or "lastName". Booleans must be true/false.
 4. If searching text, use LIKE '%value%' or OR conditions.
-5. Remember that the main table is "${tableName}". If you need to filter by a related table, use a subquery (e.g. \`customerId IN (SELECT id FROM Customer WHERE ...)\`).
+5. Remember that the main table is "${tableName}". If you need to filter by a related table, use a subquery (e.g. \`"customerId" IN (SELECT id FROM "Customer" WHERE ...)\`).
 
 Example output for "משפחת כהן או לוי מירושלים":
 SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%ירושלים%'
@@ -67,7 +67,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
     console.log('AI Smart Search Cleaned Where Clause:', whereClause);
 
     const buildQuery = (clause) => {
-       let finalCondition = `isDeleted = 0 AND (${clause})`;
+       let finalCondition = `"isDeleted" = false AND (${clause})`;
        if (pageContext === 'dresses' || pageContext === 'rentals') {
          finalCondition = clause;
        }
@@ -85,7 +85,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
       console.error('Smart search DB error attempt 1:', dbError.message);
       
       // SELF HEALING RETRY
-      const retryPrompt = `${systemPrompt}\n\nUser request: ${prompt}\n\nYou generated this condition: ${whereClause}\nBut it failed with this SQLite error: ${dbError.message}\n\nPlease output ONLY a corrected SQLite condition starting with "SQL: " to fix this issue.`;
+      const retryPrompt = `${systemPrompt}\n\nUser request: ${prompt}\n\nYou generated this condition: ${whereClause}\nBut it failed with this PostgreSQL error: ${dbError.message}\n\nPlease output ONLY a corrected PostgreSQL condition starting with "SQL: " to fix this issue.`;
       
       let retryResponse = await generateContent(retryPrompt);
       console.log('AI Smart Search Retry Response:', retryResponse);

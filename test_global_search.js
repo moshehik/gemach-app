@@ -1,24 +1,13 @@
-import { NextResponse } from 'next/server';
-import prisma from '../../lib/prisma';
-import { checkAuth } from '../../../lib/auth';
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-export async function GET(request) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
-
-  const { searchParams } = new URL(request.url);
-  const q = searchParams.get('q');
-
-  if (!q) {
-    return NextResponse.json({ customers: [], orders: [], rentals: [] });
-  }
+async function main() {
+  const q = '052';
+  const isNum = !isNaN(q) && q.trim() !== '';
+  const numQ = isNum ? Number(q) : -1;
+  const likeQ = `%${q}%`;
 
   try {
-    // Check if query is a number
-    const isNum = !isNaN(q) && q.trim() !== '';
-    const numQ = isNum ? Number(q) : undefined;
-    const likeQ = `%${q}%`;
-
-    // 1. Search Customers
     const customers = await prisma.$queryRawUnsafe(`
       SELECT * FROM "Customer" 
       WHERE "isDeleted" = false 
@@ -30,10 +19,10 @@ export async function GET(request) {
         city LIKE $1 OR 
         id = $2
       )
-      LIMIT 50
-    `, likeQ, isNum ? numQ : -1);
+      LIMIT 1
+    `, likeQ, numQ);
+    console.log("Customers ok");
 
-    // 2. Search Orders
     const orders = await prisma.$queryRawUnsafe(`
       SELECT o.*, c."firstName", c."lastName", (SELECT COUNT(*) FROM "OrderItem" oi WHERE oi."orderId" = o."orderId" AND oi."isDeleted" = false) as "itemCount"
       FROM "Order" o
@@ -48,10 +37,10 @@ export async function GET(request) {
         o."orderId" = $2 OR 
         o.id = $2
       )
-      LIMIT 50
-    `, likeQ, isNum ? numQ : -1);
+      LIMIT 1
+    `, likeQ, numQ);
+    console.log("Orders ok");
 
-    // 3. Search Rentals (OrderItems / Dresses)
     const rentals = await prisma.$queryRawUnsafe(`
       SELECT oi.*, d."dressName" as "catalogName", d."barcodePrefix" as "catalogBarcode"
       FROM "OrderItem" oi
@@ -66,17 +55,13 @@ export async function GET(request) {
         CAST(d."barcodePrefix" AS TEXT) LIKE $1 OR
         oi."orderId" = $2
       )
-      LIMIT 50
-    `, likeQ, isNum ? numQ : -1);
-
-    const processedOrders = orders.map(o => ({
-      ...o,
-      itemCount: o.itemCount ? Number(o.itemCount) : 0
-    }));
-
-    return NextResponse.json({ customers, orders: processedOrders, rentals });
-  } catch (error) {
-    console.error('Global search error:', error);
-    return NextResponse.json({ error: 'Failed to perform global search' }, { status: 500 });
+      LIMIT 1
+    `, likeQ, numQ);
+    console.log("Rentals ok");
+  } catch (e) {
+    console.error(e);
+  } finally {
+    await prisma.$disconnect();
   }
 }
+main();
