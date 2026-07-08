@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../lib/prisma';
-import { recalculateOrderObligations } from '../../../../lib/pricingEngine';
+import prisma from '@/app/lib/prisma';
+import { recalculateOrderObligations } from '@/lib/pricingEngine';
 
 export async function POST(request) {
   try {
