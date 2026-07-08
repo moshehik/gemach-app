@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import packageJson from '../../package.json';
 
 export default function BrandLogo() {
   const [logoUrl, setLogoUrl] = useState('/api/logo');
@@ -25,18 +26,30 @@ export default function BrandLogo() {
     return () => window.removeEventListener('logoUpdated', handleLogoUpdate);
   }, []);
 
+  const versionText = (
+    <div style={{ fontSize: '0.65rem', color: '#888', marginTop: '2px', lineHeight: '1' }}>
+      גירסא {packageJson.version} | 09/07/2026 02:45
+    </div>
+  );
+
   if (hasError) {
-    return <div className="navbar-brand">גמ"ח נסיכה</div>;
+    return (
+      <div className="navbar-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: '1rem' }}>
+        <div>גמ"ח נסיכה</div>
+        {versionText}
+      </div>
+    );
   }
 
   return (
-    <div className="navbar-brand" style={{ display: 'flex', alignItems: 'center', padding: '0', paddingRight: '1rem' }}>
+    <div className="navbar-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0', paddingRight: '1rem' }}>
       <img 
         src={logoUrl} 
         alt="לוגו" 
         style={{ maxHeight: '40px', objectFit: 'contain' }}
         onError={() => setHasError(true)}
       />
+      {versionText}
     </div>
   );
 }
