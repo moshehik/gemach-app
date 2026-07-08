@@ -143,7 +143,26 @@ export async function GET(request) {
     
     const totalCount = await prisma.order.count({ where });
 
-    const dressModels = await prisma.dressModel.findMany();
+    // Optimize: Only fetch dress models for prefixes that are missing names in the current page
+    const uniquePrefixes = new Set();
+    orders.forEach(order => {
+      order.items.forEach(i => {
+        const dressName = i.dressItem?.dress?.name;
+        const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+        if (!dressName && prefix) {
+          uniquePrefixes.add(prefix);
+        }
+      });
+    });
+
+    let dressModels = [];
+    if (uniquePrefixes.size > 0) {
+      dressModels = await prisma.dressModel.findMany({
+        where: { barcodePrefix: { in: Array.from(uniquePrefixes) } },
+        select: { barcodePrefix: true, name: true }
+      });
+    }
+    
     const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
 
     const formattedOrders = orders.map(order => {

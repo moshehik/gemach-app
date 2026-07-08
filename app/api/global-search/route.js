@@ -30,6 +30,7 @@ export async function GET(request) {
         city LIKE $1 OR 
         id = $2
       )
+      ORDER BY id DESC
       LIMIT 50
     `, likeQ, isNum ? numQ : -1);
 
@@ -48,6 +49,7 @@ export async function GET(request) {
         o."orderId" = $2 OR 
         o.id = $2
       )
+      ORDER BY o.id DESC
       LIMIT 50
     `, likeQ, isNum ? numQ : -1);
 
@@ -66,6 +68,7 @@ export async function GET(request) {
         CAST(d."barcodePrefix" AS TEXT) LIKE $1 OR
         oi."orderId" = $2
       )
+      ORDER BY oi.id DESC
       LIMIT 50
     `, likeQ, isNum ? numQ : -1);
 

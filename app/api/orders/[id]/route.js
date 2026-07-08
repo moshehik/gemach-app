@@ -57,7 +57,22 @@ export async function GET(request, { params }) {
       return ob;
     });
 
-    const dressModels = await prisma.dressModel.findMany();
+    const uniquePrefixes = new Set();
+    items.forEach(i => {
+      const dressName = i.dressItem?.dress?.name;
+      const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+      if (!dressName && prefix) {
+        uniquePrefixes.add(prefix);
+      }
+    });
+
+    let dressModels = [];
+    if (uniquePrefixes.size > 0) {
+      dressModels = await prisma.dressModel.findMany({
+        where: { barcodePrefix: { in: Array.from(uniquePrefixes) } },
+        select: { barcodePrefix: true, name: true }
+      });
+    }
     const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
 
     const itemIds = items.map(i => i.id);
@@ -254,7 +269,22 @@ export async function PUT(request, { params }) {
       include: { dressItem: { include: { dress: true } } }
     });
     
-    const dressModels = await prisma.dressModel.findMany();
+    const uniquePrefixes = new Set();
+    items.forEach(i => {
+      const dressName = i.dressItem?.dress?.name;
+      const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+      if (!dressName && prefix) {
+        uniquePrefixes.add(prefix);
+      }
+    });
+
+    let dressModels = [];
+    if (uniquePrefixes.size > 0) {
+      dressModels = await prisma.dressModel.findMany({
+        where: { barcodePrefix: { in: Array.from(uniquePrefixes) } },
+        select: { barcodePrefix: true, name: true }
+      });
+    }
     const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
     
     const itemIds = items.map(i => i.id);

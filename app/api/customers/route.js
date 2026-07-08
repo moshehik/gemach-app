@@ -44,14 +44,15 @@ export async function GET(request) {
       ...(advEmail ? { email: { contains: advEmail } } : {})
     };
 
-    const customers = await prisma.customer.findMany({
-      where,
-      orderBy: { [sort]: order },
-      skip,
-      take: limit
-    });
-    
-    const totalCount = await prisma.customer.count({ where });
+    const [customers, totalCount] = await Promise.all([
+      prisma.customer.findMany({
+        where,
+        orderBy: { [sort]: order },
+        skip,
+        take: limit
+      }),
+      prisma.customer.count({ where })
+    ]);
 
     return NextResponse.json({
       data: customers,
