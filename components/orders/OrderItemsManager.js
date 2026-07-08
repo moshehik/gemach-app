@@ -3,11 +3,13 @@
 import React, { useState } from 'react';
 import OrderModelSelector from './OrderModelSelector';
 import OrderSizeSelector from './OrderSizeSelector';
-import { Info, Trash2, RotateCcw } from 'lucide-react';
+import { Info, Trash2, RotateCcw, CalendarSearch } from 'lucide-react';
+import ItemCapacityModal from './ItemCapacityModal';
 
 export default function OrderItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated }) {
   const [showDeleted, setShowDeleted] = useState(false);
   const [detailsModalItem, setDetailsModalItem] = useState(null);
+  const [capacityModalItem, setCapacityModalItem] = useState(null);
   const [savingItemIndex, setSavingItemIndex] = useState(null);
   const [settings, setSettings] = useState({});
 
@@ -212,7 +214,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
               <th style={{ ...tableHeaderStyle, width: '60px' }}>אורך</th>
               <th style={tableHeaderStyle}>פירוט תיקונים</th>
               <th style={{ ...tableHeaderStyle, width: '80px' }}>בוצע תיקון?</th>
-              <th style={{ ...tableHeaderStyle, width: '40px' }}>פרטים</th>
+              <th style={{ ...tableHeaderStyle, width: '100px' }}>פרטים/תפוסה</th>
             </tr>
           </thead>
           <tbody>
@@ -354,33 +356,63 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                         {savingItemIndex === originalIndex ? '⏳' : '✔️'}
                       </button>
                     ) : (
-                      <button 
-                        onClick={() => setDetailsModalItem(item)}
-                        style={{ 
-                          background: '#eff6ff', 
-                          border: '1px solid #bfdbfe',
-                          cursor: 'pointer', 
-                          color: '#3b82f6',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          padding: '0.4rem',
-                          borderRadius: '50%',
-                          transition: 'all 0.2s ease',
-                          boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                        }}
-                        onMouseOver={(e) => {
-                          e.currentTarget.style.backgroundColor = '#dbeafe';
-                          e.currentTarget.style.borderColor = '#93c5fd';
-                        }}
-                        onMouseOut={(e) => {
-                          e.currentTarget.style.backgroundColor = '#eff6ff';
-                          e.currentTarget.style.borderColor = '#bfdbfe';
-                        }}
-                        title="פרטים נוספים"
-                      >
-                        <Info size={18} strokeWidth={2.5} />
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        <button 
+                          onClick={() => setDetailsModalItem(item)}
+                          style={{ 
+                            background: '#eff6ff', 
+                            border: '1px solid #bfdbfe',
+                            cursor: 'pointer', 
+                            color: '#3b82f6',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '0.4rem',
+                            borderRadius: '50%',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.backgroundColor = '#dbeafe';
+                            e.currentTarget.style.borderColor = '#93c5fd';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.backgroundColor = '#eff6ff';
+                            e.currentTarget.style.borderColor = '#bfdbfe';
+                          }}
+                          title="פרטים נוספים"
+                        >
+                          <Info size={18} strokeWidth={2.5} />
+                        </button>
+                        
+                        <button 
+                          onClick={() => setCapacityModalItem(item)}
+                          style={{ 
+                            background: '#fdf4ff', 
+                            border: '1px solid #fbcfe8',
+                            cursor: 'pointer', 
+                            color: '#d946ef',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            padding: '0.4rem',
+                            borderRadius: '50%',
+                            transition: 'all 0.2s ease',
+                            boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                          }}
+                          onMouseOver={(e) => {
+                            e.currentTarget.style.backgroundColor = '#fae8ff';
+                            e.currentTarget.style.borderColor = '#f9a8d4';
+                          }}
+                          onMouseOut={(e) => {
+                            e.currentTarget.style.backgroundColor = '#fdf4ff';
+                            e.currentTarget.style.borderColor = '#fbcfe8';
+                          }}
+                          title="בדוק תפוסה לתאריך אירוע"
+                        >
+                          <CalendarSearch size={18} strokeWidth={2.5} />
+                        </button>
+                      </div>
                     )}
                   </td>
                 </tr>
@@ -428,6 +460,15 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
             </div>
           </div>
         </div>
+      )}
+
+      {capacityModalItem && (
+        <ItemCapacityModal 
+          item={capacityModalItem} 
+          order={order} 
+          isOpen={true} 
+          onClose={() => setCapacityModalItem(null)} 
+        />
       )}
 
       <div style={{ marginTop: '2rem', textAlign: 'right' }}>

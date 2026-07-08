@@ -1,8 +1,10 @@
 import { PrismaClient } from '@prisma/client';
 import { cookies } from 'next/headers';
+import fs from 'fs';
+import path from 'path';
 
-const prismaClientSingleton = () => {
-  const baseClient = new PrismaClient();
+const createPrismaClient = (url) => {
+  const baseClient = url ? new PrismaClient({ datasources: { db: { url } } }) : new PrismaClient();
   
   return baseClient.$extends({
     query: {
@@ -20,9 +22,7 @@ const prismaClientSingleton = () => {
               const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
               employeeId = decoded.id || decoded.employeeId || null;
             }
-          } catch (e) {
-            // Error when called outside request context
-          }
+          } catch (e) {}
           
           if (['create', 'update', 'delete'].includes(operation)) {
              const result = await query(args);
@@ -62,8 +62,40 @@ const prismaClientSingleton = () => {
 };
 
 const globalForPrisma = globalThis;
-const prisma = globalForPrisma.prisma ?? prismaClientSingleton();
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+if (!globalForPrisma.prismaProd) {
+  globalForPrisma.prismaProd = createPrismaClient(process.env.PROD_DATABASE_URL || process.env.DATABASE_URL);
+}
+if (!globalForPrisma.prismaTest && process.env.TEST_DATABASE_URL) {
+  globalForPrisma.prismaTest = createPrismaClient(process.env.TEST_DATABASE_URL);
+}
 
-export default prisma;
+if (!globalForPrisma.activeDbMode) {
+  let initialMode = 'prod';
+  try {
+    const dbFile = path.join(process.cwd(), '.active-db');
+    if (fs.existsSync(dbFile)) {
+      initialMode = fs.readFileSync(dbFile, 'utf8').trim();
+    }
+  } catch(e) {}
+  globalForPrisma.activeDbMode = initialMode;
+}
+
+const prismaProxy = new Proxy({}, {
+  get(target, prop) {
+    const isTest = globalForPrisma.activeDbMode === 'test' && globalForPrisma.prismaTest;
+    const activeClient = isTest ? globalForPrisma.prismaTest : globalForPrisma.prismaProd;
+    
+    const value = activeClient[prop];
+    if (typeof value === 'function') {
+      return value.bind(activeClient);
+    }
+    return value;
+  }
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = prismaProxy;
+}
+
+export default prismaProxy;

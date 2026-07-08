@@ -13,6 +13,7 @@ import UserMenu from './components/UserMenu';
 import LoginScreen from './components/LoginScreen';
 import PageTracker from './components/PageTracker';
 import AIFloatingWidget from './components/AIFloatingWidget';
+import DevEnvBanner from './components/DevEnvBanner';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { PopupProvider } from './components/PopupProvider';
@@ -41,7 +42,11 @@ export default async function RootLayout({ children }) {
 
   return (
     <html lang="he" dir="rtl">
+      <head>
+        <meta charSet="utf-8" />
+      </head>
       <body>
+        <DevEnvBanner />
         <Suspense fallback={null}>
           <PageTracker />
         </Suspense>

@@ -67,11 +67,11 @@ export default function CustomerPage({ params }) {
   return (
     <main className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1000px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <Link href="/customers" className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+        <button type="button" onClick={() => router.back()} className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
           →
-        </Link>
+        </button>
         <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>
-          {id === 'new' ? 'לקוח חדש' : `כרטיס לקוח: ${customer.firstName} ${customer.lastName}`}
+          {id === 'new' ? 'לקוח חדש' : `כרטיס לקוח: ${[customer.firstName, customer.lastName].filter(n => n && String(n).toLowerCase() !== 'null').join(' ')}`}
         </h1>
       </div>
 

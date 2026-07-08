@@ -600,3 +600,214 @@ a {
 
 @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
 .animate-spin { animation: spin 1s linear infinite; }
+
+/* DevEnvBanner Styles */
+.dev-env-container {
+  position: fixed;
+  bottom: 24px;
+  left: 24px;
+  z-index: 9999;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+  font-family: 'Heebo', sans-serif;
+  direction: ltr;
+}
+
+.dev-env-links-panel {
+  width: 340px;
+  background: rgba(17, 17, 17, 0.95);
+  backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+  padding: 16px;
+  direction: rtl;
+  text-align: right;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  transform-origin: bottom left;
+}
+
+.dev-env-links-panel.hidden {
+  opacity: 0;
+  transform: scale(0.95) translateY(16px);
+  pointer-events: none;
+}
+
+.dev-env-links-panel.visible {
+  opacity: 1;
+  transform: scale(1) translateY(0);
+}
+
+.dev-env-links-title {
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dev-env-link-group {
+  margin-bottom: 12px;
+}
+
+.dev-env-link-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.dev-env-link-label {
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dev-env-link-label.prod { color: #34d399; }
+.dev-env-link-label.test { color: #fbbf24; }
+
+.dev-env-copy-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.dev-env-copy-btn:hover { color: #fff; }
+
+.dev-env-url-box {
+  font-family: monospace;
+  font-size: 10px;
+  color: #6b7280;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 8px;
+  border-radius: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: color 0.2s;
+  cursor: text;
+}
+.dev-env-url-box:hover { color: #d1d5db; }
+
+/* Main Widget */
+.dev-env-widget {
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  background: rgba(17, 17, 17, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 99px;
+  transition: all 0.5s ease;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.dev-env-widget.test-mode {
+  border-color: rgba(251, 191, 36, 0.3);
+  box-shadow: 0 10px 25px rgba(120, 53, 15, 0.3);
+}
+
+.dev-env-widget.prod-mode {
+  border-color: rgba(52, 211, 153, 0.3);
+  box-shadow: 0 10px 25px rgba(6, 78, 59, 0.3);
+}
+
+.dev-env-toggle-links {
+  background: transparent;
+  border: none;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #9ca3af;
+  margin-left: 4px;
+  transition: all 0.3s;
+}
+
+.dev-env-toggle-links:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+}
+
+.dev-env-toggle-links.active.test-mode { background: rgba(251, 191, 36, 0.2); color: #fbbf24; }
+.dev-env-toggle-links.active.prod-mode { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+
+.dev-env-separator {
+  width: 1px;
+  height: 24px;
+  margin: 0 8px;
+  transition: background-color 0.3s;
+}
+.dev-env-separator.test-mode { background: rgba(251, 191, 36, 0.2); }
+.dev-env-separator.prod-mode { background: rgba(52, 211, 153, 0.2); }
+
+.dev-env-segmented-control {
+  display: flex;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 99px;
+  padding: 4px;
+  position: relative;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.dev-env-pill {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  width: 80px;
+  border-radius: 99px;
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dev-env-pill.prod {
+  left: 4px;
+  background: rgba(52, 211, 153, 0.2);
+  border: 1px solid rgba(52, 211, 153, 0.5);
+}
+
+.dev-env-pill.test {
+  left: 84px;
+  background: rgba(251, 191, 36, 0.2);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+}
+
+.dev-env-segment-btn {
+  position: relative;
+  width: 80px;
+  padding: 6px 0;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+  border-radius: 99px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  z-index: 10;
+  cursor: pointer;
+  transition: color 0.3s;
+  color: #6b7280;
+}
+
+.dev-env-segment-btn:hover { color: #d1d5db; }
+.dev-env-segment-btn.active.prod { color: #34d399; }
+.dev-env-segment-btn.active.test { color: #fbbf24; }

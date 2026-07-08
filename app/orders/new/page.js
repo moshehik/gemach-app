@@ -356,8 +356,8 @@ export default function NewOrderPage() {
       } else if (payment.method !== 'אשראי') {
         const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
         if (level === 'מנהל' || level === 'עובד') {
-          const pin = await window.customPrompt(`פעולה זו דורשת הרשאת ${level}. אנא הזן סיסמת אישור:`, '', '', 'password');
-          if (!pin) {
+          const authResult = await window.customAuthPrompt(`פעולה זו דורשת הרשאת ${level}. אנא בחר משתמש והזן סיסמה:`, level);
+          if (!authResult || !authResult.pin) {
             alert('אישור תשלום בוטל.');
             return;
           }
@@ -366,7 +366,7 @@ export default function NewOrderPage() {
             const res = await fetch('/api/auth/verify-pin', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ pin, requiredLevel: level })
+              body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: level })
             });
             const data = await res.json();
             if (!data.success) {

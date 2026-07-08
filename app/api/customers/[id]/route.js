@@ -50,6 +50,14 @@ export async function PUT(request, { params }) {
     }
 
     const body = await request.json();
+    
+    // 1. Fetch old data to compare
+    const oldCustomer = await prisma.customer.findUnique({ where: { id } });
+    if (!oldCustomer) {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+    }
+
+    // 2. Perform the update
     const updatedCustomer = await prisma.customer.update({
       where: { id },
       data: {
@@ -64,6 +72,28 @@ export async function PUT(request, { params }) {
         notes: body.notes
       }
     });
+
+    // 3. Compute changes
+    const changes = {};
+    const keysToCheck = ['firstName', 'lastName', 'phone1', 'phone2', 'email', 'city', 'street', 'houseNum', 'notes'];
+    keysToCheck.forEach(key => {
+      if (oldCustomer[key] !== updatedCustomer[key]) {
+        changes[key] = { from: oldCustomer[key], to: updatedCustomer[key] };
+      }
+    });
+
+    // 4. Save AuditLog if there are changes
+    if (Object.keys(changes).length > 0) {
+      await prisma.auditLog.create({
+        data: {
+          entityType: 'Customer',
+          entityId: id,
+          action: 'UPDATE',
+          changesJson: JSON.stringify(changes),
+          employeeId: body.employeeId || null
+        }
+      });
+    }
 
     return NextResponse.json(updatedCustomer);
   } catch (error) {

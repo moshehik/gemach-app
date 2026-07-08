@@ -3,18 +3,23 @@ import prisma from '../../../lib/prisma';
 
 export async function POST(request) {
   try {
-    const { pin, requiredLevel } = await request.json();
+    const { pin, requiredLevel, employeeId } = await request.json();
 
     if (!pin) {
       return NextResponse.json({ success: false, error: 'לא סופקה סיסמה' }, { status: 400 });
     }
 
     // Find active employee with this password/pin
+    const whereClause = { 
+      password: pin,
+      isActive: true
+    };
+    if (employeeId) {
+      whereClause.id = parseInt(employeeId, 10);
+    }
+
     const employee = await prisma.employee.findFirst({
-      where: { 
-        password: pin,
-        isActive: true
-      }
+      where: whereClause
     });
 
     if (!employee) {

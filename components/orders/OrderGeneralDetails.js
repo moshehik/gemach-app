@@ -97,7 +97,7 @@ export default function OrderGeneralDetails({ order, onOrderChange }) {
               <div>
                 <span style={labelStyle}>שם:</span>
                 <div style={{ fontSize: '1.1rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>
-                  {order.customer ? `${order.customer.firstName} ${order.customer.lastName}` : 'לא ידוע'}
+                  {order.customer ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ') : 'לא ידוע'}
                 </div>
               </div>
               {order.customer?.phone1 && (
@@ -158,15 +158,7 @@ export default function OrderGeneralDetails({ order, onOrderChange }) {
                 onChange={(date) => handleChange('eventDate', date)} 
               />
             </div>
-            <div style={{ flex: 1, minWidth: '150px', display: 'flex', alignItems: 'center' }}>
-              <input 
-                type="text" 
-                placeholder='תאריך אירוע עברי (למשל: י"ב חשון תשפ"ה)'
-                value={order.eventDateHebrew || ''} 
-                onChange={(e) => handleChange('eventDateHebrew', e.target.value)}
-                style={{ ...inputStyle, padding: '0.65rem' }}
-              />
-            </div>
+
           </div>
         </div>
 

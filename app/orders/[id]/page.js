@@ -159,15 +159,15 @@ export default function OrderDetailsPage({ params }) {
 
   const handleExit = async () => {
     if (totalRequired - totalPaid > 0) {
-      const pin = await window.customPrompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת עובד או מנהל. אנא הזן סיסמת אישור:", '', '', 'password');
-      if (!pin) {
+      const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת עובד או מנהל. אנא בחר משתמש והזן סיסמה:", 'עובד');
+      if (!authResult || !authResult.pin) {
         return;
       }
       try {
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin, requiredLevel: 'עובד' })
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'עובד' })
         });
         const data = await res.json();
         if (!data.success) {
@@ -179,20 +179,20 @@ export default function OrderDetailsPage({ params }) {
         return;
       }
     }
-    router.push('/orders');
+    router.back();
   };
 
   const isPastEvent = order?.eventDate && new Date(order.eventDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0);
   const isLocked = isPastEvent && !isUnlocked;
 
   const handleUnlock = async () => {
-    const pin = await window.customPrompt("הזמנה זו נעולה כי תאריך האירוע עבר. נדרש אישור מנהל לעריכה. אנא הזן סיסמת מנהל:", '', '', 'password');
-    if (!pin) return;
+    const authResult = await window.customAuthPrompt("הזמנה זו נעולה כי תאריך האירוע עבר. נדרש אישור מנהל לעריכה. אנא בחר מנהל והזן סיסמה:", 'מנהל');
+    if (!authResult || !authResult.pin) return;
     try {
       const res = await fetch('/api/auth/verify-pin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin, requiredLevel: 'מנהל' })
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
       });
       const data = await res.json();
       if (!data.success) {
@@ -289,7 +289,7 @@ export default function OrderDetailsPage({ params }) {
 
           <button 
             onClick={handleExit}
-            title="חזרה לרשימה"
+            title="חזרה"
             style={{ 
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               padding: '0.8rem', background: '#f5f5f5', color: '#333', border: '1px solid #ddd', 

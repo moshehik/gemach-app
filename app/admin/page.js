@@ -115,7 +115,7 @@ export default function AdminHubPage() {
         </Link>
 
         {/* Database Management Card */}
-        <Link href="/admin/database" style={{ textDecoration: 'none' }}>
+        <Link href="/management/database" style={{ textDecoration: 'none' }}>
           <div className="dress-card" style={{
             padding: '2.5rem',
             background: 'linear-gradient(135deg, #0f172a, #334155)',
@@ -127,9 +127,9 @@ export default function AdminHubPage() {
             flexDirection: 'column',
             justifyContent: 'center'
           }}>
-            <h2 style={{ fontSize: '2rem', marginBottom: '1rem', color: 'white' }}>ניהול מסד נתונים</h2>
+            <h2 style={{ fontSize: '2rem', marginBottom: '1rem', color: 'white' }}>החלפת נתונים מגיבוי (JSON)</h2>
             <p style={{ fontSize: '1.1rem', opacity: 0.9 }}>
-              העלאת קובץ אקסס חדש, גיבוי הנתונים הקיימים, וסנכרון מלא של המערכת.
+              העלאת קובץ גיבוי בפורמט JSON להחלפה מאובטחת של כל נתוני המערכת בענן.
             </p>
           </div>
         </Link>

@@ -120,7 +120,7 @@ async function migrateData() {
         priceCategory: m['קטגורית_מחיר'],
         notes: m['הערות'],
         inInspection: isTrue(m['הצג_בבדיקה']),
-        entryDateToRepo: parseExcelDate(m['תאריך_כניסה_למאגר']) || new Date(),
+        entryDateToRepo: parseExcelDate(m['תאריך_כניסה_למאגר']) || null,
         exitDateFromRepo: parseExcelDate(m['תאריך_יציאה_מהמאגר']) || null
       };
     });

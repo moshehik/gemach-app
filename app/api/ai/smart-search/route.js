@@ -4,10 +4,10 @@ import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
 
 const SCHEMA_MAP = {
-  customers: "model Customer { id Int, firstName String, lastName String, phone1 String, phone2 String, city String, street String, houseNum Int, email String, notes String, isDeleted Boolean }",
-  orders: "model Order { id Int, orderId Int, customerId Int, totalAmount Float, paymentDate DateTime, paymentMethod String, status String, isPaid Boolean, isDeleted Boolean, eventDate DateTime, returnDate DateTime }",
-  dresses: "model DressItem { id Int, dressModelId Int, dressName String, barcodePrefix Int, sizeText String, serialNumber Int, dressBarcode String, location String, locationNum Int, quantity Int, inRepair Boolean, notInUse Boolean }",
-  rentals: "model OrderItem { id Int, orderId Int, dressItemId Int, price Float, sizeText String, finalPrice Float, isTaken Boolean, isReturned Boolean, returnedOk Boolean }"
+  customers: "Table: Customer\nColumns: id, firstName, lastName, phone1, phone2, city, street, houseNum, email, notes, isDeleted",
+  orders: "Table: Order\nColumns: id, orderId, customerId, totalAmount, paymentDate, paymentMethod, status, isPaid, isDeleted, eventDate, eventDateHebrew, returnDate\nRelated Table: Customer (id, firstName, lastName, phone1, phone2, city)",
+  dresses: "Table: DressItem\nColumns: id, dressModelId, dressName, barcodePrefix, sizeText, serialNumber, dressBarcode, location, locationNum, quantity, inRepair, notInUse\nRelated Table: DressModel (id, name, priceCategory)",
+  rentals: "Table: OrderItem\nColumns: id, orderId, dressItemId, barcode, barcodePrefix, price, sizeText, finalPrice, isTaken, isReturned, returnedOk\nRelated Tables: Order (orderId, customerId), Customer (id, firstName, lastName), DressItem (id, dressName, dressBarcode)"
 };
 
 const TABLE_MAP = {
@@ -42,7 +42,7 @@ Rules:
 2. ONLY output the SQLite condition. Absolutely no markdown, no \`\`\`, no explanations.
 3. Ensure you use the exact column names from the schema.
 4. If searching text, use LIKE '%value%' or OR conditions.
-5. Remember that the table name is "${tableName}".
+5. Remember that the main table is "${tableName}". If you need to filter by a related table, use a subquery (e.g. \`customerId IN (SELECT id FROM Customer WHERE ...)\`).
 
 Example output for "משפחת כהן או לוי מירושלים":
 SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%ירושלים%'
@@ -54,11 +54,11 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
     
     const parseWhereClause = (response) => {
        let clause = response.trim();
-       if (clause.startsWith('SQL:')) clause = clause.replace(/^SQL:\s*/i, '').trim();
        
        const sqlMatch = clause.match(/```(?:sql)?([\s\S]*?)```/);
        if (sqlMatch) clause = sqlMatch[1].trim();
        
+       if (clause.startsWith('SQL:')) clause = clause.replace(/^SQL:\s*/i, '').trim();
        clause = clause.replace(/^WHERE /i, '');
        return clause.trim() || '1=1'; // Fallback to 1=1 if empty
     };

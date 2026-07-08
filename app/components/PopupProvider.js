@@ -8,7 +8,10 @@ export function PopupProvider({ children }) {
   const [alerts, setAlerts] = useState([]);
   const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, message: '', resolve: null, title: 'אישור פעולה' });
   const [promptConfig, setPromptConfig] = useState({ isOpen: false, message: '', resolve: null, title: 'הזנת נתונים', defaultValue: '', type: 'text' });
+  const [authPromptConfig, setAuthPromptConfig] = useState({ isOpen: false, message: '', resolve: null, title: 'אימות הרשאה', requiredLevel: 'מנהל', employees: [] });
   const promptInputRef = useRef(null);
+  const authInputRef = useRef(null);
+  const [selectedAuthEmployee, setSelectedAuthEmployee] = useState('');
 
   // Background error logger
   const logErrorToSystem = async (errorMessage) => {
@@ -78,13 +81,44 @@ export function PopupProvider({ children }) {
     setPromptConfig({ isOpen: false, message: '', resolve: null, title: 'הזנת נתונים', defaultValue: '', type: 'text' });
   }, [promptConfig]);
 
+  const showAuthPrompt = useCallback(async (message, requiredLevel = 'מנהל', title = 'אימות הרשאה') => {
+    return new Promise(async (resolve) => {
+      let employees = [];
+      try {
+        const res = await fetch('/api/employees');
+        if (res.ok) {
+          employees = await res.json();
+          if (requiredLevel === 'מנהל') {
+            employees = employees.filter(e => e.roleId === 1 || e.roleId === 2);
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+      setAuthPromptConfig({ isOpen: true, message, resolve, title, requiredLevel, employees });
+      setSelectedAuthEmployee(employees.length > 0 ? employees[0].id.toString() : '');
+      setTimeout(() => {
+        if (authInputRef.current) authInputRef.current.focus();
+      }, 100);
+    });
+  }, []);
+
+  const handleAuthPromptResponse = useCallback((result) => {
+    if (authPromptConfig.resolve) {
+      authPromptConfig.resolve(result); // result will be { pin, employeeId } or null
+    }
+    setAuthPromptConfig({ isOpen: false, message: '', resolve: null, title: 'אימות הרשאה', requiredLevel: 'מנהל', employees: [] });
+    setSelectedAuthEmployee('');
+  }, [authPromptConfig]);
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       window.alert = (message) => showAlert(message);
       window.customConfirm = (message) => showConfirm(message);
       window.customPrompt = (message, defaultValue, type) => showPrompt(message, 'הזנת נתונים', defaultValue, type);
+      window.customAuthPrompt = (message, requiredLevel) => showAuthPrompt(message, requiredLevel, 'אימות הרשאה');
     }
-  }, [showAlert, showConfirm, showPrompt]);
+  }, [showAlert, showConfirm, showPrompt, showAuthPrompt]);
 
   return (
     <PopupContext.Provider value={{ showAlert, showConfirm, showPrompt }}>
@@ -160,6 +194,57 @@ export function PopupProvider({ children }) {
                  <div style={{ background: '#f8fafc', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
                      <button onClick={() => handlePromptResponse(null)} style={{ padding: '10px 20px', background: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f1f5f9'} onMouseOut={e => e.currentTarget.style.background='white'}>ביטול</button>
                      <button onClick={() => handlePromptResponse(promptInputRef.current.value)} style={{ padding: '10px 20px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.2)' }} onMouseOver={e => e.currentTarget.style.background='#4338ca'} onMouseOut={e => e.currentTarget.style.background='#4f46e5'}>אישור</button>
+                 </div>
+             </div>
+         </div>
+      )}
+
+      {/* Auth Prompt Modal */}
+      {authPromptConfig.isOpen && (
+         <div className="popup-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1rem' }}>
+             <div className="popup-content animate-fade-in" style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+                 <div style={{ padding: '24px 24px 0 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                     <div style={{ background: '#e0e7ff', color: '#4f46e5', padding: '10px', borderRadius: '12px' }}>
+                        <Info size={28} />
+                     </div>
+                     <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: '700' }}>{authPromptConfig.title}</h3>
+                 </div>
+                 <div style={{ padding: '20px 24px' }}>
+                     <div style={{ fontSize: '1.05rem', color: '#475569', marginBottom: '12px', lineHeight: '1.5' }}>
+                         {authPromptConfig.message}
+                     </div>
+                     <div style={{ marginBottom: '16px' }}>
+                         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#334155' }}>בחר {authPromptConfig.requiredLevel}</label>
+                         <select 
+                            value={selectedAuthEmployee}
+                            onChange={(e) => setSelectedAuthEmployee(e.target.value)}
+                            style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', background: '#f8fafc' }}
+                         >
+                            <option value="">-- בחר --</option>
+                            {authPromptConfig.employees.map(emp => (
+                                <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
+                            ))}
+                         </select>
+                     </div>
+                     <div>
+                         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#334155' }}>קוד {authPromptConfig.requiredLevel}</label>
+                         <input
+                             ref={authInputRef}
+                             type="password"
+                             placeholder="הקלד סיסמה..."
+                             onKeyDown={(e) => {
+                                if (e.key === 'Enter') handleAuthPromptResponse({ pin: e.target.value, employeeId: selectedAuthEmployee });
+                                if (e.key === 'Escape') handleAuthPromptResponse(null);
+                             }}
+                             style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', transition: 'border-color 0.2s', background: '#f8fafc' }}
+                             onFocus={(e) => e.target.style.borderColor = '#4f46e5'}
+                             onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                         />
+                     </div>
+                 </div>
+                 <div style={{ background: '#f8fafc', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
+                     <button onClick={() => handleAuthPromptResponse(null)} style={{ padding: '10px 20px', background: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f1f5f9'} onMouseOut={e => e.currentTarget.style.background='white'}>ביטול</button>
+                     <button onClick={() => handleAuthPromptResponse({ pin: authInputRef.current.value, employeeId: selectedAuthEmployee })} style={{ padding: '10px 20px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.2)' }} onMouseOver={e => e.currentTarget.style.background='#4338ca'} onMouseOut={e => e.currentTarget.style.background='#4f46e5'}>אישור</button>
                  </div>
              </div>
          </div>

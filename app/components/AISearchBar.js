@@ -130,7 +130,16 @@ export default function AISearchBar({
 
       {/* AI Toggle Button */}
       <button 
-        onClick={() => setIsAiMode(!isAiMode)}
+        onClick={() => {
+          if (!isAiMode) {
+            setAiInput(value || '');
+          } else {
+            if (onChange) {
+              onChange({ target: { value: aiInput || '' } });
+            }
+          }
+          setIsAiMode(!isAiMode);
+        }}
         style={{ 
           borderRadius: '50%', 
           width: '45px', 

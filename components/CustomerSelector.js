@@ -51,7 +51,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
   }, [value]);
 
   const handleSelect = (customer) => {
-    setQuery(`${customer.firstName} ${customer.lastName} ${customer.phone1 ? `(${customer.phone1})` : ''}`.trim());
+    setQuery(`${[customer.firstName, customer.lastName].filter(Boolean).join(' ')} ${customer.phone1 ? `(${customer.phone1})` : ''}`.trim());
     onChange(customer);
     setIsOpen(false);
   };
