@@ -1,13 +1,1 @@
 === Starting Deployment === 
-warning: in the working copy of 'run_deploy_hidden.bat', LF will be replaced by CRLF the next time Git touches it
- 
-=== Committing === 
-[main 226f6e1] Auto Update
- 2 files changed, 12 insertions(+), 100 deletions(-)
- create mode 100644 run_deploy_hidden.bat
- 
-=== Pushing to GitHub === 
-To https://github.com/moshehik/gemach-app.git
-   a5302f8..226f6e1  main -> main
- 
-=== DONE_UPLOADING === 

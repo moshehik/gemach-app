@@ -103,8 +103,8 @@
         var currentDir = fso.GetParentFolderName(loc);
         wsh.CurrentDirectory = currentDir;
 
-        var logFile = currentDir + "\\deploy_log.txt";
-        var batFile = currentDir + "\\run_deploy_hidden.bat";
+        var logFile = "deploy_log.txt";
+        var batFile = "run_deploy_hidden.bat";
         var timerId = null;
 
         window.onload = function() {
