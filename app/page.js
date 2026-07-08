@@ -268,13 +268,27 @@ export default function HomeDashboard() {
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem' }}>
                         <thead>
                           <tr style={{ background: '#f3f4f6' }}>
-                            {Object.keys(msg.data[0]).map(k => <th key={k} style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>{k}</th>)}
+                            {Object.keys(msg.data[0])
+                              .filter(k => !k.startsWith('_action'))
+                              .map(k => <th key={k} style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>{k}</th>)}
+                            {msg.data.some(r => r._actionUrl) && <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>פעולות</th>}
                           </tr>
                         </thead>
                         <tbody>
                           {msg.data.slice(0, 15).map((row, rIdx) => (
                             <tr key={rIdx} style={{ borderBottom: '1px solid #e5e7eb' }}>
-                              {Object.values(row).map((val, vIdx) => <td key={vIdx} style={{ padding: '0.5rem' }}>{val}</td>)}
+                              {Object.entries(row)
+                                .filter(([k]) => !k.startsWith('_action'))
+                                .map(([k, val], vIdx) => <td key={vIdx} style={{ padding: '0.5rem' }}>{val}</td>)}
+                              {msg.data.some(r => r._actionUrl) && (
+                                <td style={{ padding: '0.5rem' }}>
+                                  {row._actionUrl && row._actionLabel ? (
+                                    <Link href={row._actionUrl} style={{ background: '#ec4899', color: 'white', padding: '0.3rem 0.6rem', borderRadius: '8px', textDecoration: 'none', fontSize: '0.8rem', display: 'inline-block' }}>
+                                      {row._actionLabel}
+                                    </Link>
+                                  ) : null}
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>

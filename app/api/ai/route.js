@@ -44,7 +44,8 @@ Rules for SQL query generation:
 6. If it's a general question that doesn't need database access, just answer it naturally in Hebrew without the "SQL: " prefix.
 7. IMPORTANT: When selecting columns, ALWAYS use 'AS' to alias the column names into Hebrew using double quotes. For example: SELECT "firstName" AS "שם פרטי", "lastName" AS "שם משפחה". DO NOT return English column names in the output.
 8. IMPORTANT: Whenever querying orders or events, ALWAYS select "eventDateHebrew" as the primary date to display to the user, since the system prefers Hebrew dates.
-9. IMPORTANT: Feel free to use GROUP BY, JOINs, and aggregation functions (SUM, COUNT) if the user asks for grouped data, summaries, or cross-referenced data.`;
+9. IMPORTANT: Feel free to use GROUP BY, JOINs, and aggregation functions (SUM, COUNT) if the user asks for grouped data, summaries, or cross-referenced data.
+10. IMPORTANT UI FEATURE: If you want to provide a clickable action button for a row (like viewing a customer, order, or rental), you MUST include two hidden columns in your query: "_actionUrl" and "_actionLabel". For example: SELECT "firstName" AS "שם", '/customers/' || id AS "_actionUrl", 'תיק לקוח' AS "_actionLabel" FROM "Customer". The frontend will automatically convert these into a button at the end of the row.`;
 
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
