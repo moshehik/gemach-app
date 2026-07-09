@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { Lock, User, LogIn } from 'lucide-react';
 
 export default function LoginScreen() {
   const [employees, setEmployees] = useState([]);
@@ -12,7 +13,6 @@ export default function LoginScreen() {
   const router = useRouter();
 
   useEffect(() => {
-    // Fetch employees for the dropdown
     fetch('/api/employees')
       .then(res => res.json())
       .then(data => {
@@ -25,8 +25,8 @@ export default function LoginScreen() {
 
   const handleLogin = async (e) => {
     e.preventDefault();
-    if (!selectedEmployee) {
-      setError('נא לבחור עובד');
+    if (!selectedEmployee || !password) {
+      setError('נא לבחור עובד ולהזין סיסמה');
       return;
     }
     
@@ -43,7 +43,6 @@ export default function LoginScreen() {
       const data = await res.json();
       
       if (res.ok && data.success) {
-        // Refresh the page to trigger layout.js re-render
         router.refresh();
       } else {
         setError(data.message || 'שגיאה בהתחברות');
@@ -56,64 +55,180 @@ export default function LoginScreen() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8" dir="rtl">
-      <div className="max-w-md w-full space-y-8 bg-white p-10 rounded-xl shadow-lg border border-gray-100">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            כניסה למערכת הגמ"ח
+    <div style={{
+      minHeight: '100vh',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+      backgroundImage: 'radial-gradient(circle at 50% -20%, #3b82f6 0%, transparent 40%), linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
+      fontFamily: 'system-ui, -apple-system, sans-serif',
+      padding: '2rem'
+    }} dir="rtl">
+      
+      <div style={{
+        width: '100%',
+        maxWidth: '440px',
+        background: 'rgba(255, 255, 255, 0.03)',
+        backdropFilter: 'blur(20px)',
+        WebkitBackdropFilter: 'blur(20px)',
+        border: '1px solid rgba(255, 255, 255, 0.08)',
+        borderRadius: '24px',
+        padding: '3rem 2.5rem',
+        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 40px rgba(59, 130, 246, 0.1)'
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
+          <div style={{
+            width: '76px',
+            height: '76px',
+            background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+            borderRadius: '22px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 1.5rem auto',
+            boxShadow: '0 10px 25px rgba(37, 99, 235, 0.4), inset 0 2px 4px rgba(255,255,255,0.3)',
+            transform: 'rotate(-5deg)'
+          }}>
+            <Lock size={34} color="white" strokeWidth={2.5} style={{ transform: 'rotate(5deg)' }} />
+          </div>
+          <h2 style={{ fontSize: '2.1rem', fontWeight: '800', color: 'white', margin: '0 0 0.5rem 0', letterSpacing: '-0.025em' }}>
+            כניסת עובדים
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            נא להזדהות על מנת להמשיך
+          <p style={{ color: '#94a3b8', margin: 0, fontSize: '1.05rem' }}>
+            נא להזדהות על מנת להמשיך למערכת
           </p>
         </div>
-        <form className="mt-8 space-y-6" onSubmit={handleLogin}>
+
+        <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          
           {error && (
-            <div className="bg-red-50 text-red-700 p-3 rounded-md text-sm border border-red-200">
+            <div style={{
+              background: 'rgba(239, 68, 68, 0.1)',
+              border: '1px solid rgba(239, 68, 68, 0.2)',
+              color: '#fca5a5',
+              padding: '1rem',
+              borderRadius: '12px',
+              fontSize: '0.95rem',
+              textAlign: 'center',
+              fontWeight: '500',
+              animation: 'shake 0.4s ease-in-out'
+            }}>
               {error}
             </div>
           )}
           
-          <div className="space-y-4">
-            <div>
-              <label htmlFor="employee" className="block text-sm font-medium text-gray-700">שם עובד</label>
+          <div style={{ position: 'relative' }}>
+            <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.9rem', fontWeight: '500', marginBottom: '0.5rem' }}>
+              שם העובד
+            </label>
+            <div style={{ position: 'relative' }}>
               <select
-                id="employee"
                 value={selectedEmployee}
                 onChange={(e) => setSelectedEmployee(e.target.value)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm rounded-md border"
+                style={{
+                  width: '100%',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: selectedEmployee ? 'white' : '#64748b',
+                  padding: '1.1rem 3.2rem 1.1rem 1rem',
+                  borderRadius: '14px',
+                  fontSize: '1rem',
+                  appearance: 'none',
+                  outline: 'none',
+                  transition: 'all 0.2s ease',
+                  cursor: 'pointer'
+                }}
+                onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)'; }}
+                onBlur={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.target.style.boxShadow = 'none'; }}
               >
-                <option value="">-- בחר עובד --</option>
+                <option value="" style={{ color: '#0f172a' }}>-- בחר מהרשימה --</option>
                 {employees.map(emp => (
-                  <option key={emp.id} value={emp.id}>
+                  <option key={emp.id} value={emp.id} style={{ color: '#0f172a' }}>
                     {emp.firstName} {emp.lastName}
                   </option>
                 ))}
               </select>
+              <User size={20} color={selectedEmployee ? '#3b82f6' : '#64748b'} style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }} />
             </div>
-            
-            <div>
-              <label htmlFor="password" className="block text-sm font-medium text-gray-700">סיסמא</label>
+          </div>
+          
+          <div style={{ position: 'relative' }}>
+            <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.9rem', fontWeight: '500', marginBottom: '0.5rem' }}>
+              קוד כניסה
+            </label>
+            <div style={{ position: 'relative' }}>
               <input
-                id="password"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
-                placeholder="הזן סיסמא..."
+                placeholder="הזן את הקוד שלך"
+                style={{
+                  width: '100%',
+                  background: 'rgba(15, 23, 42, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  color: 'white',
+                  padding: '1.1rem 3.2rem 1.1rem 1rem',
+                  borderRadius: '14px',
+                  fontSize: '1rem',
+                  outline: 'none',
+                  transition: 'all 0.2s ease',
+                  letterSpacing: password.length > 0 ? '0.2em' : 'normal'
+                }}
+                onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)'; }}
+                onBlur={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.target.style.boxShadow = 'none'; }}
               />
+              <Lock size={20} color={password ? '#3b82f6' : '#64748b'} style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }} />
             </div>
           </div>
 
-          <div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
-            >
-              {loading ? 'מתחבר...' : 'כניסה'}
-            </button>
-          </div>
+          <button
+            type="submit"
+            disabled={loading}
+            style={{
+              marginTop: '1.5rem',
+              width: '100%',
+              background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
+              color: 'white',
+              border: '1px solid rgba(255,255,255,0.1)',
+              padding: '1.1rem',
+              borderRadius: '14px',
+              fontSize: '1.15rem',
+              fontWeight: '600',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '0.6rem',
+              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+              opacity: loading ? 0.8 : 1,
+              boxShadow: '0 8px 20px -6px rgba(37, 99, 235, 0.6)'
+            }}
+            onMouseOver={(e) => { if(!loading) { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 12px 25px -6px rgba(37, 99, 235, 0.7)'; } }}
+            onMouseOut={(e) => { if(!loading) { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 8px 20px -6px rgba(37, 99, 235, 0.6)'; } }}
+            onMouseDown={(e) => { if(!loading) { e.target.style.transform = 'translateY(1px)'; e.target.style.boxShadow = '0 4px 10px -6px rgba(37, 99, 235, 0.6)'; } }}
+            onMouseUp={(e) => { if(!loading) { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 12px 25px -6px rgba(37, 99, 235, 0.7)'; } }}
+          >
+            {loading ? (
+              <span style={{ display: 'inline-block', width: '22px', height: '22px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
+            ) : (
+              <>
+                <LogIn size={22} />
+                היכנס למערכת
+              </>
+            )}
+          </button>
         </form>
+
+        <style dangerouslySetInnerHTML={{__html: `
+          @keyframes spin { 100% { transform: rotate(360deg); } }
+          @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+            20%, 40%, 60%, 80% { transform: translateX(4px); }
+          }
+          * { box-sizing: border-box; }
+        `}} />
       </div>
     </div>
   );

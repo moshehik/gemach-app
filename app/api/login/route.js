@@ -6,12 +6,24 @@ export async function POST(request) {
   try {
     const { employeeId, password } = await request.json();
 
-    if (!employeeId) {
-      return NextResponse.json({ success: false, message: 'נא להזין קוד עובד / לבחור עובד' }, { status: 400 });
+    if (!employeeId || !password) {
+      return NextResponse.json({ success: false, message: 'נא להזין קוד עובד וסיסמה' }, { status: 400 });
     }
 
-    if (password !== '000') {
-      return NextResponse.json({ success: false, message: 'סיסמא שגויה. (השתמש ב-000)' }, { status: 401 });
+    const employee = await prisma.employee.findUnique({
+      where: { id: parseInt(employeeId, 10) }
+    });
+
+    if (!employee) {
+      return NextResponse.json({ success: false, message: 'עובד לא נמצא' }, { status: 404 });
+    }
+
+    if (!employee.password) {
+      return NextResponse.json({ success: false, message: 'לעובד זה טרם הוגדרה סיסמה במערכת. אנא פנה למנהל.' }, { status: 401 });
+    }
+
+    if (employee.password !== password) {
+      return NextResponse.json({ success: false, message: 'סיסמא שגויה' }, { status: 401 });
     }
 
     // Set cookie

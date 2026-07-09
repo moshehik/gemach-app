@@ -10,7 +10,11 @@ export async function GET(request) {
       where: all ? {} : { isActive: true },
       orderBy: { id: 'asc' }
     });
-    return NextResponse.json(employees);
+    
+    // Remove passwords from the response
+    const safeEmployees = employees.map(({ password, ...emp }) => emp);
+    
+    return NextResponse.json(safeEmployees);
   } catch (error) {
     console.error('Error fetching employees:', error);
     return NextResponse.json({ error: 'Failed to fetch employees' }, { status: 500 });

@@ -54,7 +54,7 @@ export async function POST(request) {
     const body = await request.json();
     const { employeeId, password, action } = body; // action is 'IN' or 'OUT'
 
-    if (!employeeId || !password || !['IN', 'OUT'].includes(action)) {
+    if (!employeeId || !['IN', 'OUT'].includes(action)) {
       return NextResponse.json({ error: 'Missing required fields or invalid action' }, { status: 400 });
     }
 
@@ -66,8 +66,19 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
     }
 
-    if (employee.password !== password) {
-      return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+    // Verify password OR check if the logged in user is the same employee
+    if (password) {
+      if (employee.password !== password) {
+        return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+      }
+    } else {
+      // If no password provided, ensure the current session belongs to this employee
+      const { cookies } = require('next/headers');
+      const cookieStore = await cookies();
+      const token = cookieStore.get('auth_token');
+      if (!token || token.value !== String(employeeId)) {
+        return NextResponse.json({ error: 'Unauthorized to punch clock without password' }, { status: 401 });
+      }
     }
 
     if (!employee.isActive) {
