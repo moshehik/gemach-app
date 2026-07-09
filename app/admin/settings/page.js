@@ -6,7 +6,8 @@ export default function SettingsPage() {
   const [settings, setSettings] = useState({
     BUFFER_DAYS: '7',
     nedarim_plus_terminal: '',
-    ENABLE_SET_DISCOUNTS: 'false'
+    ENABLE_SET_DISCOUNTS: 'false',
+    require_login: 'false'
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -44,7 +45,8 @@ export default function SettingsPage() {
         'BUFFER_DAYS': 'ימי מרווח להזמנה',
         'PAYMENT_APPROVAL_LEVEL': 'אישור תשלום ללא העברת אשראי',
         'nedarim_plus_terminal': 'קוד מוסד נדרים פלוס',
-        'ENABLE_SET_DISCOUNTS': 'הפעל מבצע סטים'
+        'ENABLE_SET_DISCOUNTS': 'הפעל מבצע סטים',
+        'require_login': 'דרוש התחברות עם קוד עובד וסיסמה'
       };
       
       const payload = Object.entries(settings).map(([key, value]) => ({
@@ -126,6 +128,22 @@ export default function SettingsPage() {
             </label>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', marginRight: '2rem' }}>
               אם מופעל, כאשר לקוח מזמין שמלה ראשית, פריטים המוגדרים כ"כלול ב..." יקבלו זיכוי (שורת חיוב שלילית) במעמד חישוב ההזמנה.
+            </p>
+          </div>
+
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#fff3cd', borderRadius: '8px', border: '1px solid #ffeeba' }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 'bold', color: '#856404' }}>
+              <input 
+                type="checkbox" 
+                name="require_login" 
+                checked={settings.require_login === 'true'} 
+                onChange={handleChange}
+                style={{ marginLeft: '0.5rem', width: '20px', height: '20px' }}
+              />
+              דרוש התחברות עם קוד עובד וסיסמה (נעילת מערכת)
+            </label>
+            <p style={{ color: '#856404', fontSize: '0.9rem', marginTop: '0.5rem', marginRight: '2rem' }}>
+              אם מופעל, משתמשים יצטרכו להזין קוד עובד וסיסמה בכניסה למערכת. מומלץ לוודא שמוגדרים עובדים עם סיסמאות לפני הפעלת אפשרות זו.
             </p>
           </div>
 
