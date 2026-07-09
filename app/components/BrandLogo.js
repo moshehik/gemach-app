@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import packageJson from '../../package.json';
+import versionData from '../version.json';
 
 export default function BrandLogo() {
   const [logoUrl, setLogoUrl] = useState('/api/logo');
@@ -28,7 +28,7 @@ export default function BrandLogo() {
 
   const versionText = (
     <div style={{ fontSize: '0.65rem', color: '#888', marginTop: '2px', lineHeight: '1' }}>
-      גירסא {packageJson.version} | 09/07/2026 02:45
+      גירסא {versionData.version} | {versionData.date}
     </div>
   );
 

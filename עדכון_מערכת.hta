@@ -137,6 +137,8 @@
             stream.WriteLine("@echo off");
             stream.WriteLine("chcp 65001 >nul"); // Capture git logs in UTF-8
             stream.WriteLine("echo === Starting Deployment === > deploy_log.txt");
+            stream.WriteLine("echo === Updating Version === >> deploy_log.txt");
+            stream.WriteLine("node scripts\\update_build_time.js >> deploy_log.txt 2>&1");
             stream.WriteLine("git add . >> deploy_log.txt 2>&1");
             stream.WriteLine("echo. >> deploy_log.txt");
             stream.WriteLine("echo === Committing === >> deploy_log.txt");

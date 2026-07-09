@@ -34,23 +34,46 @@ export default function DressesManagement() {
   const [catalogSearch, setCatalogSearch] = useState('');
   const [catalogSort, setCatalogSort] = useState({ key: 'entryDateToRepo', direction: 'desc' });
   const [advancedFilters, setAdvancedFilters] = useState({
-    name: '',
-    size: '',
-    serialNumber: '',
-    rentalsCountMin: '',
-    notInUse: false,
-    inRepair: false,
-    itemDeleted: false
+    name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false
   });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+
+  // Server-side pagination states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(50);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalDresses, setTotalDresses] = useState(0);
 
   const fetchDresses = async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/dresses');
+      const queryParams = new URLSearchParams({
+        page,
+        limit,
+        filterStatus,
+        search: catalogSearch,
+        sortKey: catalogSort.key,
+        sortDir: catalogSort.direction,
+        advName: advancedFilters.name,
+        advSize: advancedFilters.size,
+        advSerial: advancedFilters.serialNumber,
+        advRentalsCountMin: advancedFilters.rentalsCountMin,
+        advNotInUse: advancedFilters.notInUse,
+        advInRepair: advancedFilters.inRepair,
+        advItemDeleted: advancedFilters.itemDeleted
+      });
+
+      const res = await fetch(`/api/dresses?${queryParams.toString()}`);
       const data = await res.json();
-      if (Array.isArray(data)) {
+      if (data && Array.isArray(data.data)) {
+        setDresses(data.data);
+        setTotalPages(data.totalPages || 1);
+        setTotalDresses(data.total || 0);
+      } else if (Array.isArray(data)) {
+        // Fallback if API wasn't updated
         setDresses(data);
+        setTotalPages(1);
+        setTotalDresses(data.length);
       } else {
         console.error('API returned non-array:', data);
         setDresses([]);
@@ -85,10 +108,21 @@ export default function DressesManagement() {
   };
 
   useEffect(() => {
-    fetchDresses();
     fetchSettings();
     fetchCategories();
   }, []);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      fetchDresses();
+    }, 400); // Debounce API calls
+    return () => clearTimeout(handler);
+  }, [page, limit, filterStatus, catalogSearch, catalogSort, advancedFilters]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1);
+  }, [filterStatus, catalogSearch, catalogSort, advancedFilters]);
 
   const handleEditClick = (dress) => {
     setEditingDress({ ...dress });
@@ -529,60 +563,7 @@ export default function DressesManagement() {
     return null;
   };
 
-  const filteredDresses = dresses.filter(d => {
-    let isActive = true;
-    if (d.exitDateFromRepo) isActive = false;
-    else if (!d.items || d.items.length === 0) isActive = false;
-    else if (!d.items.some(i => !i.notInUse && !i.isDeleted)) isActive = false;
-
-    if (filterStatus === 'deleted' && !d.isDeleted) return false;
-    if (filterStatus === 'inactive' && (d.isDeleted || isActive)) return false;
-    if (filterStatus === 'active' && (d.isDeleted || !isActive)) return false;
-
-    if (advancedFilters.name) {
-      const term = advancedFilters.name.toLowerCase();
-      const matchesName = d.name && d.name.toLowerCase().includes(term);
-      const matchesPrefix = d.barcodePrefix && d.barcodePrefix.toString().includes(term);
-      if (!matchesName && !matchesPrefix) return false;
-    }
-
-    const needsItemFilter = advancedFilters.size || advancedFilters.serialNumber || advancedFilters.rentalsCountMin || advancedFilters.notInUse || advancedFilters.inRepair || advancedFilters.itemDeleted;
-    
-    if (needsItemFilter) {
-      if (!d.items || d.items.length === 0) return false;
-      const hasMatchingItem = d.items.some(item => {
-        if (advancedFilters.size && (!item.sizeText || !item.sizeText.includes(advancedFilters.size))) return false;
-        if (advancedFilters.serialNumber && (!item.serialNumber || item.serialNumber.toString() !== advancedFilters.serialNumber)) return false;
-        if (advancedFilters.rentalsCountMin && ((item.rentalsCount || 0) < parseInt(advancedFilters.rentalsCountMin))) return false;
-        if (advancedFilters.notInUse && !item.notInUse) return false;
-        if (advancedFilters.inRepair && !item.inRepair) return false;
-        if (advancedFilters.itemDeleted && !item.isDeleted) return false;
-        return true;
-      });
-      if (!hasMatchingItem) return false;
-    }
-
-    if (catalogSearch) {
-      const term = catalogSearch.toLowerCase();
-      const matchesName = d.name && d.name.toLowerCase().includes(term);
-      const matchesPrefix = d.barcodePrefix && d.barcodePrefix.toString().includes(term);
-      const matchesCategory = d.priceCategory && d.priceCategory.toLowerCase().includes(term);
-      const matchesNotes = d.notes && d.notes.toLowerCase().includes(term);
-      if (!matchesName && !matchesPrefix && !matchesCategory && !matchesNotes) return false;
-    }
-    return true;
-  }).sort((a, b) => {
-    if (!catalogSort.key) return 0;
-    let aVal = a[catalogSort.key] || '';
-    let bVal = b[catalogSort.key] || '';
-    if (catalogSort.key === 'itemsCount') {
-      aVal = a.items?.filter(i => !i.isDeleted).length || 0;
-      bVal = b.items?.filter(i => !i.isDeleted).length || 0;
-    }
-    if (aVal < bVal) return catalogSort.direction === 'asc' ? -1 : 1;
-    if (aVal > bVal) return catalogSort.direction === 'asc' ? 1 : -1;
-    return 0;
-  });
+  const filteredDresses = dresses;
 
   const handleCatalogSort = (key) => {
     let direction = 'asc';
@@ -810,6 +791,28 @@ export default function DressesManagement() {
                 ))}
               </tbody>
             </table>
+            
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'white', borderTop: '1px solid #e0e0e0', borderRadius: '0 0 12px 12px' }}>
+                <button 
+                  onClick={() => setPage(p => Math.max(1, p - 1))} 
+                  disabled={page === 1}
+                  className="btn btn-outline"
+                  style={{ padding: '0.4rem 1rem' }}
+                >
+                  הקודם
+                </button>
+                <span style={{ fontWeight: 'bold' }}>עמוד {page} מתוך {totalPages} (סה"כ {totalDresses} תוצאות)</span>
+                <button 
+                  onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
+                  disabled={page === totalPages}
+                  className="btn btn-outline"
+                  style={{ padding: '0.4rem 1rem' }}
+                >
+                  הבא
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>
