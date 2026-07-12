@@ -521,16 +521,16 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
             <div className="p-6 overflow-y-auto max-h-[70vh]">
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <div className="text-xs text-slate-500 mb-1">תאריך אירוע (לועזי)</div>
-                  <div className="font-semibold text-slate-700">{selectedOrder?.eventDate ? new Date(selectedOrder.eventDate).toLocaleDateString('he-IL') : '-'}</div>
+                  <div className="text-xs text-slate-500 mb-1">תאריך אירוע</div>
+                  <div className="font-semibold text-slate-700">{selectedOrder?.eventDate ? `${new Date(selectedOrder.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(selectedOrder.eventDate)})` : '-'}</div>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="text-xs text-slate-500 mb-1">תאריך לקיחה</div>
-                  <div className="font-semibold text-slate-700">{itemDetails.item.takenDate ? new Date(itemDetails.item.takenDate).toLocaleDateString('he-IL') : '-'}</div>
+                  <div className="font-semibold text-slate-700">{itemDetails.item.takenDate ? new Date(itemDetails.item.takenDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</div>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="text-xs text-slate-500 mb-1">תאריך החזרה</div>
-                  <div className="font-semibold text-slate-700">{itemDetails.item.returnDate ? new Date(itemDetails.item.returnDate).toLocaleDateString('he-IL') : '-'}</div>
+                  <div className="font-semibold text-slate-700">{itemDetails.item.returnDate ? new Date(itemDetails.item.returnDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</div>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="text-xs text-slate-500 mb-1">חזר תקין?</div>

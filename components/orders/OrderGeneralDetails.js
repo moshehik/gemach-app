@@ -207,7 +207,7 @@ export default function OrderGeneralDetails({ order, onOrderChange }) {
               <div>
                 <span style={{...labelStyle, color: '#64748b'}}>תאריך אירוע:</span>
                 <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a' }}>
-                  {order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'לא נבחר'}
+                  {order.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.eventDate)})` : 'לא נבחר'}
                 </div>
               </div>
               {order.isAbroad && (

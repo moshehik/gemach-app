@@ -124,15 +124,19 @@ export async function GET(request) {
     let finalOrderIds = [];
 
     if (sort === 'eventDate' || filterStatus === 'unpaid') {
+      const minimalSelect = {
+        orderId: true,
+        eventDate: true
+      };
+      if (filterStatus === 'unpaid') {
+        minimalSelect.totalAmount = true;
+        minimalSelect.payments = { select: { amount: true, isDeleted: true } };
+        minimalSelect.obligations = { select: { amount: true, isDeleted: true } };
+      }
+
       const minimalOrders = await prisma.order.findMany({
         where,
-        select: {
-          orderId: true,
-          eventDate: true,
-          totalAmount: true,
-          payments: { select: { amount: true, isDeleted: true } },
-          obligations: { select: { amount: true, isDeleted: true } }
-        },
+        select: minimalSelect,
         orderBy: sort !== 'eventDate' ? { [sort]: order } : undefined
       });
 
@@ -210,10 +214,27 @@ export async function GET(request) {
         payments: true,
         obligations: true,
         items: {
-          include: {
+          select: {
+            id: true,
+            barcodePrefix: true,
+            sizeText: true,
+            description: true,
+            price: true,
+            isTaken: true,
+            isReturned: true,
+            isDeleted: true,
+            neckAlteration: true,
+            sleeveAlteration: true,
+            lengthAlteration: true,
+            alterationDetails: true,
+            dressItemId: true,
             dressItem: {
-              include: {
-                dress: true
+              select: {
+                barcodePrefix: true,
+                sizeText: true,
+                dress: {
+                  select: { id: true, name: true, barcodePrefix: true }
+                }
               }
             }
           }

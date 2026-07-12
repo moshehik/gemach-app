@@ -172,7 +172,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       isDeleted: false,
       createdAt: new Date().toISOString()
     };
-    onItemsChange([...items, newItem]);
+    onItemsChange([newItem, ...items]);
   };
 
   const showItemDetails = async (item) => {

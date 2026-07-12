@@ -99,10 +99,10 @@ export async function GET(request, { params }) {
       }
       
       let finalDescription = item.description || 'פריט כללי';
-      if (item.dressItemId) {
-        finalDescription = dressName 
-          ? `${dressName} (קוד: ${prefix || ''})` 
-          : (item.description || 'פריט כללי');
+      if (dressName) {
+        finalDescription = `${dressName} (קוד: ${prefix || ''})`;
+      } else if (item.dressItemId && item.description) {
+        finalDescription = item.description;
       } else if (item.description) {
         finalDescription = item.description;
       }
@@ -308,10 +308,10 @@ export async function PUT(request, { params }) {
       }
       
       let finalDescription = item.description || 'פריט כללי';
-      if (item.dressItemId) {
-        finalDescription = dressName 
-          ? `${dressName} (קוד: ${prefix || ''})` 
-          : (item.description || 'פריט כללי');
+      if (dressName) {
+        finalDescription = `${dressName} (קוד: ${prefix || ''})`;
+      } else if (item.dressItemId && item.description) {
+        finalDescription = item.description;
       } else if (item.description) {
         finalDescription = item.description;
       }

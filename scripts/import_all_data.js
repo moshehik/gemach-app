@@ -162,10 +162,9 @@ async function main() {
     if (!i['קוד_הזמנה'] || !validOrderIds.has(i['קוד_הזמנה'])) continue;
     
     itemBatch.push({
-      id: i['קוד_שמלה'] || undefined, // use existing ID if valid, or let autoinc if missing ID? Actually let's trust DB to auto-inc if we omit or provide. Wait, 'קוד_שמלה' in הזמנות_פרטים is not its ID. 'קוד_פריט_מוזמן' might be the ID. In the old DB, ID is usually 'קוד'. Let's check 'קוד'. 
-      // If we don't supply id, it will auto increment. But wait, we need 'id' to map properly? Let's just not supply id to let Prisma generate it.
+      id: i['קוד_פריט'] ? parseInt(i['קוד_פריט']) : undefined,
       orderId: i['קוד_הזמנה'],
-      dressItemId: null, // Keep null for now since IDs changed during initial DressItem migration
+      dressItemId: null,
       quantity: i['כמות'] || 1,
       description: (i['פירוט_תיקון'] ? String(i['פירוט_תיקון']) : '') + (i['בר_קוד_קידומת'] ? ` (קידומת: ${i['בר_קוד_קידומת']})` : ''),
       sizeText: i['מידה'] ? String(i['מידה']) : null,
@@ -253,34 +252,7 @@ async function main() {
     console.log(`Inserted ${count} / ${actualPaymentBatch.length} actual payments...`);
   }
 
-  console.log('Linking orphaned OrderItems to DressItems based on barcodePrefix...');
-  const orphanedItems = await prisma.orderItem.findMany({
-    where: { dressItemId: null, barcodePrefix: { not: null } }
-  });
-  
-  let linkedCount = 0;
-  // Optimize by fetching all possible items into memory first since there are few models
-  const allDressItems = await prisma.dressItem.findMany({
-    where: { barcodePrefix: { not: null } },
-    select: { id: true, barcodePrefix: true, sizeText: true }
-  });
-  
-  for (const item of orphanedItems) {
-    if (!item.barcodePrefix) continue;
-    // exact match
-    let match = allDressItems.find(d => d.barcodePrefix === item.barcodePrefix && d.sizeText === item.sizeText);
-    // fallback match
-    if (!match) match = allDressItems.find(d => d.barcodePrefix === item.barcodePrefix);
-    
-    if (match) {
-      await prisma.orderItem.update({
-        where: { id: item.id },
-        data: { dressItemId: match.id }
-      });
-      linkedCount++;
-    }
-  }
-  console.log(`Successfully linked ${linkedCount} orphaned OrderItems!`);
+  console.log('Skipping orphan linking for now...');
 
   console.log('All migrations completed successfully!');
   await prisma.$disconnect();

@@ -44,7 +44,16 @@ export async function POST(request) {
       data: { location: 'מושכר' }
     });
 
-    await prisma.$transaction([updateItems, updateLocations]);
+    const auditLogs = pendingItems.map(item => ({
+      entityType: 'OrderItem',
+      entityId: item.id,
+      action: 'CONFIRM_RENTAL',
+      changesJson: JSON.stringify({ isTaken: { from: false, to: true }, takenDate: { from: null, to: new Date() } })
+    }));
+    
+    const createLogs = prisma.auditLog.createMany({ data: auditLogs });
+
+    await prisma.$transaction([updateItems, updateLocations, createLogs]);
 
     return NextResponse.json({ success: true, count: pendingItems.length });
   } catch (error) {

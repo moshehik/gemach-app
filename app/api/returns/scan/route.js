@@ -60,6 +60,15 @@ export async function POST(request) {
       });
     }
 
+    await prisma.auditLog.create({
+      data: {
+        entityType: 'OrderItem',
+        entityId: updatedItem.id,
+        action: 'RETURN_RENTAL',
+        changesJson: JSON.stringify({ isReturned: { from: false, to: true }, returnDate: { from: null, to: updatedItem.returnDate } })
+      }
+    });
+
     return NextResponse.json({ 
       success: true, 
       orderId: updatedItem.orderId,
