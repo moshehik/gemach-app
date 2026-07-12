@@ -67,7 +67,7 @@ export async function GET(request, { params }) {
              ob.productName = 'חיוב אוטומטי';
          }
       } else {
-         ob.productName = 'חיוב ידני';
+         ob.productName = ob.description ? ob.description : 'חיוב ידני';
       }
       return ob;
     });
@@ -93,15 +93,23 @@ export async function GET(request, { params }) {
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
-      if (!dressName && prefix) {
+      
+      if (!dressName && prefix && item.dressItemId) {
         dressName = dressModelMap.get(prefix);
+      }
+      
+      let finalDescription = item.description || 'פריט כללי';
+      if (item.dressItemId) {
+        finalDescription = dressName 
+          ? `${dressName} (קוד: ${prefix || ''})` 
+          : (item.description || 'פריט כללי');
+      } else if (item.description) {
+        finalDescription = item.description;
       }
       
       return {
         ...item,
-        description: dressName 
-          ? `${dressName} (קוד: ${prefix || ''})` 
-          : (item.description || 'פריט כללי')
+        description: finalDescription
       };
     });
 
@@ -294,15 +302,23 @@ export async function PUT(request, { params }) {
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
-      if (!dressName && prefix) {
+      
+      if (!dressName && prefix && item.dressItemId) {
         dressName = dressModelMap.get(prefix);
+      }
+      
+      let finalDescription = item.description || 'פריט כללי';
+      if (item.dressItemId) {
+        finalDescription = dressName 
+          ? `${dressName} (קוד: ${prefix || ''})` 
+          : (item.description || 'פריט כללי');
+      } else if (item.description) {
+        finalDescription = item.description;
       }
       
       return {
         ...item,
-        description: dressName 
-          ? `${dressName} (קוד: ${prefix || ''})` 
-          : (item.description || 'פריט כללי')
+        description: finalDescription
       };
     });
 
@@ -331,7 +347,7 @@ export async function PUT(request, { params }) {
              ob.productName = 'חיוב אוטומטי';
          }
       } else {
-         ob.productName = 'חיוב ידני';
+         ob.productName = ob.description ? ob.description : 'חיוב ידני';
       }
       return ob;
     });

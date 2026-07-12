@@ -96,6 +96,15 @@ export async function POST(request, { params }) {
     });
     
     const itemIds = items.map(i => i.id);
+    const uniquePrefixes = new Set();
+    items.forEach(i => {
+      const dressName = i.dressItem?.dress?.name;
+      const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+      if (!dressName && prefix) {
+        uniquePrefixes.add(prefix);
+      }
+    });
+
     const auditLogs = await prisma.auditLog.findMany({
       where: {
         entityType: 'OrderItem',
@@ -104,13 +113,68 @@ export async function POST(request, { params }) {
       orderBy: { createdAt: 'desc' }
     });
     
-    const itemsWithLogs = items.map(item => ({
-      ...item,
-      auditLogs: auditLogs.filter(log => log.entityId === item.id)
-    }));
+    let dressModels = [];
+    if (uniquePrefixes.size > 0) {
+      dressModels = await prisma.dressModel.findMany({
+        where: { barcodePrefix: { in: Array.from(uniquePrefixes) } },
+        select: { barcodePrefix: true, name: true }
+      });
+    }
+    const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
+
+    const itemsWithLogs = items.map(item => {
+      let dressName = item.dressItem?.dress?.name;
+      const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
+      
+      if (!dressName && prefix && item.dressItemId) {
+        dressName = dressModelMap.get(prefix);
+      }
+      
+      let finalDescription = item.description || 'פריט כללי';
+      if (item.dressItemId) {
+        finalDescription = dressName 
+          ? `${dressName} (קוד: ${prefix || ''})` 
+          : (item.description || 'פריט כללי');
+      } else if (item.description) {
+        finalDescription = item.description;
+      }
+
+      return {
+        ...item,
+        description: finalDescription,
+        auditLogs: auditLogs.filter(log => log.entityId === item.id)
+      };
+    });
 
     const payments = await prisma.payment.findMany({ where: { orderId: parsedId } });
-    const obligations = await prisma.paymentObligation.findMany({ where: { orderId: parsedId } });
+    let obligations = await prisma.paymentObligation.findMany({ where: { orderId: parsedId } });
+    const priceList = await prisma.priceList.findMany();
+    
+    obligations = obligations.map(ob => {
+      if (ob.isManual === false || ob.productId) {
+         ob.isManual = false;
+         if (ob.productId) {
+             const prod = priceList.find(p => p.id === ob.productId);
+             if (!ob.description) ob.description = prod ? prod.description : 'חיוב מחירון';
+             ob.productName = prod ? (prod.description || prod.category || 'חיוב מחירון') : 'חיוב אוטומטי';
+             if (prod) {
+                 ob.priceCategory = prod.category;
+                 ob.priceDescription = prod.description;
+             }
+         } else if (ob.description && ob.description.includes('תיקון')) {
+             ob.productName = 'תיקון';
+         } else if (ob.description && ob.description.includes('דמי ביטול')) {
+             ob.productName = 'דמי ביטול';
+         } else if (ob.description && ob.description.includes('זיכוי')) {
+             ob.productName = 'זיכוי';
+         } else {
+             ob.productName = 'חיוב אוטומטי';
+         }
+      } else {
+         ob.productName = ob.description ? ob.description : 'חיוב ידני';
+      }
+      return ob;
+    });
     
     finalOrder = { ...finalOrder, items: itemsWithLogs, payments, obligations };
 

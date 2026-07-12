@@ -1,4 +1,4 @@
-﻿{
+{
   "Customer": {
     "id": {
       "totalCount": 20816,
@@ -59,31 +59,31 @@
   },
   "AuditLog": {
     "id": {
-      "totalCount": 45,
-      "distinctCount": 45
+      "totalCount": 47,
+      "distinctCount": 47
     },
     "entityType": {
-      "totalCount": 45,
+      "totalCount": 47,
       "distinctCount": 3
     },
     "entityId": {
-      "totalCount": 45,
-      "distinctCount": 37
+      "totalCount": 47,
+      "distinctCount": 39
     },
     "action": {
-      "totalCount": 45,
+      "totalCount": 47,
       "distinctCount": 3
     },
     "changesJson": {
-      "totalCount": 45,
-      "distinctCount": 42
+      "totalCount": 47,
+      "distinctCount": 44
     },
     "createdAt": {
-      "totalCount": 45,
-      "distinctCount": 45
+      "totalCount": 47,
+      "distinctCount": 47
     },
     "employeeId": {
-      "totalCount": 35,
+      "totalCount": 37,
       "distinctCount": 1
     }
   },
@@ -457,78 +457,85 @@
   },
   "Payment": {
     "id": {
-      "totalCount": 41746,
-      "distinctCount": 41746
+      "totalCount": 0,
+      "distinctCount": 0
     },
     "customerId": {
-      "totalCount": 41741,
-      "distinctCount": 17628
+      "totalCount": 0,
+      "distinctCount": 0
     },
     "orderId": {
-      "totalCount": 41746,
-      "distinctCount": 23568
+      "totalCount": 0,
+      "distinctCount": 0
     },
     "amount": {
-      "totalCount": 41746,
-      "distinctCount": 395
+      "totalCount": 0,
+      "distinctCount": 0
     },
     "paymentDate": {
-      "totalCount": 41746,
-      "distinctCount": 41656
+      "totalCount": 0,
+      "distinctCount": 0
     },
     "paymentMethod": {
-      "totalCount": 41746,
-      "distinctCount": 3
+      "totalCount": 0,
+      "distinctCount": 0
     },
     "notes": {
-      "totalCount": 28911,
-      "distinctCount": 9947
+      "totalCount": 0,
+      "distinctCount": 0
     },
     "isDeleted": {
-      "totalCount": 41746,
-      "distinctCount": 1
+      "totalCount": 0,
+      "distinctCount": 0
     }
   },
   "PaymentObligation": {
     "id": {
-      "totalCount": 142071,
-      "distinctCount": 142071
+      "totalCount": 32000,
+      "distinctCount": 32000
     },
     "orderId": {
-      "totalCount": 142071,
-      "distinctCount": 24814
+      "totalCount": 32000,
+      "distinctCount": 8457
     },
     "productId": {
-      "totalCount": 142071,
-      "distinctCount": 9
+      "totalCount": 32000,
+      "distinctCount": 7
     },
     "amount": {
-      "totalCount": 142071,
-      "distinctCount": 296
+      "totalCount": 32000,
+      "distinctCount": 230
     },
     "quantity": {
-      "totalCount": 142071,
-      "distinctCount": 33
+      "totalCount": 32000,
+      "distinctCount": 32
     },
     "description": {
-      "totalCount": 34114,
-      "distinctCount": 1499
+      "totalCount": 6835,
+      "distinctCount": 323
     },
     "createdAt": {
-      "totalCount": 142071,
-      "distinctCount": 37623
+      "totalCount": 32000,
+      "distinctCount": 370
     },
     "isDeleted": {
-      "totalCount": 142071,
-      "distinctCount": 2
+      "totalCount": 32000,
+      "distinctCount": 1
     },
     "isRefund": {
-      "totalCount": 142071,
+      "totalCount": 32000,
       "distinctCount": 2
     },
     "isManual": {
-      "totalCount": 142071,
+      "totalCount": 32000,
       "distinctCount": 1
+    },
+    "orderItemId": {
+      "totalCount": 0,
+      "distinctCount": 0
+    },
+    "orderItem": {
+      "error": "\nInvalid `prisma.$queryRawUnsafe()` invocation:\n\n\n"
     }
   },
   "OrderItem": {
@@ -541,8 +548,8 @@
       "distinctCount": 25005
     },
     "dressItemId": {
-      "totalCount": 1124,
-      "distinctCount": 263
+      "totalCount": 0,
+      "distinctCount": 0
     },
     "price": {
       "totalCount": 0,
@@ -745,31 +752,31 @@
   },
   "PageVisitLog": {
     "id": {
-      "totalCount": 962,
-      "distinctCount": 962
+      "totalCount": 983,
+      "distinctCount": 983
     },
     "pageUrl": {
-      "totalCount": 962,
-      "distinctCount": 79
+      "totalCount": 983,
+      "distinctCount": 81
     },
     "employeeId": {
-      "totalCount": 639,
+      "totalCount": 660,
       "distinctCount": 1
     },
     "employeeName": {
-      "totalCount": 962,
+      "totalCount": 983,
       "distinctCount": 2
     },
     "timestamp": {
-      "totalCount": 962,
-      "distinctCount": 950
+      "totalCount": 983,
+      "distinctCount": 971
     },
     "loadingError": {
       "totalCount": 10,
       "distinctCount": 9
     },
     "isGuest": {
-      "totalCount": 962,
+      "totalCount": 983,
       "distinctCount": 2
     }
   },

@@ -196,6 +196,8 @@ async function main() {
     console.log(`Inserted ${count} / ${itemBatch.length} items...`);
   }
 
+  const validOrderItemIds = new Set(itemBatch.map(i => i.id));
+
   console.log('Migrating Payments & Obligations...');
   const paymentBatch = [];
   
@@ -210,7 +212,8 @@ async function main() {
       description: p['תיאור'] ? String(p['תיאור']) : null,
       createdAt: p['תאריך_תשלום'] ? excelDateToJSDate(p['תאריך_תשלום']) : new Date(),
       isDeleted: isTrue(p['פריט_מחוק']),
-      isRefund: isTrue(p['זיכוי']) || isTrue(p['זיכוי_מבוטל']) || (p['מחיר'] && parseFloat(p['מחיר']) < 0) || (p['כמות'] && parseInt(p['כמות']) < 0)
+      isRefund: isTrue(p['זיכוי']) || isTrue(p['זיכוי_מבוטל']) || (p['מחיר'] && parseFloat(p['מחיר']) < 0) || (p['כמות'] && parseInt(p['כמות']) < 0),
+      orderItemId: (p['קוד_פריט'] && validOrderItemIds.has(parseInt(p['קוד_פריט']))) ? parseInt(p['קוד_פריט']) : null
     });
   }
 

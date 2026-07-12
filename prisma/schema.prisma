@@ -97,7 +97,7 @@ model Notification {
 }
 
 model Shift {
-  id         Int       @id @default(autoincrement()) // קוד
+  id          Int        @id @default(autoincrement()) // קוד_פריט
   employeeId Int // קוד_עובד
   employee   Employee  @relation(fields: [employeeId], references: [id])
   entryTime  DateTime? // שעת_כניסה
@@ -224,16 +224,21 @@ model PaymentObligation {
   createdAt   DateTime @default(now())
   isDeleted   Boolean  @default(false) // נמחק
   isRefund    Boolean  @default(false) // זיכוי
-  isManual    Boolean  @default(true) // חיוב ידני
+  isManual    Boolean  @default(true) // האם הוזן ידנית
+
+  orderItemId Int? // קוד_פריט
+  orderItem   OrderItem? @relation(fields: [orderItemId], references: [id])
 
   @@index([orderId])
+  @@index([orderItemId])
 }
 
 model OrderItem {
-  id          Int        @id @default(autoincrement()) // קוד
+  id          Int        @id @default(autoincrement()) // קוד_פריט
   orderId     Int? // קוד_הזמנה (relates to Order.orderId)
   order       Order?     @relation(fields: [orderId], references: [orderId])
-  dressItemId Int? // קוד_פריט
+  dressItemId Int? // קישור לשמלה
+  obligations PaymentObligation[]
   dressItem   DressItem? @relation(fields: [dressItemId], references: [id])
   price       Float? // מחיר (final price used historically)
   quantity    Int?       @default(1) // כמות - תמיד 1
