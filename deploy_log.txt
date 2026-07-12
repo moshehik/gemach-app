@@ -1,3 +1,113 @@
 === Starting Deployment === 
 === Updating Version === 
 Successfully updated version to 0.1.5 and build time to 12/07/2026 04:48
+warning: in the working copy of 'app/version.json', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'deploy_log.txt', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'package.json', LF will be replaced by CRLF the next time Git touches it
+ 
+=== Committing === 
+error: unable to update .git/info/refs: No such file or directory
+[main 59d4962] Auto Update
+ 178 files changed, 11824 insertions(+), 2690 deletions(-)
+ create mode 100644 access_counts.json
+ create mode 100644 app/admin/data-explorer/full-view/desktop.ini
+ create mode 100644 app/admin/data-explorer/full-view/page.js
+ create mode 100644 app/admin/labels/desktop.ini
+ create mode 100644 app/admin/labels/page.js
+ create mode 100644 app/api/admin/ai-sql-generate/desktop.ini
+ create mode 100644 app/api/admin/ai-sql-generate/route.js
+ create mode 100644 app/api/admin/database/export/desktop.ini
+ create mode 100644 app/api/admin/query-log/desktop.ini
+ create mode 100644 app/api/admin/query-log/route.js
+ create mode 100644 app/api/audit/chat/desktop.ini
+ create mode 100644 app/api/audit/chat/route.js
+ create mode 100644 app/api/export-migration-report/desktop.ini
+ create mode 100644 app/api/export-migration-report/route.js
+ create mode 100644 app/api/me/desktop.ini
+ create mode 100644 app/api/notifications/archive/desktop.ini
+ create mode 100644 app/api/notifications/archive/route.js
+ create mode 100644 app/api/notifications/desktop.ini
+ create mode 100644 app/api/notifications/read/desktop.ini
+ create mode 100644 app/api/notifications/read/route.js
+ create mode 100644 app/api/notifications/route.js
+ create mode 100644 app/api/notifications/tags/desktop.ini
+ create mode 100644 app/api/notifications/tags/route.js
+ create mode 100644 app/api/orders/[id]/employees/desktop.ini
+ create mode 100644 app/api/orders/[id]/employees/route.js
+ create mode 100644 app/api/settings/labels/desktop.ini
+ create mode 100644 app/api/settings/labels/route.js
+ create mode 100644 app/board/board.module.css
+ create mode 100644 app/board/desktop.ini
+ create mode 100644 app/board/page.js
+ create mode 100644 app/components/AppNavLinks.js
+ create mode 100644 app/components/LabelsContext.js
+ create mode 100644 app/components/NotificationBell.js
+ create mode 100644 app/components/SendMessageModal.js
+ create mode 100644 app/components/ThemeToggle.js
+ delete mode 100644 app/lib/inventory.js
+ create mode 100644 app/messages/desktop.ini
+ create mode 100644 app/messages/page.js
+ create mode 100644 check_access_data.js
+ create mode 100644 check_orphans.js
+ create mode 100644 check_pg_data.js
+ create mode 100644 check_pg_data_v2.js
+ create mode 100644 check_prisma.js
+ create mode 100644 components/orders/ActiveEmployeesModal.js
+ create mode 100644 components/orders/OrderRentalsManager.js
+ create mode 100644 components/orders/RentalReturnModal.js
+ create mode 100644 data_check.json
+ create mode 100644 data_check_v2.json
+ create mode 100644 extract_diffs.js
+ create mode 100644 generate_report.js
+ create mode 100644 generate_report_v2.js
+ create mode 100644 migration_status.json
+ create mode 100644 public/rental-modal.css
+ create mode 100644 replace_colors.js
+ create mode 100644 run_deploy_hidden.bat
+ create mode 100644 scratch/check_api.js
+ create mode 100644 scratch/check_bookings.js
+ create mode 100644 scratch/check_customer_api.js
+ create mode 100644 scratch/check_inventory_bug.js
+ create mode 100644 scratch/check_location.js
+ create mode 100644 scratch/check_models.js
+ create mode 100644 scratch/check_prisma_query.js
+ create mode 100644 scratch/fix_data.js
+ create mode 100644 scratch/test_api_models.js
+ create mode 100644 scratch/test_bulk.js
+ create mode 100644 scratch/test_bulk_inventory.js
+ create mode 100644 scratch/test_calculate.js
+ create mode 100644 scratch/test_dresses.js
+ create mode 100644 scratch/test_emp.js
+ create mode 100644 scratch/test_model_fetch.js
+ create mode 100644 scratch/test_notif.js
+ create mode 100644 scratch/test_post_notif.js
+ create mode 100644 scratch/test_prisma_notif.js
+ create mode 100644 scratch/test_prisma_outgoing.js
+ create mode 100644 scratch/test_query.js
+ create mode 100644 scratch/test_query_optimized.js
+ create mode 100644 scratch/test_validate.js
+ create mode 100644 scripts/combine_emails.js
+ create mode 100644 scripts/fix_amounts.js
+ create mode 100644 scripts/fix_missing_customer_fields.js
+ create mode 100644 scripts/fix_payments.js
+ create mode 100644 scripts/migrate_employee_and_deleted.js
+ create mode 100644 scripts/update_dress_items_dates.js
+ create mode 100644 test_api_logic.js
+ create mode 100644 test_inventory_overlap.js
+ create mode 100644 test_inventory_overlap2.js
+ create mode 100644 test_inventory_overlap3.js
+ create mode 100644 test_inventory_overlap4.js
+ create mode 100644 test_inventory_overlap5.js
+ create mode 100644 test_inventory_overlap6.js
+ create mode 100644 test_inventory_overlap9.js
+ create mode 100644 test_orders_query.js
+ create mode 100644 test_overlap.js
+ create mode 100644 test_prisma_null.js
+ create mode 100644 test_validate_inventory.js
+ create mode 100644 update_history.js
+ 
+=== Pushing to GitHub === 
+To https://github.com/moshehik/gemach-app.git
+   6b246b3..59d4962  main -> main
+ 
+=== DONE_UPLOADING === 
