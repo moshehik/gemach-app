@@ -9,12 +9,29 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const entityType = searchParams.get('entityType');
     const entityId = searchParams.get('entityId');
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const action = searchParams.get('action');
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const search = searchParams.get('search');
+    
+    const limit = parseInt(searchParams.get('limit') || '100', 10);
     const page = parseInt(searchParams.get('page') || '1', 10);
     
     let where = {};
     if (entityType) where.entityType = entityType;
     if (entityId) where.entityId = parseInt(entityId, 10);
+    if (action) where.action = action;
+    
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt.gte = new Date(startDate);
+      if (endDate) where.createdAt.lte = new Date(endDate);
+    }
+    
+    if (search) {
+      // Prisma string search inside changesJson
+      where.changesJson = { contains: search, mode: 'insensitive' };
+    }
     
     const logs = await prisma.auditLog.findMany({
       where,

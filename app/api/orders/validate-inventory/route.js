@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export async function POST(request) {
   try {
     const data = await request.json();
-    const { items, eventDate, isWeekdayEvent, isAbroad, fromDate, toDate, orderId } = data;
+    const { items, eventDate, isAbroad, fromDate, toDate, orderId } = data;
 
     if (!items || !Array.isArray(items) || items.length === 0) {
       return NextResponse.json({ valid: true, errors: [] });

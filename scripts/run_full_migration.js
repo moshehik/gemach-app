@@ -65,6 +65,9 @@ async function main() {
     updateStatus('running', 50, 'מייבא נתוני בסיס (לקוחות, מלאי)...');
     runCommand('node scripts/migrate.js', appRoot);
 
+    updateStatus('running', 60, 'מייבא עובדים ומשמרות...');
+    runCommand('node scripts/migrate_employees.js', appRoot);
+
     updateStatus('running', 70, 'מייבא הזמנות ותשלומים (עשוי לקחת מספר דקות)...');
     runCommand('node scripts/import_all_data.js', appRoot);
 

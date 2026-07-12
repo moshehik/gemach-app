@@ -19,6 +19,10 @@ export default function EmployeePage({ params }) {
   const [editingShiftId, setEditingShiftId] = useState(null);
   const [editShiftData, setEditShiftData] = useState({});
   const [isAddingShift, setIsAddingShift] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [oldPasswordInput, setOldPasswordInput] = useState('');
+  const [newPasswordInput, setNewPasswordInput] = useState('');
 
   useEffect(() => {
     fetchEmployee();
@@ -31,6 +35,7 @@ export default function EmployeePage({ params }) {
         email: '', emailSuffix: '', city: '', street: '', houseNum: '', 
         joinDate: '', password: '', roleId: '', hourlyWage: '', 
         travelExpenses: false, paymentMethod: '', notes: '', 
+        themeColor: 'standard', profileImage: '',
         isActive: true, shifts: [] 
       });
       setLoading(false);
@@ -252,36 +257,36 @@ export default function EmployeePage({ params }) {
       )}
 
       {activeTab === 'details' && (
-        <form className="no-print" onSubmit={handleSave} style={{ background: 'white', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+        <form className="no-print" onSubmit={handleSave} style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם פרטי *</label>
-              <input type="text" name="firstName" value={employee.firstName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <input type="text" name="firstName" value={employee.firstName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם משפחה *</label>
-              <input type="text" name="lastName" value={employee.lastName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <input type="text" name="lastName" value={employee.lastName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם מלא (מחושב/לתצוגה)</label>
-              <input type="text" name="fullName" value={employee.fullName || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <input type="text" name="fullName" value={employee.fullName || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>תאריך כניסה לארגון</label>
-              <input type="date" name="joinDate" value={employee.joinDate ? new Date(employee.joinDate).toISOString().split('T')[0] : ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <input type="date" name="joinDate" value={employee.joinDate ? new Date(employee.joinDate).toISOString().split('T')[0] : ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>טלפון נייד *</label>
-              <input type="text" name="phone1" value={employee.phone1 || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <input type="text" name="phone1" value={employee.phone1 || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>טלפון נוסף</label>
-              <input type="text" name="phone2" value={employee.phone2 || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <input type="text" name="phone2" value={employee.phone2 || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>דוא"ל</label>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input type="email" name="email" value={employee.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+                <input type="email" name="email" value={employee.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
                 {employee.email && (
                   <>
                     <button type="button" onClick={() => navigator.clipboard.writeText(employee.email)} title="העתק כתובת מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -321,27 +326,119 @@ export default function EmployeePage({ params }) {
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>עיר</label>
-              <input type="text" name="city" value={employee.city || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <input type="text" name="city" value={employee.city || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>רחוב</label>
-              <input type="text" name="street" value={employee.street || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <input type="text" name="street" value={employee.street || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>בית</label>
-              <input type="text" name="houseNum" value={employee.houseNum || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <input type="text" name="houseNum" value={employee.houseNum || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>סיסמא לשעון נוכחות</label>
-              <input type="text" name="password" value={employee.password || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              {id === 'new' ? (
+                <input type="text" name="password" value={employee.password || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              ) : (
+                <>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input type="password" value={showPassword ? employee.password || '' : '********'} disabled style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: '#f8fafc', color: '#64748b' }} />
+                    <button type="button" onClick={async () => {
+                      if (showPassword) { setShowPassword(false); return; }
+                      const authResult = await window.customAuthPrompt("הזן קוד מנהל לצפייה בסיסמא:", "מנהל");
+                      if (!authResult) return;
+                      try {
+                        const res = await fetch('/api/auth/verify-pin', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+                        });
+                        const data = await res.json();
+                        if (data.success) {
+                          setShowPassword(true);
+                        } else {
+                          window.alert(data.error || 'קוד מנהל שגוי או הרשאה לא מספקת.');
+                        }
+                      } catch (e) {
+                        window.alert('שגיאה באימות מנהל');
+                      }
+                    }} className="btn btn-outline" style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>{showPassword ? 'הסתר' : 'הצג'}</button>
+                    <button type="button" onClick={() => setShowChangePassword(true)} className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>שינוי סיסמא</button>
+                  </div>
+                  
+                  {showChangePassword && (
+                    <div style={{ marginTop: '1rem', padding: '1rem', background: '#f1f5f9', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                      <div style={{ marginBottom: '0.5rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>סיסמא ישנה</label>
+                        <input type="password" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                      </div>
+                      <div style={{ marginBottom: '1rem' }}>
+                        <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>סיסמא חדשה</label>
+                        <input type="password" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                      </div>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
+                        <button type="button" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); }} className="btn" style={{ background: 'white', border: '1px solid #cbd5e1' }}>ביטול</button>
+                        <button type="button" onClick={() => {
+                          if (oldPasswordInput !== employee.password) {
+                              window.alert('הסיסמא הישנה אינה נכונה');
+                              return;
+                          }
+                          if (!newPasswordInput) {
+                              window.alert('יש להזין סיסמא חדשה');
+                              return;
+                          }
+                          setEmployee(prev => ({ ...prev, password: newPasswordInput }));
+                          setShowChangePassword(false);
+                          setOldPasswordInput('');
+                          setNewPasswordInput('');
+                          window.alert('הסיסמא שונתה (לחץ על "שמור פרטים" למטה כדי לשמור)');
+                        }} className="btn btn-primary">אשר שינוי</button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>מספר מחלקה (תפקיד)</label>
-              <input type="number" name="roleId" value={employee.roleId || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+              <input type="number" name="roleId" value={employee.roleId || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            </div>
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>פלטת גוונים מודרנית לפרופיל</label>
+              <select name="themeColor" value={employee.themeColor || 'standard'} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
+                <option value="standard">סטנדרט</option>
+                <option value="dark">מצב לילה</option>
+                <option value="vibrant">צבעוני ומודרני</option>
+                <option value="pastel">גווני פסטל עדינים</option>
+              </select>
+            </div>
+            <div className="form-group">
+              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>תמונת פרופיל / מסמך (העלאת קובץ)</label>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <input type="file" accept="image/*,.pdf" onChange={(e) => {
+                  const file = e.target.files[0];
+                  if (file) {
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      setEmployee(prev => ({ ...prev, profileImage: reader.result }));
+                    };
+                    reader.readAsDataURL(file);
+                  }
+                }} style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+                {employee.profileImage && (
+                  <button type="button" onClick={() => setEmployee(prev => ({ ...prev, profileImage: '' }))} className="btn" style={{ padding: '0.5rem', color: '#d32f2f' }}>הסר</button>
+                )}
+              </div>
+              {employee.profileImage && employee.profileImage.startsWith('data:image') && (
+                <div style={{ marginTop: '0.5rem' }}>
+                  <img src={employee.profileImage} alt="Profile" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--primary-color)' }} />
+                </div>
+              )}
             </div>
             <div className="form-group" style={{ gridColumn: 'span 2' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>הערות</label>
-              <textarea name="notes" value={employee.notes || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc', minHeight: '80px' }} />
+              <textarea name="notes" value={employee.notes || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', minHeight: '80px' }} />
             </div>
           </div>
           
@@ -351,11 +448,11 @@ export default function EmployeePage({ params }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
              <div className="form-group">
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שכר לשעה (₪)</label>
-                <input type="number" step="0.01" name="hourlyWage" value={employee.hourlyWage || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+                <input type="number" step="0.01" name="hourlyWage" value={employee.hourlyWage || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
              </div>
              <div className="form-group">
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>אופן תשלום</label>
-                <input type="text" name="paymentMethod" value={employee.paymentMethod || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc' }} />
+                <input type="text" name="paymentMethod" value={employee.paymentMethod || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
              </div>
              <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.75rem' }}>
                 <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500' }}>
@@ -381,14 +478,14 @@ export default function EmployeePage({ params }) {
       )}
 
       {activeTab === 'attendance' && (
-        <div className="print-area" style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+        <div className="print-area" style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>דוח נוכחות וסיכום - {employee.firstName} {employee.lastName}</h2>
             <div className="no-print" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
               <select 
                 value={filterMonth} 
                 onChange={(e) => setFilterMonth(parseInt(e.target.value, 10))}
-                style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #ccc' }}
+                style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}
               >
                 {Array.from({ length: 12 }).map((_, i) => (
                   <option key={i} value={i}>{new Date(2000, i).toLocaleString('he-IL', { month: 'long' })}</option>
@@ -397,7 +494,7 @@ export default function EmployeePage({ params }) {
               <select 
                 value={filterYear} 
                 onChange={(e) => setFilterYear(parseInt(e.target.value, 10))}
-                style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #ccc' }}
+                style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}
               >
                 {[2024, 2025, 2026, 2027].map(y => (
                   <option key={y} value={y}>{y}</option>
@@ -429,25 +526,25 @@ export default function EmployeePage({ params }) {
               {isAddingShift && (
                 <tr style={{ borderBottom: '1px solid #eee', background: '#f9f9f9' }}>
                   <td style={{ padding: '0.5rem' }}>
-                    <input type="date" name="date" value={editShiftData.date || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                    <input type="date" name="date" value={editShiftData.date || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
-                    <input type="text" name="hebrewDate" value={editShiftData.hebrewDate || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} placeholder="אופציונלי" />
+                    <input type="text" name="hebrewDate" value={editShiftData.hebrewDate || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} placeholder="אופציונלי" />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
-                    <input type="time" name="entryTime" value={editShiftData.entryTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                    <input type="time" name="entryTime" value={editShiftData.entryTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
-                    <input type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                    <input type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
-                    <input type="number" name="totalMinutes" value={editShiftData.totalMinutes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                    <input type="number" name="totalMinutes" value={editShiftData.totalMinutes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
-                    <input type="number" step="0.01" name="totalCalculated" value={editShiftData.totalCalculated || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                    <input type="number" step="0.01" name="totalCalculated" value={editShiftData.totalCalculated || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
-                    <input type="text" name="notes" value={editShiftData.notes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                    <input type="text" name="notes" value={editShiftData.notes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                   </td>
                   <td className="no-print" style={{ padding: '0.5rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                     <button onClick={saveShift} className="btn" style={{ background: '#2e7d32', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.9rem', borderRadius: '6px' }}>שמור</button>
@@ -461,25 +558,25 @@ export default function EmployeePage({ params }) {
                   {editingShiftId === shift.id ? (
                     <>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="date" name="date" value={editShiftData.date || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                        <input type="date" name="date" value={editShiftData.date || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="text" name="hebrewDate" value={editShiftData.hebrewDate || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                        <input type="text" name="hebrewDate" value={editShiftData.hebrewDate || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="time" name="entryTime" value={editShiftData.entryTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                        <input type="time" name="entryTime" value={editShiftData.entryTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                        <input type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="number" name="totalMinutes" value={editShiftData.totalMinutes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                        <input type="number" name="totalMinutes" value={editShiftData.totalMinutes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="number" step="0.01" name="totalCalculated" value={editShiftData.totalCalculated || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                        <input type="number" step="0.01" name="totalCalculated" value={editShiftData.totalCalculated || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="text" name="notes" value={editShiftData.notes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid #ccc', borderRadius: '4px' }} />
+                        <input type="text" name="notes" value={editShiftData.notes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                       </td>
                       <td className="no-print" style={{ padding: '0.5rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                         <button onClick={saveShift} className="btn" style={{ background: '#2e7d32', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.9rem', borderRadius: '6px' }}>שמור</button>

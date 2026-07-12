@@ -218,7 +218,7 @@ export default function AIFloatingWidget() {
           justifyContent: 'center',
           alignItems: 'center',
           cursor: 'pointer',
-          zIndex: 99999,
+          zIndex: 900,
           transition: 'transform 0.2s'
         }}
         onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
@@ -240,14 +240,14 @@ export default function AIFloatingWidget() {
         height: isExpanded ? '80vh' : '550px',
         maxWidth: 'calc(100vw - 40px)',
         maxHeight: 'calc(100vh - 40px)',
-        backgroundColor: 'white',
+        backgroundColor: 'var(--card-bg)',
         borderRadius: '16px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
         display: 'flex',
         flexDirection: 'column',
-        zIndex: 99999,
+        zIndex: 900,
         overflow: 'hidden',
-        border: '1px solid #e5e7eb',
+        border: '1px solid var(--element-border)',
         transition: 'all 0.3s ease'
       }}>
         {/* Header */}
@@ -282,10 +282,10 @@ export default function AIFloatingWidget() {
         </div>
 
         {/* Chat Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: '#f9fafb', position: 'relative' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--element-bg)', position: 'relative' }}>
           {showHistory ? (
             <div style={{ padding: '10px' }}>
-              <h3 style={{ marginTop: 0, color: '#374151', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
+              <h3 style={{ marginTop: 0, color: 'var(--text-main)', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
               {chatSessions.length === 0 ? (
                 <div style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '10px' }}>אין היסטוריית שיחות שמורה.</div>
               ) : (
@@ -295,7 +295,7 @@ export default function AIFloatingWidget() {
                       key={session.id} 
                       onClick={() => loadSession(session)}
                       style={{
-                        padding: '12px', backgroundColor: 'white', border: '1px solid #e5e7eb',
+                        padding: '12px', backgroundColor: 'var(--card-bg)', border: '1px solid var(--element-border)',
                         borderRadius: '8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px'
                       }}
                       onMouseOver={e => e.currentTarget.style.borderColor = '#6366f1'}
@@ -333,7 +333,7 @@ export default function AIFloatingWidget() {
               {loading && (
                 <div style={{
                   alignSelf: 'flex-end',
-                  backgroundColor: 'white',
+                  backgroundColor: 'var(--card-bg)',
                   padding: '10px 14px',
                   borderRadius: '12px',
                   borderBottomLeftRadius: '0',
@@ -355,15 +355,15 @@ export default function AIFloatingWidget() {
           display: 'flex',
           padding: '12px',
           borderTop: '1px solid #e5e7eb',
-          backgroundColor: 'white',
+          backgroundColor: 'var(--card-bg)',
           gap: '8px'
         }}>
           <button 
             type="button" 
             onClick={toggleListen}
             style={{
-              background: isListening ? '#ef4444' : '#f3f4f6', 
-              color: isListening ? 'white' : '#4b5563', 
+              background: isListening ? '#ef4444' : 'var(--element-bg)', 
+              color: isListening ? 'white' : 'var(--text-main)', 
               border: 'none', borderRadius: '50%', width: '42px', height: '42px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
@@ -423,7 +423,7 @@ export default function AIFloatingWidget() {
           backdropFilter: 'blur(4px)'
         }}>
           <div style={{
-            backgroundColor: 'white',
+            backgroundColor: 'var(--card-bg)',
             borderRadius: '12px',
             padding: '20px',
             width: '90%',
@@ -443,18 +443,18 @@ export default function AIFloatingWidget() {
               </button>
             </div>
             
-            <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1, borderRadius: '6px', border: '1px solid #e5e7eb' }}>
+            <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1, borderRadius: '6px', border: '1px solid var(--element-border)' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-                <thead style={{ position: 'sticky', top: 0, backgroundColor: '#f9fafb', zIndex: 1 }}>
+                <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--element-bg)', zIndex: 1 }}>
                   <tr>
                     {Object.keys(modalTableData[0]).map(h => (
-                      <th key={h} style={{ padding: '10px 12px', textAlign: 'right', borderBottom: '2px solid #e5e7eb', color: '#374151' }}>{h}</th>
+                      <th key={h} style={{ padding: '10px 12px', textAlign: 'right', borderBottom: '2px solid #e5e7eb', color: 'var(--text-main)' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
                 <tbody>
                   {modalTableData.map((row, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: i % 2 === 0 ? 'white' : '#f9fafb' }}>
+                    <tr key={i} style={{ borderBottom: '1px solid #e5e7eb', backgroundColor: i % 2 === 0 ? 'var(--card-bg)' : 'var(--element-bg)' }}>
                       {Object.keys(modalTableData[0]).map(h => (
                         <td key={h} style={{ padding: '8px 12px', color: '#1f2937' }}>{row[h]}</td>
                       ))}

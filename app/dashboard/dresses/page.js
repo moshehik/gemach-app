@@ -5,8 +5,10 @@ import { HDate } from '@hebcal/core';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import HebrewDatePicker from '../../../components/HebrewDatePicker';
 import { Info, ExternalLink, RefreshCw, Trash2, Printer, CheckCircle, XCircle, List, ArrowUp, ArrowDown, ArrowUpDown, X, Save, Search, Filter, Wrench } from 'lucide-react';
+import { useLabels } from '@/app/components/LabelsContext';
 
 export default function DressesManagement() {
+  const { getLabel } = useLabels();
   const [dresses, setDresses] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingDress, setEditingDress] = useState(null);
@@ -688,7 +690,7 @@ export default function DressesManagement() {
                       border: 'none',
                       cursor: 'pointer',
                       fontSize: '1.2rem',
-                      color: '#888',
+                      color: 'var(--text-muted)',
                       padding: 0,
                       display: 'flex',
                       alignItems: 'center',
@@ -703,17 +705,17 @@ export default function DressesManagement() {
               <button 
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 className="btn btn-outline" 
-                style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', background: showAdvancedFilters ? '#e3f2fd' : 'white', borderColor: showAdvancedFilters ? '#1976d2' : '#ccc' }}
+                style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', background: showAdvancedFilters ? '#e3f2fd' : 'var(--card-bg)', borderColor: showAdvancedFilters ? '#1976d2' : 'var(--element-border)' }}
                 title="סינון מתקדם"
               >
                 סינון מתקדם {showAdvancedFilters ? '▲' : '▼'}
               </button>
             </div>
-            <div style={{ display: 'flex', gap: '0.3rem', background: '#e0e0e0', padding: '0.2rem', borderRadius: '8px' }}>
-              <button onClick={() => setFilterStatus('active')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'active' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'active' ? '#2e7d32' : '#666' }} title="דגמים פעילים"><CheckCircle size={20} /></button>
-              <button onClick={() => setFilterStatus('inactive')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'inactive' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'inactive' ? '#f57c00' : '#666' }} title="לא פעילים"><XCircle size={20} /></button>
-              <button onClick={() => setFilterStatus('deleted')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : '#666' }} title="מחוקים"><Trash2 size={20} /></button>
-              <button onClick={() => setFilterStatus('all')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : '#666' }} title="הצג הכל"><List size={20} /></button>
+            <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
+              <button onClick={() => setFilterStatus('active')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'active' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'active' ? '#2e7d32' : 'var(--text-main)' }} title="דגמים פעילים"><CheckCircle size={20} /></button>
+              <button onClick={() => setFilterStatus('inactive')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'inactive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'inactive' ? '#f57c00' : 'var(--text-main)' }} title="לא פעילים"><XCircle size={20} /></button>
+              <button onClick={() => setFilterStatus('deleted')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : 'var(--text-main)' }} title="מחוקים"><Trash2 size={20} /></button>
+              <button onClick={() => setFilterStatus('all')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)' }} title="הצג הכל"><List size={20} /></button>
             </div>
             <button onClick={handleNewModelClick} className="btn btn-primary" style={{ background: '#2e7d32', borderColor: '#2e7d32' }}>
               + הוסף דגם חדש
@@ -722,7 +724,7 @@ export default function DressesManagement() {
         </div>
         
         {showAdvancedFilters && (
-          <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)', border: '1px solid #e0e0e0', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+          <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)', border: '1px solid var(--element-border)', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ fontWeight: 'bold', color: '#1976d2', width: '100%' }}>סינון מתקדם:</div>
             
             <input type="text" placeholder="שם דגם / קידומת" value={advancedFilters.name} onChange={e => setAdvancedFilters({...advancedFilters, name: e.target.value})} className="filter-select" style={{ minWidth: '150px' }} />
@@ -730,20 +732,20 @@ export default function DressesManagement() {
             <input type="number" placeholder="מס' סידורי" value={advancedFilters.serialNumber} onChange={e => setAdvancedFilters({...advancedFilters, serialNumber: e.target.value})} className="filter-select" style={{ width: '100px' }} />
             <input type="number" placeholder="השכרות מינימום" value={advancedFilters.rentalsCountMin} onChange={e => setAdvancedFilters({...advancedFilters, rentalsCountMin: e.target.value})} className="filter-select" style={{ width: '140px' }} />
             
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'white', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid #ddd' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'var(--card-bg)', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid #ddd' }}>
               <input type="checkbox" checked={advancedFilters.notInUse} onChange={e => setAdvancedFilters({...advancedFilters, notInUse: e.target.checked})} />
               לא בשימוש (פריט)
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'white', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid #ddd' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'var(--card-bg)', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid #ddd' }}>
               <input type="checkbox" checked={advancedFilters.inRepair} onChange={e => setAdvancedFilters({...advancedFilters, inRepair: e.target.checked})} />
               בתיקון
             </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'white', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid #ddd' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'var(--card-bg)', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid #ddd' }}>
               <input type="checkbox" checked={advancedFilters.itemDeleted} onChange={e => setAdvancedFilters({...advancedFilters, itemDeleted: e.target.checked})} />
               פריט מחוק
             </label>
             
-            <button onClick={() => setAdvancedFilters({name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false})} className="btn" style={{ background: '#e0e0e0', color: '#333', border: 'none', padding: '0.4rem 1rem' }}>
+            <button onClick={() => setAdvancedFilters({name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false})} className="btn" style={{ background: 'var(--element-bg)', color: 'var(--text-main)', border: 'none', padding: '0.4rem 1rem' }}>
               נקה סינונים
             </button>
           </div>
@@ -752,13 +754,13 @@ export default function DressesManagement() {
         {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem' }}>טוען נתונים...</div>
         ) : (
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
+          <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
             <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #ddd', background: '#f8f9fa' }}>
                   <th style={{ padding: '1rem' }}>תמונה</th>
-                  <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('barcodePrefix')}>קוד {catalogSort.key === 'barcodePrefix' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</th>
-                  {useModelNames && <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('name')}>שם דגם {catalogSort.key === 'name' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</th>}
+                  <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('barcodePrefix')}>{getLabel('item_barcode', 'קוד')} {catalogSort.key === 'barcodePrefix' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</th>
+                  {useModelNames && <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('name')}>{getLabel('item_modelName', 'שם דגם')} {catalogSort.key === 'name' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</th>}
                   <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('entryDateToRepo')}>תאריך כניסה {catalogSort.key === 'entryDateToRepo' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</th>
                   <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('itemsCount')}>כמות פריטים {catalogSort.key === 'itemsCount' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</th>
                   <th style={{ padding: '1rem', textAlign: 'center' }}>פעולות</th>
@@ -793,7 +795,7 @@ export default function DressesManagement() {
             </table>
             
             {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'white', borderTop: '1px solid #e0e0e0', borderRadius: '0 0 12px 12px' }}>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--card-bg)', borderTop: '1px solid #e0e0e0', borderRadius: '0 0 12px 12px' }}>
                 <button 
                   onClick={() => setPage(p => Math.max(1, p - 1))} 
                   disabled={page === 1}
@@ -849,7 +851,7 @@ export default function DressesManagement() {
             </div>
 
             <div style={{ padding: '2rem' }}>
-              <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '8px', marginBottom: '2rem', boxShadow: 'var(--shadow-sm)' }}>
                 <h3 style={{ marginBottom: '1rem', borderBottom: '2px solid #eee', paddingBottom: '0.5rem' }}>פרטי הדגם</h3>
                 <form onSubmit={handleSaveModel} style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
                   
@@ -857,7 +859,7 @@ export default function DressesManagement() {
                     {getImageSource(editingDress) ? (
                       <img src={getImageSource(editingDress)} alt="Preview" onError={(e) => {e.target.style.display='none'; e.target.nextSibling.style.display='flex';}} style={{ width: '100%', height: '250px', objectFit: 'contain', background: '#f9f9f9', borderRadius: '8px', border: '1px solid #eee', marginBottom: '1rem' }} />
                     ) : null}
-                    <div style={{ display: getImageSource(editingDress) ? 'none' : 'flex', width: '100%', height: '250px', background: '#f9f9f9', borderRadius: '8px', border: '1px dashed #ccc', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>אין תמונה</div>
+                    <div style={{ display: getImageSource(editingDress) ? 'none' : 'flex', width: '100%', height: '250px', background: '#f9f9f9', borderRadius: '8px', border: '1px dashed var(--element-border)', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>אין תמונה</div>
                     
                     <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploading} style={{ width: '100%', padding: '0.5rem', border: '1px solid #ddd', borderRadius: '8px' }} />
                     {uploading && <small style={{ color: 'var(--primary-color)', display: 'block', marginTop: '0.5rem' }}>מעלה תמונה...</small>}
@@ -950,16 +952,16 @@ export default function DressesManagement() {
               </div>
 
               {!isNewModel && (
-                <div style={{ background: 'white', padding: '1.5rem', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}>
+                <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '8px', boxShadow: 'var(--shadow-sm)' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '2px solid #eee', paddingBottom: '0.5rem' }}>
                     <h3 style={{ margin: 0 }}>פירוט שמלות (מלאי ומידות)</h3>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', background: '#e0e0e0', padding: '0.2rem', borderRadius: '8px' }}>
-                        <button type="button" onClick={() => setItemsFilterStatus('all')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'all' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'all' ? '#1976d2' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הכל"><List size={16} /> הכל</button>
-                        <button type="button" onClick={() => setItemsFilterStatus('normal')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'normal' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'normal' ? '#2e7d32' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="רגיל"><CheckCircle size={16} /> רגיל</button>
-                        <button type="button" onClick={() => setItemsFilterStatus('notInUse')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'notInUse' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'notInUse' ? '#f57c00' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא בשימוש"><XCircle size={16} /> לא בשימוש</button>
-                        <button type="button" onClick={() => setItemsFilterStatus('inRepair')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'inRepair' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'inRepair' ? '#1976d2' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בתיקון"><Wrench size={16} /> בתיקון</button>
-                        <button type="button" onClick={() => setItemsFilterStatus('deleted')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'deleted' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'deleted' ? '#e53935' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוק"><Trash2 size={16} /> מחוק</button>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
+                        <button type="button" onClick={() => setItemsFilterStatus('all')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הכל"><List size={16} /> הכל</button>
+                        <button type="button" onClick={() => setItemsFilterStatus('normal')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'normal' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'normal' ? '#2e7d32' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="רגיל"><CheckCircle size={16} /> רגיל</button>
+                        <button type="button" onClick={() => setItemsFilterStatus('notInUse')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'notInUse' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'notInUse' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא בשימוש"><XCircle size={16} /> לא בשימוש</button>
+                        <button type="button" onClick={() => setItemsFilterStatus('inRepair')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'inRepair' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'inRepair' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בתיקון"><Wrench size={16} /> בתיקון</button>
+                        <button type="button" onClick={() => setItemsFilterStatus('deleted')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'deleted' ? '#e53935' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוק"><Trash2 size={16} /> מחוק</button>
                       </div>
                       <button type="button" onClick={() => setViewMode(viewMode === 'rows' ? 'cubes' : 'rows')} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>
                         {viewMode === 'rows' ? 'הצג כקוביות' : 'הצג כשורות'}
@@ -983,7 +985,7 @@ export default function DressesManagement() {
                               border: 'none',
                               cursor: 'pointer',
                               fontSize: '1.2rem',
-                              color: '#888',
+                              color: 'var(--text-muted)',
                               padding: 0,
                               display: 'flex',
                               alignItems: 'center',
@@ -1029,21 +1031,21 @@ export default function DressesManagement() {
                         <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
                           <th style={{ padding: '0.8rem', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('sizeText')}>מידה {itemsSort.key === 'sizeText' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</span>
+                              <span style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('sizeText')}>{getLabel('item_size', 'מידה')} {itemsSort.key === 'sizeText' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</span>
                               <Filter size={14} color={itemsColumnFilters.sizeText ? '#1976d2' : '#ccc'} style={{ cursor: 'pointer', marginLeft: '0.5rem' }} onClick={() => setShowColumnFilters(!showColumnFilters)} title="סנן עמודה זו" />
                             </div>
                             {showColumnFilters && <input type="text" placeholder="סנן מידה..." value={itemsColumnFilters.sizeText} onChange={e => setItemsColumnFilters({...itemsColumnFilters, sizeText: e.target.value})} style={{ width: '100%', padding: '0.2rem', marginTop: '0.4rem', fontSize: '0.8rem', border: '1px solid #ddd', borderRadius: '4px' }} />}
                           </th>
                           <th style={{ padding: '0.8rem', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('serialNumber')}>מס' סידורי {itemsSort.key === 'serialNumber' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</span>
+                              <span style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('serialNumber')}>{getLabel('item_serialNumber', "מס' סידורי")} {itemsSort.key === 'serialNumber' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</span>
                               <Filter size={14} color={itemsColumnFilters.serialNumber ? '#1976d2' : '#ccc'} style={{ cursor: 'pointer', marginLeft: '0.5rem' }} onClick={() => setShowColumnFilters(!showColumnFilters)} title="סנן עמודה זו" />
                             </div>
                             {showColumnFilters && <input type="text" placeholder="סנן מס'..." value={itemsColumnFilters.serialNumber} onChange={e => setItemsColumnFilters({...itemsColumnFilters, serialNumber: e.target.value})} style={{ width: '100%', padding: '0.2rem', marginTop: '0.4rem', fontSize: '0.8rem', border: '1px solid #ddd', borderRadius: '4px' }} />}
                           </th>
                           <th style={{ padding: '0.8rem', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('dressBarcode')}>ברקוד פריט {itemsSort.key === 'dressBarcode' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</span>
+                              <span style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('dressBarcode')}>{getLabel('item_barcode', 'ברקוד פריט')} {itemsSort.key === 'dressBarcode' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="#ccc" />}</span>
                               <Filter size={14} color={itemsColumnFilters.dressBarcode ? '#1976d2' : '#ccc'} style={{ cursor: 'pointer', marginLeft: '0.5rem' }} onClick={() => setShowColumnFilters(!showColumnFilters)} title="סנן עמודה זו" />
                             </div>
                             {showColumnFilters && <input type="text" placeholder="סנן ברקוד..." value={itemsColumnFilters.dressBarcode} onChange={e => setItemsColumnFilters({...itemsColumnFilters, dressBarcode: e.target.value})} style={{ width: '100%', padding: '0.2rem', marginTop: '0.4rem', fontSize: '0.8rem', border: '1px solid #ddd', borderRadius: '4px' }} />}
@@ -1069,13 +1071,13 @@ export default function DressesManagement() {
                         {filteredAndSortedItems.map(item => (
                           <tr key={item.id} style={{ borderBottom: '1px solid #eee', background: item.isDeleted ? '#ffebee' : (item.notInUse ? '#fff0f0' : (item.inRepair ? '#fff8e1' : 'transparent')) }}>
                             <td style={{ padding: '0.8rem' }}>
-                              <input type="text" value={item.sizeText || ''} className="filter-select" style={{ width: '80px', padding: '0.3rem', background: 'transparent', border: 'none', color: '#666', cursor: 'not-allowed' }} disabled title="לא ניתן לשנות מידה לפריט קיים" />
+                              <input type="text" value={item.sizeText || ''} className="filter-select" style={{ width: '80px', padding: '0.3rem', background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'not-allowed' }} disabled title="לא ניתן לשנות מידה לפריט קיים" />
                             </td>
                             <td style={{ padding: '0.8rem' }}>
-                              <input type="number" value={item.serialNumber || ''} className="filter-select" style={{ width: '80px', padding: '0.3rem', background: 'transparent', border: 'none', color: '#666', cursor: 'not-allowed' }} disabled title="לא ניתן לשנות מס' סידורי לפריט קיים" />
+                              <input type="number" value={item.serialNumber || ''} className="filter-select" style={{ width: '80px', padding: '0.3rem', background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'not-allowed' }} disabled title="לא ניתן לשנות מס' סידורי לפריט קיים" />
                             </td>
                             <td style={{ padding: '0.8rem' }}>
-                              <input type="text" value={item.dressBarcode || ''} onChange={e => handleItemFieldChange(item, 'dressBarcode', e.target.value)} onBlur={() => handleItemFieldBlur(item)} className="filter-select" style={{ width: '120px', padding: '0.3rem', background: 'transparent', border: '1px solid transparent' }} onFocus={e => e.target.style.background = 'white'} />
+                              <input type="text" value={item.dressBarcode || ''} onChange={e => handleItemFieldChange(item, 'dressBarcode', e.target.value)} onBlur={() => handleItemFieldBlur(item)} className="filter-select" style={{ width: '120px', padding: '0.3rem', background: 'transparent', border: '1px solid transparent' }} onFocus={e => e.target.style.background = 'var(--input-bg)'} />
                             </td>
                             <td style={{ padding: '0.8rem' }}>
                               <select value={item.location || ''} onChange={e => { handleItemFieldChange(item, 'location', e.target.value); handleItemFieldBlur({...item, location: e.target.value}); }} className="filter-select" style={{ width: '100px', padding: '0.3rem', background: 'transparent', border: '1px solid transparent' }}>
@@ -1105,7 +1107,7 @@ export default function DressesManagement() {
                         ))}
                         {filteredAndSortedItems.length === 0 && (
                           <tr>
-                            <td colSpan="8" style={{ padding: '1.5rem', textAlign: 'center', color: '#666' }}>אין פריטים להצגה במלאי זה.</td>
+                            <td colSpan="8" style={{ padding: '1.5rem', textAlign: 'center', color: 'var(--text-main)' }}>אין פריטים להצגה במלאי זה.</td>
                           </tr>
                         )}
                       </tbody>
@@ -1147,10 +1149,10 @@ export default function DressesManagement() {
                               )}
                             </div>
 
-                            <div style={{ background: 'white', padding: '0.8rem', borderRadius: '6px', border: '1px solid #eee', marginTop: '0.5rem' }}>
-                              <div style={{ fontWeight: 'bold', marginBottom: '0.3rem', color: '#555', fontSize: '0.9rem' }}>מספרים סידוריים (רגיל):</div>
+                            <div style={{ background: 'var(--card-bg)', padding: '0.8rem', borderRadius: '6px', border: '1px solid #eee', marginTop: '0.5rem' }}>
+                              <div style={{ fontWeight: 'bold', marginBottom: '0.3rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>מספרים סידוריים (רגיל):</div>
                               <div style={{ color: '#1976d2', fontSize: '1.1rem', wordBreak: 'break-word', lineHeight: '1.4' }}>
-                                {serialRanges || <span style={{ color: '#999', fontSize: '0.9rem' }}>אין פריטים רגילים</span>}
+                                {serialRanges || <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>אין פריטים רגילים</span>}
                               </div>
                             </div>
                           </div>
@@ -1168,7 +1170,7 @@ export default function DressesManagement() {
       
       {itemHistory && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }} onClick={() => setItemHistory(null)}>
-          <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #eee', paddingBottom: '1rem' }}>
               <h2 style={{ margin: 0 }}>פרטי פריט נוספים (מס' ס: {itemHistory.serialNumber}, ברקוד: {itemHistory.dressBarcode})</h2>
               <button onClick={() => setItemHistory(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
@@ -1188,9 +1190,9 @@ export default function DressesManagement() {
                   <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #ddd' }}>
-                        <th style={{ padding: '0.8rem' }}>מס' הזמנה</th>
-                        <th style={{ padding: '0.8rem' }}>לקוח</th>
-                        <th style={{ padding: '0.8rem' }}>תאריך אירוע</th>
+                        <th style={{ padding: '0.8rem' }}>{getLabel('order_id', "מס' הזמנה")}</th>
+                        <th style={{ padding: '0.8rem' }}>{getLabel('order_customerName', 'לקוח')}</th>
+                        <th style={{ padding: '0.8rem' }}>{getLabel('order_eventDate', 'תאריך אירוע')}</th>
                         <th style={{ padding: '0.8rem' }}>הוחזר?</th>
                         <th style={{ padding: '0.8rem', textAlign: 'center' }}>כרטיס הזמנה</th>
                       </tr>
@@ -1212,7 +1214,7 @@ export default function DressesManagement() {
                     </tbody>
                   </table>
                 ) : (
-                  <div style={{ color: '#666', fontStyle: 'italic' }}>אין היסטוריית השכרות לפריט זה.</div>
+                  <div style={{ color: 'var(--text-main)', fontStyle: 'italic' }}>אין היסטוריית השכרות לפריט זה.</div>
                 )}
               </div>
             )}

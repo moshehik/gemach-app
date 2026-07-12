@@ -59,7 +59,7 @@ export default function AISearchBar({
               <button 
                 type="button"
                 onClick={handleClear}
-                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', padding: '0' }}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0' }}
                 title="נקה חיפוש"
               >
                 <X size={18} />
@@ -95,7 +95,7 @@ export default function AISearchBar({
               <button 
                 type="button"
                 onClick={() => setAiInput('')}
-                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', padding: '0' }}
+                style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0' }}
                 title="נקה"
               >
                 <X size={18} />
@@ -148,9 +148,9 @@ export default function AISearchBar({
           display: 'flex', 
           justifyContent: 'center', 
           alignItems: 'center',
-          background: isAiMode ? '#fdf2f8' : 'white',
+          background: isAiMode ? '#fdf2f8' : 'var(--card-bg)',
           border: isAiMode ? '2px solid #ec4899' : '1px solid #ddd',
-          color: isAiMode ? '#ec4899' : '#666',
+          color: isAiMode ? '#ec4899' : 'var(--text-main)',
           cursor: 'pointer',
           transition: 'all 0.2s',
           boxShadow: isAiMode ? '0 0 10px rgba(236, 72, 153, 0.2)' : 'none'
@@ -172,7 +172,7 @@ export default function AISearchBar({
             display: 'flex', 
             justifyContent: 'center', 
             alignItems: 'center',
-            background: 'white',
+            background: 'var(--card-bg)',
             border: '1px solid #ddd',
             color: '#10b981',
             cursor: 'pointer',

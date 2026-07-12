@@ -30,19 +30,18 @@ export async function POST(request) {
       }
     }
 
-    // 3. Populate dress items for categories
-    const dressItemIds = items.map(i => parseInt(i.sampleItemId)).filter(id => !isNaN(id));
-    const dbItems = await prisma.dressItem.findMany({
-      where: { id: { in: dressItemIds } },
-      include: { dress: true }
+    // 3. Populate dress models for categories
+    const dressModelIds = items.map(i => parseInt(i.dressModelId)).filter(id => !isNaN(id));
+    const dbModels = await prisma.dressModel.findMany({
+      where: { id: { in: dressModelIds } }
     });
 
     // Count main dresses
     let mainDressesCount = 0;
     if (enableSetDiscounts) {
       for (const item of items) {
-        const dbItem = dbItems.find(d => d.id === parseInt(item.sampleItemId));
-        const category = dbItem?.dress?.priceCategory || '';
+        const dbModel = dbModels.find(d => d.id === parseInt(item.dressModelId));
+        const category = dbModel?.priceCategory || '';
         if (!category.includes('כלול ב')) {
           mainDressesCount += (item.quantity || 1);
         }
@@ -54,13 +53,13 @@ export async function POST(request) {
 
     // Calculate per item
     for (const item of items) {
-      const dbItem = dbItems.find(d => d.id === parseInt(item.sampleItemId));
-      if (!dbItem || !dbItem.dress) {
+      const dbModel = dbModels.find(d => d.id === parseInt(item.dressModelId));
+      if (!dbModel) {
         calculatedItems.push({ ...item, finalPrice: 0 });
         continue;
       }
 
-      const category = dbItem.dress.priceCategory || '';
+      const category = dbModel.priceCategory || '';
       const size = parseInt(item.sizeText || '0');
 
       const matchedPrice = priceList.find(p => {

@@ -10,27 +10,40 @@ export const metadata = {
 import BrandLogo from './components/BrandLogo';
 import NavigationArrows from './components/NavigationArrows';
 import UserMenu from './components/UserMenu';
+import NotificationBell from './components/NotificationBell';
 import LoginScreen from './components/LoginScreen';
 import PageTracker from './components/PageTracker';
 import AIFloatingWidget from './components/AIFloatingWidget';
 import DevEnvBanner from './components/DevEnvBanner';
+import ThemeToggle from './components/ThemeToggle';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { PopupProvider } from './components/PopupProvider';
+import { LabelsProvider } from './components/LabelsContext';
 import { Users, Shirt, Settings } from 'lucide-react';
 
+import AppNavLinks from './components/AppNavLinks';
+
 export default async function RootLayout({ children }) {
-  // Check if login is required
+  // Check settings
   let requireLogin = false;
+  let enableAlterations = true;
   try {
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'require_login' }
+    const settings = await prisma.systemSetting.findMany({
+      where: { key: { in: ['require_login', 'enable_alterations'] } }
     });
-    if (setting && setting.value === 'true') {
+    
+    const requireLoginSetting = settings.find(s => s.key === 'require_login');
+    if (requireLoginSetting && requireLoginSetting.value === 'true') {
       requireLogin = true;
     }
+
+    const enableAlterationsSetting = settings.find(s => s.key === 'enable_alterations');
+    if (enableAlterationsSetting && enableAlterationsSetting.value === 'false') {
+      enableAlterations = false;
+    }
   } catch (err) {
-    console.error('Failed to fetch require_login setting', err);
+    console.error('Failed to fetch settings', err);
   }
 
   // Check if user is authenticated
@@ -38,10 +51,30 @@ export default async function RootLayout({ children }) {
   const authToken = cookieStore.get('auth_token');
   const isAuthenticated = !!authToken?.value;
 
+  let isManager = false;
+  if (isAuthenticated) {
+    try {
+      const emp = await prisma.employee.findUnique({
+        where: { id: parseInt(authToken.value, 10) },
+        select: { roleId: true }
+      });
+      if (emp && (emp.roleId === 1 || emp.roleId === 2)) {
+        isManager = true;
+      }
+    } catch (e) {
+      console.error('Error fetching employee role:', e);
+    }
+  }
+
+  const showAdminTab = !requireLogin || isManager;
+
+  const themeCookie = authToken?.value ? cookieStore.get(`theme_${authToken.value}`) : null;
+  const themePreference = themeCookie?.value || 'light';
+
   const showLogin = requireLogin && !isAuthenticated;
 
   return (
-    <html lang="he" dir="rtl">
+    <html lang="he" dir="rtl" data-theme={!showLogin ? themePreference : 'light'}>
       <head>
         <meta charSet="utf-8" />
       </head>
@@ -53,39 +86,38 @@ export default async function RootLayout({ children }) {
         {showLogin ? (
           <LoginScreen />
         ) : (
-          <>
-            <nav className="navbar">
-              <div style={{ display: 'flex', alignItems: 'center' }}>
-                <BrandLogo />
-                <NavigationArrows />
-              </div>
-              <div className="nav-links">
-                <Link href="/" className="nav-link">מערכת כללית</Link>
-                <Link href="/customers" className="nav-link">לקוחות</Link>
-                <Link href="/customer-interface" className="nav-link">זמינות לקוח</Link>
-                <Link href="/orders" className="nav-link">הזמנות ותשלומים</Link>
-                <Link href="/rentals" className="nav-link">השכרות והחזרות</Link>
-                <Link href="/alterations" className="nav-link">תיקונים ותפירות</Link>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-                <Link href="/employees" title="עובדים ונוכחות" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
-                  <Users size={22} />
-                </Link>
-                <Link href="/dashboard/dresses" title="ניהול קטלוג" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
-                  <Shirt size={22} />
-                </Link>
-                <Link href="/admin" title="אזור ניהול מתקדם" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--primary-color)', textDecoration: 'none' }}>
-                  <Settings size={22} />
-                </Link>
-                <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 0.25rem' }}></div>
-                <UserMenu />
-              </div>
-            </nav>
-            <PopupProvider>
-              {children}
-            </PopupProvider>
-            <AIFloatingWidget />
-          </>
+          <LabelsProvider>
+            <>
+              <nav className="navbar">
+                <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <BrandLogo />
+                  <NavigationArrows />
+                </div>
+                <AppNavLinks enableAlterations={enableAlterations} />
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                  <Link href="/employees" title="עובדים ונוכחות" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
+                    <Users size={22} />
+                  </Link>
+                  <Link href="/dashboard/dresses" title="ניהול קטלוג" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
+                    <Shirt size={22} />
+                  </Link>
+                  {showAdminTab && (
+                    <Link href="/admin" title="אזור ניהול מתקדם" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--primary-color)', textDecoration: 'none' }}>
+                      <Settings size={22} />
+                    </Link>
+                  )}
+                  <ThemeToggle employeeId={authToken?.value} initialTheme={themePreference} />
+                  <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 0.25rem' }}></div>
+                  {authToken?.value && <NotificationBell employeeId={parseInt(authToken.value, 10)} />}
+                  <UserMenu />
+                </div>
+              </nav>
+              <PopupProvider>
+                {children}
+              </PopupProvider>
+              <AIFloatingWidget />
+            </>
+          </LabelsProvider>
         )}
       </body>
     </html>

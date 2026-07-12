@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { HDate } from '@hebcal/core';
+import { HDate, Sedra, Locale, HebrewCalendar } from '@hebcal/core';
 import { getHebrewDateString, getHebrewMonthYear } from '@/lib/hebrewDate';
-import { RefreshCw, Printer, Lock, Maximize, Bot, Mic, History } from 'lucide-react';
+import { RefreshCw, Printer, Lock, Maximize, Bot, Mic, History, Shirt, Crown, Star, Sparkles, Scissors, Gem, Heart, ShoppingBag, Feather, Palette, Camera, Tag, Gift, Sun, Moon, Music, Smile } from 'lucide-react';
+import { useLabels } from '@/app/components/LabelsContext';
 
 export default function CustomerInventoryViewer() {
+  const { getLabel } = useLabels();
   const router = useRouter();
   const [dresses, setDresses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,6 +23,12 @@ export default function CustomerInventoryViewer() {
   const [unlockPassword, setUnlockPassword] = useState('');
   const [unlockError, setUnlockError] = useState('');
   const [unlockLoading, setUnlockLoading] = useState(false);
+
+  const [showOrdersModal, setShowOrdersModal] = useState(false);
+  const [ordersModalModel, setOrdersModalModel] = useState(null);
+  const [ordersModalSize, setOrdersModalSize] = useState(null);
+  const [ordersModalLoading, setOrdersModalLoading] = useState(false);
+  const [ordersModalOrders, setOrdersModalOrders] = useState([]);
 
   // AI Chat State
   const [aiChatOpen, setAiChatOpen] = useState(false);
@@ -199,6 +207,41 @@ export default function CustomerInventoryViewer() {
     return { qOther };
   };
 
+  const handleModelDoubleClick = async (model, sizeName = null) => {
+    if (isLocked) return;
+    const fromDate = new Date(selectedDate);
+    fromDate.setDate(fromDate.getDate() - 7);
+    const toDate = new Date(selectedDate);
+    toDate.setDate(toDate.getDate() + 7);
+
+    setOrdersModalModel(model);
+    setOrdersModalSize(sizeName);
+    setOrdersModalLoading(true);
+    setOrdersModalOrders([]);
+    setShowOrdersModal(true);
+
+    try {
+      const res = await fetch(`/api/orders?itemDetails=${encodeURIComponent(model.name)}&eventDateFrom=${fromDate.toISOString()}&eventDateTo=${toDate.toISOString()}&filterStatus=all`);
+      const data = await res.json();
+      if (res.ok) {
+         let filtered = data.orders || [];
+         if (sizeName) {
+           filtered = filtered.filter(order => {
+             return order.items.some(item => 
+               item.dressItem?.dress?.id === model.id && 
+               (item.dressItem?.sizeText || 'כללי') === sizeName
+             );
+           });
+         }
+         setOrdersModalOrders(filtered);
+      }
+    } catch(e) {
+      console.error(e);
+    } finally {
+      setOrdersModalLoading(false);
+    }
+  };
+
   const filteredDresses = useMemo(() => {
     let list = dresses.filter(d => {
       const term = search.toLowerCase();
@@ -251,7 +294,6 @@ export default function CustomerInventoryViewer() {
     const hYear = hCurrent.getFullYear();
     const hMonth = hCurrent.getMonth();
     
-    // First day of Hebrew month
     const firstDayHDate = new HDate(1, hMonth, hYear);
     const firstDayOfWeek = firstDayHDate.getDay(); 
     const daysInHebMonth = hCurrent.daysInMonth();
@@ -279,14 +321,14 @@ export default function CustomerInventoryViewer() {
       <table className="cal-table">
         <thead>
           <tr>
-            {["א","ב","ג","ד","ה","ו","ש"].map(d => <th key={d}>{d}</th>)}
+            {["א","ב","ג","ד","ה","ו","שבת"].map(d => <th key={d}>{d}</th>)}
           </tr>
         </thead>
         <tbody>
           {weeks.map((week, i) => (
             <tr key={i}>
               {week.map((day, j) => {
-                if (!day) return <td key={j}></td>;
+                if (!day) return <td key={j} className="empty"></td>;
                 
                 const cellHDate = new HDate(day, hMonth, hYear);
                 const cellGreg = cellHDate.greg();
@@ -299,14 +341,43 @@ export default function CustomerInventoryViewer() {
                   hebrewDayStr = cellHDate.renderGematriya().split(' ')[0];
                 } catch(e) {}
                 
+                let parashaText = '';
+                if (j === 6) {
+                  try {
+                    const s = new Sedra(hYear, true);
+                    const p = s.lookup(cellHDate);
+                    if (p && p.parsha && p.parsha.length > 0) {
+                      parashaText = p.parsha.map(name => Locale.gettext(name, 'he')).join('-');
+                    }
+                  } catch(e) {}
+                }
+
+                let holidays = [];
+                try {
+                  const evs = HebrewCalendar.getHolidaysOnDate(cellHDate, true) || [];
+                  holidays = evs.filter(e => {
+                    const flags = e.getFlags();
+                    const name = e.render('he');
+                    if (flags & 8192) return false; // Exclude Modern Holidays (Jabotinsky, etc)
+                    if (name.includes('בנות') || name.includes('מעשר בהמה') || name.includes('סליחות')) return false; 
+                    return (flags & 1) || (flags & 524288) || (flags & 2097152) || (flags & 16384) || (flags & 256);
+                  }).map(e => e.render('he'));
+                } catch (e) {}
+
                 return (
                   <td 
                     key={j} 
                     className={`${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
                     onClick={() => setSelectedDate(cellGreg)}
                   >
-                    <div style={{fontSize: '0.8em', color: '#999'}}>{cellGreg.getDate()}/{cellGreg.getMonth() + 1}</div>
-                    <div>{hebrewDayStr}</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center', lineHeight: '1.2' }}>
+                      <span style={{ fontSize: '10px', color: '#9ca3af' }}>{cellGreg.getDate()}/{cellGreg.getMonth() + 1}</span>
+                      <span style={{ fontWeight: 'bold' }}>{hebrewDayStr}</span>
+                      {parashaText && <span style={{ fontSize: '10px', color: '#8b5cf6', marginTop: '2px', fontWeight: 'normal' }}>{parashaText}</span>}
+                      {holidays.map((h, idx) => (
+                        <span key={idx} style={{ fontSize: '9px', color: '#ec4899', marginTop: '1px', fontWeight: 'normal' }}>{h}</span>
+                      ))}
+                    </div>
                   </td>
                 );
               })}
@@ -319,7 +390,7 @@ export default function CustomerInventoryViewer() {
 
   const renderSizes = () => {
     if (!selectedModel) {
-      return <div style={{padding:'20px', textAlign:'center', color:'#999'}}>בחר דגם לצפייה</div>;
+      return <div className="empty-state">בחר דגם לצפייה במידות</div>;
     }
 
     const sizesMap = {};
@@ -349,16 +420,37 @@ export default function CustomerInventoryViewer() {
     });
 
     if (sizesArr.length === 0) {
-      return <div style={{padding:'20px', textAlign:'center', color:'#999'}}>אין נתונים לדגם זה</div>;
+      return <div className="empty-state">אין נתונים לדגם זה</div>;
     }
 
     return (
-      <div className="sizes-container" data-total-items={totalSizesItems} data-total-sizes={sizesArr.length}>
+      <div className="sizes-grid" data-total-items={totalSizesItems} data-total-sizes={sizesArr.length}>
         {sizesArr.map(item => (
-          <div key={item.name} className="size-box animate-fade-in">
-            <div className="size-title">{item.name}</div>
-            <div className="qty-row">
-              {item.qOther > 0 ? <div className="qty-dot q-dark" style={{width:'auto', padding:'0 10px', borderRadius:'15px'}}>{item.qOther}</div> : <div className="qty-dot q-zero">-</div>}
+          <div key={item.name} className="size-badge animate-fade-in" onDoubleClick={() => handleModelDoubleClick(selectedModel, item.name)}>
+            <div className="size-name">{item.name}</div>
+            <div style={{ position: 'relative' }}>
+              {item.qOther > 0 ? (
+                <div className="size-qty">{item.qOther}</div>
+              ) : (
+                <div className="size-qty zero">-</div>
+              )}
+              {!isLocked && (
+                <div 
+                  title="הזמנות של המידה (לחץ כאן או לחיצה כפולה)"
+                  onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(selectedModel, item.name); }}
+                  style={{ 
+                    position: 'absolute', top: '-6px', right: '-6px',
+                    color: '#ffffff', background: '#3b82f6', cursor: 'pointer', padding: '3px',
+                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 10,
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.15)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                >
+                  <History size={10} strokeWidth={3} />
+                </div>
+              )}
             </div>
           </div>
         ))}
@@ -446,7 +538,7 @@ export default function CustomerInventoryViewer() {
           display: 'flex', alignItems: 'center', justifyContent: 'center', direction: 'rtl'
         }}>
           <div style={{
-            background: 'white', padding: '30px', borderRadius: '12px', width: '400px',
+            background: 'var(--card-bg)', padding: '30px', borderRadius: '12px', width: '400px',
             boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
           }}>
             <h2 style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center', color: '#2c3e50' }}>שחרור מסך</h2>
@@ -496,6 +588,77 @@ export default function CustomerInventoryViewer() {
           </div>
         </div>
       )}
+      
+      {showOrdersModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
+          backgroundColor: 'rgba(15, 23, 42, 0.7)', zIndex: 10000,
+          display: 'flex', alignItems: 'center', justifyContent: 'center', direction: 'rtl',
+          backdropFilter: 'blur(4px)'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '24px', width: '600px', maxWidth: '90%',
+            maxHeight: '80vh', display: 'flex', flexDirection: 'column',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden'
+          }}>
+            <div style={{
+              padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex',
+              alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc'
+            }}>
+              <div>
+                <h3 style={{ margin: 0, fontSize: '20px', color: '#0f172a', fontWeight: 'bold' }}>
+                  הזמנות - {ordersModalModel?.name} {ordersModalSize ? `(מידה ${ordersModalSize})` : ''}
+                </h3>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>טווח: {new Date(selectedDate.getTime() - 7*86400000).toLocaleDateString('he-IL')} עד {new Date(selectedDate.getTime() + 7*86400000).toLocaleDateString('he-IL')}</span>
+              </div>
+              <button 
+                onClick={() => setShowOrdersModal(false)}
+                style={{ background: '#e2e8f0', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
+              >X</button>
+            </div>
+            <div style={{ padding: '24px', overflowY: 'auto', flexGrow: 1 }}>
+              {ordersModalLoading ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>טוען נתונים...</div>
+              ) : ordersModalOrders.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>לא נמצאו הזמנות לדגם זה בטווח התאריכים הנבחר.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {ordersModalOrders.map(order => (
+                    <div key={order.id} style={{
+                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                      padding: '16px', border: '1px solid #e2e8f0', borderRadius: '16px',
+                      transition: 'all 0.2s', background: '#ffffff'
+                    }}>
+                      <div>
+                        <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#1e293b' }}>
+                          הזמנה #{order.orderId} - {order.customer?.firstName} {order.customer?.lastName}
+                        </div>
+                        <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                          תאריך אירוע: {order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => window.open(`/orders/${order.orderId}`, '_blank')}
+                        title="פתיחת הזמנה"
+                        style={{
+                          background: '#eff6ff', color: '#3b82f6', border: 'none', padding: '10px',
+                          borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center',
+                          justifyContent: 'center', transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.color = '#3b82f6'; }}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+      
       <style dangerouslySetInnerHTML={{__html: `
         .customer-inventory { background-color: #f3f4f6; min-height: calc(100vh - 64px); display: flex; flex-direction: column; }
         
@@ -509,14 +672,14 @@ export default function CustomerInventoryViewer() {
         }
         .header-title { font-size: 24px; font-weight: 300; }
         .header-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-size: 15px; margin-left: 10px; }
-        .header-btn:hover { background: white; color: #3498db; }
+        .header-btn:hover { background: var(--input-bg); color: #3498db; }
         
         .btn-primary { color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }
         .btn-primary:hover { opacity: 0.9; }
 
         .main-wrapper { flex-grow: 1; display: flex; gap: 20px; flex-wrap: wrap; }
         .col { display: flex; flex-direction: column; flex: 1; min-width: 300px; }
-        .col.cal { flex: 0.75; }
+        .col.cal { flex: 1.2; }
         
         .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; margin-bottom: 20px; }
         .card-header { padding: 15px; border-bottom: 1px solid #f0f0f0; font-size: 18px; font-weight: 600; background: #fbfbfb; color: #374151; display: flex; justify-content: space-between; align-items: center; }
@@ -527,37 +690,35 @@ export default function CustomerInventoryViewer() {
         
         .date-navigator { display: flex; align-items: center; gap: 15px; color: #3498db; font-weight: bold; font-size: 20px; }
         .nav-arrow { cursor: pointer; user-select: none; width: 30px; height: 30px; line-height: 30px; text-align: center; border-radius: 50%; transition: background 0.2s; }
-        .nav-arrow:hover { background: #e0f2fe; }
+        .nav-arrow:hover { background: var(--element-bg); }
         .toolbar { display: flex; gap: 5px; align-items: center; }
         .search-input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 15px; width: 140px; font-size: 14px; outline: none; }
         .btn-sort { background: white; border: 1px solid #ccc; cursor: pointer; padding: 6px 10px; border-radius: 4px; font-size: 14px; }
         
         .cal-nav { cursor: pointer; color: #3498db; font-weight: bold; font-size: 24px; padding: 0 10px; user-select: none; }
-        .cal-table { width: 100%; border-collapse: collapse; text-align: center; }
+        .cal-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; }
         .cal-table th { color: #9ca3af; font-size: 14px; padding: 10px 0; border-bottom: 1px solid #eee; }
         .cal-table td { height: 55px; border-bottom: 1px solid #f9fafb; cursor: pointer; position: relative; font-size: 16px; }
-        .cal-table td:hover { background: #f0f9ff; color: #0284c7; }
+        .cal-table td:hover { background: var(--element-bg); color: #0284c7; }
         .cal-table td.today { font-weight: bold; color: #3498db; }
         .cal-table td.selected { background: #3498db; color: white; border-radius: 8px; }
         
-        .list-item { padding: 15px 20px; border-bottom: 1px solid #f3f4f6; cursor: pointer; display: flex; align-items: center; justify-content: space-between; transition: background 0.2s; }
-        .list-item:hover { background: #f9fafb; }
-        .list-item.active { background: #eff6ff; border-right: 6px solid #3498db; }
-        .item-name { font-weight: 600; font-size: 18px; display: block; }
-        
-        .badges-group { display: flex; gap: 4px; justify-content: flex-end; }
-        .badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-weight: bold; font-size: 13px; color: white; text-align: center; }
-        .badge.zero { background: #e5e7eb; color: #9ca3af; } 
-        .b-dark { background-color: #4b5563; } 
-        
-        .sizes-container { padding: 15px; text-align: center; }
-        .size-box { display: inline-block; background: white; border: 1px solid #e5e7eb; border-radius: 8px; width: 120px; margin: 10px; box-shadow: 0 3px 6px rgba(0,0,0,0.08); overflow: hidden; vertical-align: top; cursor: default; transition: transform 0.2s; }
-        .size-box:hover { transform: scale(1.05); }
-        .size-title { background: #f9fafb; padding: 10px 0; font-weight: bold; font-size: 18px; border-bottom: 1px solid #eee; color: #333; }
-        .qty-row { display: flex; justify-content: center; padding: 12px 2px; gap: 6px; background: #fff; }
-        .qty-dot { line-height: 30px; font-size: 14px; font-weight: bold; color: white; text-align: center; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
-        .q-dark { background-color: #4b5563; }
-        .q-zero { background-color: #e5e7eb; color: #ccc; box-shadow: none; width: 30px; height: 30px; border-radius: 50%; }
+        .models-grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 15px; align-content: flex-start; }
+        .model-badge { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; cursor: pointer; width: calc(50% - 6px); }
+        @media (max-width: 1400px) { .model-badge { width: 100%; } }
+        .model-badge:hover { border-color: #93c5fd; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12); transform: translateY(-2px); }
+        .model-badge.active { background: #eff6ff; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
+        .model-info { display: flex; flex-direction: column; overflow: hidden; flex-grow: 1; }
+        .model-name { font-weight: 700; font-size: 14px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .model-barcode { font-size: 11px; color: #64748b; margin-top: 2px; }
+        .model-qty { background: #4b5563; color: white; font-size: 13px; font-weight: bold; height: 28px; min-width: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; padding: 0 8px; flex-shrink: 0; }
+        .model-qty.zero { background: #e2e8f0; color: #94a3b8; }         
+        .sizes-grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 15px; justify-content: center; }
+        .size-badge { display: flex; align-items: center; gap: 10px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 6px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; cursor: default; }
+        .size-badge:hover { border-color: #93c5fd; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12); transform: translateY(-2px); }
+        .size-name { font-weight: 700; font-size: 16px; color: #1e293b; }
+        .size-qty { background: #3b82f6; color: white; font-size: 14px; font-weight: bold; height: 28px; min-width: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(59,130,246,0.3); }
+        .size-qty.zero { background: #e2e8f0; color: #94a3b8; box-shadow: none; }
 
         .legend { font-size: 12px; display: flex; gap: 8px; margin-right: 10px; }
         .legend span { display: flex; align-items: center; gap: 3px; }
@@ -615,7 +776,7 @@ export default function CustomerInventoryViewer() {
           title={isLocked ? "לחיצה כפולה לשחרור חירום" : ""}
           style={{ cursor: isLocked ? 'pointer' : 'default' }}
         >
-          ניהול מלאי
+          {getLabel('ca_title', 'ניהול מלאי')}
         </div>
       </div>
 
@@ -660,35 +821,74 @@ export default function CustomerInventoryViewer() {
             </div>
             <div className="card-body" id="modelsList">
               {loading ? (
-                <div style={{padding:'20px', textAlign:'center', color:'#999'}}>טוען נתונים...</div>
+                <div style={{padding:'20px', textAlign:'center', color:'var(--text-muted)'}}>טוען נתונים...</div>
               ) : filteredDresses.length === 0 ? (
                 <div style={{padding:'20px', textAlign:'center'}}>אין תוצאות</div>
               ) : (
-                filteredDresses.map(model => {
+                <div className="models-grid">
+                {filteredDresses.map(model => {
                   const { qOther } = getModelQuantities(model);
                   const safeName = model.name;
+                  
+                  const icons = [Shirt, Crown, Star, Sparkles, Scissors, Gem, Heart, ShoppingBag, Feather, Palette, Camera, Tag, Gift, Sun, Moon, Music, Smile];
+                  const charCodeSum = (safeName || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+                  const IconComponent = icons[charCodeSum % icons.length];
+                  const colors = ['#3b82f6', '#ec4899', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#f43f5e', '#a855f7', '#14b8a6', '#f97316'];
+                  const color = colors[charCodeSum % colors.length];
                   
                   return (
                     <div 
                       key={model.id} 
-                      className={`list-item ${selectedModel?.id === model.id ? 'active' : ''}`}
+                      className={`model-badge ${selectedModel?.id === model.id ? 'active' : ''}`}
                       onClick={() => setSelectedModel(model)}
+                      onDoubleClick={() => handleModelDoubleClick(model)}
                     >
-                      <div style={{flexGrow: 1}}>
-                        <span className="item-name">{safeName}</span>
-                        <span style={{fontSize:'12px', color:'#999'}}>{model.barcodePrefix || model.id}</span>
+                      <div className="model-avatar" style={{
+                        width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+                        backgroundColor: model.imageUrl ? 'transparent' : `${color}20`,
+                        color: color, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden', border: model.imageUrl ? '1px solid #e2e8f0' : 'none'
+                      }}>
+                        {model.imageUrl ? (
+                          <img src={model.imageUrl} alt={safeName} style={{width:'100%', height:'100%', objectFit:'cover'}} />
+                        ) : (
+                          <IconComponent size={18} />
+                        )}
                       </div>
-                      <div className="badges-group">
-                        <span className={`badge ${qOther > 0 ? 'b-dark' : 'zero'}`} title="כמות כללית">{qOther}</span>
+                      <div className="model-info">
+                        <span className="model-name" title={safeName}>{safeName}</span>
+                        <span className="model-barcode">{model.barcodePrefix || model.id}</span>
+                      </div>
+                      
+                      <div style={{ position: 'relative' }}>
+                        <div className={`model-qty ${qOther === 0 ? 'zero' : ''}`}>{qOther}</div>
+                        {!isLocked && (
+                          <div 
+                            title="הזמנות של הדגם (לחץ כאן או לחיצה כפולה על הדגם)"
+                            onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model); }}
+                            style={{ 
+                              position: 'absolute', top: '-6px', right: '-6px',
+                              color: '#ffffff', background: '#3b82f6', cursor: 'pointer', padding: '3px',
+                              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 10,
+                              transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.15)'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+                          >
+                            <History size={10} strokeWidth={3} />
+                          </div>
+                        )}
                       </div>
                     </div>
                   );
-                })
+                })}
+                </div>
               )}
             </div>
             <div className="card-footer" id="modelsFooter">
-              <span>סה״כ דגמים: {filteredDresses.length}</span>
-              <span>פריטים: {grandTotalItems}</span>
+              <span>{getLabel('ca_total_models', 'סה״כ דגמים')}: {filteredDresses.length}</span>
+              <span>{getLabel('ca_items', 'פריטים')}: {grandTotalItems}</span>
             </div>
           </div>
         </div>
@@ -697,7 +897,7 @@ export default function CustomerInventoryViewer() {
         <div className="col">
           <div className="card">
             <div className="card-header">
-              <span>זמינות מידות</span>
+              <span>{getLabel('ca_sizes_title', 'זמינות מידות')}</span>
               <div className="legend">
                 <span><span className="legend-dot q-dark"></span>כמות כללית</span>
               </div>
@@ -706,8 +906,8 @@ export default function CustomerInventoryViewer() {
               {renderSizes()}
             </div>
             <div className="card-footer" id="sizesFooter">
-              <span>סה״כ מידות: {sizesCount}</span>
-              <span>פריטים: {itemsInSizesCount}</span>
+              <span>{getLabel('ca_total_sizes', 'סה״כ מידות')}: {sizesCount}</span>
+              <span>{getLabel('ca_items', 'פריטים')}: {itemsInSizesCount}</span>
             </div>
           </div>
         </div>
@@ -736,10 +936,10 @@ export default function CustomerInventoryViewer() {
       {aiChatOpen && (
         <div style={{
           position: 'fixed', bottom: '100px', left: '30px', zIndex: 10000,
-          width: '400px', height: '550px', backgroundColor: 'white',
+          width: '400px', height: '550px', backgroundColor: 'var(--card-bg)',
           borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
           display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          border: '1px solid #e5e7eb'
+          border: '1px solid var(--element-border)'
         }}>
           {/* Header */}
           <div style={{
@@ -771,10 +971,10 @@ export default function CustomerInventoryViewer() {
           </div>
           
           {/* Messages */}
-          <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: '#f9fafb', position: 'relative' }}>
+          <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: 'var(--element-bg)', position: 'relative' }}>
             {showAiHistory ? (
               <div style={{ padding: '5px' }}>
-                <h3 style={{ marginTop: 0, color: '#374151', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
+                <h3 style={{ marginTop: 0, color: 'var(--text-main)', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
                 {aiChatSessions.length === 0 ? (
                   <div style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '10px' }}>אין היסטוריית שיחות שמורה.</div>
                 ) : (
@@ -784,7 +984,7 @@ export default function CustomerInventoryViewer() {
                         key={session.id} 
                         onClick={() => loadAiSession(session)}
                         style={{
-                          padding: '12px', backgroundColor: 'white', border: '1px solid #e5e7eb',
+                          padding: '12px', backgroundColor: 'var(--card-bg)', border: '1px solid var(--element-border)',
                           borderRadius: '8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px'
                         }}
                         onMouseOver={e => e.currentTarget.style.borderColor = '#6366f1'}
@@ -804,20 +1004,20 @@ export default function CustomerInventoryViewer() {
                 {aiMessages.map((msg, idx) => (
                   <div key={idx} style={{
                     alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
-                    backgroundColor: msg.role === 'user' ? '#3b82f6' : 'white',
+                    backgroundColor: msg.role === 'user' ? '#3b82f6' : 'var(--card-bg)',
                     color: msg.role === 'user' ? 'white' : '#1f2937',
                     padding: '10px 15px', borderRadius: '12px', maxWidth: '90%',
                     boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
                     borderBottomRightRadius: msg.role === 'user' ? '0' : '12px',
                     borderBottomLeftRadius: msg.role === 'assistant' ? '0' : '12px',
-                    border: msg.role === 'assistant' ? '1px solid #e5e7eb' : 'none'
+                    border: msg.role === 'assistant' ? '1px solid var(--element-border)' : 'none'
                   }}>
                     <div style={{ whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.4' }}>{msg.content}</div>
                     {msg.tableData && msg.tableData.length > 0 && (
-                       <div style={{ marginTop: '10px', overflowX: 'auto', border: '1px solid #e5e7eb', borderRadius: '8px' }}>
-                          <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', backgroundColor: 'white' }}>
+                       <div style={{ marginTop: '10px', overflowX: 'auto', border: '1px solid var(--element-border)', borderRadius: '8px' }}>
+                          <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', backgroundColor: 'var(--card-bg)' }}>
                             <thead>
-                              <tr style={{ background: '#f3f4f6' }}>
+                              <tr style={{ background: 'var(--element-bg)' }}>
                                 {Object.keys(msg.tableData[0]).map(h => <th key={h} style={{ padding: '6px', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{h}</th>)}
                               </tr>
                             </thead>
@@ -834,7 +1034,7 @@ export default function CustomerInventoryViewer() {
                   </div>
                 ))}
                 {aiLoading && (
-                  <div style={{ alignSelf: 'flex-end', backgroundColor: 'white', padding: '10px 15px', borderRadius: '12px', borderBottomLeftRadius: '0', border: '1px solid #e5e7eb', fontSize: '14px', color: '#6b7280' }}>
+                  <div style={{ alignSelf: 'flex-end', backgroundColor: 'var(--card-bg)', padding: '10px 15px', borderRadius: '12px', borderBottomLeftRadius: '0', border: '1px solid var(--element-border)', fontSize: '14px', color: '#6b7280' }}>
                     <span className="spinner" style={{ width: '12px', height: '12px', margin: '0 0 0 8px', display: 'inline-block', verticalAlign: 'middle', borderTopColor: '#3b82f6', borderWidth: '2px' }}></span>
                     מעבד נתונים...
                   </div>
@@ -846,14 +1046,14 @@ export default function CustomerInventoryViewer() {
 
           {/* Input */}
           <form onSubmit={handleAiSubmit} style={{
-            display: 'flex', padding: '10px', borderTop: '1px solid #e5e7eb', backgroundColor: 'white', gap: '8px'
+            display: 'flex', padding: '10px', borderTop: '1px solid #e5e7eb', backgroundColor: 'var(--card-bg)', gap: '8px'
           }}>
             <button 
               type="button" 
               onClick={toggleListen}
               style={{
-                background: isListening ? '#ef4444' : '#f3f4f6', 
-                color: isListening ? 'white' : '#4b5563', 
+                background: isListening ? '#ef4444' : 'var(--element-bg)', 
+                color: isListening ? 'white' : 'var(--text-main)', 
                 border: 'none', borderRadius: '50%', width: '40px', height: '40px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0

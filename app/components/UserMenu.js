@@ -152,7 +152,7 @@ export default function UserMenu() {
           top: '100%',
           left: 0,
           marginTop: '0.5rem',
-          background: 'white',
+          background: 'var(--card-bg)',
           borderRadius: '12px',
           boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
           minWidth: '220px',

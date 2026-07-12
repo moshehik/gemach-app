@@ -85,7 +85,8 @@ export async function POST(req) {
 You generated this SQL query: ${sqlQuery}
 The database returned this JSON result: ${JSON.stringify(queryResult, (key, value) => typeof value === 'bigint' ? value.toString() : value)}
 Please provide a clear and friendly natural language answer to the user in Hebrew based on these statistics. 
-Summarize the information nicely.`;
+Summarize the information nicely.
+IMPORTANT: You are directly talking to the user. Output ONLY the exact final answer intended for the user, with NO meta-text, NO conversational filler directed at me, and NO prefaces like "Here is a summarizing answer for the user" or "בשמחה".`;
         
         aiResponse = await generateContent(followupPrompt);
       }

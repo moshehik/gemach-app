@@ -261,19 +261,19 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
           paddingTop: '10vh', paddingBottom: '10vh'
         }}>
           <div style={{
-            background: 'white', padding: '2rem', borderRadius: '12px',
+            background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px',
             width: '90%', maxWidth: '500px', position: 'relative',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)', direction: 'rtl',
             maxHeight: '80vh', overflowY: 'auto'
           }}>
             <button 
               onClick={() => setIsModalOpen(false)}
-              style={{ position: 'absolute', top: '15px', left: '15px', background: 'none', border: 'none', cursor: 'pointer', color: '#666' }}
+              style={{ position: 'absolute', top: '15px', left: '15px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-main)' }}
             >
               <X size={24} />
             </button>
             
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: '#333' }}>
+            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
               <FileDown size={24} color="var(--primary-color)" />
               מערכת דוחות וייצוא נתונים
             </h2>
@@ -288,7 +288,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                     value={adminPin}
                     onChange={(e) => setAdminPin(e.target.value)}
                     placeholder="סיסמת מנהל"
-                    style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }}
                   />
                   <button 
                     type="button"
@@ -310,7 +310,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
             ) : (
               <>
                 <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', background: '#f8f9fa', padding: '1rem', borderRadius: '8px' }}>
-                  <label style={{ fontWeight: 'bold', color: '#555' }}>כמות שורות לייצוא:</label>
+                  <label style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>כמות שורות לייצוא:</label>
                   <input 
                     type="number" 
                     min="1" 
@@ -320,7 +320,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                        setExportLimit(isNaN(val) ? 100 : val);
                        setIsAdminVerified(false); // Reset verification if limit changes
                     }}
-                    style={{ width: '80px', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ccc' }}
+                    style={{ width: '80px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }}
                   />
                   {exportLimit > 200 && !isAdminVerified && (
                     <span style={{ fontSize: '0.8rem', color: '#dc3545' }}>(דורש מנהל)</span>
@@ -331,7 +331,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                 </div>
 
                 <div style={{ marginBottom: '2rem' }}>
-                  <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: '#555' }}>דוח מיידי מהנתונים (לפי הסינון הקיים):</h3>
+                  <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: 'var(--text-muted)' }}>דוח מיידי מהנתונים (לפי הסינון הקיים):</h3>
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <button 
                       type="button"
@@ -357,11 +357,11 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                 <hr style={{ borderTop: '1px solid #eee', marginBottom: '1.5rem' }} />
 
                 <div>
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '0.5rem', color: '#555' }}>
+                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
                     <Sparkles size={18} color="#9c27b0" />
                     דוח מותאם אישית באמצעות AI
                   </h3>
-                  <p style={{ fontSize: '0.85rem', color: '#777', marginBottom: '1rem' }}>
+                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
                     תאר כיצד תרצה לארגן את הנתונים, למשל: "סדר לפי מחיר וסכם לפי מידות", או "הצג רק דגמים במחיר מעל 100".
                   </p>
                   
@@ -369,7 +369,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
                     placeholder="הכנס את בקשתך לדוח..."
-                    style={{ width: '100%', height: '80px', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc', marginBottom: '1rem', fontFamily: 'inherit', resize: 'none' }}
+                    style={{ width: '100%', height: '80px', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', marginBottom: '1rem', fontFamily: 'inherit', resize: 'none' }}
                     disabled={isLoading}
                   />
                   

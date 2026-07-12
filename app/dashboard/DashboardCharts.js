@@ -8,7 +8,7 @@ export default function DashboardCharts({ revenueByMethod, revenueTrend }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '2rem', marginTop: '2rem' }}>
       
-      <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
         <h3 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>התפלגות הכנסות לפי אמצעי תשלום</h3>
         <div style={{ height: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -34,7 +34,7 @@ export default function DashboardCharts({ revenueByMethod, revenueTrend }) {
         </div>
       </div>
 
-      <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
         <h3 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>הכנסות לפי תאריך תשלום (תקופה אחרונה)</h3>
         <div style={{ height: '300px' }}>
           <ResponsiveContainer width="100%" height="100%">

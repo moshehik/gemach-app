@@ -129,7 +129,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
 
   return (
     <div className="modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '5vh', paddingBottom: '5vh' }}>
-      <div className="modal-content" style={{ width: '90%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#fff', borderRadius: '12px', padding: '2rem' }}>
+      <div className="modal-content" style={{ width: '90%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--card-bg)', borderRadius: '12px', padding: '2rem' }}>
         
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
@@ -154,7 +154,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                 placeholder="סינון לפי קוד עובד..." 
                 value={historyFilter}
                 onChange={e => setHistoryFilter(e.target.value)}
-                style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid #ccc', minWidth: '200px' }}
+                style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--element-border)', minWidth: '200px' }}
               />
             </div>
             <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
@@ -163,7 +163,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                 .map(h => {
                   const modelName = models.find(m => m.barcodePrefix?.toString() === h.barcodePrefix?.toString())?.name || h.barcodePrefix;
                   return (
-                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderBottom: '1px solid #e2e8f0', background: '#fff', marginBottom: '0.5rem', borderRadius: '6px' }}>
+                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderBottom: '1px solid #e2e8f0', background: 'var(--card-bg)', marginBottom: '0.5rem', borderRadius: '6px' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.9rem', flex: 1 }}>
                         <span style={{ minWidth: '100px' }}><strong>עובד:</strong> {h.employeeCode || '---'}</span>
                         <span style={{ minWidth: '120px' }}><strong>לקוח:</strong> {h.customerName || '---'}</span>
@@ -242,7 +242,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                 padding: '0.75rem', 
                 borderRadius: '8px', 
                 border: '1px solid #cbd5e1', 
-                backgroundColor: (!barcodePrefix || sizes.length === 0) ? '#e2e8f0' : '#fff' 
+                backgroundColor: (!barcodePrefix || sizes.length === 0) ? '#e2e8f0' : 'var(--card-bg)' 
               }}
             >
               <option value="">{(!barcodePrefix) ? 'בחר דגם תחילה' : (sizes.length === 0 ? 'אין מידות לדגם' : 'בחר מידה...')}</option>
@@ -315,7 +315,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                     padding: '0.5rem 1.5rem', 
                     border: 'none', 
                     borderRadius: '6px', 
-                    background: viewMode === 'list' ? '#fff' : 'transparent',
+                    background: viewMode === 'list' ? 'var(--card-bg)' : 'transparent',
                     boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                     display: 'flex', alignItems: 'center', gap: '0.5rem',
                     cursor: 'pointer', fontWeight: viewMode === 'list' ? 'bold' : 'normal'
@@ -330,7 +330,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                     padding: '0.5rem 1.5rem', 
                     border: 'none', 
                     borderRadius: '6px', 
-                    background: viewMode === 'calendar' ? '#fff' : 'transparent',
+                    background: viewMode === 'calendar' ? 'var(--card-bg)' : 'transparent',
                     boxShadow: viewMode === 'calendar' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
                     display: 'flex', alignItems: 'center', gap: '0.5rem',
                     cursor: 'pointer', fontWeight: viewMode === 'calendar' ? 'bold' : 'normal'
@@ -504,7 +504,7 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', backgroundColor: '#e2e8f0' }}>
         {['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'].map(d => (
-          <div key={d} style={{ padding: '0.5rem', textAlign: 'center', backgroundColor: '#fff', fontWeight: 'bold', fontSize: '0.85rem', color: '#64748b' }}>
+          <div key={d} style={{ padding: '0.5rem', textAlign: 'center', backgroundColor: 'var(--card-bg)', fontWeight: 'bold', fontSize: '0.85rem', color: '#64748b' }}>
             {d}
           </div>
         ))}
@@ -516,7 +516,7 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
           
           return (
             <div key={i} style={{ 
-              backgroundColor: inRange ? (occQty > 0 ? '#fee2e2' : '#f0fdf4') : '#fff',
+              backgroundColor: inRange ? (occQty > 0 ? '#fee2e2' : '#f0fdf4') : 'var(--card-bg)',
               padding: '0.5rem', 
               minHeight: '80px',
               display: 'flex',

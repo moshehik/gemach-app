@@ -22,7 +22,6 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
           if (hasDates) {
             const queryParams = new URLSearchParams({
               dressModelId: modelId,
-              isWeekdayEvent: order.isWeekdayEvent !== undefined ? order.isWeekdayEvent : true,
               isAbroad: order.isAbroad || false
             });
             
@@ -58,20 +57,28 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
         width: '100%',
         padding: '0.4rem',
         borderRadius: '4px',
-        border: '1px solid #ccc',
+        border: '1px solid var(--element-border)',
         textAlign: 'center',
-        backgroundColor: !modelId || loading ? '#f5f5f5' : 'white'
+        backgroundColor: !modelId || loading ? '#f5f5f5' : 'var(--card-bg)'
       }}
     >
       <option value="">{loading ? 'טוען...' : placeholder}</option>
       {sizes.map((s) => {
         const sizeVal = s.sizeText || s.size;
+        const isUnavailable = s.availableQuantity !== undefined && s.availableQuantity <= 0;
+        
+        // Exact format requested: פנוי X מתוך Y
         const availableInfo = s.availableQuantity !== undefined 
-          ? `פנויות: ${s.availableQuantity} מתוך ${s.totalInStock}` 
+          ? `פנוי ${s.availableQuantity} מתוך ${s.totalInStock}` 
           : `במלאי: ${s.totalQuantity}`;
           
         return (
-          <option key={sizeVal} value={sizeVal} title={availableInfo}>
+          <option 
+            key={sizeVal} 
+            value={sizeVal} 
+            title={availableInfo}
+            disabled={isUnavailable}
+          >
             {sizeVal} ({availableInfo})
           </option>
         );

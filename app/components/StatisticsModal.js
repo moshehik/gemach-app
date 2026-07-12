@@ -121,7 +121,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
                 borderRadius: '16px',
                 borderTopRightRadius: msg.role === 'user' ? '4px' : '16px',
                 borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px',
-                background: msg.role === 'user' ? '#10b981' : 'white',
+                background: msg.role === 'user' ? '#10b981' : 'var(--card-bg)',
                 color: msg.role === 'user' ? 'white' : '#1e293b',
                 boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
                 lineHeight: '1.5',
@@ -136,7 +136,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
                 <Bot size={18} />
               </div>
-              <div style={{ padding: '0.8rem 1.2rem', borderRadius: '16px', borderTopLeftRadius: '4px', background: 'white', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
+              <div style={{ padding: '0.8rem 1.2rem', borderRadius: '16px', borderTopLeftRadius: '4px', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
                 <Loader2 size={16} className="animate-spin" /> מנתח נתונים...
               </div>
             </div>
@@ -145,7 +145,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
         </div>
 
         {/* Input Area */}
-        <div style={{ padding: '1rem', background: 'white', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ padding: '1rem', background: 'var(--card-bg)', borderTop: '1px solid #e2e8f0' }}>
           <form onSubmit={sendMessage} style={{ display: 'flex', gap: '0.5rem' }}>
             <input 
               type="text" 

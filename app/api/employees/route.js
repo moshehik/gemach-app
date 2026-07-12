@@ -43,7 +43,9 @@ export async function POST(request) {
         roleId: body.roleId !== "" && body.roleId !== null ? parseInt(body.roleId, 10) : null,
         hourlyWage: body.hourlyWage !== "" && body.hourlyWage !== null ? parseFloat(body.hourlyWage) : null,
         travelExpenses: typeof body.travelExpenses === 'boolean' ? body.travelExpenses : (body.travelExpenses === 'true' || body.travelExpenses === true),
-        isActive: body.isActive !== undefined ? body.isActive : true
+        isActive: body.isActive !== undefined ? body.isActive : true,
+        themeColor: body.themeColor,
+        profileImage: body.profileImage
       }
     });
     return NextResponse.json(newEmployee);

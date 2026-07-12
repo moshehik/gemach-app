@@ -120,8 +120,91 @@ export async function GET(request) {
       } : {})
     };
 
+    let finalTotalCount = await prisma.order.count({ where });
+    let finalOrderIds = [];
+
+    if (sort === 'eventDate' || filterStatus === 'unpaid') {
+      const minimalOrders = await prisma.order.findMany({
+        where,
+        select: {
+          orderId: true,
+          eventDate: true,
+          totalAmount: true,
+          payments: { select: { amount: true, isDeleted: true } },
+          obligations: { select: { amount: true, isDeleted: true } }
+        },
+        orderBy: sort !== 'eventDate' ? { [sort]: order } : undefined
+      });
+
+      let minimalFormatted = minimalOrders.map(o => {
+        const calculatedTotalAmount = o.obligations?.length > 0 
+          ? o.obligations.reduce((sum, ob) => sum + (ob.isDeleted ? 0 : ob.amount), 0) 
+          : (o.totalAmount || 0);
+        const totalPaid = o.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0;
+        return {
+          orderId: o.orderId,
+          eventDate: o.eventDate,
+          totalAmount: calculatedTotalAmount,
+          totalPaid
+        };
+      });
+
+      if (sort === 'eventDate') {
+        const todayObj = new Date();
+        todayObj.setHours(0, 0, 0, 0);
+        const todayTime = todayObj.getTime();
+        
+        const tomorrowObj = new Date(todayObj);
+        tomorrowObj.setDate(tomorrowObj.getDate() + 1);
+        const tomorrowTime = tomorrowObj.getTime();
+        
+        const dayAfterObj = new Date(todayObj);
+        dayAfterObj.setDate(dayAfterObj.getDate() + 2);
+        const dayAfterTime = dayAfterObj.getTime();
+
+        const getGroup = (d) => {
+          if (!d) return 5;
+          const t = new Date(d).getTime();
+          if (t >= todayTime && t < tomorrowTime) return 1;
+          if (t >= tomorrowTime && t < dayAfterTime) return 2;
+          if (t < todayTime) return 3;
+          return 4;
+        };
+
+        minimalFormatted.sort((a, b) => {
+          const groupA = getGroup(a.eventDate);
+          const groupB = getGroup(b.eventDate);
+          if (groupA !== groupB) return order === 'asc' ? groupA - groupB : groupA - groupB; 
+          
+          const tA = a.eventDate ? new Date(a.eventDate).getTime() : 0;
+          const tB = b.eventDate ? new Date(b.eventDate).getTime() : 0;
+          
+          let diff = 0;
+          if (groupA === 3) {
+            diff = tB - tA; 
+          } else if (groupA === 4 || groupA === 1 || groupA === 2) {
+            diff = tA - tB; 
+          } else {
+            diff = b.orderId - a.orderId;
+          }
+          return order === 'asc' ? -diff : diff; 
+        });
+      }
+
+      if (filterStatus === 'unpaid') {
+        minimalFormatted = minimalFormatted.filter(o => o.totalPaid < o.totalAmount && o.totalAmount > 0);
+      }
+
+      finalTotalCount = minimalFormatted.length;
+      finalOrderIds = minimalFormatted.slice(skip, skip + limit).map(o => o.orderId);
+    }
+
+    const fullOrdersWhere = (sort === 'eventDate' || filterStatus === 'unpaid') 
+      ? { orderId: { in: finalOrderIds } } 
+      : where;
+
     const orders = await prisma.order.findMany({
-      where,
+      where: fullOrdersWhere,
       include: {
         customer: true,
         payments: true,
@@ -136,16 +219,20 @@ export async function GET(request) {
           }
         }
       },
-      orderBy: { [sort]: order },
-      skip,
-      take: limit
+      orderBy: (sort === 'eventDate' || filterStatus === 'unpaid') ? undefined : { [sort]: order },
+      ...((sort === 'eventDate' || filterStatus === 'unpaid') ? {} : { skip, take: limit })
     });
-    
-    const totalCount = await prisma.order.count({ where });
+
+    // Restore the correct sort order for eventDate/unpaid since the IN clause doesn't guarantee order
+    let sortedOrders = orders;
+    if (sort === 'eventDate' || filterStatus === 'unpaid') {
+      const orderIdIndexMap = new Map(finalOrderIds.map((id, index) => [id, index]));
+      sortedOrders = orders.sort((a, b) => orderIdIndexMap.get(a.orderId) - orderIdIndexMap.get(b.orderId));
+    }
 
     // Optimize: Only fetch dress models for prefixes that are missing names in the current page
     const uniquePrefixes = new Set();
-    orders.forEach(order => {
+    sortedOrders.forEach(order => {
       order.items.forEach(i => {
         const dressName = i.dressItem?.dress?.name;
         const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
@@ -165,54 +252,61 @@ export async function GET(request) {
     
     const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
 
-    const formattedOrders = orders.map(order => {
+    const formattedOrders = sortedOrders.map(order => {
       const calculatedTotalAmount = order.obligations?.length > 0 
         ? order.obligations.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0) 
         : (order.totalAmount || 0);
 
       return {
-      orderId: order.orderId,
-      customerId: order.customerId,
-      totalAmount: calculatedTotalAmount,
-      totalPaid: order.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0,
-      paymentDate: order.paymentDate,
-      paymentMethod: order.paymentMethod,
-      status: order.status || (order.paymentDate ? 'שולם' : 'ממתין לתשלום'),
-      notes: order.notes,
-      eventDate: order.eventDate,
-      eventDateHebrew: order.eventDateHebrew,
-      returnDate: order.returnDate,
-      isAbroad: order.isAbroad,
-      fromDate: order.fromDate,
-      toDate: order.toDate,
-      items: order.items.map(i => {
-        let dressName = i.dressItem?.dress?.name;
-        const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
-        if (!dressName && prefix) {
-          dressName = dressModelMap.get(prefix);
-        }
-        
-        return {
-          id: i.id,
-          dressId: i.dressItem?.dress?.id,
-          itemId: i.dressItemId,
-          description: dressName ? `${dressName} (קוד: ${prefix || ''}, מידה: ${i.sizeText || i.dressItem?.sizeText || ''})` : (i.description || 'פריט כללי'),
-          price: i.price,
-          isTaken: i.isTaken,
-          isReturned: i.isReturned,
-          isDeleted: i.isDeleted
-        };
-      }),
-      customerName: order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לא ידוע'
-    };
+        orderId: order.orderId,
+        customerId: order.customerId,
+        totalAmount: calculatedTotalAmount,
+        totalPaid: order.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0,
+        paymentDate: order.paymentDate,
+        paymentMethod: order.paymentMethod,
+        status: order.status || (order.paymentDate ? 'שולם' : 'ממתין לתשלום'),
+        notes: order.notes,
+        eventDate: order.eventDate,
+        eventDateHebrew: order.eventDateHebrew,
+        returnDate: order.returnDate,
+        isAbroad: order.isAbroad,
+        fromDate: order.fromDate,
+        toDate: order.toDate,
+        items: order.items.map(i => {
+          let dressName = i.dressItem?.dress?.name;
+          const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+          if (!dressName && prefix) {
+            dressName = dressModelMap.get(prefix);
+          }
+          
+          return {
+            id: i.id,
+            dressId: i.dressItem?.dress?.id,
+            itemId: i.dressItemId,
+            description: dressName ? `${dressName} (קוד: ${prefix || ''}, מידה: ${i.sizeText || i.dressItem?.sizeText || ''})` : (i.description || 'פריט כללי'),
+            price: i.price,
+            isTaken: i.isTaken,
+            isReturned: i.isReturned,
+            isDeleted: i.isDeleted,
+            neckAlteration: i.neckAlteration,
+            sleeveAlteration: i.sleeveAlteration,
+            lengthAlteration: i.lengthAlteration,
+            alterationDetails: i.alterationDetails
+          };
+        }),
+        customerName: order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לא ידוע',
+        customerPhone: order.customer ? (order.customer.phone1 || order.customer.phone2 || '') : ''
+      };
     });
 
+    let finalFormatted = formattedOrders;
+
     return NextResponse.json({
-      data: formattedOrders,
-      total: totalCount,
+      data: finalFormatted,
+      total: finalTotalCount,
       page,
       limit,
-      totalPages: Math.ceil(totalCount / limit)
+      totalPages: Math.ceil(finalTotalCount / limit)
     });
   } catch (error) {
     console.error('Error fetching orders:', error);
@@ -240,7 +334,7 @@ export async function POST(request) {
         eventDate: data.eventDate ? new Date(data.eventDate) : null,
         eventDateHebrew: data.eventDateHebrew || null,
         returnDate: data.returnDate ? new Date(data.returnDate) : null,
-        isWeekdayEvent: data.isWeekdayEvent ?? true,
+        employeeId: data.employeeId ? parseInt(data.employeeId) : null,
         isAbroad: data.isAbroad ?? false,
         fromDate: data.fromDate ? new Date(data.fromDate) : null,
         toDate: data.toDate ? new Date(data.toDate) : null,

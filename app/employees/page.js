@@ -57,7 +57,7 @@ export default function EmployeesPage() {
         />
       </div>
 
-      <div style={{ background: 'white', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)' }}>
         {loading ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
         ) : (
@@ -73,7 +73,7 @@ export default function EmployeesPage() {
             </thead>
             <tbody>
               {filteredEmployees.map(employee => (
-                <tr key={employee.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/employees/${employee.id}`)} onMouseEnter={e => e.currentTarget.style.background = '#f9f9f9'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                <tr key={employee.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/employees/${employee.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                   <td style={{ padding: '1rem' }}>{employee.id}</td>
                   <td style={{ padding: '1rem', fontWeight: '500' }}>{employee.firstName} {employee.lastName}</td>
                   <td style={{ padding: '1rem' }}>{employee.roleId || 'עובד'}</td>

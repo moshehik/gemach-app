@@ -2,6 +2,17 @@
 
 import prisma from '../../lib/prisma';
 
+export async function getAlterationsSetting() {
+  try {
+    const setting = await prisma.systemSetting.findUnique({
+      where: { key: 'enable_alterations' }
+    });
+    return setting ? setting.value === 'true' : true;
+  } catch (err) {
+    return true;
+  }
+}
+
 // Helper for date truncation in JS
 function startOfDay(date) {
   const d = new Date(date);

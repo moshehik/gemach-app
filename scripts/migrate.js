@@ -1,6 +1,7 @@
 const { PrismaClient } = require('@prisma/client');
 const xlsx = require('xlsx');
 const path = require('path');
+const hebcal = require('hebcal');
 
 const prisma = new PrismaClient();
 const outDir = path.resolve(__dirname, '../../csv_exports');
@@ -21,10 +22,54 @@ function isTrue(val) {
   return val === true || val === 1 || String(val).toLowerCase() === 'yes' || String(val) === '1';
 }
 
+const HEB_MONTHS = {
+  'תשרי': 'Tishrei', 'חשוון': 'Cheshvan', 'מרחשון': 'Cheshvan', 'כסלו': 'Kislev',
+  'טבת': 'Tevet', 'שבט': 'Sh\'vat', 'אדר': 'Adar', 'אדר א': 'Adar I', 'אדר ב': 'Adar II', 'אדר א\'': 'Adar I', 'אדר ב\'': 'Adar II',
+  'ניסן': 'Nisan', 'אייר': 'Iyyar', 'סיון': 'Sivan', 'תמוז': 'Tamuz', 'אב': 'Av', 'אלול': 'Elul'
+};
+
+function hebrewToNumber(str) {
+  const vals = {
+    'א': 1, 'ב': 2, 'ג': 3, 'ד': 4, 'ה': 5, 'ו': 6, 'ז': 7, 'ח': 8, 'ט': 9, 'י': 10,
+    'כ': 20, 'ל': 30, 'מ': 40, 'נ': 50, 'ס': 60, 'ע': 70, 'פ': 80, 'צ': 90, 'ק': 100,
+    'ר': 200, 'ש': 300, 'ת': 400
+  };
+  let sum = 0;
+  for(let char of str) {
+    if(vals[char]) sum += vals[char];
+  }
+  return sum;
+}
+
+function parseHebrewDate(str) {
+  if (!str) return null;
+  const parts = str.trim().split(/\s+/);
+  if (parts.length < 3) return null;
+  const yearStr = parts[parts.length - 1];
+  let year = hebrewToNumber(yearStr);
+  if (year < 1000) year += 5000;
+  
+  let dayStr = parts[0].replace(/["']/g, '');
+  let day = hebrewToNumber(dayStr);
+  
+  let monthStr = parts.slice(1, parts.length - 1).join(' ').replace(/["']/g, '');
+  let month = HEB_MONTHS[monthStr] || 'Tishrei';
+  
+  try {
+    const hd = new hebcal.HDate(day, month, year);
+    return hd.greg();
+  } catch(e) {
+    return null;
+  }
+}
+
 function parseExcelDate(dateStr) {
   if (!dateStr) return null;
   if (typeof dateStr === 'number') {
     return new Date((dateStr - (25567 + 2)) * 86400 * 1000);
+  }
+  if (typeof dateStr === 'string' && /[א-ת]/.test(dateStr)) {
+    return parseHebrewDate(dateStr);
   }
   if (typeof dateStr === 'string') {
     const parts = dateStr.split('/');
@@ -53,15 +98,30 @@ async function migrateData() {
     const customers = readExcelTable('לקוחות');
     await prisma.customer.deleteMany({});
     
-    const customerBatch = customers.map(c => ({
-      id: c['קוד_לקוח'] || undefined,
-      firstName: c['שם_פרטי'],
-      lastName: c['שם_משפחה'],
-      phone1: c['טלפון_1'],
-      city: c['עיר'],
-      email: c['מייל'],
-      isDeleted: isTrue(c['לקוח_מחוק'])
-    }));
+    const customerBatch = customers.map(c => {
+      let houseNum = null;
+      if (c['בית']) {
+        const parsed = parseInt(c['בית'], 10);
+        if (!isNaN(parsed)) {
+          houseNum = parsed;
+        }
+      }
+      return {
+        id: c['קוד_לקוח'] || undefined,
+        firstName: c['שם_פרטי'],
+        lastName: c['שם_משפחה'],
+        phone1: c['טלפון_1'],
+        phone2: c['טלפון_2'] ? String(c['טלפון_2']) : null,
+        city: c['עיר'],
+        street: c['רחוב'] ? String(c['רחוב']) : null,
+        houseNum: houseNum,
+        email: c['מייל'],
+        emailSuffix: c['סיומת_מייל'] ? String(c['סיומת_מייל']) : null,
+        notes: c['הערות'] ? String(c['הערות']) : null,
+        registrationDate: c['תאריך_רישום'] ? String(c['תאריך_רישום']) : null,
+        isDeleted: isTrue(c['לקוח_מחוק'])
+      };
+    });
 
     let count = 0;
     for (let i = 0; i < customerBatch.length; i += 2000) {
@@ -81,6 +141,9 @@ async function migrateData() {
         firstName: e['שם_פרטי'] || '',
         lastName: e['שם_משפחה'] || '',
         phone1: e['טלפון_1'] || '',
+        email: e['מייל'] ? String(e['מייל']) : null,
+        emailSuffix: e['סיומת_מייל'] ? String(e['סיומת_מייל']) : null,
+        roleId: e['מס_מחלקה'] ? parseInt(e['מס_מחלקה'], 10) : null,
         isActive: !isTrue(e['לא_פעיל'])
       };
       if (e['קוד_עובד']) {
@@ -156,6 +219,7 @@ async function migrateData() {
         quantity: item['כמות'] || 1,
         inRepair: isTrue(item['שמלה_בתיקון']),
         notInUse: isTrue(item['לא_בשימוש']),
+        notInUseSince: parseExcelDate(item['לא_בשימוש_מתאריך']) || null,
         entryDateToRepo: parseExcelDate(item['תאריך_כניסה_למאגר']) || null
       });
     }

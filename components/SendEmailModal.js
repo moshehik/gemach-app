@@ -113,14 +113,14 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
     width: '100%', 
     padding: '0.75rem', 
     borderRadius: '8px', 
-    border: '1px solid #ccc',
+    border: '1px solid var(--element-border)',
     outline: 'none',
     fontFamily: 'inherit'
   };
 
   return (
     <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} dir="rtl">
-      <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
+      <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
         <h2 style={{ marginTop: 0, color: 'var(--primary-color)', marginBottom: '1.5rem', borderBottom: '2px solid #eee', paddingBottom: '0.5rem' }}>שליחת מייל</h2>
         
         {success ? (

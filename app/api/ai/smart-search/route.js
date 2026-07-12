@@ -105,6 +105,91 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
        return NextResponse.json({ error: 'שגיאה בביצוע חיפוש חכם.', details: 'Query execution failed after retry' }, { status: 400 });
     }
 
+    if (pageContext === 'orders' && data.length > 0) {
+      const orderIds = data.map(d => d.orderId).filter(Boolean);
+      if (orderIds.length > 0) {
+        const fullOrders = await prisma.order.findMany({
+          where: { orderId: { in: orderIds } },
+          include: {
+            customer: true,
+            payments: true,
+            obligations: true,
+            items: {
+              include: { dressItem: { include: { dress: true } } }
+            }
+          }
+        });
+
+        const uniquePrefixes = new Set();
+        fullOrders.forEach(order => {
+          order.items.forEach(i => {
+            const dressName = i.dressItem?.dress?.name;
+            const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+            if (!dressName && prefix) {
+              uniquePrefixes.add(prefix);
+            }
+          });
+        });
+
+        let dressModels = [];
+        if (uniquePrefixes.size > 0) {
+          dressModels = await prisma.dressModel.findMany({
+            where: { barcodePrefix: { in: Array.from(uniquePrefixes) } },
+            select: { barcodePrefix: true, name: true }
+          });
+        }
+        
+        const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
+
+        data = fullOrders.map(order => {
+          const calculatedTotalAmount = order.obligations?.length > 0 
+            ? order.obligations.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0) 
+            : (order.totalAmount || 0);
+
+          return {
+            orderId: order.orderId,
+            customerId: order.customerId,
+            totalAmount: calculatedTotalAmount,
+            totalPaid: order.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0,
+            paymentDate: order.paymentDate,
+            paymentMethod: order.paymentMethod,
+            status: order.status || (order.paymentDate ? 'שולם' : 'ממתין לתשלום'),
+            notes: order.notes,
+            eventDate: order.eventDate,
+            eventDateHebrew: order.eventDateHebrew,
+            returnDate: order.returnDate,
+            isAbroad: order.isAbroad,
+            fromDate: order.fromDate,
+            toDate: order.toDate,
+            items: order.items.map(i => {
+              let dressName = i.dressItem?.dress?.name;
+              const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+              if (!dressName && prefix) {
+                dressName = dressModelMap.get(prefix);
+              }
+              
+              return {
+                id: i.id,
+                dressId: i.dressItem?.dress?.id,
+                itemId: i.dressItemId,
+                description: dressName ? `${dressName} (קוד: ${prefix || ''}, מידה: ${i.sizeText || i.dressItem?.sizeText || ''})` : (i.description || 'פריט כללי'),
+                price: i.price,
+                isTaken: i.isTaken,
+                isReturned: i.isReturned,
+                isDeleted: i.isDeleted,
+                neckAlteration: i.neckAlteration,
+                sleeveAlteration: i.sleeveAlteration,
+                lengthAlteration: i.lengthAlteration,
+                alterationDetails: i.alterationDetails
+              };
+            }),
+            customerName: order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לא ידוע',
+            customerPhone: order.customer ? (order.customer.phone1 || order.customer.phone2 || '') : ''
+          };
+        });
+      }
+    }
+
     return NextResponse.json({ data, query });
     
   } catch (error) {

@@ -207,7 +207,7 @@ export default function HomeDashboard() {
         <h1 style={{ fontSize: '2.5rem', color: 'var(--primary-color)', marginBottom: '1.5rem', fontWeight: '800' }}>
           ברוכים הבאים למערכת ניהול הגמ"ח
         </h1>
-        <div style={{ maxWidth: '800px', margin: '0 auto', background: 'white', padding: '1rem', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+        <div style={{ maxWidth: '800px', margin: '0 auto', background: 'var(--card-bg)', padding: '1rem', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
           <AISearchBar 
             placeholder="חיפוש גלובלי (לקוח, טלפון, עיר, מספר הזמנה)..."
             value={searchInput}
@@ -231,8 +231,8 @@ export default function HomeDashboard() {
                       document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
                     }, 100);
                   }}
-                  style={{ background: '#f3f4f6', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem', color: '#4b5563', cursor: 'pointer', transition: 'background 0.2s' }}
-                  onMouseOver={e => e.currentTarget.style.background = '#e5e7eb'}
+                  style={{ background: 'var(--element-bg)', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer', transition: 'background 0.2s' }}
+                  onMouseOver={e => e.currentTarget.style.background = 'var(--element-bg)'}
                   onMouseOut={e => e.currentTarget.style.background = '#f3f4f6'}
                 >
                   <Search size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
@@ -252,18 +252,18 @@ export default function HomeDashboard() {
               <Sparkles size={24} />
               <span style={{ fontSize: '1.2rem' }}>צ'אט חכם מבוסס AI:</span>
             </div>
-            <button onClick={clearAiChat} title="נקה צ'אט" style={{ background: 'white', border: '1px solid #fbcfe8', borderRadius: '50%', padding: '0.5rem', cursor: 'pointer', color: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={clearAiChat} title="נקה צ'אט" style={{ background: 'var(--card-bg)', border: '1px solid #fbcfe8', borderRadius: '50%', padding: '0.5rem', cursor: 'pointer', color: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={18} />
             </button>
           </div>
           
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {aiMessages.map((msg, idx) => (
-              <div key={idx} style={{ alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end', background: msg.role === 'user' ? 'white' : '#fce7f3', padding: '1rem 1.5rem', borderRadius: '12px', maxWidth: '85%', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', border: msg.role === 'user' ? '1px solid #e5e7eb' : '1px solid #fbcfe8' }}>
-                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: msg.role === 'user' ? '#4b5563' : '#ec4899' }}>
+              <div key={idx} style={{ alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end', background: msg.role === 'user' ? 'var(--card-bg)' : '#fce7f3', padding: '1rem 1.5rem', borderRadius: '12px', maxWidth: '85%', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', border: msg.role === 'user' ? '1px solid var(--element-border)' : '1px solid #fbcfe8' }}>
+                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: msg.role === 'user' ? 'var(--text-main)' : '#ec4899' }}>
                   {msg.role === 'user' ? 'אתה:' : 'מערכת AI:'}
                 </div>
-                <div style={{ fontSize: '1.1rem', lineHeight: '1.6', color: '#374151', whiteSpace: 'pre-wrap' }}>
+                <div style={{ fontSize: '1.1rem', lineHeight: '1.6', color: 'var(--text-main)', whiteSpace: 'pre-wrap' }}>
                   {msg.content}
                 </div>
                 {msg.data && msg.data.length > 0 && (
@@ -271,10 +271,10 @@ export default function HomeDashboard() {
                     <button onClick={() => exportTableToExcel(msg.data, 'AI_Export')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '1rem' }}>
                       <Download size={16} /> הורד Excel
                     </button>
-                    <div style={{ overflowX: 'auto', background: 'white', padding: '1rem', borderRadius: '8px', border: '1px solid #e5e7eb' }}>
+                    <div style={{ overflowX: 'auto', background: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem' }}>
                         <thead>
-                          <tr style={{ background: '#f3f4f6' }}>
+                          <tr style={{ background: 'var(--element-bg)' }}>
                             {Object.keys(msg.data[0])
                               .filter(k => !k.startsWith('_action'))
                               .map(k => <th key={k} style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>{k}</th>)}
@@ -319,7 +319,7 @@ export default function HomeDashboard() {
 
       {/* Floating Chat Input */}
       {aiMessages.length > 0 && (
-        <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '800px', background: 'white', padding: '0.75rem', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', border: '1px solid #fbcfe8', zIndex: 1000, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '800px', background: 'var(--card-bg)', padding: '0.75rem', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', border: '1px solid #fbcfe8', zIndex: 1000, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
            <input 
              type="text" 
              value={aiReplyInput} 
@@ -332,7 +332,7 @@ export default function HomeDashboard() {
            <button onClick={() => handleAiSearch(aiReplyInput, true)} disabled={aiLoading || !aiReplyInput.trim()} style={{ background: aiLoading || !aiReplyInput.trim() ? '#f9a8d4' : '#ec4899', color: 'white', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: aiLoading || !aiReplyInput.trim() ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}>
              <Send size={20} />
            </button>
-           <button onClick={clearAiChat} title="סגור צ'אט" style={{ background: '#f3f4f6', color: '#6b7280', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
+           <button onClick={clearAiChat} title="סגור צ'אט" style={{ background: 'var(--element-bg)', color: '#6b7280', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
              <X size={20} />
            </button>
         </div>
@@ -345,7 +345,7 @@ export default function HomeDashboard() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
             
             {/* Customers */}
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#3b82f6', marginBottom: '1rem' }}>
                 <User size={20} /> לקוחות ({searchResults.customers?.length || 0})
               </h3>
@@ -365,7 +365,7 @@ export default function HomeDashboard() {
                     ))}
                   </ul>
                   {searchResults.customers.length > 5 && (
-                    <button onClick={() => setShowMoreCustomers(!showMoreCustomers)} style={{ width: '100%', background: '#eff6ff', color: '#3b82f6', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
+                    <button onClick={() => setShowMoreCustomers(!showMoreCustomers)} style={{ width: '100%', background: 'var(--btn-light-blue-bg)', color: '#3b82f6', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
                       {showMoreCustomers ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
@@ -374,7 +374,7 @@ export default function HomeDashboard() {
             </div>
 
             {/* Orders */}
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', marginBottom: '1rem' }}>
                 <ShoppingBag size={20} /> הזמנות ({searchResults.orders?.length || 0})
               </h3>
@@ -402,7 +402,7 @@ export default function HomeDashboard() {
                     ))}
                   </ul>
                   {searchResults.orders.length > 5 && (
-                    <button onClick={() => setShowMoreOrders(!showMoreOrders)} style={{ width: '100%', background: '#ecfdf5', color: '#10b981', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
+                    <button onClick={() => setShowMoreOrders(!showMoreOrders)} style={{ width: '100%', background: 'var(--btn-light-green-bg)', color: '#10b981', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
                       {showMoreOrders ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
@@ -411,7 +411,7 @@ export default function HomeDashboard() {
             </div>
 
             {/* Rentals */}
-            <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f59e0b', marginBottom: '1rem' }}>
                 <Shirt size={20} /> השכרות ({searchResults.rentals?.length || 0})
               </h3>
@@ -431,7 +431,7 @@ export default function HomeDashboard() {
                     ))}
                   </ul>
                   {searchResults.rentals.length > 5 && (
-                    <button onClick={() => setShowMoreRentals(!showMoreRentals)} style={{ width: '100%', background: '#fffbeb', color: '#f59e0b', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
+                    <button onClick={() => setShowMoreRentals(!showMoreRentals)} style={{ width: '100%', background: 'var(--element-bg)', color: '#f59e0b', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
                       {showMoreRentals ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
@@ -448,8 +448,8 @@ export default function HomeDashboard() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
         
         {/* Debts Widget */}
-        <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: debtsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
-          <div style={{ background: '#fef2f2', padding: '1.5rem', borderBottom: debtsExpanded ? '1px solid #fee2e2' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: debtsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
+          <div style={{ background: 'var(--banner-debts-bg)', padding: '1.5rem', borderBottom: debtsExpanded ? '1px solid var(--banner-debts-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#ef4444', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><CreditCard size={20} /></div>
               <h2 style={{ margin: 0, color: '#b91c1c', fontSize: '1.25rem' }}>חובות פתוחים</h2>
@@ -504,8 +504,8 @@ export default function HomeDashboard() {
         </div>
 
         {/* Recent Payments Widget */}
-        <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: paymentsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
-          <div style={{ background: '#ecfdf5', padding: '1.5rem', borderBottom: paymentsExpanded ? '1px solid #d1fae5' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: paymentsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
+          <div style={{ background: 'var(--banner-payments-bg)', padding: '1.5rem', borderBottom: paymentsExpanded ? '1px solid var(--banner-payments-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#10b981', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Banknote size={20} /></div>
               <h2 style={{ margin: 0, color: '#047857', fontSize: '1.25rem' }}>תשלומים אחרונים</h2>
@@ -552,8 +552,8 @@ export default function HomeDashboard() {
         </div>
 
         {/* Recent Orders Widget */}
-        <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: ordersExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
-          <div style={{ background: '#eff6ff', padding: '1.5rem', borderBottom: ordersExpanded ? '1px solid #dbeafe' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: ordersExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
+          <div style={{ background: 'var(--banner-orders-bg)', padding: '1.5rem', borderBottom: ordersExpanded ? '1px solid var(--banner-orders-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#3b82f6', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><ShoppingBag size={20} /></div>
               <h2 style={{ margin: 0, color: '#1d4ed8', fontSize: '1.25rem' }}>הזמנות אחרונות</h2>
@@ -610,8 +610,8 @@ export default function HomeDashboard() {
         </div>
 
         {/* Recent Rentals Widget */}
-        <div style={{ background: 'white', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: rentalsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
-          <div style={{ background: '#fffbeb', padding: '1.5rem', borderBottom: rentalsExpanded ? '1px solid #fef3c7' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: rentalsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
+          <div style={{ background: 'var(--banner-rentals-bg)', padding: '1.5rem', borderBottom: rentalsExpanded ? '1px solid var(--banner-rentals-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#f59e0b', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Shirt size={20} /></div>
               <h2 style={{ margin: 0, color: '#d97706', fontSize: '1.25rem' }}>השכרות אחרונות</h2>
@@ -648,7 +648,7 @@ export default function HomeDashboard() {
                       <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {renderStatusIcon(rental.status)} {rental.status}
                       </div>
-                      <Link href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d97706', background: '#fffbeb', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="לפרטי ההזמנה">
+                      <Link href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d97706', background: 'var(--element-bg)', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="לפרטי ההזמנה">
                         <ExternalLink size={18} />
                       </Link>
                     </div>

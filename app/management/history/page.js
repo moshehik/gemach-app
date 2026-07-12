@@ -221,7 +221,7 @@ export default function HistoryPage() {
       </div>
 
       {/* Action Bar */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', background: 'white', padding: '1rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', background: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
         <div style={{ color: 'var(--text-muted)' }}>
           נמצאו {totalCount} רשומות (מציג 60 לעמוד)
         </div>
@@ -253,7 +253,7 @@ export default function HistoryPage() {
       </div>
 
       {/* Data Table */}
-      <div style={{ background: 'white', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
         {loading && logs.length === 0 ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
         ) : logs.length === 0 ? (
@@ -293,7 +293,7 @@ export default function HistoryPage() {
                     <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>{formatDayOfWeek(log.timestamp)}</td>
                     <td style={{ padding: '1rem' }}>
                       <span style={{ 
-                        background: log.isGuest ? '#f1f3f5' : '#e7f5ff', 
+                        background: log.isGuest ? 'var(--element-bg)' : '#e7f5ff', 
                         color: log.isGuest ? '#495057' : '#0056b3',
                         padding: '0.25rem 0.5rem',
                         borderRadius: '4px',
@@ -304,7 +304,7 @@ export default function HistoryPage() {
                     </td>
                     <td style={{ padding: '1rem', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.pageUrl} dir="rtl">
                       <span style={{ fontWeight: '500', marginLeft: '0.5rem' }}>{formatPageName(log.pageUrl)}</span>
-                      <span style={{ fontSize: '0.85em', color: '#888' }} dir="ltr">{log.pageUrl}</span>
+                      <span style={{ fontSize: '0.85em', color: 'var(--text-muted)' }} dir="ltr">{log.pageUrl}</span>
                     </td>
                     <td style={{ padding: '1rem', color: log.loadingError ? '#dc3545' : 'inherit' }}>
                       {log.loadingError || '-'}
@@ -341,9 +341,9 @@ export default function HistoryPage() {
       {/* Delete Confirmation Modal */}
       {deleteModal.open && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} dir="rtl">
-          <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
+          <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
             <h3 style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--primary-color)' }}>אישור מחיקה</h3>
-            <p style={{ marginBottom: '1.5rem', color: '#555' }}>
+            <p style={{ marginBottom: '1.5rem', color: 'var(--text-muted)' }}>
               {deleteModal.isDeleteAll 
                 ? 'האם אתה בטוח שברצונך למחוק את כל ההיסטוריה לחלוטין?' 
                 : `האם למחוק ${selectedIds.size} רשומות שנבחרו?`}
@@ -359,7 +359,7 @@ export default function HistoryPage() {
               )}
               
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#555' }}>שם משתמש (או קוד עובד)</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>שם משתמש (או קוד עובד)</label>
                 <input 
                   type="text" 
                   value={deleteModal.username}
@@ -370,7 +370,7 @@ export default function HistoryPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: '#555' }}>סיסמה</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>סיסמה</label>
                 <input 
                   type="password" 
                   value={deleteModal.password}

@@ -52,14 +52,14 @@ export default function PunchClockPage() {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)', fontFamily: 'sans-serif' }}>
-      <div style={{ background: 'white', padding: '3rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
+      <div style={{ background: 'var(--card-bg)', padding: '3rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
         <h1 style={{ color: 'var(--primary-color)', marginBottom: '0.5rem', fontSize: '2rem' }}>שעון נוכחות</h1>
-        <div style={{ fontSize: '3rem', fontWeight: 'bold', color: '#333', marginBottom: '2rem', letterSpacing: '2px' }}>
+        <div style={{ fontSize: '3rem', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '2rem', letterSpacing: '2px' }}>
           {currentTime || '...'}
         </div>
 
         <div className="form-group" style={{ marginBottom: '1.5rem', textAlign: 'right' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#555' }}>קוד עובד</label>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-muted)' }}>קוד עובד</label>
           <input 
             type="number" 
             value={employeeId} 
@@ -72,7 +72,7 @@ export default function PunchClockPage() {
         </div>
 
         <div className="form-group" style={{ marginBottom: '2rem', textAlign: 'right' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#555' }}>סיסמא</label>
+          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-muted)' }}>סיסמא</label>
           <input 
             type="password" 
             value={password} 

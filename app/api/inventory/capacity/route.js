@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../app/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
@@ -28,8 +30,15 @@ export async function GET(request) {
         notInUse: false,
         inRepair: false,
         OR: [
-          { location: { not: 'רזרבה' } },
-          { location: null }
+          { location: null },
+          {
+            AND: [
+              { location: { not: { contains: 'מחסן' } } },
+              { location: { not: { contains: 'רזרבה' } } },
+              { location: { not: { contains: 'warehouse' } } },
+              { location: { not: { contains: 'reserve' } } }
+            ]
+          }
         ]
       }
     });
@@ -43,7 +52,10 @@ export async function GET(request) {
         isDeleted: false,
         notInUse: false,
         inRepair: false,
-        location: 'רזרבה'
+        OR: [
+          { location: { contains: 'רזרבה' } },
+          { location: { contains: 'reserve' } }
+        ]
       }
     });
     const reserve = reserveItems.reduce((acc, item) => acc + (item.quantity || 1), 0);

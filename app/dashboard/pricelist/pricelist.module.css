@@ -129,7 +129,7 @@
 
 .priceTable td {
   padding: 1rem;
-  background: white;
+  background: var(--input-bg);
   border-top: 1px solid transparent;
   border-bottom: 1px solid transparent;
 }
@@ -229,7 +229,7 @@
 .inputField:focus {
   outline: none;
   border-color: var(--primary-color);
-  background: white;
+  background: var(--input-bg);
   box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
 }
 

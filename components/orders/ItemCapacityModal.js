@@ -10,7 +10,8 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (isOpen && item && item.dressModelId && item.sizeText && order.eventDate) {
+    const hasIdentifier = item && (item.dressModelId || item.dressItem?.dressModelId || item.barcodePrefix || item.dressItem?.barcodePrefix || item.dressItem?.dress?.barcodePrefix);
+    if (isOpen && hasIdentifier && item.sizeText && order.eventDate) {
       fetchCapacity();
     }
   }, [isOpen, item, order]);
@@ -26,26 +27,26 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
       const toDate = new Date(eventDate);
       toDate.setMonth(toDate.getMonth() + 1);
 
-      const params = new URLSearchParams({
-        barcodePrefix: item.dressItem?.dress?.barcodePrefix || item.dressModelId, // Fallback if barcodePrefix is missing, maybe we need to fetch barcode prefix by model id, wait API takes barcodePrefix. Let's see if item has barcode prefix.
-        size: item.sizeText,
-        fromDate: fromDate.toISOString().split('T')[0],
-        toDate: toDate.toISOString().split('T')[0]
-      });
+      let prefix = item.barcodePrefix || item.dressItem?.barcodePrefix || item.dressItem?.dress?.barcodePrefix;
+      const actualModelId = item.dressModelId || item.dressItem?.dressModelId;
 
-      // We need barcodePrefix for the API. Let's get it.
-      let prefix = item.dressItem?.dress?.barcodePrefix;
-      if (!prefix) {
+      if (!prefix && actualModelId) {
         // fetch models to get prefix
         const mRes = await fetch('/api/inventory/models');
         const mData = await mRes.json();
-        const model = mData.models?.find(m => m.id === item.dressModelId);
+        const model = mData.models?.find(m => m.id === actualModelId);
         if (model) prefix = model.barcodePrefix;
       }
       if (!prefix) {
          throw new Error('לא נמצא קוד פריט');
       }
-      params.set('barcodePrefix', prefix);
+
+      const params = new URLSearchParams({
+        barcodePrefix: prefix,
+        size: item.sizeText,
+        fromDate: fromDate.toISOString().split('T')[0],
+        toDate: toDate.toISOString().split('T')[0]
+      });
 
       const res = await fetch(`/api/inventory/capacity?${params.toString()}`);
       const data = await res.json();
@@ -63,7 +64,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
 
   return (
     <div className="modal-overlay" style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
-      <div className="modal-content animate-fade-in" style={{ width: '95%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: '#fff', borderRadius: '16px', padding: '0', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', direction: 'rtl' }}>
+      <div className="modal-content animate-fade-in" style={{ width: '95%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '0', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', direction: 'rtl' }}>
         
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', background: 'linear-gradient(to right, #f8fafc, #f1f5f9)', borderBottom: '1px solid #e2e8f0', borderTopRightRadius: '16px', borderTopLeftRadius: '16px' }}>
@@ -75,7 +76,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
               זמינות: {item.dressItem?.dress?.name || item.description || 'פריט'} ({item.sizeText})
             </h2>
           </div>
-          <button onClick={onClose} style={{ background: 'white', border: '1px solid #e2e8f0', cursor: 'pointer', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <button onClick={onClose} style={{ background: 'var(--card-bg)', border: '1px solid #e2e8f0', cursor: 'pointer', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
             <X size={20} />
           </button>
         </div>
@@ -114,7 +115,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
                 </div>
 
                 {results.occupiedCount > 0 ? (
-                <div style={{ background: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+                <div style={{ background: 'var(--card-bg)', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
                     <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
@@ -128,8 +129,8 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
                         {results.occupiedOrders.map(occOrder => (
                         <tr key={occOrder.id} style={{ borderBottom: '1px solid #f1f5f9', background: occOrder.orderId === order.orderId ? '#eff6ff' : 'transparent', transition: 'background-color 0.2s' }}>
                             <td style={{ padding: '1rem', fontWeight: occOrder.orderId === order.orderId ? 'bold' : 'normal' }}>
-                                {new Date(occOrder.eventDate).toLocaleDateString('he-IL')}
-                                {occOrder.orderId === order.orderId && <span style={{ marginLeft: '0.5rem', fontSize: '0.8rem', background: '#3b82f6', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '12px' }}>הזמנה נוכחית</span>}
+                                {new Date(occOrder.eventDate).toLocaleDateString('he-IL')} <span style={{ color: '#64748b', fontSize: '0.9em', margin: '0 0.3rem' }}>({getHebrewDateString(occOrder.eventDate)})</span>
+                                {occOrder.orderId === order.orderId && <span style={{ marginRight: '0.5rem', fontSize: '0.8rem', background: '#3b82f6', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '12px' }}>הזמנה נוכחית</span>}
                             </td>
                             <td style={{ padding: '1rem' }}>{occOrder.customerName}</td>
                             <td style={{ padding: '1rem' }}>

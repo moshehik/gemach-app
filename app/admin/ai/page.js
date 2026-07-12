@@ -332,7 +332,7 @@ export default function AIPage() {
           backdropFilter: 'blur(4px)'
         }}>
           <div style={{
-            backgroundColor: 'white',
+            backgroundColor: 'var(--card-bg)',
             borderRadius: '16px',
             padding: '2rem',
             width: '90%',
@@ -351,7 +351,7 @@ export default function AIPage() {
                   border: 'none',
                   fontSize: '2rem',
                   cursor: 'pointer',
-                  color: '#666',
+                  color: 'var(--text-main)',
                   lineHeight: 1
                 }}
               >
@@ -370,7 +370,7 @@ export default function AIPage() {
                 </thead>
                 <tbody>
                   {modalTableData.map((row, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #eee', backgroundColor: i % 2 === 0 ? 'white' : '#f9fafb' }}>
+                    <tr key={i} style={{ borderBottom: '1px solid #eee', backgroundColor: i % 2 === 0 ? 'var(--card-bg)' : 'var(--element-bg)' }}>
                       {Object.keys(modalTableData[0]).map(h => (
                         <td key={h} style={{ padding: '10px 16px' }}>{row[h]}</td>
                       ))}

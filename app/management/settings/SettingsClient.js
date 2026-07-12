@@ -128,18 +128,23 @@ export default function SettingsClient() {
   const activeSettings = settings.filter(s => s.category === activeTab);
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+    <div className="rounded-xl shadow-sm border overflow-hidden" style={{ background: 'var(--card-bg)', borderColor: 'var(--element-border)' }}>
       {/* Tabs */}
-      <div className="flex overflow-x-auto border-b border-gray-200 bg-gray-50/50">
+      <div className="flex overflow-x-auto border-b" style={{ borderColor: 'var(--element-border)', background: 'var(--element-bg)' }}>
         {categories.map(cat => (
           <button
             key={cat}
             onClick={() => setActiveTab(cat)}
             className={`px-6 py-4 text-sm font-medium whitespace-nowrap transition-colors ${
               activeTab === cat 
-                ? 'border-b-2 border-blue-500 text-blue-600 bg-white'
-                : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                ? 'border-b-2 text-blue-600'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
+            style={{ 
+              borderColor: activeTab === cat ? 'var(--primary-color)' : 'transparent',
+              background: activeTab === cat ? 'var(--card-bg)' : 'transparent',
+              color: activeTab === cat ? 'var(--primary-color)' : 'var(--text-muted)'
+            }}
           >
             {cat}
           </button>
@@ -238,7 +243,7 @@ export default function SettingsClient() {
       </div>
 
       {/* Footer */}
-      <div className="bg-gray-50 px-6 py-4 flex items-center justify-end border-t border-gray-200 gap-4">
+      <div className="px-6 py-4 flex items-center justify-end border-t gap-4" style={{ background: 'var(--element-bg)', borderColor: 'var(--element-border)' }}>
         <span className="text-sm text-gray-500">
           {Object.keys(modified).length > 0 ? `ישנם ${Object.keys(modified).length} שינויים שלא נשמרו` : ''}
         </span>

@@ -125,7 +125,7 @@ export default function RecalculationsPage() {
               <div style={{ overflowX: 'auto', marginBottom: '20px' }}>
                 <table className="table" style={{ width: '100%', textAlign: 'right' }}>
                   <thead>
-                    <tr style={{ background: '#f5f5f5' }}>
+                    <tr style={{ background: 'var(--element-bg)' }}>
                       <th style={{ padding: '10px' }}>
                         <input 
                           type="checkbox" 
@@ -155,7 +155,7 @@ export default function RecalculationsPage() {
                         <td style={{ padding: '10px', fontWeight: 'bold' }}>{row.orderId}</td>
                         <td style={{ padding: '10px' }}>{row.customerName}</td>
                         <td style={{ padding: '10px' }}>{row.eventDateHebrew || '-'}</td>
-                        <td style={{ padding: '10px', color: '#666' }}>₪{row.oldAmount}</td>
+                        <td style={{ padding: '10px', color: 'var(--text-main)' }}>₪{row.oldAmount}</td>
                         <td style={{ padding: '10px', fontWeight: 'bold', color: '#0056b3' }}>₪{row.newAmount}</td>
                         <td style={{ padding: '10px', fontWeight: 'bold', color: row.diff > 0 ? 'red' : 'green', direction: 'ltr', textAlign: 'right' }}>
                           ₪{row.diff > 0 ? '+' : ''}{row.diff}
@@ -201,13 +201,13 @@ export default function RecalculationsPage() {
                     </button>
                   </div>
                 </div>
-                <p style={{ fontSize: '0.85rem', color: '#666', marginTop: '10px' }}>
+                <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', marginTop: '10px' }}>
                   המערכת תריץ את מנוע התשלומים מחדש על ההזמנות הנבחרות ותעדכן את היתרות במסד הנתונים.
                 </p>
               </div>
             </>
           ) : (
-            <p style={{ textAlign: 'center', padding: '30px', color: '#666' }}>
+            <p style={{ textAlign: 'center', padding: '30px', color: 'var(--text-main)' }}>
               לא נמצאו פערים בטווח התאריכים הנבחר. כל ההזמנות תקינות ומעודכנות!
             </p>
           )}

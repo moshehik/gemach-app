@@ -3,9 +3,11 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, CreditCard, ArrowRight } from 'lucide-react';
+import { Save, CreditCard, ArrowRight, Users } from 'lucide-react';
 import OrderGeneralDetails from '../../../components/orders/OrderGeneralDetails';
+import ActiveEmployeesModal from '../../../components/orders/ActiveEmployeesModal';
 import OrderItemsManager from '../../../components/orders/OrderItemsManager';
+import OrderRentalsManager from '../../../components/orders/OrderRentalsManager';
 import OrderPaymentsManager from '../../../components/orders/OrderPaymentsManager';
 import { calculateOrderStatus, getStatusColor } from '../../../lib/orderStatus';
 import HistoryViewer from '../../../components/HistoryViewer';
@@ -24,6 +26,7 @@ export default function OrderDetailsPage({ params }) {
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
+  const [showEmployeesModal, setShowEmployeesModal] = useState(false);
 
   // Fetch Order
   useEffect(() => {
@@ -73,7 +76,6 @@ export default function OrderDetailsPage({ params }) {
         body: JSON.stringify({
           items: items, // pass the current state of items
           eventDate: order.eventDate,
-          isWeekdayEvent: order.isWeekdayEvent,
           isAbroad: order.isAbroad,
           fromDate: order.fromDate,
           toDate: order.toDate,
@@ -82,6 +84,11 @@ export default function OrderDetailsPage({ params }) {
       });
       
       const validateData = await validateRes.json();
+      if (validateData.error) {
+        setSaving(false);
+        alert(`שגיאה: ${validateData.error}`);
+        return;
+      }
       if (!validateData.valid) {
         setSaving(false);
         const errorLines = validateData.errors.map(e => 
@@ -138,14 +145,14 @@ export default function OrderDetailsPage({ params }) {
   };
 
   if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
-      <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-      <h2 style={{ marginTop: '1rem', color: '#555' }}>טוען נתוני הזמנה...</h2>
+    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', cursor: 'default', userSelect: 'none' }}>
+      <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite', pointerEvents: 'none' }} />
+      <h2 style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>טוען נתוני הזמנה...</h2>
       <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
     </div>
   );
   
-  if (!order) return <div style={{ padding: '2rem', textAlign: 'center', fontSize: '1.5rem', color: '#888' }}>הזמנה לא נמצאה.</div>;
+  if (!order) return <div style={{ padding: '2rem', textAlign: 'center', fontSize: '1.5rem', color: 'var(--text-muted)' }}>הזמנה לא נמצאה.</div>;
 
   const totalPayable = items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
 
@@ -206,148 +213,211 @@ export default function OrderDetailsPage({ params }) {
   };
 
   return (
-    <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
+    <main style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
       
       {/* Header Sticky Bar */}
       <div style={{ 
         display: 'flex', 
         justifyContent: 'space-between', 
         alignItems: 'center', 
-        background: 'rgba(255, 255, 255, 0.9)', 
-        backdropFilter: 'blur(10px)',
+        background: (totalRequired - totalPaid > 0) ? 'rgba(254, 226, 226, 0.95)' : 'rgba(255, 255, 255, 0.85)', 
+        backdropFilter: 'blur(16px)',
+        WebkitBackdropFilter: 'blur(16px)',
         padding: '1.5rem 2rem', 
         borderRadius: '16px', 
-        boxShadow: '0 4px 20px rgba(0,0,0,0.05)', 
+        boxShadow: '0 8px 32px rgba(0,0,0,0.08)', 
+        border: '1px solid rgba(255,255,255,0.4)',
         marginBottom: '2rem',
         position: 'sticky',
         top: '1rem',
-        zIndex: 100
+        zIndex: 100,
+        flexWrap: 'wrap',
+        gap: '1rem',
+        transition: 'background-color 0.3s ease'
       }}>
-        <div>
-          <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '1.8rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            כרטיס הזמנה #{order.orderId}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+            <h1 style={{ margin: 0, color: '#1e293b', fontSize: '1.8rem', fontWeight: '800' }}>
+              כרטיס הזמנה #{order.orderId}
+            </h1>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <span style={{ 
-                fontSize: '1rem', padding: '0.4rem 1rem', borderRadius: '20px', 
+                fontSize: '0.9rem', padding: '0.3rem 1rem', borderRadius: '20px', fontWeight: '600',
                 background: getStatusColor(calculateOrderStatus(order)).bg,
-                color: getStatusColor(calculateOrderStatus(order)).text
+                color: getStatusColor(calculateOrderStatus(order)).text,
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
               }}>
                 {calculateOrderStatus(order)}
               </span>
               <span style={{ 
-                fontSize: '1rem', padding: '0.4rem 1rem', borderRadius: '20px', 
-                background: isPaid ? '#c8e6c9' : statusDisplay === 'חלקי' ? '#fff9c4' : '#ffebee',
-                color: isPaid ? '#2e7d32' : statusDisplay === 'חלקי' ? '#f57f17' : '#c62828'
+                fontSize: '0.9rem', padding: '0.3rem 1rem', borderRadius: '20px', fontWeight: '600',
+                background: isPaid ? '#dcfce7' : statusDisplay === 'חלקי' ? '#fef08a' : '#fee2e2',
+                color: isPaid ? '#166534' : statusDisplay === 'חלקי' ? '#854d0e' : '#991b1b',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
               }}>
                 {statusDisplay}
               </span>
             </div>
-          </h1>
-          <div style={{ color: '#666', marginTop: '0.5rem', fontSize: '0.9rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span>לקוח: <strong style={{ color: '#333' }}>{order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לא נבחר'}</strong></span>
-            {order.customer?.phone1 && <span>טלפון: <span style={{ direction: 'ltr', display: 'inline-block' }}>{order.customer.phone1}</span></span>}
-            <span>תאריך אירוע: <strong style={{ color: '#333' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'} {order.eventDate ? `(${getHebrewDateString(order.eventDate)})` : ''}</strong></span>
-            <span>נוצר ב: {createdDate ? new Date(createdDate).toLocaleDateString('he-IL') : 'לא ידוע'} {createdDate ? `(${getHebrewDateString(createdDate)})` : ''}</span>
-            <span style={{ borderRight: '1px solid #ccc', paddingRight: '1rem' }}>חובת תשלום: ₪{totalRequired} | שולם: ₪{totalPaid}</span>
+          </div>
+          
+          <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.9rem' }}>
+            <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span style={{ fontWeight: '500' }}>לקוח:</span> 
+              <strong style={{ color: '#0f172a' }}>{order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לא נבחר'}</strong>
+              {order.customer?.phone1 && <span style={{ direction: 'ltr', color: '#64748b' }}>({order.customer.phone1})</span>}
+            </div>
+            
+            <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span style={{ fontWeight: '500' }}>תאריך אירוע:</span> 
+              <strong style={{ color: '#0f172a' }}>
+                {order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'} 
+                {order.eventDate ? ` (${getHebrewDateString(order.eventDate)})` : ''}
+              </strong>
+            </div>
+
+            <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <span style={{ fontWeight: '500' }}>נוצר:</span> 
+              <span>{createdDate ? new Date(createdDate).toLocaleDateString('he-IL') : 'לא ידוע'}</span>
+            </div>
+
+            <div style={{ background: isPaid ? '#dcfce7' : '#fee2e2', padding: '0.4rem 0.8rem', borderRadius: '8px', color: isPaid ? '#166534' : '#991b1b', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '600' }}>
+              <span>חוב: ₪{totalRequired}</span> | <span>שולם: ₪{totalPaid}</span>
+            </div>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          {saveMessage && <span style={{ color: saveMessage.includes('שגיאה') ? '#d32f2f' : '#388e3c', fontWeight: 'bold' }}>{saveMessage}</span>}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
+          {saveMessage && <span style={{ color: saveMessage.includes('שגיאה') ? '#ef4444' : '#10b981', fontWeight: 'bold', background: saveMessage.includes('שגיאה') ? '#fee2e2' : '#d1fae5', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>{saveMessage}</span>}
           
           <button 
             onClick={handleSave} 
             disabled={saving || isLocked}
             title={isLocked ? "הזמנה נעולה" : "שמור שינויים"}
             style={{ 
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '0.8rem', 
-              background: 'var(--primary-color, #1976d2)', 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+              padding: '0.7rem 1.2rem', 
+              background: 'linear-gradient(135deg, #2563eb, #3b82f6)', 
               color: 'white', 
               border: 'none', 
-              borderRadius: '8px', 
+              borderRadius: '10px', 
               cursor: (saving || isLocked) ? 'not-allowed' : 'pointer',
               opacity: (saving || isLocked) ? 0.7 : 1,
-              boxShadow: '0 4px 6px rgba(25, 118, 210, 0.2)',
-              transition: 'all 0.2s'
+              fontWeight: '600',
+              boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+              transition: 'all 0.2s',
+              transform: saving ? 'scale(0.98)' : 'scale(1)'
             }}
           >
-            {saving ? <div className="spinner" style={{ width: '24px', height: '24px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Save size={24} />}
+            {saving ? <div className="spinner" style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Save size={20} />}
+            שמור
           </button>
           
+          <button 
+            onClick={() => setShowEmployeesModal(true)}
+            title="עובדים פעילים"
+            style={{ 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+              padding: '0.7rem 1rem', background: '#fff7ed', color: '#ea580c', border: '1px solid #fed7aa', 
+              borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600'
+            }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#ffedd5'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fff7ed'}
+          >
+            <Users size={20} />
+          </button>
+
           <button 
             onClick={() => document.getElementById('payments-section')?.scrollIntoView({ behavior: 'smooth' })}
             title={`מעבר לתשלום (₪${totalRequired - totalPaid})`}
             style={{ 
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '0.8rem', background: '#e8f5e9', color: '#2e7d32', border: '1px solid #c8e6c9', 
-              borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+              padding: '0.7rem 1rem', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', 
+              borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600'
             }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}
           >
-            <CreditCard size={24} />
+            <CreditCard size={20} />
           </button>
 
           <button 
             onClick={handleExit}
             title="חזרה"
             style={{ 
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              padding: '0.8rem', background: '#f5f5f5', color: '#333', border: '1px solid #ddd', 
-              borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s' 
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+              padding: '0.7rem 1rem', background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', 
+              borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600'
             }}
+            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
+            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
           >
-            <ArrowRight size={24} />
+            <ArrowRight size={20} />
+            חזור
           </button>
         </div>
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         
-        {/* Protected Section (Locked if past event) */}
-        <div style={{ position: 'relative' }}>
-          {isLocked && (
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.4)', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(1px)', borderRadius: '12px' }}>
-              <button 
-                onClick={handleUnlock}
-                style={{ padding: '1rem 2rem', background: '#d32f2f', color: 'white', border: 'none', borderRadius: '8px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}
-              >
-                🔒 הזמנה נעולה - לחץ לשחרור בעזרת סיסמת מנהל
-              </button>
-            </div>
-          )}
-          <div style={{ opacity: isLocked ? 0.7 : 1, pointerEvents: isLocked ? 'none' : 'auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-            <OrderGeneralDetails order={order} onOrderChange={setOrder} />
+        {/* Main Content Area (Left/Right side depending on RTL) */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          {/* Protected Section (Locked if past event) */}
+          <div style={{ position: 'relative' }}>
+            {isLocked && (
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.4)', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(2px)', borderRadius: '16px' }}>
+                <button 
+                  onClick={handleUnlock}
+                  style={{ padding: '1rem 2.5rem', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 8px 16px rgba(220, 38, 38, 0.3)' }}
+                >
+                  🔒 הזמנה נעולה - לחץ לשחרור בעזרת סיסמת מנהל
+                </button>
+              </div>
+            )}
+            <div style={{ opacity: isLocked ? 0.7 : 1, pointerEvents: isLocked ? 'none' : 'auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <OrderGeneralDetails order={order} onOrderChange={setOrder} />
 
-            <OrderItemsManager 
-              orderId={order.orderId}
-              order={order}
-              items={items} 
-              onItemsChange={setItems} 
-              onOrderUpdated={handleOrderUpdate}
-            />
+              <OrderItemsManager 
+                orderId={order.orderId}
+                order={order}
+                items={items} 
+                onItemsChange={setItems} 
+                onOrderUpdated={handleOrderUpdate}
+              />
+
+              <OrderRentalsManager items={items} />
+            </div>
           </div>
         </div>
 
-        {/* Payments and Obligations Manager Component */}
-        <div id="payments-section">
-          <OrderPaymentsManager 
-            orderId={order.orderId}
-            obligations={obligations} 
-            payments={payments} 
-            onObligationsChange={setObligations} 
-            onPaymentsChange={setPayments} 
-            totalRequired={totalRequired} 
-            totalPaid={totalPaid} 
-            customer={order.customer}
-          />
-        </div>
+        {/* Sidebar Area */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          {/* Payments and Obligations Manager Component */}
+          <div id="payments-section">
+            <OrderPaymentsManager 
+              orderId={order.orderId}
+              obligations={obligations} 
+              payments={payments} 
+              onObligationsChange={setObligations} 
+              onPaymentsChange={setPayments} 
+              totalRequired={totalRequired} 
+              totalPaid={totalPaid} 
+              customer={order.customer}
+            />
+          </div>
 
-        {/* History Viewer */}
-        <div style={{ background: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
-           <HistoryViewer entityType="Order" entityId={order.orderId} />
+          {/* History Viewer */}
+          <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+            <HistoryViewer entityType="Order" entityId={order.orderId} />
+          </div>
         </div>
 
       </div>
+
+      <ActiveEmployeesModal 
+        orderId={order.orderId}
+        isOpen={showEmployeesModal}
+        onClose={() => setShowEmployeesModal(false)}
+      />
     </main>
   );
 }

@@ -1,0 +1,544 @@
+{
+  "הגדרות_ראשי": {
+    "קוד": {
+      "totalCount": 67,
+      "distinctCount": 67
+    },
+    "קטגוריה": {
+      "totalCount": 66,
+      "distinctCount": 20
+    },
+    "תיאור": {
+      "totalCount": 65,
+      "distinctCount": 65
+    },
+    "תוכן": {
+      "totalCount": 63,
+      "distinctCount": 34
+    },
+    "הערות": {
+      "totalCount": 5,
+      "distinctCount": 5
+    }
+  },
+  "הזמנות": {
+    "קוד_הזמנה": {
+      "totalCount": 25191,
+      "distinctCount": 25191
+    },
+    "קוד_לקוח": {
+      "totalCount": 25191,
+      "distinctCount": 18133
+    },
+    "תאריך_אירוע": {
+      "totalCount": 25191,
+      "distinctCount": 897
+    },
+    "תאריך_אירוע_לועזי": {
+      "totalCount": 25190,
+      "distinctCount": 833
+    },
+    "בר_קוד_קידומת": {
+      "totalCount": 636,
+      "distinctCount": 41
+    },
+    "שולם": {
+      "totalCount": 25191,
+      "distinctCount": 2
+    },
+    "תשלום_סכום": {
+      "totalCount": 24223,
+      "distinctCount": 388
+    },
+    "מחוק": {
+      "totalCount": 25191,
+      "distinctCount": 2
+    },
+    "הערות_להזמנה": {
+      "totalCount": 21923,
+      "distinctCount": 9319
+    },
+    "הגדרות": {
+      "totalCount": 582,
+      "distinctCount": 24
+    },
+    "תאריך_הזמנה": {
+      "totalCount": 25180,
+      "distinctCount": 22657
+    },
+    "אירוע_חול": {
+      "totalCount": 25191,
+      "distinctCount": 2
+    },
+    "מתאריך": {
+      "totalCount": 51,
+      "distinctCount": 32
+    },
+    "עד_תאריך": {
+      "totalCount": 56,
+      "distinctCount": 31
+    },
+    "תאריך_מחיקה": {
+      "totalCount": 28,
+      "distinctCount": 28
+    },
+    "קוד_עובד": {
+      "totalCount": 16481,
+      "distinctCount": 59
+    }
+  },
+  "הזמנות_פרטים": {
+    "קוד_פריט": {
+      "totalCount": 77950,
+      "distinctCount": 77950
+    },
+    "קוד_הזמנה": {
+      "totalCount": 77925,
+      "distinctCount": 25061
+    },
+    "מידה": {
+      "totalCount": 77950,
+      "distinctCount": 30
+    },
+    "תיקון_צוואר": {
+      "totalCount": 77950,
+      "distinctCount": 2
+    },
+    "פירוט_תיקון": {
+      "totalCount": 31614,
+      "distinctCount": 17435
+    },
+    "קוד_תופרת": {
+      "totalCount": 0,
+      "distinctCount": 0
+    },
+    "ברקוד": {
+      "totalCount": 58332,
+      "distinctCount": 9350
+    },
+    "נלקח": {
+      "totalCount": 77950,
+      "distinctCount": 2
+    },
+    "הוחזר": {
+      "totalCount": 77950,
+      "distinctCount": 2
+    },
+    "תאריך_השכרה": {
+      "totalCount": 59475,
+      "distinctCount": 19263
+    },
+    "תאריך_החזרה": {
+      "totalCount": 38034,
+      "distinctCount": 759
+    },
+    "חזר_תקין": {
+      "totalCount": 77950,
+      "distinctCount": 2
+    },
+    "כמות": {
+      "totalCount": 77945,
+      "distinctCount": 7
+    },
+    "בוצע_תיקון": {
+      "totalCount": 77950,
+      "distinctCount": 2
+    },
+    "מחוק": {
+      "totalCount": 77950,
+      "distinctCount": 2
+    },
+    "תיקון_שרוול": {
+      "totalCount": 77950,
+      "distinctCount": 2
+    },
+    "בר_קוד_קידומת": {
+      "totalCount": 77950,
+      "distinctCount": 107
+    },
+    "תיקון_אורך_ישן": {
+      "totalCount": 77950,
+      "distinctCount": 1
+    },
+    "תיקון_אורך": {
+      "totalCount": 25221,
+      "distinctCount": 135
+    },
+    "תאריך_הזמנה": {
+      "totalCount": 53284,
+      "distinctCount": 25735
+    },
+    "תאריך_מחיקה": {
+      "totalCount": 10788,
+      "distinctCount": 7290
+    }
+  },
+  "הזמנות_תשלום": {
+    "קוד": {
+      "totalCount": 142303,
+      "distinctCount": 142303
+    },
+    "קוד_הזמנה": {
+      "totalCount": 142303,
+      "distinctCount": 24932
+    },
+    "מחיר": {
+      "totalCount": 141473,
+      "distinctCount": 296
+    },
+    "כמות": {
+      "totalCount": 142286,
+      "distinctCount": 33
+    },
+    "תאריך_תשלום": {
+      "totalCount": 142303,
+      "distinctCount": 37630
+    },
+    "קוד_מוצר": {
+      "totalCount": 142303,
+      "distinctCount": 9
+    },
+    "תיאור": {
+      "totalCount": 34121,
+      "distinctCount": 1499
+    },
+    "קוד_פריט": {
+      "totalCount": 102773,
+      "distinctCount": 56401
+    },
+    "פריט_מחוק": {
+      "totalCount": 142303,
+      "distinctCount": 2
+    },
+    "זיכוי": {
+      "totalCount": 142303,
+      "distinctCount": 2
+    },
+    "זיכוי_מבוטל": {
+      "totalCount": 142303,
+      "distinctCount": 2
+    }
+  },
+  "הזמנות_תשלום_ביצוע": {
+    "קוד": {
+      "totalCount": 41760,
+      "distinctCount": 41760
+    },
+    "קוד_הזמנה": {
+      "totalCount": 41760,
+      "distinctCount": 23579
+    },
+    "סכום": {
+      "totalCount": 41760,
+      "distinctCount": 395
+    },
+    "תאריך_תשלום": {
+      "totalCount": 41760,
+      "distinctCount": 41670
+    },
+    "צורת_תשלום": {
+      "totalCount": 41760,
+      "distinctCount": 3
+    },
+    "מס_אישור": {
+      "totalCount": 34525,
+      "distinctCount": 31234
+    },
+    "הערות": {
+      "totalCount": 28914,
+      "distinctCount": 9948
+    },
+    "הערות_מערכת": {
+      "totalCount": 34525,
+      "distinctCount": 32698
+    }
+  },
+  "לקוחות": {
+    "קוד_לקוח": {
+      "totalCount": 20816,
+      "distinctCount": 20816
+    },
+    "שם_פרטי": {
+      "totalCount": 20290,
+      "distinctCount": 1052
+    },
+    "שם_משפחה": {
+      "totalCount": 20785,
+      "distinctCount": 5140
+    },
+    "טלפון_1": {
+      "totalCount": 20615,
+      "distinctCount": 18120
+    },
+    "טלפון_2": {
+      "totalCount": 16827,
+      "distinctCount": 15324
+    },
+    "עיר": {
+      "totalCount": 19554,
+      "distinctCount": 213
+    },
+    "רחוב": {
+      "totalCount": 18201,
+      "distinctCount": 3320
+    },
+    "בית": {
+      "totalCount": 15624,
+      "distinctCount": 311
+    },
+    "מייל": {
+      "totalCount": 10005,
+      "distinctCount": 8856
+    },
+    "סיומת_מייל": {
+      "totalCount": 10607,
+      "distinctCount": 183
+    },
+    "חזר_תקין": {
+      "totalCount": 20816,
+      "distinctCount": 1
+    },
+    "הערות": {
+      "totalCount": 276,
+      "distinctCount": 240
+    },
+    "תאריך_רישום": {
+      "totalCount": 17614,
+      "distinctCount": 818
+    },
+    "לקוח_מחוק": {
+      "totalCount": 20816,
+      "distinctCount": 2
+    }
+  },
+  "מחירים": {
+    "קוד": {
+      "totalCount": 9,
+      "distinctCount": 9
+    },
+    "תיאור": {
+      "totalCount": 9,
+      "distinctCount": 8
+    },
+    "ממידה": {
+      "totalCount": 5,
+      "distinctCount": 5
+    },
+    "עד_מידה": {
+      "totalCount": 5,
+      "distinctCount": 4
+    },
+    "מחיר": {
+      "totalCount": 8,
+      "distinctCount": 6
+    },
+    "תאריך_התחלת_מחיר": {
+      "totalCount": 9,
+      "distinctCount": 7
+    },
+    "תאריך_סיום_מחיר": {
+      "totalCount": 0,
+      "distinctCount": 0
+    },
+    "קטגוריה": {
+      "totalCount": 9,
+      "distinctCount": 6
+    },
+    "החזר": {
+      "totalCount": 3,
+      "distinctCount": 3
+    }
+  },
+  "עובדים": {
+    "קוד_עובד": {
+      "totalCount": 91,
+      "distinctCount": 91
+    },
+    "שם_פרטי": {
+      "totalCount": 91,
+      "distinctCount": 52
+    },
+    "שם_משפחה": {
+      "totalCount": 91,
+      "distinctCount": 79
+    },
+    "טלפון_1": {
+      "totalCount": 91,
+      "distinctCount": 88
+    },
+    "טלפון_2": {
+      "totalCount": 4,
+      "distinctCount": 4
+    },
+    "עיר": {
+      "totalCount": 5,
+      "distinctCount": 2
+    },
+    "רחוב": {
+      "totalCount": 5,
+      "distinctCount": 4
+    },
+    "בית": {
+      "totalCount": 5,
+      "distinctCount": 4
+    },
+    "מייל": {
+      "totalCount": 16,
+      "distinctCount": 16
+    },
+    "תאריך_כניסה_לארגון": {
+      "totalCount": 91,
+      "distinctCount": 67
+    },
+    "שם_מלא": {
+      "totalCount": 91,
+      "distinctCount": 91
+    },
+    "הערות": {
+      "totalCount": 0,
+      "distinctCount": 0
+    },
+    "סיומת_מייל": {
+      "totalCount": 89,
+      "distinctCount": 1
+    },
+    "מס_מחלקה": {
+      "totalCount": 91,
+      "distinctCount": 6
+    },
+    "סיסמא": {
+      "totalCount": 91,
+      "distinctCount": 89
+    },
+    "לא_פעיל": {
+      "totalCount": 91,
+      "distinctCount": 2
+    },
+    "שכר_שעה": {
+      "totalCount": 77,
+      "distinctCount": 10
+    },
+    "אופן_תשלום": {
+      "totalCount": 79,
+      "distinctCount": 3
+    },
+    "נסיעות": {
+      "totalCount": 91,
+      "distinctCount": 2
+    }
+  },
+  "עובדים_נוכחות": {
+    "קוד": {
+      "totalCount": 13958,
+      "distinctCount": 13958
+    },
+    "קוד_עובד": {
+      "totalCount": 13957,
+      "distinctCount": 95
+    },
+    "שעת_כניסה": {
+      "totalCount": 13956,
+      "distinctCount": 13886
+    },
+    "שעת_יציאה": {
+      "totalCount": 13941,
+      "distinctCount": 13853
+    },
+    "תאריך_עברי": {
+      "totalCount": 13940,
+      "distinctCount": 1157
+    }
+  },
+  "שמלות_דגמים": {
+    "קוד_שמלה": {
+      "totalCount": 115,
+      "distinctCount": 115
+    },
+    "שם_שמלה": {
+      "totalCount": 111,
+      "distinctCount": 110
+    },
+    "בר_קוד_קידומת": {
+      "totalCount": 111,
+      "distinctCount": 111
+    },
+    "תאריך_כניסה_למאגר": {
+      "totalCount": 108,
+      "distinctCount": 50
+    },
+    "תאריך_יציאה_מהמאגר": {
+      "totalCount": 55,
+      "distinctCount": 19
+    },
+    "קטגורית_מחיר": {
+      "totalCount": 113,
+      "distinctCount": 3
+    },
+    "הערות": {
+      "totalCount": 68,
+      "distinctCount": 68
+    },
+    "הצג_בבדיקה": {
+      "totalCount": 115,
+      "distinctCount": 1
+    }
+  },
+  "שמלות_נתונים": {
+    "קוד": {
+      "totalCount": 12745,
+      "distinctCount": 12745
+    },
+    "בר_קוד_קידומת": {
+      "totalCount": 12744,
+      "distinctCount": 110
+    },
+    "שם_שמלה": {
+      "totalCount": 12745,
+      "distinctCount": 110
+    },
+    "מידה": {
+      "totalCount": 12745,
+      "distinctCount": 30
+    },
+    "מספר_סידורי": {
+      "totalCount": 12745,
+      "distinctCount": 33
+    },
+    "שמלה_בתיקון": {
+      "totalCount": 12745,
+      "distinctCount": 2
+    },
+    "לא_בשימוש": {
+      "totalCount": 12745,
+      "distinctCount": 2
+    },
+    "לא_בשימוש_מתאריך": {
+      "totalCount": 1988,
+      "distinctCount": 391
+    },
+    "תאריך_כניסה_למאגר": {
+      "totalCount": 12745,
+      "distinctCount": 228
+    },
+    "בר_קוד_שמלה": {
+      "totalCount": 12745,
+      "distinctCount": 12745
+    },
+    "מיקום": {
+      "totalCount": 9438,
+      "distinctCount": 3
+    },
+    "מיקום_מס": {
+      "totalCount": 5081,
+      "distinctCount": 336
+    },
+    "כמות": {
+      "totalCount": 12745,
+      "distinctCount": 1
+    },
+    "מידה_טקסט": {
+      "totalCount": 12745,
+      "distinctCount": 30
+    }
+  }
+}

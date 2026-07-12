@@ -219,7 +219,7 @@ export default function PricelistManagement() {
           backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999
         }}>
           <div style={{
-            background: 'white', padding: '2rem', borderRadius: '12px', width: '320px',
+            background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', width: '320px',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)', textAlign: 'center'
           }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: isLocked ? '#ef4444' : '#22c55e' }}>
@@ -228,7 +228,7 @@ export default function PricelistManagement() {
             <h3 style={{ marginTop: 0, color: 'var(--primary-color)', marginBottom: '0.5rem' }}>
               {isLocked ? 'פתיחת נעילת מחיקה' : 'נעילת מחיקה'}
             </h3>
-            <p style={{ fontSize: '0.9rem', color: '#666', marginBottom: '1.5rem' }}>
+            <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: '1.5rem' }}>
               יש להזין קוד עובד (מנהל/מתכנת)
             </p>
             <input 
@@ -238,7 +238,7 @@ export default function PricelistManagement() {
               onKeyDown={e => { if(e.key === 'Enter') handleLockSubmit(); }}
               placeholder="קוד עובד"
               autoFocus
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc', marginBottom: '1.5rem', textAlign: 'center', fontSize: '1.2rem' }}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', marginBottom: '1.5rem', textAlign: 'center', fontSize: '1.2rem' }}
             />
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
               <button 

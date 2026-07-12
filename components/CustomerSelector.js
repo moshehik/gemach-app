@@ -71,18 +71,18 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
           width: '100%',
           padding: '1.2rem',
           borderRadius: '12px',
-          border: `2px solid ${error ? '#d32f2f' : '#e0e0e0'}`,
+          border: `2px solid ${error ? '#d32f2f' : 'var(--element-border)'}`,
           fontSize: '1.1rem',
           outline: 'none',
           transition: 'border-color 0.2s',
           textAlign: 'right',
-          backgroundColor: 'white'
+          backgroundColor: 'var(--card-bg)'
         }}
         onMouseEnter={(e) => { if (!error) e.target.style.borderColor = 'var(--primary-color)' }}
         onMouseLeave={(e) => { if (!error) e.target.style.borderColor = '#e0e0e0' }}
       />
       {loading && isOpen && (
-          <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#999', fontSize: '0.9rem' }}>טוען...</div>
+          <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>טוען...</div>
       )}
       
       {isOpen && customers.length > 0 && (
@@ -91,8 +91,8 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
           top: '100%',
           right: 0,
           left: 0,
-          backgroundColor: 'white',
-          border: '1px solid #ccc',
+          backgroundColor: 'var(--card-bg)',
+          border: '1px solid var(--element-border)',
           borderRadius: '12px',
           boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
           zIndex: 100,
@@ -111,11 +111,11 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
                 textAlign: 'right',
                 transition: 'background-color 0.2s'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--element-bg)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               <div style={{ fontWeight: 'bold' }}>{c.firstName} {c.lastName}</div>
-              <div style={{ fontSize: '0.9rem', color: '#666' }}>
+              <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
                   {c.phone1} {c.city ? ` | ${c.city}` : ''}
               </div>
             </div>
@@ -128,14 +128,14 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
             top: '100%',
             right: 0,
             left: 0,
-            backgroundColor: 'white',
-            border: '1px solid #ccc',
+            backgroundColor: 'var(--card-bg)',
+            border: '1px solid var(--element-border)',
             borderRadius: '12px',
             boxShadow: '0 8px 16px rgba(0,0,0,0.1)',
             zIndex: 100,
             padding: '1rem',
             textAlign: 'center',
-            color: '#666',
+            color: 'var(--text-main)',
             marginTop: '0.5rem'
           }}>
             לא נמצאו לקוחות.

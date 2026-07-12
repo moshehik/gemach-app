@@ -84,27 +84,25 @@ export async function POST(request) {
     // Let's find order items in this order that match prefix and size.
     // sizeText in DressItem might be "38", "40", etc. which matches sizeStr.
     
-    // Convert sizeStr to number to drop leading zero if any, then to string
-    const sizeVal = parseInt(sizeStr).toString(); 
+    const sizeVal = parseInt(sizeStr); 
 
-    const matchingItems = await prisma.orderItem.findMany({
+    const potentialItems = await prisma.orderItem.findMany({
       where: {
         orderId: parseInt(orderId),
         isDeleted: false,
-        barcode: null,
-        // Match prefix and size
-        dressItem: {
-          barcodePrefix: barcodePrefix,
-          sizeText: {
-            startsWith: sizeVal // e.g., "38" matches "38" or "38 ארוך" (simplification, but typically exact)
-          }
-        }
+        barcode: null
       },
       include: {
         dressItem: {
           include: { dress: true }
         }
       }
+    });
+
+    const matchingItems = potentialItems.filter(item => {
+      const pfx = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
+      const sz = item.dressItem?.sizeText || item.sizeText || '';
+      return pfx === barcodePrefix && parseInt(sz) === sizeVal;
     });
 
     // 6. No matching items

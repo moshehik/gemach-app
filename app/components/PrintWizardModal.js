@@ -75,7 +75,7 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
           {dateMode === 'custom' && (
             <div style={{ display: 'flex', gap: '15px', marginTop: '15px' }}>
               <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '0.9em', color: '#555' }}>מתאריך:</label>
+                <label style={{ display: 'block', fontSize: '0.9em', color: 'var(--text-muted)' }}>מתאריך:</label>
                 <input 
                   type="date" 
                   className="form-input" 
@@ -84,7 +84,7 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
                 />
               </div>
               <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', fontSize: '0.9em', color: '#555' }}>עד תאריך:</label>
+                <label style={{ display: 'block', fontSize: '0.9em', color: 'var(--text-muted)' }}>עד תאריך:</label>
                 <input 
                   type="date" 
                   className="form-input" 

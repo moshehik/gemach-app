@@ -1,20 +1,26 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FileText, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays } from 'lucide-react';
+import { FileText, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays, AlertCircle, Info, Phone, Calendar as CalendarIcon2, CreditCard, CheckCircle2 } from 'lucide-react';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import CapacitySearchModal from '../../components/CapacitySearchModal';
 import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
+import { useLabels } from '@/app/components/LabelsContext';
+import RentalReturnModal from '../../components/orders/RentalReturnModal';
 
 export default function OrdersPage() {
   const router = useRouter();
+  const { getLabel } = useLabels();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [hoveredOrder, setHoveredOrder] = useState(null);
+  const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
 
   // Pagination & Filters
   const [page, setPage] = useState(1);
@@ -33,7 +39,7 @@ export default function OrdersPage() {
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);
   const [showCapacitySearch, setShowCapacitySearch] = useState(false);
-  const [rentalModalUrl, setRentalModalUrl] = useState(null);
+  const [rentalModalOrderId, setRentalModalOrderId] = useState(null);
 
   const [showStatistics, setShowStatistics] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
@@ -193,20 +199,24 @@ export default function OrdersPage() {
         <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
           
           {/* Status Filter Banner */}
-          <div style={{ display: 'flex', gap: '0.3rem', background: '#e0e0e0', padding: '0.2rem', borderRadius: '8px' }}>
-            <button onClick={() => { setFilterStatus('soon'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'soon' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'soon' ? '#f57c00' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בקרוב (החל מהיום ואילך)">
+          <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
+            <button onClick={() => { setFilterStatus('soon'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'soon' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'soon' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בקרוב (החל מהיום ואילך)">
               <CalendarDays size={20} />
               <span style={{ fontWeight: filterStatus === 'soon' ? 'bold' : 'normal' }}>בקרוב</span>
             </button>
-            <button onClick={() => { setFilterStatus('archive'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'archive' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'archive' ? '#1565c0' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="ארכיון / עבר">
+            <button onClick={() => { setFilterStatus('archive'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'archive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'archive' ? '#1565c0' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="ארכיון / עבר">
               <Archive size={20} />
               <span style={{ fontWeight: filterStatus === 'archive' ? 'bold' : 'normal' }}>ארכיון/עבר</span>
             </button>
-            <button onClick={() => { setFilterStatus('deleted'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוקים">
+            <button onClick={() => { setFilterStatus('deleted'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוקים">
               <Trash2 size={20} />
               <span style={{ fontWeight: filterStatus === 'deleted' ? 'bold' : 'normal' }}>מחוק</span>
             </button>
-            <button onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'white' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : '#666', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
+            <button onClick={() => { setFilterStatus('unpaid'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם">
+              <AlertCircle size={20} />
+              <span style={{ fontWeight: filterStatus === 'unpaid' ? 'bold' : 'normal' }}>לא שולם</span>
+            </button>
+            <button onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
               <List size={20} />
               <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
             </button>
@@ -228,11 +238,11 @@ export default function OrdersPage() {
             }))} 
             filename="הזמנות" 
             columns={[
-              { key: 'orderId', label: 'קוד הזמנה' },
-              { key: 'customerName', label: 'לקוח' },
-              { key: 'totalAmount', label: 'סכום לחיוב' },
-              { key: 'totalPaid', label: 'סכום ששולם' },
-              { key: 'status', label: 'סטטוס' }
+              { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
+              { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
+              { key: 'totalAmount', label: getLabel('order_totalAmount', 'סכום לחיוב') },
+              { key: 'totalPaid', label: 'שולם' },
+              { key: 'status', label: getLabel('order_status', 'סטטוס') }
             ]}
             iconOnly={true}
             onFetchData={fetchOrdersForExport}
@@ -278,11 +288,11 @@ export default function OrdersPage() {
 
       {showAdvSearch && (
         <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'white', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem' }}>חיפוש מתקדם</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>מספר הזמנה</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('order_id', 'מספר הזמנה')}</label>
                 <input type="text" className="form-control" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} />
               </div>
               <div>
@@ -290,7 +300,7 @@ export default function OrdersPage() {
                 <input type="text" className="form-control" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>שם לקוח</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('order_customerName', 'שם לקוח')}</label>
                 <input type="text" className="form-control" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} />
               </div>
               <div>
@@ -316,7 +326,7 @@ export default function OrdersPage() {
         
         {/* Orders List */}
         <div style={{ flex: '1 1 600px' }}>
-          <div style={{ background: 'white', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
+          <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
             {loading && orders.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
             ) : (
@@ -324,25 +334,50 @@ export default function OrdersPage() {
                 <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
-                      <th style={thStyle} onClick={() => handleSort('orderId')}>קוד הזמנה <SortIcon column="orderId" /></th>
-                      <th style={thStyle} onClick={() => handleSort('customerName')}>לקוח <SortIcon column="customerName" /></th>
-                      <th style={thStyle} onClick={() => handleSort('eventDate')}>תאריך אירוע <SortIcon column="eventDate" /></th>
+                      <th style={thStyle} onClick={() => handleSort('orderId')}>{getLabel('order_id', 'קוד הזמנה')} <SortIcon column="orderId" /></th>
+                      <th style={thStyle} onClick={() => handleSort('customerName')}>{getLabel('order_customerName', 'לקוח')} <SortIcon column="customerName" /></th>
+                      <th style={thStyle}>כמות פריטים</th>
                       <th style={thStyle} onClick={() => handleSort('eventDateHebrew')}>תאריך עברי <SortIcon column="eventDateHebrew" /></th>
-                      <th style={thStyle} onClick={() => handleSort('totalAmount')}>סכום לחיוב <SortIcon column="totalAmount" /></th>
-                      <th style={thStyle} onClick={() => handleSort('totalPaid')}>סכום ששולם <SortIcon column="totalPaid" /></th>
-                      <th style={thStyle} onClick={() => handleSort('status')}>סטטוס <SortIcon column="status" /></th>
+                      <th style={thStyle} onClick={() => handleSort('totalAmount')}>{getLabel('order_totalAmount', 'סכום לחיוב')} <SortIcon column="totalAmount" /></th>
+                      <th style={thStyle} onClick={() => handleSort('totalPaid')}>שולם <SortIcon column="totalPaid" /></th>
+                      <th style={thStyle} onClick={() => handleSort('status')}>{getLabel('order_status', 'סטטוס')} <SortIcon column="status" /></th>
                       <th style={{ padding: '1rem' }}>פעולות</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {orders.map(order => (
-                      <tr key={order.orderId} style={{ borderBottom: '1px solid #eee', transition: 'background 0.2s', cursor: 'pointer', background: selectedOrder?.orderId === order.orderId ? '#f5f5f5' : 'transparent' }} onClick={() => router.push(`/orders/${order.orderId}`)}>
-                        <td style={{ padding: '1rem' }}>#{order.orderId}</td>
+                    {orders.map(order => {
+                      const isUnpaid = order.totalPaid < order.totalAmount && order.totalAmount > 0;
+                      return (
+                      <tr key={order.orderId} style={{ 
+                        borderBottom: '1px solid #eee', 
+                        transition: 'background 0.2s', 
+                        cursor: 'pointer', 
+                        background: selectedOrder?.orderId === order.orderId ? '#f5f5f5' : (isUnpaid ? '#fff4f4' : 'transparent'),
+                        borderRight: isUnpaid ? '4px solid #ef4444' : 'none'
+                      }} onClick={() => router.push(`/orders/${order.orderId}`)}>
+                        <td style={{ padding: '1rem', fontWeight: isUnpaid ? 'bold' : 'normal', color: isUnpaid ? '#b91c1c' : 'inherit' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <span>#{order.orderId}</span>
+                            <div 
+                              className="detailsIcon"
+                              style={{ marginRight: 'auto' }}
+                              onMouseEnter={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setPopoverPos({ top: rect.top - 12, left: rect.left + (rect.width / 2) });
+                                setHoveredOrder(order);
+                              }}
+                              onMouseLeave={() => setHoveredOrder(null)}
+                              onClick={(e) => { e.stopPropagation(); }}
+                            >
+                              <Info size={16} strokeWidth={2.5} />
+                            </div>
+                          </div>
+                        </td>
                         <td style={{ padding: '1rem', fontWeight: '500' }}>{order.customerName}</td>
-                        <td style={{ padding: '1rem' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : ''}</td>
+                        <td style={{ padding: '1rem', textAlign: 'center' }}>{order.items ? order.items.filter(i => !i.isDeleted).length : 0}</td>
                         <td style={{ padding: '1rem' }}>{order.eventDateHebrew || ''}</td>
                         <td style={{ padding: '1rem' }}>₪{order.totalAmount}</td>
-                        <td style={{ padding: '1rem', color: order.totalPaid >= order.totalAmount && order.totalAmount > 0 ? 'green' : 'inherit' }}>₪{order.totalPaid}</td>
+                        <td style={{ padding: '1rem', color: order.totalPaid >= order.totalAmount && order.totalAmount > 0 ? 'green' : (isUnpaid ? '#dc2626' : 'inherit'), fontWeight: isUnpaid ? 'bold' : 'normal' }}>₪{order.totalPaid}</td>
                         <td style={{ padding: '1rem' }}>
                           <span style={{ 
                             padding: '0.3rem 0.8rem', 
@@ -369,7 +404,7 @@ export default function OrdersPage() {
                             style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: '#ecfdf5', color: '#10b981' }}
                             onClick={(e) => {
                               e.stopPropagation();
-                              setRentalModalUrl(`/rentals?orderId=${order.orderId}&embed=true`);
+                              setRentalModalOrderId(order.orderId);
                             }}
                             title="מעבר להשכרה/החזרה"
                           >
@@ -385,7 +420,7 @@ export default function OrdersPage() {
                           </button>
                         </td>
                       </tr>
-                    ))}
+                    )})}
                   </tbody>
                 </table>
                 
@@ -421,41 +456,13 @@ export default function OrdersPage() {
         onClose={() => setShowCapacitySearch(false)} 
       />
 
-      {/* Rental Modal Overlay */}
-      {rentalModalUrl && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 1100,
-          display: 'flex', justifyContent: 'center', alignItems: 'center',
-          backdropFilter: 'blur(4px)'
-        }} onClick={() => setRentalModalUrl(null)}>
-          <div style={{
-            background: '#f8fafc', width: '95%', height: '90%', borderRadius: '16px',
-            position: 'relative', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            display: 'flex', flexDirection: 'column'
-          }} onClick={e => e.stopPropagation()}>
-            <div style={{
-              padding: '1rem 1.5rem', background: 'white', borderBottom: '1px solid #e2e8f0',
-              display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-            }}>
-              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: 'bold' }}>מערכת השכרה והחזרה</h2>
-              <button 
-                onClick={() => setRentalModalUrl(null)}
-                style={{
-                  background: '#f1f5f9', border: 'none', borderRadius: '50%', width: '36px', height: '36px',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#64748b'
-                }}
-              >
-                <X size={20} />
-              </button>
-            </div>
-            <iframe 
-              src={rentalModalUrl} 
-              style={{ width: '100%', flex: 1, border: 'none' }}
-              title="מערכת השכרה"
-            />
-          </div>
-        </div>
+      {/* Rental Modal */}
+      {rentalModalOrderId && (
+        <RentalReturnModal 
+          orderId={rentalModalOrderId} 
+          onClose={() => setRentalModalOrderId(null)} 
+          onUpdate={fetchOrders}
+        />
       )}
 
       <StatisticsModal 
@@ -464,6 +471,59 @@ export default function OrdersPage() {
         pageContext="orders"
         contextQuery={aiQueryUsed}
       />
+
+      {hoveredOrder && typeof document !== 'undefined' && createPortal(
+        <div 
+          className="global-popover" 
+          style={{ top: popoverPos.top, left: popoverPos.left }}
+        >
+          <div className="global-popoverHeader">
+            <Info size={18} />
+            הזמנה #{hoveredOrder.orderId}
+          </div>
+          <div className="global-popoverRow">
+            <span>לקוח:</span>
+            <span>{hoveredOrder.customerName}</span>
+          </div>
+          <div className="global-popoverRow">
+            <span><Phone size={14} /> טלפון:</span>
+            <span dir="ltr">{hoveredOrder.customerPhone || 'לא הוזן'}</span>
+          </div>
+          <div className="global-popoverRow">
+            <span><CalendarIcon2 size={14} /> תאריך עברי:</span>
+            <span>{hoveredOrder.eventDateHebrew || 'לא צוין'}</span>
+          </div>
+          <div className="global-popoverRow">
+            <span><CalendarIcon2 size={14} /> תאריך לועזי:</span>
+            <span>{hoveredOrder.eventDate ? new Date(hoveredOrder.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</span>
+          </div>
+          <div className="global-popoverRow">
+            <span><Shirt size={14} /> הושכר:</span>
+            <span>{hoveredOrder.items ? hoveredOrder.items.filter(i => !i.isDeleted && i.isTaken).length : 0}</span>
+          </div>
+          <div className="global-popoverRow">
+            <span><Shirt size={14} /> הוחזר:</span>
+            <span>{hoveredOrder.items ? hoveredOrder.items.filter(i => !i.isDeleted && i.isReturned).length : 0}</span>
+          </div>
+          <div className="global-popoverRow">
+            <span><CreditCard size={14} /> סה"כ לתשלום:</span>
+            <span>₪{hoveredOrder.totalAmount || 0}</span>
+          </div>
+          <div className="global-popoverRow">
+            <span><CheckCircle2 size={14} /> שולם:</span>
+            <span style={{ color: hoveredOrder.totalPaid >= hoveredOrder.totalAmount && hoveredOrder.totalAmount > 0 ? '#10b981' : (hoveredOrder.totalPaid > 0 ? '#f59e0b' : '#ef4444'), fontWeight: 'bold' }}>
+              ₪{hoveredOrder.totalPaid || 0}
+            </span>
+          </div>
+          <div className="global-popoverRow">
+            <span>סטטוס:</span>
+            <span style={{ color: getStatusColor(calculateOrderStatus(hoveredOrder)).text, background: getStatusColor(calculateOrderStatus(hoveredOrder)).bg, padding: '2px 6px', borderRadius: '4px' }}>
+              {calculateOrderStatus(hoveredOrder)}
+            </span>
+          </div>
+        </div>,
+        document.body
+      )}
     </main>
   );
 }

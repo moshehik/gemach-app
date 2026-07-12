@@ -217,7 +217,7 @@ export default function AlterationsPage() {
                 <button 
                   type="button"
                   onClick={() => { setSearchInput(''); setSearch(''); setPage(1); }}
-                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: '#999', fontSize: '1.2rem', padding: '0' }}
+                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.2rem', padding: '0' }}
                   title="נקה חיפוש"
                 >
                   &times;

@@ -131,7 +131,7 @@ export async function GET(request) {
     if (eventDateStr) {
       const eventDate = new Date(eventDateStr);
       if (!isNaN(eventDate.getTime())) {
-        const { getBulkAvailableInventory } = await import('../../lib/inventory');
+        const { getBulkAvailableInventory } = await import('../../../lib/inventory');
         bulkAvailable = await getBulkAvailableInventory(eventDate);
       }
     }
@@ -148,8 +148,9 @@ export async function GET(request) {
           if (isUnusable) {
              availableQtyForThisItem = 0;
           } else if (availableBySize[size] > 0) {
-             availableQtyForThisItem = 1;
-             availableBySize[size] -= 1;
+             const availableForThis = Math.min(item.quantity || 1, availableBySize[size]);
+             availableQtyForThisItem = availableForThis;
+             availableBySize[size] -= availableForThis;
           } else {
              availableQtyForThisItem = 0;
           }
@@ -157,7 +158,7 @@ export async function GET(request) {
           if (isUnusable) {
              availableQtyForThisItem = 0;
           } else {
-             availableQtyForThisItem = 1;
+             availableQtyForThisItem = item.quantity || 1;
           }
         }
 

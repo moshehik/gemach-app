@@ -55,10 +55,19 @@ export default function DataExplorerPage() {
   const [queryColumns, setQueryColumns] = useState([]);
   const [queryError, setQueryError] = useState('');
   
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [isGeneratingAi, setIsGeneratingAi] = useState(false);
+  const [aiError, setAiError] = useState('');
+
+  const [showLogModal, setShowLogModal] = useState(false);
+  const [queryLogs, setQueryLogs] = useState([]);
+  const [loadingLogs, setLoadingLogs] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [initialError, setInitialError] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const textareaRef = React.useRef(null);
+  
   // Fetch all tables on mount
   useEffect(() => {
     const fetchTables = async () => {
@@ -141,6 +150,49 @@ export default function DataExplorerPage() {
     
     fetchTableData();
   }, [selectedTable]);
+
+  const generateAiQuery = async () => {
+    if (!aiPrompt.trim()) return;
+    setIsGeneratingAi(true);
+    setAiError('');
+    try {
+      const res = await fetch('/api/admin/ai-sql-generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt })
+      });
+      const data = await res.json();
+      if (res.ok && data.sql) {
+        setCustomQuery(data.sql);
+        // Add visual flash effect
+        if (textareaRef.current) {
+          textareaRef.current.style.boxShadow = '0 0 0 4px rgba(37, 99, 235, 0.3)';
+          setTimeout(() => { if(textareaRef.current) textareaRef.current.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.02)'; }, 1000);
+        }
+      } else {
+        setAiError(data.error || 'שגיאה ביצירת שאילתה');
+      }
+    } catch (err) {
+      setAiError(err.message);
+    } finally {
+      setIsGeneratingAi(false);
+    }
+  };
+
+  const fetchLogs = async () => {
+    setLoadingLogs(true);
+    try {
+      const res = await fetch('/api/admin/query-log');
+      const data = await res.json();
+      if (res.ok) {
+        setQueryLogs(data);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingLogs(false);
+    }
+  };
 
   const runCustomQuery = async () => {
     if (!customQuery.trim()) return;
@@ -237,14 +289,18 @@ export default function DataExplorerPage() {
     if (!table) return;
 
     if (mode === 'all') {
-      const pin = window.prompt("הזן קוד מנהל לאישור הורדה מלאה:");
-      if (!pin) return;
+      const authResult = await window.customAuthPrompt("הזן קוד מנהל/מתכנת לאישור הורדה מלאה:", "מנהל");
+      if (!authResult) return;
 
       try {
-        const res = await fetch('/api/auth/verify', {
+        const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin, requiredLevel: 'מנהל' })
+          body: JSON.stringify({ 
+            pin: authResult.pin, 
+            employeeId: authResult.employeeId, 
+            requiredLevel: 'מנהל' 
+          })
         });
         const data = await res.json();
         if (!data.success) {
@@ -325,7 +381,7 @@ export default function DataExplorerPage() {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(500px, 1fr))', gap: '2rem' }}>
         {/* Table Explorer Section */}
         <div style={{ 
-          background: 'white', 
+          background: 'var(--card-bg)', 
           padding: '2rem', 
           borderRadius: '16px', 
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
@@ -490,7 +546,7 @@ export default function DataExplorerPage() {
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {tableColumns.map(col => (
-                  <span key={col} style={{ background: 'white', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer', transition: 'all 0.2s' }}
+                  <span key={col} style={{ background: 'var(--card-bg)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer', transition: 'all 0.2s' }}
                     onClick={() => {
                       navigator.clipboard.writeText(`"${col}"`);
                       insertToQuery(`"${col}"`);
@@ -502,7 +558,7 @@ export default function DataExplorerPage() {
                     }}
                     title="לחץ להעתקת השדה"
                     onMouseOver={e => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.color = 'white'; e.currentTarget.style.borderColor = '#3b82f6'; }}
-                    onMouseOut={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.color = '#475569'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = 'var(--input-bg)'; e.currentTarget.style.color = '#475569'; e.currentTarget.style.borderColor = '#cbd5e1'; }}
                   >
                     {col}
                   </span>
@@ -513,12 +569,32 @@ export default function DataExplorerPage() {
           
           {selectedTable && !loading && (
             <div style={{ marginTop: '0.5rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-              <p style={{ marginBottom: '1rem', color: '#64748b', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ marginBottom: '1rem', color: '#64748b', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span>מציג עד <strong>500</strong> רשומות אחרונות</span>
-                <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600' }}>
-                  טבלה: {selectedTable}
-                </span>
-              </p>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600' }}>
+                    טבלה: {selectedTable}
+                  </span>
+                  <button 
+                    onClick={() => {
+                      sessionStorage.setItem('fullViewQuery', `SELECT * FROM "${selectedTable}"`);
+                      window.open('/admin/data-explorer/full-view', '_blank');
+                    }}
+                    style={{ 
+                      display: 'flex', alignItems: 'center', gap: '0.4rem', 
+                      background: '#eff6ff', color: '#3b82f6', border: '1px solid #bfdbfe', 
+                      padding: '0.2rem 0.6rem', borderRadius: '4px', cursor: 'pointer', 
+                      fontWeight: '500', transition: 'all 0.2s', fontSize: '0.8rem'
+                    }}
+                    title="פתיחה בתצוגת מסך מלא"
+                    onMouseOver={e => { e.currentTarget.style.background = '#dbeafe'; }}
+                    onMouseOut={e => { e.currentTarget.style.background = '#eff6ff'; }}
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                    טבלה מלאה
+                  </button>
+                </div>
+              </div>
               
               <div style={{ 
                 flex: 1,
@@ -541,7 +617,7 @@ export default function DataExplorerPage() {
                     </thead>
                     <tbody>
                       {tableData.map((row, i) => (
-                        <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#f8fafc', transition: 'background 0.1s' }} className="hover:bg-slate-50">
+                        <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'var(--card-bg)' : '#f8fafc', transition: 'background 0.1s' }} className="hover:bg-slate-50">
                           {tableColumns.map(col => (
                             <td key={col} style={{ padding: '0.75rem', color: '#334155', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[col])}>
                               {row[col] !== null ? String(row[col]) : <span style={{ color: '#cbd5e1', fontStyle: 'italic', fontSize: '0.85em' }}>NULL</span>}
@@ -564,7 +640,7 @@ export default function DataExplorerPage() {
 
         {/* Custom SQL Query Section */}
         <div style={{ 
-          background: 'white', 
+          background: 'var(--card-bg)', 
           padding: '2rem', 
           borderRadius: '16px', 
           boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)',
@@ -572,19 +648,59 @@ export default function DataExplorerPage() {
           display: 'flex',
           flexDirection: 'column'
         }}>
-          <h2 style={{ 
-            marginBottom: '1.5rem', 
-            paddingBottom: '1rem',
-            borderBottom: '2px solid #f1f5f9',
-            color: '#0f172a',
-            fontSize: '1.4rem',
-            fontWeight: '600',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem'
-          }}>
-            <span style={{ fontSize: '1.2em' }}>⌨️</span> הרצת שאילתת SQL מותאמת
-          </h2>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', paddingBottom: '1rem', borderBottom: '2px solid #f1f5f9' }}>
+            <h2 style={{ 
+              color: '#0f172a',
+              fontSize: '1.4rem',
+              fontWeight: '600',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              margin: 0
+            }}>
+              <span style={{ fontSize: '1.2em' }}>⌨️</span> הרצת שאילתת SQL מותאמת
+            </h2>
+            <button 
+              className="btn"
+              onClick={() => { setShowLogModal(true); fetchLogs(); }}
+              style={{
+                background: '#f8fafc', border: '1px solid #cbd5e1', color: '#334155', borderRadius: '8px', padding: '0.5rem 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', fontWeight: '500'
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+              היסטוריית שאילתות
+            </button>
+          </div>
+
+          <div style={{ background: 'linear-gradient(to right, #eff6ff, #f8fafc)', padding: '1.5rem', borderRadius: '12px', border: '1px solid #bfdbfe', marginBottom: '1.5rem' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#1e3a8a', fontSize: '1.1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              ✨ עוזר שאילתות AI
+            </h3>
+            <p style={{ fontSize: '0.9rem', color: '#3b82f6', marginBottom: '1rem' }}>תאר במילים מה תרצה לשלוף או לעדכן, וה-AI יכתוב את השאילתה עבורך.</p>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1 }}>
+                <input 
+                  type="text" 
+                  value={aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  placeholder="לדוגמה: מחק את כל תיעודי הכניסה הישנים משנת 2024..."
+                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '8px', border: '1px solid #93c5fd', background: 'white' }}
+                  onKeyDown={e => { if (e.key === 'Enter') generateAiQuery(); }}
+                />
+                {aiError && <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.5rem' }}>{aiError}</div>}
+              </div>
+              <button 
+                onClick={generateAiQuery}
+                disabled={isGeneratingAi || !aiPrompt.trim()}
+                style={{
+                  background: isGeneratingAi || !aiPrompt.trim() ? '#93c5fd' : '#2563eb',
+                  color: 'white', border: 'none', padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: '600', cursor: isGeneratingAi || !aiPrompt.trim() ? 'not-allowed' : 'pointer', transition: 'background 0.2s', whiteSpace: 'nowrap'
+                }}
+              >
+                {isGeneratingAi ? 'מייצר שאילתה...' : 'צור שאילתה'}
+              </button>
+            </div>
+          </div>
           
           <div style={{ marginBottom: '1rem', position: 'relative' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#1e293b' }}>
@@ -623,7 +739,7 @@ export default function DataExplorerPage() {
                 position: 'absolute',
                 top: 'calc(100% - 4px)',
                 right: '1rem',
-                background: 'white',
+                background: 'var(--card-bg)',
                 border: '1px solid #cbd5e1',
                 borderRadius: '8px',
                 boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)',
@@ -645,7 +761,7 @@ export default function DataExplorerPage() {
                       transition: 'background 0.1s'
                     }}
                     onMouseOver={e => e.currentTarget.style.background = '#f1f5f9'}
-                    onMouseOut={e => e.currentTarget.style.background = 'white'}
+                    onMouseOut={e => e.currentTarget.style.background = 'var(--input-bg)'}
                     onClick={() => {
                       const ta = textareaRef.current;
                       if (ta) {
@@ -743,9 +859,27 @@ export default function DataExplorerPage() {
           
           {queryResult.length > 0 && !queryError && (
              <div style={{ marginTop: '1rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
-             <p style={{ marginBottom: '1rem', color: '#64748b', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between' }}>
+             <div style={{ marginBottom: '1rem', color: '#64748b', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                <span>נמצאו <strong>{queryResult.length}</strong> רשומות</span>
-             </p>
+               <button 
+                 onClick={() => {
+                   sessionStorage.setItem('fullViewQuery', customQuery);
+                   window.open('/admin/data-explorer/full-view', '_blank');
+                 }}
+                 style={{ 
+                   display: 'flex', alignItems: 'center', gap: '0.4rem', 
+                   background: '#eff6ff', color: '#3b82f6', border: '1px solid #bfdbfe', 
+                   padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', 
+                   fontWeight: '500', transition: 'all 0.2s' 
+                 }}
+                 title="פתיחה בתצוגת מסך מלא"
+                 onMouseOver={e => { e.currentTarget.style.background = '#dbeafe'; }}
+                 onMouseOut={e => { e.currentTarget.style.background = '#eff6ff'; }}
+               >
+                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path></svg>
+                 טבלה מלאה
+               </button>
+             </div>
              
              <div style={{ 
                 flex: 1,
@@ -767,7 +901,7 @@ export default function DataExplorerPage() {
                  </thead>
                  <tbody>
                    {queryResult.map((row, i) => (
-                     <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'white' : '#f8fafc', transition: 'background 0.1s' }} className="hover:bg-slate-50">
+                     <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? 'var(--card-bg)' : '#f8fafc', transition: 'background 0.1s' }} className="hover:bg-slate-50">
                        {queryColumns.map(col => (
                          <td key={col} style={{ padding: '0.75rem', color: '#334155', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[col])}>
                            {row[col] !== null ? String(row[col]) : <span style={{ color: '#cbd5e1', fontStyle: 'italic', fontSize: '0.85em' }}>NULL</span>}
@@ -789,6 +923,74 @@ export default function DataExplorerPage() {
           )}
         </div>
       </div>
+
+      {/* Query History Modal */}
+      {showLogModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', justifyContent: 'center', alignItems: 'center'
+        }}>
+          <div style={{
+            background: 'white', borderRadius: '16px', width: '90%', maxWidth: '800px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)'
+          }}>
+            <div style={{ padding: '1.5rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, fontSize: '1.25rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                היסטוריית שאילתות
+              </h3>
+              <button onClick={() => setShowLogModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            
+            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, background: '#f8fafc' }}>
+              {loadingLogs ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>טוען היסטוריה...</div>
+              ) : queryLogs.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b' }}>אין היסטוריית שאילתות.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                  {queryLogs.map(log => (
+                    <div key={log.id} style={{ 
+                      background: 'white', 
+                      borderRadius: '8px', 
+                      padding: '1rem', 
+                      border: `1px solid ${log.success ? '#e2e8f0' : '#fecaca'}`,
+                      borderRight: `4px solid ${log.success ? '#10b981' : '#ef4444'}`,
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.85rem', color: '#64748b' }}>
+                        <span>{new Date(log.executedAt).toLocaleString('he-IL')}</span>
+                        <span style={{ color: log.success ? '#10b981' : '#ef4444', fontWeight: '600' }}>
+                          {log.success ? 'הצלחה' : 'שגיאה'}
+                        </span>
+                      </div>
+                      <pre style={{ 
+                        margin: '0.5rem 0', padding: '0.75rem', background: '#1e293b', color: '#e2e8f0', borderRadius: '6px', overflowX: 'auto', direction: 'ltr', fontSize: '0.85rem'
+                      }}>{log.query}</pre>
+                      {!log.success && log.errorMsg && (
+                        <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.5rem', direction: 'ltr', textAlign: 'left' }}>
+                          Error: {log.errorMsg}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+                        <button 
+                          className="btn"
+                          style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
+                          onClick={() => {
+                            setCustomQuery(log.query);
+                            setShowLogModal(false);
+                            if (textareaRef.current) textareaRef.current.focus();
+                          }}
+                        >העתק לעורך</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

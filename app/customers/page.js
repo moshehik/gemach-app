@@ -6,8 +6,11 @@ import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
 
+import { useLabels } from '@/app/components/LabelsContext';
+
 export default function CustomersPage() {
   const router = useRouter();
+  const { getLabel } = useLabels();
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   
@@ -183,11 +186,11 @@ export default function CustomersPage() {
             filename="לקוחות" 
             columns={[
               { key: 'id', label: 'קוד לקוח' },
-              { key: 'firstName', label: 'שם פרטי' },
-              { key: 'lastName', label: 'שם משפחה' },
-              { key: 'phone1', label: 'טלפון' },
-              { key: 'city', label: 'עיר' },
-              { key: 'email', label: 'דוא"ל' }
+              { key: 'firstName', label: getLabel('customer_firstName', 'שם פרטי') },
+              { key: 'lastName', label: getLabel('customer_lastName', 'שם משפחה') },
+              { key: 'phone1', label: getLabel('customer_phone1', 'טלפון') },
+              { key: 'city', label: getLabel('customer_city', 'עיר') },
+              { key: 'email', label: getLabel('customer_email', 'דוא"ל') }
             ]} 
             onFetchData={fetchCustomersForExport}
           />
@@ -197,27 +200,27 @@ export default function CustomersPage() {
 
       {showAdvSearch && (
         <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'white', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem' }}>חיפוש מתקדם (לקוחות)</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>שם פרטי</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_firstName', 'שם פרטי')}</label>
                 <input type="text" className="form-control" value={advFilters.firstName} onChange={e => setAdvFilters(p => ({...p, firstName: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>שם משפחה</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_lastName', 'שם משפחה')}</label>
                 <input type="text" className="form-control" value={advFilters.lastName} onChange={e => setAdvFilters(p => ({...p, lastName: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>טלפון</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_phone1', 'טלפון')}</label>
                 <input type="text" className="form-control" value={advFilters.phone} onChange={e => setAdvFilters(p => ({...p, phone: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>עיר מגורים</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_city', 'עיר מגורים')}</label>
                 <input type="text" className="form-control" value={advFilters.city} onChange={e => setAdvFilters(p => ({...p, city: e.target.value}))} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>דוא"ל</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_email', 'דוא"ל')}</label>
                 <input type="text" className="form-control" value={advFilters.email} onChange={e => setAdvFilters(p => ({...p, email: e.target.value}))} />
               </div>
             </div>
@@ -231,7 +234,7 @@ export default function CustomersPage() {
         </div>
       )}
 
-      <div style={{ background: 'white', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
         {loading && customers.length === 0 ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
         ) : (
@@ -240,16 +243,17 @@ export default function CustomersPage() {
               <thead>
                 <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
                   <th style={thStyle} onClick={() => handleSort('id')}>קוד לקוח <SortIcon column="id" /></th>
-                  <th style={thStyle} onClick={() => handleSort('firstName')}>שם פרטי <SortIcon column="firstName" /></th>
-                  <th style={thStyle} onClick={() => handleSort('lastName')}>שם משפחה <SortIcon column="lastName" /></th>
-                  <th style={thStyle} onClick={() => handleSort('phone1')}>טלפון <SortIcon column="phone1" /></th>
-                  <th style={thStyle} onClick={() => handleSort('city')}>עיר <SortIcon column="city" /></th>
-                  <th style={thStyle} onClick={() => handleSort('email')}>דוא"ל <SortIcon column="email" /></th>
+                  <th style={thStyle} onClick={() => handleSort('firstName')}>{getLabel('customer_firstName', 'שם פרטי')} <SortIcon column="firstName" /></th>
+                  <th style={thStyle} onClick={() => handleSort('lastName')}>{getLabel('customer_lastName', 'שם משפחה')} <SortIcon column="lastName" /></th>
+                  <th style={thStyle} onClick={() => handleSort('phone1')}>{getLabel('customer_phone1', 'טלפון')} <SortIcon column="phone1" /></th>
+                  <th style={thStyle} onClick={() => handleSort('city')}>{getLabel('customer_city', 'עיר')} <SortIcon column="city" /></th>
+                  <th style={thStyle} onClick={() => handleSort('email')}>{getLabel('customer_email', 'דוא"ל')} <SortIcon column="email" /></th>
                 </tr>
               </thead>
               <tbody>
+
                 {customers.map(customer => (
-                  <tr key={customer.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/customers/${customer.id}`)} onMouseEnter={e => e.currentTarget.style.background = '#f9f9f9'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <tr key={customer.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/customers/${customer.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <td style={{ padding: '1rem' }}>{customer.id}</td>
                     <td style={{ padding: '1rem', fontWeight: '500' }}>{customer.firstName}</td>
                     <td style={{ padding: '1rem', fontWeight: '500' }}>{customer.lastName}</td>

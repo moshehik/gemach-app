@@ -91,7 +91,7 @@ export default function PrintDressCard() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '2px solid #333', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ margin: '0 0 0.5rem 0' }}>כרטיס דגם שמלה</h1>
-          <h2 style={{ margin: '0 0 0.5rem 0', color: '#555' }}>
+          <h2 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-muted)' }}>
             {useModelNames ? dress.name : `דגם ${dress.barcodePrefix}`}
           </h2>
           <div style={{ fontSize: '1.1rem' }}>
@@ -104,7 +104,7 @@ export default function PrintDressCard() {
             <img 
               src={getImageSource(dress)} 
               alt={dress.name} 
-              style={{ width: '120px', height: '120px', objectFit: 'contain', border: '1px solid #ccc', borderRadius: '4px' }} 
+              style={{ width: '120px', height: '120px', objectFit: 'contain', border: '1px solid var(--element-border)', borderRadius: '4px' }} 
               onError={(e) => { e.target.style.display = 'none'; }}
             />
           </div>
@@ -147,7 +147,7 @@ export default function PrintDressCard() {
           </thead>
           <tbody>
             {activeItems.map((item) => (
-              <tr key={item.id} style={{ background: item.notInUse ? '#f9f9f9' : 'transparent', color: item.notInUse ? '#777' : 'inherit' }}>
+              <tr key={item.id} style={{ background: item.notInUse ? '#f9f9f9' : 'transparent', color: item.notInUse ? 'var(--text-muted)' : 'inherit' }}>
                 <td>{item.sizeText}</td>
                 <td>{item.serialNumber}</td>
                 <td>{item.dressBarcode}</td>
@@ -163,7 +163,7 @@ export default function PrintDressCard() {
         <p>אין פריטים במלאי עבור דגם זה.</p>
       )}
 
-      <div style={{ marginTop: '3rem', fontSize: '0.8rem', color: '#777', textAlign: 'center', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
+      <div style={{ marginTop: '3rem', fontSize: '0.8rem', color: 'var(--text-muted)', textAlign: 'center', borderTop: '1px solid #eee', paddingTop: '1rem' }}>
         הודפס מתערכת ניהול הגמ"ח בתאריך: {new Date().toLocaleDateString('he-IL')} בשעה {new Date().toLocaleTimeString('he-IL')}
       </div>
     </div>

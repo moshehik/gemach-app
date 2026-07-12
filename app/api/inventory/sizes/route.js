@@ -1,20 +1,25 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../app/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const barcodePrefixParam = searchParams.get('barcodePrefix');
+    const modelIdParam = searchParams.get('modelId');
 
-    if (!barcodePrefixParam) {
-      return NextResponse.json({ error: 'Missing barcodePrefix' }, { status: 400 });
+    if (!barcodePrefixParam && !modelIdParam) {
+      return NextResponse.json({ error: 'Missing barcodePrefix or modelId' }, { status: 400 });
     }
 
-    const barcodePrefix = parseInt(barcodePrefixParam, 10);
+    const barcodePrefix = barcodePrefixParam ? parseInt(barcodePrefixParam, 10) : undefined;
+    const dressModelId = modelIdParam ? parseInt(modelIdParam, 10) : undefined;
 
     const items = await prisma.dressItem.findMany({
       where: {
-        barcodePrefix,
+        ...(barcodePrefix ? { barcodePrefix } : {}),
+        ...(dressModelId ? { dressModelId } : {}),
         isDeleted: false
       },
       select: {

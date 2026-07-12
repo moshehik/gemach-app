@@ -7,7 +7,8 @@ async function main() {
     const settingsToSeed = [
         { key: 'barcodePrefixLength', value: '3', name: 'אורך קוד דגם' },
         { key: 'useModelNames', value: 'true', name: 'שימוש בשם דגם (אחרת שימוש במספר סידורי בלבד)' },
-        { key: 'useFileNamesForImages', value: 'true', name: 'שימוש אוטומטי בשמות קבצים לתמונות' }
+        { key: 'useFileNamesForImages', value: 'true', name: 'שימוש אוטומטי בשמות קבצים לתמונות' },
+        { key: 'enable_alterations', value: 'true', name: 'הפעל מערכת תיקונים', category: 'ניהול', type: 'boolean' }
     ];
 
     for (const setting of settingsToSeed) {

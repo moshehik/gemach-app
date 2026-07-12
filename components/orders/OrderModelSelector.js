@@ -69,7 +69,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
             width: '100%',
             padding: '0.4rem',
             borderRadius: '4px',
-            border: '1px solid #ccc',
+            border: '1px solid var(--element-border)',
             textAlign: 'right'
           }}
         />
@@ -87,8 +87,8 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
           top: '100%',
           right: 0,
           left: 0,
-          backgroundColor: 'white',
-          border: '1px solid #ccc',
+          backgroundColor: 'var(--card-bg)',
+          border: '1px solid var(--element-border)',
           borderRadius: '4px',
           boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
           zIndex: 100,
@@ -105,7 +105,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
                 borderBottom: '1px solid #eee',
                 textAlign: 'right'
               }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f5f5f5'}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--element-bg)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
               {m.name} {m.barcodePrefix ? `(קוד: ${m.barcodePrefix})` : ''}

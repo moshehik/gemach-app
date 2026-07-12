@@ -35,7 +35,7 @@
   border: 2px solid var(--border-color);
   border-radius: 30px;
   outline: none;
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--card-bg);
   transition: all 0.3s ease;
   letter-spacing: 2px;
 }
@@ -56,12 +56,12 @@
 
 @keyframes flashSuccess {
   0% { background: #e8f5e9; border-color: #4caf50; }
-  100% { background: white; border-color: var(--border-color); }
+  100% { background: var(--input-bg); border-color: var(--border-color); }
 }
 
 @keyframes flashError {
   0% { background: #ffebee; border-color: #f44336; }
-  100% { background: white; border-color: var(--border-color); }
+  100% { background: var(--input-bg); border-color: var(--border-color); }
 }
 
 .orders-grid {
@@ -93,7 +93,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--divider);
   padding-bottom: 0.5rem;
 }
 
@@ -117,7 +117,7 @@
 
 .modal-tabs {
   display: flex;
-  border-bottom: 2px solid #eee;
+  border-bottom: 2px solid var(--divider);
   margin-bottom: 1.5rem;
 }
 
@@ -150,13 +150,13 @@
 .items-table th, .items-table td {
   padding: 1rem;
   text-align: right;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--divider);
 }
 
 .items-table th {
   font-weight: 600;
   color: var(--text-muted);
-  background: #f9f9f9;
+  background: var(--element-bg);
 }
 
 .items-table tr.taken { background: rgba(76, 175, 80, 0.05); }
@@ -176,7 +176,7 @@
 }
 
 .alteration-option {
-  border: 2px solid #eee;
+  border: 2px solid var(--divider);
   border-radius: 12px;
   padding: 1.5rem;
   margin-bottom: 1rem;

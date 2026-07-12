@@ -27,7 +27,7 @@ export default function BrandLogo() {
   }, []);
 
   const versionText = (
-    <div style={{ fontSize: '0.65rem', color: '#888', marginTop: '2px', lineHeight: '1' }}>
+    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: '1' }}>
       גירסא {versionData.version} | {versionData.date}
     </div>
   );

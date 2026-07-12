@@ -9,6 +9,7 @@ export default function PrintOrderPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [enableAlterations, setEnableAlterations] = useState(true);
 
   const orderId = searchParams.get('orderId');
 
@@ -19,6 +20,15 @@ export default function PrintOrderPage() {
       if (!res.ok) throw new Error('Failed to fetch order data');
       const data = await res.json();
       setOrder(data);
+
+      const settingsRes = await fetch('/api/settings');
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        const altSetting = settingsData.find(s => s.key === 'enable_alterations');
+        if (altSetting && altSetting.value === 'false') {
+          setEnableAlterations(false);
+        }
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -294,9 +304,13 @@ export default function PrintOrderPage() {
                   <th>דגם / תיאור</th>
                   <th>מידה</th>
                   <th>ברקוד</th>
-                  <th>תיקון צואר</th>
-                  <th>תיקון שרוול</th>
-                  <th>תיקון אורך</th>
+                  {enableAlterations && (
+                    <>
+                      <th>תיקון צואר</th>
+                      <th>תיקון שרוול</th>
+                      <th>תיקון אורך</th>
+                    </>
+                  )}
                   <th>סטטוס</th>
                 </tr>
               </thead>
@@ -316,9 +330,13 @@ export default function PrintOrderPage() {
                         <td style={{ fontWeight: '500' }}>{item.description || '-'}</td>
                         <td>{item.sizeText || '-'}</td>
                         <td style={{ fontWeight: '600', color: '#495057' }}>{item.barcode || '-'}</td>
-                        <td>{item.neckAlteration ? `הצרה ${item.neckAlteration}` : '-'}</td>
-                        <td>{item.sleeveAlteration ? `הארכה ${item.sleeveAlteration}` : '-'}</td>
-                        <td>{item.lengthAlteration || '-'}</td>
+                        {enableAlterations && (
+                          <>
+                            <td>{item.neckAlteration ? `הצרה ${item.neckAlteration}` : '-'}</td>
+                            <td>{item.sleeveAlteration ? `הארכה ${item.sleeveAlteration}` : '-'}</td>
+                            <td>{item.lengthAlteration || '-'}</td>
+                          </>
+                        )}
                         <td>
                           <span className={`status-badge ${getStatusClass(statusStr)}`} style={{ padding: '2px 8px', fontSize: '11px' }}>
                             {statusStr}

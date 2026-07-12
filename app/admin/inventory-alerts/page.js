@@ -45,7 +45,7 @@ function StatusSummary({ summary }) {
           top: '100%',
           right: 0,
           marginTop: '4px',
-          backgroundColor: 'white',
+          backgroundColor: 'var(--card-bg)',
           border: '1px solid #e2e8f0',
           borderRadius: '8px',
           padding: '12px',
@@ -77,7 +77,7 @@ function AlertOrdersModal({ orders, onClose }) {
       display: 'flex', alignItems: 'center', justifyContent: 'center'
     }}>
       <div style={{
-        backgroundColor: 'white', borderRadius: '12px', padding: '24px',
+        backgroundColor: 'var(--card-bg)', borderRadius: '12px', padding: '24px',
         width: '90%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -169,7 +169,7 @@ export default function InventoryAlertsPage() {
         </div>
       ) : (
         <div style={{ 
-          backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', 
+          backgroundColor: 'var(--card-bg)', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', 
           overflow: 'hidden', border: '1px solid #e2e8f0' 
         }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
@@ -185,7 +185,7 @@ export default function InventoryAlertsPage() {
             </thead>
             <tbody>
               {alerts.map((alert, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'white'}>
+                <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--input-bg)'}>
                   <td style={{ padding: '16px', fontWeight: '500', color: '#0f172a' }}>{alert.dressName}</td>
                   <td style={{ padding: '16px', color: '#334155' }}>
                     <div style={{ display: 'flex', alignItems: 'center' }}>

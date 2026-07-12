@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
 import { recalculateOrderObligations } from '../../../../../lib/pricingEngine';
+import { getAvailableInventory } from '../../../../../lib/inventory';
 
 export async function POST(request, { params }) {
   try {
@@ -19,46 +20,52 @@ export async function POST(request, { params }) {
     }
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
-      // Find an available dressItem for this model and size
-      // We check notInUse and inRepair
-      const availableItem = await tx.dressItem.findFirst({
-        where: {
-          dressModelId: itemData.dressModelId,
-          sizeText: itemData.sizeText,
-          notInUse: false,
-          inRepair: false,
-        },
-        include: {
-          orderItems: {
-            where: { isDeleted: false, isReturned: false },
-            include: { order: true }
-          }
-        }
-      });
-
-      if (!availableItem) {
-        throw new Error(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText}`);
-      }
-      
-      // Basic overlap check based on event date if we had the order event date
       const order = await tx.order.findUnique({ where: { orderId: parsedId } });
-      if (order && order.eventDate) {
-        const orderEventDate = new Date(order.eventDate).setHours(0,0,0,0);
-        for (const oi of availableItem.orderItems) {
-            if (oi.order && oi.order.eventDate) {
-                const existingDate = new Date(oi.order.eventDate).setHours(0,0,0,0);
-                if (existingDate === orderEventDate && oi.orderId !== parsedId) {
-                    throw new Error(`הפריט נמצא בשימוש בהזמנה אחרת (${oi.orderId}) בתאריך זה`);
-                }
-            }
-        }
+      if (!order) throw new Error('הזמנה לא נמצאה');
+
+      const settingsRaw = await tx.systemSetting.findMany();
+      let bufferDays = 3;
+      let skipWeekends = true;
+      const bufferSetting = settingsRaw.find(s => s.key === 'inventory_buffer_days');
+      if (bufferSetting) bufferDays = parseInt(bufferSetting.value, 10);
+      const weekendSetting = settingsRaw.find(s => s.key === 'inventory_skip_weekends');
+      if (weekendSetting) skipWeekends = weekendSetting.value === 'true';
+
+      const newOrderIsAbroad = order.isAbroad;
+      let targetMinDate, targetMaxDate;
+      if (newOrderIsAbroad) {
+         if (!order.fromDate || !order.toDate) throw new Error('חסרים תאריכים להזמנת חו"ל');
+         targetMinDate = order.fromDate;
+         targetMaxDate = order.toDate;
+      } else {
+         if (!order.eventDate) throw new Error('חסר תאריך אירוע להזמנה');
+         targetMinDate = order.eventDate;
+         targetMaxDate = order.eventDate;
       }
+
+      const availability = await getAvailableInventory(
+        itemData.dressModelId,
+        targetMinDate,
+        bufferDays,
+        skipWeekends,
+        newOrderIsAbroad,
+        targetMaxDate,
+        parsedId
+      );
+
+      const sizeAvail = availability.find(a => (a.sizeText || a.size || 'כללי') === itemData.sizeText);
+
+      if (!sizeAvail || sizeAvail.availableQuantity <= 0 || !sizeAvail.itemIds || sizeAvail.itemIds.length === 0) {
+        throw new Error(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText} בתאריך המבוקש`);
+      }
+
+      const dressItemIdToUse = sizeAvail.itemIds[0];
 
       // Create the item
       const newItem = await tx.orderItem.create({
         data: {
           orderId: parsedId,
-          dressItemId: availableItem.id,
+          dressItemId: dressItemIdToUse,
           sizeText: itemData.sizeText,
           quantity: 1,
           neckAlteration: itemData.neckAlteration ? parseInt(itemData.neckAlteration) : null,
@@ -113,7 +120,7 @@ export async function POST(request, { params }) {
     console.error('Error adding order item:', error);
     return NextResponse.json(
       { error: error.message || 'שגיאה בשמירת הפריט' },
-      { status: 500 }
+      { status: 400 }
     );
   }
 }

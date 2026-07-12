@@ -9,8 +9,10 @@ import {
   getPaymentStatistics, 
   getDressConsumptionStats,
   getMaxConcurrentEmployees,
-  getOrderSummaryStats
+  getOrderSummaryStats,
+  getAlterationsSetting
 } from './actions';
+import { FileDown } from 'lucide-react';
 
 export default function StatisticsPage() {
   const [activeTab, setActiveTab] = useState('daily');
@@ -19,14 +21,17 @@ export default function StatisticsPage() {
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
+  const [enableAlterations, setEnableAlterations] = useState(true);
 
   useEffect(() => {
     async function loadSummary() {
-      const [orders, maxEmp] = await Promise.all([
+      const [orders, maxEmp, altSetting] = await Promise.all([
         getOrderSummaryStats(),
-        getMaxConcurrentEmployees()
+        getMaxConcurrentEmployees(),
+        getAlterationsSetting()
       ]);
       setSummaryData({ orders, maxEmp });
+      setEnableAlterations(altSetting);
     }
     loadSummary();
   }, []);
@@ -72,7 +77,7 @@ export default function StatisticsPage() {
     { id: 'inventory', label: 'חריגות וספירת מלאי' },
     { id: 'model', label: 'לפי דגם' },
     { id: 'size', label: 'לפי מידה' },
-    { id: 'seamstress', label: 'עומס תופרות' },
+    ...(enableAlterations ? [{ id: 'seamstress', label: 'עומס תופרות' }] : []),
     { id: 'payments', label: 'חובות ותשלומים' },
   ];
 
@@ -85,11 +90,36 @@ export default function StatisticsPage() {
         .stats-table tr:hover { background-color: #f8fafc; }
       `}</style>
       
-      <h1 style={{ marginBottom: '1.5rem', color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>
-        מרכז נתונים ופילוח
-      </h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>
+          מרכז נתונים ופילוח
+        </h1>
+        <a 
+          href="/api/export-migration-report" 
+          target="_blank" 
+          rel="noopener noreferrer"
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem',
+            backgroundColor: '#10b981',
+            color: 'white',
+            padding: '0.75rem 1.5rem',
+            borderRadius: '8px',
+            textDecoration: 'none',
+            fontWeight: 'bold',
+            boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)',
+            transition: 'all 0.2s'
+          }}
+          onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
+          onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
+        >
+          <FileDown size={20} />
+          דוח הגירת נתונים מאקסס
+        </a>
+      </div>
       
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', backgroundColor: 'white', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', backgroundColor: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-color)' }}>מתאריך אירוע / התחלה</label>
           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="form-input" style={{ width: '200px' }} />
@@ -124,14 +154,14 @@ export default function StatisticsPage() {
         ))}
       </div>
 
-      <div style={{ backgroundColor: 'white', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+      <div style={{ backgroundColor: 'var(--card-bg)', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
         {loading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>טוען נתונים...</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             {activeTab === 'daily' && <DailyTable data={data} />}
-            {activeTab === 'model' && <ModelSizeTable data={data} type="דגם" />}
-            {activeTab === 'size' && <ModelSizeTable data={data} type="מידה" />}
+            {activeTab === 'model' && <ModelSizeTable data={data} type="דגם" showAlterations={enableAlterations} />}
+            {activeTab === 'size' && <ModelSizeTable data={data} type="מידה" showAlterations={enableAlterations} />}
             {activeTab === 'seamstress' && <SeamstressTable data={data} />}
             {activeTab === 'payments' && <PaymentsTable data={data} />}
             {activeTab === 'inventory' && <InventoryTable data={data} />}
@@ -185,7 +215,7 @@ function DailyTable({ data }) {
   );
 }
 
-function ModelSizeTable({ data, type }) {
+function ModelSizeTable({ data, type, showAlterations }) {
   if (!data || data.length === 0) return <EmptyState />;
   return (
     <table className="stats-table">
@@ -193,9 +223,13 @@ function ModelSizeTable({ data, type }) {
         <tr>
           <th>{type}</th>
           <th>כמות השכרות סה"כ</th>
-          <th>תיקוני צוואר</th>
-          <th>תיקוני אורך</th>
-          <th>תיקוני שרוול</th>
+          {showAlterations && (
+            <>
+              <th>תיקוני צוואר</th>
+              <th>תיקוני אורך</th>
+              <th>תיקוני שרוול</th>
+            </>
+          )}
         </tr>
       </thead>
       <tbody>
@@ -203,9 +237,13 @@ function ModelSizeTable({ data, type }) {
           <tr key={idx}>
             <td style={{ fontWeight: 'bold' }}>{r.name || r.size}</td>
             <td style={{ fontWeight: 'bold', color: 'var(--primary-color, #1e40af)' }}>{r.count}</td>
-            <td>{r.neck}</td>
-            <td>{r.length}</td>
-            <td>{r.sleeve}</td>
+            {showAlterations && (
+              <>
+                <td>{r.neck}</td>
+                <td>{r.length}</td>
+                <td>{r.sleeve}</td>
+              </>
+            )}
           </tr>
         ))}
       </tbody>
@@ -227,8 +265,8 @@ function SeamstressTable({ data }) {
         </tr>
       </thead>
       <tbody>
-        {data.map(r => (
-          <tr key={r.date}>
+        {data.map((r, i) => (
+          <tr key={`${r.date}-${i}`}>
             <td style={{ fontWeight: 'bold' }}>{new Date(r.date).toLocaleDateString('he-IL')}</td>
             <td style={{ fontWeight: 'bold', color: '#b45309' }}>{r.itemsCount}</td>
             <td>{r.neck}</td>
@@ -257,7 +295,7 @@ function PaymentsTable({ data }) {
       </thead>
       <tbody>
         {data.map(r => (
-          <tr key={r.orderId} style={{ backgroundColor: r.debt > 0 ? '#fef2f2' : 'white' }}>
+          <tr key={r.orderId} style={{ backgroundColor: r.debt > 0 ? '#fef2f2' : 'var(--card-bg)' }}>
             <td style={{ fontWeight: 'bold' }}>{r.orderId}</td>
             <td>{r.customerName}</td>
             <td>{r.orderDate ? new Date(r.orderDate).toLocaleDateString('he-IL') : ''}</td>
@@ -289,7 +327,7 @@ function InventoryTable({ data }) {
       </thead>
       <tbody>
         {data.map((r, idx) => (
-          <tr key={idx} style={{ backgroundColor: r.hasShortage ? '#fef2f2' : 'white' }}>
+          <tr key={idx} style={{ backgroundColor: r.hasShortage ? '#fef2f2' : 'var(--card-bg)' }}>
             <td style={{ fontWeight: 'bold' }}>{r.modelName}</td>
             <td>{r.sizeText}</td>
             <td style={{ fontSize: '1.1rem' }}>{r.totalStock}</td>
@@ -297,7 +335,7 @@ function InventoryTable({ data }) {
               {r.maxRented}
             </td>
             <td style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              {r.peakDates.split(', ').map(d => d ? new Date(d).toLocaleDateString('he-IL') : '').join(', ')}
+              {r.peakDates ? r.peakDates.split(', ').map(d => d ? new Date(d).toLocaleDateString('he-IL') : '').join(', ') : ''}
             </td>
             <td>
               {r.hasShortage ? (

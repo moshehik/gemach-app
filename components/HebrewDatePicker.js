@@ -123,7 +123,7 @@ export default function HebrewDatePicker({ value, onChange }) {
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      <div style={{ display: 'flex', width: '100%', border: '1px solid #ccc', borderRadius: '8px', background: 'white' }}>
+      <div style={{ display: 'flex', width: '100%', border: '1px solid var(--element-border)', borderRadius: '8px', background: 'var(--card-bg)' }}>
         <button
           type="button"
           onClick={() => setIsOpen(!isOpen)}
@@ -144,7 +144,7 @@ export default function HebrewDatePicker({ value, onChange }) {
           <Calendar size={18} />
         </button>
         <div style={{ position: 'relative', borderRight: '1px solid #eee', width: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9f9f9', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}>
-          <Globe size={18} style={{ color: '#555', pointerEvents: 'none' }} />
+          <Globe size={18} style={{ color: 'var(--text-muted)', pointerEvents: 'none' }} />
           <input 
              type="date"
              value={safeNativeDate}
@@ -166,7 +166,7 @@ export default function HebrewDatePicker({ value, onChange }) {
           top: '100%',
           right: 0,
           marginTop: '0.5rem',
-          background: 'white',
+          background: 'var(--card-bg)',
           border: '1px solid #ddd',
           borderRadius: '12px',
           padding: '1.5rem',
@@ -180,7 +180,7 @@ export default function HebrewDatePicker({ value, onChange }) {
                 const prev = new HDate(1, hMonth, hYear).subtract(1, 'd');
                 setHMonth(prev.getMonth());
                 setHYear(prev.getFullYear());
-            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: '#f0f0f0', border: '1px solid #ccc', borderRadius: '6px' }}><ChevronRight size={16} /> אחורה</button>
+            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: 'var(--image-bg)', border: '1px solid var(--element-border)', borderRadius: '6px' }}><ChevronRight size={16} /> אחורה</button>
             
             <button type="button" onClick={() => {
                 const hd = new HDate();
@@ -194,16 +194,16 @@ export default function HebrewDatePicker({ value, onChange }) {
                 const next = new HDate(1, hMonth, hYear).add(days, 'd');
                 setHMonth(next.getMonth());
                 setHYear(next.getFullYear());
-            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: '#f0f0f0', border: '1px solid #ccc', borderRadius: '6px' }}>קדימה <ChevronLeft size={16} /></button>
+            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: 'var(--image-bg)', border: '1px solid var(--element-border)', borderRadius: '6px' }}>קדימה <ChevronLeft size={16} /></button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1.5rem' }}>
             <div className="form-group" style={{ margin: 0 }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: '#555' }}>יום</label>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>יום</label>
               <select 
                 value={hDay} 
                 onChange={e => setHDay(parseInt(e.target.value))}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ccc', background: '#fff' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--card-bg)' }}
               >
                 {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
                   <option key={d} value={d}>{HEBREW_DAYS[d]}</option>
@@ -212,7 +212,7 @@ export default function HebrewDatePicker({ value, onChange }) {
             </div>
             
             <div className="form-group" style={{ margin: 0 }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: '#555' }}>חודש</label>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>חודש</label>
               <select 
                 value={hMonth} 
                 onChange={e => {
@@ -222,7 +222,7 @@ export default function HebrewDatePicker({ value, onChange }) {
                       setHDay(HDate.daysInMonth(newMonth, hYear));
                    }
                 }}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ccc', background: '#fff' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--card-bg)' }}
               >
                 {months.map(m => (
                   <option key={m.value} value={m.value}>{m.label}</option>
@@ -231,7 +231,7 @@ export default function HebrewDatePicker({ value, onChange }) {
             </div>
 
             <div className="form-group" style={{ margin: 0 }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: '#555' }}>שנה</label>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>שנה</label>
               <select 
                 value={hYear} 
                 onChange={e => {
@@ -241,7 +241,7 @@ export default function HebrewDatePicker({ value, onChange }) {
                       setHMonth(12); // Fallback to Adar if changing to non-leap year
                    }
                 }}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid #ccc', background: '#fff' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--card-bg)' }}
               >
                 {currentYearOptions.map(y => (
                   <option key={y} value={y}>{gematriya(y)}</option>
@@ -251,7 +251,7 @@ export default function HebrewDatePicker({ value, onChange }) {
           </div>
           
           <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9rem', color: '#555' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               <div>א'</div><div>ב'</div><div>ג'</div><div>ד'</div><div>ה'</div><div>ו'</div><div>ש'</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
@@ -300,7 +300,7 @@ export default function HebrewDatePicker({ value, onChange }) {
                         >
                           <div>{HEBREW_DAYS[d]}</div>
                           {isSaturday && parashaName && (
-                             <div style={{ fontSize: '0.65rem', color: d === hDay ? '#f0f0f0' : '#888', lineHeight: '1.1' }}>
+                             <div style={{ fontSize: '0.65rem', color: d === hDay ? '#f0f0f0' : 'var(--text-muted)', lineHeight: '1.1' }}>
                                 {parashaName}
                              </div>
                           )}
@@ -320,7 +320,7 @@ export default function HebrewDatePicker({ value, onChange }) {
               type="button" 
               onClick={() => setIsOpen(false)}
               className="btn btn-outline"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid #ccc', background: 'transparent', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'transparent', cursor: 'pointer' }}
             >
               <X size={16} /> ביטול
             </button>

@@ -104,7 +104,7 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1rem' }}>
-      <div className="animate-fade-in" style={{ background: 'white', borderRadius: '16px', width: '100%', maxWidth: '450px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden', direction: 'rtl' }}>
+      <div className="animate-fade-in" style={{ background: 'var(--card-bg)', borderRadius: '16px', width: '100%', maxWidth: '450px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden', direction: 'rtl' }}>
         <div style={{ padding: '1.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: '700' }}>קבלת תשלום מהיר</h3>
           <button onClick={() => onClose(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
@@ -169,7 +169,7 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
                 <select 
                   value={paymentMethod} 
                   onChange={(e) => setPaymentMethod(e.target.value)}
-                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', background: 'white' }}
+                  style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', background: 'var(--card-bg)' }}
                 >
                   <option value="אשראי">אשראי</option>
                   <option value="מזומן">מזומן</option>
@@ -190,7 +190,7 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
               </div>
 
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button type="button" onClick={() => onClose(false)} style={{ flex: 1, padding: '0.75rem', background: 'white', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>
+                <button type="button" onClick={() => onClose(false)} style={{ flex: 1, padding: '0.75rem', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>
                   ביטול
                 </button>
                 <button type="submit" disabled={loading} style={{ flex: 2, padding: '0.75rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>

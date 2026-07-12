@@ -19,8 +19,14 @@ const createPrismaClient = (url) => {
             const cookieStore = await cookies();
             const token = cookieStore.get('auth_token')?.value;
             if (token) {
-              const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-              employeeId = decoded.id || decoded.employeeId || null;
+              if (token.includes('.')) {
+                try {
+                  const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+                  employeeId = decoded.id || decoded.employeeId || null;
+                } catch (e) {}
+              } else {
+                employeeId = parseInt(token, 10);
+              }
             }
           } catch (e) {}
           

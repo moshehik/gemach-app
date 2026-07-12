@@ -85,7 +85,7 @@ export default function EmailLogsPage() {
       </div>
 
       {/* Data Table */}
-      <div style={{ background: 'white', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
         {loading && logs.length === 0 ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
         ) : logs.length === 0 ? (
@@ -109,16 +109,16 @@ export default function EmailLogsPage() {
                     <td style={{ padding: '1rem', whiteSpace: 'nowrap' }} dir="ltr">{formatDate(log.sentAt)}</td>
                     <td style={{ padding: '1rem' }}>
                       <span dir="ltr">{log.to}</span>
-                      {log.cc && <div style={{ fontSize: '0.85em', color: '#888' }} dir="ltr">CC: {log.cc}</div>}
+                      {log.cc && <div style={{ fontSize: '0.85em', color: 'var(--text-muted)' }} dir="ltr">CC: {log.cc}</div>}
                     </td>
                     <td style={{ padding: '1rem', maxWidth: '300px' }}>
                       <div style={{ fontWeight: '500' }}>{log.subject || '-'}</div>
-                      <div style={{ fontSize: '0.85em', color: '#666', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      <div style={{ fontSize: '0.85em', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {log.body}
                       </div>
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      {log.fileName ? <span style={{ background: '#f1f3f5', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.85em' }}>{log.fileName}</span> : '-'}
+                      {log.fileName ? <span style={{ background: 'var(--element-bg)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.85em' }}>{log.fileName}</span> : '-'}
                     </td>
                     <td style={{ padding: '1rem' }}>
                       {log.status === 'success' ? (

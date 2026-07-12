@@ -76,7 +76,7 @@ export default function SettingsPage() {
     <main style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', direction: 'rtl' }}>
       <h1 style={{ color: 'var(--primary-color)', marginBottom: '2rem' }}>הגדרות מערכת (ניהול הנהלה)</h1>
       
-      <div style={{ background: 'white', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+      <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
         <form onSubmit={handleSave}>
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
@@ -92,7 +92,7 @@ export default function SettingsPage() {
               onChange={handleChange}
               min="0"
               max="30"
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc', maxWidth: '200px' }}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', maxWidth: '200px' }}
             />
           </div>
 
@@ -107,7 +107,7 @@ export default function SettingsPage() {
               name="PAYMENT_APPROVAL_LEVEL"
               value={settings.PAYMENT_APPROVAL_LEVEL || 'כולם'}
               onChange={handleChange}
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc', maxWidth: '200px' }}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', maxWidth: '200px' }}
             >
               <option value="כולם">כולם</option>
               <option value="עובד">עובד</option>
@@ -159,7 +159,7 @@ export default function SettingsPage() {
               name="nedarim_plus_terminal" 
               value={settings.nedarim_plus_terminal || ''} 
               onChange={handleChange}
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #ccc', maxWidth: '200px' }}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', maxWidth: '200px' }}
             />
           </div>
 
