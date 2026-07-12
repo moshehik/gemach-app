@@ -979,15 +979,15 @@ button:disabled {
 .border\-slate\-300 { border-color: #cbd5e1; }
 .rounded\-xl { border-radius: 0.75rem; }
 .text\-slate\-700 { color: #334155; }
-.hover\\:bg\-slate\-50:hover { background-color: #f8fafc; }
-.hover\\:border\-slate\-400:hover { border-color: #94a3b8; }
+.hover\:bg\-slate\-50:hover { background-color: #f8fafc; }
+.hover\:border\-slate\-400:hover { border-color: #94a3b8; }
 .transition\-all { transition-property: all; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
 .shadow\-sm { box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05); }
 .justify\-center { justify-content: center; }
 .w\-10 { width: 2.5rem; }
 .h\-10 { height: 2.5rem; }
 .bg\-slate\-200 { background-color: #e2e8f0; }
-.hover\\:bg\-slate\-300:hover { background-color: #cbd5e1; }
+.hover\:bg\-slate\-300:hover { background-color: #cbd5e1; }
 .transition\-colors { transition-property: color, background-color, border-color, text-decoration-color, fill, stroke; transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); transition-duration: 150ms; }
 .bg\-amber\-50 { background-color: #fffbeb; }
 .border\-amber\-200 { border-color: #fde68a; }
@@ -1069,8 +1069,8 @@ button:disabled {
 .border\-transparent { border-color: transparent; }
 /* Missing hover: hover:border-blue-200 */
 .text\-red\-500 { color: #ef4444; }
-.hover\\:bg\-red\-50:hover { background-color: #fef2f2; }
-.hover\\:border\-red\-200:hover { border-color: #fecaca; }
+.hover\:bg\-red\-50:hover { background-color: #fef2f2; }
+.hover\:border\-red\-200:hover { border-color: #fecaca; }
 /* Missing: p-8 */
 .border\-t { border-top-width: 1px; }
 .justify\-end { justify-content: flex-end; }
@@ -1079,23 +1079,23 @@ button:disabled {
 .px\-8 { padding-left: 2rem; padding-right: 2rem; }
 .bg\-blue\-600 { background-color: #2563eb; }
 .text\-white { color: #ffffff; }
-.hover\\:bg\-blue\-700:hover { background-color: #1d4ed8; }
+.hover\:bg\-blue\-700:hover { background-color: #1d4ed8; }
 .shadow\-md { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
 /* Missing hover: hover:shadow-lg */
 /* Missing: bg-orange-100 */
 /* Missing: text-orange-700 */
 /* Missing: flex-wrap */
-.hover\\:bg\-amber\-50:hover { background-color: #fffbeb; }
-.hover\\:border\-amber\-200:hover { border-color: #fde68a; }
+.hover\:bg\-amber\-50:hover { background-color: #fffbeb; }
+.hover\:border\-amber\-200:hover { border-color: #fde68a; }
 .text\-red\-600 { color: #dc2626; }
 .gap\-1 { gap: 0.25rem; }
 .p\-10 { padding: 2.5rem; }
 .text\-lg { font-size: 1.125rem; line-height: 1.75rem; }
 .flex\-col { flex-direction: column; }
 .text\-slate\-300 { color: #cbd5e1; }
-.hover\\:text\-slate\-600:hover { color: #475569; }
+.hover\:text\-slate\-600:hover { color: #475569; }
 .p\-1 { padding: 0.25rem; }
-.max\-h\-\\[70vh\\] { max-height: 70vh; }
+.max\-h\-\[70vh\] { max-height: 70vh; }
 .grid { display: grid; }
 .grid\-cols\-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .mb\-6 { margin-bottom: 1.5rem; }
@@ -1115,21 +1115,21 @@ button:disabled {
 /* Add to gradient manually */
 .py\-5 { padding-top: 1.25rem; padding-bottom: 1.25rem; }
 .left\-6 { left: 1.5rem; }
-.top\-1\\/2 { top: 50%; }
-.\-translate\-y\-1\\/2 { transform: translateY(-50%); }
+.top\-1\/2 { top: 50%; }
+.\-translate\-y\-1\/2 { transform: translateY(-50%); }
 .text\-amber\-500 { color: #f59e0b; }
 .opacity\-20 { opacity: 0.2; }
 .text\-amber\-800 { color: #92400e; }
 .mt\-2 { margin-top: 0.5rem; }
-.max\-h\-\\[60vh\\] { max-height: 60vh; }
-.hover\\:border\-blue\-500:hover { border-color: #3b82f6; }
-.hover\\:shadow\-md:hover { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
+.max\-h\-\[60vh\] { max-height: 60vh; }
+.hover\:border\-blue\-500:hover { border-color: #3b82f6; }
+.hover\:shadow\-md:hover { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); }
 /* Missing: group-hover:bg-blue-600 */
 /* Missing: group-hover:text-white */
 .grid\-cols\-3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .block { display: block; }
 .col\-span\-3 { grid-column: span 3 / span 3; }
-.hover\\:bg\-slate\-200:hover { background-color: #e2e8f0; }
+.hover\:bg\-slate\-200:hover { background-color: #e2e8f0; }
 
 .from-amber-50 { --tw-gradient-from: #fffbeb; --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(255, 251, 235, 0)); }
 .to-orange-50 { --tw-gradient-to: #fff7ed; }
