@@ -1,6 +1,7 @@
 {
   "name": "gemach-app",
-  "version": "0.1.10",
+  "version": "0.1.11",
+  "lastUpdated": "2026-07-24",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
@@ -15,6 +16,7 @@
     "hebcal": "^2.3.2",
     "lucide-react": "^1.23.0",
     "next": "16.2.10",
+    "pg": "^8.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.9.2",
