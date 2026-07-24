@@ -1,7 +1,14 @@
 import { PrismaClient as CloudClient } from '@prisma/client';
-import { PrismaClient as LocalClient } from '@prisma/local-client';
 
-const PrismaClient = process.env.IS_OFFLINE_MODE === 'true' ? LocalClient : CloudClient;
+let PrismaClient = CloudClient;
+if (process.env.IS_OFFLINE_MODE === 'true') {
+  try {
+    const local = require(/* webpackIgnore: true */ '@prisma/local-client');
+    if (local && local.PrismaClient) PrismaClient = local.PrismaClient;
+  } catch (e) {
+    console.warn("Could not load local prisma client");
+  }
+}
 import { cookies } from 'next/headers';
 import fs from 'fs';
 import path from 'path';

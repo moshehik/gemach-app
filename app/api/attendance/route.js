@@ -16,6 +16,7 @@ export async function GET(request) {
 
     let whereClause = {};
 
+    if (employeeId) {
       whereClause.employeeId = employeeId;
     }
 
