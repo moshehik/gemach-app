@@ -532,8 +532,8 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                       <tbody>
                         {relatedObligations.map((obs, idx) => (
                           <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                            <td style={{ padding: '0.6rem 0.2rem', fontWeight: '500' }}>{obs.productName || (obs.description.includes('תיקון') ? 'תיקון' : 'חיוב')}</td>
-                            <td style={{ padding: '0.6rem 0.2rem', color: '#64748b', fontSize: '0.85rem' }}>{obs.description}</td>
+                            <td style={{ padding: '0.6rem 0.2rem', fontWeight: '500' }}>{obs.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || (obs.description.includes('תיקון') ? 'תיקון' : 'חיוב')}</td>
+                            <td style={{ padding: '0.6rem 0.2rem', color: '#64748b', fontSize: '0.85rem' }}>{obs.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '')}</td>
                             <td style={{ padding: '0.6rem 0.2rem', fontWeight: 'bold', color: '#16a34a' }}>₪{obs.amount}</td>
                           </tr>
                         ))}

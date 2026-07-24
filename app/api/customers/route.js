@@ -71,8 +71,17 @@ export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
+    
+    // Auto-generate a short legacyId for new customers so it displays nicely
+    const maxCustomer = await prisma.customer.findFirst({
+      where: { legacyId: { not: null } },
+      orderBy: { legacyId: 'desc' }
+    });
+    const nextLegacyId = (maxCustomer?.legacyId || 0) + 1;
+
     const newCustomer = await prisma.customer.create({
       data: {
+        legacyId: nextLegacyId,
         firstName: body.firstName,
         lastName: body.lastName,
         phone1: body.phone1,

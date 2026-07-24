@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+
 import { cookies } from 'next/headers';
 
-const prisma = new PrismaClient();
+import prisma from '@/app/lib/prisma';
 
 export async function POST(request) {
   let employeeId = null;
@@ -10,7 +10,7 @@ export async function POST(request) {
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token');
     if (token && token.value) {
-      employeeId = parseInt(token.value);
+      employeeId = token.value;
     }
   } catch(e) {}
 
@@ -34,7 +34,7 @@ export async function POST(request) {
         data: {
           query: queryText,
           success: true,
-          employeeId: isNaN(employeeId) ? null : employeeId
+          employeeId: employeeId
         }
       });
     } catch(err) { console.error('Failed to log query:', err); }
@@ -61,7 +61,7 @@ export async function POST(request) {
             query: queryText,
             success: false,
             errorMsg: error.message,
-            employeeId: isNaN(employeeId) ? null : employeeId
+            employeeId: employeeId
           }
         });
       } catch(err) { console.error('Failed to log query error:', err); }

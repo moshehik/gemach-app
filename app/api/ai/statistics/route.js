@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
+import { HDate } from '@hebcal/core';
+import { getHebrewYearContext, processHebrewDateMacro } from '../../../../lib/hebrewDate';
 
 const SCHEMA_MAP = {
   customers: "model Customer { id Int, firstName String, lastName String, phone1 String, phone2 String, city String, street String, houseNum Int, email String, notes String, isDeleted Boolean }",
@@ -21,6 +23,8 @@ Rules for SQL query generation:
 4. Booleans must use true/false, not 1/0.
 5. ALWAYS use 'AS' to alias column names into Hebrew. For example: SELECT COUNT(*) AS 'סה"כ לקוחות'.
 6. If it's a general question that doesn't need database access, just answer it naturally in Hebrew without the "SQL: " prefix.
+7. CRITICAL RULE FOR DELETED/INACTIVE DATA: Whenever you query ANY table (e.g. "Customer", "Order", "DressItem", "DressModel", "OrderItem"), you MUST ALWAYS filter out deleted items by adding '"isDeleted" = false' to your WHERE clause. For "DressItem", also add '"notInUse" = false' and '"inRepair" = false' unless explicitly asked about them. Never include deleted or inactive records in counts or lists unless the user specifically asks for them.
+8. VERY IMPORTANT FOR DATES: For Gregorian dates, use 'YYYY-MM-DD'. If the user searches by Hebrew date, DO NOT GUESS THE GREGORIAN DATE! Instead, use the exact macro HEBREW_DATE(day, 'MONTH', year) in your SQL string, and we will replace it automatically. Example: "eventDate" = HEBREW_DATE(10, 'SIVAN', 5786). Month must be one of: NISAN, IYYAR, SIVAN, TAMUZ, AV, ELUL, TISHREI, CHESHVAN, KISLEV, TEVET, SHVAT, ADAR_I, ADAR_II. If year is unknown, use the current Hebrew year from context.
 `;
 
 export async function POST(req) {
@@ -33,11 +37,16 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    const schemaContext = SCHEMA_MAP[pageContext] || SCHEMA_MAP['customers'];
+    const schemaContext = Object.entries(SCHEMA_MAP).map(([k, v]) => `-- ${k} Schema --\n${v}`).join('\n\n');
     const historyText = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n');
     
+    const todayGregorian = new Date().toISOString().split('T')[0];
+    const todayHebrew = new HDate().renderGematriya();
+    const dateContext = `\nCRITICAL DATE CONTEXT: Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. You MUST use this as the anchor to calculate any relative dates or Hebrew dates provided by the user.
+Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearContext()}.`;
+    
     // Step 1: Ask the AI for SQL
-    const initialPrompt = `${SYSTEM_PROMPT}\n\nSchema:\n${schemaContext}\n\nCurrent Context Query (the user is currently viewing this data, keep this in mind if relevant): ${contextQuery}\n\nChat History:\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    const initialPrompt = `${SYSTEM_PROMPT}\n\nSchema:\n${schemaContext}\n${dateContext}\n\nCurrent Context Query (the user is currently viewing this data, keep this in mind if relevant): ${contextQuery}\n\nChat History:\n${historyText}\n\nCurrent User Question: ${prompt}`;
     let aiResponse = await generateContent(initialPrompt);
 
     // Step 2: Execute SQL if generated
@@ -50,6 +59,8 @@ export async function POST(req) {
 
       let queryResult = null;
       let dbErrorStr = null;
+
+      sqlQuery = processHebrewDateMacro(sqlQuery);
 
       try {
         queryResult = await prisma.$queryRawUnsafe(sqlQuery);
@@ -66,6 +77,7 @@ export async function POST(req) {
           if (retrySql.startsWith('\`\`\`')) retrySql = retrySql.replace(/^\`\`\`/, '');
           if (retrySql.endsWith('\`\`\`')) retrySql = retrySql.replace(/\`\`\`$/, '');
           retrySql = retrySql.trim();
+          retrySql = processHebrewDateMacro(retrySql);
           
           try {
              queryResult = await prisma.$queryRawUnsafe(retrySql);
@@ -85,6 +97,10 @@ export async function POST(req) {
 You generated this SQL query: ${sqlQuery}
 The database returned this JSON result: ${JSON.stringify(queryResult, (key, value) => typeof value === 'bigint' ? value.toString() : value)}
 Please provide a clear and friendly natural language answer to the user in Hebrew based on these statistics. 
+CRITICAL RULES FOR YOUR RESPONSE:
+1. DO NOT use any markdown formatting like asterisks (**) for bolding or bullet points. Use standard text and plain dashes (-) for lists.
+2. Whenever you mention a date, you MUST mention BOTH the Hebrew date and the Gregorian date together, with the Gregorian date in parentheses (e.g., "י' בסיוון תשפ\"ו (26/05/2026)"). Do NOT calculate or guess any dates yourself, ensure accuracy.
+3. DO NOT output a long list of consecutive dates! If the results contain many consecutive days, group them into a simple range (e.g., "מ-א' בסיוון (17/05/2026) ועד כ' בסיוון (05/06/2026)"). Keep the response concise and natural.
 Summarize the information nicely.
 IMPORTANT: You are directly talking to the user. Output ONLY the exact final answer intended for the user, with NO meta-text, NO conversational filler directed at me, and NO prefaces like "Here is a summarizing answer for the user" or "בשמחה".`;
         

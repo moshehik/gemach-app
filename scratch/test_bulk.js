@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+import prisma from '@/app/lib/prisma';
 const { getBulkAvailableInventory } = require('../lib/inventory.js');
 
 async function main() {

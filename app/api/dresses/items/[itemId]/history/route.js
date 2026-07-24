@@ -4,10 +4,10 @@ import prisma from '../../../../../lib/prisma';
 export async function GET(request, { params }) {
   try {
     const resolvedParams = await params;
-    const itemId = parseInt(resolvedParams.itemId);
+    const itemId = resolvedParams.itemId;
     
-    if (isNaN(itemId)) {
-      return NextResponse.json({ error: 'קוד פריט לא תקין' }, { status: 400 });
+    if (!itemId) {
+      return NextResponse.json({ error: 'קוד פריט חסר' }, { status: 400 });
     }
 
     const item = await prisma.dressItem.findUnique({

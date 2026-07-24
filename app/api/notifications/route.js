@@ -11,8 +11,8 @@ export async function GET(request) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
     }
 
-    const employeeId = parseInt(token.value, 10);
-    if (isNaN(employeeId)) {
+    const employeeId = token.value;
+    if (!employeeId) {
       return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 401 });
     }
 
@@ -85,8 +85,8 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
     }
 
-    const employeeId = parseInt(token.value, 10);
-    if (isNaN(employeeId)) {
+    const employeeId = token.value;
+    if (!employeeId) {
       return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 401 });
     }
 
@@ -98,7 +98,7 @@ export async function POST(request) {
     }
 
     // Validate if receiverId is provided, else it's a global message
-    const parsedReceiver = receiverId === 'all' || receiverId === null ? null : parseInt(receiverId, 10);
+    const parsedReceiver = receiverId === 'all' || receiverId === null ? null : receiverId;
 
     const notification = await prisma.notification.create({
       data: {

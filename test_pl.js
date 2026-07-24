@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+import prisma from '@/app/lib/prisma';
 
 async function main() {
   const pl = await prisma.priceList.findMany({ take: 5 });

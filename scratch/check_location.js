@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+import prisma from '@/app/lib/prisma';
 
 async function main() {
   const item26987 = await prisma.dressItem.findUnique({ where: { id: 26987 } });

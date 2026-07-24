@@ -49,13 +49,22 @@ export default function CustomerPage({ params }) {
         body: JSON.stringify(customer)
       });
       const data = await res.json();
+      
+      if (!res.ok) {
+        if (res.status === 409 && data.message) {
+          alert(data.message);
+          return;
+        }
+        throw new Error(data.message || 'שגיאה בשמירת נתונים');
+      }
+
       if (id === 'new' && data.id) {
         router.push(`/customers/${data.id}`);
       } else {
         alert('הפרטים נשמרו בהצלחה!');
       }
     } catch (e) {
-      alert('שגיאה בשמירת נתונים');
+      alert(e.message || 'שגיאה בשמירת נתונים');
     } finally {
       setSaving(false);
     }

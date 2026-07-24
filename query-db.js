@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+import prisma from '@/app/lib/prisma';
 async function main() {
   const count = await prisma.dressItem.count();
   const withBarcode = await prisma.dressItem.count({ where: { dressBarcode: { not: null } } });

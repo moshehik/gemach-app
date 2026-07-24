@@ -30,13 +30,40 @@ export async function GET(request) {
       take: 20
     });
 
+    // Fetch all DEBT_APPROVED audit logs for these orders
+    const orderIdsStr = debts.map(d => d.orderId.toString());
+    const auditLogs = await prisma.auditLog.findMany({
+      where: {
+        entityType: 'Order',
+        entityId: { in: orderIdsStr },
+        action: 'DEBT_APPROVED'
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
     const debtsWithRemaining = debts.map(order => {
       const totalPaid = order.payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
       const remaining = (order.totalAmount || 0) - totalPaid;
+      
+      // Check if debt is approved
+      let isApproved = false;
+      const latestLog = auditLogs.find(log => log.entityId === order.orderId.toString());
+      if (latestLog) {
+        try {
+          const changes = JSON.parse(latestLog.changesJson);
+          // If the approved debt amount is at least as much as the current remaining debt, it's considered approved.
+          // Or if they approved some debt, we consider it reviewed. Let's just say if the log exists, it's approved for that amount.
+          if (changes.approvedDebtAmount !== undefined && changes.approvedDebtAmount >= remaining - 1) {
+             isApproved = true;
+          }
+        } catch(e) {}
+      }
+
       return {
         ...order,
         totalPaid,
-        remaining
+        remaining,
+        isApproved
       };
     }).filter(d => d.remaining > 0);
 

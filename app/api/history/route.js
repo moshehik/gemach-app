@@ -27,7 +27,7 @@ export async function GET(request) {
       if (employeeId === 'guest') {
         where.isGuest = true;
       } else {
-        where.employeeId = parseInt(employeeId, 10);
+        where.employeeId = employeeId;
       }
     }
 
@@ -81,12 +81,15 @@ export async function DELETE(request) {
       }
     });
 
-    // Also allow ID based login
     let validEmployee = employee;
-    if (!validEmployee && !isNaN(parseInt(username, 10))) {
+    if (!validEmployee) {
+      const parsedLegacy = parseInt(username, 10);
       validEmployee = await prisma.employee.findFirst({
         where: {
-          id: parseInt(username, 10),
+          OR: [
+            ...(isNaN(parsedLegacy) ? [] : [{ legacyId: parsedLegacy }]),
+            { id: username }
+          ],
           password: password,
           isActive: true
         }

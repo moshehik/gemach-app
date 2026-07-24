@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+
 import { checkAuth } from '../../../../lib/auth';
 
-const prisma = new PrismaClient();
+import prisma from '@/app/lib/prisma';
 
 export async function GET(request) {
   if (!(await checkAuth('מנהל'))) {

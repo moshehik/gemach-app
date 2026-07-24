@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+import prisma from '@/app/lib/prisma';
 async function run() {
   await prisma.$executeRawUnsafe('VACUUM');
   console.log('Vacuum complete');

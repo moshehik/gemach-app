@@ -68,35 +68,38 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
     fetchSizes();
   }, [barcodePrefix]);
 
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!barcodePrefix || !size) {
+  const performSearch = async (searchParams = null) => {
+    const pPrefix = searchParams ? searchParams.barcodePrefix : barcodePrefix;
+    const pSize = searchParams ? searchParams.size : size;
+    let pFromDate = searchParams ? searchParams.fromDate : fromDate;
+    let pToDate = searchParams ? searchParams.toDate : toDate;
+    const pEmployeeCode = searchParams ? searchParams.employeeCode : employeeCode;
+    const pCustomerName = searchParams ? searchParams.customerName : customerName;
+
+    if (!pPrefix || !pSize) {
       setError('יש להזין דגם ומידה');
       return;
     }
 
-    let searchFrom = fromDate;
-    let searchTo = toDate;
-    
-    if (!searchFrom) {
-      searchFrom = new Date().toISOString().split('T')[0];
-      setFromDate(searchFrom);
+    if (!pFromDate) {
+      pFromDate = new Date().toISOString().split('T')[0];
+      if (!searchParams) setFromDate(pFromDate);
     }
-    if (!searchTo) {
+    if (!pToDate) {
       const d = new Date();
       d.setMonth(d.getMonth() + 6);
-      searchTo = d.toISOString().split('T')[0];
-      setToDate(searchTo);
+      pToDate = d.toISOString().split('T')[0];
+      if (!searchParams) setToDate(pToDate);
     }
 
     setError('');
     setLoading(true);
     try {
       const params = new URLSearchParams({
-        barcodePrefix,
-        size,
-        fromDate: searchFrom,
-        toDate: searchTo
+        barcodePrefix: pPrefix,
+        size: pSize,
+        fromDate: pFromDate,
+        toDate: pToDate
       });
       const res = await fetch(`/api/inventory/capacity?${params.toString()}`);
       const data = await res.json();
@@ -106,12 +109,12 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
       const newSearch = {
         id: Date.now(),
         timestamp: new Date().toISOString(),
-        employeeCode,
-        customerName,
-        barcodePrefix,
-        size,
-        fromDate: searchFrom,
-        toDate: searchTo
+        employeeCode: pEmployeeCode,
+        customerName: pCustomerName,
+        barcodePrefix: pPrefix,
+        size: pSize,
+        fromDate: pFromDate,
+        toDate: pToDate
       };
       const prev = JSON.parse(localStorage.getItem('capacity_search_history') || '[]');
       const updated = [newSearch, ...prev].slice(0, 50); // Keep last 50
@@ -123,6 +126,11 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSearch = async (e) => {
+    if (e) e.preventDefault();
+    await performSearch();
   };
 
   if (!isOpen) return null;
@@ -180,7 +188,15 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                           setFromDate(h.fromDate || '');
                           setToDate(h.toDate || '');
                           setShowHistory(false);
-                          setResults(null);
+                          
+                          performSearch({
+                            employeeCode: h.employeeCode || '',
+                            customerName: h.customerName || '',
+                            barcodePrefix: h.barcodePrefix || '',
+                            size: h.size || '',
+                            fromDate: h.fromDate || '',
+                            toDate: h.toDate || ''
+                          });
                         }}
                         className="btn btn-primary"
                         style={{ padding: '0.35rem 1rem', fontSize: '0.85rem', borderRadius: '6px' }}

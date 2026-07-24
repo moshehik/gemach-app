@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+
+import prisma from '@/app/lib/prisma';
 import { recalculateOrderObligations } from '../../../lib/pricingEngine';
 import { checkAuth } from '../../../lib/auth';
-
+import { cookies } from 'next/headers';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,6 +18,7 @@ export async function GET(request) {
     const limit = parseInt(searchParams.get('limit') || '50', 10);
 
     const skip = (page - 1) * limit;
+    const forRentals = searchParams.get('forRentals') === 'true';
 
     // Advanced search parameters
     const advCustomerName = searchParams.get('customerName') || '';
@@ -211,8 +212,8 @@ export async function GET(request) {
       where: fullOrdersWhere,
       include: {
         customer: true,
-        payments: true,
-        obligations: true,
+        payments: !forRentals,
+        obligations: !forRentals,
         items: {
           select: {
             id: true,
@@ -258,7 +259,7 @@ export async function GET(request) {
         const dressName = i.dressItem?.dress?.name;
         const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
         if (!dressName && prefix) {
-          uniquePrefixes.add(prefix);
+          uniquePrefixes.add(parseInt(prefix, 10));
         }
       });
     });
@@ -297,7 +298,7 @@ export async function GET(request) {
           let dressName = i.dressItem?.dress?.name;
           const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
           if (!dressName && prefix) {
-            dressName = dressModelMap.get(prefix);
+            dressName = dressModelMap.get(parseInt(prefix, 10));
           }
           
           return {
@@ -339,6 +340,9 @@ export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const data = await request.json();
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token');
+    const loggedInEmployeeId = token?.value || null;
 
     // Generate next orderId
     const maxOrder = await prisma.order.findFirst({
@@ -349,13 +353,13 @@ export async function POST(request) {
     const order = await prisma.order.create({
       data: {
         orderId: data.orderId || nextOrderId,
-        customerId: data.customerId ? parseInt(data.customerId) : null,
+        customerId: data.customerId || null,
         totalAmount: data.totalAmount ? parseFloat(data.totalAmount) : null,
         orderDate: new Date(),
         eventDate: data.eventDate ? new Date(data.eventDate) : null,
         eventDateHebrew: data.eventDateHebrew || null,
         returnDate: data.returnDate ? new Date(data.returnDate) : null,
-        employeeId: data.employeeId ? parseInt(data.employeeId) : null,
+        employeeId: data.employeeId || loggedInEmployeeId || null,
         isAbroad: data.isAbroad ?? false,
         fromDate: data.fromDate ? new Date(data.fromDate) : null,
         toDate: data.toDate ? new Date(data.toDate) : null,

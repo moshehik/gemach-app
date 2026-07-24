@@ -1,9 +1,9 @@
-const { PrismaClient } = require('@prisma/client');
+
 const xlsx = require('xlsx');
 const path = require('path');
 const hebcal = require('hebcal');
 
-const prisma = new PrismaClient();
+import prisma from '@/app/lib/prisma';
 const outDir = path.resolve(__dirname, '../../csv_exports');
 
 function readExcelTable(tableName) {

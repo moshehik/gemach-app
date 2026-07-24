@@ -5,9 +5,9 @@ import prisma from '../../../../lib/prisma';
 export async function PUT(request, { params }) {
   try {
     const resolvedParams = await params;
-    const itemId = parseInt(resolvedParams.itemId);
-    if (isNaN(itemId)) {
-      return NextResponse.json({ error: 'קוד פריט לא תקין' }, { status: 400 });
+    const itemId = resolvedParams.itemId;
+    if (!itemId) {
+      return NextResponse.json({ error: 'קוד פריט חסר' }, { status: 400 });
     }
 
     const body = await request.json();
@@ -64,9 +64,9 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const resolvedParams = await params;
-    const itemId = parseInt(resolvedParams.itemId);
-    if (isNaN(itemId)) {
-      return NextResponse.json({ error: 'קוד פריט לא תקין' }, { status: 400 });
+    const itemId = resolvedParams.itemId;
+    if (!itemId) {
+      return NextResponse.json({ error: 'קוד פריט חסר' }, { status: 400 });
     }
 
     await prisma.dressItem.update({

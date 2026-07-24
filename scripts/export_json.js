@@ -2,7 +2,7 @@ const { PrismaClient, Prisma } = require('@prisma/client');
 const fs = require('fs');
 const path = require('path');
 
-const prisma = new PrismaClient();
+import prisma from '@/app/lib/prisma';
 
 async function main() {
     console.log("Starting JSON export from database...");

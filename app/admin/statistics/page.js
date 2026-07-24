@@ -95,7 +95,7 @@ export default function StatisticsPage() {
           מרכז נתונים ופילוח
         </h1>
         <a 
-          href="/api/export-migration-report" 
+          href="/migration_report.html" 
           target="_blank" 
           rel="noopener noreferrer"
           style={{

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAvailableInventory } from '../../../../lib/inventory';
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+
+import prisma from '@/app/lib/prisma';
 
 export const dynamic = 'force-dynamic';
 
@@ -35,10 +35,13 @@ export async function POST(request) {
     for (const item of items) {
       if (item.isDeleted) continue; // Don't check deleted items
       
-      const key = `${item.dressModelId}_${item.sizeText}`;
+      const modelId = item.dressModelId || item.dressId; // Frontend sends dressId
+      if (!modelId) continue;
+      
+      const key = `${modelId}_${item.sizeText}`;
       if (!requiredItems[key]) {
         requiredItems[key] = {
-          dressModelId: item.dressModelId,
+          dressModelId: modelId,
           sizeText: item.sizeText,
           quantity: 0,
           dressName: item.dressName || item.description || 'פריט'

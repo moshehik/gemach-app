@@ -1189,3 +1189,39 @@ button:disabled {
 .bg-orange-100 { background-color: #ffedd5; }
 .text-orange-700 { color: #c2410c; }
 .flex-wrap { flex-wrap: wrap; }
+
+
+/* Offline Indicator */
+.offline-indicator {
+  position: fixed;
+  top: 80px;
+  right: 20px;
+  z-index: 9999;
+  background-color: #ef4444;
+  color: white;
+  padding: 8px 16px;
+  border-radius: 9999px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  cursor: pointer;
+  animation: offline-bounce 2s infinite;
+  transition: opacity 0.3s ease;
+}
+
+.offline-indicator:hover {
+  opacity: 0.8;
+}
+
+@keyframes offline-bounce {
+  0%, 100% {
+    transform: translateY(-20%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: none;
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
+}

@@ -14,7 +14,7 @@
 | **Payment** | `notes` | הערות | 28911 | 28914 | **-3** |
 | **PaymentObligation** | `description` | תיאור | 34114 | 34121 | **-7** |
 | **PaymentObligation** | `isRefund` | זיכוי | 142071 | 142303 | **-232** |
-| **PaymentObligation** | `orderItemId` | קוד_פריט | 0 | 102773 | **-102773** |
+| **PaymentObligation** | `orderItemId` | קוד_פריט | 102695 | 102773 | **-78** |
 | **OrderItem** | `id` | קוד_פריט | 77834 | 77950 | **-116** |
 | **OrderItem** | `orderId` | קוד_הזמנה | 77834 | 77925 | **-91** |
 | **OrderItem** | `quantity` | כמות | 77834 | 77945 | **-111** |

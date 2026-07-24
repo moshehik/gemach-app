@@ -147,10 +147,10 @@ export async function GET(request) {
         if (bulkAvailable) {
           if (isUnusable) {
              availableQtyForThisItem = 0;
-          } else if (availableBySize[size] > 0) {
-             const availableForThis = Math.min(item.quantity || 1, availableBySize[size]);
+          } else if (availableBySize[size] && availableBySize[size].available > 0) {
+             const availableForThis = Math.min(item.quantity || 1, availableBySize[size].available);
              availableQtyForThisItem = availableForThis;
-             availableBySize[size] -= availableForThis;
+             availableBySize[size].available -= availableForThis;
           } else {
              availableQtyForThisItem = 0;
           }

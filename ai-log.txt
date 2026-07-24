@@ -1,0 +1,114 @@
+==== NEW REQUEST ====
+PROMPT:
+מתי בסיון יש הזמנה לאפור טול 36?
+AI RESPONSE:
+SQL: SELECT O."eventDateHebrew" AS "תאריך אירוע", C."firstName" AS "שם פרטי", C."lastName" AS "שם משפחה", '/orders/' || O.id AS "_actionUrl", 'צפייה בהזמנה' AS "_actionLabel" FROM "Order" O JOIN "OrderItem" OI ON O."orderId" = OI."orderId" JOIN "DressItem" DI ON OI."dressItemId" = DI.id JOIN "DressModel" DM ON DI."dressModelId" = DM.id JOIN "Customer" C ON O."customerId" = C.id WHERE DM.name = 'אפור טול' AND DI.sizeText = '36' AND (O."eventDateHebrew" LIKE '%סיון%' OR O."eventDateHebrew" LIKE '%סיוון%') AND O."isDeleted" = false AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND C."isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+מתי בסיון יש הזמנה לאפור טול שמנת 36
+AI RESPONSE:
+SQL: SELECT O."orderId" AS "מספר הזמנה", O."eventDateHebrew" AS "תאריך אירוע", C."firstName" AS "שם פרטי", C."lastName" AS "שם משפחה", '/orders/' || O.id AS "_actionUrl", 'צפייה בהזמנה' AS "_actionLabel" FROM "Order" O JOIN "OrderItem" OI ON O."orderId" = OI."orderId" JOIN "DressItem" DI ON OI."dressItemId" = DI.id JOIN "DressModel" DM ON DI."dressModelId" = DM.id JOIN "Customer" C ON O."customerId" = C.id WHERE DM.name ILIKE '%אפור טול שמנת%' AND OI."size" ILIKE '%36%' AND (O."eventDateHebrew" LIKE '%סיון%' OR O."eventDateHebrew" LIKE '%סיוון%') AND O."isDeleted" = false AND DI."isDeleted" = false AND DM."isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+כמה יש פנוי במהלך סיון מאפור טול 36?
+AI RESPONSE:
+ACTION: CHECK_AVAILABILITY({"dates":[{"month":"Sivan", "year": 5786}], "models":["אפור טול"], "sizes":["36"]})
+
+==== NEW REQUEST ====
+PROMPT:
+באיזה תאריך יש הזמנה לפריט הזה בחודש סיון?
+AI RESPONSE:
+SQL: SELECT O."eventDateHebrew" AS "תאריך האירוע", O."orderId" AS "מספר הזמנה", C."firstName" AS "שם פרטי", C."lastName" AS "שם משפחה", '/orders/' || O.id AS "_actionUrl", 'צפייה בהזמנה' AS "_actionLabel" FROM "Order" O JOIN "OrderItem" OI ON O."orderId" = OI."orderId" JOIN "DressItem" DI ON OI."dressItemId" = DI.id JOIN "DressModel" DM ON DI."dressModelId" = DM.id JOIN "Customer" C ON O."customerId" = C.id WHERE DM.name ILIKE '%אפור טול%' AND DI."sizeText" = '36' AND (O."eventDateHebrew" LIKE '%סיון%' OR O."eventDateHebrew" LIKE '%סיוון%') AND O."isDeleted" = false AND OI."isDeleted" = false AND DI."isDeleted" = false AND DM."isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+מי הזמין ב כ"ה בסיוון תשפ"ה (21/06/2025) מהפריט?
+AI RESPONSE:
+SQL: SELECT C."firstName" AS "שם פרטי", C."lastName" AS "שם משפחה", C."phone1" AS "טלפון", O."eventDateHebrew" AS "תאריך עברי", '/customers/' || C.id AS "_actionUrl", 'תיק לקוח' AS "_actionLabel" FROM "Order" O JOIN "Customer" C ON O."customerId" = C.id JOIN "OrderItem" OI ON O."orderId" = OI."orderId" JOIN "DressItem" DI ON OI."dressItemId" = DI.id JOIN "DressModel" DM ON DI."dressModelId" = DM.id WHERE O."isDeleted" = false AND C."isDeleted" = false AND OI."isDeleted" = false AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND O."eventDateHebrew" LIKE '%כ"ה בסיוון תשפ"ה%' AND DM.name ILIKE '%אפור טול%';
+
+==== NEW REQUEST ====
+PROMPT:
+כמה יש פנוי במהלך סיון מאפור טול 36?
+AI RESPONSE:
+ACTION: CHECK_AVAILABILITY({"dates":[{"month":"Sivan","year":5786}], "models":["אפור טול"], "sizes":["36"]})
+
+
+==== FOLLOWUP PROMPT ====
+The user asked: "כמה יש פנוי במהלך סיון מאפור טול 36?".
+You requested to check availability for dates: [object Object].
+The sophisticated inventory system returned these availability results (already accounting for all buffer rules and overlap logic):
+[{"תאריך":"2026-05-17","תאריך עברי":"א' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-18","תאריך עברי":"ב' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-19","תאריך עברי":"ג' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-20","תאריך עברי":"ד' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-21","תאריך עברי":"ה' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-22","תאריך עברי":"ו' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-23","תאריך עברי":"ז' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-24","תאריך עברי":"ח' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-25","תאריך עברי":"ט' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-26","תאריך עברי":"י' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-27","תאריך עברי":"י\"א בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-28","תאריך עברי":"י\"ב בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-29","תאריך עברי":"י\"ג בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-30","תאריך עברי":"י\"ד בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-31","תאריך עברי":"ט\"ו בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-01","תאריך עברי":"ט\"ז בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-02","תאריך עברי":"י\"ז בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-03","תאריך עברי":"י\"ח בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-04","תאריך עברי":"י\"ט בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-05","תאריך עברי":"כ' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-06","תאריך עברי":"כ\"א בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-07","תאריך עברי":"כ\"ב בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-08","תאריך עברי":"כ\"ג בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-09","תאריך עברי":"כ\"ד בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-10","תאריך עברי":"כ\"ה בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-11","תאריך עברי":"כ\"ו בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-12","תאריך עברי":"כ\"ז בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-13","תאריך עברי":"כ\"ח בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-14","תאריך עברי":"כ\"ט בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-15","תאריך עברי":"ל' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1}]
+
+Please provide a short, clear, and friendly natural language answer to the user in Hebrew based on these results.
+CRITICAL RULES FOR YOUR RESPONSE:
+1. DO NOT use any markdown formatting like asterisks (**) for bolding or bullet points. Use standard text and plain dashes (-) for lists.
+2. Whenever you mention a date, you MUST mention BOTH the Hebrew date and the Gregorian date together, with the Gregorian date in parentheses (e.g., "י' בסיוון תשפ"ו (26/05/2026)"). You MUST extract these dates EXACTLY from the "תאריך עברי" and "תאריך" fields in the availability results JSON provided to you. Do NOT calculate or guess any dates yourself.
+3. DO NOT output a long list of consecutive dates! If the results contain many consecutive days, group them into a simple range (e.g., "מ-א' בסיוון (17/05/2026) ועד כ' בסיוון (05/06/2026)"). Keep the response concise and natural.
+4. STRICT PRIVACY RULE: You must NEVER expose, mention, or list ANY customer names, phone numbers, or personal details in your text response. Your response is intended to be shown or forwarded to clients, so you must keep all other clients' information completely confidential. Only summarize inventory and availability.
+Summarize the information nicely.
+
+==== FINAL AI RESPONSE ====
+היי, בשמחה! לגבי דגם אפור טול שמנת במידה 36, להלן מצב הזמינות במהלך חודש סיוון:
+
+מהתאריך א' בסיוון תשפ"ו (17/05/2026) ועד כ' בסיוון תשפ"ו (05/06/2026) קיימות 3 יחידות פנויות.
+
+מהתאריך כ"א בסיוון תשפ"ו (06/06/2026) ועד ל' בסיוון תשפ"ו (15/06/2026) קיימות 2 יחידות פנויות.
+
+נשמח לעמוד לשירותך לכל שאלה נוספת!
+
+==== NEW REQUEST ====
+PROMPT:
+לאיזה תאריך הוא מוזמן במהלך החודש?
+AI RESPONSE:
+SQL: SELECT O."orderId" AS "מספר הזמנה", O."eventDateHebrew" AS "תאריך אירוע", C."firstName" AS "שם פרטי", C."lastName" AS "שם משפחה", '/orders/' || O."id" AS "_actionUrl", 'צפייה בהזמנה' AS "_actionLabel" FROM "Order" O JOIN "Customer" C ON O."customerId" = C."id" JOIN "OrderItem" OI ON O."orderId" = OI."orderId" JOIN "DressItem" DI ON OI."dressItemId" = DI."id" JOIN "DressModel" DM ON DI."dressModelId" = DM."id" WHERE O."isDeleted" = false AND DM."name" ILIKE '%אפור טול%' AND OI."sizeText" = '36' AND (O."eventDateHebrew" LIKE '%סיון%' OR O."eventDateHebrew" LIKE '%סיוון%')
+
+==== NEW REQUEST ====
+PROMPT:
+הקישור להזמנה של בתיה כהן לא תקין
+AI RESPONSE:
+SQL: SELECT O."orderId" AS "מספר הזמנה", O."eventDateHebrew" AS "תאריך אירוע", '/orders/' || O.id AS "_actionUrl", 'צפייה בהזמנה' AS "_actionLabel" FROM "Order" O JOIN "Customer" C ON O."customerId" = C.id WHERE (C."firstName" ILIKE '%בתיה%' AND C."lastName" ILIKE '%כהן%') AND O."isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+זה: - הזמנה 26101 בתאריך כה סיון תשפו (21/06/2026)
+AI RESPONSE:
+SQL: SELECT O."orderId" AS "מספר הזמנה", O."eventDateHebrew" AS "תאריך האירוע", C."firstName" || ' ' || C."lastName" AS "שם הלקוחה", '/orders/' || O."id" AS "_actionUrl", 'לצפייה בהזמנה' AS "_actionLabel" FROM "Order" O JOIN "Customer" C ON O."customerId" = C."id" WHERE O."orderId" = 26101 AND O."isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+זה? http://localhost:3000/orders/a372870a-3017-4c93-9b60-2ec9e772f297 אומר הזמנה לא נמצאה
+AI RESPONSE:
+SQL: SELECT "orderId" AS "מספר הזמנה", "eventDateHebrew" AS "תאריך אירוע", "id" AS "מזהה פנימי" FROM "Order" WHERE "orderId" = 26101 AND "isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+כמה יש פנוי במהלך סיון מאפור טול 36?
+AI RESPONSE:
+ACTION: CHECK_AVAILABILITY({"dates":[{"month": "Sivan", "year": 5786}], "models":["אפור טול"], "sizes":["36"]})
+
+
+==== FOLLOWUP PROMPT ====
+The user asked: "כמה יש פנוי במהלך סיון מאפור טול 36?".
+You requested to check availability for dates: [object Object].
+The sophisticated inventory system returned these availability results (already accounting for all buffer rules and overlap logic):
+[{"תאריך":"2026-05-17","תאריך עברי":"א' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-18","תאריך עברי":"ב' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-19","תאריך עברי":"ג' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-20","תאריך עברי":"ד' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-21","תאריך עברי":"ה' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-22","תאריך עברי":"ו' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-23","תאריך עברי":"ז' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-24","תאריך עברי":"ח' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-25","תאריך עברי":"ט' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-26","תאריך עברי":"י' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-27","תאריך עברי":"י\"א בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-28","תאריך עברי":"י\"ב בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-29","תאריך עברי":"י\"ג בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-30","תאריך עברי":"י\"ד בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-05-31","תאריך עברי":"ט\"ו בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-01","תאריך עברי":"ט\"ז בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-02","תאריך עברי":"י\"ז בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-03","תאריך עברי":"י\"ח בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-04","תאריך עברי":"י\"ט בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-05","תאריך עברי":"כ' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-06","תאריך עברי":"כ\"א בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":3,"מלאי_כולל":3,"כמות_מוזמנת":0},{"תאריך":"2026-06-07","תאריך עברי":"כ\"ב בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-08","תאריך עברי":"כ\"ג בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-09","תאריך עברי":"כ\"ד בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-10","תאריך עברי":"כ\"ה בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-11","תאריך עברי":"כ\"ו בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-12","תאריך עברי":"כ\"ז בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-13","תאריך עברי":"כ\"ח בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-14","תאריך עברי":"כ\"ט בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1},{"תאריך":"2026-06-15","תאריך עברי":"ל' בסיוון תשפ\"ו","דגם":"אפור טול שמנת","מידה":"36","זמינות_פנויה":2,"מלאי_כולל":3,"כמות_מוזמנת":1}]
+
+Please provide a short, clear, and friendly natural language answer to the user in Hebrew based on these results.
+CRITICAL RULES FOR YOUR RESPONSE:
+1. DO NOT use any markdown formatting like asterisks (**) for bolding or bullet points. Use standard text and plain dashes (-) for lists.
+2. Whenever you mention a date, you MUST mention BOTH the Hebrew date and the Gregorian date together, with the Gregorian date in parentheses (e.g., "י' בסיוון תשפ"ו (26/05/2026)"). You MUST extract these dates EXACTLY from the "תאריך עברי" and "תאריך" fields in the availability results JSON provided to you. Do NOT calculate or guess any dates yourself.
+3. DO NOT output a long list of consecutive dates! If the results contain many consecutive days, group them into a simple range (e.g., "מ-א' בסיוון (17/05/2026) ועד כ' בסיוון (05/06/2026)"). Keep the response concise and natural.
+4. STRICT PRIVACY RULE: You must NEVER expose, mention, or list ANY customer names, phone numbers, or personal details in your text response. Your response is intended to be shown or forwarded to clients, so you must keep all other clients' information completely confidential. Only summarize inventory and availability.
+Summarize the information nicely.
+
+==== FINAL AI RESPONSE ====
+שלום, להלן זמינות דגם אפור טול שמנת במידה 36 במהלך חודש סיוון:
+
+מהתאריך א' בסיוון תשפ"ו (17/05/2026) ועד כ' בסיוון תשפ"ו (05/06/2026) קיימות 3 יחידות פנויות.
+
+מהתאריך כ"א בסיוון תשפ"ו (06/06/2026) ועד ל' בסיוון תשפ"ו (15/06/2026) קיימות 2 יחידות פנויות.
+
+נשמח לעמוד לרשותך לכל שאלה נוספת.
+

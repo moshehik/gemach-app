@@ -48,6 +48,12 @@ export default function PrintOrderPage() {
   useEffect(() => {
     // Auto trigger print when loaded
     if (!loading && !error && order) {
+      fetch('/api/log-visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageUrl: `[הדפסת כרטיס השכרה] הזמנה #${order.orderId}` })
+      }).catch(console.error);
+
       const timer = setTimeout(() => {
         window.print();
       }, 1000);
@@ -348,6 +354,64 @@ export default function PrintOrderPage() {
                 )}
               </tbody>
             </table>
+
+            <h3 className="section-title" style={{ marginTop: '30px' }}>פירוט תשלומים וחובות</h3>
+            
+            <div className="order-details-card" style={{ marginBottom: '20px' }}>
+              <div className="detail-item">
+                <span className="label">סה&quot;כ לחיוב</span>
+                <span className="value" style={{ color: '#b91c1c', fontWeight: 'bold' }}>₪{order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0}</span>
+              </div>
+              <div className="detail-item">
+                <span className="label">סה&quot;כ שולם</span>
+                <span className="value" style={{ color: '#166534', fontWeight: 'bold' }}>₪{order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0}</span>
+              </div>
+              <div className="detail-item full-width">
+                <span className="label">יתרה לתשלום</span>
+                <span className="value" style={{ color: ((order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0) - (order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0)) > 0 ? '#b91c1c' : '#212529', fontWeight: 'bold', fontSize: '18px' }}>
+                  ₪{Math.max(0, (order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0) - (order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0))}
+                </span>
+              </div>
+            </div>
+
+            {order.payments && order.payments.filter(p => !p.isDeleted).length > 0 && (
+              <>
+                <h4 style={{ color: '#2c3e50', fontSize: '16px', marginBottom: '10px' }}>תשלומים שהתקבלו</h4>
+                <table className="print-table" style={{ marginBottom: '20px' }}>
+                  <thead>
+                    <tr>
+                      <th>תאריך</th>
+                      <th>אופן תשלום</th>
+                      <th>סכום</th>
+                      <th>הערות</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {order.payments.filter(p => !p.isDeleted).map((p, idx) => {
+                      let notes = p.notes || '-';
+                      try {
+                        if (typeof notes === 'string' && notes.trim().startsWith('{')) {
+                          const parsed = JSON.parse(notes);
+                          notes = parsed.Confirmation || parsed.TransactionId || parsed['אישור'] ? `אישור: ${parsed.Confirmation || parsed.TransactionId || parsed['אישור']}` : 'סליקת אשראי';
+                        } else if (typeof notes === 'string') {
+                           const match = notes.match(/אישור:\s*([a-zA-Z0-9]+)/);
+                           if (match && match[1]) notes = `אישור: ${match[1]}`;
+                           else notes = notes.split(' | ')[0];
+                        }
+                      } catch (e) {}
+                      return (
+                        <tr key={idx}>
+                          <td>{new Date(p.paymentDate).toLocaleDateString('he-IL')}</td>
+                          <td>{p.paymentMethod || '-'}</td>
+                          <td style={{ fontWeight: 'bold', color: '#16a34a' }}>₪{p.amount}</td>
+                          <td>{notes}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </>
+            )}
 
             <div className="print-footer">
               <p>הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {new Date().toLocaleString('he-IL')}</p>

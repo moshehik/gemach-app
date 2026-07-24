@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
-const prisma = new PrismaClient();
+
+import prisma from '@/app/lib/prisma';
 import { addDaysSkippingWeekends } from '../../../../lib/inventory';
 
 export const dynamic = 'force-dynamic';
@@ -146,8 +146,8 @@ export async function GET() {
           if (customStart && customEnd) {
             if (d >= customStart && d <= customEnd) overlaps = true;
           } else if (eDate) {
-            const bMin = addDaysSkippingWeekends(eDate, -bufferDays, skipWeekends);
-            const bMax = addDaysSkippingWeekends(eDate, bufferDays, skipWeekends);
+            const bMin = new Date(eDate);
+            const bMax = addDaysSkippingWeekends(eDate, bufferDays + 1, skipWeekends);
             if (d >= bMin && d <= bMax) overlaps = true;
           }
           

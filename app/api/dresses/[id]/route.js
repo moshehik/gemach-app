@@ -4,10 +4,10 @@ import prisma from '../../../lib/prisma';
 export async function GET(request, { params }) {
   try {
     const resolvedParams = await params;
-    const id = parseInt(resolvedParams.id);
+    const id = resolvedParams.id;
     
-    if (isNaN(id)) {
-      return NextResponse.json({ error: 'קוד שמלה לא תקין' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'קוד שמלה חסר' }, { status: 400 });
     }
 
     const dress = await prisma.dressModel.findUnique({
@@ -34,11 +34,11 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const resolvedParams = await params;
-    const id = parseInt(resolvedParams.id);
+    const id = resolvedParams.id;
     const body = await request.json();
 
-    if (isNaN(id)) {
-      return NextResponse.json({ error: 'קוד שמלה לא תקין' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'קוד שמלה חסר' }, { status: 400 });
     }
 
     // Check for barcode conflict if updating barcode OR if restoring a deleted model
@@ -102,10 +102,10 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const resolvedParams = await params;
-    const id = parseInt(resolvedParams.id);
+    const id = resolvedParams.id;
     
-    if (isNaN(id)) {
-      return NextResponse.json({ error: 'קוד שמלה לא תקין' }, { status: 400 });
+    if (!id) {
+      return NextResponse.json({ error: 'קוד שמלה חסר' }, { status: 400 });
     }
 
     // Since a dress model might have associated items, we need to handle relation deletion 

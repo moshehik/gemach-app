@@ -64,7 +64,7 @@ const DEFAULT_LABELS = {
 
   // Tabs
   tab_customers: 'לקוחות',
-  tab_orders: 'הזמנות ותשלומים',
+  tab_orders: 'הזמנות',
   tab_rentals: 'השכרות והחזרות',
   tab_dresses: 'ניהול קטלוג',
   tab_customer_availability: 'זמינות לקוח',

@@ -1,0 +1,343 @@
+
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>דוח פערי הגירה - השוואת נתונים</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f3f4f6; color: #1f2937; padding: 20px; }
+        .container { max-width: 1000px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { color: #2563eb; text-align: center; border-bottom: 2px solid #e5e7eb; padding-bottom: 15px; margin-bottom: 30px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th { background-color: #3b82f6; color: white; padding: 12px; text-align: right; }
+        td { padding: 12px; border-bottom: 1px solid #e5e7eb; }
+        tr:hover { background-color: #f9fafb; }
+        .gap-zero { color: #10b981; font-weight: bold; }
+        .gap-positive { color: #f59e0b; font-weight: bold; }
+        .gap-negative { color: #ef4444; font-weight: bold; }
+        button { background-color: #3b82f6; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; font-size: 16px; margin-bottom: 20px; display: inline-flex; align-items: center; gap: 8px; }
+        button:hover { background-color: #2563eb; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>דוח פערי נתונים - Access מול המערכת החדשה</h1>
+        <button onclick="window.print()">
+            <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            הדפס דוח
+        </button>
+        <table>
+            <thead>
+                <tr>
+                    <th>טבלה</th>
+                    <th>שדה במערכת החדשה</th>
+                    <th>שדה מקביל באקסס</th>
+                    <th>רשומות חדש</th>
+                    <th>רשומות אקסס</th>
+                    <th>פער</th>
+                </tr>
+            </thead>
+            <tbody>
+
+                <tr>
+                    <td>Customer</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">houseNum</code></td>
+                    <td>בית</td>
+                    <td>15621</td>
+                    <td>15624</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-3</td>
+                </tr>
+
+                <tr>
+                    <td>Customer</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">notes</code></td>
+                    <td>הערות</td>
+                    <td>277</td>
+                    <td>276</td>
+                    <td class="gap-positive" dir="ltr" style="text-align: right">+1</td>
+                </tr>
+
+                <tr>
+                    <td>Employee</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">roleId</code></td>
+                    <td>מס_מחלקה</td>
+                    <td>90</td>
+                    <td>91</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-1</td>
+                </tr>
+
+                <tr>
+                    <td>Shift</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">employeeId</code></td>
+                    <td>קוד_עובד</td>
+                    <td>13809</td>
+                    <td>13957</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-148</td>
+                </tr>
+
+                <tr>
+                    <td>Shift</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">entryTime</code></td>
+                    <td>שעת_כניסה</td>
+                    <td>13807</td>
+                    <td>13956</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-149</td>
+                </tr>
+
+                <tr>
+                    <td>Shift</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">exitTime</code></td>
+                    <td>שעת_יציאה</td>
+                    <td>13796</td>
+                    <td>13941</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-145</td>
+                </tr>
+
+                <tr>
+                    <td>Shift</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">hebrewDate</code></td>
+                    <td>תאריך_עברי</td>
+                    <td>13788</td>
+                    <td>13940</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-152</td>
+                </tr>
+
+                <tr>
+                    <td>DressModel</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">name</code></td>
+                    <td>שם_שמלה</td>
+                    <td>115</td>
+                    <td>111</td>
+                    <td class="gap-positive" dir="ltr" style="text-align: right">+4</td>
+                </tr>
+
+                <tr>
+                    <td>DressModel</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">exitDateFromRepo</code></td>
+                    <td>תאריך_יציאה_מהמאגר</td>
+                    <td>53</td>
+                    <td>55</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-2</td>
+                </tr>
+
+                <tr>
+                    <td>Order</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">employeeId</code></td>
+                    <td>קוד_עובד</td>
+                    <td>16436</td>
+                    <td>16481</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-45</td>
+                </tr>
+
+                <tr>
+                    <td>Payment</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">paymentDate</code></td>
+                    <td>תאריך תשלום</td>
+                    <td>41746</td>
+                    <td>41760</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-14</td>
+                </tr>
+
+                <tr>
+                    <td>Payment</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">notes</code></td>
+                    <td>הערות</td>
+                    <td>28911</td>
+                    <td>28914</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-3</td>
+                </tr>
+
+                <tr>
+                    <td>PaymentObligation</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">description</code></td>
+                    <td>תיאור</td>
+                    <td>34114</td>
+                    <td>34121</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-7</td>
+                </tr>
+
+                <tr>
+                    <td>PaymentObligation</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">isRefund</code></td>
+                    <td>זיכוי</td>
+                    <td>142071</td>
+                    <td>142303</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-232</td>
+                </tr>
+
+                <tr>
+                    <td>PaymentObligation</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">orderItemId</code></td>
+                    <td>קוד_פריט</td>
+                    <td>102695</td>
+                    <td>102773</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-78</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">id</code></td>
+                    <td>קוד_פריט</td>
+                    <td>77834</td>
+                    <td>77950</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-116</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">orderId</code></td>
+                    <td>קוד_הזמנה</td>
+                    <td>77834</td>
+                    <td>77925</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-91</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">quantity</code></td>
+                    <td>כמות</td>
+                    <td>77834</td>
+                    <td>77945</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-111</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">barcodePrefix</code></td>
+                    <td>בר_קוד_קידומת</td>
+                    <td>77834</td>
+                    <td>77950</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-116</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">size</code></td>
+                    <td>מידה</td>
+                    <td>77834</td>
+                    <td>77950</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-116</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">isTaken</code></td>
+                    <td>נלקח</td>
+                    <td>77834</td>
+                    <td>77950</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-116</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">isReturned</code></td>
+                    <td>הוחזר</td>
+                    <td>77834</td>
+                    <td>77950</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-116</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">returnedOk</code></td>
+                    <td>חזר_תקין</td>
+                    <td>77834</td>
+                    <td>77950</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-116</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">orderDate</code></td>
+                    <td>תאריך_הזמנה</td>
+                    <td>53061</td>
+                    <td>53284</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-223</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">isDeleted</code></td>
+                    <td>מחוק</td>
+                    <td>77834</td>
+                    <td>77950</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-116</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">deletedAt</code></td>
+                    <td>תאריך_מחיקה</td>
+                    <td>10785</td>
+                    <td>10788</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-3</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">neckAlteration</code></td>
+                    <td>תיקון_צוואר</td>
+                    <td>77834</td>
+                    <td>77950</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-116</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">lengthAlteration</code></td>
+                    <td>תיקון_אורך</td>
+                    <td>25197</td>
+                    <td>25221</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-24</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">sleeveAlteration</code></td>
+                    <td>תיקון_שרוול</td>
+                    <td>77834</td>
+                    <td>77950</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-116</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">alterationDetails</code></td>
+                    <td>פירוט_תיקון</td>
+                    <td>31598</td>
+                    <td>31614</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-16</td>
+                </tr>
+
+                <tr>
+                    <td>OrderItem</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">alterationDone</code></td>
+                    <td>בוצע_תיקון</td>
+                    <td>77834</td>
+                    <td>77950</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-116</td>
+                </tr>
+
+                <tr>
+                    <td>SystemSetting</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">category</code></td>
+                    <td>קטגוריה</td>
+                    <td>26</td>
+                    <td>66</td>
+                    <td class="gap-negative" dir="ltr" style="text-align: right">-40</td>
+                </tr>
+
+                <tr>
+                    <td>SystemSetting</td>
+                    <td><code style="background:#f1f5f9;padding:2px 5px;border-radius:4px">notes</code></td>
+                    <td>הערות</td>
+                    <td>23</td>
+                    <td>5</td>
+                    <td class="gap-positive" dir="ltr" style="text-align: right">+18</td>
+                </tr>
+
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

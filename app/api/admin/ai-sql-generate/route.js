@@ -3,6 +3,8 @@ import { generateContent } from '../../../../lib/ai/gemini';
 import { checkAuth } from '../../../../lib/auth';
 import fs from 'fs';
 import path from 'path';
+import { HDate } from '@hebcal/core';
+import { getHebrewYearContext, processHebrewDateMacro } from '../../../../lib/hebrewDate';
 
 let cachedSchema = null;
 function getSchemaContext() {
@@ -30,7 +32,7 @@ The user is a system admin, so they have permission to modify data.
 Rules for SQL query generation:
 1. Do NOT include any explanations, markdown formatting, or backticks (\`\`\`) around the SQL query. Output ONLY the raw SQL.
 2. The query must be valid PostgreSQL syntax.
-3. VERY IMPORTANT FOR DATES: Use PostgreSQL date functions like EXTRACT(YEAR FROM "eventDate") = 2024. If the user searches by Hebrew month (e.g. 'תשרי', 'חשוון'), map them to their Gregorian month numbers using EXTRACT(MONTH FROM ...).
+3. VERY IMPORTANT FOR DATES: Use PostgreSQL date functions like EXTRACT(YEAR FROM "eventDate") = 2024. For Gregorian dates, use 'YYYY-MM-DD'. If the user searches by Hebrew date, DO NOT GUESS THE GREGORIAN DATE! Instead, use the exact macro HEBREW_DATE(day, 'MONTH', year) in your SQL string, and we will replace it automatically. Example: "eventDate" = HEBREW_DATE(10, 'SIVAN', 5786). Month must be one of: NISAN, IYYAR, SIVAN, TAMUZ, AV, ELUL, TISHREI, CHESHVAN, KISLEV, TEVET, SHVAT, ADAR_I, ADAR_II. If year is unknown, use the current Hebrew year from context.
 4. IMPORTANT: Always quote table names and column names with double quotes because PostgreSQL is case-sensitive with identifiers created by Prisma (e.g. "Customer", "firstName", "Order", "isDeleted").
 5. Be aware of the field names exactly as defined in the schema.
 6. Make sure to format strings properly (using single quotes for string values).`;
@@ -48,7 +50,11 @@ export async function POST(req) {
     }
 
     const schemaText = getSchemaContext();
-    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n\nUser Question: ${prompt}\n\nGenerate ONLY the raw SQL query string now:`;
+    const todayGregorian = new Date().toISOString().split('T')[0];
+    const todayHebrew = new HDate().renderGematriya();
+    const dateContext = `\nCRITICAL DATE CONTEXT: Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. You MUST use this as the anchor to calculate any relative dates or Hebrew dates provided by the user.`;
+    
+    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${dateContext}\n\nUser Question: ${prompt}\n\nGenerate ONLY the raw SQL query string now:`;
     
     let aiResponse = await generateContent(initialPrompt);
     
@@ -63,6 +69,8 @@ export async function POST(req) {
         query = query.substring(0, query.length - 3);
     }
     query = query.trim();
+    
+    query = processHebrewDateMacro(query);
 
     return NextResponse.json({ sql: query });
   } catch (error) {

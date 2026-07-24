@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Sparkles, X, Loader2, ArrowLeft, CreditCard, Banknote, User, ShoppingBag, Shirt, Download, PlusCircle, Maximize2, Minimize2, CheckCircle, Clock, XCircle, Check, Send, Trash2, ExternalLink } from 'lucide-react';
+import { Search, Sparkles, X, Loader2, ArrowLeft, CreditCard, Banknote, User, ShoppingBag, Shirt, Download, PlusCircle, Maximize2, Minimize2, CheckCircle, Clock, XCircle, Check, Send, Trash2, ExternalLink, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import AISearchBar from './components/AISearchBar';
 import QuickPaymentModal from './components/QuickPaymentModal';
@@ -479,15 +479,22 @@ export default function HomeDashboard() {
                 </thead>
                 <tbody>
                   {debts.map(debt => (
-                    <tr key={debt.id} style={{ borderBottom: '1px solid #f3f4f6' }}>
+                    <tr key={debt.id} style={{ borderBottom: '1px solid #f3f4f6', background: !debt.isApproved ? '#fef2f2' : 'transparent' }}>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
                         <div style={{ fontWeight: '500' }}>#{debt.orderId}</div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{debt.customer?.firstName} {debt.customer?.lastName}</div>
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem' }}>₪{debt.totalAmount}</td>
-                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold', color: '#ef4444' }}>₪{debt.remaining}</td>
+                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold', color: '#ef4444' }}>
+                        ₪{debt.remaining}
+                        {!debt.isApproved && (
+                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fee2e2', color: '#b91c1c', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', marginRight: '6px' }}>
+                            <AlertTriangle size={12} /> חריג
+                          </div>
+                        )}
+                      </td>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
-                        <Link href={`/orders/${debt.orderId}`} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '12px' }}>לשלם</Link>
+                        <Link href={`/orders/${debt.orderId}`} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '12px' }}>לפרטים</Link>
                       </td>
                     </tr>
                   ))}

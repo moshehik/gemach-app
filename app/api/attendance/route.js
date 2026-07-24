@@ -16,8 +16,7 @@ export async function GET(request) {
 
     let whereClause = {};
 
-    if (employeeId) {
-      whereClause.employeeId = parseInt(employeeId, 10);
+      whereClause.employeeId = employeeId;
     }
 
     if (month && year) {
@@ -58,8 +57,14 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Missing required fields or invalid action' }, { status: 400 });
     }
 
-    const employee = await prisma.employee.findUnique({
-      where: { id: parseInt(employeeId, 10) }
+    const parsedLegacyId = parseInt(employeeId, 10);
+    const employee = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          ...(isNaN(parsedLegacyId) ? [] : [{ legacyId: parsedLegacyId }]),
+          { id: String(employeeId) }
+        ]
+      }
     });
 
     if (!employee) {

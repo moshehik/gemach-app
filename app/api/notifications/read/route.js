@@ -11,8 +11,8 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
     }
 
-    const employeeId = parseInt(token.value, 10);
-    if (isNaN(employeeId)) {
+    const employeeId = token.value;
+    if (!employeeId) {
       return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 401 });
     }
 
@@ -24,7 +24,7 @@ export async function POST(request) {
     }
 
     const notification = await prisma.notification.findUnique({
-      where: { id: parseInt(notificationId, 10) }
+      where: { id: notificationId }
     });
 
     if (!notification) {

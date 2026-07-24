@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, CalendarPlus } from 'lucide-react';
+import { Calendar, CalendarPlus, Scissors, Printer, Info, CheckCircle, Search, X, Check, Clock } from 'lucide-react';
 import PrintWizardModal from '../components/PrintWizardModal';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import { getHebrewDateString } from '../../lib/hebrewDate';
@@ -26,6 +26,7 @@ export default function AlterationsPage() {
 
   // Print Wizard state
   const [isPrintWizardOpen, setIsPrintWizardOpen] = useState(false);
+  const [isLegendOpen, setIsLegendOpen] = useState(false);
 
   useEffect(() => {
     fetchAlterations();
@@ -122,7 +123,7 @@ export default function AlterationsPage() {
         boxShadow: 'var(--shadow-sm)', flexWrap: 'wrap', gap: '1rem' 
       }}>
         <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2.2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <span>✂️</span> ניהול תפירות ותיקונים
+          <Scissors size={32} /> ניהול תפירות ותיקונים
         </h1>
         
         <div style={{ display: 'flex', gap: '10px' }}>
@@ -131,20 +132,20 @@ export default function AlterationsPage() {
             onClick={() => setIsPrintWizardOpen(true)}
             style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            <span style={{ fontSize: '1.2rem' }}>🖨️</span> אשף הדפסה
+            <Printer size={18} /> אשף הדפסה
           </button>
           <button 
             className="btn btn-outline"
-            onClick={() => alert('מקרא צבעים:\nאדום - טרם בוצע תיקון\nירוק - התיקון בוצע')}
+            onClick={() => setIsLegendOpen(true)}
             style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            <span style={{ fontSize: '1.2rem' }}>ℹ️</span> מקרא
+            <Info size={18} /> מקרא
           </button>
         </div>
       </div>
 
-      <div className="dress-card" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap', overflow: 'visible', zIndex: 10 }}>
-        <div style={{ flex: '1', display: 'flex', gap: '15px', minWidth: '350px' }}>
+      <div className="dress-card" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap', overflow: 'visible', zIndex: 10, position: 'relative' }}>
+        <div style={{ display: 'flex', gap: '15px', minWidth: '300px', flex: '1' }}>
           <div style={{ flex: '1' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
               <label style={{ fontWeight: '500', color: 'var(--text-main)', margin: 0 }}>מתאריך:</label>
@@ -171,8 +172,46 @@ export default function AlterationsPage() {
           </div>
         </div>
         
-        <div style={{ flex: '1.5', display: 'flex', gap: '15px', minWidth: '350px', alignItems: 'center', height: '50px' }}>
-          <label style={{ flex: '1', display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '0.5rem 1rem', background: 'rgba(212, 175, 55, 0.05)', borderRadius: '30px', border: '1px solid var(--border-color)', transition: 'all 0.3s ease', height: '100%' }}>
+        {/* Search Bar aligned with date filtering */}
+        <div style={{ flex: '1.5', minWidth: '300px' }}>
+           <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', height: '42px' }}>
+            <div style={{ position: 'relative', flex: 1, height: '100%' }}>
+              <Search size={18} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+              <input 
+                type="text" 
+                placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                style={{ 
+                  width: '100%',
+                  height: '100%',
+                  padding: '0 2.5rem 0 1rem', 
+                  borderRadius: '12px', 
+                  border: '1px solid var(--border-color)',
+                  background: 'var(--bg-color)',
+                  outline: 'none',
+                  fontSize: '0.95rem'
+                }}
+              />
+              {searchInput && (
+                <button 
+                  type="button"
+                  onClick={() => { setSearchInput(''); setSearch(''); setPage(1); }}
+                  style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
+                  title="נקה חיפוש"
+                >
+                  <X size={16} />
+                </button>
+              )}
+            </div>
+            <button type="submit" className="btn btn-primary" style={{ borderRadius: '12px', padding: '0 1.5rem', height: '100%' }}>
+              חיפוש
+            </button>
+          </form>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '15px', minWidth: '350px', alignItems: 'center', height: '42px', flex: '1' }}>
+          <label style={{ flex: '1', display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '0 1rem', background: 'rgba(212, 175, 55, 0.05)', borderRadius: '12px', border: '1px solid var(--border-color)', transition: 'all 0.3s ease', height: '100%' }}>
             <input 
               type="checkbox" 
               checked={showOnlyPending} 
@@ -184,53 +223,18 @@ export default function AlterationsPage() {
           
           <button 
             className="btn btn-primary" 
-            style={{ flex: '1', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', whiteSpace: 'nowrap' }}
+            style={{ flex: '1', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', whiteSpace: 'nowrap', borderRadius: '12px' }}
             onClick={markAllDone} 
             disabled={!startDate}
           >
-            <span>✔️</span> סמן הכל כבוצע ליום המוגדר
+            <CheckCircle size={16} /> סמן הכל כבוצע
           </button>
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '500px' }}>
-          <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', flex: 1 }}>
-            <div style={{ position: 'relative', flex: 1 }}>
-              <input 
-                type="text" 
-                placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                style={{ 
-                  width: '100%',
-                  padding: '0.75rem 2.5rem 0.75rem 1rem', 
-                  borderRadius: '24px', 
-                  border: '1px solid #ddd',
-                  boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                  outline: 'none',
-                  fontSize: '1rem'
-                }}
-              />
-              {searchInput && (
-                <button 
-                  type="button"
-                  onClick={() => { setSearchInput(''); setSearch(''); setPage(1); }}
-                  style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1.2rem', padding: '0' }}
-                  title="נקה חיפוש"
-                >
-                  &times;
-                </button>
-              )}
-            </div>
-            <button type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0.75rem 1.5rem' }}>
-              חיפוש
-            </button>
-          </form>
-        </div>
-        <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <span>סה"כ רשומות: {totalCount}</span>
+      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '500' }}>
+          סה"כ רשומות: {totalCount}
         </div>
       </div>
 
@@ -254,10 +258,7 @@ export default function AlterationsPage() {
                   <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>לקוח</th>
                   <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>דגם שמלה</th>
                   <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>מידה</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>צוואר</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>שרוול</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>אורך</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>פירוט נוסף</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>פירוט תיקונים</th>
                   <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>סטטוס</th>
                   <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>פעולות</th>
                 </tr>
@@ -293,11 +294,14 @@ export default function AlterationsPage() {
                           {item.sizeText || item.size}
                         </span>
                       </td>
-                      <td style={{ padding: '1rem' }}>{item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : '-'}</td>
-                      <td style={{ padding: '1rem' }}>{item.sleeveAlteration > 0 ? `הארכה ${item.sleeveAlteration}` : '-'}</td>
-                      <td style={{ padding: '1rem' }}>{item.lengthAlteration ? item.lengthAlteration : '-'}</td>
-                      <td style={{ padding: '1rem', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={item.alterationDetails}>
-                        {item.alterationDetails || '-'}
+                      <td style={{ padding: '1rem', maxWidth: '350px' }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {item.neckAlteration > 0 && <span style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--primary-color)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>צוואר: הצרה {item.neckAlteration}</span>}
+                          {item.sleeveAlteration > 0 && <span style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--primary-color)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>שרוול: הארכה {item.sleeveAlteration}</span>}
+                          {item.lengthAlteration && <span style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--primary-color)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>אורך: {item.lengthAlteration}</span>}
+                          {item.alterationDetails && <span style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--text-main)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{item.alterationDetails}</span>}
+                          {!item.neckAlteration && !item.sleeveAlteration && !item.lengthAlteration && !item.alterationDetails && <span style={{ color: 'var(--text-muted)' }}>-</span>}
+                        </div>
                       </td>
                       <td style={{ padding: '1rem' }}>
                         <span style={{ 
@@ -310,7 +314,11 @@ export default function AlterationsPage() {
                           color: item.alterationDone ? '#2e7d32' : '#c62828',
                           border: `1px solid ${item.alterationDone ? 'rgba(67, 160, 71, 0.2)' : 'rgba(229, 57, 53, 0.2)'}`
                         }}>
-                          {item.alterationDone ? '✓ בוצע' : '⏳ ממתין'}
+                          {item.alterationDone ? (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={14} /> בוצע</span>
+                          ) : (
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={14} /> ממתין</span>
+                          )}
                         </span>
                       </td>
                       <td style={{ padding: '1rem' }}>
@@ -362,6 +370,49 @@ export default function AlterationsPage() {
           defaultStartDate={startDate}
           defaultEndDate={endDate}
         />
+      )}
+
+      {isLegendOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.4)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000
+        }} onClick={() => setIsLegendOpen(false)}>
+          <div style={{
+            background: 'var(--card-bg)',
+            padding: '2rem',
+            borderRadius: '16px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
+            maxWidth: '400px',
+            width: '100%',
+            position: 'relative'
+          }} onClick={e => e.stopPropagation()}>
+            <button 
+              onClick={() => setIsLegendOpen(false)}
+              style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+            >
+              <X size={20} />
+            </button>
+            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Info size={24} /> מקרא צבעים
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(229, 57, 53, 0.1)', border: '1px solid rgba(229, 57, 53, 0.2)' }}></div>
+                <span><strong>אדום / ממתין:</strong> התיקון טרם בוצע.</span>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(67, 160, 71, 0.1)', border: '1px solid rgba(67, 160, 71, 0.2)' }}></div>
+                <span><strong>ירוק / בוצע:</strong> התיקון בוצע בהצלחה.</span>
+              </div>
+            </div>
+            <div style={{ marginTop: '2rem', textAlign: 'center' }}>
+              <button className="btn btn-primary" onClick={() => setIsLegendOpen(false)}>הבנתי</button>
+            </div>
+          </div>
+        </div>
       )}
     </main>
   );

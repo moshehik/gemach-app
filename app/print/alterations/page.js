@@ -22,14 +22,24 @@ export default function PrintAlterationsPage() {
 
   useEffect(() => {
     fetchData();
+  }, [reportType, startDate, endDate]);
+
+  useEffect(() => {
     // Auto trigger print when loaded
-    const timer = setTimeout(() => {
-      if (!loading && !error) {
+    if (!loading && !error) {
+      const title = getReportTitle();
+      fetch('/api/log-visit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pageUrl: `[הדפסת דוח] ${title} (תאריכים: ${startDate} - ${endDate})` })
+      }).catch(console.error);
+
+      const timer = setTimeout(() => {
         window.print();
-      }
-    }, 1000);
-    return () => clearTimeout(timer);
-  }, [loading, error]);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [loading, error, reportType, startDate, endDate]);
 
   const fetchData = async () => {
     try {

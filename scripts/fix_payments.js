@@ -1,7 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
+
 const xlsx = require('xlsx');
 const path = require('path');
-const prisma = new PrismaClient();
+import prisma from '@/app/lib/prisma';
 
 function isTrue(val) {
   return val === true || val === 1 || String(val).toLowerCase() === 'yes' || String(val) === '1';

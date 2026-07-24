@@ -19,7 +19,7 @@ export async function GET(request) {
     
     let where = {};
     if (entityType) where.entityType = entityType;
-    if (entityId) where.entityId = parseInt(entityId, 10);
+    if (entityId) where.entityId = entityId;
     if (action) where.action = action;
     
     if (startDate || endDate) {

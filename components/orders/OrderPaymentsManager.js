@@ -168,7 +168,15 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
     
     try {
       const fullAddress = [customer.street || '', customer.houseNum || '', customer.city || ''].filter(Boolean).join(' ');
-      const orderNote = orderId ? `הזמנה ${orderId}` : '';
+      
+      const itemsDescription = obligations
+        .filter(o => !o.isDeleted && o.isManual === false)
+        .map(o => o.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, ''))
+        .filter(Boolean)
+        .join(', ');
+      const fullItemsDesc = itemsDescription ? `(${itemsDescription})` : '';
+
+      const orderNote = orderId ? `הזמנה ${orderId} ${fullItemsDesc}` : '';
       const finalNotes = [orderNote, creditCardData.notes].filter(Boolean).join(' - ');
 
       const response = await fetch('/api/nedarim', {
@@ -190,10 +198,21 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
       
       if (data.success) {
         // Automatically add the payment
+        let parsedRaw = {
+           'אישור': data.confirmation || 'בוצע'
+        };
+        try {
+           if (data.rawResponse) parsedRaw = JSON.parse(data.rawResponse);
+        } catch(e){}
+        
+        if (creditCardData.notes) {
+           parsedRaw['הערות משתמש'] = creditCardData.notes;
+        }
+
         const added = {
           isNew: true,
           paymentMethod: 'אשראי',
-          notes: `אישור: ${data.confirmation || 'בוצע'} | ${creditCardData.notes}`,
+          notes: JSON.stringify(parsedRaw),
           amount: parseFloat(creditCardData.amount),
           paymentDate: new Date().toISOString()
         };
@@ -305,7 +324,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                 <tbody>
                   {activeObligations.map((obs, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #fee2e2', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#fef2f2'} onMouseOut={e => e.currentTarget.style.backgroundColor='white'}>
-                      <td style={{ padding: '0.8rem', color: '#450a0a', fontWeight: '500' }}>{obs.isManual === false ? (obs.productName || 'חיוב אוטומטי') : (obs.description || 'חיוב ידני')}</td>
+                      <td style={{ padding: '0.8rem', color: '#450a0a', fontWeight: '500' }}>{obs.isManual === false ? (obs.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב אוטומטי') : (obs.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב ידני')}</td>
                       <td style={{ padding: '0.8rem', color: '#991b1b', fontSize: '0.85em' }}>{new Date(obs.createdAt).toLocaleDateString('he-IL')}</td>
                       <td style={{ padding: '0.8rem', fontWeight: 'bold', color: '#b91c1c' }}>₪{obs.amount}</td>
                       <td style={{ padding: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
@@ -537,7 +556,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
 
       {selectedPaymentDetails && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh' }}>
+          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>
                 פרטי תשלום מלאים
@@ -604,7 +623,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
 
       {selectedObligationDetails && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh' }}>
+          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>
                 פרטי חיוב
@@ -615,7 +634,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
               <div>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>סוג חיוב</span>
-                <span style={{ fontWeight: '600', color: '#334155', fontSize: '1.1rem' }}>{selectedObligationDetails.isManual === false ? (selectedObligationDetails.productName || 'חיוב אוטומטי') : 'חיוב ידני'}</span>
+                <span style={{ fontWeight: '600', color: '#334155', fontSize: '1.1rem' }}>{selectedObligationDetails.isManual === false ? (selectedObligationDetails.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב אוטומטי') : (selectedObligationDetails.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב ידני')}</span>
               </div>
               <div>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>סכום</span>
@@ -630,7 +649,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
             <div>
               <h3 style={{ margin: '0 0 0.8rem 0', fontSize: '1.1rem', color: '#334155' }}>תיאור מפורט</h3>
               <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', color: '#1e293b', lineHeight: '1.6', whiteSpace: 'pre-wrap', border: '1px solid #e2e8f0' }}>
-                <div><span style={{fontWeight:'600', color:'#475569'}}>פירוט:</span> <span style={{fontWeight:'500'}}>{selectedObligationDetails.description || 'ללא תיאור'}</span></div>
+                <div><span style={{fontWeight:'600', color:'#475569'}}>פירוט:</span> <span style={{fontWeight:'500'}}>{selectedObligationDetails.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'ללא תיאור'}</span></div>
                 {selectedObligationDetails.priceCategory && (
                    <div style={{marginTop:'0.8rem'}}><span style={{fontWeight:'600', color:'#475569'}}>קטגוריה (מחירון):</span> <span style={{fontWeight:'500'}}>{selectedObligationDetails.priceCategory}</span></div>
                 )}

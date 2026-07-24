@@ -68,7 +68,7 @@ async function main() {
     updateStatus('running', 60, 'מייבא עובדים ומשמרות...');
     runCommand('node scripts/migrate_employees.js', appRoot);
 
-    updateStatus('running', 70, 'מייבא הזמנות ותשלומים (עשוי לקחת מספר דקות)...');
+    updateStatus('running', 70, 'מייבא תשלומים (עשוי לקחת מספר דקות)...');
     runCommand('node scripts/import_all_data.js', appRoot);
 
     updateStatus('running', 75, 'מייבא תאריכי פתיחת הזמנות...');

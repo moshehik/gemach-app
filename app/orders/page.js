@@ -195,7 +195,7 @@ export default function OrdersPage() {
   return (
     <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ margin: 0, color: 'var(--primary-color)' }}>ניהול הזמנות ותשלומים</h1>
+        <h1 style={{ margin: 0, color: 'var(--primary-color)' }}>ניהול תשלומים</h1>
         <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
           
           {/* Status Filter Banner */}

@@ -15,7 +15,7 @@ export async function POST(request) {
       isActive: true
     };
     if (employeeId) {
-      whereClause.id = parseInt(employeeId, 10);
+      whereClause.id = employeeId;
     }
 
     const employee = await prisma.employee.findFirst({

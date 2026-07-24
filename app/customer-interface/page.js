@@ -224,12 +224,12 @@ export default function CustomerInventoryViewer() {
       const res = await fetch(`/api/orders?itemDetails=${encodeURIComponent(model.name)}&eventDateFrom=${fromDate.toISOString()}&eventDateTo=${toDate.toISOString()}&filterStatus=all`);
       const data = await res.json();
       if (res.ok) {
-         let filtered = data.orders || [];
+         let filtered = data.data || [];
          if (sizeName) {
            filtered = filtered.filter(order => {
              return order.items.some(item => 
-               item.dressItem?.dress?.id === model.id && 
-               (item.dressItem?.sizeText || 'כללי') === sizeName
+               item.dressId === model.id && 
+               item.description?.includes(`מידה: ${sizeName}`)
              );
            });
          }
@@ -624,7 +624,7 @@ export default function CustomerInventoryViewer() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {ordersModalOrders.map(order => (
-                    <div key={order.id} style={{
+                    <div key={order.orderId} style={{
                       display: 'flex', alignItems: 'center', justifyContent: 'space-between',
                       padding: '16px', border: '1px solid #e2e8f0', borderRadius: '16px',
                       transition: 'all 0.2s', background: '#ffffff'

@@ -11,12 +11,25 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
 
   useEffect(() => {
     const hasIdentifier = item && (item.dressModelId || item.dressItem?.dressModelId || item.barcodePrefix || item.dressItem?.barcodePrefix || item.dressItem?.dress?.barcodePrefix);
-    if (isOpen && hasIdentifier && item.sizeText && order.eventDate) {
-      fetchCapacity();
+    const actualSize = item?.sizeText || item?.size;
+    
+    if (isOpen) {
+      if (!order.eventDate) {
+        setError('לא הוגדר תאריך אירוע להזמנה זו.');
+        setResults(null);
+      } else if (!hasIdentifier) {
+        setError('לא ניתן לבדוק תפוסה לפריט ללא דגם (פריט כללי).');
+        setResults(null);
+      } else if (!actualSize) {
+        setError('לא ניתן לבדוק תפוסה לפריט ללא מידה מוגדרת.');
+        setResults(null);
+      } else {
+        fetchCapacity(actualSize);
+      }
     }
   }, [isOpen, item, order]);
 
-  const fetchCapacity = async () => {
+  const fetchCapacity = async (actualSize) => {
     setLoading(true);
     setError('');
     try {
@@ -43,7 +56,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
 
       const params = new URLSearchParams({
         barcodePrefix: prefix,
-        size: item.sizeText,
+        size: actualSize,
         fromDate: fromDate.toISOString().split('T')[0],
         toDate: toDate.toISOString().split('T')[0]
       });
@@ -73,7 +86,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
                 <CalendarIcon size={24} />
             </div>
             <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem', fontWeight: 'bold' }}>
-              זמינות: {item.dressItem?.dress?.name || item.description || 'פריט'} ({item.sizeText})
+              זמינות: {item.dressItem?.dress?.name || item.description || 'פריט'} ({item.sizeText || item.size || 'ללא מידה'})
             </h2>
           </div>
           <button onClick={onClose} style={{ background: 'var(--card-bg)', border: '1px solid #e2e8f0', cursor: 'pointer', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
@@ -119,29 +132,29 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
                     <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                     <thead>
                         <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                        <th style={{ padding: '1rem', color: '#475569', fontWeight: '600' }}>תאריך אירוע</th>
-                        <th style={{ padding: '1rem', color: '#475569', fontWeight: '600' }}>שם לקוח</th>
-                        <th style={{ padding: '1rem', color: '#475569', fontWeight: '600' }}>כמות בתפוסה</th>
-                        <th style={{ padding: '1rem', color: '#475569', fontWeight: '600' }}>הזמנה</th>
+                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>תאריך אירוע</th>
+                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>שם לקוח</th>
+                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>כמות בתפוסה</th>
+                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>הזמנה</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {results.occupiedOrders.map(occOrder => (
+                        {[...results.occupiedOrders].sort((a,b) => new Date(a.eventDate) - new Date(b.eventDate)).map(occOrder => (
                         <tr key={occOrder.id} style={{ borderBottom: '1px solid #f1f5f9', background: occOrder.orderId === order.orderId ? '#eff6ff' : 'transparent', transition: 'background-color 0.2s' }}>
-                            <td style={{ padding: '1rem', fontWeight: occOrder.orderId === order.orderId ? 'bold' : 'normal' }}>
+                            <td style={{ padding: '0.5rem 1rem', fontWeight: occOrder.orderId === order.orderId ? 'bold' : 'normal' }}>
                                 {new Date(occOrder.eventDate).toLocaleDateString('he-IL')} <span style={{ color: '#64748b', fontSize: '0.9em', margin: '0 0.3rem' }}>({getHebrewDateString(occOrder.eventDate)})</span>
                                 {occOrder.orderId === order.orderId && <span style={{ marginRight: '0.5rem', fontSize: '0.8rem', background: '#3b82f6', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '12px' }}>הזמנה נוכחית</span>}
                             </td>
-                            <td style={{ padding: '1rem' }}>{occOrder.customerName}</td>
-                            <td style={{ padding: '1rem' }}>
+                            <td style={{ padding: '0.5rem 1rem' }}>{occOrder.customerName}</td>
+                            <td style={{ padding: '0.5rem 1rem' }}>
                                 <span style={{ background: '#fee2e2', color: '#ef4444', padding: '0.2rem 0.6rem', borderRadius: '8px', fontWeight: 'bold' }}>{occOrder.quantity}</span>
                             </td>
-                            <td style={{ padding: '1rem' }}>
+                            <td style={{ padding: '0.5rem 1rem' }}>
                             <a 
                                 href={`/orders/${occOrder.orderId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{ padding: '0.5rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', background: '#f1f5f9', color: '#3b82f6', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', border: '1px solid #e2e8f0' }}
+                                style={{ padding: '0.3rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', background: '#f1f5f9', color: '#3b82f6', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', border: '1px solid #e2e8f0' }}
                                 onMouseOver={e => { e.currentTarget.style.background = '#e2e8f0'; }}
                                 onMouseOut={e => { e.currentTarget.style.background = '#f1f5f9'; }}
                             >

@@ -1,7 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
+
 const xlsx = require('xlsx');
 
-const prisma = new PrismaClient();
+import prisma from '@/app/lib/prisma';
 
 async function main() {
   console.log("Starting fix for DressItem barcodePrefixes...");

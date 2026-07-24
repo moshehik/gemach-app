@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { PrismaClient } from '@prisma/client';
+
 import { recalculateOrderObligations } from '../../../../lib/pricingEngine';
 
-const prisma = new PrismaClient();
+import prisma from '@/app/lib/prisma';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {

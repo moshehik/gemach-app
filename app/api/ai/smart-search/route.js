@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
+import { HDate } from '@hebcal/core';
+import { getHebrewYearContext, processHebrewDateMacro } from '../../../../lib/hebrewDate';
 
 const SCHEMA_MAP = {
   customers: "Table: Customer\nColumns: id, firstName, lastName, phone1, phone2, city, street, houseNum, email, notes, isDeleted",
@@ -43,12 +45,18 @@ Rules:
 3. Ensure you use the exact column names from the schema. Remember to use double quotes for camelCase column names like "firstName" or "lastName". Booleans must be true/false.
 4. If searching text, use LIKE '%value%' or OR conditions.
 5. Remember that the main table is "${tableName}". If you need to filter by a related table, use a subquery (e.g. \`"customerId" IN (SELECT id FROM "Customer" WHERE ...)\`).
+6. VERY IMPORTANT FOR DATES: For Gregorian dates, use 'YYYY-MM-DD'. If the user searches by Hebrew date, DO NOT GUESS THE GREGORIAN DATE! Instead, use the exact macro HEBREW_DATE(day, 'MONTH', year) in your SQL string, and we will replace it automatically. Example: "eventDate" = HEBREW_DATE(10, 'SIVAN', 5786). Month must be one of: NISAN, IYYAR, SIVAN, TAMUZ, AV, ELUL, TISHREI, CHESHVAN, KISLEV, TEVET, SHVAT, ADAR_I, ADAR_II. If year is unknown, use the current Hebrew year from context.
 
 Example output for "משפחת כהן או לוי מירושלים":
 SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%ירושלים%'
 `;
 
-    let aiResponse = await generateContent(`${systemPrompt}\n\nUser request: ${prompt}`);
+    const todayGregorian = new Date().toISOString().split('T')[0];
+    const todayHebrew = new HDate().renderGematriya();
+    const dateContext = `\nCRITICAL DATE CONTEXT: Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. You MUST use this as the anchor to calculate any relative dates or Hebrew dates provided by the user.
+Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearContext()}.`;
+
+    let aiResponse = await generateContent(`${systemPrompt}\n${dateContext}\n\nUser request: ${prompt}`);
     
     console.log('AI Smart Search Raw Response:', aiResponse);
     
@@ -64,6 +72,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
     };
 
     let whereClause = parseWhereClause(aiResponse);
+    whereClause = processHebrewDateMacro(whereClause);
     console.log('AI Smart Search Cleaned Where Clause:', whereClause);
 
     const buildQuery = (clause) => {
@@ -91,6 +100,7 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
       console.log('AI Smart Search Retry Response:', retryResponse);
       
       whereClause = parseWhereClause(retryResponse);
+      whereClause = processHebrewDateMacro(whereClause);
       query = buildQuery(whereClause);
       
       try {

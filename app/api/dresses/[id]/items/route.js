@@ -5,9 +5,9 @@ import prisma from '../../../../lib/prisma';
 export async function POST(request, { params }) {
   try {
     const resolvedParams = await params;
-    const dressModelId = parseInt(resolvedParams.id);
-    if (isNaN(dressModelId)) {
-      return NextResponse.json({ error: 'קוד דגם לא תקין' }, { status: 400 });
+    const dressModelId = resolvedParams.id;
+    if (!dressModelId) {
+      return NextResponse.json({ error: 'קוד דגם חסר' }, { status: 400 });
     }
 
     const body = await request.json();

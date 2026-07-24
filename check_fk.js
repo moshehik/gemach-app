@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+import prisma from '@/app/lib/prisma';
 async function run() {
   const c = await prisma.paymentObligation.count({ where: { orderItemId: { not: null } } });
   console.log('Count of obligations with orderItemId:', c);

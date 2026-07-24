@@ -21,7 +21,7 @@ export default function EmployeesPage() {
   const filteredEmployees = employees.filter(e => {
     const term = search.toLowerCase();
     const fullName = `${e.firstName || ''} ${e.lastName || ''}`.toLowerCase();
-    return fullName.includes(term) || (e.phone1 && e.phone1.includes(term)) || String(e.id).includes(term);
+    return fullName.includes(term) || (e.phone1 && e.phone1.includes(term)) || String(e.id).includes(term) || String(e.legacyId || '').includes(term);
   });
 
   return (
@@ -74,7 +74,7 @@ export default function EmployeesPage() {
             <tbody>
               {filteredEmployees.map(employee => (
                 <tr key={employee.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/employees/${employee.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                  <td style={{ padding: '1rem' }}>{employee.id}</td>
+                  <td style={{ padding: '1rem' }}>{employee.legacyId || employee.id.substring(0, 5)}</td>
                   <td style={{ padding: '1rem', fontWeight: '500' }}>{employee.firstName} {employee.lastName}</td>
                   <td style={{ padding: '1rem' }}>{employee.roleId || 'עובד'}</td>
                   <td style={{ padding: '1rem' }}>{employee.phone1 || '-'}</td>

@@ -531,8 +531,8 @@
       "distinctCount": 1
     },
     "orderItemId": {
-      "totalCount": 0,
-      "distinctCount": 0
+      "totalCount": 102695,
+      "distinctCount": 56383
     },
     "orderItem": {
       "error": "\nInvalid `prisma.$queryRawUnsafe()` invocation:\n\n\n"
@@ -548,8 +548,8 @@
       "distinctCount": 25005
     },
     "dressItemId": {
-      "totalCount": 2321,
-      "distinctCount": 354
+      "totalCount": 0,
+      "distinctCount": 0
     },
     "price": {
       "totalCount": 0,
@@ -752,31 +752,31 @@
   },
   "PageVisitLog": {
     "id": {
-      "totalCount": 999,
-      "distinctCount": 999
+      "totalCount": 1002,
+      "distinctCount": 1002
     },
     "pageUrl": {
-      "totalCount": 999,
+      "totalCount": 1002,
       "distinctCount": 83
     },
     "employeeId": {
-      "totalCount": 676,
+      "totalCount": 679,
       "distinctCount": 1
     },
     "employeeName": {
-      "totalCount": 999,
+      "totalCount": 1002,
       "distinctCount": 2
     },
     "timestamp": {
-      "totalCount": 999,
-      "distinctCount": 987
+      "totalCount": 1002,
+      "distinctCount": 990
     },
     "loadingError": {
       "totalCount": 10,
       "distinctCount": 9
     },
     "isGuest": {
-      "totalCount": 999,
+      "totalCount": 1002,
       "distinctCount": 2
     }
   },

@@ -6,10 +6,11 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { HDate, Sedra, Locale, HebrewCalendar } from '@hebcal/core';
 import { getHebrewMonthYear } from '@/lib/hebrewDate';
-import { ChevronRight, ChevronLeft, Calendar as CalendarIcon, FileText, MapPin, Search, AlertCircle, RefreshCw, Smartphone, List, CheckCircle2, Phone, Calendar as CalendarIcon2, Shirt, CreditCard, Info } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Calendar as CalendarIcon, FileText, MapPin, Search, AlertCircle, RefreshCw, Smartphone, List, CheckCircle2, Phone, Calendar as CalendarIcon2, Shirt, CreditCard, Info, Maximize2, User, X } from 'lucide-react';
 import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
 import styles from './board.module.css';
+import RentalReturnModal from '../../components/orders/RentalReturnModal';
 
 export default function BoardPage() {
   const router = useRouter();
@@ -23,15 +24,17 @@ export default function BoardPage() {
   const [actionOrder, setActionOrder] = useState(null);
   const [actionPos, setActionPos] = useState({ top: 0, left: 0 });
 
-  // Search & Filters
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  const [dayOrdersFilter, setDayOrdersFilter] = useState('');
   const [advFilters, setAdvFilters] = useState({
     customerName: '', customerPhone: '', customerCity: '', 
     advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: ''
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+  const [selectedRentalOrderId, setSelectedRentalOrderId] = useState(null);
+  const [selectedDayOrders, setSelectedDayOrders] = useState(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiQueryUsed, setAiQueryUsed] = useState('');
   const [isAiModeActive, setIsAiModeActive] = useState(false);
@@ -211,6 +214,80 @@ export default function BoardPage() {
     return grouped;
   }, [orders]);
 
+  
+  const renderOrderCard = (order) => {
+    const validItems = order.items ? order.items.filter(i => !i.isDeleted) : [];
+    let isOrderLate = false;
+    if (validItems.length > 0) {
+      const hasTakenNotReturned = validItems.some(i => i.isTaken && !i.isReturned);
+      if (hasTakenNotReturned) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const evDate = new Date(order.eventDate);
+        evDate.setHours(0, 0, 0, 0);
+        const diffDays = Math.ceil((today - evDate) / (1000 * 60 * 60 * 24));
+        if (diffDays > 2) {
+          isOrderLate = true;
+        }
+      }
+    }
+
+    const category = getOrderCategory(order);
+    const colorStyle = { ...getColorStyles(category) };
+    
+    if (isOrderLate) {
+      colorStyle.background = '#fee2e2';
+      colorStyle.border = '2px solid #ef4444';
+      colorStyle.color = '#991b1b';
+    }
+    
+    return (
+      <div
+        key={order.orderId} 
+        className={styles.orderCard}
+        style={{ background: colorStyle.background, borderColor: colorStyle.border, color: colorStyle.color, cursor: 'pointer', position: 'relative' }}
+        title={`סטטוס: ${getCategoryLabel(category)}\nסה"כ: ₪${order.totalAmount}\nשולם: ₪${order.totalPaid}`}
+        onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setActionPos({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
+          setActionOrder(order);
+        }}
+      >
+        <div className={styles.orderHeader}>
+          <span className={styles.orderCustomer} style={{ fontWeight: isOrderLate ? 'bold' : 'normal' }}>
+            {order.customerName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`}
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: isOrderLate ? 'bold' : 'normal' }}>
+            {isOrderLate && <AlertCircle size={14} color="#ef4444" />}
+            #{order.orderId}
+          </span>
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
+          {category !== 'other' ? (
+             <span className={styles.statusIndicator} style={{ color: colorStyle.color, border: `1px solid ${colorStyle.border}` }}>
+               {getCategoryLabel(category)}
+             </span>
+          ) : <span></span>}
+          
+          <div 
+            className={styles.detailsIcon}
+            onMouseEnter={(e) => {
+              const rect = e.currentTarget.getBoundingClientRect();
+              setPopoverPos({ top: rect.top - 12, left: rect.left + (rect.width / 2) });
+              setHoveredOrder({ order, category });
+            }}
+            onMouseLeave={() => setHoveredOrder(null)}
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <Info size={16} strokeWidth={2.5} />
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderCalendar = () => {
     let hCurrent;
     try {
@@ -312,7 +389,27 @@ export default function BoardPage() {
               <div key={j} className={`${styles.dayCell} ${isToday ? styles.today : ''} ${isLate ? styles.lateDay : ''}`}>
                 {isLate && <div className={styles.lateIcon}>!</div>}
                 <div className={styles.dateHeader}>
-                  <div className={styles.hebrewDate}>{hebrewDayStr}</div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className={styles.hebrewDate}>{hebrewDayStr}</div>
+                    {dayOrders.length > 2 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const rect = e.currentTarget.getBoundingClientRect();
+                          setSelectedDayOrders({ 
+                            date: cellGreg, 
+                            hebrewDate: hebrewDayStr, 
+                            orders: dayOrders,
+                            pos: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX }
+                          });
+                        }}
+                        style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary-color)', display: 'flex', padding: 0 }}
+                        title="תצוגה מורחבת ליום זה"
+                      >
+                        <Maximize2 size={16} />
+                      </button>
+                    )}
+                  </div>
                   <div className={styles.gregorianDate}>{cellGreg.getDate()}/{cellGreg.getMonth() + 1}</div>
                 </div>
                 
@@ -326,78 +423,8 @@ export default function BoardPage() {
                 )}
                 
                 <div className={styles.ordersContainer}>
-                  {dayOrders.map(order => {
-                    const validItems = order.items ? order.items.filter(i => !i.isDeleted) : [];
-                    let isOrderLate = false;
-                    if (validItems.length > 0) {
-                      const hasTakenNotReturned = validItems.some(i => i.isTaken && !i.isReturned);
-                      if (hasTakenNotReturned) {
-                        const today = new Date();
-                        today.setHours(0, 0, 0, 0);
-                        const evDate = new Date(order.eventDate);
-                        evDate.setHours(0, 0, 0, 0);
-                        const diffDays = Math.ceil((today - evDate) / (1000 * 60 * 60 * 24));
-                        if (diffDays > 2) {
-                          isOrderLate = true;
-                        }
-                      }
-                    }
-
-                    const category = getOrderCategory(order);
-                    const colorStyle = { ...getColorStyles(category) };
-                    
-                    if (isOrderLate) {
-                      colorStyle.background = '#fee2e2';
-                      colorStyle.border = '2px solid #ef4444';
-                      colorStyle.color = '#991b1b';
-                    }
-                    
-                    return (
-                      <div
-                        key={order.orderId} 
-                        className={styles.orderCard}
-                        style={{ background: colorStyle.background, borderColor: colorStyle.border, color: colorStyle.color, cursor: 'pointer' }}
-                        title={`סטטוס: ${getCategoryLabel(category)}\nסה"כ: ₪${order.totalAmount}\nשולם: ₪${order.totalPaid}`}
-                        onClick={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setActionPos({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
-                          setActionOrder(order);
-                        }}
-                      >
-                        <div className={styles.orderHeader}>
-                          <span className={styles.orderCustomer} style={{ fontWeight: isOrderLate ? 'bold' : 'normal' }}>
-                            {order.customerName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`}
-                          </span>
-                          <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: isOrderLate ? 'bold' : 'normal' }}>
-                            {isOrderLate && <AlertCircle size={14} color="#ef4444" />}
-                            #{order.orderId}
-                          </span>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '4px' }}>
-                          {category !== 'other' ? (
-                             <span className={styles.statusIndicator} style={{ color: colorStyle.color, border: `1px solid ${colorStyle.border}` }}>
-                               {getCategoryLabel(category)}
-                             </span>
-                          ) : <span></span>}
-                          
-                          <div 
-                            className={styles.detailsIcon}
-                            onMouseEnter={(e) => {
-                              const rect = e.currentTarget.getBoundingClientRect();
-                              setPopoverPos({ top: rect.top - 12, left: rect.left + (rect.width / 2) });
-                              setHoveredOrder({ order, category });
-                            }}
-                            onMouseLeave={() => setHoveredOrder(null)}
-                            onClick={(e) => {
-                              e.stopPropagation(); // prevent opening action menu if they click exactly here
-                            }}
-                          >
-                            <Info size={16} strokeWidth={2.5} />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+                  {dayOrders.map(order => renderOrderCard(order))}
+                  
                 </div>
               </div>
             );
@@ -430,17 +457,19 @@ export default function BoardPage() {
 
         <div className={styles.headerBottom}>
           <div className={styles.searchWrapper}>
-            <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-              <AISearchBar 
-                placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onSearch={handleSearch}
-                onClear={handleClearSearch}
-                onAiSearch={handleAiSearch}
-                onStatistics={() => setShowStatistics(true)}
-                loading={aiLoading}
-              />
+            <div style={{ display: 'flex', gap: '1rem', width: '100%', alignItems: 'center', flexWrap: 'wrap' }}>
+              <div style={{ flexGrow: 1, minWidth: '300px' }}>
+                <AISearchBar 
+                  placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onSearch={handleSearch}
+                  onClear={handleClearSearch}
+                  onAiSearch={handleAiSearch}
+                  onStatistics={() => setShowStatistics(true)}
+                  loading={aiLoading}
+                />
+              </div>
               <button 
                 onClick={() => setShowAdvSearch(true)}
                 className="btn btn-outline"
@@ -494,6 +523,10 @@ export default function BoardPage() {
           <div className={styles.popoverRow}>
             <span><CalendarIcon2 size={14} /> תאריך לועזי:</span>
             <span>{hoveredOrder.order.eventDate ? new Date(hoveredOrder.order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</span>
+          </div>
+          <div className={styles.popoverRow}>
+            <span><Shirt size={14} /> פריטים בהזמנה:</span>
+            <span>{hoveredOrder.order.items?.filter(i => !i.isDeleted).length || 0}</span>
           </div>
           <div className={styles.popoverRow}>
             <span><Shirt size={14} /> הושכר:</span>
@@ -564,6 +597,111 @@ export default function BoardPage() {
         contextQuery={aiQueryUsed}
       />
 
+      
+      {selectedDayOrders && typeof document !== 'undefined' && createPortal(
+        <>
+          <div 
+            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9998, backgroundColor: 'rgba(0,0,0,0.5)' }}
+            onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }}
+          />
+          <div 
+            className="animate-fade-in" 
+            onClick={e => e.stopPropagation()} 
+            style={{ 
+              position: 'fixed',
+              top: '50%',
+              left: '50%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 9999,
+              width: '90%', 
+              maxWidth: '500px', 
+              maxHeight: '80vh', 
+              display: 'flex',
+              flexDirection: 'column',
+              background: 'var(--card-bg, white)', 
+              borderRadius: '16px', 
+              padding: '1.5rem', 
+              boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+              border: '1px solid var(--element-border, #e2e8f0)'
+            }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem', flexShrink: 0 }}>
+              <h3 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '1.2rem' }}>הזמנות ליום {selectedDayOrders.date.toLocaleDateString('he-IL')} ({selectedDayOrders.hebrewDate})</h3>
+              <button onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '50%' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} title="סגור">
+                <X size={20} strokeWidth={2.5} />
+              </button>
+            </div>
+            
+            <div style={{ position: 'relative', width: '100%', marginBottom: '1rem', flexShrink: 0 }}>
+               <input
+                  type="text"
+                  placeholder="חיפוש הזמנה ביום זה (שם, טלפון, מספר)..."
+                  value={dayOrdersFilter}
+                  onChange={(e) => setDayOrdersFilter(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 35px 10px 15px',
+                    borderRadius: '20px',
+                    border: '1px solid #e2e8f0',
+                    outline: 'none',
+                    boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
+                    transition: 'all 0.3s ease',
+                    background: '#f8fafc'
+                  }}
+                  onFocus={(e) => { e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.15)'; e.target.style.borderColor = '#3b82f6'; e.target.style.background = '#ffffff'; }}
+                  onBlur={(e) => { e.target.style.boxShadow = '0 2px 5px rgba(0,0,0,0.05)'; e.target.style.borderColor = '#e2e8f0'; e.target.style.background = '#f8fafc'; }}
+                />
+                <Search size={16} color="#94a3b8" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                {dayOrdersFilter && (
+                  <button
+                    onClick={() => setDayOrdersFilter('')}
+                    style={{
+                      position: 'absolute',
+                      left: '8px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: '#e2e8f0',
+                      border: 'none',
+                      borderRadius: '50%',
+                      width: '24px',
+                      height: '24px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      cursor: 'pointer',
+                      color: '#64748b',
+                      padding: 0
+                    }}
+                    title="נקה סינון"
+                  >
+                    <X size={14} strokeWidth={3} />
+                  </button>
+                )}
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', overflowY: 'auto', paddingRight: '4px' }}>
+              {selectedDayOrders.orders.filter(order => {
+                  if(!dayOrdersFilter) return true;
+                  const lower = dayOrdersFilter.toLowerCase();
+                  const name = (order.customerName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`).toLowerCase();
+                  const phone = (order.customerPhone || '').toLowerCase();
+                  const idStr = String(order.orderId);
+                  return name.includes(lower) || phone.includes(lower) || idStr.includes(lower);
+              }).map(order => renderOrderCard(order))}
+            </div>
+          </div>
+        </>,
+        document.body
+      )}
+
+      {selectedRentalOrderId && (
+        <RentalReturnModal
+          orderId={selectedRentalOrderId}
+          onClose={() => setSelectedRentalOrderId(null)}
+          onUpdate={fetchOrdersForMonth}
+        />
+      )}
+
+
       {/* Action Menu Popover */}
       {actionOrder && typeof document !== 'undefined' && createPortal(
         <>
@@ -600,14 +738,28 @@ export default function BoardPage() {
             >
               <FileText size={18} color="#3b82f6" /> כרטיס הזמנה
             </Link>
-            <Link 
-              href={`/rentals?orderId=${actionOrder.orderId}`}
-              style={{ padding: '10px 12px', textDecoration: 'none', color: '#1e293b', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', transition: 'background 0.2s', fontWeight: '500' }}
+            {(actionOrder.customerId || actionOrder.customer?.id) && (
+              <Link 
+                href={`/customers/${actionOrder.customerId || actionOrder.customer?.id}`}
+                style={{ padding: '10px 12px', textDecoration: 'none', color: '#1e293b', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', transition: 'background 0.2s', fontWeight: '500' }}
+                onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
+                onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+              >
+                <User size={18} color="#10b981" /> כרטיס לקוח
+              </Link>
+            )}
+            <button 
+              onClick={() => {
+                setSelectedRentalOrderId(actionOrder.orderId);
+                setActionOrder(null);
+                if (selectedDayOrders) setSelectedDayOrders(null);
+              }}
+              style={{ padding: '10px 12px', textDecoration: 'none', color: '#1e293b', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', transition: 'background 0.2s', fontWeight: '500', background: 'transparent', border: 'none', cursor: 'pointer', width: '100%', textAlign: 'right', fontSize: '1rem', fontFamily: 'inherit' }}
               onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
               <Shirt size={18} color="#f59e0b" /> כרטיס השכרה
-            </Link>
+            </button>
           </div>
         </>,
         document.body

@@ -10,8 +10,14 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'נא להזין קוד עובד וסיסמה' }, { status: 400 });
     }
 
-    const employee = await prisma.employee.findUnique({
-      where: { id: parseInt(employeeId, 10) }
+    const parsedLegacyId = parseInt(employeeId, 10);
+    const employee = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          ...(isNaN(parsedLegacyId) ? [] : [{ legacyId: parsedLegacyId }]),
+          { id: employeeId }
+        ]
+      }
     });
 
     if (!employee) {
@@ -30,7 +36,7 @@ export async function POST(request) {
     const cookieStore = await cookies();
     cookieStore.set({
       name: 'auth_token',
-      value: employeeId.toString(),
+      value: employee.id, // Ensure we store the UUID string
       httpOnly: true,
       path: '/',
       maxAge: 60 * 60 * 24 * 7 // 1 week

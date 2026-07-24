@@ -95,7 +95,7 @@ export type EmailLog = $Result.DefaultSelection<Prisma.$EmailLogPayload>
  * Type-safe database client for TypeScript & Node.js
  * @example
  * ```
- * const prisma = new PrismaClient()
+ * import prisma from '@/app/lib/prisma';
  * // Fetch zero or more Customers
  * const customers = await prisma.customer.findMany()
  * ```
@@ -116,7 +116,7 @@ export class PrismaClient<
    * Type-safe database client for TypeScript & Node.js
    * @example
    * ```
-   * const prisma = new PrismaClient()
+   * import prisma from '@/app/lib/prisma';
    * // Fetch zero or more Customers
    * const customers = await prisma.customer.findMany()
    * ```

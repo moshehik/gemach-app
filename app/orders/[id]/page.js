@@ -49,6 +49,22 @@ export default function OrderDetailsPage({ params }) {
       });
   }, [id]);
 
+  const totalRequired = obligations.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0);
+  const totalPaid = payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+
+  // Prevent closing window if there is a debt
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (totalRequired - totalPaid > 0) {
+        e.preventDefault();
+        e.returnValue = 'קיימת יתרת חוב בהזמנה! אנא דאג לתשלום או אישור מנהל.';
+        return 'קיימת יתרת חוב בהזמנה! אנא דאג לתשלום או אישור מנהל.';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [totalRequired, totalPaid]);
+
   // Save changes
   const handleSave = async () => {
     setSaving(true);
@@ -67,19 +83,17 @@ export default function OrderDetailsPage({ params }) {
     }
     
     // FULL ORDER INVENTORY VALIDATION
-    // We only need to validate if the order is active, or if we are actively restoring items.
-    // If order.isDeleted is true, we probably shouldn't block saving UNLESS we are toggling it to false (which currently isn't done here directly, but just in case)
     try {
       const validateRes = await fetch('/api/orders/validate-inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: items, // pass the current state of items
+          items: items, 
           eventDate: order.eventDate,
           isAbroad: order.isAbroad,
           fromDate: order.fromDate,
           toDate: order.toDate,
-          orderId: order.orderId // Ignore this order's existing bookings
+          orderId: order.orderId 
         })
       });
       
@@ -104,22 +118,52 @@ export default function OrderDetailsPage({ params }) {
       return;
     }
 
+    let debtApprovedBy = null;
+    // CHECK DEBT AND REQUIRE APPROVAL TO SAVE
+    if (totalRequired - totalPaid > 0) {
+      const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. שמירת השינויים דורשת הרשאת עובד או מנהל. אנא בחר משתמש והזן סיסמה:", 'עובד');
+      if (!authResult || !authResult.pin) {
+        setSaving(false);
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'עובד' })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setSaving(false);
+          alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+          return;
+        }
+        debtApprovedBy = authResult.employeeId;
+      } catch (err) {
+        setSaving(false);
+        alert('שגיאה באימות קוד עובד/מנהל.');
+        return;
+      }
+    }
+
     try {
       const res = await fetch(`/api/orders/${id}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...order,
           items: items,
           obligations: obligations,
           payments: payments,
+          debtApprovedBy: debtApprovedBy,
           totalAmount: items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0)
         })
       });
 
-      if (!res.ok) throw new Error('Failed to save');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        throw new Error((errorData && errorData.message) ? errorData.message : 'Failed to save');
+      }
       
       const updatedOrder = await res.json();
       setOrder(updatedOrder);
@@ -157,8 +201,6 @@ export default function OrderDetailsPage({ params }) {
   const totalPayable = items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
 
   // Replicate Access DB logic for "שולם"
-  const totalRequired = obligations.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0);
-  const totalPaid = payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
   const isPaid = obligations.length > 0 && totalRequired === totalPaid;
   const statusDisplay = isPaid ? 'שולם' : (totalPaid > 0 ? 'חלקי' : 'פתוח');
 
@@ -364,10 +406,10 @@ export default function OrderDetailsPage({ params }) {
           {/* Protected Section (Locked if past event) */}
           <div style={{ position: 'relative' }}>
             {isLocked && (
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.4)', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'center', backdropFilter: 'blur(2px)', borderRadius: '16px' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.4)', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', backdropFilter: 'blur(2px)', borderRadius: '16px' }}>
                 <button 
                   onClick={handleUnlock}
-                  style={{ padding: '1rem 2.5rem', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 8px 16px rgba(220, 38, 38, 0.3)' }}
+                  style={{ position: 'sticky', top: '150px', marginTop: '2rem', padding: '1rem 2.5rem', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 8px 16px rgba(220, 38, 38, 0.3)' }}
                 >
                   🔒 הזמנה נעולה - לחץ לשחרור בעזרת סיסמת מנהל
                 </button>

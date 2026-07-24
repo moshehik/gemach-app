@@ -1,10 +1,15 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient as CloudClient } from '@prisma/client';
+import { PrismaClient as LocalClient } from '@prisma/local-client';
+
+const PrismaClient = process.env.IS_OFFLINE_MODE === 'true' ? LocalClient : CloudClient;
 import { cookies } from 'next/headers';
 import fs from 'fs';
 import path from 'path';
 
 const createPrismaClient = (url) => {
-  const baseClient = url ? new PrismaClient({ datasources: { db: { url } } }) : new PrismaClient();
+  const baseClient = (url && process.env.IS_OFFLINE_MODE !== 'true') 
+    ? new PrismaClient({ datasources: { db: { url } } }) 
+    : new PrismaClient();
   
   return baseClient.$extends({
     query: {
@@ -25,7 +30,7 @@ const createPrismaClient = (url) => {
                   employeeId = decoded.id || decoded.employeeId || null;
                 } catch (e) {}
               } else {
-                employeeId = parseInt(token, 10);
+                employeeId = token;
               }
             }
           } catch (e) {}
@@ -34,7 +39,7 @@ const createPrismaClient = (url) => {
              const result = await query(args);
              if (!result) return result;
              
-             const entityId = result.id || result.orderId || 0;
+             const entityId = String(result.id || result.orderId || "");
              let changesJson = '{}';
              if (operation === 'update') {
                changesJson = JSON.stringify(args.data || {});
@@ -51,7 +56,7 @@ const createPrismaClient = (url) => {
                    entityId: entityId,
                    action: operation.toUpperCase(),
                    changesJson: changesJson,
-                   employeeId: employeeId ? parseInt(employeeId) : null,
+                   employeeId: employeeId || null,
                  }
                });
              } catch (err) {

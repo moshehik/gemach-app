@@ -1,7 +1,7 @@
-const { PrismaClient } = require('@prisma/client');
+
 const fs = require('fs');
 
-const prisma = new PrismaClient();
+import prisma from '@/app/lib/prisma';
 
 async function main() {
     const schema = fs.readFileSync('./prisma/schema.prisma', 'utf-8');

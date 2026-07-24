@@ -1,5 +1,5 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+import prisma from '@/app/lib/prisma';
 async function check() {
   const models = await prisma.dressModel.findMany({ include: { items: true } });
   console.log(JSON.stringify(models.slice(0, 10).map(m => ({id: m.id, itemsCount: m.items.length})), null, 2));

@@ -23,6 +23,7 @@ export default function PageTracker() {
           headers: {
             'Content-Type': 'application/json',
           },
+          keepalive: true,
           body: JSON.stringify({
             pageUrl: url,
             loadingError: errorMsg
@@ -30,7 +31,6 @@ export default function PageTracker() {
         });
       } catch (e) {
         // Silently fail if logging fails
-        console.error('Tracker error:', e);
       }
     };
 

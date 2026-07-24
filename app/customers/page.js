@@ -254,7 +254,7 @@ export default function CustomersPage() {
 
                 {customers.map(customer => (
                   <tr key={customer.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/customers/${customer.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '1rem' }}>{customer.id}</td>
+                    <td style={{ padding: '1rem' }}>{customer.legacyId || 'חדש'}</td>
                     <td style={{ padding: '1rem', fontWeight: '500' }}>{customer.firstName}</td>
                     <td style={{ padding: '1rem', fontWeight: '500' }}>{customer.lastName}</td>
                     <td style={{ padding: '1rem' }}>{customer.phone1}</td>

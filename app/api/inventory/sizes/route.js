@@ -14,7 +14,7 @@ export async function GET(request) {
     }
 
     const barcodePrefix = barcodePrefixParam ? parseInt(barcodePrefixParam, 10) : undefined;
-    const dressModelId = modelIdParam ? parseInt(modelIdParam, 10) : undefined;
+    const dressModelId = modelIdParam ? modelIdParam : undefined;
 
     const items = await prisma.dressItem.findMany({
       where: {

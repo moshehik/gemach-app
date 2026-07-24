@@ -103,7 +103,7 @@ export async function POST(request) {
         await prisma.auditLog.create({
           data: {
             entityType,
-            entityId: parseInt(entityId, 10),
+            entityId: entityId,
             action: 'EMAIL_SENT',
             changesJson: JSON.stringify({
               subject: subject,

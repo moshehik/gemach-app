@@ -1,1 +1,1 @@
-const { PrismaClient } = require(" @prisma/client\); const prisma = new PrismaClient(); async function main() { const m = await prisma.dressModel.findFirst({ include: { items: true } }); console.log(m.items.length, \items found for first model\); } main();
+const { PrismaClient } = require(" @prisma/client\); import prisma from '@/app/lib/prisma'; async function main() { const m = await prisma.dressModel.findFirst({ include: { items: true } }); console.log(m.items.length, \items found for first model\); } main();

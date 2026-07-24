@@ -6,8 +6,8 @@ import { NextResponse } from 'next/server';
 export async function GET(request, { params }) {
   try {
     const resolvedParams = await params;
-    const id = parseInt(resolvedParams.id, 10);
-    if (isNaN(id)) {
+    const id = resolvedParams.id;
+    if (!id) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
@@ -44,8 +44,8 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const resolvedParams = await params;
-    const id = parseInt(resolvedParams.id, 10);
-    if (isNaN(id)) {
+    const id = resolvedParams.id;
+    if (!id) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
@@ -55,6 +55,19 @@ export async function PUT(request, { params }) {
     const oldCustomer = await prisma.customer.findUnique({ where: { id } });
     if (!oldCustomer) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+    }
+
+    // Offline data collision check
+    if (body.updatedAt && oldCustomer.updatedAt) {
+      const clientUpdate = new Date(body.updatedAt).getTime();
+      const serverUpdate = new Date(oldCustomer.updatedAt).getTime();
+      
+      if (serverUpdate > clientUpdate + 1000) {
+        return NextResponse.json({ 
+          error: 'Data Collision', 
+          message: 'לקוח זה עודכן בשרת לאחר הסנכרון האחרון שלך. כדי למנוע דריסת נתונים, אנא רענן את העמוד ושלב את השינויים שלך.'
+        }, { status: 409 });
+      }
     }
 
     // 2. Perform the update

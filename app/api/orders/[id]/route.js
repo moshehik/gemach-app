@@ -9,17 +9,24 @@ export async function GET(request, { params }) {
     const resolvedParams = await params;
     const { id } = resolvedParams;
     
-    const parsedId = parseInt(id);
-    if (isNaN(parsedId)) {
-      return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 });
-    }
-    
-    let order = await prisma.order.findUnique({
-      where: { orderId: parsedId },
-      include: {
-        customer: true
+    let parsedOrderId;
+    let order;
+
+    if (id.includes('-')) {
+      order = await prisma.order.findUnique({
+        where: { id },
+        include: { customer: true }
+      });
+      if (order) parsedOrderId = order.orderId;
+    } else {
+      parsedOrderId = parseInt(id);
+      if (!isNaN(parsedOrderId)) {
+        order = await prisma.order.findUnique({
+          where: { orderId: parsedOrderId },
+          include: { customer: true }
+        });
       }
-    });
+    }
 
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
@@ -27,7 +34,7 @@ export async function GET(request, { params }) {
 
     // Workaround for schema relation pointing to Order.id instead of Order.orderId
     const items = await prisma.orderItem.findMany({
-      where: { orderId: parsedId },
+      where: { orderId: parsedOrderId },
       include: {
         dressItem: {
           include: {
@@ -38,38 +45,12 @@ export async function GET(request, { params }) {
     });
 
     const payments = await prisma.payment.findMany({
-      where: { orderId: parsedId }
+      where: { orderId: parsedOrderId }
     });
 
     const priceList = await prisma.priceList.findMany();
     let obligations = await prisma.paymentObligation.findMany({
-      where: { orderId: parsedId }
-    });
-
-    obligations = obligations.map(ob => {
-      if (ob.isManual === false || ob.productId) {
-         ob.isManual = false;
-         if (ob.productId) {
-             const prod = priceList.find(p => p.id === ob.productId);
-             if (!ob.description) ob.description = prod ? prod.description : 'חיוב מחירון';
-             ob.productName = prod ? (prod.description || prod.category || 'חיוב מחירון') : 'חיוב אוטומטי';
-             if (prod) {
-                 ob.priceCategory = prod.category;
-                 ob.priceDescription = prod.description;
-             }
-         } else if (ob.description && ob.description.includes('תיקון')) {
-             ob.productName = 'תיקון';
-         } else if (ob.description && ob.description.includes('דמי ביטול')) {
-             ob.productName = 'דמי ביטול';
-         } else if (ob.description && ob.description.includes('זיכוי')) {
-             ob.productName = 'זיכוי';
-         } else {
-             ob.productName = 'חיוב אוטומטי';
-         }
-      } else {
-         ob.productName = ob.description ? ob.description : 'חיוב ידני';
-      }
-      return ob;
+      where: { orderId: parsedOrderId }
     });
 
     const uniquePrefixes = new Set();
@@ -94,15 +75,13 @@ export async function GET(request, { params }) {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
       
-      if (!dressName && prefix && item.dressItemId) {
+      if (!dressName && prefix) {
         dressName = dressModelMap.get(prefix);
       }
       
       let finalDescription = item.description || 'פריט כללי';
       if (dressName) {
         finalDescription = `${dressName} (קוד: ${prefix || ''})`;
-      } else if (item.dressItemId && item.description) {
-        finalDescription = item.description;
       } else if (item.description) {
         finalDescription = item.description;
       }
@@ -111,6 +90,34 @@ export async function GET(request, { params }) {
         ...item,
         description: finalDescription
       };
+    });
+
+    obligations = obligations.map(ob => {
+      if (ob.isManual === false || ob.productId) {
+         ob.isManual = false;
+         if (ob.productId) {
+             const prod = priceList.find(p => p.id === ob.productId || String(p.legacyId) === String(ob.productId));
+             if (!ob.description) {
+                 const matchedItem = itemsWithLogs.find(i => {
+                     const cat = i.dressItem?.dress?.priceCategory || '';
+                     return prod && (cat === prod.category || cat.replace('כלול ב', '').trim() === prod.category);
+                 });
+                 ob.description = matchedItem ? `${matchedItem.dressItem?.dress?.name || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? prod.description : 'חיוב מחירון');
+             }
+             ob.productName = ob.description;
+             if (prod) {
+                 ob.priceCategory = prod.category;
+                 ob.priceDescription = prod.description;
+             }
+         } else if (ob.description) {
+             ob.productName = ob.description;
+         } else {
+             ob.productName = 'חיוב אוטומטי';
+         }
+      } else {
+         ob.productName = ob.description ? ob.description : 'חיוב ידני';
+      }
+      return ob;
     });
 
     order = {
@@ -135,19 +142,49 @@ export async function PUT(request, { params }) {
     const resolvedParams = await params;
     const { id } = resolvedParams;
     
-    const parsedId = parseInt(id);
-    if (isNaN(parsedId)) {
-      return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 });
+    let parsedOrderId;
+    let existingOrder;
+
+    if (id.includes('-')) {
+      existingOrder = await prisma.order.findUnique({
+        where: { id }
+      });
+      if (existingOrder) parsedOrderId = existingOrder.orderId;
+    } else {
+      parsedOrderId = parseInt(id);
+      if (!isNaN(parsedOrderId)) {
+        existingOrder = await prisma.order.findUnique({
+          where: { orderId: parsedOrderId }
+        });
+      }
     }
-    
+
+    if (!existingOrder) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
     const data = await request.json();
+
+    // Offline data collision check
+    if (data.updatedAt && existingOrder.updatedAt) {
+      const clientUpdate = new Date(data.updatedAt).getTime();
+      const serverUpdate = new Date(existingOrder.updatedAt).getTime();
+      
+      // If server is strictly newer by more than 1 second
+      if (serverUpdate > clientUpdate + 1000) {
+        return NextResponse.json({ 
+          error: 'Data Collision', 
+          message: 'הזמנה זו עודכנה בשרת לאחר הסנכרון האחרון שלך. כדי למנוע דריסת נתונים, אנא רענן את העמוד ושלב את השינויים שלך.',
+        }, { status: 409 });
+      }
+    }
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
       // 1. Update general order details
       const order = await tx.order.update({
-        where: { orderId: parsedId },
+        where: { orderId: parsedOrderId },
         data: {
-          totalAmount: data.totalAmount,
+          totalAmount: data.totalAmount !== undefined && data.totalAmount !== null ? (parseFloat(data.totalAmount) || 0) : undefined,
           eventDate: data.eventDate ? new Date(data.eventDate) : null,
           eventDateHebrew: data.eventDateHebrew !== undefined ? data.eventDateHebrew : undefined,
           returnDate: data.returnDate ? new Date(data.returnDate) : null,
@@ -167,9 +204,9 @@ export async function PUT(request, { params }) {
               where: { id: item.id },
               data: {
                 sizeText: item.sizeText,
-                neckAlteration: item.neckAlteration !== undefined && item.neckAlteration !== null ? parseInt(item.neckAlteration) : null,
-                sleeveAlteration: item.sleeveAlteration !== undefined && item.sleeveAlteration !== null ? parseInt(item.sleeveAlteration) : null,
-                lengthAlteration: item.lengthAlteration !== undefined ? String(item.lengthAlteration) : null,
+                neckAlteration: (item.neckAlteration === true || item.neckAlteration === 1 || item.neckAlteration === '1') ? 1 : (item.neckAlteration === null ? null : 0),
+                sleeveAlteration: (item.sleeveAlteration === true || item.sleeveAlteration === 1 || item.sleeveAlteration === '1') ? 1 : (item.sleeveAlteration === null ? null : 0),
+                lengthAlteration: (item.lengthAlteration !== undefined && item.lengthAlteration !== null && item.lengthAlteration !== '') ? String(item.lengthAlteration) : null,
                 alterationDetails: item.alterationDetails,
                 alterationDone: item.alterationDone,
                 isDeleted: item.isDeleted
@@ -189,13 +226,13 @@ export async function PUT(request, { params }) {
             if (availableItem) {
               await tx.orderItem.create({
                 data: {
-                  orderId: parsedId,
+                  orderId: parsedOrderId,
                   dressItemId: availableItem.id,
                   sizeText: item.sizeText,
                   quantity: 1,
-                  neckAlteration: item.neckAlteration ? parseInt(item.neckAlteration) : null,
-                  sleeveAlteration: item.sleeveAlteration ? parseInt(item.sleeveAlteration) : null,
-                  lengthAlteration: item.lengthAlteration,
+                  neckAlteration: (item.neckAlteration === true || item.neckAlteration === 1 || item.neckAlteration === '1') ? 1 : (item.neckAlteration === null ? null : 0),
+                  sleeveAlteration: (item.sleeveAlteration === true || item.sleeveAlteration === 1 || item.sleeveAlteration === '1') ? 1 : (item.sleeveAlteration === null ? null : 0),
+                  lengthAlteration: (item.lengthAlteration !== undefined && item.lengthAlteration !== null && item.lengthAlteration !== '') ? String(item.lengthAlteration) : null,
                   alterationDetails: item.alterationDetails,
                   alterationDone: false,
                   isDeleted: false,
@@ -218,15 +255,15 @@ export async function PUT(request, { params }) {
               data: {
                 isDeleted: obs.isDeleted,
                 description: obs.description,
-                amount: parseFloat(obs.amount)
+                amount: parseFloat(obs.amount) || 0
               }
             });
           } else if (obs.isNew) {
             await tx.paymentObligation.create({
               data: {
-                orderId: parsedId,
+                orderId: parsedOrderId,
                 description: obs.description,
-                amount: parseFloat(obs.amount),
+                amount: parseFloat(obs.amount) || 0,
                 isManual: true,
                 createdAt: new Date(obs.createdAt)
               }
@@ -245,16 +282,16 @@ export async function PUT(request, { params }) {
                 isDeleted: p.isDeleted,
                 paymentMethod: p.paymentMethod,
                 notes: p.notes,
-                amount: parseFloat(p.amount)
+                amount: parseFloat(p.amount) || 0
               }
             });
           } else if (p.isNew) {
             await tx.payment.create({
               data: {
-                orderId: parsedId,
+                orderId: parsedOrderId,
                 paymentMethod: p.paymentMethod,
                 notes: p.notes,
-                amount: parseFloat(p.amount),
+                amount: parseFloat(p.amount) || 0,
                 paymentDate: new Date(p.paymentDate)
               }
             });
@@ -262,22 +299,39 @@ export async function PUT(request, { params }) {
         }
       }
 
+      // 5. Record debt approval if provided
+      if (data.debtApprovedBy) {
+        const currentTotalPaid = data.payments ? data.payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
+        const currentTotalRequired = data.totalAmount || 0;
+        const currentDebt = currentTotalRequired - currentTotalPaid;
+        
+        await tx.auditLog.create({
+          data: {
+            entityType: 'Order',
+            entityId: parsedOrderId.toString(),
+            action: 'DEBT_APPROVED',
+            changesJson: JSON.stringify({ approvedDebtAmount: currentDebt }),
+            employeeId: data.debtApprovedBy
+          }
+        });
+      }
+
       return order;
-    });
+    }, { timeout: 15000 });
 
     // Recalculate obligations asynchronously after updating order details
-    await recalculateOrderObligations(parsedId);
+    await recalculateOrderObligations(parsedOrderId);
     
     // Fetch the fully updated order to return to the client
     let finalOrder = await prisma.order.findUnique({
-      where: { orderId: parsedId },
+      where: { orderId: parsedOrderId },
       include: {
         customer: true
       }
     });
     
     const items = await prisma.orderItem.findMany({
-      where: { orderId: parsedId },
+      where: { orderId: parsedOrderId },
       include: { dressItem: { include: { dress: true } } }
     });
     
@@ -303,15 +357,13 @@ export async function PUT(request, { params }) {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
       
-      if (!dressName && prefix && item.dressItemId) {
+      if (!dressName && prefix) {
         dressName = dressModelMap.get(prefix);
       }
       
       let finalDescription = item.description || 'פריט כללי';
       if (dressName) {
         finalDescription = `${dressName} (קוד: ${prefix || ''})`;
-      } else if (item.dressItemId && item.description) {
-        finalDescription = item.description;
       } else if (item.description) {
         finalDescription = item.description;
       }
@@ -322,8 +374,8 @@ export async function PUT(request, { params }) {
       };
     });
 
-    const payments = await prisma.payment.findMany({ where: { orderId: parsedId } });
-    let obligations = await prisma.paymentObligation.findMany({ where: { orderId: parsedId } });
+    const payments = await prisma.payment.findMany({ where: { orderId: parsedOrderId } });
+    let obligations = await prisma.paymentObligation.findMany({ where: { orderId: parsedOrderId } });
     
     const priceList = await prisma.priceList.findMany();
     obligations = obligations.map(ob => {
@@ -331,18 +383,20 @@ export async function PUT(request, { params }) {
          ob.isManual = false;
          if (ob.productId) {
              const prod = priceList.find(p => p.id === ob.productId);
-             if (!ob.description) ob.description = prod ? prod.description : 'חיוב מחירון';
-             ob.productName = prod ? (prod.description || prod.category || 'חיוב מחירון') : 'חיוב אוטומטי';
+             if (!ob.description) {
+                 const matchedItem = itemsWithLogs.find(i => {
+                     const cat = i.dressItem?.dress?.priceCategory || '';
+                     return prod && (cat === prod.category || cat.replace('כלול ב', '').trim() === prod.category);
+                 });
+                 ob.description = matchedItem ? matchedItem.description : (prod ? prod.description : 'חיוב מחירון');
+             }
+             ob.productName = ob.description;
              if (prod) {
                  ob.priceCategory = prod.category;
                  ob.priceDescription = prod.description;
              }
-         } else if (ob.description && ob.description.includes('תיקון')) {
-             ob.productName = 'תיקון';
-         } else if (ob.description && ob.description.includes('דמי ביטול')) {
-             ob.productName = 'דמי ביטול';
-         } else if (ob.description && ob.description.includes('זיכוי')) {
-             ob.productName = 'זיכוי';
+         } else if (ob.description) {
+             ob.productName = ob.description;
          } else {
              ob.productName = 'חיוב אוטומטי';
          }
@@ -358,7 +412,7 @@ export async function PUT(request, { params }) {
   } catch (error) {
     console.error('Error updating order:', error);
     return NextResponse.json(
-      { error: 'Failed to update order details' },
+      { error: 'Failed to update order details', message: error.message },
       { status: 500 }
     );
   }
@@ -369,14 +423,30 @@ export async function DELETE(request, { params }) {
     const resolvedParams = await params;
     const { id } = resolvedParams;
     
-    const parsedId = parseInt(id);
-    if (isNaN(parsedId)) {
-      return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 });
+    let parsedOrderId;
+    let order;
+
+    if (id.includes('-')) {
+      order = await prisma.order.findUnique({
+        where: { id }
+      });
+      if (order) parsedOrderId = order.orderId;
+    } else {
+      parsedOrderId = parseInt(id);
+      if (!isNaN(parsedOrderId)) {
+        order = await prisma.order.findUnique({
+          where: { orderId: parsedOrderId }
+        });
+      }
+    }
+
+    if (!order) {
+      return NextResponse.json({ error: 'Order not found' }, { status: 404 });
     }
     
     // Check if order can be deleted
     const items = await prisma.orderItem.findMany({
-      where: { orderId: parsedId, isDeleted: false }
+      where: { orderId: parsedOrderId, isDeleted: false }
     });
 
     const hasRental = items.some(item => item.isTaken || item.isReturned);
@@ -386,15 +456,15 @@ export async function DELETE(request, { params }) {
 
     await prisma.$transaction(async (tx) => {
       await tx.order.update({
-        where: { orderId: parsedId },
+        where: { orderId: parsedOrderId },
         data: { isDeleted: true }
       });
       await tx.orderItem.updateMany({
-        where: { orderId: parsedId },
+        where: { orderId: parsedOrderId },
         data: { isDeleted: true }
       });
       await tx.paymentObligation.updateMany({
-        where: { orderId: parsedId },
+        where: { orderId: parsedOrderId },
         data: { isDeleted: true }
       });
     });

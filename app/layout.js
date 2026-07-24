@@ -23,6 +23,7 @@ import { LabelsProvider } from './components/LabelsContext';
 import { Users, Shirt, Settings } from 'lucide-react';
 
 import AppNavLinks from './components/AppNavLinks';
+import OfflineIndicator from './components/OfflineIndicator';
 
 export default async function RootLayout({ children }) {
   // Check settings
@@ -55,7 +56,7 @@ export default async function RootLayout({ children }) {
   if (isAuthenticated) {
     try {
       const emp = await prisma.employee.findUnique({
-        where: { id: parseInt(authToken.value, 10) },
+        where: { id: authToken.value },
         select: { roleId: true }
       });
       if (emp && (emp.roleId === 1 || emp.roleId === 2)) {
@@ -80,6 +81,7 @@ export default async function RootLayout({ children }) {
       </head>
       <body>
         <DevEnvBanner />
+        {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator />}
         <Suspense fallback={null}>
           <PageTracker />
         </Suspense>
@@ -108,7 +110,7 @@ export default async function RootLayout({ children }) {
                   )}
                   <ThemeToggle employeeId={authToken?.value} initialTheme={themePreference} />
                   <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 0.25rem' }}></div>
-                  {authToken?.value && <NotificationBell employeeId={parseInt(authToken.value, 10)} />}
+                  {authToken?.value && <NotificationBell employeeId={authToken.value} />}
                   <UserMenu />
                 </div>
               </nav>

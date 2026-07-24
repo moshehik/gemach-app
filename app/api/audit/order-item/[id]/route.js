@@ -12,7 +12,7 @@ export async function GET(request, { params }) {
     const logs = await prisma.auditLog.findMany({
       where: {
         entityType: 'OrderItem',
-        entityId: parseInt(id)
+        entityId: id
       },
       orderBy: { createdAt: 'desc' }
     });

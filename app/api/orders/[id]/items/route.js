@@ -126,15 +126,13 @@ export async function POST(request, { params }) {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
       
-      if (!dressName && prefix && item.dressItemId) {
+      if (!dressName && prefix) {
         dressName = dressModelMap.get(prefix);
       }
       
       let finalDescription = item.description || 'פריט כללי';
-      if (item.dressItemId) {
-        finalDescription = dressName 
-          ? `${dressName} (קוד: ${prefix || ''})` 
-          : (item.description || 'פריט כללי');
+      if (dressName) {
+        finalDescription = `${dressName} (קוד: ${prefix || ''})`;
       } else if (item.description) {
         finalDescription = item.description;
       }
@@ -154,19 +152,21 @@ export async function POST(request, { params }) {
       if (ob.isManual === false || ob.productId) {
          ob.isManual = false;
          if (ob.productId) {
-             const prod = priceList.find(p => p.id === ob.productId);
-             if (!ob.description) ob.description = prod ? prod.description : 'חיוב מחירון';
-             ob.productName = prod ? (prod.description || prod.category || 'חיוב מחירון') : 'חיוב אוטומטי';
+             const prod = priceList.find(p => p.id === ob.productId || String(p.legacyId) === String(ob.productId));
+             if (!ob.description) {
+                 const matchedItem = itemsWithLogs.find(i => {
+                     const cat = i.dressItem?.dress?.priceCategory || '';
+                     return prod && (cat === prod.category || cat.replace('כלול ב', '').trim() === prod.category);
+                 });
+                 ob.description = matchedItem ? `${matchedItem.dressItem?.dress?.name || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? prod.description : 'חיוב מחירון');
+             }
+             ob.productName = ob.description;
              if (prod) {
                  ob.priceCategory = prod.category;
                  ob.priceDescription = prod.description;
              }
-         } else if (ob.description && ob.description.includes('תיקון')) {
-             ob.productName = 'תיקון';
-         } else if (ob.description && ob.description.includes('דמי ביטול')) {
-             ob.productName = 'דמי ביטול';
-         } else if (ob.description && ob.description.includes('זיכוי')) {
-             ob.productName = 'זיכוי';
+         } else if (ob.description) {
+             ob.productName = ob.description;
          } else {
              ob.productName = 'חיוב אוטומטי';
          }

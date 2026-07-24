@@ -64,7 +64,7 @@ export default function RentalsPage() {
         else if (viewMode === 'all') activeParam = '&excludeArchiveAndPast=true';
       }
       
-      const queryParams = new URLSearchParams({ search, sort: 'orderId', order: 'desc', limit: '200' });
+      const queryParams = new URLSearchParams({ search, sort: 'orderId', order: 'desc', limit: '200', forRentals: 'true' });
       if (activeParam.includes('pendingOnly')) queryParams.append('pendingOnly', 'true');
       if (activeParam.includes('activeOnly')) queryParams.append('activeOnly', 'true');
       if (activeParam.includes('returnedOnly')) queryParams.append('returnedOnly', 'true');

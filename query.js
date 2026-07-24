@@ -1,3 +1,3 @@
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+
+import prisma from '@/app/lib/prisma';
 prisma.priceList.findMany().then(res => console.log('PriceList count:', res.length)).finally(() => prisma.$disconnect());
