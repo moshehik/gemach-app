@@ -30,6 +30,7 @@ model Customer {
   @@index([phone1])
   @@index([phone2])
   @@index([firstName, lastName])
+  @@index([isDeleted])
 }
 
 model AuditLog {
@@ -74,9 +75,12 @@ model Employee {
 
   shifts Shift[]
 
+  department     Department?    @relation(fields: [roleId], references: [roleId])
+
   sentNotifications     Notification[] @relation("SentNotifications")
   receivedNotifications Notification[] @relation("ReceivedNotifications")
   Order                 Order[]
+  AIChatSession         AIChatSession[]
   updatedAt             DateTime       @updatedAt
 
   @@index([phone1])
@@ -124,6 +128,8 @@ model Shift {
   updatedAt              DateTime  @updatedAt
 
   @@index([employeeId])
+  @@index([date])
+  @@index([isDeleted])
 }
 
 model DressModel {
@@ -143,6 +149,7 @@ model DressModel {
   updatedAt        DateTime    @updatedAt
 
   @@index([priceCategory])
+  @@index([isDeleted])
 }
 
 model DressItem {
@@ -170,6 +177,9 @@ model DressItem {
   @@index([dressModelId])
   @@index([dressBarcode])
   @@index([barcodePrefix])
+  @@index([isDeleted])
+  @@index([notInUse])
+  @@index([inRepair])
 }
 
 model Order {
@@ -211,6 +221,8 @@ model Order {
   @@index([paymentDate])
   @@index([eventDate])
   @@index([orderDate])
+  @@index([isDeleted])
+  @@index([status])
 }
 
 model Payment {
@@ -229,6 +241,8 @@ model Payment {
 
   @@index([customerId])
   @@index([orderId])
+  @@index([isDeleted])
+  @@index([paymentDate])
 }
 
 model PaymentObligation {
@@ -251,6 +265,8 @@ model PaymentObligation {
 
   @@index([orderId])
   @@index([orderItemId])
+  @@index([isDeleted])
+  @@index([productId])
 }
 
 model OrderItem {
@@ -290,11 +306,16 @@ model OrderItem {
   sleeveAlteration  Int?     @default(0) // תיקון_שרוול
   alterationDetails String? // פירוט_תיקון
   alterationDone    Boolean  @default(false) // בוצע_תיקון
+  createdAt         DateTime @default(now()) // תאריך יצירה למיון מהיר
   updatedAt         DateTime @updatedAt
 
   @@index([orderId])
   @@index([dressItemId])
   @@index([barcode])
+  @@index([isDeleted])
+  @@index([createdAt])
+  @@index([isTaken])
+  @@index([isReturned])
 }
 
 model PriceList {
@@ -398,4 +419,26 @@ model NotificationTag {
   @@unique([notificationId, employeeId, tag])
   @@index([employeeId])
   @@index([notificationId])
+}
+
+model Department {
+  id       String @id @default(uuid())
+  legacyId Int?   @unique
+  roleId   Int    @unique // מס_מחלקה
+  name     String // שם_מחלקה
+  
+  employees Employee[]
+}
+
+model AIChatSession {
+  id           String    @id @default(uuid())
+  employeeId   String?
+  employee     Employee? @relation(fields: [employeeId], references: [id])
+  context      String    @default("כללי") // e.g. "Home", "Customers", "Employees", "Manager"
+  messagesJson String    @db.Text // Store full chat as JSON
+  startedAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  @@index([employeeId])
+  @@index([startedAt])
 }

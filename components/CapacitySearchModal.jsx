@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Search, List, Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
 import HebrewDatePicker from './HebrewDatePicker';
 import { HDate } from '@hebcal/core';
@@ -135,7 +136,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  return (
+  const content = (
     <div className="modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '5vh', paddingBottom: '5vh' }}>
       <div className="modal-content" style={{ width: '90%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--card-bg)', borderRadius: '12px', padding: '2rem' }}>
         
@@ -417,6 +418,8 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(content, document.body) : content;
 }
 
 function CapacityCalendar({ fromDate, toDate, occupiedOrders }) {

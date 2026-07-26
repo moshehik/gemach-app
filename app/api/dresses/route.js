@@ -15,9 +15,9 @@ export async function GET(request) {
     const limitParam = searchParams.get('limit');
     
     // Pagination parameters
-    const page = pageParam ? parseInt(pageParam, 10) : null;
+    const page = pageParam ? parseInt(pageParam, 10) : 1;
     const limit = limitParam ? parseInt(limitParam, 10) : 50;
-    const skip = page ? (page - 1) * limit : 0;
+    const skip = (page - 1) * limit;
 
     // Filter parameters
     const filterStatus = searchParams.get('filterStatus') || 'all';
@@ -100,39 +100,29 @@ export async function GET(request) {
     let dressModels = [];
     let totalCount = 0;
 
-    if (page) {
-      const [models, count] = await Promise.all([
-        prisma.dressModel.findMany({
-          where,
-          orderBy,
-          skip,
-          take: limit,
-          include: {
-            items: {
-              include: { _count: { select: { orderItems: true } } }
-            }
-          }
-        }),
-        prisma.dressModel.count({ where })
-      ]);
-      dressModels = models;
-      totalCount = count;
-    } else {
-      // For backward compatibility (e.g. customer interface)
-      dressModels = await prisma.dressModel.findMany({
-        where: { isDeleted: false },
+    const [models, count] = await Promise.all([
+      prisma.dressModel.findMany({
+        where,
+        orderBy,
+        skip,
+        take: limit,
         include: {
-          items: true // Removed _count subquery for speed
+          items: {
+            include: { _count: { select: { orderItems: true } } }
+          }
         }
-      });
-    }
+      }),
+      prisma.dressModel.count({ where })
+    ]);
+    dressModels = models;
+    totalCount = count;
 
     let bulkAvailable = null;
     if (eventDateStr) {
       const eventDate = new Date(eventDateStr);
       if (!isNaN(eventDate.getTime())) {
         const { getBulkAvailableInventory } = await import('../../../lib/inventory');
-        bulkAvailable = await getBulkAvailableInventory(eventDate);
+        bulkAvailable = await getBulkAvailableInventory(eventDate, dressModels.map(m => m.id));
       }
     }
 
@@ -198,25 +188,34 @@ export async function GET(request) {
         isDeleted: model.isDeleted,
         sizes: Array.from(new Set(adjustedItems.map(item => item.sizeText).filter(Boolean))),
         inStock: adjustedItems.some(item => item.quantity > 0),
-        items: adjustedItems
+        items: adjustedItems.map(i => ({
+          id: i.id,
+          sizeText: i.sizeText,
+          serialNumber: i.serialNumber,
+          barcode: i.dressBarcode,
+          quantity: i.quantity,
+          location: i.location,
+          inRepair: i.inRepair,
+          notInUse: i.notInUse,
+          isDeleted: i.isDeleted,
+          rentalsCount: i.rentalsCount
+        }))
       };
     }).filter(Boolean); // Filter out nulls from rentalsCountMin locally
 
-    if (page) {
-      // If we filtered out some items locally because of rentalsCountMin, adjust totalCount (approximate)
-      if (advRentalsCountMin > 0) {
-        totalCount = formatted.length; // Might break actual pagination pages count slightly if spanning multiple pages
-      }
-      return NextResponse.json({
-        data: formatted,
-        total: totalCount,
-        page,
-        limit,
-        totalPages: Math.ceil(totalCount / limit)
-      });
+    // If we filtered out some items locally because of rentalsCountMin, adjust totalCount (approximate)
+    if (advRentalsCountMin > 0) {
+      // It's not a perfect pagination fix but prevents loading the entire DB into memory.
+      totalCount = Math.max(totalCount, formatted.length);
     }
-
-    return NextResponse.json(formatted);
+    
+    return NextResponse.json({
+      data: formatted,
+      total: totalCount,
+      page,
+      limit,
+      totalPages: Math.ceil(totalCount / limit)
+    });
   } catch (error) {
     console.error('Error fetching dresses:', error);
     return NextResponse.json({ error: 'Failed to fetch dresses' }, { status: 500 });

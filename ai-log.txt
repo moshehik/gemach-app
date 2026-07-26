@@ -112,3 +112,57 @@ Summarize the information nicely.
 
 נשמח לעמוד לרשותך לכל שאלה נוספת.
 
+==== NEW REQUEST ====
+PROMPT:
+לאיזה לקוחות יש חובות?
+AI RESPONSE:
+SQL: SELECT DISTINCT C."firstName" AS "שם פרטי", C."lastName" AS "שם משפחה", C."legacyId" AS "מספר לקוח", '/customers/' || C."id" AS "_actionUrl", 'תיק לקוח' AS "_actionLabel" FROM "Customer" C JOIN "Order" O ON C."id" = O."customerId" WHERE O."isPaid" = false AND O."isDeleted" = false AND C."isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+מה ההזמנות להיום?
+AI RESPONSE:
+SQL: SELECT "orderId" AS "מספר הזמנה", "eventDateHebrew" AS "תאריך אירוע", "status" AS "סטטוס", '/orders/' || "orderId" AS "_actionUrl", 'פרטי הזמנה' AS "_actionLabel" FROM "Order" WHERE "isDeleted" = false AND "eventDate" = '2026-07-26'::date;
+
+==== NEW REQUEST ====
+PROMPT:
+כמה לקוחות יש בשם לאה
+AI RESPONSE:
+SQL: SELECT COUNT(*) AS "כמות לקוחות" FROM "Customer" WHERE "firstName" ILIKE '%לאה%' AND "isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+תן לי הפניה לכרטיס לקוח של נועה מזרחי
+AI RESPONSE:
+SQL: SELECT "firstName" AS "שם פרטי", "lastName" AS "שם משפחה", "legacyId" AS "מספר לקוח", '/customers/' || "id" AS "_actionUrl", 'תיק לקוח' AS "_actionLabel" FROM "Customer" WHERE "firstName" ILIKE '%נועה%' AND "lastName" ILIKE '%מזרחי%' AND "isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+תפנה לכרטיס ההזמנה
+AI RESPONSE:
+על מנת שאוכל להפנות אותך לכרטיס ההזמנה המבוקש, אשמח אם תכתוב לי את מספר ההזמנה או את שם הלקוחה שביצעה את ההזמנה.
+
+==== NEW REQUEST ====
+PROMPT:
+נועה מזרחי
+AI RESPONSE:
+SQL: SELECT O."orderId" AS "מספר הזמנה", O."eventDateHebrew" AS "תאריך האירוע (עברי)", '/orders/' || O."orderId" AS "_actionUrl", 'פרטי הזמנה' AS "_actionLabel" FROM "Order" O JOIN "Customer" C ON O."customerId" = C."id" WHERE C."firstName" ILIKE '%נועה%' AND C."lastName" ILIKE '%מזרחי%' AND O."isDeleted" = false ORDER BY O."orderDate" DESC;
+
+==== NEW REQUEST ====
+PROMPT:
+תן לי הפניות להזמנות הללו
+AI RESPONSE:
+SQL: SELECT O."orderId" AS "מספר הזמנה", O."eventDateHebrew" AS "תאריך אירוע", '/orders/' || O."orderId" AS "_actionUrl", 'פרטי הזמנה' AS "_actionLabel" FROM "Order" O JOIN "Customer" C ON O."customerId" = C.id WHERE C."firstName" ILIKE '%נועה%' AND C."lastName" ILIKE '%מזרחי%' AND O."isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+נועה מזרחי מתי האירוע?
+AI RESPONSE:
+SQL: SELECT O."eventDateHebrew" AS "תאריך אירוע", O."orderId" AS "מספר הזמנה", '/orders/' || O."orderId" AS "_actionUrl", 'פרטי הזמנה' AS "_actionLabel" FROM "Order" O JOIN "Customer" C ON O."customerId" = C.id WHERE C."firstName" ILIKE '%נועה%' AND C."lastName" ILIKE '%מזרחי%' AND O."isDeleted" = false AND C."isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+מתי יש אפור
+AI RESPONSE:
+SQL: SELECT "dressName" AS "שם השמלה", "sizeText" AS "מידה", "barcodePrefix" AS "מספר דגם", '/dress-models/' || "dressModelId" AS "_actionUrl", 'פרטי דגם' AS "_actionLabel" FROM "DressItem" WHERE "dressName" ILIKE '%אפור%' AND "isDeleted" = false AND "notInUse" = false AND "inRepair" = false;
+

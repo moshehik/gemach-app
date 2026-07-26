@@ -115,8 +115,11 @@ async function main() {
   const existingCustomers = await prisma.customer.findMany({ select: { id: true } });
   const validCustomerIds = new Set(existingCustomers.map(c => c.id));
   
-  const existingEmployees = await prisma.employee.findMany({ select: { id: true } });
-  const validEmployeeIds = new Set(existingEmployees.map(e => e.id));
+  const existingEmployees = await prisma.employee.findMany({ select: { id: true, legacyId: true } });
+  const employeeLegacyToId = new Map();
+  for (const emp of existingEmployees) {
+    if (emp.legacyId) employeeLegacyToId.set(emp.legacyId, emp.id);
+  }
   
   const orderBatch = [];
   const validOrderIds = new Set();
@@ -141,7 +144,7 @@ async function main() {
       toDate: o['עד_תאריך'] ? excelDateToJSDate(o['עד_תאריך']) : null,
       orderNotes: o['הערות_להזמנה'] ? String(o['הערות_להזמנה']) : null,
       orderDate: o['תאריך_הזמנה'] ? excelDateToJSDate(o['תאריך_הזמנה']) : null,
-      employeeId: (o['קוד_עובד'] && validEmployeeIds.has(parseInt(o['קוד_עובד']))) ? parseInt(o['קוד_עובד']) : null,
+      employeeId: (o['קוד_עובד'] && employeeLegacyToId.has(parseInt(o['קוד_עובד']))) ? employeeLegacyToId.get(parseInt(o['קוד_עובד'])) : null,
       deletedAt: o['תאריך_מחיקה'] ? excelDateToJSDate(o['תאריך_מחיקה']) : null
     });
   }

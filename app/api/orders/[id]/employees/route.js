@@ -6,18 +6,27 @@ import prisma from '@/app/lib/prisma';
 export async function GET(request, { params }) {
   try {
     const resolvedParams = await params;
-    const id = parseInt(resolvedParams.id);
-    if (isNaN(id)) {
-      return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 });
-    }
+    const idParam = resolvedParams.id;
+    
+    let order;
 
-    // Fetch the order to get employeeId and orderDate
-    const order = await prisma.order.findUnique({
-      where: { orderId: id },
-      include: {
-        employee: true
+    if (idParam.includes('-')) {
+      // UUID
+      order = await prisma.order.findUnique({
+        where: { id: idParam },
+        include: { employee: true }
+      });
+    } else {
+      // Legacy Int ID
+      const id = parseInt(idParam);
+      if (isNaN(id)) {
+        return NextResponse.json({ error: 'Invalid order ID' }, { status: 400 });
       }
-    });
+      order = await prisma.order.findUnique({
+        where: { orderId: id },
+        include: { employee: true }
+      });
+    }
 
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
@@ -78,6 +87,7 @@ export async function GET(request, { params }) {
     });
   } catch (error) {
     console.error('Error fetching order employees:', error);
-    return NextResponse.json({ error: 'Failed to fetch order employees' }, { status: 500 });
+    require('fs').appendFileSync('c:/Users/moshe/Desktop/גמח שמלות חדש/api_error.log', error.stack + '\\n');
+    return NextResponse.json({ error: 'Failed to fetch order employees', details: error.message }, { status: 500 });
   }
 }

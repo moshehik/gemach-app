@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { FileText, FileSpreadsheet, Download, Sparkles, X, Loader2, FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -100,6 +101,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
             </style>
           </head>
           <body onload="setTimeout(() => { window.print(); window.close(); }, 500);">
+            <div style="text-align: right; font-weight: bold; font-family: Arial, sans-serif; margin-bottom: 10px;">בס"ד</div>
             <h2 style="font-family: Arial, sans-serif; text-align: right;">${filename}</h2>
             ${tableHtml}
           </body>
@@ -152,6 +154,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                   </style>
                 </head>
                 <body onload="setTimeout(() => { window.print(); window.close(); }, 500);">
+                  <div style="text-align: right; font-weight: bold; font-family: Arial, sans-serif; margin-bottom: 10px;">בס"ד</div>
                   ${processedData}
                 </body>
               </html>
@@ -179,6 +182,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                     <style>@media print { @page { margin: 20px; } }</style>
                   </head>
                   <body onload="setTimeout(() => { window.print(); window.close(); }, 500);">
+                    <div style="text-align: right; font-weight: bold; font-family: Arial, sans-serif; margin-bottom: 10px;">בס"ד</div>
                     <h2 style="font-family: Arial, sans-serif; text-align: right;">${filename}</h2>
                     ${tableHtml}
                   </body>
@@ -253,7 +257,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
         {!iconOnly && <span>ייצוא ודוחות</span>}
       </button>
 
-      {isModalOpen && (
+      {isModalOpen && typeof document !== 'undefined' && createPortal(
         <div style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
           backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
@@ -397,7 +401,8 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
               </>
             )}
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </>
   );

@@ -13,7 +13,7 @@ export async function GET(request) {
   try {
     const dressItems = await prisma.dressItem.findMany({
       where: {
-        dressModelId: parseInt(modelId),
+        dressModelId: modelId,
         sizeText: size || undefined,
         notInUse: false,
         inRepair: false

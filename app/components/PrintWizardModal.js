@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Printer, Calendar as CalendarIcon, Clock, CheckCircle, FileText, X } from 'lucide-react';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 
@@ -9,6 +10,11 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
   const [startDate, setStartDate] = useState(defaultStartDate || '');
   const [endDate, setEndDate] = useState(defaultEndDate || '');
   const [reportType, setReportType] = useState('alterations_pending'); // 'alterations_pending', 'alterations_all', 'orders_no_alterations'
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const handlePrint = () => {
     let query = `?reportType=${reportType}&dateMode=${dateMode}`;
@@ -25,12 +31,14 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
     onClose();
   };
 
-  return (
+  if (!mounted) return null;
+
+  return createPortal(
     <div className="modal-overlay" onClick={onClose} style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
       display: 'flex', justifyContent: 'center', alignItems: 'center',
-      zIndex: 1000
+      zIndex: 9999
     }}>
       <div 
         className="modal-content animate-fade-in" 
@@ -126,6 +134,7 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -40,6 +40,9 @@ export async function GET(request) {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
     const where = {
       ...(filterStatus === 'deleted' ? { isDeleted: true } : { isDeleted: false }),
       ...(filterStatus === 'archive' ? { eventDate: { lt: today } } : {}),
@@ -48,6 +51,12 @@ export async function GET(request) {
         OR: [
           { eventDate: null },
           { eventDate: { gte: today } }
+        ]
+      } : {}),
+      ...(filterStatus === 'unpaid' ? {
+        OR: [
+          { eventDate: null },
+          { eventDate: { gte: threeMonthsAgo } }
         ]
       } : {}),
       ...(archiveAndPastOnly ? {
@@ -123,28 +132,25 @@ export async function GET(request) {
 
     let finalTotalCount = await prisma.order.count({ where });
     let finalOrderIds = [];
-
-    if (sort === 'eventDate' || filterStatus === 'unpaid') {
+    
+    // Only use JS memory filtering for 'unpaid' status since it requires complex calculated fields
+    // Default sorting (eventDate) and other filters now use native database pagination and indexing
+    if (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') {
       const minimalSelect = {
         orderId: true,
-        eventDate: true
+        eventDate: true,
+        totalAmount: true,
+        payments: { select: { amount: true, isDeleted: true } }
       };
-      if (filterStatus === 'unpaid') {
-        minimalSelect.totalAmount = true;
-        minimalSelect.payments = { select: { amount: true, isDeleted: true } };
-        minimalSelect.obligations = { select: { amount: true, isDeleted: true } };
-      }
 
       const minimalOrders = await prisma.order.findMany({
         where,
         select: minimalSelect,
-        orderBy: sort !== 'eventDate' ? { [sort]: order } : undefined
+        orderBy: { orderId: 'desc' }
       });
 
       let minimalFormatted = minimalOrders.map(o => {
-        const calculatedTotalAmount = o.obligations?.length > 0 
-          ? o.obligations.reduce((sum, ob) => sum + (ob.isDeleted ? 0 : ob.amount), 0) 
-          : (o.totalAmount || 0);
+        const calculatedTotalAmount = o.totalAmount || 0;
         const totalPaid = o.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0;
         return {
           orderId: o.orderId,
@@ -154,49 +160,7 @@ export async function GET(request) {
         };
       });
 
-      if (sort === 'eventDate') {
-        const todayObj = new Date();
-        todayObj.setHours(0, 0, 0, 0);
-        const todayTime = todayObj.getTime();
-        
-        const tomorrowObj = new Date(todayObj);
-        tomorrowObj.setDate(tomorrowObj.getDate() + 1);
-        const tomorrowTime = tomorrowObj.getTime();
-        
-        const dayAfterObj = new Date(todayObj);
-        dayAfterObj.setDate(dayAfterObj.getDate() + 2);
-        const dayAfterTime = dayAfterObj.getTime();
-
-        const getGroup = (d) => {
-          if (!d) return 5;
-          const t = new Date(d).getTime();
-          if (t >= todayTime && t < tomorrowTime) return 1;
-          if (t >= tomorrowTime && t < dayAfterTime) return 2;
-          if (t < todayTime) return 3;
-          return 4;
-        };
-
-        minimalFormatted.sort((a, b) => {
-          const groupA = getGroup(a.eventDate);
-          const groupB = getGroup(b.eventDate);
-          if (groupA !== groupB) return order === 'asc' ? groupA - groupB : groupA - groupB; 
-          
-          const tA = a.eventDate ? new Date(a.eventDate).getTime() : 0;
-          const tB = b.eventDate ? new Date(b.eventDate).getTime() : 0;
-          
-          let diff = 0;
-          if (groupA === 3) {
-            diff = tB - tA; 
-          } else if (groupA === 4 || groupA === 1 || groupA === 2) {
-            diff = tA - tB; 
-          } else {
-            diff = b.orderId - a.orderId;
-          }
-          return order === 'asc' ? -diff : diff; 
-        });
-      }
-
-      if (filterStatus === 'unpaid') {
+      if (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') {
         minimalFormatted = minimalFormatted.filter(o => o.totalPaid < o.totalAmount && o.totalAmount > 0);
       }
 
@@ -204,7 +168,7 @@ export async function GET(request) {
       finalOrderIds = minimalFormatted.slice(skip, skip + limit).map(o => o.orderId);
     }
 
-    const fullOrdersWhere = (sort === 'eventDate' || filterStatus === 'unpaid') 
+    const fullOrdersWhere = (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') 
       ? { orderId: { in: finalOrderIds } } 
       : where;
 
@@ -241,13 +205,13 @@ export async function GET(request) {
           }
         }
       },
-      orderBy: (sort === 'eventDate' || filterStatus === 'unpaid') ? undefined : { [sort]: order },
-      ...((sort === 'eventDate' || filterStatus === 'unpaid') ? {} : { skip, take: limit })
+      orderBy: (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') ? undefined : { [sort]: order },
+      ...((filterStatus === 'unpaid' || filterStatus === 'unpaid_all') ? {} : { skip, take: limit })
     });
 
-    // Restore the correct sort order for eventDate/unpaid since the IN clause doesn't guarantee order
+    // Restore the correct sort order for unpaid since the IN clause doesn't guarantee order
     let sortedOrders = orders;
-    if (sort === 'eventDate' || filterStatus === 'unpaid') {
+    if (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') {
       const orderIdIndexMap = new Map(finalOrderIds.map((id, index) => [id, index]));
       sortedOrders = orders.sort((a, b) => orderIdIndexMap.get(a.orderId) - orderIdIndexMap.get(b.orderId));
     }
@@ -367,7 +331,7 @@ export async function POST(request) {
         status: data.payment?.amount >= data.totalAmount ? 'שולם' : (data.payment?.amount > 0 ? 'שולם חלקי' : (data.status || 'חדש')),
         items: {
           create: data.items?.map(item => ({
-            dressItemId: parseInt(item.sampleItemId),
+            dressItemId: item.sampleItemId,
             sizeText: item.sizeText,
             quantity: item.quantity || 1,
             basePrice: item.basePrice ? parseFloat(item.basePrice) : 0,
@@ -386,7 +350,7 @@ export async function POST(request) {
               amount: parseFloat(data.payment.amount),
               paymentMethod: data.payment.method,
               notes: data.payment.notes || '',
-              customerId: data.customerId ? parseInt(data.customerId) : null
+              customerId: data.customerId ? data.customerId : null
             }]
           }
         } : {})

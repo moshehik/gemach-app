@@ -172,7 +172,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       isDeleted: false,
       createdAt: new Date().toISOString()
     };
-    onItemsChange([newItem, ...items]);
+    onItemsChange([...items, newItem]);
   };
 
   const showItemDetails = async (item) => {
@@ -551,7 +551,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                 <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
                   <p style={{ margin: '0 0 0.2rem 0', color: '#64748b', fontSize: '0.85rem' }}>תאריך הוספה</p>
                   <p style={{ margin: 0, fontWeight: '600', color: '#1e293b' }}>
-                    {new Date(detailsModalItem.createdAt || new Date()).toLocaleDateString('he-IL')} {new Date(detailsModalItem.createdAt || new Date()).toLocaleTimeString('he-IL')}
+                    {new Date(detailsModalItem.orderDate || order?.orderDate || detailsModalItem.createdAt || new Date()).toLocaleDateString('he-IL')} {new Date(detailsModalItem.orderDate || order?.orderDate || detailsModalItem.createdAt || new Date()).toLocaleTimeString('he-IL')}
                   </p>
                 </div>
               </div>

@@ -163,7 +163,7 @@ export default function AISearchBar({
       {/* Statistics Toggle Button */}
       {onStatistics && (
         <button 
-          onClick={onStatistics}
+          onClick={(e) => onStatistics(e)}
           style={{ 
             borderRadius: '50%', 
             width: '45px', 

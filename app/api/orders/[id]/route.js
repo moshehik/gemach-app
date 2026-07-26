@@ -15,7 +15,7 @@ export async function GET(request, { params }) {
     if (id.includes('-')) {
       order = await prisma.order.findUnique({
         where: { id },
-        include: { customer: true }
+        include: { customer: true, employee: true }
       });
       if (order) parsedOrderId = order.orderId;
     } else {
@@ -23,7 +23,7 @@ export async function GET(request, { params }) {
       if (!isNaN(parsedOrderId)) {
         order = await prisma.order.findUnique({
           where: { orderId: parsedOrderId },
-          include: { customer: true }
+          include: { customer: true, employee: true }
         });
       }
     }
@@ -209,7 +209,12 @@ export async function PUT(request, { params }) {
                 lengthAlteration: (item.lengthAlteration !== undefined && item.lengthAlteration !== null && item.lengthAlteration !== '') ? String(item.lengthAlteration) : null,
                 alterationDetails: item.alterationDetails,
                 alterationDone: item.alterationDone,
-                isDeleted: item.isDeleted
+                isDeleted: item.isDeleted,
+                isTaken: item.isTaken,
+                isReturned: item.isReturned,
+                takenDate: item.takenDate ? new Date(item.takenDate) : null,
+                returnDate: item.returnDate ? new Date(item.returnDate) : null,
+                barcode: item.barcode || item.dressItem?.barcode || undefined
               }
             });
           } else if (item.isNew && item.dressModelId && item.sizeText) {
@@ -326,7 +331,8 @@ export async function PUT(request, { params }) {
     let finalOrder = await prisma.order.findUnique({
       where: { orderId: parsedOrderId },
       include: {
-        customer: true
+        customer: true,
+        employee: true
       }
     });
     

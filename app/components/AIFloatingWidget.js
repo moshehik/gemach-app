@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Bot, X, MessageSquare, Maximize2, Minimize2, Trash2, Mic, History } from 'lucide-react';
+import { Bot, X, MessageSquare, Maximize2, Minimize2, MessageSquarePlus, Mic, History } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 export default function AIFloatingWidget() {
@@ -11,6 +11,7 @@ export default function AIFloatingWidget() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState(null);
   const [showTableModal, setShowTableModal] = useState(false);
   const [modalTableData, setModalTableData] = useState(null);
   
@@ -19,8 +20,41 @@ export default function AIFloatingWidget() {
   const [chatSessions, setChatSessions] = useState([]);
   
   const recognitionRef = useRef(null);
-  
   const chatEndRef = useRef(null);
+
+  const parseMessageToLinks = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(הזמנה\s*\d+|לקוח\s*[\w-]+)/g);
+    return parts.map((part, i) => {
+      let match = part.match(/הזמנה\s*(\d+)/);
+      if (match) {
+        return (
+          <a
+            key={i}
+            href={`/orders/${match[1]}`}
+            target="_blank"
+            style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#ec4899', color: 'white', padding: '2px 8px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', margin: '0 4px', fontSize: '0.9rem' }}
+          >
+            {part}
+          </a>
+        );
+      }
+      match = part.match(/לקוח\s*([\w-]+)/);
+      if (match) {
+        return (
+          <a
+            key={i}
+            href={`/customers/${match[1]}`}
+            target="_blank"
+            style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#ec4899', color: 'white', padding: '2px 8px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', margin: '0 4px', fontSize: '0.9rem' }}
+          >
+            {part}
+          </a>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
 
   useEffect(() => {
     const savedSessions = localStorage.getItem('ai_employee_chat_sessions');
@@ -28,7 +62,6 @@ export default function AIFloatingWidget() {
     if (savedSessions) {
       try {
         sessions = JSON.parse(savedSessions);
-        setChatSessions(sessions);
       } catch (e) {}
     }
 
@@ -36,17 +69,16 @@ export default function AIFloatingWidget() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (parsed.length > 0) {
-          setMessages(parsed);
-        } else {
-          startNewChat();
+        if (parsed.length > 1) {
+          const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...parsed] };
+          sessions = [newSession, ...sessions].slice(0, 10);
+          localStorage.setItem('ai_employee_chat_sessions', JSON.stringify(sessions));
         }
-      } catch (e) {
-        startNewChat();
-      }
-    } else {
-      startNewChat();
+      } catch (e) {}
     }
+    
+    setChatSessions(sessions);
+    setMessages([{ role: 'assistant', content: 'שלום! אני עוזר ה-AI. כיצד אוכל לעזור לך למצוא נתונים במערכת?' }]);
   }, []);
 
   useEffect(() => {
@@ -70,6 +102,7 @@ export default function AIFloatingWidget() {
       localStorage.setItem('ai_employee_chat_sessions', JSON.stringify(updatedSessions));
     }
     setMessages([{ role: 'assistant', content: 'שלום! אני עוזר ה-AI. כיצד אוכל לעזור לך למצוא נתונים במערכת?' }]);
+    setActiveSessionId(null);
     setShowHistory(false);
   };
 
@@ -87,13 +120,19 @@ export default function AIFloatingWidget() {
     try {
       const historyContext = newMessages.map(m => ({ role: m.role, content: m.content }));
       
+      let currentContext = '';
+      if (pathname.includes('/orders/')) {
+        const orderIdMatch = pathname.match(/\/orders\/(\d+|-)/);
+        if (orderIdMatch) currentContext = `הלקוח נמצא כעת במסך כרטיס הזמנה מס' ${orderIdMatch[1]}. `;
+      }
+      
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           prompt: userMsg, 
           history: historyContext,
-          context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. אתה עוזר וירטואלי עבור עובדי הגמ"ח. מותר לך לספק נתונים על לקוחות, הזמנות, פריטים ומלאי כדי לעזור בשירות לקוחות. אסור לך לחשוף מידע על עובדים אחרים, משמרות או הרשאות. אסור לך להציג סטטיסטיקות כלליות, סיכומי רווחים, דוחות או פילוחים ניהוליים מתקדמים (אם העובד מבקש סטטיסטיקות כאלו, אמור לו שזה זמין רק בממשק מנהל).`
+          context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ${currentContext}אתה עוזר וירטואלי עבור עובדי הגמ"ח. מותר לך לספק נתונים על לקוחות, הזמנות, פריטים ומלאי כדי לעזור בשירות לקוחות. אסור לך לחשוף מידע על עובדים אחרים, משמרות או הרשאות. אסור לך להציג סטטיסטיקות כלליות, סיכומי רווחים, דוחות או פילוחים ניהוליים מתקדמים (אם העובד מבקש סטטיסטיקות כאלו, אמור לו שזה זמין רק בממשק מנהל).`
         }),
       });
 
@@ -103,7 +142,33 @@ export default function AIFloatingWidget() {
         ? { role: 'assistant', content: data.response, tableData: data.tableData }
         : { role: 'assistant', content: 'מצטער, חלה שגיאה בחיבור למערכת ה-AI.' };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      const finalMessages = [...newMessages, assistantMessage];
+      setMessages(finalMessages);
+      
+      // Sync to DB
+      try {
+        let currentContext = 'כללי';
+        if (pathname.includes('/orders/')) currentContext = 'הזמנות';
+        else if (pathname.includes('/customers/')) currentContext = 'לקוחות';
+        else if (pathname.includes('/employees/')) currentContext = 'עובדים';
+        else if (pathname.includes('/dashboard')) currentContext = 'דשבורד';
+
+        const syncRes = await fetch('/api/ai/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: activeSessionId,
+            context: currentContext,
+            messages: finalMessages
+          })
+        });
+        const syncData = await syncRes.json();
+        if (syncData.success && syncData.session && !activeSessionId) {
+          setActiveSessionId(syncData.session.id);
+        }
+      } catch (err) {
+        console.error('Failed to sync session', err);
+      }
 
     } catch (error) {
       setMessages(prev => [...prev, { role: 'assistant', content: 'שגיאת תקשורת עם השרת.' }]);
@@ -270,7 +335,7 @@ export default function AIFloatingWidget() {
               <History size={18} />
             </button>
             <button onClick={clearChat} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title="שיחה חדשה">
-              <Trash2 size={18} />
+              <MessageSquarePlus size={18} />
             </button>
             <button onClick={() => setIsExpanded(!isExpanded)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title={isExpanded ? 'הקטן' : 'הגדל'}>
               {isExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
@@ -286,7 +351,22 @@ export default function AIFloatingWidget() {
           {showHistory ? (
             <div style={{ padding: '10px' }}>
               <h3 style={{ marginTop: 0, color: 'var(--text-main)', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
-              {chatSessions.length === 0 ? (
+              {messages.length > 1 && (
+                <div 
+                  onClick={() => setShowHistory(false)}
+                  style={{
+                    padding: '12px', backgroundColor: '#ecfdf5', border: '1px solid #10b981',
+                    borderRadius: '8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px',
+                    marginBottom: '10px'
+                  }}
+                >
+                  <span style={{ fontWeight: 'bold', color: '#065f46', fontSize: '0.9rem' }}>שיחה נוכחית (פעילה)</span>
+                  <span style={{ color: '#047857', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {messages[1].content}
+                  </span>
+                </div>
+              )}
+              {chatSessions.length === 0 && messages.length <= 1 ? (
                 <div style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '10px' }}>אין היסטוריית שיחות שמורה.</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
@@ -326,7 +406,7 @@ export default function AIFloatingWidget() {
                   fontSize: '0.95rem',
                   lineHeight: '1.4'
                 }}>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(msg.content)}</div>
                   {msg.tableData && renderTable(msg.tableData)}
                 </div>
               ))}

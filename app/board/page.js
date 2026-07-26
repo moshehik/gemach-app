@@ -466,7 +466,7 @@ export default function BoardPage() {
                   onSearch={handleSearch}
                   onClear={handleClearSearch}
                   onAiSearch={handleAiSearch}
-                  onStatistics={() => setShowStatistics(true)}
+                  onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
                   loading={aiLoading}
                 />
               </div>
@@ -591,9 +591,10 @@ export default function BoardPage() {
       )}
 
       <StatisticsModal 
-        isOpen={showStatistics} 
+        isOpen={!!showStatistics} 
         onClose={() => setShowStatistics(false)} 
-        pageContext="orders"
+        pageContext="board"
+        position={typeof showStatistics === 'object' ? showStatistics : null}
         contextQuery={aiQueryUsed}
       />
 

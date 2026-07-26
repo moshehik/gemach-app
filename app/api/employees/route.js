@@ -8,6 +8,7 @@ export async function GET(request) {
     
     const employees = await prisma.employee.findMany({
       where: all ? {} : { isActive: true },
+      include: { department: true },
       orderBy: { id: 'asc' }
     });
     

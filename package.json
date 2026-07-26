@@ -1,7 +1,7 @@
 {
   "name": "gemach-app",
-  "version": "0.1.11",
-  "lastUpdated": "2026-07-24",
+  "version": "0.1.12",
+  "lastUpdated": "2026-07-26",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",

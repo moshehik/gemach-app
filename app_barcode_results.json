@@ -1,0 +1,127 @@
+﻿[
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\admin\\labels\\page.js",
+        "LineNumber":  40,
+        "Line":  "  dress_barcodePrefix: \u0027קידומת ברקוד\u0027,"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\admin\\labels\\page.js",
+        "LineNumber":  46,
+        "Line":  "  item_barcode: \u0027ברקוד\u0027,"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\admin\\labels\\page.js",
+        "LineNumber":  52,
+        "Line":  "  rental_barcode: \u0027ברקוד פריט\u0027,"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\api\\dresses\\items\\[itemId]\\route.js",
+        "LineNumber":  27,
+        "Line":  "          return NextResponse.json({ error: `הברקוד ${targetBarcode} כבר קיים במערכת לפריט פעיל אחר.` }, { status: 400 });"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\api\\dresses\\[id]\\items\\route.js",
+        "LineNumber":  20,
+        "Line":  "        return NextResponse.json({ error: `הברקוד ${body.dressBarcode} כבר קיים במערכת.` }, { status: 400 });"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\api\\rentals\\scan\\route.js",
+        "LineNumber":  9,
+        "Line":  "      return NextResponse.json({ error: \u0027חסרים נתונים (מספר הזמנה או ברקוד)\u0027 }, { status: 400 });"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\api\\rentals\\scan\\route.js",
+        "LineNumber":  33,
+        "Line":  "      return NextResponse.json({ error: \u0027ברקוד לא קיים במאגר השמלות\u0027 }, { status: 404 });"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\api\\rentals\\scan\\route.js",
+        "LineNumber":  56,
+        "Line":  "      return NextResponse.json({ error: \u0027הברקוד כבר קיים בהזמנה זו\u0027 }, { status: 400 });"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\api\\rentals\\scan\\route.js",
+        "LineNumber":  153,
+        "Line":  "    return NextResponse.json({ error: \u0027שגיאה בסריקת ברקוד\u0027 }, { status: 500 });"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\api\\returns\\scan\\route.js",
+        "LineNumber":  9,
+        "Line":  "      return NextResponse.json({ error: \u0027חסר ברקוד\u0027 }, { status: 400 });"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\board\\page.js",
+        "LineNumber":  567,
+        "Line":  "                \u003clabel style={{ display: \u0027block\u0027, marginBottom: \u00270.5rem\u0027, fontWeight: \u0027bold\u0027 }}\u003eברקוד/פרטי פריט\u003c/label\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\dashboard\\dresses\\[id]\\print\\page.js",
+        "LineNumber":  143,
+        "Line":  "              \u003cth\u003eברקוד פריט\u003c/th\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\dashboard\\dresses\\page.js",
+        "LineNumber":  972,
+        "Line":  "                          placeholder=\"חיפוש בפריטים (מידה, מספר סידורי, ברקוד...)\" "
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\dashboard\\dresses\\page.js",
+        "LineNumber":  1014,
+        "Line":  "                            \u003cinput type=\"text\" placeholder=\"ברקוד פריט\" value={newItem.dressBarcode} onChange={e =\u003e handleNewItemChange(\u0027dressBarcode\u0027, e.target.value)} className=\"filter-select\" style={{ width: \u0027100%\u0027, padding: \u00270.4rem\u0027 }} /\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\dashboard\\dresses\\page.js",
+        "LineNumber":  1048,
+        "Line":  "                              \u003cspan style={{ cursor: \u0027pointer\u0027 }} onClick={() =\u003e handleItemsSort(\u0027dressBarcode\u0027)}\u003e{getLabel(\u0027item_barcode\u0027, \u0027ברקוד פריט\u0027)} {itemsSort.key === \u0027dressBarcode\u0027 ? (itemsSort.direction === \u0027asc\u0027 ? \u003cArrowUp size={14}/\u003e : \u003cArrowDown size={14}/\u003e) : \u003cArrowUpDown size={14} color=\"#ccc\" /\u003e}\u003c/span\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\dashboard\\dresses\\page.js",
+        "LineNumber":  1051,
+        "Line":  "                            {showColumnFilters \u0026\u0026 \u003cinput type=\"text\" placeholder=\"סנן ברקוד...\" value={itemsColumnFilters.dressBarcode} onChange={e =\u003e setItemsColumnFilters({...itemsColumnFilters, dressBarcode: e.target.value})} style={{ width: \u0027100%\u0027, padding: \u00270.2rem\u0027, marginTop: \u00270.4rem\u0027, fontSize: \u00270.8rem\u0027, border: \u00271px solid #ddd\u0027, borderRadius: \u00274px\u0027 }} /\u003e}"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\dashboard\\dresses\\page.js",
+        "LineNumber":  1121,
+        "Line":  "                        \u003cinput type=\"text\" placeholder=\"ברקוד\" value={newItem.dressBarcode} onChange={e =\u003e handleNewItemChange(\u0027dressBarcode\u0027, e.target.value)} className=\"filter-select\" /\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\dashboard\\dresses\\page.js",
+        "LineNumber":  1175,
+        "Line":  "              \u003ch2 style={{ margin: 0 }}\u003eפרטי פריט נוספים (מס\u0027 ס: {itemHistory.serialNumber}, ברקוד: {itemHistory.dressBarcode})\u003c/h2\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\orders\\page.js",
+        "LineNumber":  303,
+        "Line":  "                \u003clabel style={{ display: \u0027block\u0027, marginBottom: \u00270.5rem\u0027, fontWeight: \u0027bold\u0027 }}\u003eברקוד/פרטי פריט\u003c/label\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\print\\order\\page.js",
+        "LineNumber":  312,
+        "Line":  "                  \u003cth\u003eברקוד\u003c/th\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\rentals\\page.js",
+        "LineNumber":  176,
+        "Line":  "            placeholder=\"סרוק ברקוד כאן...\" "
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\rentals\\page.js",
+        "LineNumber":  224,
+        "Line":  "                \u003clabel style={{ display: \u0027block\u0027, marginBottom: \u00270.5rem\u0027, fontWeight: \u0027bold\u0027 }}\u003eברקוד/פרטי פריט\u003c/label\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\rentals\\page.js",
+        "LineNumber":  292,
+        "Line":  "              itemsSummary: o.items ? o.items.filter(i =\u003e !i.isDeleted).map(i =\u003e `${i.description} (${i.barcode || \u0027ללא ברקוד\u0027})`).join(\u0027 | \u0027) : \u0027\u0027"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\page.js",
+        "LineNumber":  460,
+        "Line":  "                            \u003cdiv style={{ fontSize: \u00270.85rem\u0027, color: \u0027#6b7280\u0027 }}\u003eברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}\u003c/div\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\app\\page.js",
+        "LineNumber":  676,
+        "Line":  "                           ברקוד: {rental.barcode || \u0027-\u0027} • מידה: {rental.sizeText || rental.dressItem?.sizeText || \u0027-\u0027}"
+    }
+]

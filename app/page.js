@@ -41,6 +41,40 @@ export default function HomeDashboard() {
   const [rentalsExpanded, setRentalsExpanded] = useState(true);
   const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
 
+  const parseMessageToLinks = (text) => {
+    if (!text) return null;
+    const parts = text.split(/(הזמנה\s*\d+|לקוח\s*[\w-]+)/g);
+    return parts.map((part, i) => {
+      let match = part.match(/הזמנה\s*(\d+)/);
+      if (match) {
+        return (
+          <a
+            key={i}
+            href={`/orders/${match[1]}`}
+            target="_blank"
+            style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#ec4899', color: 'white', padding: '2px 8px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', margin: '0 4px', fontSize: '0.9rem' }}
+          >
+            {part}
+          </a>
+        );
+      }
+      match = part.match(/לקוח\s*([\w-]+)/);
+      if (match) {
+        return (
+          <a
+            key={i}
+            href={`/customers/${match[1]}`}
+            target="_blank"
+            style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#ec4899', color: 'white', padding: '2px 8px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', margin: '0 4px', fontSize: '0.9rem' }}
+          >
+            {part}
+          </a>
+        );
+      }
+      return <span key={i}>{part}</span>;
+    });
+  };
+
   useEffect(() => {
     // Load from local storage
     const savedSearchInput = sessionStorage.getItem('dashboardSearchInput');
@@ -264,7 +298,7 @@ export default function HomeDashboard() {
                   {msg.role === 'user' ? 'אתה:' : 'מערכת AI:'}
                 </div>
                 <div style={{ fontSize: '1.1rem', lineHeight: '1.6', color: 'var(--text-main)', whiteSpace: 'pre-wrap' }}>
-                  {msg.content}
+                  {parseMessageToLinks(msg.content)}
                 </div>
                 {msg.data && msg.data.length > 0 && (
                   <div style={{ marginTop: '1rem' }}>
@@ -479,7 +513,7 @@ export default function HomeDashboard() {
                 </thead>
                 <tbody>
                   {debts.map(debt => (
-                    <tr key={debt.id} style={{ borderBottom: '1px solid #f3f4f6', background: !debt.isApproved ? '#fef2f2' : 'transparent' }}>
+                    <tr key={debt.id} style={{ borderBottom: '1px solid #f3f4f6', background: 'transparent' }}>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
                         <div style={{ fontWeight: '500' }}>#{debt.orderId}</div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{debt.customer?.firstName} {debt.customer?.lastName}</div>
@@ -487,11 +521,6 @@ export default function HomeDashboard() {
                       <td style={{ padding: '0.75rem 0.5rem' }}>₪{debt.totalAmount}</td>
                       <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold', color: '#ef4444' }}>
                         ₪{debt.remaining}
-                        {!debt.isApproved && (
-                          <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: '#fee2e2', color: '#b91c1c', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', marginRight: '6px' }}>
-                            <AlertTriangle size={12} /> חריג
-                          </div>
-                        )}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
                         <Link href={`/orders/${debt.orderId}`} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '12px' }}>לפרטים</Link>
@@ -532,13 +561,13 @@ export default function HomeDashboard() {
                 {recentPayments.map(payment => (
                   <li key={payment.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0.5rem', borderBottom: '1px solid #f3f4f6' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ background: '#d1fae5', color: '#047857', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>
-                        ₪
+                      <div style={{ background: '#d1fae5', color: '#047857', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <CreditCard size={20} />
                       </div>
                       <div>
                         <div style={{ fontWeight: '500' }}>{payment.customer?.firstName} {payment.customer?.lastName}</div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                          הזמנה #{payment.order?.orderId} • {new Date(payment.paymentDate).toLocaleDateString('he-IL')}
+                          הזמנה #{payment.order?.orderId} • {new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(payment.paymentDate))}
                         </div>
                       </div>
                     </div>
@@ -591,7 +620,7 @@ export default function HomeDashboard() {
                           הזמנה: {order.orderDate ? new Date(order.orderDate).toLocaleDateString('he-IL') : '-'} • אירוע: {order.eventDateHebrew || '-'}
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                          פריטים: {order.items?.length || 0} • סטטוס: {order.status || 'פעיל'}
+                          פריטים: {order.items?.length || 0} • סטטוס: {order.status || 'פעיל'} • עובד: {order.employee?.firstName ? `${order.employee.firstName} ${order.employee.lastName || ''}` : '-'}
                         </div>
                       </div>
                     </div>
@@ -647,7 +676,7 @@ export default function HomeDashboard() {
                            ברקוד: {rental.barcode || '-'} • מידה: {rental.sizeText || rental.dressItem?.sizeText || '-'}
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                           לקוח: {rental.order?.customer?.firstName} {rental.order?.customer?.lastName} • שעה: {rental.takenDate ? new Date(rental.takenDate).toLocaleString('he-IL', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: '2-digit' }) : '-'} • עובד: {rental.employeeName || '-'}
+                           לקוח: {rental.order?.customer?.firstName} {rental.order?.customer?.lastName} • לקיחה: {rental.takenDate ? new Date(rental.takenDate).toLocaleDateString('he-IL') : '-'} • החזרה: {rental.returnDate ? new Date(rental.returnDate).toLocaleDateString('he-IL') : '-'} • עובד: {rental.employee?.firstName ? `${rental.employee.firstName} ${rental.employee.lastName || ''}` : (rental.employeeName || '-')}
                         </div>
                       </div>
                     </div>

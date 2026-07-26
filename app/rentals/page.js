@@ -197,7 +197,7 @@ export default function RentalsPage() {
             onSearch={(e) => { e.preventDefault(); if(isAiModeActive) setIsAiModeActive(false); }}
             onClear={handleClearSearch}
             onAiSearch={handleAiSearch}
-            onStatistics={() => setShowStatistics(true)}
+            onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
             loading={aiLoading}
           />
           <button 
@@ -371,10 +371,11 @@ export default function RentalsPage() {
       )}
 
       <StatisticsModal 
-        isOpen={showStatistics} 
+        isOpen={!!showStatistics} 
         onClose={() => setShowStatistics(false)} 
         pageContext="rentals"
         contextQuery={aiQueryUsed}
+        position={typeof showStatistics === 'object' ? showStatistics : null}
       />
     </main>
   );

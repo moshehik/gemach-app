@@ -28,11 +28,11 @@ export async function GET(request) {
         phone1 LIKE $1 OR 
         phone2 LIKE $1 OR 
         city LIKE $1 OR 
-        id = $2
+        id = $3
       )
       ORDER BY id DESC
       LIMIT 50
-    `, likeQ, isNum ? numQ : -1);
+    `, likeQ, isNum ? numQ : -1, q);
 
     // 2. Search Orders
     const orders = await prisma.$queryRawUnsafe(`
@@ -45,13 +45,12 @@ export async function GET(request) {
         c."lastName" LIKE $1 OR
         c.phone1 LIKE $1 OR
         o."eventDateHebrew" LIKE $1 OR
-        CAST(o."eventDate" AS TEXT) LIKE $1 OR
         o."orderId" = $2 OR 
-        o.id = $2
+        o.id = $3
       )
       ORDER BY o.id DESC
       LIMIT 50
-    `, likeQ, isNum ? numQ : -1);
+    `, likeQ, isNum ? numQ : -1, q);
 
     // 3. Search Rentals (OrderItems / Dresses)
     const rentals = await prisma.$queryRawUnsafe(`
@@ -66,11 +65,12 @@ export async function GET(request) {
         oi.barcode LIKE $1 OR
         CAST(oi."barcodePrefix" AS TEXT) LIKE $1 OR
         CAST(d."barcodePrefix" AS TEXT) LIKE $1 OR
-        oi."orderId" = $2
+        oi."orderId" = $2 OR
+        oi.id = $3
       )
       ORDER BY oi.id DESC
       LIMIT 50
-    `, likeQ, isNum ? numQ : -1);
+    `, likeQ, isNum ? numQ : -1, q);
 
     const processedOrders = orders.map(o => ({
       ...o,

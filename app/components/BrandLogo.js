@@ -42,7 +42,7 @@ export default function BrandLogo() {
   }
 
   return (
-    <div className="navbar-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '0', paddingRight: '1rem' }}>
+    <div className="navbar-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: '1rem' }}>
       <img 
         src={logoUrl} 
         alt="לוגו" 

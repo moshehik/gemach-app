@@ -1,12 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { X, Send, Bot, Loader2, BarChart3 } from 'lucide-react';
 
-export default function StatisticsModal({ isOpen, onClose, contextQuery, pageContext }) {
+export default function StatisticsModal({ isOpen, onClose, contextQuery, pageContext, position }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeSessionId, setActiveSessionId] = useState(null);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -15,6 +17,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
         role: 'assistant', 
         content: `שלום! אני עוזר הסטטיסטיקה של ${pageContext === 'orders' ? 'ההזמנות' : pageContext === 'customers' ? 'הלקוחות' : 'המערכת'}. שאל אותי שאלות על הנתונים (למשל: 'כמה הזמנות יש החודש?' או 'מה פילוח הלקוחות לפי ערים?').` 
       }]);
+      setActiveSessionId(null);
     }
   }, [isOpen, messages.length, pageContext]);
 
@@ -55,7 +58,26 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
         ? { role: 'assistant', content: data.response }
         : { role: 'assistant', content: 'מצטער, חלה שגיאה בהפקת הסטטיסטיקה.' };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      const finalMessages = [...newMessages, assistantMessage];
+      setMessages(finalMessages);
+
+      try {
+        const syncRes = await fetch('/api/ai/sessions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            sessionId: activeSessionId,
+            context: `דוח AI - ${pageContext}`,
+            messages: finalMessages
+          })
+        });
+        const syncData = await syncRes.json();
+        if (syncData.success && syncData.session && !activeSessionId) {
+          setActiveSessionId(syncData.session.id);
+        }
+      } catch (err) {
+        console.error('Failed to sync session', err);
+      }
     } catch (error) {
       setMessages(prev => [...prev, { role: 'assistant', content: 'שגיאת תקשורת עם השרת.' }]);
     } finally {
@@ -65,22 +87,45 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
 
   if (!isOpen) return null;
 
-  return (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+  const overlayStyle = {
+    zIndex: 1100,
+    display: 'flex',
+    alignItems: position ? 'flex-start' : 'center',
+    justifyContent: position ? 'flex-start' : 'center',
+    position: 'fixed',
+    top: 0, left: 0, right: 0, bottom: 0,
+    background: 'rgba(0,0,0,0.5)'
+  };
+
+  const modalStyle = {
+    width: '90%', 
+    maxWidth: '600px', 
+    height: '80vh', 
+    maxHeight: '600px',
+    display: 'flex', 
+    flexDirection: 'column', 
+    padding: 0,
+    borderRadius: '16px',
+    overflow: 'hidden',
+    boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+    background: 'var(--bg-color, white)',
+    ...(position ? {
+      position: 'absolute',
+      top: `${Math.min(position.y, window.innerHeight - 620)}px`,
+      // For RTL layout, clientX is from the left. But we might want it aligned. Let's just use left.
+      // But if it overflows the right edge, we adjust it.
+      left: `${Math.min(Math.max(20, position.x - 300), window.innerWidth - 620)}px`,
+    } : {
+      position: 'relative'
+    })
+  };
+
+  const content = (
+    <div className="modal-overlay" onClick={onClose} style={overlayStyle}>
       <div 
         className="modal-content animate-fade-in" 
         onClick={e => e.stopPropagation()} 
-        style={{ 
-          width: '90%', 
-          maxWidth: '600px', 
-          height: '80vh', 
-          display: 'flex', 
-          flexDirection: 'column', 
-          padding: 0,
-          borderRadius: '16px',
-          overflow: 'hidden',
-          boxShadow: '0 20px 40px rgba(0,0,0,0.2)'
-        }}
+        style={modalStyle}
       >
         {/* Header */}
         <div style={{ 
@@ -187,4 +232,6 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(content, document.body) : content;
 }

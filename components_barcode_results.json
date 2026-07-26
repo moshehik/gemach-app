@@ -1,0 +1,67 @@
+﻿[
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\orders\\OrderRentalsManager.js",
+        "LineNumber":  65,
+        "Line":  "      alert(`ברקוד ${barcode} לא נמצא בהזמנה זו.`);"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\orders\\OrderRentalsManager.js",
+        "LineNumber":  167,
+        "Line":  "                placeholder=\"סרוק ברקוד...\""
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\orders\\OrderRentalsManager.js",
+        "LineNumber":  185,
+        "Line":  "                \u003ch3 style={{ margin: \u00270 0 1rem 0\u0027, color: \u0027#0f172a\u0027, textAlign: \u0027center\u0027 }}\u003eהזנת ברקוד ידנית\u003c/h3\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\orders\\OrderRentalsManager.js",
+        "LineNumber":  186,
+        "Line":  "                \u003cp style={{ color: \u0027#64748b\u0027, fontSize: \u00270.95rem\u0027, marginBottom: \u00271.5rem\u0027, textAlign: \u0027center\u0027 }}\u003eהזן את הברקוד המופיע על הפריט כדי לאשר את הפעולה.\u003c/p\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\orders\\OrderRentalsManager.js",
+        "LineNumber":  198,
+        "Line":  "                    placeholder=\"הקלד ברקוד...\""
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\orders\\OrderRentalsManager.js",
+        "LineNumber":  217,
+        "Line":  "                    \u003cth style={{ ...tableHeaderStyle, width: \u0027120px\u0027 }}\u003eברקוד\u003c/th\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\orders\\RentalReturnModal.js",
+        "LineNumber":  350,
+        "Line":  "                placeholder={`סרוק ברקוד ל${activeTab === \u0027rental\u0027 ? \u0027השכרה\u0027 : \u0027החזרה\u0027} כאן...`}"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\orders\\RentalReturnModal.js",
+        "LineNumber":  375,
+        "Line":  "                        \u003cth className=\"p-4 font-bold border-b border-slate-200\"\u003e{getLabel(\u0027item_barcode\u0027, \u0027ברקוד\u0027)}\u003c/th\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\orders\\RentalReturnModal.js",
+        "LineNumber":  453,
+        "Line":  "                        \u003cth className=\"p-4 font-bold border-b border-slate-200\"\u003e{getLabel(\u0027item_barcode\u0027, \u0027ברקוד\u0027)}\u003c/th\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\orders\\RentalReturnModal.js",
+        "LineNumber":  580,
+        "Line":  "              \u003cp className=\"text-amber-700 mt-2 text-sm\"\u003eבחר לאיזה מהם לשייך את הברקוד שנסרק\u003c/p\u003e"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\HistoryViewer.js",
+        "LineNumber":  27,
+        "Line":  "  barcodePrefix: \u0027קידומת ברקוד\u0027,"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\HistoryViewer.js",
+        "LineNumber":  35,
+        "Line":  "  dressBarcode: \u0027ברקוד שמלה\u0027,"
+    },
+    {
+        "Path":  "C:\\Users\\moshe\\Desktop\\גמח שמלות חדש\\gemach-app\\components\\HistoryViewer.js",
+        "LineNumber":  65,
+        "Line":  "  barcode: \u0027ברקוד\u0027,"
+    }
+]

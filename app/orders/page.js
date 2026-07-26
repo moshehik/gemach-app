@@ -212,9 +212,13 @@ export default function OrdersPage() {
               <Trash2 size={20} />
               <span style={{ fontWeight: filterStatus === 'deleted' ? 'bold' : 'normal' }}>מחוק</span>
             </button>
-            <button onClick={() => { setFilterStatus('unpaid'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם">
+            <button onClick={() => { setFilterStatus('unpaid'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם (חודשים אחרונים)">
               <AlertCircle size={20} />
               <span style={{ fontWeight: filterStatus === 'unpaid' ? 'bold' : 'normal' }}>לא שולם</span>
+            </button>
+            <button onClick={() => { setFilterStatus('unpaid_all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid_all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid_all' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם (כולל ישנים)">
+              <AlertCircle size={20} />
+              <span style={{ fontWeight: filterStatus === 'unpaid_all' ? 'bold' : 'normal' }}>לא שולם (הכל)</span>
             </button>
             <button onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
               <List size={20} />
@@ -269,7 +273,7 @@ export default function OrdersPage() {
             onSearch={handleSearch}
             onClear={handleClearSearch}
             onAiSearch={handleAiSearch}
-            onStatistics={() => setShowStatistics(true)}
+            onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
             loading={aiLoading}
           />
           <button 
@@ -466,10 +470,11 @@ export default function OrdersPage() {
       )}
 
       <StatisticsModal 
-        isOpen={showStatistics} 
+        isOpen={!!showStatistics} 
         onClose={() => setShowStatistics(false)} 
         pageContext="orders"
         contextQuery={aiQueryUsed}
+        position={typeof showStatistics === 'object' ? showStatistics : null}
       />
 
       {hoveredOrder && typeof document !== 'undefined' && createPortal(

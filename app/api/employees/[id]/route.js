@@ -6,8 +6,8 @@ import { NextResponse } from 'next/server';
 export async function GET(request, { params }) {
   try {
     const resolvedParams = await params;
-    const id = parseInt(resolvedParams.id, 10);
-    if (isNaN(id)) {
+    const id = resolvedParams.id;
+    if (!id) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
@@ -36,8 +36,8 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const resolvedParams = await params;
-    const id = parseInt(resolvedParams.id, 10);
-    if (isNaN(id)) {
+    const id = resolvedParams.id;
+    if (!id) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 

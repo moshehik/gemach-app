@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Users, User, Clock, X } from 'lucide-react';
 
 export default function ActiveEmployeesModal({ orderId, isOpen, onClose }) {
@@ -40,7 +41,7 @@ export default function ActiveEmployeesModal({ orderId, isOpen, onClose }) {
     });
   };
 
-  return (
+  const content = (
     <div style={{
       position: 'fixed',
       top: 0, left: 0, right: 0, bottom: 0,
@@ -150,4 +151,6 @@ export default function ActiveEmployeesModal({ orderId, isOpen, onClose }) {
       </div>
     </div>
   );
+
+  return typeof document !== 'undefined' ? createPortal(content, document.body) : content;
 }

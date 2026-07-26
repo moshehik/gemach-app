@@ -72,25 +72,17 @@ export async function GET(request) {
       }
     });
 
-    // Custom sorting as in Access:
-    // 1. Today
-    // 2. Tomorrow
-    // 4. Other
-    // Then: eventDate, customer Name, dress Name
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
     const sortedItems = items.sort((a, b) => {
       const getPriority = (date) => {
-        if (!date) return 4;
+        if (!date) return 2;
         const d = new Date(date);
         d.setHours(0, 0, 0, 0);
-        if (d.getTime() === today.getTime()) return 1;
-        if (d.getTime() === tomorrow.getTime()) return 2;
-        return 4;
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const diffTime = d.getTime() - today.getTime();
+        const diffDays = diffTime / (1000 * 60 * 60 * 24);
+        if (diffDays >= 0 && diffDays <= 7) return 1; // This coming week (including today)
+        return 2;
       };
 
       const pA = getPriority(a.order?.eventDate);
@@ -100,7 +92,7 @@ export async function GET(request) {
 
       const dateA = a.order?.eventDate ? new Date(a.order.eventDate).getTime() : 0;
       const dateB = b.order?.eventDate ? new Date(b.order.eventDate).getTime() : 0;
-      if (dateA !== dateB) return dateA - dateB;
+      if (dateA !== dateB) return dateB - dateA; // Newest to oldest (descending date)
 
       const custA = (a.order?.customer?.firstName || '') + ' ' + (a.order?.customer?.lastName || '');
       const custB = (b.order?.customer?.firstName || '') + ' ' + (b.order?.customer?.lastName || '');

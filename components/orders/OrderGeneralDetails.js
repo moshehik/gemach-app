@@ -210,7 +210,7 @@ export default function OrderGeneralDetails({ order, onOrderChange }) {
                   {order.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.eventDate)})` : 'לא נבחר'}
                 </div>
               </div>
-              {order.isAbroad && (
+              {(order.fromDate || order.toDate || order.returnDate || order.isAbroad) && (
                 <>
                   <div>
                     <span style={{...labelStyle, color: '#64748b'}}>לקיחה:</span>

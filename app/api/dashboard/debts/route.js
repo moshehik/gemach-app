@@ -27,7 +27,7 @@ export async function GET(request) {
       orderBy: {
         orderId: 'desc'
       },
-      take: 20
+      take: 100
     });
 
     // Fetch all DEBT_APPROVED audit logs for these orders
@@ -65,7 +65,7 @@ export async function GET(request) {
         remaining,
         isApproved
       };
-    }).filter(d => d.remaining > 0);
+    }).filter(d => d.remaining > 0 && !d.isApproved);
 
     // 2. Fetch Recent Payments
     const recentPayments = await prisma.payment.findMany({
@@ -106,6 +106,12 @@ export async function GET(request) {
         items: {
           where: { isDeleted: false },
           select: { id: true }
+        },
+        employee: {
+          select: {
+            firstName: true,
+            lastName: true
+          }
         }
       },
       orderBy: {
@@ -143,7 +149,7 @@ export async function GET(request) {
         }
       },
       orderBy: {
-        id: 'desc'
+        createdAt: 'desc'
       },
       take: 10
     });

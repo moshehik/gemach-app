@@ -22,6 +22,7 @@ const categories = [
     items: [
       { href: '/admin/ai', icon: Bot, label: 'מערכת AI', subLabel: 'תובנות ודוחות מלל' },
       { href: '/admin/statistics', icon: BarChart3, label: 'סטטיסטיקה', subLabel: 'דוחות שאילתות' },
+      { href: '/admin/ai-history', icon: Bot, label: 'היסטוריית AI', subLabel: 'כלל שיחות העוזר' },
       { href: '/dashboard', icon: LayoutDashboard, label: 'דשבורד', subLabel: 'גרפים ומגמות' },
       { href: '/dashboard/pricelist', icon: FileText, label: 'מחירון', subLabel: 'צפייה והדפסה' },
     ]

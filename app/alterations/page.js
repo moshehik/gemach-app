@@ -1,10 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Calendar, CalendarPlus, Scissors, Printer, Info, CheckCircle, Search, X, Check, Clock } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import Link from 'next/link';
+import { Calendar, CalendarPlus, Scissors, Printer, Info, CheckCircle, Search, X, Check, Clock, FileText } from 'lucide-react';
 import PrintWizardModal from '../components/PrintWizardModal';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import { getHebrewDateString } from '../../lib/hebrewDate';
+import ExportButtons from '../../components/ExportButtons';
+import AISearchBar from '../components/AISearchBar';
+import StatisticsModal from '../components/StatisticsModal';
 
 export default function AlterationsPage() {
   const [items, setItems] = useState([]);
@@ -27,6 +32,13 @@ export default function AlterationsPage() {
   // Print Wizard state
   const [isPrintWizardOpen, setIsPrintWizardOpen] = useState(false);
   const [isLegendOpen, setIsLegendOpen] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiQueryUsed, setAiQueryUsed] = useState('');
+  const [isAiModeActive, setIsAiModeActive] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => setMounted(true), []);
 
   useEffect(() => {
     fetchAlterations();
@@ -109,9 +121,68 @@ export default function AlterationsPage() {
   };
 
   const handleSearch = (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     setSearch(searchInput);
     setPage(1);
+    setIsAiModeActive(false);
+  };
+
+  const handleAiSearch = async (query) => {
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/ai/smart-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: query, pageContext: 'alterations' })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setItems(result.data || []);
+        setTotalCount(result.data?.length || 0);
+        setTotalPages(1);
+        setIsAiModeActive(true);
+        setAiQueryUsed(result.query || '');
+      } else {
+        alert(result.error || 'שגיאה בחיפוש החכם');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('שגיאת תקשורת');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearch('');
+    setPage(1);
+    if (isAiModeActive) {
+      setIsAiModeActive(false);
+      fetchAlterations();
+    }
+  };
+
+  const fetchForExport = async (exportLimit) => {
+    try {
+      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=1&limit=${exportLimit}`;
+      if (startDate) url += `&startDate=${startDate}`;
+      if (endDate) url += `&endDate=${endDate}`;
+      if (search) url += `&search=${search}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      return (data.data || []).map(item => ({
+        ...item,
+        orderId: item.order?.orderId,
+        customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
+        dressName: item.dressItem?.dress?.name || item.dressItem?.dressName,
+        eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
+        alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין'
+      }));
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
   };
 
   return (
@@ -126,115 +197,101 @@ export default function AlterationsPage() {
           <Scissors size={32} /> ניהול תפירות ותיקונים
         </h1>
         
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          {/* Status Filter Banner (Adapted for Alterations) */}
+          <div style={{ display: 'flex', gap: '1rem', background: 'var(--element-bg)', padding: '0.4rem 1rem', borderRadius: '8px', alignItems: 'center', border: '1px solid var(--element-border)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>מתאריך:</label>
+              <div style={{ width: '130px' }}>
+                <HebrewDatePicker value={startDate} onChange={setStartDate} />
+              </div>
+            </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <label style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>עד תאריך:</label>
+              <div style={{ width: '130px' }}>
+                <HebrewDatePicker value={endDate} onChange={setEndDate} />
+              </div>
+            </div>
+            
+            <div style={{ width: '1px', height: '24px', background: 'var(--element-border)', margin: '0 0.5rem' }}></div>
+            
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}>
+              <input 
+                type="checkbox" 
+                checked={showOnlyPending} 
+                onChange={e => setShowOnlyPending(e.target.checked)} 
+                style={{ marginLeft: '6px' }}
+              />
+              רק ממתינים
+            </label>
+
+            <button 
+              className="btn btn-primary" 
+              style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderRadius: '6px', height: '32px', display: 'flex', alignItems: 'center', gap: '4px' }}
+              onClick={markAllDone} 
+              disabled={!startDate}
+            >
+              <CheckCircle size={14} /> סמן כבוצע להיום
+            </button>
+          </div>
+
+          <ExportButtons 
+            data={items.map(item => ({
+              ...item,
+              orderId: item.order?.orderId,
+              customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
+              dressName: item.dressItem?.dress?.name || item.dressItem?.dressName,
+              eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
+              alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין'
+            }))}
+            filename="תפירות"
+            columns={[
+              { key: 'orderId', label: 'קוד הזמנה' },
+              { key: 'customerName', label: 'לקוח' },
+              { key: 'dressName', label: 'שמלה' },
+              { key: 'sizeText', label: 'מידה' },
+              { key: 'eventDate', label: 'תאריך אירוע' },
+              { key: 'alterationStatus', label: 'סטטוס' }
+            ]}
+            iconOnly={true}
+            onFetchData={fetchForExport}
+          />
           <button 
             className="btn btn-outline"
             onClick={() => setIsPrintWizardOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ddd', color: '#10b981', backgroundColor: '#ecfdf5', cursor: 'pointer' }}
+            title="אשף הדפסה"
           >
-            <Printer size={18} /> אשף הדפסה
+            <Printer size={22} />
           </button>
           <button 
             className="btn btn-outline"
             onClick={() => setIsLegendOpen(true)}
-            style={{ display: 'flex', alignItems: 'center', gap: '8px' }}
+            style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ddd', color: '#3b82f6', backgroundColor: '#eff6ff', cursor: 'pointer' }}
+            title="מקרא"
           >
-            <Info size={18} /> מקרא
+            <Info size={22} />
           </button>
         </div>
       </div>
 
-      <div className="dress-card" style={{ padding: '1.5rem', marginBottom: '2rem', display: 'flex', gap: '20px', alignItems: 'flex-end', flexWrap: 'wrap', overflow: 'visible', zIndex: 10, position: 'relative' }}>
-        <div style={{ display: 'flex', gap: '15px', minWidth: '300px', flex: '1' }}>
-          <div style={{ flex: '1' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <label style={{ fontWeight: '500', color: 'var(--text-main)', margin: 0 }}>מתאריך:</label>
-              <div style={{ display: 'flex', gap: '5px' }}>
-                <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', height: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => setQuickDate(0)}>
-                  <Calendar size={14} /> היום
-                </button>
-                <button className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', height: 'auto', display: 'flex', alignItems: 'center', gap: '4px' }} onClick={() => setQuickDate(1)}>
-                  <CalendarPlus size={14} /> מחר
-                </button>
-              </div>
-            </div>
-            <HebrewDatePicker 
-              value={startDate} 
-              onChange={date => setStartDate(date)} 
-            />
-          </div>
-          <div style={{ flex: '1' }}>
-            <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500', color: 'var(--text-main)' }}>עד תאריך:</label>
-            <HebrewDatePicker 
-              value={endDate} 
-              onChange={date => setEndDate(date)} 
-            />
-          </div>
+      {/* Search and Filters */}
+      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '600px' }}>
+          <AISearchBar 
+            placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onSearch={handleSearch}
+            onClear={handleClearSearch}
+            onAiSearch={handleAiSearch}
+            onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+            loading={aiLoading}
+          />
         </div>
-        
-        {/* Search Bar aligned with date filtering */}
-        <div style={{ flex: '1.5', minWidth: '300px' }}>
-           <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', height: '42px' }}>
-            <div style={{ position: 'relative', flex: 1, height: '100%' }}>
-              <Search size={18} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-              <input 
-                type="text" 
-                placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                style={{ 
-                  width: '100%',
-                  height: '100%',
-                  padding: '0 2.5rem 0 1rem', 
-                  borderRadius: '12px', 
-                  border: '1px solid var(--border-color)',
-                  background: 'var(--bg-color)',
-                  outline: 'none',
-                  fontSize: '0.95rem'
-                }}
-              />
-              {searchInput && (
-                <button 
-                  type="button"
-                  onClick={() => { setSearchInput(''); setSearch(''); setPage(1); }}
-                  style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}
-                  title="נקה חיפוש"
-                >
-                  <X size={16} />
-                </button>
-              )}
-            </div>
-            <button type="submit" className="btn btn-primary" style={{ borderRadius: '12px', padding: '0 1.5rem', height: '100%' }}>
-              חיפוש
-            </button>
-          </form>
-        </div>
-        
-        <div style={{ display: 'flex', gap: '15px', minWidth: '350px', alignItems: 'center', height: '42px', flex: '1' }}>
-          <label style={{ flex: '1', display: 'flex', alignItems: 'center', cursor: 'pointer', padding: '0 1rem', background: 'rgba(212, 175, 55, 0.05)', borderRadius: '12px', border: '1px solid var(--border-color)', transition: 'all 0.3s ease', height: '100%' }}>
-            <input 
-              type="checkbox" 
-              checked={showOnlyPending} 
-              onChange={e => setShowOnlyPending(e.target.checked)} 
-              style={{ marginLeft: '12px', transform: 'scale(1.2)' }}
-            />
-            <span style={{ fontWeight: '500', fontSize: '0.95rem' }}>רק ממתינים לתיקון</span>
-          </label>
-          
-          <button 
-            className="btn btn-primary" 
-            style={{ flex: '1', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', whiteSpace: 'nowrap', borderRadius: '12px' }}
-            onClick={markAllDone} 
-            disabled={!startDate}
-          >
-            <CheckCircle size={16} /> סמן הכל כבוצע
-          </button>
-        </div>
-      </div>
-
-      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '500' }}>
-          סה"כ רשומות: {totalCount}
+        <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center', fontWeight: '500' }}>
+          <span>סה"כ רשומות: {totalCount}</span>
         </div>
       </div>
 
@@ -321,14 +378,23 @@ export default function AlterationsPage() {
                           )}
                         </span>
                       </td>
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
+                          <Link 
+                            href={`/orders/${item.order?.orderId}`} 
+                            className="btn btn-outline" 
+                            style={{ padding: '0.5rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px' }}
+                            title="כרטיס הזמנה"
+                          >
+                            <FileText size={18} />
+                          </Link>
                         {!item.alterationDone && (
                           <button 
                             className="btn btn-primary" 
-                            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
+                            style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: '#ecfdf5', color: '#10b981' }}
                             onClick={() => markDone(item.id)}
+                            title="סמן שבוצע"
                           >
-                            סמן שבוצע
+                            <CheckCircle size={18} />
                           </button>
                         )}
                       </td>
@@ -372,13 +438,13 @@ export default function AlterationsPage() {
         />
       )}
 
-      {isLegendOpen && (
+      {isLegendOpen && mounted && createPortal(
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.4)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 1000
+          zIndex: 9999
         }} onClick={() => setIsLegendOpen(false)}>
           <div style={{
             background: 'var(--card-bg)',
@@ -412,8 +478,16 @@ export default function AlterationsPage() {
               <button className="btn btn-primary" onClick={() => setIsLegendOpen(false)}>הבנתי</button>
             </div>
           </div>
-        </div>
+        </div>, document.body
       )}
+
+      <StatisticsModal 
+        isOpen={!!showStatistics} 
+        onClose={() => setShowStatistics(false)} 
+        pageContext="alterations"
+        contextQuery={aiQueryUsed}
+        position={typeof showStatistics === 'object' ? showStatistics : null}
+      />
     </main>
   );
 }
