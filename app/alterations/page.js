@@ -345,6 +345,7 @@ export default function AlterationsPage() {
           <span>סה"כ רשומות: {totalCount}</span>
         </div>
       </div>
+      </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>

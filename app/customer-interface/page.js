@@ -6,11 +6,13 @@ import { HDate, Sedra, Locale, HebrewCalendar } from '@hebcal/core';
 import { getHebrewDateString, getHebrewMonthYear } from '@/lib/hebrewDate';
 import { RefreshCw, Printer, Lock, Maximize, Bot, Mic, History, Shirt, Crown, Star, Sparkles, Scissors, Gem, Heart, ShoppingBag, Feather, Palette, Camera, Tag, Gift, Sun, Moon, Music, Smile } from 'lucide-react';
 import { useLabels } from '@/app/components/LabelsContext';
+import HebrewDatePicker from '../../components/HebrewDatePicker';
 
 export default function CustomerInventoryViewer() {
   const { getLabel } = useLabels();
   const router = useRouter();
   const [dresses, setDresses] = useState([]);
+  const [stage, setStage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
