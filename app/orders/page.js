@@ -11,6 +11,7 @@ import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
 import { useLabels } from '@/app/components/LabelsContext';
+import HebrewDatePicker from '../../components/HebrewDatePicker';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 
 export default function OrdersPage() {
@@ -32,6 +33,12 @@ export default function OrdersPage() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const [filterStatus, setFilterStatus] = useState('all');
+  const [jumpDate, setJumpDate] = useState('');
+
+  useEffect(() => {
+    setAdvFilters(p => ({ ...p, eventDateFrom: jumpDate, eventDateTo: jumpDate }));
+    setPage(1);
+  }, [jumpDate]);
 
   const [advFilters, setAdvFilters] = useState({
     customerName: '', customerPhone: '', customerCity: '', 
@@ -105,11 +112,11 @@ export default function OrdersPage() {
         setIsAiModeActive(true);
         setAiQueryUsed(result.query || '');
       } else {
-        alert(result.error || 'שגיאה בחיפוש החכם');
+        alert(result.error || '׳©׳’׳™׳׳” ׳‘׳—׳™׳₪׳•׳© ׳”׳—׳›׳');
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאת תקשורת');
+      alert('׳©׳’׳™׳׳× ׳×׳§׳©׳•׳¨׳×');
     } finally {
       setAiLoading(false);
     }
@@ -135,19 +142,19 @@ export default function OrdersPage() {
   };
 
   const SortIcon = ({ column }) => {
-    if (sort !== column) return <span style={{ opacity: 0.3, marginRight: '4px' }}>⇅</span>;
-    return <span style={{ marginRight: '4px' }}>{order === 'asc' ? '↑' : '↓'}</span>;
+    if (sort !== column) return <span style={{ opacity: 0.3, marginRight: '4px' }}>ג‡…</span>;
+    return <span style={{ marginRight: '4px' }}>{order === 'asc' ? 'ג†‘' : 'ג†“'}</span>;
   };
 
   const handleDeleteOrder = async (order, e) => {
     e.stopPropagation();
     const status = calculateOrderStatus(order);
-    if (status === 'הוחזר' || status === 'מושכר' || status === 'חלקית') {
-      alert('לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר');
+    if (status === '׳”׳•׳—׳–׳¨' || status === '׳׳•׳©׳›׳¨' || status === '׳—׳׳§׳™׳×') {
+      alert('׳׳ ׳ ׳™׳×׳ ׳׳׳—׳•׳§ ׳”׳–׳׳ ׳” ׳׳׳—׳¨ ׳”׳©׳›׳¨׳” ׳—׳׳§׳™׳×/׳׳׳׳” ׳׳• ׳׳׳—׳¨ ׳©׳ ׳׳§׳— ׳•׳”׳•׳—׳–׳¨');
       return;
     }
     
-    if (await window.customConfirm('האם אתה בטוח שברצונך למחוק הזמנה זו?')) {
+    if (await window.customConfirm('׳”׳׳ ׳׳×׳” ׳‘׳˜׳•׳— ׳©׳‘׳¨׳¦׳•׳ ׳ ׳׳׳—׳•׳§ ׳”׳–׳׳ ׳” ׳–׳•?')) {
       try {
         const res = await fetch(`/api/orders/${order.orderId}`, {
           method: 'DELETE',
@@ -156,11 +163,11 @@ export default function OrdersPage() {
           fetchOrders();
         } else {
           const data = await res.json();
-          alert(data.error || 'שגיאה במחיקת הזמנה');
+          alert(data.error || '׳©׳’׳™׳׳” ׳‘׳׳—׳™׳§׳× ׳”׳–׳׳ ׳”');
         }
       } catch (err) {
         console.error(err);
-        alert('שגיאה במחיקת הזמנה');
+        alert('׳©׳’׳™׳׳” ׳‘׳׳—׳™׳§׳× ׳”׳–׳׳ ׳”');
       }
     }
   };
@@ -195,34 +202,34 @@ export default function OrdersPage() {
   return (
     <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ margin: 0, color: 'var(--primary-color)' }}>ניהול תשלומים</h1>
+        <h1 style={{ margin: 0, color: 'var(--primary-color)' }}>׳ ׳™׳”׳•׳ ׳×׳©׳׳•׳׳™׳</h1>
         <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
           
           {/* Status Filter Banner */}
           <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
-            <button onClick={() => { setFilterStatus('soon'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'soon' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'soon' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בקרוב (החל מהיום ואילך)">
+            <button onClick={() => { setFilterStatus('soon'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'soon' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'soon' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="׳‘׳§׳¨׳•׳‘ (׳”׳—׳ ׳׳”׳™׳•׳ ׳•׳׳™׳׳)">
               <CalendarDays size={20} />
-              <span style={{ fontWeight: filterStatus === 'soon' ? 'bold' : 'normal' }}>בקרוב</span>
+              <span style={{ fontWeight: filterStatus === 'soon' ? 'bold' : 'normal' }}>׳‘׳§׳¨׳•׳‘</span>
             </button>
-            <button onClick={() => { setFilterStatus('archive'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'archive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'archive' ? '#1565c0' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="ארכיון / עבר">
+            <button onClick={() => { setFilterStatus('archive'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'archive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'archive' ? '#1565c0' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="׳׳¨׳›׳™׳•׳ / ׳¢׳‘׳¨">
               <Archive size={20} />
-              <span style={{ fontWeight: filterStatus === 'archive' ? 'bold' : 'normal' }}>ארכיון/עבר</span>
+              <span style={{ fontWeight: filterStatus === 'archive' ? 'bold' : 'normal' }}>׳׳¨׳›׳™׳•׳/׳¢׳‘׳¨</span>
             </button>
-            <button onClick={() => { setFilterStatus('deleted'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוקים">
+            <button onClick={() => { setFilterStatus('deleted'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="׳׳—׳•׳§׳™׳">
               <Trash2 size={20} />
-              <span style={{ fontWeight: filterStatus === 'deleted' ? 'bold' : 'normal' }}>מחוק</span>
+              <span style={{ fontWeight: filterStatus === 'deleted' ? 'bold' : 'normal' }}>׳׳—׳•׳§</span>
             </button>
-            <button onClick={() => { setFilterStatus('unpaid'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם (חודשים אחרונים)">
+            <button onClick={() => { setFilterStatus('unpaid'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="׳׳ ׳©׳•׳׳ (׳—׳•׳“׳©׳™׳ ׳׳—׳¨׳•׳ ׳™׳)">
               <AlertCircle size={20} />
-              <span style={{ fontWeight: filterStatus === 'unpaid' ? 'bold' : 'normal' }}>לא שולם</span>
+              <span style={{ fontWeight: filterStatus === 'unpaid' ? 'bold' : 'normal' }}>׳׳ ׳©׳•׳׳</span>
             </button>
-            <button onClick={() => { setFilterStatus('unpaid_all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid_all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid_all' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם (כולל ישנים)">
+            <button onClick={() => { setFilterStatus('unpaid_all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid_all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid_all' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="׳׳ ׳©׳•׳׳ (׳›׳•׳׳ ׳™׳©׳ ׳™׳)">
               <AlertCircle size={20} />
-              <span style={{ fontWeight: filterStatus === 'unpaid_all' ? 'bold' : 'normal' }}>לא שולם (הכל)</span>
+              <span style={{ fontWeight: filterStatus === 'unpaid_all' ? 'bold' : 'normal' }}>׳׳ ׳©׳•׳׳ (׳”׳›׳)</span>
             </button>
-            <button onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
+            <button onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="׳”׳¦׳’ ׳”׳›׳">
               <List size={20} />
-              <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
+              <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>׳”׳›׳</span>
             </button>
           </div>
 
@@ -230,7 +237,7 @@ export default function OrdersPage() {
              onClick={() => setShowCapacitySearch(true)} 
              className="btn btn-outline" 
              style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ddd', color: '#10b981', backgroundColor: '#ecfdf5', cursor: 'pointer' }}
-             title="חיפוש תפוסה"
+             title="׳—׳™׳₪׳•׳© ׳×׳₪׳•׳¡׳”"
           >
             <CalendarSearch size={22} />
           </button>
@@ -240,13 +247,13 @@ export default function OrdersPage() {
               ...o,
               status: calculateOrderStatus(o)
             }))} 
-            filename="הזמנות" 
+            filename="׳”׳–׳׳ ׳•׳×" 
             columns={[
-              { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
-              { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
-              { key: 'totalAmount', label: getLabel('order_totalAmount', 'סכום לחיוב') },
-              { key: 'totalPaid', label: 'שולם' },
-              { key: 'status', label: getLabel('order_status', 'סטטוס') }
+              { key: 'orderId', label: getLabel('order_id', '׳§׳•׳“ ׳”׳–׳׳ ׳”') },
+              { key: 'customerName', label: getLabel('order_customerName', '׳׳§׳•׳—') },
+              { key: 'totalAmount', label: getLabel('order_totalAmount', '׳¡׳›׳•׳ ׳׳—׳™׳•׳‘') },
+              { key: 'totalPaid', label: '׳©׳•׳׳' },
+              { key: 'status', label: getLabel('order_status', '׳¡׳˜׳˜׳•׳¡') }
             ]}
             iconOnly={true}
             onFetchData={fetchOrdersForExport}
@@ -256,7 +263,7 @@ export default function OrdersPage() {
             href="/orders/new" 
             className="btn btn-primary" 
             style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: '#3b82f6', color: 'white' }}
-            title="הזמנה חדשה"
+            title="׳”׳–׳׳ ׳” ׳—׳“׳©׳”"
           >
             <Plus size={22} />
           </Link>
@@ -265,7 +272,7 @@ export default function OrdersPage() {
       
       {/* Search and Filters */}
       <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '600px' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '800px', alignItems: 'center' }}>
           <AISearchBar 
             placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
             value={searchInput}
@@ -276,51 +283,54 @@ export default function OrdersPage() {
             onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
             loading={aiLoading}
           />
+          <div style={{ width: '150px' }}>
+            <HebrewDatePicker value={jumpDate} onChange={setJumpDate} placeholder="קפיצה לתאריך..." />
+          </div>
           <button 
             onClick={() => setShowAdvSearch(true)}
             className="btn btn-outline"
             style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-            title="חיפוש מתקדם"
+            title="׳—׳™׳₪׳•׳© ׳׳×׳§׳“׳"
           >
-            🔍
+            נ”
           </button>
         </div>
         <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <span>סה"כ רשומות: {totalCount}</span>
+          <span>׳¡׳”"׳› ׳¨׳©׳•׳׳•׳×: {totalCount}</span>
         </div>
       </div>
 
       {showAdvSearch && (
         <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
           <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-            <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem' }}>חיפוש מתקדם</h2>
+            <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem' }}>׳—׳™׳₪׳•׳© ׳׳×׳§׳“׳</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('order_id', 'מספר הזמנה')}</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('order_id', '׳׳¡׳₪׳¨ ׳”׳–׳׳ ׳”')}</label>
                 <input type="text" className="form-control" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>ברקוד/פרטי פריט</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>׳‘׳¨׳§׳•׳“/׳₪׳¨׳˜׳™ ׳₪׳¨׳™׳˜</label>
                 <input type="text" className="form-control" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('order_customerName', 'שם לקוח')}</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('order_customerName', '׳©׳ ׳׳§׳•׳—')}</label>
                 <input type="text" className="form-control" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>טלפון לקוח</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>׳˜׳׳₪׳•׳ ׳׳§׳•׳—</label>
                 <input type="text" className="form-control" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>עיר מגורים</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>׳¢׳™׳¨ ׳׳’׳•׳¨׳™׳</label>
                 <input type="text" className="form-control" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>סגור והחל סינון</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>׳¡׳’׳•׳¨ ׳•׳”׳—׳ ׳¡׳™׳ ׳•׳</button>
               <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
                 setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: '' });
-              }}>נקה הכל</button>
+              }}>׳ ׳§׳” ׳”׳›׳</button>
             </div>
           </div>
         </div>
@@ -332,20 +342,20 @@ export default function OrdersPage() {
         <div style={{ flex: '1 1 600px' }}>
           <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
             {loading && orders.length === 0 ? (
-              <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
+              <div style={{ padding: '2rem', textAlign: 'center' }}>׳˜׳•׳¢׳ ׳ ׳×׳•׳ ׳™׳...</div>
             ) : (
               <>
                 <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
-                      <th style={thStyle} onClick={() => handleSort('orderId')}>{getLabel('order_id', 'קוד הזמנה')} <SortIcon column="orderId" /></th>
-                      <th style={thStyle} onClick={() => handleSort('customerName')}>{getLabel('order_customerName', 'לקוח')} <SortIcon column="customerName" /></th>
-                      <th style={thStyle}>כמות פריטים</th>
-                      <th style={thStyle} onClick={() => handleSort('eventDateHebrew')}>תאריך עברי <SortIcon column="eventDateHebrew" /></th>
-                      <th style={thStyle} onClick={() => handleSort('totalAmount')}>{getLabel('order_totalAmount', 'סכום לחיוב')} <SortIcon column="totalAmount" /></th>
-                      <th style={thStyle} onClick={() => handleSort('totalPaid')}>שולם <SortIcon column="totalPaid" /></th>
-                      <th style={thStyle} onClick={() => handleSort('status')}>{getLabel('order_status', 'סטטוס')} <SortIcon column="status" /></th>
-                      <th style={{ padding: '1rem' }}>פעולות</th>
+                      <th style={thStyle} onClick={() => handleSort('orderId')}>{getLabel('order_id', '׳§׳•׳“ ׳”׳–׳׳ ׳”')} <SortIcon column="orderId" /></th>
+                      <th style={thStyle} onClick={() => handleSort('customerName')}>{getLabel('order_customerName', '׳׳§׳•׳—')} <SortIcon column="customerName" /></th>
+                      <th style={thStyle}>׳›׳׳•׳× ׳₪׳¨׳™׳˜׳™׳</th>
+                      <th style={thStyle} onClick={() => handleSort('eventDateHebrew')}>׳×׳׳¨׳™׳ ׳¢׳‘׳¨׳™ <SortIcon column="eventDateHebrew" /></th>
+                      <th style={thStyle} onClick={() => handleSort('totalAmount')}>{getLabel('order_totalAmount', '׳¡׳›׳•׳ ׳׳—׳™׳•׳‘')} <SortIcon column="totalAmount" /></th>
+                      <th style={thStyle} onClick={() => handleSort('totalPaid')}>׳©׳•׳׳ <SortIcon column="totalPaid" /></th>
+                      <th style={thStyle} onClick={() => handleSort('status')}>{getLabel('order_status', '׳¡׳˜׳˜׳•׳¡')} <SortIcon column="status" /></th>
+                      <th style={{ padding: '1rem' }}>׳₪׳¢׳•׳׳•׳×</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -380,8 +390,8 @@ export default function OrdersPage() {
                         <td style={{ padding: '1rem', fontWeight: '500' }}>{order.customerName}</td>
                         <td style={{ padding: '1rem', textAlign: 'center' }}>{order.items ? order.items.filter(i => !i.isDeleted).length : 0}</td>
                         <td style={{ padding: '1rem' }}>{order.eventDateHebrew || ''}</td>
-                        <td style={{ padding: '1rem' }}>₪{order.totalAmount}</td>
-                        <td style={{ padding: '1rem', color: order.totalPaid >= order.totalAmount && order.totalAmount > 0 ? 'green' : (isUnpaid ? '#dc2626' : 'inherit'), fontWeight: isUnpaid ? 'bold' : 'normal' }}>₪{order.totalPaid}</td>
+                        <td style={{ padding: '1rem' }}>ג‚×{order.totalAmount}</td>
+                        <td style={{ padding: '1rem', color: order.totalPaid >= order.totalAmount && order.totalAmount > 0 ? 'green' : (isUnpaid ? '#dc2626' : 'inherit'), fontWeight: isUnpaid ? 'bold' : 'normal' }}>ג‚×{order.totalPaid}</td>
                         <td style={{ padding: '1rem' }}>
                           <span style={{ 
                             padding: '0.3rem 0.8rem', 
@@ -399,7 +409,7 @@ export default function OrdersPage() {
                             className="btn btn-outline" 
                             style={{ padding: '0.5rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px' }}
                             onClick={(e) => e.stopPropagation()}
-                            title="כרטיס הזמנה"
+                            title="׳›׳¨׳˜׳™׳¡ ׳”׳–׳׳ ׳”"
                           >
                             <FileText size={18} />
                           </Link>
@@ -410,7 +420,7 @@ export default function OrdersPage() {
                               e.stopPropagation();
                               setRentalModalOrderId(order.orderId);
                             }}
-                            title="מעבר להשכרה/החזרה"
+                            title="׳׳¢׳‘׳¨ ׳׳”׳©׳›׳¨׳”/׳”׳—׳–׳¨׳”"
                           >
                             <Shirt size={18} />
                           </button>
@@ -418,7 +428,7 @@ export default function OrdersPage() {
                             className="btn btn-outline" 
                             style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: '1px solid #fee2e2', cursor: 'pointer', backgroundColor: '#fef2f2', color: '#ef4444' }}
                             onClick={(e) => handleDeleteOrder(order, e)}
-                            title="מחיקת הזמנה"
+                            title="׳׳—׳™׳§׳× ׳”׳–׳׳ ׳”"
                           >
                             <Trash2 size={18} />
                           </button>
@@ -436,16 +446,16 @@ export default function OrdersPage() {
                     onClick={() => setPage(p => p + 1)}
                     style={{ padding: '0.5rem 1rem' }}
                   >
-                    הבא &gt;
+                    ׳”׳‘׳ &gt;
                   </button>
-                  <span style={{ fontWeight: '500' }}>עמוד {page} מתוך {totalPages}</span>
+                  <span style={{ fontWeight: '500' }}>׳¢׳׳•׳“ {page} ׳׳×׳•׳ {totalPages}</span>
                   <button 
                     className="btn btn-outline"
                     disabled={page <= 1 || isAiModeActive} 
                     onClick={() => setPage(p => p - 1)}
                     style={{ padding: '0.5rem 1rem' }}
                   >
-                    &lt; קודם
+                    &lt; ׳§׳•׳“׳
                   </button>
                 </div>
               </>
@@ -484,44 +494,44 @@ export default function OrdersPage() {
         >
           <div className="global-popoverHeader">
             <Info size={18} />
-            הזמנה #{hoveredOrder.orderId}
+            ׳”׳–׳׳ ׳” #{hoveredOrder.orderId}
           </div>
           <div className="global-popoverRow">
-            <span>לקוח:</span>
+            <span>׳׳§׳•׳—:</span>
             <span>{hoveredOrder.customerName}</span>
           </div>
           <div className="global-popoverRow">
-            <span><Phone size={14} /> טלפון:</span>
-            <span dir="ltr">{hoveredOrder.customerPhone || 'לא הוזן'}</span>
+            <span><Phone size={14} /> ׳˜׳׳₪׳•׳:</span>
+            <span dir="ltr">{hoveredOrder.customerPhone || '׳׳ ׳”׳•׳–׳'}</span>
           </div>
           <div className="global-popoverRow">
-            <span><CalendarIcon2 size={14} /> תאריך עברי:</span>
-            <span>{hoveredOrder.eventDateHebrew || 'לא צוין'}</span>
+            <span><CalendarIcon2 size={14} /> ׳×׳׳¨׳™׳ ׳¢׳‘׳¨׳™:</span>
+            <span>{hoveredOrder.eventDateHebrew || '׳׳ ׳¦׳•׳™׳'}</span>
           </div>
           <div className="global-popoverRow">
-            <span><CalendarIcon2 size={14} /> תאריך לועזי:</span>
-            <span>{hoveredOrder.eventDate ? new Date(hoveredOrder.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</span>
+            <span><CalendarIcon2 size={14} /> ׳×׳׳¨׳™׳ ׳׳•׳¢׳–׳™:</span>
+            <span>{hoveredOrder.eventDate ? new Date(hoveredOrder.eventDate).toLocaleDateString('he-IL') : '׳׳ ׳¦׳•׳™׳'}</span>
           </div>
           <div className="global-popoverRow">
-            <span><Shirt size={14} /> הושכר:</span>
+            <span><Shirt size={14} /> ׳”׳•׳©׳›׳¨:</span>
             <span>{hoveredOrder.items ? hoveredOrder.items.filter(i => !i.isDeleted && i.isTaken).length : 0}</span>
           </div>
           <div className="global-popoverRow">
-            <span><Shirt size={14} /> הוחזר:</span>
+            <span><Shirt size={14} /> ׳”׳•׳—׳–׳¨:</span>
             <span>{hoveredOrder.items ? hoveredOrder.items.filter(i => !i.isDeleted && i.isReturned).length : 0}</span>
           </div>
           <div className="global-popoverRow">
-            <span><CreditCard size={14} /> סה"כ לתשלום:</span>
-            <span>₪{hoveredOrder.totalAmount || 0}</span>
+            <span><CreditCard size={14} /> ׳¡׳”"׳› ׳׳×׳©׳׳•׳:</span>
+            <span>ג‚×{hoveredOrder.totalAmount || 0}</span>
           </div>
           <div className="global-popoverRow">
-            <span><CheckCircle2 size={14} /> שולם:</span>
+            <span><CheckCircle2 size={14} /> ׳©׳•׳׳:</span>
             <span style={{ color: hoveredOrder.totalPaid >= hoveredOrder.totalAmount && hoveredOrder.totalAmount > 0 ? '#10b981' : (hoveredOrder.totalPaid > 0 ? '#f59e0b' : '#ef4444'), fontWeight: 'bold' }}>
-              ₪{hoveredOrder.totalPaid || 0}
+              ג‚×{hoveredOrder.totalPaid || 0}
             </span>
           </div>
           <div className="global-popoverRow">
-            <span>סטטוס:</span>
+            <span>׳¡׳˜׳˜׳•׳¡:</span>
             <span style={{ color: getStatusColor(calculateOrderStatus(hoveredOrder)).text, background: getStatusColor(calculateOrderStatus(hoveredOrder)).bg, padding: '2px 6px', borderRadius: '4px' }}>
               {calculateOrderStatus(hoveredOrder)}
             </span>

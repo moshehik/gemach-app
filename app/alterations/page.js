@@ -188,93 +188,144 @@ export default function AlterationsPage() {
   return (
     <main className="container animate-fade-in" style={{ padding: '2rem 1rem', minHeight: '80vh' }}>
       <div style={{ 
-        display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
-        marginBottom: '2rem', padding: '1.5rem', background: 'var(--card-bg)', 
-        backdropFilter: 'blur(10px)', borderRadius: '16px', border: 'var(--glass-border)', 
-        boxShadow: 'var(--shadow-sm)', flexWrap: 'wrap', gap: '1rem' 
+        position: 'relative',
+        marginBottom: '2rem', padding: '2.5rem 2rem', 
+        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', 
+        borderRadius: '24px', 
+        boxShadow: '0 20px 40px -10px rgba(0,0,0,0.3)',
+        color: 'white',
+        overflow: 'hidden',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '2rem'
       }}>
-        <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2.2rem', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Scissors size={32} /> ניהול תפירות ותיקונים
-        </h1>
-        
-        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Status Filter Banner (Adapted for Alterations) */}
-          <div style={{ display: 'flex', gap: '1rem', background: 'var(--element-bg)', padding: '0.4rem 1rem', borderRadius: '8px', alignItems: 'center', border: '1px solid var(--element-border)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>מתאריך:</label>
-              <div style={{ width: '130px' }}>
-                <HebrewDatePicker value={startDate} onChange={setStartDate} />
-              </div>
-            </div>
-            
-            <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
-              <label style={{ fontSize: '0.85rem', fontWeight: 'bold' }}>עד תאריך:</label>
-              <div style={{ width: '130px' }}>
-                <HebrewDatePicker value={endDate} onChange={setEndDate} />
-              </div>
-            </div>
-            
-            <div style={{ width: '1px', height: '24px', background: 'var(--element-border)', margin: '0 0.5rem' }}></div>
-            
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.85rem', fontWeight: '500' }}>
-              <input 
-                type="checkbox" 
-                checked={showOnlyPending} 
-                onChange={e => setShowOnlyPending(e.target.checked)} 
-                style={{ marginLeft: '6px' }}
-              />
-              רק ממתינים
-            </label>
+        {/* Decorative ambient blobs */}
+        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '200px', height: '200px', background: 'linear-gradient(135deg, #a855f7, #ec4899)', borderRadius: '50%', filter: 'blur(60px)', opacity: 0.4 }}></div>
+        <div style={{ position: 'absolute', bottom: '-50px', left: '-50px', width: '250px', height: '250px', background: 'linear-gradient(135deg, #3b82f6, #2dd4bf)', borderRadius: '50%', filter: 'blur(70px)', opacity: 0.3 }}></div>
 
-            <button 
-              className="btn btn-primary" 
-              style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', borderRadius: '6px', height: '32px', display: 'flex', alignItems: 'center', gap: '4px' }}
-              onClick={markAllDone} 
-              disabled={!startDate}
-            >
-              <CheckCircle size={14} /> סמן כבוצע להיום
-            </button>
+        {/* Top Header Row */}
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: '2.5rem', display: 'flex', alignItems: 'center', gap: '12px', fontWeight: '800', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
+              <div style={{ background: 'linear-gradient(135deg, #ec4899, #f43f5e)', padding: '0.8rem', borderRadius: '16px', display: 'flex', boxShadow: '0 10px 20px rgba(236,72,153,0.3)' }}>
+                <Scissors size={32} color="white" />
+              </div>
+              ניהול תפירות ותיקונים
+            </h1>
+            <p style={{ margin: '0.5rem 0 0 0', color: '#cbd5e1', fontSize: '1.1rem', marginRight: '64px' }}>
+              נהל, סנן ובדוק את כל התיקונים העתידיים במערכת ביעילות מירבית.
+            </p>
           </div>
 
-          <ExportButtons 
-            data={items.map(item => ({
-              ...item,
-              orderId: item.order?.orderId,
-              customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
-              dressName: item.dressItem?.dress?.name || item.dressItem?.dressName,
-              eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
-              alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין'
-            }))}
-            filename="תפירות"
-            columns={[
-              { key: 'orderId', label: 'קוד הזמנה' },
-              { key: 'customerName', label: 'לקוח' },
-              { key: 'dressName', label: 'שמלה' },
-              { key: 'sizeText', label: 'מידה' },
-              { key: 'eventDate', label: 'תאריך אירוע' },
-              { key: 'alterationStatus', label: 'סטטוס' }
-            ]}
-            iconOnly={true}
-            onFetchData={fetchForExport}
-          />
+          <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <ExportButtons 
+              data={items.map(item => ({
+                ...item,
+                orderId: item.order?.orderId,
+                customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
+                dressName: item.dressItem?.dress?.name || item.dressItem?.dressName,
+                eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
+                alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין'
+              }))}
+              filename="תפירות"
+              columns={[
+                { key: 'orderId', label: 'קוד הזמנה' },
+                { key: 'customerName', label: 'לקוח' },
+                { key: 'dressName', label: 'שמלה' },
+                { key: 'sizeText', label: 'מידה' },
+                { key: 'eventDate', label: 'תאריך אירוע' },
+                { key: 'alterationStatus', label: 'סטטוס' }
+              ]}
+              iconOnly={true}
+              onFetchData={fetchForExport}
+              customStyle={{ padding: '0.8rem', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', backdropFilter: 'blur(10px)' }}
+            />
+            <button 
+              onClick={() => setIsPrintWizardOpen(true)}
+              style={{ padding: '0.8rem', borderRadius: '12px', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.2)', color: 'white', background: 'rgba(255,255,255,0.1)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
+              onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+              onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              title="אשף הדפסה"
+            >
+              <Printer size={22} />
+            </button>
+            <button 
+              onClick={() => setIsLegendOpen(true)}
+              style={{ padding: '0.8rem', borderRadius: '12px', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.2)', color: 'white', background: 'rgba(255,255,255,0.1)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
+              onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
+              onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              title="מקרא"
+            >
+              <Info size={22} />
+            </button>
+          </div>
+        </div>
+
+        {/* Filter Toolbar (Glassmorphism) */}
+        <div style={{ 
+          position: 'relative', zIndex: 1, 
+          display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap', 
+          background: 'rgba(255, 255, 255, 0.05)', padding: '1rem 1.5rem', 
+          borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)',
+          backdropFilter: 'blur(12px)',
+          boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.1)'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Calendar size={18} color="#94a3b8" />
+            <label style={{ fontSize: '0.9rem', fontWeight: '600', color: '#e2e8f0' }}>מתאריך:</label>
+            <div style={{ width: '140px' }}>
+              <HebrewDatePicker value={startDate} onChange={setStartDate} />
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <Calendar size={18} color="#94a3b8" />
+            <label style={{ fontSize: '0.9rem', fontWeight: '600', color: '#e2e8f0' }}>עד תאריך:</label>
+            <div style={{ width: '140px' }}>
+              <HebrewDatePicker value={endDate} onChange={setEndDate} />
+            </div>
+          </div>
+          
+          <div style={{ width: '1px', height: '30px', background: 'rgba(255,255,255,0.2)', margin: '0 0.5rem' }}></div>
+          
+          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.95rem', fontWeight: '500', color: '#e2e8f0' }}>
+            <div style={{ 
+              width: '20px', height: '20px', borderRadius: '6px', 
+              border: '2px solid rgba(255,255,255,0.4)', 
+              background: showOnlyPending ? '#ec4899' : 'rgba(0,0,0,0.2)',
+              marginLeft: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.2s'
+            }}>
+              {showOnlyPending && <Check size={14} color="white" strokeWidth={3} />}
+            </div>
+            <input 
+              type="checkbox" 
+              checked={showOnlyPending} 
+              onChange={e => setShowOnlyPending(e.target.checked)} 
+              style={{ display: 'none' }}
+            />
+            רק ממתינים לביצוע
+          </label>
+
+          <div style={{ flex: 1 }}></div>
+
           <button 
-            className="btn btn-outline"
-            onClick={() => setIsPrintWizardOpen(true)}
-            style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ddd', color: '#10b981', backgroundColor: '#ecfdf5', cursor: 'pointer' }}
-            title="אשף הדפסה"
+            onClick={markAllDone} 
+            disabled={!startDate}
+            style={{ 
+              padding: '0.6rem 1.2rem', fontSize: '0.95rem', borderRadius: '12px', 
+              display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold',
+              background: !startDate ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #10b981, #059669)',
+              color: !startDate ? 'rgba(255,255,255,0.4)' : 'white',
+              border: !startDate ? '1px solid rgba(255,255,255,0.1)' : 'none',
+              boxShadow: !startDate ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.4)',
+              cursor: !startDate ? 'not-allowed' : 'pointer',
+              transition: 'all 0.2s'
+            }}
           >
-            <Printer size={22} />
-          </button>
-          <button 
-            className="btn btn-outline"
-            onClick={() => setIsLegendOpen(true)}
-            style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ddd', color: '#3b82f6', backgroundColor: '#eff6ff', cursor: 'pointer' }}
-            title="מקרא"
-          >
-            <Info size={22} />
+            <CheckCircle size={18} /> סמן יום כבוצע
           </button>
         </div>
-      </div>
 
       {/* Search and Filters */}
       <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>

@@ -91,7 +91,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { receiverId, title, content } = body;
+    const { receiverId, title, content, sendEmail } = body;
 
     if (!content) {
       return NextResponse.json({ success: false, error: 'Content is required' }, { status: 400 });
@@ -108,6 +108,37 @@ export async function POST(request) {
         content,
       }
     });
+
+    if (sendEmail) {
+      try {
+        const scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
+        let receivers = [];
+        if (parsedReceiver) {
+          const emp = await prisma.employee.findUnique({ where: { id: parsedReceiver } });
+          if (emp && emp.email) receivers.push(emp.email);
+        } else {
+          const emps = await prisma.employee.findMany({ where: { isActive: true, email: { not: null } } });
+          receivers = emps.map(e => e.email).filter(Boolean);
+        }
+        
+        for (const email of receivers) {
+          fetch(scriptUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: email,
+              cc: '',
+              subject: title || 'הודעה חדשה במערכת הגמח',
+              body: content || '',
+              fileName: 'message.txt',
+              fileContent: Buffer.from('נשלח ממערכת הגמח').toString('base64')
+            })
+          }).catch(e => console.error('Failed to send email alert to', email, e));
+        }
+      } catch (e) {
+        console.error('Email alert process failed:', e);
+      }
+    }
 
     return NextResponse.json({ success: true, notification });
   } catch (error) {

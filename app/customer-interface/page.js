@@ -33,7 +33,7 @@ export default function CustomerInventoryViewer() {
   // AI Chat State
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiInput, setAiInput] = useState('');
-  const [aiMessages, setAiMessages] = useState([{ role: 'assistant', content: 'שלום! אני העוזר החכם של המערכת. איך אוכל לעזור לך?' }]);
+  const [aiMessages, setAiMessages] = useState([{ role: 'assistant', content: '׳³ֲ©׳³ֲ׳³ג€¢׳³ֲ! ׳³ֲ׳³ֲ ׳³ג„¢ ׳³ג€׳³ֲ¢׳³ג€¢׳³ג€“׳³ֲ¨ ׳³ג€׳³ג€”׳³ג€÷׳³ֲ ׳³ֲ©׳³ֲ ׳³ג€׳³ֲ׳³ֲ¢׳³ֲ¨׳³ג€÷׳³ֳ—. ׳³ֲ׳³ג„¢׳³ֲ ׳³ֲ׳³ג€¢׳³ג€÷׳³ֲ ׳³ֲ׳³ֲ¢׳³ג€“׳³ג€¢׳³ֲ¨ ׳³ֲ׳³ֲ?' }]);
   const [aiLoading, setAiLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [showAiHistory, setShowAiHistory] = useState(false);
@@ -72,7 +72,7 @@ export default function CustomerInventoryViewer() {
       setAiChatSessions(updatedSessions);
       localStorage.setItem('ai_customer_chat_sessions', JSON.stringify(updatedSessions));
     }
-    setAiMessages([{ role: 'assistant', content: 'שלום! אני העוזר החכם של המערכת. איך אוכל לעזור לך?' }]);
+    setAiMessages([{ role: 'assistant', content: '׳³ֲ©׳³ֲ׳³ג€¢׳³ֲ! ׳³ֲ׳³ֲ ׳³ג„¢ ׳³ג€׳³ֲ¢׳³ג€¢׳³ג€“׳³ֲ¨ ׳³ג€׳³ג€”׳³ג€÷׳³ֲ ׳³ֲ©׳³ֲ ׳³ג€׳³ֲ׳³ֲ¢׳³ֲ¨׳³ג€÷׳³ֳ—. ׳³ֲ׳³ג„¢׳³ֲ ׳³ֲ׳³ג€¢׳³ג€÷׳³ֲ ׳³ֲ׳³ֲ¢׳³ג€“׳³ג€¢׳³ֲ¨ ׳³ֲ׳³ֲ?' }]);
     setShowAiHistory(false);
   };
 
@@ -110,18 +110,18 @@ export default function CustomerInventoryViewer() {
         body: JSON.stringify({ 
           prompt: userMsg.content, 
           history: historyContext,
-          context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ענה אך ורק לשאלות שקשורות להזמנות, מלאי, מחירים ותיקונים עבור לקוחות. אסור לך בשום אופן למסור מידע ניהולי (כמו סטטיסטיקות, רווחים, הכנסות, נתוני עובדים או מידע על לקוחות אחרים). אם הלקוח שואל שאלות לא קשורות או מבקש מידע חסוי, התנצל בנימוס ואמור שאין לך הרשאה לספק מידע זה ושהנך כאן רק לעזור בכל הקשור להזמנות השמלות של הלקוח.`
+          context: `׳³ג€׳³ֳ—׳³ֲ׳³ֲ¨׳³ג„¢׳³ֲ ׳³ג€׳³ג„¢׳³ג€¢׳³ֲ ׳³ג€׳³ג€¢׳³ֲ: ${new Date().toLocaleDateString('he-IL')}. ׳³ֲ¢׳³ֲ ׳³ג€ ׳³ֲ׳³ֲ ׳³ג€¢׳³ֲ¨׳³ֲ§ ׳³ֲ׳³ֲ©׳³ֲ׳³ֲ׳³ג€¢׳³ֳ— ׳³ֲ©׳³ֲ§׳³ֲ©׳³ג€¢׳³ֲ¨׳³ג€¢׳³ֳ— ׳³ֲ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€¢׳³ֳ—, ׳³ֲ׳³ֲ׳³ֲ׳³ג„¢, ׳³ֲ׳³ג€”׳³ג„¢׳³ֲ¨׳³ג„¢׳³ֲ ׳³ג€¢׳³ֳ—׳³ג„¢׳³ֲ§׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ ׳³ֲ¢׳³ג€˜׳³ג€¢׳³ֲ¨ ׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”׳³ג€¢׳³ֳ—. ׳³ֲ׳³ֲ¡׳³ג€¢׳³ֲ¨ ׳³ֲ׳³ֲ ׳³ג€˜׳³ֲ©׳³ג€¢׳³ֲ ׳³ֲ׳³ג€¢׳³ג‚×׳³ֲ ׳³ֲ׳³ֲ׳³ֲ¡׳³ג€¢׳³ֲ¨ ׳³ֲ׳³ג„¢׳³ג€׳³ֲ¢ ׳³ֲ ׳³ג„¢׳³ג€׳³ג€¢׳³ֲ׳³ג„¢ (׳³ג€÷׳³ֲ׳³ג€¢ ׳³ֲ¡׳³ֻ׳³ֻ׳³ג„¢׳³ֲ¡׳³ֻ׳³ג„¢׳³ֲ§׳³ג€¢׳³ֳ—, ׳³ֲ¨׳³ג€¢׳³ג€¢׳³ג€”׳³ג„¢׳³ֲ, ׳³ג€׳³ג€÷׳³ֲ ׳³ֲ¡׳³ג€¢׳³ֳ—, ׳³ֲ ׳³ֳ—׳³ג€¢׳³ֲ ׳³ג„¢ ׳³ֲ¢׳³ג€¢׳³ג€˜׳³ג€׳³ג„¢׳³ֲ ׳³ֲ׳³ג€¢ ׳³ֲ׳³ג„¢׳³ג€׳³ֲ¢ ׳³ֲ¢׳³ֲ ׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”׳³ג€¢׳³ֳ— ׳³ֲ׳³ג€”׳³ֲ¨׳³ג„¢׳³ֲ). ׳³ֲ׳³ֲ ׳³ג€׳³ֲ׳³ֲ§׳³ג€¢׳³ג€” ׳³ֲ©׳³ג€¢׳³ֲ׳³ֲ ׳³ֲ©׳³ֲ׳³ֲ׳³ג€¢׳³ֳ— ׳³ֲ׳³ֲ ׳³ֲ§׳³ֲ©׳³ג€¢׳³ֲ¨׳³ג€¢׳³ֳ— ׳³ֲ׳³ג€¢ ׳³ֲ׳³ג€˜׳³ֲ§׳³ֲ© ׳³ֲ׳³ג„¢׳³ג€׳³ֲ¢ ׳³ג€”׳³ֲ¡׳³ג€¢׳³ג„¢, ׳³ג€׳³ֳ—׳³ֲ ׳³ֲ¦׳³ֲ ׳³ג€˜׳³ֲ ׳³ג„¢׳³ֲ׳³ג€¢׳³ֲ¡ ׳³ג€¢׳³ֲ׳³ֲ׳³ג€¢׳³ֲ¨ ׳³ֲ©׳³ֲ׳³ג„¢׳³ֲ ׳³ֲ׳³ֲ ׳³ג€׳³ֲ¨׳³ֲ©׳³ֲ׳³ג€ ׳³ֲ׳³ֲ¡׳³ג‚×׳³ֲ§ ׳³ֲ׳³ג„¢׳³ג€׳³ֲ¢ ׳³ג€“׳³ג€ ׳³ג€¢׳³ֲ©׳³ג€׳³ֲ ׳³ֲ ׳³ג€÷׳³ֲ׳³ֲ ׳³ֲ¨׳³ֲ§ ׳³ֲ׳³ֲ¢׳³ג€“׳³ג€¢׳³ֲ¨ ׳³ג€˜׳³ג€÷׳³ֲ ׳³ג€׳³ֲ§׳³ֲ©׳³ג€¢׳³ֲ¨ ׳³ֲ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€¢׳³ֳ— ׳³ג€׳³ֲ©׳³ֲ׳³ֲ׳³ג€¢׳³ֳ— ׳³ֲ©׳³ֲ ׳³ג€׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”.`
         }),
       });
       const data = await res.json();
       
       const assistantMsg = res.ok 
         ? { role: 'assistant', content: data.response, tableData: data.tableData }
-        : { role: 'assistant', content: 'שגיאה בחיבור למערכת ה-AI.' };
+        : { role: 'assistant', content: '׳³ֲ©׳³ג€™׳³ג„¢׳³ֲ׳³ג€ ׳³ג€˜׳³ג€”׳³ג„¢׳³ג€˜׳³ג€¢׳³ֲ¨ ׳³ֲ׳³ֲ׳³ֲ¢׳³ֲ¨׳³ג€÷׳³ֳ— ׳³ג€-AI.' };
       
       setAiMessages(prev => [...prev, assistantMsg]);
     } catch (err) {
-      setAiMessages(prev => [...prev, { role: 'assistant', content: 'שגיאת תקשורת.' }]);
+      setAiMessages(prev => [...prev, { role: 'assistant', content: '׳³ֲ©׳³ג€™׳³ג„¢׳³ֲ׳³ֳ— ׳³ֳ—׳³ֲ§׳³ֲ©׳³ג€¢׳³ֲ¨׳³ֳ—.' }]);
     } finally {
       setAiLoading(false);
     }
@@ -161,7 +161,7 @@ export default function CustomerInventoryViewer() {
   const handleUnlock = async (e) => {
     e.preventDefault();
     if (!unlockEmployee) {
-      setUnlockError('נא לבחור עובד');
+      setUnlockError('׳³ֲ ׳³ֲ ׳³ֲ׳³ג€˜׳³ג€”׳³ג€¢׳³ֲ¨ ׳³ֲ¢׳³ג€¢׳³ג€˜׳³ג€');
       return;
     }
     
@@ -186,10 +186,10 @@ export default function CustomerInventoryViewer() {
           document.exitFullscreen().catch(err => console.warn(err));
         }
       } else {
-        setUnlockError(data.message || 'שם עובד או סיסמא שגויים');
+        setUnlockError(data.message || '׳³ֲ©׳³ֲ ׳³ֲ¢׳³ג€¢׳³ג€˜׳³ג€ ׳³ֲ׳³ג€¢ ׳³ֲ¡׳³ג„¢׳³ֲ¡׳³ֲ׳³ֲ ׳³ֲ©׳³ג€™׳³ג€¢׳³ג„¢׳³ג„¢׳³ֲ');
       }
     } catch (err) {
-      setUnlockError('שגיאת תקשורת');
+      setUnlockError('׳³ֲ©׳³ג€™׳³ג„¢׳³ֲ׳³ֳ— ׳³ֳ—׳³ֲ§׳³ֲ©׳³ג€¢׳³ֲ¨׳³ֳ—');
     } finally {
       setUnlockLoading(false);
     }
@@ -229,7 +229,7 @@ export default function CustomerInventoryViewer() {
            filtered = filtered.filter(order => {
              return order.items.some(item => 
                item.dressId === model.id && 
-               item.description?.includes(`מידה: ${sizeName}`)
+               item.description?.includes(`׳³ֲ׳³ג„¢׳³ג€׳³ג€: ${sizeName}`)
              );
            });
          }
@@ -321,7 +321,7 @@ export default function CustomerInventoryViewer() {
       <table className="cal-table">
         <thead>
           <tr>
-            {["א","ב","ג","ד","ה","ו","שבת"].map(d => <th key={d}>{d}</th>)}
+            {["׳³ֲ","׳³ג€˜","׳³ג€™","׳³ג€","׳³ג€","׳³ג€¢","׳³ֲ©׳³ג€˜׳³ֳ—"].map(d => <th key={d}>{d}</th>)}
           </tr>
         </thead>
         <tbody>
@@ -359,7 +359,7 @@ export default function CustomerInventoryViewer() {
                     const flags = e.getFlags();
                     const name = e.render('he');
                     if (flags & 8192) return false; // Exclude Modern Holidays (Jabotinsky, etc)
-                    if (name.includes('בנות') || name.includes('מעשר בהמה') || name.includes('סליחות')) return false; 
+                    if (name.includes('׳³ג€˜׳³ֲ ׳³ג€¢׳³ֳ—') || name.includes('׳³ֲ׳³ֲ¢׳³ֲ©׳³ֲ¨ ׳³ג€˜׳³ג€׳³ֲ׳³ג€') || name.includes('׳³ֲ¡׳³ֲ׳³ג„¢׳³ג€”׳³ג€¢׳³ֳ—')) return false; 
                     return (flags & 1) || (flags & 524288) || (flags & 2097152) || (flags & 16384) || (flags & 256);
                   }).map(e => e.render('he'));
                 } catch (e) {}
@@ -390,7 +390,7 @@ export default function CustomerInventoryViewer() {
 
   const renderSizes = () => {
     if (!selectedModel) {
-      return <div className="empty-state">בחר דגם לצפייה במידות</div>;
+      return <div className="empty-state">׳³ג€˜׳³ג€”׳³ֲ¨ ׳³ג€׳³ג€™׳³ֲ ׳³ֲ׳³ֲ¦׳³ג‚×׳³ג„¢׳³ג„¢׳³ג€ ׳³ג€˜׳³ֲ׳³ג„¢׳³ג€׳³ג€¢׳³ֳ—</div>;
     }
 
     const sizesMap = {};
@@ -399,7 +399,7 @@ export default function CustomerInventoryViewer() {
     if (selectedModel.items) {
       selectedModel.items.forEach(item => {
         if (item.inRepair || item.notInUse) return;
-        const size = item.sizeText || 'כללי';
+        const size = item.sizeText || '׳³ג€÷׳³ֲ׳³ֲ׳³ג„¢';
         if (!sizesMap[size]) {
           sizesMap[size] = { name: size, qOther: 0 };
         }
@@ -420,7 +420,7 @@ export default function CustomerInventoryViewer() {
     });
 
     if (sizesArr.length === 0) {
-      return <div className="empty-state">אין נתונים לדגם זה</div>;
+      return <div className="empty-state">׳³ֲ׳³ג„¢׳³ֲ ׳³ֲ ׳³ֳ—׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ ׳³ֲ׳³ג€׳³ג€™׳³ֲ ׳³ג€“׳³ג€</div>;
     }
 
     return (
@@ -436,7 +436,7 @@ export default function CustomerInventoryViewer() {
               )}
               {!isLocked && (
                 <div 
-                  title="הזמנות של המידה (לחץ כאן או לחיצה כפולה)"
+                  title="׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€¢׳³ֳ— ׳³ֲ©׳³ֲ ׳³ג€׳³ֲ׳³ג„¢׳³ג€׳³ג€ (׳³ֲ׳³ג€”׳³ֲ¥ ׳³ג€÷׳³ֲ׳³ֲ ׳³ֲ׳³ג€¢ ׳³ֲ׳³ג€”׳³ג„¢׳³ֲ¦׳³ג€ ׳³ג€÷׳³ג‚×׳³ג€¢׳³ֲ׳³ג€)"
                   onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(selectedModel, item.name); }}
                   style={{ 
                     position: 'absolute', top: '-6px', right: '-6px',
@@ -460,7 +460,7 @@ export default function CustomerInventoryViewer() {
 
   const handlePrint = () => {
     if (!selectedModel) {
-      alert("נא לבחור דגם");
+      alert("׳³ֲ ׳³ֲ ׳³ֲ׳³ג€˜׳³ג€”׳³ג€¢׳³ֲ¨ ׳³ג€׳³ג€™׳³ֲ");
       return;
     }
     window.print();
@@ -481,7 +481,7 @@ export default function CustomerInventoryViewer() {
     
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("הדפדפן שלך אינו תומך בהקלטת קול.");
+      alert("׳³ג€׳³ג€׳³ג‚×׳³ג€׳³ג‚×׳³ֲ ׳³ֲ©׳³ֲ׳³ֲ ׳³ֲ׳³ג„¢׳³ֲ ׳³ג€¢ ׳³ֳ—׳³ג€¢׳³ֲ׳³ֲ ׳³ג€˜׳³ג€׳³ֲ§׳³ֲ׳³ֻ׳³ֳ— ׳³ֲ§׳³ג€¢׳³ֲ.");
       return;
     }
     
@@ -518,7 +518,7 @@ export default function CustomerInventoryViewer() {
     itemsInSizesCount = qOther;
     const sizesSet = new Set();
     selectedModel.items.forEach(i => {
-      if (!i.inRepair && !i.notInUse && i.quantity > 0) sizesSet.add(i.sizeText || 'כללי');
+      if (!i.inRepair && !i.notInUse && i.quantity > 0) sizesSet.add(i.sizeText || '׳³ג€÷׳³ֲ׳³ֲ׳³ג„¢');
     });
     sizesCount = sizesSet.size;
   }
@@ -541,18 +541,18 @@ export default function CustomerInventoryViewer() {
             background: 'var(--card-bg)', padding: '30px', borderRadius: '12px', width: '400px',
             boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
           }}>
-            <h2 style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center', color: '#2c3e50' }}>שחרור מסך</h2>
+            <h2 style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center', color: '#2c3e50' }}>׳³ֲ©׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ¨ ׳³ֲ׳³ֲ¡׳³ֲ</h2>
             <form onSubmit={handleUnlock}>
               {unlockError && <div style={{ color: 'red', marginBottom: '10px', textAlign: 'center', fontSize: '14px' }}>{unlockError}</div>}
               
               <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: '#7f8c8d' }}>שם עובד</label>
+                <label style={{ display: 'block', marginBottom: '5px', color: '#7f8c8d' }}>׳³ֲ©׳³ֲ ׳³ֲ¢׳³ג€¢׳³ג€˜׳³ג€</label>
                 <select 
                   value={unlockEmployee}
                   onChange={(e) => setUnlockEmployee(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #bdc3c7' }}
                 >
-                  <option value="">-- בחר עובד --</option>
+                  <option value="">-- ׳³ג€˜׳³ג€”׳³ֲ¨ ׳³ֲ¢׳³ג€¢׳³ג€˜׳³ג€ --</option>
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
                   ))}
@@ -560,13 +560,13 @@ export default function CustomerInventoryViewer() {
               </div>
               
               <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: '#7f8c8d' }}>סיסמא</label>
+                <label style={{ display: 'block', marginBottom: '5px', color: '#7f8c8d' }}>׳³ֲ¡׳³ג„¢׳³ֲ¡׳³ֲ׳³ֲ</label>
                 <input 
                   type="password"
                   value={unlockPassword}
                   onChange={(e) => setUnlockPassword(e.target.value)}
                   style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #bdc3c7' }}
-                  placeholder="הזן סיסמא..."
+                  placeholder="׳³ג€׳³ג€“׳³ֲ ׳³ֲ¡׳³ג„¢׳³ֲ¡׳³ֲ׳³ֲ..."
                 />
               </div>
               
@@ -575,13 +575,13 @@ export default function CustomerInventoryViewer() {
                   type="submit" 
                   disabled={unlockLoading}
                   style={{ flex: 1, padding: '10px', background: '#3498db', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  {unlockLoading ? 'בודק...' : 'שחרר'}
+                  {unlockLoading ? '׳³ג€˜׳³ג€¢׳³ג€׳³ֲ§...' : '׳³ֲ©׳³ג€”׳³ֲ¨׳³ֲ¨'}
                 </button>
                 <button 
                   type="button" 
                   onClick={() => setShowUnlockModal(false)}
                   style={{ flex: 1, padding: '10px', background: '#ecf0f1', color: '#7f8c8d', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  ביטול
+                  ׳³ג€˜׳³ג„¢׳³ֻ׳³ג€¢׳³ֲ
                 </button>
               </div>
             </form>
@@ -607,9 +607,9 @@ export default function CustomerInventoryViewer() {
             }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '20px', color: '#0f172a', fontWeight: 'bold' }}>
-                  הזמנות - {ordersModalModel?.name} {ordersModalSize ? `(מידה ${ordersModalSize})` : ''}
+                  ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€¢׳³ֳ— - {ordersModalModel?.name} {ordersModalSize ? `(׳³ֲ׳³ג„¢׳³ג€׳³ג€ ${ordersModalSize})` : ''}
                 </h3>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>טווח: {new Date(selectedDate.getTime() - 7*86400000).toLocaleDateString('he-IL')} עד {new Date(selectedDate.getTime() + 7*86400000).toLocaleDateString('he-IL')}</span>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>׳³ֻ׳³ג€¢׳³ג€¢׳³ג€”: {new Date(selectedDate.getTime() - 7*86400000).toLocaleDateString('he-IL')} ׳³ֲ¢׳³ג€ {new Date(selectedDate.getTime() + 7*86400000).toLocaleDateString('he-IL')}</span>
               </div>
               <button 
                 onClick={() => setShowOrdersModal(false)}
@@ -618,9 +618,9 @@ export default function CustomerInventoryViewer() {
             </div>
             <div style={{ padding: '24px', overflowY: 'auto', flexGrow: 1 }}>
               {ordersModalLoading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>טוען נתונים...</div>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>׳³ֻ׳³ג€¢׳³ֲ¢׳³ֲ ׳³ֲ ׳³ֳ—׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ...</div>
               ) : ordersModalOrders.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>לא נמצאו הזמנות לדגם זה בטווח התאריכים הנבחר.</div>
+                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>׳³ֲ׳³ֲ ׳³ֲ ׳³ֲ׳³ֲ¦׳³ֲ׳³ג€¢ ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€¢׳³ֳ— ׳³ֲ׳³ג€׳³ג€™׳³ֲ ׳³ג€“׳³ג€ ׳³ג€˜׳³ֻ׳³ג€¢׳³ג€¢׳³ג€” ׳³ג€׳³ֳ—׳³ֲ׳³ֲ¨׳³ג„¢׳³ג€÷׳³ג„¢׳³ֲ ׳³ג€׳³ֲ ׳³ג€˜׳³ג€”׳³ֲ¨.</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {ordersModalOrders.map(order => (
@@ -631,15 +631,15 @@ export default function CustomerInventoryViewer() {
                     }}>
                       <div>
                         <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#1e293b' }}>
-                          הזמנה #{order.orderId} - {order.customer?.firstName} {order.customer?.lastName}
+                          ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€ #{order.orderId} - {order.customer?.firstName} {order.customer?.lastName}
                         </div>
                         <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-                          תאריך אירוע: {order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}
+                          ׳³ֳ—׳³ֲ׳³ֲ¨׳³ג„¢׳³ֲ ׳³ֲ׳³ג„¢׳³ֲ¨׳³ג€¢׳³ֲ¢: {order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : '׳³ֲ׳³ֲ ׳³ֲ¦׳³ג€¢׳³ג„¢׳³ֲ'}
                         </div>
                       </div>
                       <button 
                         onClick={() => window.open(`/orders/${order.orderId}`, '_blank')}
-                        title="פתיחת הזמנה"
+                        title="׳³ג‚×׳³ֳ—׳³ג„¢׳³ג€”׳³ֳ— ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€"
                         style={{
                           background: '#eff6ff', color: '#3b82f6', border: 'none', padding: '10px',
                           borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center',
@@ -742,8 +742,8 @@ export default function CustomerInventoryViewer() {
 
       {/* Hidden Print Area */}
       <div id="printArea">
-        <div className="print-title" id="printModelTitle">דוח מלאי: {selectedModel?.name}</div>
-        <div className="print-date" id="printDateStr">תאריך: {getHebrewDateString(selectedDate)}</div>
+        <div className="print-title" id="printModelTitle">׳³ג€׳³ג€¢׳³ג€” ׳³ֲ׳³ֲ׳³ֲ׳³ג„¢: {selectedModel?.name}</div>
+        <div className="print-date" id="printDateStr">׳³ֳ—׳³ֲ׳³ֲ¨׳³ג„¢׳³ֲ: {getHebrewDateString(selectedDate)}</div>
         <div id="printContent" className="print-sizes">
           {renderSizes()}
         </div>
@@ -752,17 +752,17 @@ export default function CustomerInventoryViewer() {
       {/* The App Header */}
       <div className="app-header">
         <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="header-btn" onClick={fetchInventory} title="רענון" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }}><RefreshCw size={20} /></button>
-          <button className="header-btn" onClick={handlePrint} title="הדפס דוח" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }}><Printer size={20} /></button>
+          <button className="header-btn" onClick={fetchInventory} title="׳³ֲ¨׳³ֲ¢׳³ֲ ׳³ג€¢׳³ֲ" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }}><RefreshCw size={20} /></button>
+          <button className="header-btn" onClick={handlePrint} title="׳³ג€׳³ג€׳³ג‚×׳³ֲ¡ ׳³ג€׳³ג€¢׳³ג€”" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }}><Printer size={20} /></button>
           {isLocked ? (
-            <button className="header-btn" style={{ background: '#e74c3c', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }} onClick={() => setShowUnlockModal(true)} title="שחרור מסך"><Lock size={20} /></button>
+            <button className="header-btn" style={{ background: '#e74c3c', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }} onClick={() => setShowUnlockModal(true)} title="׳³ֲ©׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ¨ ׳³ֲ׳³ֲ¡׳³ֲ"><Lock size={20} /></button>
           ) : (
             <button className="header-btn" onClick={() => {
               setIsLocked(true);
               if (document.documentElement.requestFullscreen) {
                 document.documentElement.requestFullscreen().catch(err => console.warn(err));
               }
-            }} title="תפיסת מסך" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }}><Maximize size={20} /></button>
+            }} title="׳³ֳ—׳³ג‚×׳³ג„¢׳³ֲ¡׳³ֳ— ׳³ֲ׳³ֲ¡׳³ֲ" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }}><Maximize size={20} /></button>
           )}
         </div>
         <div 
@@ -773,10 +773,10 @@ export default function CustomerInventoryViewer() {
               document.exitFullscreen().catch(err => console.warn(err));
             }
           }} 
-          title={isLocked ? "לחיצה כפולה לשחרור חירום" : ""}
+          title={isLocked ? "׳³ֲ׳³ג€”׳³ג„¢׳³ֲ¦׳³ג€ ׳³ג€÷׳³ג‚×׳³ג€¢׳³ֲ׳³ג€ ׳³ֲ׳³ֲ©׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ¨ ׳³ג€”׳³ג„¢׳³ֲ¨׳³ג€¢׳³ֲ" : ""}
           style={{ cursor: isLocked ? 'pointer' : 'default' }}
         >
-          {getLabel('ca_title', 'ניהול מלאי')}
+          {getLabel('ca_title', '׳³ֲ ׳³ג„¢׳³ג€׳³ג€¢׳³ֲ ׳³ֲ׳³ֲ׳³ֲ׳³ג„¢')}
         </div>
       </div>
 
@@ -810,20 +810,20 @@ export default function CustomerInventoryViewer() {
                 <input 
                   type="text" 
                   className="search-input" 
-                  placeholder="חפש דגם..." 
+                  placeholder="׳³ג€”׳³ג‚×׳³ֲ© ׳³ג€׳³ג€™׳³ֲ..." 
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
                 <button className="btn-sort" id="btnSort" onClick={() => setSortAsc(!sortAsc)}>
-                  {sortAsc ? 'א-ת' : 'ת-א'}
+                  {sortAsc ? '׳³ֲ-׳³ֳ—' : '׳³ֳ—-׳³ֲ'}
                 </button>
               </div>
             </div>
             <div className="card-body" id="modelsList">
               {loading ? (
-                <div style={{padding:'20px', textAlign:'center', color:'var(--text-muted)'}}>טוען נתונים...</div>
+                <div style={{padding:'20px', textAlign:'center', color:'var(--text-muted)'}}>׳³ֻ׳³ג€¢׳³ֲ¢׳³ֲ ׳³ֲ ׳³ֳ—׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ...</div>
               ) : filteredDresses.length === 0 ? (
-                <div style={{padding:'20px', textAlign:'center'}}>אין תוצאות</div>
+                <div style={{padding:'20px', textAlign:'center'}}>׳³ֲ׳³ג„¢׳³ֲ ׳³ֳ—׳³ג€¢׳³ֲ¦׳³ֲ׳³ג€¢׳³ֳ—</div>
               ) : (
                 <div className="models-grid">
                 {filteredDresses.map(model => {
@@ -864,7 +864,7 @@ export default function CustomerInventoryViewer() {
                         <div className={`model-qty ${qOther === 0 ? 'zero' : ''}`}>{qOther}</div>
                         {!isLocked && (
                           <div 
-                            title="הזמנות של הדגם (לחץ כאן או לחיצה כפולה על הדגם)"
+                            title="׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€¢׳³ֳ— ׳³ֲ©׳³ֲ ׳³ג€׳³ג€׳³ג€™׳³ֲ (׳³ֲ׳³ג€”׳³ֲ¥ ׳³ג€÷׳³ֲ׳³ֲ ׳³ֲ׳³ג€¢ ׳³ֲ׳³ג€”׳³ג„¢׳³ֲ¦׳³ג€ ׳³ג€÷׳³ג‚×׳³ג€¢׳³ֲ׳³ג€ ׳³ֲ¢׳³ֲ ׳³ג€׳³ג€׳³ג€™׳³ֲ)"
                             onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model); }}
                             style={{ 
                               position: 'absolute', top: '-6px', right: '-6px',
@@ -887,8 +887,8 @@ export default function CustomerInventoryViewer() {
               )}
             </div>
             <div className="card-footer" id="modelsFooter">
-              <span>{getLabel('ca_total_models', 'סה״כ דגמים')}: {filteredDresses.length}</span>
-              <span>{getLabel('ca_items', 'פריטים')}: {grandTotalItems}</span>
+              <span>{getLabel('ca_total_models', '׳³ֲ¡׳³ג€׳³ֲ´׳³ג€÷ ׳³ג€׳³ג€™׳³ֲ׳³ג„¢׳³ֲ')}: {filteredDresses.length}</span>
+              <span>{getLabel('ca_items', '׳³ג‚×׳³ֲ¨׳³ג„¢׳³ֻ׳³ג„¢׳³ֲ')}: {grandTotalItems}</span>
             </div>
           </div>
         </div>
@@ -897,17 +897,17 @@ export default function CustomerInventoryViewer() {
         <div className="col">
           <div className="card">
             <div className="card-header">
-              <span>{getLabel('ca_sizes_title', 'זמינות מידות')}</span>
+              <span>{getLabel('ca_sizes_title', '׳³ג€“׳³ֲ׳³ג„¢׳³ֲ ׳³ג€¢׳³ֳ— ׳³ֲ׳³ג„¢׳³ג€׳³ג€¢׳³ֳ—')}</span>
               <div className="legend">
-                <span><span className="legend-dot q-dark"></span>כמות כללית</span>
+                <span><span className="legend-dot q-dark"></span>׳³ג€÷׳³ֲ׳³ג€¢׳³ֳ— ׳³ג€÷׳³ֲ׳³ֲ׳³ג„¢׳³ֳ—</span>
               </div>
             </div>
             <div className="card-body" id="sizesList">
               {renderSizes()}
             </div>
             <div className="card-footer" id="sizesFooter">
-              <span>{getLabel('ca_total_sizes', 'סה״כ מידות')}: {sizesCount}</span>
-              <span>{getLabel('ca_items', 'פריטים')}: {itemsInSizesCount}</span>
+              <span>{getLabel('ca_total_sizes', '׳³ֲ¡׳³ג€׳³ֲ´׳³ג€÷ ׳³ֲ׳³ג„¢׳³ג€׳³ג€¢׳³ֳ—')}: {sizesCount}</span>
+              <span>{getLabel('ca_items', '׳³ג‚×׳³ֲ¨׳³ג„¢׳³ֻ׳³ג„¢׳³ֲ')}: {itemsInSizesCount}</span>
             </div>
           </div>
         </div>
@@ -916,7 +916,7 @@ export default function CustomerInventoryViewer() {
       {/* Floating AI Button */}
       <button 
         onClick={() => setAiChatOpen(!aiChatOpen)}
-        title="עוזר AI למלאי"
+        title="׳³ֲ¢׳³ג€¢׳³ג€“׳³ֲ¨ AI ׳³ֲ׳³ֲ׳³ֲ׳³ֲ׳³ג„¢"
         style={{
           position: 'fixed', bottom: '30px', left: '30px', zIndex: 10000,
           width: '60px', height: '60px', borderRadius: '30px',
@@ -949,24 +949,24 @@ export default function CustomerInventoryViewer() {
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Bot size={24} />
-              <span>עוזר AI למלאי</span>
+              <span>׳³ֲ¢׳³ג€¢׳³ג€“׳³ֲ¨ AI ׳³ֲ׳³ֲ׳³ֲ׳³ֲ׳³ג„¢</span>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
               <button 
                 onClick={() => setShowAiHistory(!showAiHistory)} 
                 style={{ background: 'none', border: 'none', color: showAiHistory ? '#fcd34d' : 'white', cursor: 'pointer', fontSize: '18px' }}
-                title="היסטוריית שיחות"
+                title="׳³ג€׳³ג„¢׳³ֲ¡׳³ֻ׳³ג€¢׳³ֲ¨׳³ג„¢׳³ג„¢׳³ֳ— ׳³ֲ©׳³ג„¢׳³ג€”׳³ג€¢׳³ֳ—"
               >
                 <History size={18} />
               </button>
               <button 
                 onClick={startNewAiChat} 
                 style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '15px', padding: '4px 10px', color: 'white', cursor: 'pointer', fontSize: '12px' }}
-                title="התחל שיחה חדשה"
+                title="׳³ג€׳³ֳ—׳³ג€”׳³ֲ ׳³ֲ©׳³ג„¢׳³ג€”׳³ג€ ׳³ג€”׳³ג€׳³ֲ©׳³ג€"
               >
-                שיחה חדשה
+                ׳³ֲ©׳³ג„¢׳³ג€”׳³ג€ ׳³ג€”׳³ג€׳³ֲ©׳³ג€
               </button>
-              <button onClick={() => setAiChatOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '20px' }}>×</button>
+              <button onClick={() => setAiChatOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '20px' }}>ײ³ג€”</button>
             </div>
           </div>
           
@@ -974,9 +974,9 @@ export default function CustomerInventoryViewer() {
           <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: 'var(--element-bg)', position: 'relative' }}>
             {showAiHistory ? (
               <div style={{ padding: '5px' }}>
-                <h3 style={{ marginTop: 0, color: 'var(--text-main)', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
+                <h3 style={{ marginTop: 0, color: 'var(--text-main)', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>׳³ג€׳³ג„¢׳³ֲ¡׳³ֻ׳³ג€¢׳³ֲ¨׳³ג„¢׳³ג„¢׳³ֳ— ׳³ֲ©׳³ג„¢׳³ג€”׳³ג€¢׳³ֳ—</h3>
                 {aiChatSessions.length === 0 ? (
-                  <div style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '10px' }}>אין היסטוריית שיחות שמורה.</div>
+                  <div style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '10px' }}>׳³ֲ׳³ג„¢׳³ֲ ׳³ג€׳³ג„¢׳³ֲ¡׳³ֻ׳³ג€¢׳³ֲ¨׳³ג„¢׳³ג„¢׳³ֳ— ׳³ֲ©׳³ג„¢׳³ג€”׳³ג€¢׳³ֳ— ׳³ֲ©׳³ֲ׳³ג€¢׳³ֲ¨׳³ג€.</div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
                     {aiChatSessions.map((session) => (
@@ -992,7 +992,7 @@ export default function CustomerInventoryViewer() {
                       >
                         <span style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.9rem' }}>{session.date}</span>
                         <span style={{ color: '#6b7280', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {session.messages.length > 1 ? session.messages[1].content : 'שיחה ריקה'}
+                          {session.messages.length > 1 ? session.messages[1].content : '׳³ֲ©׳³ג„¢׳³ג€”׳³ג€ ׳³ֲ¨׳³ג„¢׳³ֲ§׳³ג€'}
                         </span>
                       </div>
                     ))}
@@ -1012,7 +1012,7 @@ export default function CustomerInventoryViewer() {
                     borderBottomLeftRadius: msg.role === 'assistant' ? '0' : '12px',
                     border: msg.role === 'assistant' ? '1px solid var(--element-border)' : 'none'
                   }}>
-                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.4' }}>{msg.content}</div>
+                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.4' }}><FormattedMessage content={msg.content} /></div>
                     {msg.tableData && msg.tableData.length > 0 && (
                        <div style={{ marginTop: '10px', overflowX: 'auto', border: '1px solid var(--element-border)', borderRadius: '8px' }}>
                           <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', backgroundColor: 'var(--card-bg)' }}>
@@ -1036,7 +1036,7 @@ export default function CustomerInventoryViewer() {
                 {aiLoading && (
                   <div style={{ alignSelf: 'flex-end', backgroundColor: 'var(--card-bg)', padding: '10px 15px', borderRadius: '12px', borderBottomLeftRadius: '0', border: '1px solid var(--element-border)', fontSize: '14px', color: '#6b7280' }}>
                     <span className="spinner" style={{ width: '12px', height: '12px', margin: '0 0 0 8px', display: 'inline-block', verticalAlign: 'middle', borderTopColor: '#3b82f6', borderWidth: '2px' }}></span>
-                    מעבד נתונים...
+                    ׳³ֲ׳³ֲ¢׳³ג€˜׳³ג€ ׳³ֲ ׳³ֳ—׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ...
                   </div>
                 )}
                 <div ref={chatEndRef} />
@@ -1058,20 +1058,20 @@ export default function CustomerInventoryViewer() {
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0
               }}
-              title="הקלט הודעה"
+              title="׳³ג€׳³ֲ§׳³ֲ׳³ֻ ׳³ג€׳³ג€¢׳³ג€׳³ֲ¢׳³ג€"
             >
               <Mic size={20} className={isListening ? 'listening-pulse' : ''} />
             </button>
             <input 
               type="text" autoFocus value={aiInput} onChange={e => setAiInput(e.target.value)}
-              placeholder="שמלה שיש לתאריך X במידות בערך 4,6..."
+              placeholder="׳³ֲ©׳³ֲ׳³ֲ׳³ג€ ׳³ֲ©׳³ג„¢׳³ֲ© ׳³ֲ׳³ֳ—׳³ֲ׳³ֲ¨׳³ג„¢׳³ֲ X ׳³ג€˜׳³ֲ׳³ג„¢׳³ג€׳³ג€¢׳³ֳ— ׳³ג€˜׳³ֲ¢׳³ֲ¨׳³ֲ 4,6..."
               style={{ flex: 1, padding: '10px 15px', borderRadius: '20px', border: '1px solid #d1d5db', outline: 'none', fontSize: '14px' }}
             />
             <button type="submit" disabled={aiLoading || !aiInput.trim()} style={{
               background: '#3b82f6', color: 'white', border: 'none', borderRadius: '20px', padding: '0 15px',
               cursor: (aiLoading || !aiInput.trim()) ? 'default' : 'pointer', opacity: (aiLoading || !aiInput.trim()) ? 0.5 : 1,
               fontWeight: 'bold'
-            }}>שלח</button>
+            }}>׳³ֲ©׳³ֲ׳³ג€”</button>
           </form>
         </div>
       )}

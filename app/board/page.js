@@ -8,6 +8,7 @@ import { HDate, Sedra, Locale, HebrewCalendar } from '@hebcal/core';
 import { getHebrewMonthYear } from '@/lib/hebrewDate';
 import { ChevronRight, ChevronLeft, Calendar as CalendarIcon, FileText, MapPin, Search, AlertCircle, RefreshCw, Smartphone, List, CheckCircle2, Phone, Calendar as CalendarIcon2, Shirt, CreditCard, Info, Maximize2, User, X } from 'lucide-react';
 import AISearchBar from '../components/AISearchBar';
+import HebrewDatePicker from '../../components/HebrewDatePicker';
 import StatisticsModal from '../components/StatisticsModal';
 import styles from './board.module.css';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
@@ -115,11 +116,11 @@ export default function BoardPage() {
         setIsAiModeActive(true);
         setAiQueryUsed(result.query || '');
       } else {
-        alert(result.error || 'שגיאה בחיפוש החכם');
+        alert(result.error || '׳©׳’׳™׳׳” ׳‘׳—׳™׳₪׳•׳© ׳”׳—׳›׳');
       }
     } catch (e) {
       console.error(e);
-      alert('שגיאת תקשורת');
+      alert('׳©׳’׳™׳׳× ׳×׳§׳©׳•׳¨׳×');
     } finally {
       setAiLoading(false);
     }
@@ -189,13 +190,13 @@ export default function BoardPage() {
 
   const getCategoryLabel = (category) => {
     switch (category) {
-      case 'empty': return 'הזמנה פגומה (0 פריטים)';
-      case 'repairs': return 'יש תיקונים';
-      case 'unpaid': return 'לא שולם';
-      case 'returned': return 'הוחזר';
-      case 'rented': return 'מושכר/חלקית';
-      case 'completed': return 'הושלם (שולם)';
-      default: return 'אחר';
+      case 'empty': return '׳”׳–׳׳ ׳” ׳₪׳’׳•׳׳” (0 ׳₪׳¨׳™׳˜׳™׳)';
+      case 'repairs': return '׳™׳© ׳×׳™׳§׳•׳ ׳™׳';
+      case 'unpaid': return '׳׳ ׳©׳•׳׳';
+      case 'returned': return '׳”׳•׳—׳–׳¨';
+      case 'rented': return '׳׳•׳©׳›׳¨/׳—׳׳§׳™׳×';
+      case 'completed': return '׳”׳•׳©׳׳ (׳©׳•׳׳)';
+      default: return '׳׳—׳¨';
     }
   };
 
@@ -246,7 +247,7 @@ export default function BoardPage() {
         key={order.orderId} 
         className={styles.orderCard}
         style={{ background: colorStyle.background, borderColor: colorStyle.border, color: colorStyle.color, cursor: 'pointer', position: 'relative' }}
-        title={`סטטוס: ${getCategoryLabel(category)}\nסה"כ: ₪${order.totalAmount}\nשולם: ₪${order.totalPaid}`}
+        title={`׳¡׳˜׳˜׳•׳¡: ${getCategoryLabel(category)}\n׳¡׳”"׳›: ג‚×${order.totalAmount}\n׳©׳•׳׳: ג‚×${order.totalPaid}`}
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           setActionPos({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX });
@@ -324,7 +325,7 @@ export default function BoardPage() {
     
     return (
       <div className={styles.calendarGrid}>
-        {["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"].map(d => (
+        {["׳¨׳׳©׳•׳","׳©׳ ׳™","׳©׳׳™׳©׳™","׳¨׳‘׳™׳¢׳™","׳—׳׳™׳©׳™","׳©׳™׳©׳™","׳©׳‘׳×"].map(d => (
           <div key={d} className={styles.dayHeader}>{d}</div>
         ))}
         
@@ -380,7 +381,7 @@ export default function BoardPage() {
                 const flags = e.getFlags();
                 const name = e.render('he');
                 if (flags & 8192) return false; // Exclude Modern Holidays
-                if (name.includes('בנות') || name.includes('מעשר בהמה') || name.includes('סליחות')) return false; 
+                if (name.includes('׳‘׳ ׳•׳×') || name.includes('׳׳¢׳©׳¨ ׳‘׳”׳׳”') || name.includes('׳¡׳׳™׳—׳•׳×')) return false; 
                 return (flags & 1) || (flags & 524288) || (flags & 2097152) || (flags & 16384) || (flags & 256);
               }).map(e => e.render('he'));
             } catch (e) {}
@@ -404,7 +405,7 @@ export default function BoardPage() {
                           });
                         }}
                         style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary-color)', display: 'flex', padding: 0 }}
-                        title="תצוגה מורחבת ליום זה"
+                        title="׳×׳¦׳•׳’׳” ׳׳•׳¨׳—׳‘׳× ׳׳™׳•׳ ׳–׳”"
                       >
                         <Maximize2 size={16} />
                       </button>
@@ -442,14 +443,23 @@ export default function BoardPage() {
         <div className={styles.headerTop}>
           <h1 className={styles.title} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
             <CalendarIcon size={28} />
-            לוח שנה
+            ׳׳•׳— ׳©׳ ׳”
           </h1>
-          <div className={styles.navControls}>
-            <button className={styles.navBtn} onClick={() => changeMonth(-1)} title="חודש קודם">
+                    <div className={styles.navControls}>
+            <button className={styles.navBtn} onClick={() => changeMonth(1)} title="חודש הבא">
               <ChevronRight size={24} />
             </button>
-            <div className={styles.monthDisplay}>{currentMonthYear}</div>
-            <button className={styles.navBtn} onClick={() => changeMonth(1)} title="חודש הבא">
+            <div className={styles.monthDisplay} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {currentMonthYear}
+              <div style={{ width: '130px', fontWeight: 'normal', fontSize: '0.9rem' }}>
+                <HebrewDatePicker value={jumpDate} onChange={setJumpDate} placeholder="קפוץ לתאריך..." />
+              </div>
+            </div>
+            <button className={styles.navBtn} onClick={() => changeMonth(-1)} title="חודש קודם">
+              <ChevronLeft size={24} />
+            </button>
+          </div>
+            <button className={styles.navBtn} onClick={() => changeMonth(-1)} title="׳—׳•׳“׳© ׳§׳•׳“׳">
               <ChevronLeft size={24} />
             </button>
           </div>
@@ -460,7 +470,7 @@ export default function BoardPage() {
             <div style={{ display: 'flex', gap: '1rem', width: '100%', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ flexGrow: 1, minWidth: '300px' }}>
                 <AISearchBar 
-                  placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
+                  placeholder="׳—׳™׳₪׳•׳© ׳”׳–׳׳ ׳” (׳׳¡׳₪׳¨ ׳”׳–׳׳ ׳”, ׳©׳ ׳׳§׳•׳—)..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                   onSearch={handleSearch}
@@ -474,15 +484,15 @@ export default function BoardPage() {
                 onClick={() => setShowAdvSearch(true)}
                 className="btn btn-outline"
                 style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}
-                title="חיפוש מתקדם"
+                title="׳—׳™׳₪׳•׳© ׳׳×׳§׳“׳"
               >
-                🔍
+                נ”
               </button>
             </div>
           </div>
 
           <div className={styles.legendCompact}>
-            <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>מקרא:</strong>
+            <strong style={{ color: 'var(--text-main)', fontSize: '0.9rem' }}>׳׳§׳¨׳:</strong>
             {['repairs', 'unpaid', 'rented', 'returned', 'completed', 'other'].map(cat => {
               const style = getColorStyles(cat);
               return (
@@ -497,7 +507,7 @@ export default function BoardPage() {
       </div>
 
       {loading ? (
-        <div className={styles.loadingOverlay}>טוען נתונים...</div>
+        <div className={styles.loadingOverlay}>׳˜׳•׳¢׳ ׳ ׳×׳•׳ ׳™׳...</div>
       ) : (
         renderCalendar()
       )}
@@ -509,45 +519,45 @@ export default function BoardPage() {
         >
           <div className="global-popoverHeader">
             <Info size={18} />
-            פרטים על הזמנה #{hoveredOrder.order.orderId}
+            ׳₪׳¨׳˜׳™׳ ׳¢׳ ׳”׳–׳׳ ׳” #{hoveredOrder.order.orderId}
           </div>
           <div className="global-popoverRow">
-            <span>לקוח:</span>
-            <span><Phone size={14} /> טלפון:</span>
-            <span dir="ltr">{hoveredOrder.order.customerPhone || 'לא הוזן'}</span>
+            <span>׳׳§׳•׳—:</span>
+            <span><Phone size={14} /> ׳˜׳׳₪׳•׳:</span>
+            <span dir="ltr">{hoveredOrder.order.customerPhone || '׳׳ ׳”׳•׳–׳'}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><CalendarIcon2 size={14} /> תאריך עברי:</span>
-            <span>{hoveredOrder.order.eventDateHebrew || 'לא צוין'}</span>
+            <span><CalendarIcon2 size={14} /> ׳×׳׳¨׳™׳ ׳¢׳‘׳¨׳™:</span>
+            <span>{hoveredOrder.order.eventDateHebrew || '׳׳ ׳¦׳•׳™׳'}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><CalendarIcon2 size={14} /> תאריך לועזי:</span>
-            <span>{hoveredOrder.order.eventDate ? new Date(hoveredOrder.order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</span>
+            <span><CalendarIcon2 size={14} /> ׳×׳׳¨׳™׳ ׳׳•׳¢׳–׳™:</span>
+            <span>{hoveredOrder.order.eventDate ? new Date(hoveredOrder.order.eventDate).toLocaleDateString('he-IL') : '׳׳ ׳¦׳•׳™׳'}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><Shirt size={14} /> פריטים בהזמנה:</span>
+            <span><Shirt size={14} /> ׳₪׳¨׳™׳˜׳™׳ ׳‘׳”׳–׳׳ ׳”:</span>
             <span>{hoveredOrder.order.items?.filter(i => !i.isDeleted).length || 0}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><Shirt size={14} /> הושכר:</span>
+            <span><Shirt size={14} /> ׳”׳•׳©׳›׳¨:</span>
             <span>{hoveredOrder.order.items?.filter(i => !i.isDeleted && i.isTaken).length || 0}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><Shirt size={14} /> הוחזר:</span>
+            <span><Shirt size={14} /> ׳”׳•׳—׳–׳¨:</span>
             <span>{hoveredOrder.order.items?.filter(i => !i.isDeleted && i.isReturned).length || 0}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><CreditCard size={14} /> סה"כ לתשלום:</span>
-            <span>₪{hoveredOrder.order.totalAmount || 0}</span>
+            <span><CreditCard size={14} /> ׳¡׳”"׳› ׳׳×׳©׳׳•׳:</span>
+            <span>ג‚×{hoveredOrder.order.totalAmount || 0}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><CheckCircle2 size={14} /> שולם:</span>
+            <span><CheckCircle2 size={14} /> ׳©׳•׳׳:</span>
             <span style={{ color: hoveredOrder.order.totalPaid >= hoveredOrder.order.totalAmount && hoveredOrder.order.totalAmount > 0 ? '#10b981' : (hoveredOrder.order.totalPaid > 0 ? '#f59e0b' : '#ef4444'), fontWeight: 'bold' }}>
-              ₪{hoveredOrder.order.totalPaid || 0}
+              ג‚×{hoveredOrder.order.totalPaid || 0}
             </span>
           </div>
           <div className={styles.popoverRow}>
-            <span>סטטוס:</span>
+            <span>׳¡׳˜׳˜׳•׳¡:</span>
             <span style={{ color: getColorStyles(hoveredOrder.category).color }}>{getCategoryLabel(hoveredOrder.category)}</span>
           </div>
         </div>,
@@ -557,34 +567,34 @@ export default function BoardPage() {
       {showAdvSearch && (
         <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }}>
           <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-            <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem' }}>חיפוש מתקדם</h2>
+            <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem' }}>׳—׳™׳₪׳•׳© ׳׳×׳§׳“׳</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>מספר הזמנה</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>׳׳¡׳₪׳¨ ׳”׳–׳׳ ׳”</label>
                 <input type="text" className="form-control" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>ברקוד/פרטי פריט</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>׳‘׳¨׳§׳•׳“/׳₪׳¨׳˜׳™ ׳₪׳¨׳™׳˜</label>
                 <input type="text" className="form-control" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>שם לקוח</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>׳©׳ ׳׳§׳•׳—</label>
                 <input type="text" className="form-control" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>טלפון לקוח</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>׳˜׳׳₪׳•׳ ׳׳§׳•׳—</label>
                 <input type="text" className="form-control" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} />
               </div>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>עיר מגורים</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>׳¢׳™׳¨ ׳׳’׳•׳¨׳™׳</label>
                 <input type="text" className="form-control" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>סגור והחל סינון</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>׳¡׳’׳•׳¨ ׳•׳”׳—׳ ׳¡׳™׳ ׳•׳</button>
               <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
                 setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: '' });
-              }}>נקה הכל</button>
+              }}>׳ ׳§׳” ׳”׳›׳</button>
             </div>
           </div>
         </div>
@@ -626,8 +636,8 @@ export default function BoardPage() {
               border: '1px solid var(--element-border, #e2e8f0)'
             }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem', flexShrink: 0 }}>
-              <h3 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '1.2rem' }}>הזמנות ליום {selectedDayOrders.date.toLocaleDateString('he-IL')} ({selectedDayOrders.hebrewDate})</h3>
-              <button onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '50%' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} title="סגור">
+              <h3 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '1.2rem' }}>׳”׳–׳׳ ׳•׳× ׳׳™׳•׳ {selectedDayOrders.date.toLocaleDateString('he-IL')} ({selectedDayOrders.hebrewDate})</h3>
+              <button onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '50%' }} onMouseEnter={e => e.currentTarget.style.background = '#f1f5f9'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} title="׳¡׳’׳•׳¨">
                 <X size={20} strokeWidth={2.5} />
               </button>
             </div>
@@ -635,7 +645,7 @@ export default function BoardPage() {
             <div style={{ position: 'relative', width: '100%', marginBottom: '1rem', flexShrink: 0 }}>
                <input
                   type="text"
-                  placeholder="חיפוש הזמנה ביום זה (שם, טלפון, מספר)..."
+                  placeholder="׳—׳™׳₪׳•׳© ׳”׳–׳׳ ׳” ׳‘׳™׳•׳ ׳–׳” (׳©׳, ׳˜׳׳₪׳•׳, ׳׳¡׳₪׳¨)..."
                   value={dayOrdersFilter}
                   onChange={(e) => setDayOrdersFilter(e.target.value)}
                   style={{
@@ -672,7 +682,7 @@ export default function BoardPage() {
                       color: '#64748b',
                       padding: 0
                     }}
-                    title="נקה סינון"
+                    title="׳ ׳§׳” ׳¡׳™׳ ׳•׳"
                   >
                     <X size={14} strokeWidth={3} />
                   </button>
@@ -729,7 +739,7 @@ export default function BoardPage() {
             onClick={(e) => e.stopPropagation()}
           >
             <div style={{ padding: '0 8px 8px', fontSize: '0.9rem', color: '#64748b', borderBottom: '1px solid #f1f5f9', marginBottom: '4px', fontWeight: 'bold' }}>
-              הזמנה #{actionOrder.orderId}
+              ׳”׳–׳׳ ׳” #{actionOrder.orderId}
             </div>
             <Link 
               href={`/orders/${actionOrder.orderId}`}
@@ -737,7 +747,7 @@ export default function BoardPage() {
               onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              <FileText size={18} color="#3b82f6" /> כרטיס הזמנה
+              <FileText size={18} color="#3b82f6" /> ׳›׳¨׳˜׳™׳¡ ׳”׳–׳׳ ׳”
             </Link>
             {(actionOrder.customerId || actionOrder.customer?.id) && (
               <Link 
@@ -746,7 +756,7 @@ export default function BoardPage() {
                 onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
-                <User size={18} color="#10b981" /> כרטיס לקוח
+                <User size={18} color="#10b981" /> ׳›׳¨׳˜׳™׳¡ ׳׳§׳•׳—
               </Link>
             )}
             <button 
@@ -759,7 +769,7 @@ export default function BoardPage() {
               onMouseEnter={(e) => e.currentTarget.style.background = '#f1f5f9'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              <Shirt size={18} color="#f59e0b" /> כרטיס השכרה
+              <Shirt size={18} color="#f59e0b" /> ׳›׳¨׳˜׳™׳¡ ׳”׳©׳›׳¨׳”
             </button>
           </div>
         </>,

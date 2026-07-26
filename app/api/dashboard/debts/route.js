@@ -22,12 +22,13 @@ export async function GET(request) {
             phone1: true
           }
         },
-        payments: true
+        payments: true,
+        obligations: true
       },
       orderBy: {
         orderId: 'desc'
       },
-      take: 100
+      take: 1000
     });
 
     // Fetch all DEBT_APPROVED audit logs for these orders
@@ -43,7 +44,8 @@ export async function GET(request) {
 
     const debtsWithRemaining = debts.map(order => {
       const totalPaid = order.payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
-      const remaining = (order.totalAmount || 0) - totalPaid;
+      const totalObligations = order.obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + (o.amount * o.quantity), 0);
+      const remaining = totalObligations - totalPaid;
       
       // Check if debt is approved
       let isApproved = false;
@@ -123,6 +125,7 @@ export async function GET(request) {
     const recentRentals = await prisma.orderItem.findMany({
       where: {
         isDeleted: false,
+        isTaken: true,
         order: {
           isDeleted: false
         }
@@ -131,6 +134,12 @@ export async function GET(request) {
         order: {
           include: {
             customer: {
+              select: {
+                firstName: true,
+                lastName: true
+              }
+            },
+            employee: {
               select: {
                 firstName: true,
                 lastName: true
@@ -149,7 +158,7 @@ export async function GET(request) {
         }
       },
       orderBy: {
-        createdAt: 'desc'
+        takenDate: 'desc'
       },
       take: 10
     });

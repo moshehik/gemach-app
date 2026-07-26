@@ -18,6 +18,7 @@ export default function MessagesPage() {
   // Compose state
   const [receiverId, setReceiverId] = useState('all');
   const [content, setContent] = useState('');
+  const [sendEmail, setSendEmail] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [sendSuccess, setSendSuccess] = useState(false);
 
@@ -153,7 +154,9 @@ export default function MessagesPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           receiverId,
-          content
+          title: 'הודעה חדשה',
+          content,
+          sendEmail
         })
       });
       const data = await res.json();
@@ -469,15 +472,20 @@ export default function MessagesPage() {
                     </select>
                   </div>
 
-                  <div style={{ marginBottom: '2rem' }}>
+                  <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '1rem', color: '#1e293b', fontWeight: '600' }}>תוכן ההודעה:</label>
                     <textarea
                       value={content}
                       onChange={e => setContent(e.target.value)}
                       placeholder="הקלד את הודעתך כאן..."
-                      style={{ width: '100%', height: '200px', padding: '1rem', borderRadius: '12px', border: '2px solid #cbd5e1', background: 'white', color: '#0f172a', fontSize: '1.1rem', resize: 'none', outline: 'none', transition: 'border-color 0.2s' }}
+                      style={{ width: '100%', minHeight: '150px', padding: '1rem', borderRadius: '12px', border: '2px solid #cbd5e1', background: 'white', color: '#0f172a', fontSize: '1.1rem', resize: 'vertical', outline: 'none', transition: 'border-color 0.2s' }}
                     />
                   </div>
+
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '1.5rem', fontSize: '0.95rem', fontWeight: '500' }}>
+                    <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
+                    שלח התראה גם למייל (לעובדים בעלי כתובת מייל מעודכנת)
+                  </label>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <button 

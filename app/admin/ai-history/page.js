@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, Bot, Calendar, User, Search, RefreshCw, Eye } from 'lucide-react';
 import { createPortal } from 'react-dom';
+import FormattedMessage from '../../../components/FormattedMessage';
 
 export default function AiHistoryPage() {
   const [sessions, setSessions] = useState([]);
@@ -43,11 +44,11 @@ export default function AiHistoryPage() {
 
   const getContextColor = (context) => {
     if (!context) return '#64748b';
-    if (context.includes('דוח AI') || context.includes('סטטיסטיקה')) return '#8b5cf6';
-    if (context.includes('דשבורד') || context.includes('בית')) return '#3b82f6';
-    if (context.includes('לקוחות')) return '#06b6d4';
-    if (context.includes('עובדים')) return '#10b981';
-    if (context.includes('הזמנות')) return '#f59e0b';
+    if (context.includes('׳“׳•׳— AI') || context.includes('׳¡׳˜׳˜׳™׳¡׳˜׳™׳§׳”')) return '#8b5cf6';
+    if (context.includes('׳“׳©׳‘׳•׳¨׳“') || context.includes('׳‘׳™׳×')) return '#3b82f6';
+    if (context.includes('׳׳§׳•׳—׳•׳×')) return '#06b6d4';
+    if (context.includes('׳¢׳•׳‘׳“׳™׳')) return '#10b981';
+    if (context.includes('׳”׳–׳׳ ׳•׳×')) return '#f59e0b';
     return '#64748b';
   };
 
@@ -55,31 +56,31 @@ export default function AiHistoryPage() {
     <div className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
         <Link href="/admin" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px', textDecoration: 'none' }}>
-          <ArrowLeft size={18} /> חזרה
+          <ArrowLeft size={18} /> ׳—׳–׳¨׳”
         </Link>
         <h1 style={{ margin: 0, color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Bot size={28} /> היסטוריית שיחות AI
+          <Bot size={28} /> ׳”׳™׳¡׳˜׳•׳¨׳™׳™׳× ׳©׳™׳—׳•׳× AI
         </h1>
         <div style={{ flex: 1 }}></div>
         <button onClick={fetchSessions} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px' }}>
-          <RefreshCw size={18} /> רענן
+          <RefreshCw size={18} /> ׳¨׳¢׳ ׳
         </button>
       </div>
 
       <div style={{ background: 'var(--card-bg)', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, color: 'var(--text-main)' }}>סה"כ שיחות: {total}</h3>
+          <h3 style={{ margin: 0, color: 'var(--text-main)' }}>׳¡׳”"׳› ׳©׳™׳—׳•׳×: {total}</h3>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
             <thead>
               <tr style={{ background: 'var(--element-bg)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>תאריך התחלה</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>הקשר (עמוד)</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>עובד</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>הודעות</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>פעולות</th>
+                <th style={{ padding: '1rem', fontWeight: '600' }}>׳×׳׳¨׳™׳ ׳”׳×׳—׳׳”</th>
+                <th style={{ padding: '1rem', fontWeight: '600' }}>׳”׳§׳©׳¨ (׳¢׳׳•׳“)</th>
+                <th style={{ padding: '1rem', fontWeight: '600' }}>׳¢׳•׳‘׳“</th>
+                <th style={{ padding: '1rem', fontWeight: '600' }}>׳”׳•׳“׳¢׳•׳×</th>
+                <th style={{ padding: '1rem', fontWeight: '600' }}>׳₪׳¢׳•׳׳•׳×</th>
               </tr>
             </thead>
             <tbody>
@@ -92,7 +93,7 @@ export default function AiHistoryPage() {
               ) : sessions.length === 0 ? (
                 <tr>
                   <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                    לא נמצאו שיחות
+                    ׳׳ ׳ ׳׳¦׳׳• ׳©׳™׳—׳•׳×
                   </td>
                 </tr>
               ) : (
@@ -125,11 +126,11 @@ export default function AiHistoryPage() {
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <User size={16} color="var(--text-muted)" />
-                          {session.employee ? `${session.employee.firstName} ${session.employee.lastName || ''}` : 'לא ידוע'}
+                          {session.employee ? `${session.employee.firstName} ${session.employee.lastName || ''}` : '׳׳ ׳™׳“׳•׳¢'}
                         </div>
                       </td>
                       <td style={{ padding: '1rem' }}>
-                        <div style={{ fontWeight: 'bold' }}>{msgCount} הודעות</div>
+                        <div style={{ fontWeight: 'bold' }}>{msgCount} ׳”׳•׳“׳¢׳•׳×</div>
                       </td>
                       <td style={{ padding: '1rem' }}>
                         <button 
@@ -147,7 +148,7 @@ export default function AiHistoryPage() {
                             fontWeight: '500'
                           }}
                         >
-                          <Eye size={16} /> צפה בשיחה
+                          <Eye size={16} /> ׳¦׳₪׳” ׳‘׳©׳™׳—׳”
                         </button>
                       </td>
                     </tr>
@@ -167,10 +168,10 @@ export default function AiHistoryPage() {
               className="btn btn-outline"
               style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}
             >
-              הקודם
+              ׳”׳§׳•׳“׳
             </button>
             <span style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', fontWeight: 'bold' }}>
-              עמוד {page} מתוך {totalPages}
+              ׳¢׳׳•׳“ {page} ׳׳×׳•׳ {totalPages}
             </span>
             <button 
               disabled={page === totalPages}
@@ -178,7 +179,7 @@ export default function AiHistoryPage() {
               className="btn btn-outline"
               style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}
             >
-              הבא
+              ׳”׳‘׳
             </button>
           </div>
         )}
@@ -204,12 +205,12 @@ export default function AiHistoryPage() {
               <div>
                 <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Bot size={24} color="#38bdf8" />
-                  תיעוד שיחת AI
+                  ׳×׳™׳¢׳•׳“ ׳©׳™׳—׳× AI
                 </h2>
                 <div style={{ fontSize: '0.9rem', color: '#cbd5e1', marginTop: '0.5rem' }}>
-                  עובד: {selectedSession.employee ? `${selectedSession.employee.firstName} ${selectedSession.employee.lastName || ''}` : 'לא ידוע'} | 
-                  הקשר: {selectedSession.context} | 
-                  תאריך: {new Date(selectedSession.startedAt).toLocaleString('he-IL')}
+                  ׳¢׳•׳‘׳“: {selectedSession.employee ? `${selectedSession.employee.firstName} ${selectedSession.employee.lastName || ''}` : '׳׳ ׳™׳“׳•׳¢'} | 
+                  ׳”׳§׳©׳¨: {selectedSession.context} | 
+                  ׳×׳׳¨׳™׳: {new Date(selectedSession.startedAt).toLocaleString('he-IL')}
                 </div>
               </div>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0.5rem' }}>
@@ -230,7 +231,7 @@ export default function AiHistoryPage() {
                     justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
                     gap: '1rem'
                   }}>
-                    {msg.role === 'assistant' && (
+                    {msg.role !== 'user' && (
                       <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6', flexShrink: 0 }}>
                         <Bot size={20} />
                       </div>
@@ -240,16 +241,16 @@ export default function AiHistoryPage() {
                       padding: '1rem 1.25rem', 
                       borderRadius: '16px',
                       borderTopRightRadius: msg.role === 'user' ? '4px' : '16px',
-                      borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px',
+                      borderTopLeftRadius: msg.role !== 'user' ? '4px' : '16px',
                       background: msg.role === 'user' ? '#3b82f6' : 'white',
                       color: msg.role === 'user' ? 'white' : '#1e293b',
                       boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
                       lineHeight: '1.6',
                       whiteSpace: 'pre-wrap',
-                      border: msg.role === 'assistant' ? '1px solid #e2e8f0' : 'none',
+                      border: msg.role !== 'user' ? '1px solid #e2e8f0' : 'none',
                       fontSize: '1.05rem'
                     }}>
-                      {msg.content}
+                      <FormattedMessage content={msg.content} />
                     </div>
                   </div>
                 ));

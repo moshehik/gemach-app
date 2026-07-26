@@ -37,7 +37,7 @@ The user wants to search for data in the following table schema:
 ${schemaContext}
 
 Your task is to generate ONLY a valid PostgreSQL WHERE clause (without the WHERE keyword itself) based on the user's natural language request.
-Be smart about variations. For example, if the user searches for the name "שיינועטר", use LIKE operators to cover variations like "שיינועטר", "שינוטר", "שיינאטר", etc. If the user searches for a date, handle it properly.
+Be smart about variations. For example, if the user searches for the name "׳©׳™׳™׳ ׳•׳¢׳˜׳¨", use LIKE operators to cover variations like "׳©׳™׳™׳ ׳•׳¢׳˜׳¨", "׳©׳™׳ ׳•׳˜׳¨", "׳©׳™׳™׳ ׳׳˜׳¨", etc. If the user searches for a date, handle it properly.
 
 Rules:
 1. Your response MUST START with the exact prefix "SQL: ".
@@ -47,8 +47,8 @@ Rules:
 5. Remember that the main table is "${tableName}". If you need to filter by a related table, use a subquery (e.g. \`"customerId" IN (SELECT id FROM "Customer" WHERE ...)\`).
 6. VERY IMPORTANT FOR DATES: For Gregorian dates, use 'YYYY-MM-DD'. If the user searches by Hebrew date, DO NOT GUESS THE GREGORIAN DATE! Instead, use the exact macro HEBREW_DATE(day, 'MONTH', year) in your SQL string, and we will replace it automatically. Example: "eventDate" = HEBREW_DATE(10, 'SIVAN', 5786). Month must be one of: NISAN, IYYAR, SIVAN, TAMUZ, AV, ELUL, TISHREI, CHESHVAN, KISLEV, TEVET, SHVAT, ADAR_I, ADAR_II. If year is unknown, use the current Hebrew year from context.
 
-Example output for "משפחת כהן או לוי מירושלים":
-SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%ירושלים%'
+Example output for "׳׳©׳₪׳—׳× ׳›׳”׳ ׳׳• ׳׳•׳™ ׳׳™׳¨׳•׳©׳׳™׳":
+SQL: (lastName LIKE '%׳›׳”׳%' OR lastName LIKE '%׳׳•׳™%') AND city LIKE '%׳™׳¨׳•׳©׳׳™׳%'
 `;
 
     const todayGregorian = new Date().toISOString().split('T')[0];
@@ -112,7 +112,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
     }
 
     if (!querySuccess) {
-       return NextResponse.json({ error: 'שגיאה בביצוע חיפוש חכם.', details: 'Query execution failed after retry' }, { status: 400 });
+       return NextResponse.json({ error: '׳©׳’׳™׳׳” ׳‘׳‘׳™׳¦׳•׳¢ ׳—׳™׳₪׳•׳© ׳—׳›׳.', details: 'Query execution failed after retry' }, { status: 400 });
     }
 
     if (pageContext === 'orders' && data.length > 0) {
@@ -163,7 +163,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
             totalPaid: order.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0,
             paymentDate: order.paymentDate,
             paymentMethod: order.paymentMethod,
-            status: order.status || (order.paymentDate ? 'שולם' : 'ממתין לתשלום'),
+            status: order.status || (order.paymentDate ? '׳©׳•׳׳' : '׳׳׳×׳™׳ ׳׳×׳©׳׳•׳'),
             notes: order.notes,
             eventDate: order.eventDate,
             eventDateHebrew: order.eventDateHebrew,
@@ -182,7 +182,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
                 id: i.id,
                 dressId: i.dressItem?.dress?.id,
                 itemId: i.dressItemId,
-                description: dressName ? `${dressName} (קוד: ${prefix || ''}, מידה: ${i.sizeText || i.dressItem?.sizeText || ''})` : (i.description || 'פריט כללי'),
+                description: dressName ? `${dressName} (׳§׳•׳“: ${prefix || ''}, ׳׳™׳“׳”: ${i.sizeText || i.dressItem?.sizeText || ''})` : (i.description || '׳₪׳¨׳™׳˜ ׳›׳׳׳™'),
                 price: i.price,
                 isTaken: i.isTaken,
                 isReturned: i.isReturned,
@@ -193,7 +193,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
                 alterationDetails: i.alterationDetails
               };
             }),
-            customerName: order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לא ידוע',
+            customerName: order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : '׳׳ ׳™׳“׳•׳¢',
             customerPhone: order.customer ? (order.customer.phone1 || order.customer.phone2 || '') : ''
           };
         });

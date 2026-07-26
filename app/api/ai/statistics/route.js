@@ -21,7 +21,7 @@ Rules for SQL query generation:
 2. The query must be valid PostgreSQL syntax.
 3. Use double quotes for table names (e.g. "Order", "Customer") and camelCase column names (e.g. "firstName").
 4. Booleans must use true/false, not 1/0.
-5. ALWAYS use 'AS' to alias column names into Hebrew. For example: SELECT COUNT(*) AS 'סה"כ לקוחות'.
+5. ALWAYS use 'AS' to alias column names into Hebrew. For example: SELECT COUNT(*) AS '׳¡׳”"׳› ׳׳§׳•׳—׳•׳×'.
 6. If it's a general question that doesn't need database access, just answer it naturally in Hebrew without the "SQL: " prefix.
 7. CRITICAL RULE FOR DELETED/INACTIVE DATA: Whenever you query ANY table (e.g. "Customer", "Order", "DressItem", "DressModel", "OrderItem"), you MUST ALWAYS filter out deleted items by adding '"isDeleted" = false' to your WHERE clause. For "DressItem", also add '"notInUse" = false' and '"inRepair" = false' unless explicitly asked about them. Never include deleted or inactive records in counts or lists unless the user specifically asks for them.
 8. VERY IMPORTANT FOR DATES: For Gregorian dates, use 'YYYY-MM-DD'. If the user searches by Hebrew date, DO NOT GUESS THE GREGORIAN DATE! Instead, use the exact macro HEBREW_DATE(day, 'MONTH', year) in your SQL string, and we will replace it automatically. Example: "eventDate" = HEBREW_DATE(10, 'SIVAN', 5786). Month must be one of: NISAN, IYYAR, SIVAN, TAMUZ, AV, ELUL, TISHREI, CHESHVAN, KISLEV, TEVET, SHVAT, ADAR_I, ADAR_II. If year is unknown, use the current Hebrew year from context.
@@ -90,7 +90,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
       }
 
       if (dbErrorStr) {
-         aiResponse = "מצטער, נתקלתי בשגיאה בעת חישוב הסטטיסטיקה. אנא נסה לנסח את השאלה אחרת.";
+         aiResponse = "׳׳¦׳˜׳¢׳¨, ׳ ׳×׳§׳׳×׳™ ׳‘׳©׳’׳™׳׳” ׳‘׳¢׳× ׳—׳™׳©׳•׳‘ ׳”׳¡׳˜׳˜׳™׳¡׳˜׳™׳§׳”. ׳׳ ׳ ׳ ׳¡׳” ׳׳ ׳¡׳— ׳׳× ׳”׳©׳׳׳” ׳׳—׳¨׳×.";
       } else {
         // Step 3: Ask the AI to summarize the result
         const followupPrompt = `The user asked: "${prompt}".
@@ -99,14 +99,33 @@ The database returned this JSON result: ${JSON.stringify(queryResult, (key, valu
 Please provide a clear and friendly natural language answer to the user in Hebrew based on these statistics. 
 CRITICAL RULES FOR YOUR RESPONSE:
 1. DO NOT use any markdown formatting like asterisks (**) for bolding or bullet points. Use standard text and plain dashes (-) for lists.
-2. Whenever you mention a date, you MUST mention BOTH the Hebrew date and the Gregorian date together, with the Gregorian date in parentheses (e.g., "י' בסיוון תשפ\"ו (26/05/2026)"). Do NOT calculate or guess any dates yourself, ensure accuracy.
-3. DO NOT output a long list of consecutive dates! If the results contain many consecutive days, group them into a simple range (e.g., "מ-א' בסיוון (17/05/2026) ועד כ' בסיוון (05/06/2026)"). Keep the response concise and natural.
+2. Whenever you mention a date, you MUST mention BOTH the Hebrew date and the Gregorian date together, with the Gregorian date in parentheses (e.g., "׳™' ׳‘׳¡׳™׳•׳•׳ ׳×׳©׳₪\"׳• (26/05/2026)"). Do NOT calculate or guess any dates yourself, ensure accuracy.
+3. DO NOT output a long list of consecutive dates! If the results contain many consecutive days, group them into a simple range (e.g., "׳-׳' ׳‘׳¡׳™׳•׳•׳ (17/05/2026) ׳•׳¢׳“ ׳›' ׳‘׳¡׳™׳•׳•׳ (05/06/2026)"). Keep the response concise and natural.
 Summarize the information nicely.
-IMPORTANT: You are directly talking to the user. Output ONLY the exact final answer intended for the user, with NO meta-text, NO conversational filler directed at me, and NO prefaces like "Here is a summarizing answer for the user" or "בשמחה".`;
+IMPORTANT: You are directly talking to the user. Output ONLY the exact final answer intended for the user, with NO meta-text, NO conversational filler directed at me, and NO prefaces like "Here is a summarizing answer for the user" or "׳‘׳©׳׳—׳”".`;
         
         aiResponse = await generateContent(followupPrompt);
       }
     }
+
+    try {
+      const { cookies } = await import('next/headers');
+      const cookieStore = await cookies();
+      const token = cookieStore.get('auth_token');
+      const employeeId = token ? parseInt(token.value, 10) : null;
+      if (employeeId && !isNaN(employeeId)) {
+        await prisma.aIChatSession.create({
+          data: {
+            employeeId,
+            context: 'סטטיסטיקה',
+            messagesJson: JSON.stringify([
+              { role: 'user', content: prompt },
+              { role: 'model', content: aiResponse }
+            ])
+          }
+        });
+      }
+    } catch(e) { console.error('Failed to save AI session', e); }
 
     return NextResponse.json({ response: aiResponse });
   } catch (error) {
