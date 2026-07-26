@@ -137,8 +137,8 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const content = (
-    <div className="modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '5vh', paddingBottom: '5vh' }}>
-      <div className="modal-content" style={{ width: '90%', maxWidth: '900px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--card-bg)', borderRadius: '12px', padding: '2rem' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '2rem', paddingBottom: '2rem', backgroundColor: 'rgba(0,0,0,0.6)', position: 'fixed', inset: 0, overflowY: 'auto' }}>
+      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '900px', backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', transition: 'all 0.3s ease', margin: 'auto' }}>
         
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
@@ -296,9 +296,23 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
               style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
             />
           </div>
-          <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', width: '100%', borderRadius: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center' }} disabled={loading}>
-            {loading ? 'מחפש...' : <><Search size={18} style={{ marginLeft: '0.5rem' }} /> חפש</>}
-          </button>
+          <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+            <button type="button" onClick={() => {
+              setBarcodePrefix('');
+              setSize('');
+              setFromDate('');
+              setToDate('');
+              setEmployeeCode('');
+              setCustomerName('');
+              setResults(null);
+              setError('');
+            }} className="btn btn-outline" style={{ padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', flex: 1 }}>
+              נקה
+            </button>
+            <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 2 }} disabled={loading}>
+              {loading ? 'מחפש...' : <><Search size={18} style={{ marginLeft: '0.5rem' }} /> חפש</>}
+            </button>
+          </div>
         </form>
 
         {error && <div style={{ color: 'red', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}

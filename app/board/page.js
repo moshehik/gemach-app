@@ -39,6 +39,25 @@ export default function BoardPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiQueryUsed, setAiQueryUsed] = useState('');
   const [isAiModeActive, setIsAiModeActive] = useState(false);
+  const [highlightedDate, setHighlightedDate] = useState('');
+  const [globalSearchResults, setGlobalSearchResults] = useState(null);
+  const [showGlobalSearchModal, setShowGlobalSearchModal] = useState(false);
+  const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
+
+  const handleGlobalSearch = async () => {
+    if (!searchInput) return;
+    setGlobalSearchLoading(true);
+    setShowGlobalSearchModal(true);
+    try {
+      const res = await fetch(`/api/orders?search=${encodeURIComponent(searchInput)}&limit=100&filterStatus=all`);
+      const data = await res.json();
+      setGlobalSearchResults(data.data || data.orders || []);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setGlobalSearchLoading(false);
+    }
+  };
 
   // Fetch orders for the currently viewed month
   const fetchOrdersForMonth = useCallback(async () => {
@@ -339,6 +358,7 @@ export default function BoardPage() {
             const dayOrders = ordersByDate[dateStr] || [];
             
             const isToday = cellGreg.toDateString() === new Date().toDateString();
+            const isHighlighted = dateStr === highlightedDate;
             
             let isLate = false;
             dayOrders.forEach(order => {
@@ -387,7 +407,7 @@ export default function BoardPage() {
             } catch (e) {}
 
             return (
-              <div key={j} className={`${styles.dayCell} ${isToday ? styles.today : ''} ${isLate ? styles.lateDay : ''}`}>
+              <div key={j} className={`${styles.dayCell} ${isToday ? styles.today : ''} ${isLate ? styles.lateDay : ''} ${isHighlighted ? styles.highlightedDay : ''}`}>
                 {isLate && <div className={styles.lateIcon}>!</div>}
                 <div className={styles.dateHeader}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -459,10 +479,6 @@ export default function BoardPage() {
               <ChevronLeft size={24} />
             </button>
           </div>
-            <button className={styles.navBtn} onClick={() => changeMonth(-1)} title="׳—׳•׳“׳© ׳§׳•׳“׳">
-              <ChevronLeft size={24} />
-            </button>
-          </div>
         </div>
 
         <div className={styles.headerBottom}>
@@ -479,6 +495,14 @@ export default function BoardPage() {
                   onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
                   loading={aiLoading}
                 />
+          <button 
+            onClick={handleGlobalSearch}
+            className="btn btn-outline"
+            style={{ borderRadius: '8px', padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}
+            title="חיפוש בכל החודשים"
+          >
+            <Search size={18} /> גלובלי
+          </button>
               </div>
               <button 
                 onClick={() => setShowAdvSearch(true)}

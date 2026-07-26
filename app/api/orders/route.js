@@ -47,6 +47,13 @@ export async function GET(request) {
       ...(filterStatus === 'deleted' ? { isDeleted: true } : { isDeleted: false }),
       ...(filterStatus === 'archive' ? { eventDate: { lt: today } } : {}),
       ...(filterStatus === 'soon' ? { OR: [{ eventDate: null }, { eventDate: { gte: today } }] } : {}),
+      ...(filterStatus === 'all' && !search && !advOrderId && !advCustomerName && !advCustomerPhone && !advCustomerCity && !advEventDateFrom && !advEventDateTo ? {
+        OR: [
+          { createdAt: { gte: threeMonthsAgo } },
+          { eventDate: { gte: threeMonthsAgo } },
+          { eventDate: null }
+        ]
+      } : {}),
       ...(excludeArchiveAndPast ? {
         OR: [
           { eventDate: null },

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import FormattedMessage from './FormattedMessage';
+import FormattedMessage from '../../components/FormattedMessage';
 import { X, Send, Bot, Loader2, BarChart3 } from 'lucide-react';
 
 export default function StatisticsModal({ isOpen, onClose, contextQuery, pageContext, position }) {

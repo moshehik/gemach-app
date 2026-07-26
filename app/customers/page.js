@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
+import { UserPlus } from 'lucide-react';
 
 import { useLabels } from '@/app/components/LabelsContext';
 
@@ -19,7 +20,7 @@ export default function CustomersPage() {
   const [limit] = useState(50); // Show 50 per page
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  const [sort, setSort] = useState('id');
+  const [sort, setSort] = useState('legacyId');
   const [order, setOrder] = useState('desc');
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
@@ -149,13 +150,6 @@ export default function CustomersPage() {
     <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול לקוחות</h1>
-        <button 
-          onClick={() => router.push('/customers/new')} 
-          className="btn btn-primary" 
-          style={{ borderRadius: '24px', padding: '0.75rem 1.5rem', fontWeight: 'bold' }}
-        >
-          + לקוח חדש
-        </button>
       </div>
       
       {/* Search and Filters */}
@@ -181,6 +175,14 @@ export default function CustomersPage() {
           </button>
         </div>
         <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <button 
+            onClick={() => router.push('/customers/new')} 
+            className="btn btn-primary" 
+            style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+            title="לקוח חדש"
+          >
+            <UserPlus size={20} />
+          </button>
           <ExportButtons 
             data={customers} 
             filename="לקוחות" 

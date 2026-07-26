@@ -7,6 +7,7 @@ import Link from 'next/link';
 import AISearchBar from './components/AISearchBar';
 import QuickPaymentModal from './components/QuickPaymentModal';
 import * as XLSX from 'xlsx';
+import { HDate } from '@hebcal/core';
 
 export default function HomeDashboard() {
   const router = useRouter();
@@ -274,7 +275,7 @@ export default function HomeDashboard() {
           />
           {recentSearches.length > 0 && !searchInput && (
             <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>׳³ג€”׳³ג„¢׳³ג‚×׳³ג€¢׳³ֲ©׳³ג„¢׳³ֲ ׳³ֲ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ:</span>
+              <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>׳³ג€”׳³ג„¢׳³ג‚×׳³ג€¢׳³ֲ©׳³ג„¢׳³ֲ  ׳³ֲ ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ :</span>
               {recentSearches.map((s, idx) => (
                 <button 
                   key={idx} 
@@ -305,9 +306,9 @@ export default function HomeDashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ec4899', fontWeight: 'bold' }}>
               <Sparkles size={24} />
-              <span style={{ fontSize: '1.2rem' }}>׳³ֲ¦'׳³ֲ׳³ֻ ׳³ג€”׳³ג€÷׳³ֲ ׳³ֲ׳³ג€˜׳³ג€¢׳³ֲ¡׳³ֲ¡ AI:</span>
+              <span style={{ fontSize: '1.2rem' }}>׳³ֲ¦'׳³ֲ ׳³ֻœ ׳³ג€”׳³ג€÷׳³ֲ  ׳³ֲž׳³ג€˜׳³ג€¢׳³ֲ¡׳³ֲ¡ AI:</span>
             </div>
-            <button onClick={clearAiChat} title="׳³ֲ ׳³ֲ§׳³ג€ ׳³ֲ¦'׳³ֲ׳³ֻ" style={{ background: 'var(--card-bg)', border: '1px solid #fbcfe8', borderRadius: '50%', padding: '0.5rem', cursor: 'pointer', color: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={clearAiChat} title="׳³ֲ ׳³ֲ§׳³ג€  ׳³ֲ¦'׳³ֲ ׳³ֻœ" style={{ background: 'var(--card-bg)', border: '1px solid #fbcfe8', borderRadius: '50%', padding: '0.5rem', cursor: 'pointer', color: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={18} />
             </button>
           </div>
@@ -316,7 +317,7 @@ export default function HomeDashboard() {
             {aiMessages.map((msg, idx) => (
               <div key={idx} style={{ alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end', background: msg.role === 'user' ? 'var(--card-bg)' : '#fce7f3', padding: '1rem 1.5rem', borderRadius: '12px', maxWidth: '85%', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', border: msg.role === 'user' ? '1px solid var(--element-border)' : '1px solid #fbcfe8' }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: msg.role === 'user' ? 'var(--text-main)' : '#ec4899' }}>
-                  {msg.role === 'user' ? '׳³ֲ׳³ֳ—׳³ג€:' : '׳³ֲ׳³ֲ¢׳³ֲ¨׳³ג€÷׳³ֳ— AI:'}
+                  {msg.role === 'user' ? '׳³ֲ ׳³ֳ—׳³ג€ :' : '׳³ֲž׳³ֲ¢׳³ֲ¨׳³ג€÷׳³ֳ— AI:'}
                 </div>
                 <div style={{ fontSize: '1.1rem', lineHeight: '1.6', color: 'var(--text-main)', whiteSpace: 'pre-wrap' }}>
                   <FormattedMessage content={msg.content} />
@@ -324,7 +325,7 @@ export default function HomeDashboard() {
                 {msg.data && msg.data.length > 0 && (
                   <div style={{ marginTop: '1rem' }}>
                     <button onClick={() => exportTableToExcel(msg.data, 'AI_Export')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                      <Download size={16} /> ׳³ג€׳³ג€¢׳³ֲ¨׳³ג€ Excel
+                      <Download size={16} /> ׳³ג€ ׳³ג€¢׳³ֲ¨׳³ג€œ Excel
                     </button>
                     <div style={{ overflowX: 'auto', background: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem' }}>
@@ -333,7 +334,7 @@ export default function HomeDashboard() {
                             {Object.keys(msg.data[0])
                               .filter(k => !k.startsWith('_action'))
                               .map(k => <th key={k} style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>{k}</th>)}
-                            {msg.data.some(r => r._actionUrl) && <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>׳³ג‚×׳³ֲ¢׳³ג€¢׳³ֲ׳³ג€¢׳³ֳ—</th>}
+                            {msg.data.some(r => r._actionUrl) && <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>׳³ג‚×׳³ֲ¢׳³ג€¢׳³ֲœ׳³ג€¢׳³ֳ—</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -355,7 +356,7 @@ export default function HomeDashboard() {
                           ))}
                         </tbody>
                       </table>
-                      {msg.data.length > 15 && <div style={{ textAlign: 'center', padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>׳³ֲ׳³ֲ¦׳³ג„¢׳³ג€™ 15 ׳³ֳ—׳³ג€¢׳³ֲ¦׳³ֲ׳³ג€¢׳³ֳ— ׳³ֲ¨׳³ֲ׳³ֲ©׳³ג€¢׳³ֲ ׳³ג€¢׳³ֳ— (׳³ג€׳³ג€¢׳³ֲ¨׳³ג€ ׳³ֲ§׳³ג€¢׳³ג€˜׳³ֲ¥ ׳³ֲ׳³ֲ¦׳³ג‚×׳³ג„¢׳³ג„¢׳³ג€ ׳³ג€˜׳³ֲ׳³ֲ׳³ֲ)</div>}
+                      {msg.data.length > 15 && <div style={{ textAlign: 'center', padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>׳³ֲž׳³ֲ¦׳³ג„¢׳³ג€™ 15 ׳³ֳ—׳³ג€¢׳³ֲ¦׳³ֲ ׳³ג€¢׳³ֳ— ׳³ֲ¨׳³ֲ ׳³ֲ©׳³ג€¢׳³ֲ ׳³ג€¢׳³ֳ— (׳³ג€ ׳³ג€¢׳³ֲ¨׳³ג€œ ׳³ֲ§׳³ג€¢׳³ג€˜׳³ֲ¥ ׳³ֲœ׳³ֲ¦׳³ג‚×׳³ג„¢׳³ג„¢׳³ג€  ׳³ג€˜׳³ֲž׳³ֲœ׳³ֲ )</div>}
                     </div>
                   </div>
                 )}
@@ -364,7 +365,7 @@ export default function HomeDashboard() {
             {aiLoading && (
               <div style={{ alignSelf: 'flex-end', color: '#ec4899', fontStyle: 'italic', padding: '1rem' }}>
                 <Loader2 className="animate-spin" size={20} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                ׳³ג€-AI ׳³ג€”׳³ג€¢׳³ֲ©׳³ג€˜...
+                ׳³ג€ -AI ׳³ג€”׳³ג€¢׳³ֲ©׳³ג€˜...
               </div>
             )}
             <div ref={chatEndRef} />
@@ -380,14 +381,14 @@ export default function HomeDashboard() {
              value={aiReplyInput} 
              onChange={(e) => setAiReplyInput(e.target.value)}
              onKeyDown={(e) => { if (e.key === 'Enter' && !aiLoading) handleAiSearch(aiReplyInput, true); }}
-             placeholder="׳³ֲ©׳³ֲ׳³ֲ ׳³ֲ©׳³ֲ׳³ֲ׳³ֳ— ׳³ג€׳³ֲ׳³ֲ©׳³ֲ ׳³ֲ-AI..." 
+             placeholder="׳³ֲ©׳³ֲ ׳³ֲœ ׳³ֲ©׳³ֲ ׳³ֲœ׳³ֳ— ׳³ג€ ׳³ֲž׳³ֲ©׳³ֲš ׳³ֲœ-AI..." 
              style={{ flex: 1, padding: '0.75rem 1.5rem', border: 'none', background: '#fdf2f8', borderRadius: '20px', fontSize: '1rem', color: '#ec4899', outline: 'none' }} 
              disabled={aiLoading}
            />
            <button onClick={() => handleAiSearch(aiReplyInput, true)} disabled={aiLoading || !aiReplyInput.trim()} style={{ background: aiLoading || !aiReplyInput.trim() ? '#f9a8d4' : '#ec4899', color: 'white', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: aiLoading || !aiReplyInput.trim() ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}>
              <Send size={20} />
            </button>
-           <button onClick={clearAiChat} title="׳³ֲ¡׳³ג€™׳³ג€¢׳³ֲ¨ ׳³ֲ¦'׳³ֲ׳³ֻ" style={{ background: 'var(--element-bg)', color: '#6b7280', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
+           <button onClick={clearAiChat} title="׳³ֲ¡׳³ג€™׳³ג€¢׳³ֲ¨ ׳³ֲ¦'׳³ֲ ׳³ֻœ" style={{ background: 'var(--element-bg)', color: '#6b7280', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
              <X size={20} />
            </button>
         </div>
@@ -396,13 +397,13 @@ export default function HomeDashboard() {
       {/* Global Search Results Area */}
       {searchResults && aiMessages.length === 0 && (
         <div className="animate-fade-in" style={{ marginBottom: '3rem' }}>
-          <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-color)' }}>׳³ֳ—׳³ג€¢׳³ֲ¦׳³ֲ׳³ג€¢׳³ֳ— ׳³ג€”׳³ג„¢׳³ג‚×׳³ג€¢׳³ֲ© ׳³ֲ: "{searchInput}"</h2>
+          <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-color)' }}>׳³ֳ—׳³ג€¢׳³ֲ¦׳³ֲ ׳³ג€¢׳³ֳ— ׳³ג€”׳³ג„¢׳³ג‚×׳³ג€¢׳³ֲ© ׳³ֲœ: "{searchInput}"</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
             
             {/* Customers */}
             <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#3b82f6', marginBottom: '1rem' }}>
-                <User size={20} /> ׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”׳³ג€¢׳³ֳ— ({searchResults.customers?.length || 0})
+                <User size={20} /> ׳³ֲœ׳³ֲ§׳³ג€¢׳³ג€”׳³ג€¢׳³ֳ— ({searchResults.customers?.length || 0})
               </h3>
               {searchResults.customers?.length > 0 ? (
                 <>
@@ -421,17 +422,17 @@ export default function HomeDashboard() {
                   </ul>
                   {searchResults.customers.length > 5 && (
                     <button onClick={() => setShowMoreCustomers(!showMoreCustomers)} style={{ width: '100%', background: 'var(--btn-light-blue-bg)', color: '#3b82f6', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
-                      {showMoreCustomers ? '׳³ג€׳³ֲ¦׳³ג€™ ׳³ג‚×׳³ג€”׳³ג€¢׳³ֳ—' : '׳³ג€׳³ֲ¦׳³ג€™ ׳³ֲ¢׳³ג€¢׳³ג€'}
+                      {showMoreCustomers ? '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ג‚×׳³ג€”׳³ג€¢׳³ֳ—' : '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ֲ¢׳³ג€¢׳³ג€œ'}
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>׳³ֲ׳³ֲ ׳³ֲ ׳³ֲ׳³ֲ¦׳³ֲ׳³ג€¢ ׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”׳³ג€¢׳³ֳ—</div>}
+              ) : <div style={{ color: '#9ca3af' }}>׳³ֲœ׳³ֲ  ׳³ֲ ׳³ֲž׳³ֲ¦׳³ֲ ׳³ג€¢ ׳³ֲœ׳³ֲ§׳³ג€¢׳³ג€”׳³ג€¢׳³ֳ—</div>}
             </div>
 
             {/* Orders */}
             <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', marginBottom: '1rem' }}>
-                <ShoppingBag size={20} /> ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€¢׳³ֳ— ({searchResults.orders?.length || 0})
+                <ShoppingBag size={20} /> ׳³ג€ ׳³€“׳³ֲž׳³ֲ ׳³ג€¢׳³ֳ— ({searchResults.orders?.length || 0})
               </h3>
               {searchResults.orders?.length > 0 ? (
                 <>
@@ -445,10 +446,10 @@ export default function HomeDashboard() {
                               {renderStatusIcon(o.status)}
                             </div>
                             <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                              ׳³ֲ§׳³ג€¢׳³ג€: <strong>#{o.orderId}</strong> | ׳³ֲ׳³ג„¢׳³ֲ¨׳³ג€¢׳³ֲ¢: <strong>{o.eventDateHebrew || '-'}</strong>
+                              ׳³ֲ§׳³ג€¢׳³ג€œ: <strong>#{o.orderId}</strong> | ׳³ֲ ׳³ג„¢׳³ֲ¨׳³ג€¢׳³ֲ¢: <strong>{o.eventDateHebrew || '-'}</strong>
                             </div>
                             <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.15rem' }}>
-                              ׳³ֲ¡׳³ג€"׳³ג€÷: <strong>׳’ג€ֳ—{o.totalAmount || 0}</strong> | ׳³ג‚×׳³ֲ¨׳³ג„¢׳³ֻ׳³ג„¢׳³ֲ: <strong>{o.itemCount || 0}</strong>
+                              ׳³ֲ¡׳³ג€ "׳³ג€÷: <strong>׳’ג€šֳ—{o.totalAmount || 0}</strong> | ׳³ג‚×׳³ֲ¨׳³ג„¢׳³ֻœ׳³ג„¢׳³ֲ : <strong>{o.itemCount || 0}</strong>
                             </div>
                           </div>
                           <ArrowLeft size={16} color="#9ca3af" />
@@ -458,17 +459,17 @@ export default function HomeDashboard() {
                   </ul>
                   {searchResults.orders.length > 5 && (
                     <button onClick={() => setShowMoreOrders(!showMoreOrders)} style={{ width: '100%', background: 'var(--btn-light-green-bg)', color: '#10b981', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
-                      {showMoreOrders ? '׳³ג€׳³ֲ¦׳³ג€™ ׳³ג‚×׳³ג€”׳³ג€¢׳³ֳ—' : '׳³ג€׳³ֲ¦׳³ג€™ ׳³ֲ¢׳³ג€¢׳³ג€'}
+                      {showMoreOrders ? '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ג‚×׳³ג€”׳³ג€¢׳³ֳ—' : '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ֲ¢׳³ג€¢׳³ג€œ'}
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>׳³ֲ׳³ֲ ׳³ֲ ׳³ֲ׳³ֲ¦׳³ֲ׳³ג€¢ ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€¢׳³ֳ—</div>}
+              ) : <div style={{ color: '#9ca3af' }}>׳³ֲœ׳³ֲ  ׳³ֲ ׳³ֲž׳³ֲ¦׳³ֲ ׳³ג€¢ ׳³ג€ ׳³€“׳³ֲž׳³ֲ ׳³ג€¢׳³ֳ—</div>}
             </div>
 
             {/* Rentals */}
             <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f59e0b', marginBottom: '1rem' }}>
-                <Shirt size={20} /> ׳³ג€׳³ֲ©׳³ג€÷׳³ֲ¨׳³ג€¢׳³ֳ— ({searchResults.rentals?.length || 0})
+                <Shirt size={20} /> ׳³ג€ ׳³ֲ©׳³ג€÷׳³ֲ¨׳³ג€¢׳³ֳ— ({searchResults.rentals?.length || 0})
               </h3>
               {searchResults.rentals?.length > 0 ? (
                 <>
@@ -478,20 +479,22 @@ export default function HomeDashboard() {
                         <Link href={`/orders/${r.orderId}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontWeight: 'bold' }}>{r.catalogName || r.description}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>׳³ג€˜׳³ֲ¨׳³ֲ§׳³ג€¢׳³ג€: {r.barcode || r.catalogBarcode} ׳’ג‚¬ֲ¢ ׳³ֲ׳³ג„¢׳³ג€׳³ג€: {r.sizeText}</div>
+                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>׳³ג€˜׳³ֲ¨׳³ֲ§׳³ג€¢׳³ג€œ: {r.barcode || r.catalogBarcode} ׳’ג‚¬ֲ¢ ׳³ֲž׳³ג„¢׳³גœ׳³ג€ : {r.sizeText}</div>
                           </div>
-                          <ArrowLeft size={16} color="#9ca3af" />
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <ArrowLeft size={16} color="#9ca3af" />
+                          </div>
                         </Link>
                       </li>
                     ))}
                   </ul>
                   {searchResults.rentals.length > 5 && (
                     <button onClick={() => setShowMoreRentals(!showMoreRentals)} style={{ width: '100%', background: 'var(--element-bg)', color: '#f59e0b', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
-                      {showMoreRentals ? '׳³ג€׳³ֲ¦׳³ג€™ ׳³ג‚×׳³ג€”׳³ג€¢׳³ֳ—' : '׳³ג€׳³ֲ¦׳³ג€™ ׳³ֲ¢׳³ג€¢׳³ג€'}
+                      {showMoreRentals ? '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ג‚×׳³ג€”׳³ג€¢׳³ֳ—' : '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ֲ¢׳³ג€¢׳³ג€œ'}
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>׳³ֲ׳³ֲ ׳³ֲ ׳³ֲ׳³ֲ¦׳³ֲ׳³ג€¢ ׳³ג€׳³ֲ©׳³ג€÷׳³ֲ¨׳³ג€¢׳³ֳ—</div>}
+              ) : <div style={{ color: '#9ca3af' }}>׳³ֲœ׳³ֲ  ׳³ֲ ׳³ֲž׳³ֲ¦׳³ֲ ׳³ג€¢ ׳³ג€ ׳³ֲ©׳³ג€÷׳³ֲ¨׳³ג€¢׳³ֳ—</div>}
             </div>
 
           </div>
@@ -507,13 +510,13 @@ export default function HomeDashboard() {
           <div style={{ background: 'var(--banner-debts-bg)', padding: '1.5rem', borderBottom: debtsExpanded ? '1px solid var(--banner-debts-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#ef4444', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><CreditCard size={20} /></div>
-              <h2 style={{ margin: 0, color: '#b91c1c', fontSize: '1.25rem' }}>׳³ג€”׳³ג€¢׳³ג€˜׳³ג€¢׳³ֳ— ׳³ג‚×׳³ֳ—׳³ג€¢׳³ג€”׳³ג„¢׳³ֲ</h2>
+              <h2 style={{ margin: 0, color: '#b91c1c', fontSize: '1.25rem' }}>׳³ג€”׳³ג€¢׳³ג€˜׳³ג€¢׳³ֳ— ׳³ג‚×׳³ֳ—׳³ג€¢׳³ג€”׳³ג„¢׳³ֲ </h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setQuickPaymentOpen(true)} title="׳³ֳ—׳³ֲ©׳³ֲ׳³ג€¢׳³ֲ ׳³ֲ׳³ג€׳³ג„¢׳³ֲ¨" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+              <button onClick={() => setQuickPaymentOpen(true)} title="׳³ֳ—׳³ֲ©׳³ֲœ׳³ג€¢׳³ֲ  ׳³ֲž׳³ג€ ׳³ג„¢׳³ֲ¨" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
                 <PlusCircle size={24} />
               </button>
-              <button onClick={() => setDebtsExpanded(!debtsExpanded)} title={debtsExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+              <button onClick={() => setDebtsExpanded(!debtsExpanded)} title={debtsExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€ ׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
                 {debtsExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
               </button>
             </div>
@@ -526,9 +529,9 @@ export default function HomeDashboard() {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
                 <thead>
                   <tr style={{ color: '#6b7280', fontSize: '0.9rem', borderBottom: '1px solid #e5e7eb' }}>
-                    <th style={{ padding: '0.5rem' }}>׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€ / ׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”</th>
-                    <th style={{ padding: '0.5rem' }}>׳³ֲ¡׳³ג€"׳³ג€÷</th>
-                    <th style={{ padding: '0.5rem', color: '#ef4444' }}>׳³ג„¢׳³ֳ—׳³ֲ¨׳³ג€ ׳³ֲ׳³ֳ—׳³ֲ©׳³ֲ׳³ג€¢׳³ֲ</th>
+                    <th style={{ padding: '0.5rem' }}>׳³ג€ ׳³ג€“׳³ֲž׳³ֲ ׳³ג€  / ׳³ֲœ׳³ֲ§׳³ג€¢׳³ג€”</th>
+                    <th style={{ padding: '0.5rem' }}>׳³ֲ¡׳³ג€ "׳³ג€÷</th>
+                    <th style={{ padding: '0.5rem', color: '#ef4444' }}>׳³ג„¢׳³ֳ—׳³ֲ¨׳³ג€  ׳³ֲœ׳³ֳ—׳³ֲ©׳³ֲœ׳³ג€¢׳³ֲ </th>
                     <th style={{ padding: '0.5rem' }}></th>
                   </tr>
                 </thead>
@@ -539,12 +542,12 @@ export default function HomeDashboard() {
                         <div style={{ fontWeight: '500' }}>#{debt.orderId}</div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{debt.customer?.firstName} {debt.customer?.lastName}</div>
                       </td>
-                      <td style={{ padding: '0.75rem 0.5rem' }}>׳’ג€ֳ—{debt.totalAmount}</td>
+                      <td style={{ padding: '0.75rem 0.5rem' }}>׳’ג€šֳ—{debt.totalAmount}</td>
                       <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold', color: '#ef4444' }}>
-                        ׳’ג€ֳ—{debt.remaining}
+                        ׳’ג€šֳ—{debt.remaining}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
-                        <Link href={`/orders/${debt.orderId}`} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '12px' }}>׳³ֲ׳³ג‚×׳³ֲ¨׳³ֻ׳³ג„¢׳³ֲ</Link>
+                        <Link href={`/orders/${debt.orderId}`} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '12px' }}>׳³ֲœ׳³ג‚×׳³ֲ¨׳³ֻœ׳³ג„¢׳³ֲ </Link>
                       </td>
                     </tr>
                   ))}
@@ -553,7 +556,7 @@ export default function HomeDashboard() {
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
                 <CreditCard size={40} opacity={0.2} />
-                <span>׳³ֲ׳³ג„¢׳³ֲ ׳³ג€÷׳³ֲ¨׳³ג€™׳³ֲ¢ ׳³ג€”׳³ג€¢׳³ג€˜׳³ג€¢׳³ֳ— ׳³ג‚×׳³ֳ—׳³ג€¢׳³ג€”׳³ג„¢׳³ֲ ׳³ג€׳³ֲ׳³ֲ׳³ֳ—׳³ג„¢׳³ֲ ׳³ג„¢׳³ֲ ׳³ֲ׳³ֳ—׳³ֲ©׳³ֲ׳³ג€¢׳³ֲ.</span>
+                <span>׳³ֲ ׳³ג„¢׳³ֲŸ ׳³ג€÷׳³ֲ¨׳³ג€™׳³ֲ¢ ׳³ג€”׳³ג€¢׳³ג€˜׳³ג€¢׳³ֳ— ׳³ג‚×׳³ֳ—׳³ג€¢׳³ג€”׳³ג„¢׳³ֲ  ׳³ג€ ׳³ֲž׳³ֲž׳³ֳ—׳³ג„¢׳³ֲ ׳³ג„¢׳³ֲ  ׳³ֲœ׳³ֳ—׳³ֲ©׳³ֲœ׳³ג€¢׳³ֲ .</span>
               </div>
             )}
           </div>
@@ -565,10 +568,10 @@ export default function HomeDashboard() {
           <div style={{ background: 'var(--banner-payments-bg)', padding: '1.5rem', borderBottom: paymentsExpanded ? '1px solid var(--banner-payments-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#10b981', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Banknote size={20} /></div>
-              <h2 style={{ margin: 0, color: '#047857', fontSize: '1.25rem' }}>׳³ֳ—׳³ֲ©׳³ֲ׳³ג€¢׳³ֲ׳³ג„¢׳³ֲ ׳³ֲ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ</h2>
+              <h2 style={{ margin: 0, color: '#047857', fontSize: '1.25rem' }}>׳³ֳ—׳³ֲ©׳³ֲœ׳³ג€¢׳³ֲž׳³ג„¢׳³ֲ  ׳³ֲ ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ </h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setPaymentsExpanded(!paymentsExpanded)} title={paymentsExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#047857', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(16, 185, 129, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+              <button onClick={() => setPaymentsExpanded(!paymentsExpanded)} title={paymentsExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€ ׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#047857', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(16, 185, 129, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
                 {paymentsExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
               </button>
             </div>
@@ -588,12 +591,12 @@ export default function HomeDashboard() {
                       <div>
                         <div style={{ fontWeight: '500' }}>{payment.customer?.firstName} {payment.customer?.lastName}</div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                          ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€ #{payment.order?.orderId} ׳’ג‚¬ֲ¢ {new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(payment.paymentDate))}
+                          הזמנה #{payment.order?.orderId} • {new HDate(new Date(payment.paymentDate)).renderGematriya().replace(/[\u0591-\u05C7]/g, '')}
                         </div>
                       </div>
                     </div>
                     <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#10b981' }}>
-                      ׳’ג€ֳ—{payment.amount}
+                      ׳’ג€šֳ—{payment.amount}
                     </div>
                   </li>
                 ))}
@@ -601,7 +604,7 @@ export default function HomeDashboard() {
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
                 <Banknote size={40} opacity={0.2} />
-                <span>׳³ֻ׳³ֲ¨׳³ֲ ׳³ג€׳³ֳ—׳³ֲ§׳³ג€˜׳³ֲ׳³ג€¢ ׳³ֳ—׳³ֲ©׳³ֲ׳³ג€¢׳³ֲ׳³ג„¢׳³ֲ.</span>
+                <span>׳³ֻœ׳³ֲ¨׳³ֲ  ׳³ג€ ׳³ֳ—׳³ֲ§׳³ג€˜׳³ֲœ׳³ג€¢ ׳³ֳ—׳³ֲ©׳³ֲœ׳³ג€¢׳³ֲž׳³ג„¢׳³ֲ .</span>
               </div>
             )}
           </div>
@@ -613,10 +616,10 @@ export default function HomeDashboard() {
           <div style={{ background: 'var(--banner-orders-bg)', padding: '1.5rem', borderBottom: ordersExpanded ? '1px solid var(--banner-orders-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#3b82f6', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><ShoppingBag size={20} /></div>
-              <h2 style={{ margin: 0, color: '#1d4ed8', fontSize: '1.25rem' }}>׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€¢׳³ֳ— ׳³ֲ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג€¢׳³ֳ—</h2>
+              <h2 style={{ margin: 0, color: '#1d4ed8', fontSize: '1.25rem' }}>׳³ג€ ׳³€“׳³ֲž׳³ֲ ׳³ג€¢׳³ֳ— ׳³ֲ ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג€¢׳³ֳ—</h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setOrdersExpanded(!ordersExpanded)} title={ordersExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(59, 130, 246, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+              <button onClick={() => setOrdersExpanded(!ordersExpanded)} title={ordersExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€ ׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(59, 130, 246, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
                 {ordersExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
               </button>
             </div>
@@ -638,10 +641,10 @@ export default function HomeDashboard() {
                           {order.customer?.firstName} {order.customer?.lastName}
                         </Link>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem' }}>
-                          ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€: {order.orderDate ? new Date(order.orderDate).toLocaleDateString('he-IL') : '-'} ׳’ג‚¬ֲ¢ ׳³ֲ׳³ג„¢׳³ֲ¨׳³ג€¢׳³ֲ¢: {order.eventDateHebrew || '-'}
+                          הזמנה: {order.orderDate ? new HDate(new Date(order.orderDate)).renderGematriya().replace(/[\u0591-\u05C7]/g, '') : '-'} • אירוע: {order.eventDateHebrew || '-'}
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                          ׳³ג‚×׳³ֲ¨׳³ג„¢׳³ֻ׳³ג„¢׳³ֲ: {order.items?.length || 0} ׳’ג‚¬ֲ¢ ׳³ֲ¡׳³ֻ׳³ֻ׳³ג€¢׳³ֲ¡: {order.status || '׳³ג‚×׳³ֲ¢׳³ג„¢׳³ֲ'} ׳’ג‚¬ֲ¢ ׳³ֲ¢׳³ג€¢׳³ג€˜׳³ג€: {order.employee?.firstName ? `${order.employee.firstName} ${order.employee.lastName || ''}` : '-'}
+                          ׳³ג‚×׳³ֲ¨׳³ג„¢׳³ֻœ׳³ג„¢׳³ֲ : {order.items?.length || 0} ׳’ג‚¬ֲ¢ ׳³ֲ¡׳³ֻœ׳³ֻœ׳³ג€¢׳³ֲ¡: {order.status || '׳³ג‚×׳³ֲ¢׳³ג„¢׳³ֲœ'} ׳’ג‚¬ֲ¢ ׳³ֲ¢׳³ג€¢׳³ג€˜׳³ג€œ: {order.employee?.firstName ? `${order.employee.firstName} ${order.employee.lastName || ''}` : '-'}
                         </div>
                       </div>
                     </div>
@@ -671,10 +674,10 @@ export default function HomeDashboard() {
           <div style={{ background: 'var(--banner-rentals-bg)', padding: '1.5rem', borderBottom: rentalsExpanded ? '1px solid var(--banner-rentals-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#f59e0b', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Shirt size={20} /></div>
-              <h2 style={{ margin: 0, color: '#d97706', fontSize: '1.25rem' }}>׳³ג€׳³ֲ©׳³ג€÷׳³ֲ¨׳³ג€¢׳³ֳ— ׳³ֲ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג€¢׳³ֳ—</h2>
+              <h2 style={{ margin: 0, color: '#d97706', fontSize: '1.25rem' }}>׳³ג€ ׳³ֲ©׳³ג€÷׳³ֲ¨׳³ג€¢׳³ֳ— ׳³ֲ ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג€¢׳³ֳ—</h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setRentalsExpanded(!rentalsExpanded)} title={rentalsExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d97706', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(245, 158, 11, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+              <button onClick={() => setRentalsExpanded(!rentalsExpanded)} title={rentalsExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€ ׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d97706', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(245, 158, 11, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
                 {rentalsExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
               </button>
             </div>
@@ -697,7 +700,7 @@ export default function HomeDashboard() {
                            ׳³ג€˜׳³ֲ¨׳³ֲ§׳³ג€¢׳³ג€: {rental.barcode || '-'} ׳’ג‚¬ֲ¢ ׳³ֲ׳³ג„¢׳³ג€׳³ג€: {rental.sizeText || rental.dressItem?.sizeText || '-'}
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                           ׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”: {rental.order?.customer?.firstName} {rental.order?.customer?.lastName} ׳’ג‚¬ֲ¢ ׳³ֲ׳³ֲ§׳³ג„¢׳³ג€”׳³ג€: {rental.takenDate ? new Date(rental.takenDate).toLocaleDateString('he-IL') : '-'} ׳’ג‚¬ֲ¢ ׳³ג€׳³ג€”׳³ג€“׳³ֲ¨׳³ג€: {rental.returnDate ? new Date(rental.returnDate).toLocaleDateString('he-IL') : '-'} ׳’ג‚¬ֲ¢ ׳³ֲ¢׳³ג€¢׳³ג€˜׳³ג€: {rental.employee?.firstName ? `${rental.employee.firstName} ${rental.employee.lastName || ''}` : (rental.employeeName || '-')}
+                           ׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”: {rental.order?.customer?.firstName} {rental.order?.customer?.lastName} ׳’ג‚¬ֲ¢ ׳³ֲ׳³ֲ§׳³ג„¢׳³ג€”׳³ג€: {rental.takenDate ? new HDate(new Date(rental.takenDate)).renderGematriya().replace(/[\u0591-\u05C7]/g, '') : '-'} ׳’ג‚¬ֲ¢ ׳³ג€׳³ג€”׳³ג€“׳³ֲ¨׳³ג€: {rental.returnDate ? new HDate(new Date(rental.returnDate)).renderGematriya().replace(/[\u0591-\u05C7]/g, '') : '-'} ׳’ג‚¬ֲ¢ ׳³ֲ¢׳³ג€¢׳³ג€˜׳³ג€: {rental.order?.employee?.firstName ? `${rental.order.employee.firstName} ${rental.order.employee.lastName || ''}` : (rental.employeeName || '-')}
                         </div>
                       </div>
                     </div>
