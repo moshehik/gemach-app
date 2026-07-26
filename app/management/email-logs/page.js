@@ -143,16 +143,18 @@ export default function EmailLogsPage() {
                 onClick={() => setPage(p => p + 1)}
                 style={{ padding: '0.5rem 1rem' }}
               >
-                הבא &gt;
+                הבא
               </button>
-              <span style={{ fontWeight: '500' }}>עמוד {page} מתוך {totalPages}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }}  /> מתוך {totalPages}
+              </span>
               <button 
                 className="btn btn-outline"
                 disabled={page <= 1} 
                 onClick={() => setPage(p => p - 1)}
                 style={{ padding: '0.5rem 1rem' }}
               >
-                &lt; קודם
+                הקודם
               </button>
             </div>
           </>

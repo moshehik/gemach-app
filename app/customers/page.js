@@ -140,6 +140,141 @@ export default function CustomersPage() {
       return data.data || [];
     } catch (e) {
       console.error(e);
+import { UserPlus } from 'lucide-react';
+
+import { useLabels } from '@/app/components/LabelsContext';
+
+export default function CustomersPage() {
+  const router = useRouter();
+  const { getLabel } = useLabels();
+  const [customers, setCustomers] = useState([]);
+  const [loading, setLoading] = useState(true);
+  
+  // Pagination & Filters
+  const [page, setPage] = useState(1);
+  const [limit] = useState(50); // Show 50 per page
+  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [sort, setSort] = useState('legacyId');
+  const [order, setOrder] = useState('desc');
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  const [advFilters, setAdvFilters] = useState({
+    firstName: '', lastName: '', phone: '', city: '', email: ''
+  });
+  const [showAdvSearch, setShowAdvSearch] = useState(false);
+  const [showStatistics, setShowStatistics] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiQueryUsed, setAiQueryUsed] = useState('');
+  const [isAiModeActive, setIsAiModeActive] = useState(false);
+
+  const fetchCustomers = useCallback(async () => {
+    setLoading(true);
+    try {
+      const queryParams = new URLSearchParams({
+        page: page.toString(),
+        limit: limit.toString(),
+        search,
+        sort,
+        order
+      });
+      Object.entries(advFilters).forEach(([k, v]) => {
+        if (v) queryParams.append(k, v);
+      });
+      const timestamp = new Date().getTime();
+      queryParams.append('_t', timestamp);
+
+      const res = await fetch(`/api/customers?${queryParams.toString()}`, { cache: 'no-store' });
+      const data = await res.json();
+      setCustomers(data.data || []);
+      setTotalPages(data.totalPages || 1);
+      setTotalCount(data.total || 0);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
+  }, [page, limit, search, sort, order, advFilters]);
+
+  useEffect(() => {
+    fetchCustomers();
+  }, [fetchCustomers]);
+
+  const handleSearch = (e) => {
+    if (e) e.preventDefault();
+    setSearch(searchInput);
+    setPage(1);
+    setIsAiModeActive(false);
+  };
+
+  const handleAiSearch = async (query) => {
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/ai/smart-search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: query, pageContext: 'customers' })
+      });
+      const result = await res.json();
+      if (res.ok) {
+        setCustomers(result.data || []);
+        setTotalCount(result.data?.length || 0);
+        setTotalPages(1);
+        setIsAiModeActive(true);
+        setAiQueryUsed(result.query || '');
+      } else {
+        alert(result.error || 'שגיאה בחיפוש החכם');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('שגיאת תקשורת');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearch('');
+    setPage(1);
+    if (isAiModeActive) {
+      setIsAiModeActive(false);
+      fetchCustomers();
+    }
+  };
+
+  const handleSort = (column) => {
+    if (sort === column) {
+      setOrder(order === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSort(column);
+      setOrder('asc');
+    }
+  };
+
+  const SortIcon = ({ column }) => {
+    if (sort !== column) return <span style={{ opacity: 0.3, marginRight: '4px' }}>⇅</span>;
+    return <span style={{ marginRight: '4px' }}>{order === 'asc' ? '↑' : '↓'}</span>;
+  };
+
+  const fetchCustomersForExport = async (exportLimit) => {
+    try {
+      const queryParams = new URLSearchParams({
+        page: '1',
+        limit: exportLimit.toString(),
+        search,
+        sort,
+        order
+      });
+      Object.entries(advFilters).forEach(([k, v]) => {
+        if (v) queryParams.append(k, v);
+      });
+      const res = await fetch(`/api/customers?${queryParams.toString()}`, { cache: 'no-store' });
+      const data = await res.json();
+      return data.data || [];
+    } catch (e) {
+      console.error(e);
       return [];
     }
   };
@@ -147,6 +282,7 @@ export default function CustomersPage() {
   const thStyle = { padding: '1rem', cursor: 'pointer', userSelect: 'none' };
 
   return (
+    <>
     <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול לקוחות</h1>
@@ -200,42 +336,6 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      {showAdvSearch && (
-        <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-            <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem' }}>חיפוש מתקדם (לקוחות)</h2>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_firstName', 'שם פרטי')}</label>
-                <input type="text" className="form-control" value={advFilters.firstName} onChange={e => setAdvFilters(p => ({...p, firstName: e.target.value}))} />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_lastName', 'שם משפחה')}</label>
-                <input type="text" className="form-control" value={advFilters.lastName} onChange={e => setAdvFilters(p => ({...p, lastName: e.target.value}))} />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_phone1', 'טלפון')}</label>
-                <input type="text" className="form-control" value={advFilters.phone} onChange={e => setAdvFilters(p => ({...p, phone: e.target.value}))} />
-              </div>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_city', 'עיר מגורים')}</label>
-                <input type="text" className="form-control" value={advFilters.city} onChange={e => setAdvFilters(p => ({...p, city: e.target.value}))} />
-              </div>
-              <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_email', 'דוא"ל')}</label>
-                <input type="text" className="form-control" value={advFilters.email} onChange={e => setAdvFilters(p => ({...p, email: e.target.value}))} />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>סגור והחל סינון</button>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
-                setAdvFilters({ firstName: '', lastName: '', phone: '', city: '', email: '' });
-              }}>נקה הכל</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
         {loading && customers.length === 0 ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
@@ -276,7 +376,22 @@ export default function CustomersPage() {
               >
                 הבא
               </button>
-              <span>עמוד {page} מתוך {totalPages}</span>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                עמוד
+                <input 
+                  type="number" 
+                  min={1} 
+                  max={totalPages || 1} 
+                  value={page} 
+                  onChange={(e) => { 
+                    const v = parseInt(e.target.value); 
+                    if (v >= 1 && v <= totalPages) setPage(v); 
+                  }} 
+                  style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }} 
+                  disabled={isAiModeActive} 
+                />
+                מתוך {totalPages}
+              </span>
               <button 
                 className="btn btn-outline"
                 disabled={page <= 1 || isAiModeActive} 
@@ -298,5 +413,41 @@ export default function CustomersPage() {
         position={typeof showStatistics === 'object' ? showStatistics : null}
       />
     </main>
+      {showAdvSearch && (
+        <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+            <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem' }}>חיפוש מתקדם (לקוחות)</h2>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_firstName', 'שם פרטי')}</label>
+                <input type="text" className="form-control" value={advFilters.firstName} onChange={e => setAdvFilters(p => ({...p, firstName: e.target.value}))} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_lastName', 'שם משפחה')}</label>
+                <input type="text" className="form-control" value={advFilters.lastName} onChange={e => setAdvFilters(p => ({...p, lastName: e.target.value}))} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_phone1', 'טלפון')}</label>
+                <input type="text" className="form-control" value={advFilters.phone} onChange={e => setAdvFilters(p => ({...p, phone: e.target.value}))} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_city', 'עיר מגורים')}</label>
+                <input type="text" className="form-control" value={advFilters.city} onChange={e => setAdvFilters(p => ({...p, city: e.target.value}))} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_email', 'דוא"ל')}</label>
+                <input type="text" className="form-control" value={advFilters.email} onChange={e => setAdvFilters(p => ({...p, email: e.target.value}))} />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>סגור והחל סינון</button>
+              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
+                setAdvFilters({ firstName: '', lastName: '', phone: '', city: '', email: '' });
+              }}>נקה הכל</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }

@@ -162,25 +162,9 @@ export default function AiHistoryPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '1.5rem', gap: '0.5rem', background: 'var(--element-bg)' }}>
-            <button 
-              disabled={page === 1}
-              onClick={() => setPage(page - 1)}
-              className="btn btn-outline"
-              style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}
-            >
-              ׳”׳§׳•׳“׳
-            </button>
-            <span style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', fontWeight: 'bold' }}>
-              ׳¢׳׳•׳“ {page} ׳׳×׳•׳ {totalPages}
-            </span>
-            <button 
-              disabled={page === totalPages}
-              onClick={() => setPage(page + 1)}
-              className="btn btn-outline"
-              style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}
-            >
-              ׳”׳‘׳
-            </button>
+            <button disabled={page === 1} onClick={() => setPage(page - 1)} className="btn btn-outline" style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}>הקודם</button>
+            <span style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', fontWeight: 'bold', gap: '0.5rem' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }} /> מתוך {totalPages}</span>
+            <button disabled={page === totalPages} onClick={() => setPage(page + 1)} className="btn btn-outline" style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}>הבא</button>
           </div>
         )}
       </div>

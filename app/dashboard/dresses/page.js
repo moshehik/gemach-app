@@ -796,8 +796,11 @@ export default function DressesManagement() {
             
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--card-bg)', borderTop: '1px solid #e0e0e0', borderRadius: '0 0 12px 12px' }}>
-                <button 
-                  onClick={() => setPage(p => Math.max(1, p - 1))} 
+                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הקודם</button>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }} /> מתוך {totalPages} (סה"כ {totalDresses} תוצאות)</span>
+                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הבא</button>
+              </div>
+            )}
                   disabled={page === 1}
                   className="btn btn-outline"
                   style={{ padding: '0.4rem 1rem' }}

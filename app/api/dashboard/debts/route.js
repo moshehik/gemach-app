@@ -44,7 +44,7 @@ export async function GET(request) {
 
     const debtsWithRemaining = debts.map(order => {
       const totalPaid = order.payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
-      const totalObligations = order.obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + (o.amount * o.quantity), 0);
+      const totalObligations = order.obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
       const remaining = totalObligations - totalPaid;
       
       // Check if debt is approved
@@ -126,6 +126,7 @@ export async function GET(request) {
       where: {
         isDeleted: false,
         isTaken: true,
+        takenDate: { not: null },
         order: {
           isDeleted: false
         }

@@ -44,9 +44,9 @@ export default function HomeDashboard() {
 
   const parseMessageToLinks = (text) => {
     if (!text) return null;
-    const parts = text.split(/(׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€\s*\d+|׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”\s*[\w-]+)/g);
+    const parts = text.split(/(הזמנה\s*\d+|לקוח\s*[\w-]+)/g);
     return parts.map((part, i) => {
-      let match = part.match(/׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€\s*(\d+)/);
+      let match = part.match(/הזמנה\s*(\d+)/);
       if (match) {
         return (
           <a
@@ -59,7 +59,7 @@ export default function HomeDashboard() {
           </a>
         );
       }
-      match = part.match(/׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”\s*([\w-]+)/);
+      match = part.match(/לקוח\s*([\w-]+)/);
       if (match) {
         return (
           <a
@@ -127,9 +127,8 @@ export default function HomeDashboard() {
     if (!searchInput.trim()) return;
     
     setLoadingSearch(true);
-        setAiMessages([]);
+    setAiMessages([]);
     localStorage.removeItem('dashboardAiMessages');
-    setActiveAiSessionId(null);
     
     try {
       const res = await fetch(`/api/global-search?q=${encodeURIComponent(searchInput)}`);
@@ -183,32 +182,14 @@ export default function HomeDashboard() {
       if (res.ok) {
         const finalMessages = [...updatedMessages, { role: 'model', content: result.response, data: result.data }];
         setAiMessages(finalMessages);
-                localStorage.setItem('dashboardAiMessages', JSON.stringify(finalMessages));
-
-        try {
-          const syncRes = await fetch('/api/ai/sessions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              sessionId: activeAiSessionId,
-              context: '׳˜׳׳‘ ׳‘׳™׳×',
-              messages: finalMessages
-            })
-          });
-          const syncData = await syncRes.json();
-          if (syncData.success && syncData.session && !activeAiSessionId) {
-            setActiveAiSessionId(syncData.session.id);
-          }
-        } catch (err) {
-          console.error('Failed to sync session', err);
-        }
+        localStorage.setItem('dashboardAiMessages', JSON.stringify(finalMessages));
       } else {
-        const errMessages = [...updatedMessages, { role: 'model', content: '׳³ֲ©׳³ג€™׳³ג„¢׳³ֲ׳³ג€ ׳³ג€˜׳³ג€”׳³ג„¢׳³ג‚×׳³ג€¢׳³ֲ© ׳³ג€”׳³ג€÷׳³ֲ.' }];
+        const errMessages = [...updatedMessages, { role: 'model', content: 'שגיאה בחיפוש חכם.' }];
         setAiMessages(errMessages);
       }
     } catch (e) {
       console.error(e);
-      const errMessages = [...updatedMessages, { role: 'model', content: '׳³ֲ©׳³ג€™׳³ג„¢׳³ֲ׳³ֳ— ׳³ֳ—׳³ֲ§׳³ֲ©׳³ג€¢׳³ֲ¨׳³ֳ—.' }];
+      const errMessages = [...updatedMessages, { role: 'model', content: 'שגיאת תקשורת.' }];
       setAiMessages(errMessages);
     } finally {
       setAiLoading(false);
@@ -218,17 +199,15 @@ export default function HomeDashboard() {
   const clearSearch = () => {
     setSearchInput('');
     setSearchResults(null);
-        setAiMessages([]);
+    setAiMessages([]);
     localStorage.removeItem('dashboardAiMessages');
-    setActiveAiSessionId(null);
     sessionStorage.removeItem('dashboardSearchInput');
     sessionStorage.removeItem('dashboardSearchResults');
   };
   
   const clearAiChat = () => {
-        setAiMessages([]);
+    setAiMessages([]);
     localStorage.removeItem('dashboardAiMessages');
-    setActiveAiSessionId(null);
   };
 
   const exportTableToExcel = (data, filename) => {
@@ -241,17 +220,17 @@ export default function HomeDashboard() {
     });
     const ws = XLSX.utils.json_to_sheet(cleanedData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "׳³ֲ ׳³ֳ—׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ");
+    XLSX.utils.book_append_sheet(wb, ws, "נתונים");
     XLSX.writeFile(wb, filename + '.xlsx');
   };
 
   const renderStatusIcon = (status) => {
     switch(status) {
-      case '׳³ג€׳³ג€¢׳³ג€”׳³ג€“׳³ֲ¨': return <CheckCircle size={16} color="#10b981" title="׳³ג€׳³ג€¢׳³ג€”׳³ג€“׳³ֲ¨" />;
-      case '׳³ֲ׳³ג€¢׳³ֲ©׳³ג€÷׳³ֲ¨': return <Shirt size={16} color="#f59e0b" title="׳³ֲ׳³ג€¢׳³ֲ©׳³ג€÷׳³ֲ¨" />;
-      case '׳³ג€˜׳³ג€¢׳³ֻ׳³ֲ': return <XCircle size={16} color="#ef4444" title="׳³ג€˜׳³ג€¢׳³ֻ׳³ֲ" />;
-      case '׳³ֲ©׳³ג€¢׳³ֲ׳³ֲ': return <Check size={16} color="#3b82f6" title="׳³ֲ©׳³ג€¢׳³ֲ׳³ֲ" />;
-      default: return <Clock size={16} color="#6b7280" title={status || '׳³ג‚×׳³ֲ¢׳³ג„¢׳³ֲ'} />;
+      case 'הוחזר': return <CheckCircle size={16} color="#10b981" title="הוחזר" />;
+      case 'מושכר': return <Shirt size={16} color="#f59e0b" title="מושכר" />;
+      case 'בוטל': return <XCircle size={16} color="#ef4444" title="בוטל" />;
+      case 'שולם': return <Check size={16} color="#3b82f6" title="שולם" />;
+      default: return <Clock size={16} color="#6b7280" title={status || 'פעיל'} />;
     }
   };
 
@@ -261,11 +240,11 @@ export default function HomeDashboard() {
       {/* Header & Search */}
       <div style={{ marginBottom: '3rem', textAlign: 'center' }}>
         <h1 style={{ fontSize: '2.5rem', color: 'var(--primary-color)', marginBottom: '1.5rem', fontWeight: '800' }}>
-          ׳³ג€˜׳³ֲ¨׳³ג€¢׳³ג€÷׳³ג„¢׳³ֲ ׳³ג€׳³ג€˜׳³ֲ׳³ג„¢׳³ֲ ׳³ֲ׳³ֲ׳³ֲ¢׳³ֲ¨׳³ג€÷׳³ֳ— ׳³ֲ ׳³ג„¢׳³ג€׳³ג€¢׳³ֲ ׳³ג€׳³ג€™׳³ֲ"׳³ג€”
+          ברוכים הבאים למערכת ניהול הגמ"ח
         </h1>
         <div style={{ maxWidth: '800px', margin: '0 auto', background: 'var(--card-bg)', padding: '1rem', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
           <AISearchBar 
-            placeholder="׳³ג€”׳³ג„¢׳³ג‚×׳³ג€¢׳³ֲ© ׳³ג€™׳³ֲ׳³ג€¢׳³ג€˜׳³ֲ׳³ג„¢ (׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”, ׳³ֻ׳³ֲ׳³ג‚×׳³ג€¢׳³ֲ, ׳³ֲ¢׳³ג„¢׳³ֲ¨, ׳³ֲ׳³ֲ¡׳³ג‚×׳³ֲ¨ ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€)..."
+            placeholder="דוגמא משפחת כהן..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             onSearch={handleGlobalSearch}
@@ -275,7 +254,7 @@ export default function HomeDashboard() {
           />
           {recentSearches.length > 0 && !searchInput && (
             <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>׳³ג€”׳³ג„¢׳³ג‚×׳³ג€¢׳³ֲ©׳³ג„¢׳³ֲ  ׳³ֲ ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ :</span>
+              <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>חיפושים אחרונים:</span>
               {recentSearches.map((s, idx) => (
                 <button 
                   key={idx} 
@@ -306,9 +285,9 @@ export default function HomeDashboard() {
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ec4899', fontWeight: 'bold' }}>
               <Sparkles size={24} />
-              <span style={{ fontSize: '1.2rem' }}>׳³ֲ¦'׳³ֲ ׳³ֻœ ׳³ג€”׳³ג€÷׳³ֲ  ׳³ֲž׳³ג€˜׳³ג€¢׳³ֲ¡׳³ֲ¡ AI:</span>
+              <span style={{ fontSize: '1.2rem' }}>צ'אט חכם מבוסס AI:</span>
             </div>
-            <button onClick={clearAiChat} title="׳³ֲ ׳³ֲ§׳³ג€  ׳³ֲ¦'׳³ֲ ׳³ֻœ" style={{ background: 'var(--card-bg)', border: '1px solid #fbcfe8', borderRadius: '50%', padding: '0.5rem', cursor: 'pointer', color: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <button onClick={clearAiChat} title="נקה צ'אט" style={{ background: 'var(--card-bg)', border: '1px solid #fbcfe8', borderRadius: '50%', padding: '0.5rem', cursor: 'pointer', color: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <X size={18} />
             </button>
           </div>
@@ -317,15 +296,15 @@ export default function HomeDashboard() {
             {aiMessages.map((msg, idx) => (
               <div key={idx} style={{ alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end', background: msg.role === 'user' ? 'var(--card-bg)' : '#fce7f3', padding: '1rem 1.5rem', borderRadius: '12px', maxWidth: '85%', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', border: msg.role === 'user' ? '1px solid var(--element-border)' : '1px solid #fbcfe8' }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: msg.role === 'user' ? 'var(--text-main)' : '#ec4899' }}>
-                  {msg.role === 'user' ? '׳³ֲ ׳³ֳ—׳³ג€ :' : '׳³ֲž׳³ֲ¢׳³ֲ¨׳³ג€÷׳³ֳ— AI:'}
+                  {msg.role === 'user' ? 'אתה:' : 'מערכת AI:'}
                 </div>
                 <div style={{ fontSize: '1.1rem', lineHeight: '1.6', color: 'var(--text-main)', whiteSpace: 'pre-wrap' }}>
-                  <FormattedMessage content={msg.content} />
+                  {parseMessageToLinks(msg.content)}
                 </div>
                 {msg.data && msg.data.length > 0 && (
                   <div style={{ marginTop: '1rem' }}>
                     <button onClick={() => exportTableToExcel(msg.data, 'AI_Export')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                      <Download size={16} /> ׳³ג€ ׳³ג€¢׳³ֲ¨׳³ג€œ Excel
+                      <Download size={16} /> הורד Excel
                     </button>
                     <div style={{ overflowX: 'auto', background: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem' }}>
@@ -334,7 +313,7 @@ export default function HomeDashboard() {
                             {Object.keys(msg.data[0])
                               .filter(k => !k.startsWith('_action'))
                               .map(k => <th key={k} style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>{k}</th>)}
-                            {msg.data.some(r => r._actionUrl) && <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>׳³ג‚×׳³ֲ¢׳³ג€¢׳³ֲœ׳³ג€¢׳³ֳ—</th>}
+                            {msg.data.some(r => r._actionUrl) && <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>פעולות</th>}
                           </tr>
                         </thead>
                         <tbody>
@@ -356,7 +335,7 @@ export default function HomeDashboard() {
                           ))}
                         </tbody>
                       </table>
-                      {msg.data.length > 15 && <div style={{ textAlign: 'center', padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>׳³ֲž׳³ֲ¦׳³ג„¢׳³ג€™ 15 ׳³ֳ—׳³ג€¢׳³ֲ¦׳³ֲ ׳³ג€¢׳³ֳ— ׳³ֲ¨׳³ֲ ׳³ֲ©׳³ג€¢׳³ֲ ׳³ג€¢׳³ֳ— (׳³ג€ ׳³ג€¢׳³ֲ¨׳³ג€œ ׳³ֲ§׳³ג€¢׳³ג€˜׳³ֲ¥ ׳³ֲœ׳³ֲ¦׳³ג‚×׳³ג„¢׳³ג„¢׳³ג€  ׳³ג€˜׳³ֲž׳³ֲœ׳³ֲ )</div>}
+                      {msg.data.length > 15 && <div style={{ textAlign: 'center', padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>מציג 15 תוצאות ראשונות (הורד קובץ לצפייה במלא)</div>}
                     </div>
                   </div>
                 )}
@@ -365,7 +344,7 @@ export default function HomeDashboard() {
             {aiLoading && (
               <div style={{ alignSelf: 'flex-end', color: '#ec4899', fontStyle: 'italic', padding: '1rem' }}>
                 <Loader2 className="animate-spin" size={20} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                ׳³ג€ -AI ׳³ג€”׳³ג€¢׳³ֲ©׳³ג€˜...
+                ה-AI חושב...
               </div>
             )}
             <div ref={chatEndRef} />
@@ -381,14 +360,14 @@ export default function HomeDashboard() {
              value={aiReplyInput} 
              onChange={(e) => setAiReplyInput(e.target.value)}
              onKeyDown={(e) => { if (e.key === 'Enter' && !aiLoading) handleAiSearch(aiReplyInput, true); }}
-             placeholder="׳³ֲ©׳³ֲ ׳³ֲœ ׳³ֲ©׳³ֲ ׳³ֲœ׳³ֳ— ׳³ג€ ׳³ֲž׳³ֲ©׳³ֲš ׳³ֲœ-AI..." 
+             placeholder="שאל שאלת המשך ל-AI..." 
              style={{ flex: 1, padding: '0.75rem 1.5rem', border: 'none', background: '#fdf2f8', borderRadius: '20px', fontSize: '1rem', color: '#ec4899', outline: 'none' }} 
              disabled={aiLoading}
            />
            <button onClick={() => handleAiSearch(aiReplyInput, true)} disabled={aiLoading || !aiReplyInput.trim()} style={{ background: aiLoading || !aiReplyInput.trim() ? '#f9a8d4' : '#ec4899', color: 'white', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: aiLoading || !aiReplyInput.trim() ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}>
              <Send size={20} />
            </button>
-           <button onClick={clearAiChat} title="׳³ֲ¡׳³ג€™׳³ג€¢׳³ֲ¨ ׳³ֲ¦'׳³ֲ ׳³ֻœ" style={{ background: 'var(--element-bg)', color: '#6b7280', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
+           <button onClick={clearAiChat} title="סגור צ'אט" style={{ background: 'var(--element-bg)', color: '#6b7280', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
              <X size={20} />
            </button>
         </div>
@@ -397,13 +376,13 @@ export default function HomeDashboard() {
       {/* Global Search Results Area */}
       {searchResults && aiMessages.length === 0 && (
         <div className="animate-fade-in" style={{ marginBottom: '3rem' }}>
-          <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-color)' }}>׳³ֳ—׳³ג€¢׳³ֲ¦׳³ֲ ׳³ג€¢׳³ֳ— ׳³ג€”׳³ג„¢׳³ג‚×׳³ג€¢׳³ֲ© ׳³ֲœ: "{searchInput}"</h2>
+          <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-color)' }}>תוצאות חיפוש ל: "{searchInput}"</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
             
             {/* Customers */}
             <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#3b82f6', marginBottom: '1rem' }}>
-                <User size={20} /> ׳³ֲœ׳³ֲ§׳³ג€¢׳³ג€”׳³ג€¢׳³ֳ— ({searchResults.customers?.length || 0})
+                <User size={20} /> לקוחות ({searchResults.customers?.length || 0})
               </h3>
               {searchResults.customers?.length > 0 ? (
                 <>
@@ -413,7 +392,7 @@ export default function HomeDashboard() {
                         <Link href={`/customers/${c.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontWeight: 'bold' }}>{c.firstName} {c.lastName}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{c.phone1} ׳’ג‚¬ֲ¢ {c.city}</div>
+                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{c.phone1} • {c.city}</div>
                           </div>
                           <ArrowLeft size={16} color="#9ca3af" />
                         </Link>
@@ -422,17 +401,17 @@ export default function HomeDashboard() {
                   </ul>
                   {searchResults.customers.length > 5 && (
                     <button onClick={() => setShowMoreCustomers(!showMoreCustomers)} style={{ width: '100%', background: 'var(--btn-light-blue-bg)', color: '#3b82f6', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
-                      {showMoreCustomers ? '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ג‚×׳³ג€”׳³ג€¢׳³ֳ—' : '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ֲ¢׳³ג€¢׳³ג€œ'}
+                      {showMoreCustomers ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>׳³ֲœ׳³ֲ  ׳³ֲ ׳³ֲž׳³ֲ¦׳³ֲ ׳³ג€¢ ׳³ֲœ׳³ֲ§׳³ג€¢׳³ג€”׳³ג€¢׳³ֳ—</div>}
+              ) : <div style={{ color: '#9ca3af' }}>לא נמצאו לקוחות</div>}
             </div>
 
             {/* Orders */}
             <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', marginBottom: '1rem' }}>
-                <ShoppingBag size={20} /> ׳³ג€ ׳³€“׳³ֲž׳³ֲ ׳³ג€¢׳³ֳ— ({searchResults.orders?.length || 0})
+                <ShoppingBag size={20} /> הזמנות ({searchResults.orders?.length || 0})
               </h3>
               {searchResults.orders?.length > 0 ? (
                 <>
@@ -446,10 +425,10 @@ export default function HomeDashboard() {
                               {renderStatusIcon(o.status)}
                             </div>
                             <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                              ׳³ֲ§׳³ג€¢׳³ג€œ: <strong>#{o.orderId}</strong> | ׳³ֲ ׳³ג„¢׳³ֲ¨׳³ג€¢׳³ֲ¢: <strong>{o.eventDateHebrew || '-'}</strong>
+                              קוד: <strong>#{o.orderId}</strong> | אירוע: <strong>{o.eventDateHebrew || '-'}</strong>
                             </div>
                             <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.15rem' }}>
-                              ׳³ֲ¡׳³ג€ "׳³ג€÷: <strong>׳’ג€šֳ—{o.totalAmount || 0}</strong> | ׳³ג‚×׳³ֲ¨׳³ג„¢׳³ֻœ׳³ג„¢׳³ֲ : <strong>{o.itemCount || 0}</strong>
+                              סה"כ: <strong>₪{o.totalAmount || 0}</strong> | פריטים: <strong>{o.itemCount || 0}</strong>
                             </div>
                           </div>
                           <ArrowLeft size={16} color="#9ca3af" />
@@ -459,17 +438,17 @@ export default function HomeDashboard() {
                   </ul>
                   {searchResults.orders.length > 5 && (
                     <button onClick={() => setShowMoreOrders(!showMoreOrders)} style={{ width: '100%', background: 'var(--btn-light-green-bg)', color: '#10b981', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
-                      {showMoreOrders ? '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ג‚×׳³ג€”׳³ג€¢׳³ֳ—' : '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ֲ¢׳³ג€¢׳³ג€œ'}
+                      {showMoreOrders ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>׳³ֲœ׳³ֲ  ׳³ֲ ׳³ֲž׳³ֲ¦׳³ֲ ׳³ג€¢ ׳³ג€ ׳³€“׳³ֲž׳³ֲ ׳³ג€¢׳³ֳ—</div>}
+              ) : <div style={{ color: '#9ca3af' }}>לא נמצאו הזמנות</div>}
             </div>
 
             {/* Rentals */}
             <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f59e0b', marginBottom: '1rem' }}>
-                <Shirt size={20} /> ׳³ג€ ׳³ֲ©׳³ג€÷׳³ֲ¨׳³ג€¢׳³ֳ— ({searchResults.rentals?.length || 0})
+                <Shirt size={20} /> השכרות ({searchResults.rentals?.length || 0})
               </h3>
               {searchResults.rentals?.length > 0 ? (
                 <>
@@ -479,22 +458,20 @@ export default function HomeDashboard() {
                         <Link href={`/orders/${r.orderId}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontWeight: 'bold' }}>{r.catalogName || r.description}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>׳³ג€˜׳³ֲ¨׳³ֲ§׳³ג€¢׳³ג€œ: {r.barcode || r.catalogBarcode} ׳’ג‚¬ֲ¢ ׳³ֲž׳³ג„¢׳³גœ׳³ג€ : {r.sizeText}</div>
+                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>ברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}</div>
                           </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            <ArrowLeft size={16} color="#9ca3af" />
-                          </div>
+                          <ArrowLeft size={16} color="#9ca3af" />
                         </Link>
                       </li>
                     ))}
                   </ul>
                   {searchResults.rentals.length > 5 && (
                     <button onClick={() => setShowMoreRentals(!showMoreRentals)} style={{ width: '100%', background: 'var(--element-bg)', color: '#f59e0b', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
-                      {showMoreRentals ? '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ג‚×׳³ג€”׳³ג€¢׳³ֳ—' : '׳³ג€ ׳³ֲ¦׳³ג€™ ׳³ֲ¢׳³ג€¢׳³ג€œ'}
+                      {showMoreRentals ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>׳³ֲœ׳³ֲ  ׳³ֲ ׳³ֲž׳³ֲ¦׳³ֲ ׳³ג€¢ ׳³ג€ ׳³ֲ©׳³ג€÷׳³ֲ¨׳³ג€¢׳³ֳ—</div>}
+              ) : <div style={{ color: '#9ca3af' }}>לא נמצאו השכרות</div>}
             </div>
 
           </div>
@@ -510,13 +487,10 @@ export default function HomeDashboard() {
           <div style={{ background: 'var(--banner-debts-bg)', padding: '1.5rem', borderBottom: debtsExpanded ? '1px solid var(--banner-debts-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#ef4444', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><CreditCard size={20} /></div>
-              <h2 style={{ margin: 0, color: '#b91c1c', fontSize: '1.25rem' }}>׳³ג€”׳³ג€¢׳³ג€˜׳³ג€¢׳³ֳ— ׳³ג‚×׳³ֳ—׳³ג€¢׳³ג€”׳³ג„¢׳³ֲ </h2>
+              <h2 style={{ margin: 0, color: '#b91c1c', fontSize: '1.25rem' }}>חובות פתוחים</h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setQuickPaymentOpen(true)} title="׳³ֳ—׳³ֲ©׳³ֲœ׳³ג€¢׳³ֲ  ׳³ֲž׳³ג€ ׳³ג„¢׳³ֲ¨" style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
-                <PlusCircle size={24} />
-              </button>
-              <button onClick={() => setDebtsExpanded(!debtsExpanded)} title={debtsExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€ ׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+              <button onClick={() => setDebtsExpanded(!debtsExpanded)} title={debtsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
                 {debtsExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
               </button>
             </div>
@@ -529,9 +503,9 @@ export default function HomeDashboard() {
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
                 <thead>
                   <tr style={{ color: '#6b7280', fontSize: '0.9rem', borderBottom: '1px solid #e5e7eb' }}>
-                    <th style={{ padding: '0.5rem' }}>׳³ג€ ׳³ג€“׳³ֲž׳³ֲ ׳³ג€  / ׳³ֲœ׳³ֲ§׳³ג€¢׳³ג€”</th>
-                    <th style={{ padding: '0.5rem' }}>׳³ֲ¡׳³ג€ "׳³ג€÷</th>
-                    <th style={{ padding: '0.5rem', color: '#ef4444' }}>׳³ג„¢׳³ֳ—׳³ֲ¨׳³ג€  ׳³ֲœ׳³ֳ—׳³ֲ©׳³ֲœ׳³ג€¢׳³ֲ </th>
+                    <th style={{ padding: '0.5rem' }}>הזמנה / לקוח</th>
+                    <th style={{ padding: '0.5rem' }}>סה"כ</th>
+                    <th style={{ padding: '0.5rem', color: '#ef4444' }}>יתרה לתשלום</th>
                     <th style={{ padding: '0.5rem' }}></th>
                   </tr>
                 </thead>
@@ -542,12 +516,12 @@ export default function HomeDashboard() {
                         <div style={{ fontWeight: '500' }}>#{debt.orderId}</div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{debt.customer?.firstName} {debt.customer?.lastName}</div>
                       </td>
-                      <td style={{ padding: '0.75rem 0.5rem' }}>׳’ג€šֳ—{debt.totalAmount}</td>
+                      <td style={{ padding: '0.75rem 0.5rem' }}>₪{debt.totalAmount || 0}</td>
                       <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold', color: '#ef4444' }}>
-                        ׳’ג€šֳ—{debt.remaining}
+                        ₪{debt.remaining || 0}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
-                        <Link href={`/orders/${debt.orderId}`} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '12px' }}>׳³ֲœ׳³ג‚×׳³ֲ¨׳³ֻœ׳³ג„¢׳³ֲ </Link>
+                        <Link href={`/orders/${debt.orderId}`} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '12px' }}>לפרטים</Link>
                       </td>
                     </tr>
                   ))}
@@ -556,7 +530,7 @@ export default function HomeDashboard() {
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
                 <CreditCard size={40} opacity={0.2} />
-                <span>׳³ֲ ׳³ג„¢׳³ֲŸ ׳³ג€÷׳³ֲ¨׳³ג€™׳³ֲ¢ ׳³ג€”׳³ג€¢׳³ג€˜׳³ג€¢׳³ֳ— ׳³ג‚×׳³ֳ—׳³ג€¢׳³ג€”׳³ג„¢׳³ֲ  ׳³ג€ ׳³ֲž׳³ֲž׳³ֳ—׳³ג„¢׳³ֲ ׳³ג„¢׳³ֲ  ׳³ֲœ׳³ֳ—׳³ֲ©׳³ֲœ׳³ג€¢׳³ֲ .</span>
+                <span>אין כרגע חובות פתוחים הממתינים לתשלום.</span>
               </div>
             )}
           </div>
@@ -568,10 +542,10 @@ export default function HomeDashboard() {
           <div style={{ background: 'var(--banner-payments-bg)', padding: '1.5rem', borderBottom: paymentsExpanded ? '1px solid var(--banner-payments-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#10b981', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Banknote size={20} /></div>
-              <h2 style={{ margin: 0, color: '#047857', fontSize: '1.25rem' }}>׳³ֳ—׳³ֲ©׳³ֲœ׳³ג€¢׳³ֲž׳³ג„¢׳³ֲ  ׳³ֲ ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג„¢׳³ֲ </h2>
+              <h2 style={{ margin: 0, color: '#047857', fontSize: '1.25rem' }}>תשלומים אחרונים</h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setPaymentsExpanded(!paymentsExpanded)} title={paymentsExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€ ׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#047857', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(16, 185, 129, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+              <button onClick={() => setPaymentsExpanded(!paymentsExpanded)} title={paymentsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#047857', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(16, 185, 129, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
                 {paymentsExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
               </button>
             </div>
@@ -591,12 +565,12 @@ export default function HomeDashboard() {
                       <div>
                         <div style={{ fontWeight: '500' }}>{payment.customer?.firstName} {payment.customer?.lastName}</div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                          הזמנה #{payment.order?.orderId} • {new HDate(new Date(payment.paymentDate)).renderGematriya().replace(/[\u0591-\u05C7]/g, '')}
+                          הזמנה #{payment.order?.orderId} • {new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(payment.paymentDate))}
                         </div>
                       </div>
                     </div>
                     <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#10b981' }}>
-                      ׳’ג€šֳ—{payment.amount}
+                      ₪{payment.amount || 0}
                     </div>
                   </li>
                 ))}
@@ -604,7 +578,7 @@ export default function HomeDashboard() {
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
                 <Banknote size={40} opacity={0.2} />
-                <span>׳³ֻœ׳³ֲ¨׳³ֲ  ׳³ג€ ׳³ֳ—׳³ֲ§׳³ג€˜׳³ֲœ׳³ג€¢ ׳³ֳ—׳³ֲ©׳³ֲœ׳³ג€¢׳³ֲž׳³ג„¢׳³ֲ .</span>
+                <span>טרם התקבלו תשלומים.</span>
               </div>
             )}
           </div>
@@ -616,10 +590,10 @@ export default function HomeDashboard() {
           <div style={{ background: 'var(--banner-orders-bg)', padding: '1.5rem', borderBottom: ordersExpanded ? '1px solid var(--banner-orders-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#3b82f6', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><ShoppingBag size={20} /></div>
-              <h2 style={{ margin: 0, color: '#1d4ed8', fontSize: '1.25rem' }}>׳³ג€ ׳³€“׳³ֲž׳³ֲ ׳³ג€¢׳³ֳ— ׳³ֲ ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג€¢׳³ֳ—</h2>
+              <h2 style={{ margin: 0, color: '#1d4ed8', fontSize: '1.25rem' }}>הזמנות אחרונות</h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setOrdersExpanded(!ordersExpanded)} title={ordersExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€ ׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(59, 130, 246, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+              <button onClick={() => setOrdersExpanded(!ordersExpanded)} title={ordersExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(59, 130, 246, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
                 {ordersExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
               </button>
             </div>
@@ -644,15 +618,15 @@ export default function HomeDashboard() {
                           הזמנה: {order.orderDate ? new HDate(new Date(order.orderDate)).renderGematriya().replace(/[\u0591-\u05C7]/g, '') : '-'} • אירוע: {order.eventDateHebrew || '-'}
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                          ׳³ג‚×׳³ֲ¨׳³ג„¢׳³ֻœ׳³ג„¢׳³ֲ : {order.items?.length || 0} ׳’ג‚¬ֲ¢ ׳³ֲ¡׳³ֻœ׳³ֻœ׳³ג€¢׳³ֲ¡: {order.status || '׳³ג‚×׳³ֲ¢׳³ג„¢׳³ֲœ'} ׳’ג‚¬ֲ¢ ׳³ֲ¢׳³ג€¢׳³ג€˜׳³ג€œ: {order.employee?.firstName ? `${order.employee.firstName} ${order.employee.lastName || ''}` : '-'}
+                          פריטים: {order.items?.length || 0} • סטטוס: {order.status || 'פעיל'} • עובד: {order.employee?.firstName ? `${order.employee.firstName} ${order.employee.lastName || ''}` : '-'}
                         </div>
                       </div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                       <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#3b82f6' }}>
-                        ׳’ג€ֳ—{order.totalAmount || 0}
+                        ₪{order.totalAmount || 0}
                       </div>
-                      <Link href={`/orders/${order.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', background: '#eff6ff', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="׳³ֲ׳³ג‚×׳³ֲ¨׳³ֻ׳³ג„¢ ׳³ג€׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€">
+                      <Link href={`/orders/${order.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', background: '#eff6ff', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="לפרטי ההזמנה">
                         <ExternalLink size={18} />
                       </Link>
                     </div>
@@ -662,7 +636,7 @@ export default function HomeDashboard() {
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
                 <ShoppingBag size={40} opacity={0.2} />
-                <span>׳³ֲ׳³ג„¢׳³ֲ ׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€¢׳³ֳ— ׳³ֲ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג€¢׳³ֳ—.</span>
+                <span>אין הזמנות אחרונות.</span>
               </div>
             )}
           </div>
@@ -674,10 +648,10 @@ export default function HomeDashboard() {
           <div style={{ background: 'var(--banner-rentals-bg)', padding: '1.5rem', borderBottom: rentalsExpanded ? '1px solid var(--banner-rentals-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ background: '#f59e0b', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Shirt size={20} /></div>
-              <h2 style={{ margin: 0, color: '#d97706', fontSize: '1.25rem' }}>׳³ג€ ׳³ֲ©׳³ג€÷׳³ֲ¨׳³ג€¢׳³ֳ— ׳³ֲ ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג€¢׳³ֳ—</h2>
+              <h2 style={{ margin: 0, color: '#d97706', fontSize: '1.25rem' }}>השכרות אחרונות</h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setRentalsExpanded(!rentalsExpanded)} title={rentalsExpanded ? "׳³ג€÷׳³ג€¢׳³ג€¢׳³ֲ¥" : "׳³ג€ ׳³ֲ¨׳³ג€”׳³ג€˜"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d97706', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(245, 158, 11, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+              <button onClick={() => setRentalsExpanded(!rentalsExpanded)} title={rentalsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d97706', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(245, 158, 11, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
                 {rentalsExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
               </button>
             </div>
@@ -695,12 +669,12 @@ export default function HomeDashboard() {
                         <Shirt size={20} />
                       </div>
                       <div>
-                        <Link href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', textDecoration: 'none', color: 'inherit' }}>׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€ #{rental.order?.orderId} ׳’ג‚¬ֲ¢ {rental.dressItem?.dress?.name || '׳³ֲ©׳³ֲ׳³ֲ׳³ג€'}</Link>
+                        <Link href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', textDecoration: 'none', color: 'inherit' }}>הזמנה #{rental.order?.orderId} • {rental.dressItem?.dress?.name || 'שמלה'}</Link>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem' }}>
-                           ׳³ג€˜׳³ֲ¨׳³ֲ§׳³ג€¢׳³ג€: {rental.barcode || '-'} ׳’ג‚¬ֲ¢ ׳³ֲ׳³ג„¢׳³ג€׳³ג€: {rental.sizeText || rental.dressItem?.sizeText || '-'}
+                           ברקוד: {rental.barcode || '-'} • מידה: {rental.sizeText || rental.dressItem?.sizeText || '-'}
                         </div>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
-                           ׳³ֲ׳³ֲ§׳³ג€¢׳³ג€”: {rental.order?.customer?.firstName} {rental.order?.customer?.lastName} ׳’ג‚¬ֲ¢ ׳³ֲ׳³ֲ§׳³ג„¢׳³ג€”׳³ג€: {rental.takenDate ? new HDate(new Date(rental.takenDate)).renderGematriya().replace(/[\u0591-\u05C7]/g, '') : '-'} ׳’ג‚¬ֲ¢ ׳³ג€׳³ג€”׳³ג€“׳³ֲ¨׳³ג€: {rental.returnDate ? new HDate(new Date(rental.returnDate)).renderGematriya().replace(/[\u0591-\u05C7]/g, '') : '-'} ׳’ג‚¬ֲ¢ ׳³ֲ¢׳³ג€¢׳³ג€˜׳³ג€: {rental.order?.employee?.firstName ? `${rental.order.employee.firstName} ${rental.order.employee.lastName || ''}` : (rental.employeeName || '-')}
+                           לקוח: {rental.order?.customer?.firstName} {rental.order?.customer?.lastName} • לקיחה: {rental.takenDate ? new Date(rental.takenDate).toLocaleDateString('he-IL') : '-'} • החזרה: {rental.returnDate ? new Date(rental.returnDate).toLocaleDateString('he-IL') : '-'} • עובד: {rental.order?.employee?.firstName ? `${rental.order.employee.firstName} ${rental.order.employee.lastName || ''}` : (rental.employeeName || '-')}
                         </div>
                       </div>
                     </div>
@@ -708,7 +682,7 @@ export default function HomeDashboard() {
                       <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {renderStatusIcon(rental.status)} {rental.status}
                       </div>
-                      <Link href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d97706', background: 'var(--element-bg)', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="׳³ֲ׳³ג‚×׳³ֲ¨׳³ֻ׳³ג„¢ ׳³ג€׳³ג€׳³ג€“׳³ֲ׳³ֲ ׳³ג€">
+                      <Link href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d97706', background: 'var(--element-bg)', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="לפרטי ההזמנה">
                         <ExternalLink size={18} />
                       </Link>
                     </div>
@@ -718,7 +692,7 @@ export default function HomeDashboard() {
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
                 <Shirt size={40} opacity={0.2} />
-                <span>׳³ֲ׳³ג„¢׳³ֲ ׳³ג€׳³ֲ©׳³ג€÷׳³ֲ¨׳³ג€¢׳³ֳ— ׳³ֲ׳³ג€”׳³ֲ¨׳³ג€¢׳³ֲ ׳³ג€¢׳³ֳ—.</span>
+                <span>אין השכרות אחרונות.</span>
               </div>
             )}
           </div>

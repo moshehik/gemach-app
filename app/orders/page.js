@@ -440,23 +440,9 @@ export default function OrdersPage() {
                 
                 {/* Pagination Controls */}
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
-                  <button 
-                    className="btn btn-outline"
-                    disabled={page >= totalPages || isAiModeActive} 
-                    onClick={() => setPage(p => p + 1)}
-                    style={{ padding: '0.5rem 1rem' }}
-                  >
-                    ׳”׳‘׳ &gt;
-                  </button>
-                  <span style={{ fontWeight: '500' }}>׳¢׳׳•׳“ {page} ׳׳×׳•׳ {totalPages}</span>
-                  <button 
-                    className="btn btn-outline"
-                    disabled={page <= 1 || isAiModeActive} 
-                    onClick={() => setPage(p => p - 1)}
-                    style={{ padding: '0.5rem 1rem' }}
-                  >
-                    &lt; ׳§׳•׳“׳
-                  </button>
+                  <button className="btn btn-outline" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>הבא &gt;</button>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }} disabled={isAiModeActive} /> מתוך {totalPages}</span>
+                  <button className="btn btn-outline" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הקודם</button>
                 </div>
               </>
             )}
