@@ -18,7 +18,6 @@ export default function EmployeesPage() {
   const [showStatistics, setShowStatistics] = useState(false);
 
   useEffect(() => {
-  useEffect(() => {
     // If AI mode is active, we don't fetch all automatically, AI handles the data
     if (!isAiModeActive) {
       fetch(`/api/employees?all=true`)
