@@ -1,4 +1,4 @@
-import prisma from '../lib/prisma';
+﻿import prisma from '../lib/prisma';
 import DashboardCharts from './DashboardCharts';
 
 export const dynamic = 'force-dynamic';

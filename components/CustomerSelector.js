@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useState, useEffect, useRef } from 'react';
 
 export default function CustomerSelector({ value, onChange, placeholder = 'חיפוש ובחירת לקוח...', error = false }) {

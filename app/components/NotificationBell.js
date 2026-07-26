@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, MessageSquare, Plus, Mail } from 'lucide-react';
 import Link from 'next/link';

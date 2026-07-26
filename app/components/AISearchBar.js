@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { Search, Sparkles, X, BarChart3, Loader2 } from 'lucide-react';

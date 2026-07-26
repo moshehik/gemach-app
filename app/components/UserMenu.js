@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserCircle, LogOut, Clock, CheckCircle, LogIn } from 'lucide-react';

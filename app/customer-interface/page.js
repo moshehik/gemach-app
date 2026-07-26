@@ -1,10 +1,10 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { HDate, Sedra, Locale, HebrewCalendar } from '@hebcal/core';
 import { getHebrewDateString, getHebrewMonthYear } from '@/lib/hebrewDate';
-import { RefreshCw, Printer, Lock, Maximize, Bot, Mic, History, Shirt, Crown, Star, Sparkles, Scissors, Gem, Heart, ShoppingBag, Feather, Palette, Camera, Tag, Gift, Sun, Moon, Music, Smile } from 'lucide-react';
+import { RefreshCw, Printer, Lock, Maximize, Bot, Mic, History, Shirt, Crown, Star, Sparkles, Scissors, Gem, Heart, ShoppingBag, Feather, Palette, Camera, Tag, Gift, Sun, Moon, Music, Smile, Search, Calendar, Loader2, LogOut } from 'lucide-react';
 import { useLabels } from '@/app/components/LabelsContext';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
 
@@ -112,7 +112,7 @@ export default function CustomerInventoryViewer() {
         body: JSON.stringify({ 
           prompt: userMsg.content, 
           history: historyContext,
-          context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ענה אך ורק לשאלות שקשורות להזמנות, מלאי, מחירים ותיקונים עבור לקוחות. אסור לך בשום אופן למסור מידע ניהולי (כמו סטטיסטיקות, רווחים, הכנסות, נתוני עובדים או מידע על לקוחות אחרים). אם הלקוח שואל שאלות לא קשורות או מבקש מידע חסוי, התנצל בנימוס ואמור שאין לך הרשאה לספק מידע זה ושהנך כאן רק לעזור בכל הקשור להזמנות השמלות של הלקוח.`
+          context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ענה אך ורק לשאלות שקשורות להזמנות, מלאי, מחירים ותיקונים עבור לקוחות. אסור לך למסור מידע ניהולי או חסוי. בנוסף - אם הלקוח מבקש מידע לגבי תאריך מסוים (למשל י"ב ניסן, או תאריך לועזי), חשב את התאריך המדויק הלועזי והוסף בסוף התשובה שלך בדיוק את התגית הבאה: [DATE:YYYY-MM-DD]. השתמש בשנה הנוכחית אם לא צוינה שנה.`
         }),
       });
       const data = await res.json();
@@ -525,98 +525,453 @@ export default function CustomerInventoryViewer() {
     sizesCount = sizesSet.size;
   }
 
+
   return (
-    <div style={{ fontSize: '16px', padding: '20px' }} className="customer-inventory">
+    <div style={{ fontSize: '16px', minHeight: '100vh', background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)', fontFamily: 'system-ui, -apple-system, sans-serif' }} className="customer-inventory-modern">
+      <style dangerouslySetInnerHTML={{__html: `
+          
+        `}} />
       {isLocked && (
         <style dangerouslySetInnerHTML={{__html: `
           .navbar { display: none !important; }
-          .customer-inventory { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; margin: 0; border-radius: 0; overflow-y: auto; }
+          .customer-inventory-modern { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: 9999; overflow-y: auto; }
         `}} />
       )}
-      {showUnlockModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-          backgroundColor: 'rgba(0,0,0,0.6)', zIndex: 9999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', direction: 'rtl'
-        }}>
-          <div style={{
-            background: 'var(--card-bg)', padding: '30px', borderRadius: '12px', width: '400px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
-          }}>
-            <h2 style={{ fontSize: '24px', marginBottom: '20px', textAlign: 'center', color: '#2c3e50' }}>שחרור מסך</h2>
-            <form onSubmit={handleUnlock}>
-              {unlockError && <div style={{ color: 'red', marginBottom: '10px', textAlign: 'center', fontSize: '14px' }}>{unlockError}</div>}
-              
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: '#7f8c8d' }}>שם עובד</label>
-                <select 
-                  value={unlockEmployee}
-                  onChange={(e) => setUnlockEmployee(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #bdc3c7' }}
-                >
-                  <option value="">-- בחר עובד --</option>
-                  {employees.map(emp => (
-                    <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
-                  ))}
-                </select>
+
+      <style dangerouslySetInnerHTML={{__html: `
+        /* Glassmorphism Classes */
+        .glass-panel {
+          background: rgba(255, 255, 255, 0.7);
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+          border-radius: 24px;
+          border: 1px solid rgba(255, 255, 255, 0.5);
+          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.05);
+        }
+        
+        .header-btn {
+          background: rgba(255, 255, 255, 0.8);
+          border: 1px solid rgba(200, 200, 200, 0.4);
+          border-radius: 14px;
+          color: #475569;
+          cursor: pointer;
+          transition: all 0.3s ease;
+        }
+        .header-btn:hover {
+          background: #ffffff;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+          color: #3b82f6;
+        }
+
+        /* Stage 1: Hero Search */
+        .hero-title {
+          font-size: 3.5rem;
+          font-weight: 800;
+          background: linear-gradient(135deg, #2563eb 0%, #9333ea 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          margin-bottom: 1rem;
+          text-align: center;
+        }
+
+        .ai-search-container {
+          position: relative;
+          width: 100%;
+          max-width: 800px;
+          margin: 0 auto;
+        }
+        
+        .ai-search-input {
+          width: 100%;
+          padding: 24px 32px;
+          font-size: 1.25rem;
+          border-radius: 999px;
+          border: 2px solid transparent;
+          background: white;
+          box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+          outline: none;
+          transition: all 0.3s;
+          padding-right: 70px;
+        }
+        .ai-search-input:focus {
+          border-color: #a855f7;
+          box-shadow: 0 10px 40px rgba(168, 85, 247, 0.2);
+        }
+        
+        .ai-search-btn {
+          position: absolute;
+          right: 12px;
+          top: 12px;
+          bottom: 12px;
+          background: linear-gradient(135deg, #a855f7, #6366f1);
+          color: white;
+          border: none;
+          border-radius: 999px;
+          width: 52px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: transform 0.2s;
+        }
+        .ai-search-btn:hover {
+          transform: scale(1.05);
+        }
+
+        /* Stage 2: Results Grid */
+        .modern-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+          gap: 24px;
+          padding: 24px 0;
+        }
+        
+        .dress-card {
+          background: white;
+          border-radius: 20px;
+          overflow: hidden;
+          box-shadow: 0 4px 15px rgba(0,0,0,0.03);
+          border: 1px solid #f1f5f9;
+          transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+          cursor: pointer;
+          position: relative;
+        }
+        .dress-card:hover {
+          transform: translateY(-8px);
+          box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+          border-color: #bfdbfe;
+        }
+        
+        .dress-image-placeholder {
+          height: 160px;
+          background: linear-gradient(45deg, #f1f5f9, #e2e8f0);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: #94a3b8;
+        }
+        
+        .dress-content {
+          padding: 20px;
+        }
+        .dress-title {
+          font-size: 1.25rem;
+          font-weight: 700;
+          color: #1e293b;
+          margin-bottom: 4px;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+        .dress-subtitle {
+          color: #64748b;
+          font-size: 0.9rem;
+          margin-bottom: 16px;
+        }
+        
+        .sizes-row {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+        .size-pill {
+          padding: 4px 12px;
+          border-radius: 12px;
+          font-size: 0.85rem;
+          font-weight: 600;
+          background: #f1f5f9;
+          color: #64748b;
+        }
+        .size-pill.available {
+          background: #dcfce7;
+          color: #166534;
+        }
+        
+        /* Layout */
+        .layout-container {
+          display: flex;
+          flex-direction: column;
+          gap: 24px;
+          max-width: 1600px;
+          margin: 0 auto;
+          padding: 24px;
+        }
+        
+        /* Calendar */
+        .cal-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: center; }
+        .cal-table th { color: #64748b; font-size: 13px; font-weight: 600; padding: 12px 0; }
+        .cal-table td { height: 50px; cursor: pointer; border-radius: 12px; transition: all 0.2s; margin: 2px; }
+        .cal-table td:hover { background: #f1f5f9; }
+        .cal-table td.selected { background: #3b82f6; color: white; font-weight: bold; box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
+        .cal-table td.today { border: 2px solid #3b82f6; }
+      `}} />
+
+      {/* Top Bar Actions */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', padding: '20px 40px', width: '100%' }}>
+        <button className="header-btn" onClick={() => router.push('/')} title="חזור למערכת" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '48px', height: '48px', padding: 0, color: '#ef4444' }}><LogOut size={22} /></button>
+        <div style={{ display: 'flex', gap: '12px' }}>
+        <button className="header-btn" onClick={() => setStage(1)} title="חיפוש חדש" style={{ display: stage === 2 ? 'flex' : 'none', alignItems: 'center', justifyContent: 'center', width: '48px', height: '48px', padding: 0 }}><Search size={22} /></button>
+        <button className="header-btn" onClick={fetchInventory} title="רענון מלאי" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '48px', height: '48px', padding: 0 }}><RefreshCw size={22} /></button>
+        {isLocked ? (
+          <button className="header-btn" style={{ background: '#ef4444', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '48px', height: '48px', padding: 0 }} onClick={() => setShowUnlockModal(true)} title="שחרור מסך"><Lock size={22} /></button>
+        ) : (
+          <button className="header-btn" onClick={() => {
+            setIsLocked(true);
+            if (document.documentElement.requestFullscreen) {
+              document.documentElement.requestFullscreen().catch(err => console.warn(err));
+            }
+          }} title="תפיסת מסך ללקוח" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '48px', height: '48px', padding: 0 }}><Maximize size={22} /></button>
+        )}
+      </div>
+      </div>
+
+      {/* Stage 1: Search & Date Selection */}
+      {stage === 1 && (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', padding: '0 24px', animation: 'fadeIn 0.5s ease-out' }}>
+          <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
+            <h1 className="hero-title">מה תחפשי היום?</h1>
+            <p style={{ fontSize: '1.2rem', color: '#64748b' }}>הזני סגנון, מידה או פשוט בחרי תאריך מהיומן</p>
+          </div>
+
+          <div className="ai-search-container" style={{ marginBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            {/* Chat History Above Input */}
+            {aiMessages.length > 1 && (
+              <div style={{ padding: '20px', background: 'white', borderRadius: '16px', boxShadow: '0 10px 30px rgba(0,0,0,0.05)', border: '1px solid #e2e8f0', color: '#1e293b', maxHeight: '400px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px', color: '#8b5cf6', fontWeight: 'bold' }}>
+                  <Sparkles size={18} /> העוזר החכם
+                </div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {aiMessages.slice(1).map((msg, idx) => {
+                    let displayContent = msg.content;
+                    let isoDateMatch = null;
+                    if (typeof displayContent === 'string') {
+                      const regex = /\[DATE:(\d{4}-\d{2}-\d{2})\]/;
+                      const match = displayContent.match(regex);
+                      if (match) {
+                        isoDateMatch = match[1];
+                        displayContent = displayContent.replace(regex, '').trim();
+                      }
+                    }
+                    
+                    return (
+                      <div key={idx} style={{ 
+                        alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                        background: msg.role === 'user' ? '#3b82f6' : '#f8fafc',
+                        color: msg.role === 'user' ? 'white' : '#1e293b',
+                        padding: '12px 16px', borderRadius: '12px', maxWidth: '85%'
+                      }}>
+                        <div>{displayContent}</div>
+                        {msg.role === 'assistant' && isoDateMatch && (
+                          <button 
+                            onClick={() => {
+                              setSelectedDate(new Date(`${isoDateMatch}T12:00:00`));
+                              setStage(2);
+                            }}
+                            style={{ marginTop: '12px', background: '#ec4899', color: 'white', border: 'none', padding: '6px 12px', borderRadius: '8px', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold' }}
+                          >
+                            👉 הצג מלאי לתאריך {getHebrewDateString(new Date(`${isoDateMatch}T12:00:00`))}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })}
+                </div>
+                {aiLoading && <div style={{ textAlign: 'center', marginTop: '1rem', color: '#8b5cf6', fontSize: '0.9rem' }}>מקליד...</div>}
               </div>
-              
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', marginBottom: '5px', color: '#7f8c8d' }}>סיסמא</label>
+            )}
+
+            <div style={{ position: 'relative', display: 'flex', gap: '12px', alignItems: 'center' }}>
+              <form onSubmit={handleAiSubmit} style={{ position: 'relative', flex: 1 }}>
                 <input 
-                  type="password"
-                  value={unlockPassword}
-                  onChange={(e) => setUnlockPassword(e.target.value)}
-                  style={{ width: '100%', padding: '10px', borderRadius: '6px', border: '1px solid #bdc3c7' }}
-                  placeholder="הזן סיסמא..."
+                  type="text" 
+                  className="ai-search-input" 
+                  placeholder="לדוגמה: שמלה שחורה מידה 12..."
+                  value={aiInput}
+                  onChange={e => setAiInput(e.target.value)}
+                  disabled={aiLoading}
+                  style={{ width: '100%', margin: 0 }}
                 />
-              </div>
-              
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button 
-                  type="submit" 
-                  disabled={unlockLoading}
-                  style={{ flex: 1, padding: '10px', background: '#3498db', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  {unlockLoading ? 'בודק...' : 'שחרר'}
+                <button type="submit" className="ai-search-btn" disabled={aiLoading}>
+                  {aiLoading ? <Loader2 size={24} className="animate-spin" /> : <Sparkles size={24} />}
                 </button>
+              </form>
+
+              {aiMessages.length > 1 && (
                 <button 
-                  type="button" 
-                  onClick={() => setShowUnlockModal(false)}
-                  style={{ flex: 1, padding: '10px', background: '#ecf0f1', color: '#7f8c8d', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
-                  ביטול
+                  onClick={() => setAiMessages([{ role: 'assistant', content: 'שלום! אני העוזר החכם של המערכת. איך אוכל לעזור לך?' }])}
+                  title="נקה צ'אט"
+                  style={{ 
+                    background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', 
+                    borderRadius: '999px', height: '64px', padding: '0 24px', 
+                    cursor: 'pointer', display: 'flex', alignItems: 'center', 
+                    justifyContent: 'center', fontWeight: 'bold', whiteSpace: 'nowrap',
+                    boxShadow: '0 4px 15px rgba(239, 68, 68, 0.1)'
+                  }}
+                >
+                  חיפוש חדש
                 </button>
-              </div>
-            </form>
+              )}
+            </div>
+          </div>
+
+          <div className="glass-panel" style={{ padding: '32px', width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <h3 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', margin: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Calendar size={24} color="#3b82f6" /> בחירת תאריך לאירוע
+            </h3>
+            <HebrewDatePicker
+              selectedDate={selectedDate}
+              onChange={(d) => { setSelectedDate(new Date(d)); setStage(2); }}
+            />
+            <button 
+              onClick={() => setStage(2)}
+              style={{ marginTop: '32px', padding: '16px 48px', background: '#3b82f6', color: 'white', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '999px', border: 'none', cursor: 'pointer', boxShadow: '0 10px 25px rgba(59, 130, 246, 0.3)', transition: 'all 0.2s' }}
+              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+              onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
+            >
+              הצג מלאי פנוי לתאריך
+            </button>
           </div>
         </div>
       )}
-      
+
+      {/* Stage 2: Inventory Grid */}
+      {stage === 2 && (
+        <div className="layout-container" style={{ animation: 'fadeIn 0.5s ease-out' }}>
+          
+          {/* Header Row */}
+          <div className="glass-panel" style={{ padding: '24px 32px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <h2 style={{ fontSize: '2rem', fontWeight: '800', color: '#1e293b', margin: '0 0 8px 0' }}>קטלוג שמלות זמינות</h2>
+              <div style={{ color: '#64748b', fontSize: '1.1rem' }}>
+                לתאריך: <strong style={{ color: '#3b82f6' }}>{getHebrewDateString(new Date(selectedDate))}</strong> ({(new Date(selectedDate)).toLocaleDateString('he-IL')})
+              </div>
+            </div>
+            
+            {/* Embedded Calendar Mini */}
+            <div style={{ background: 'white', borderRadius: '16px', padding: '12px 24px', border: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: '16px', cursor: 'pointer' }} onClick={() => setStage(1)}>
+              <Calendar size={24} color="#64748b" />
+              <span style={{ fontWeight: '600', color: '#475569' }}>שנה תאריך</span>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px', marginTop: '16px' }}>
+            <div style={{ position: 'relative', flex: 1, maxWidth: '400px' }}>
+              <Search size={20} color="#94a3b8" style={{ position: 'absolute', right: '16px', top: '50%', transform: 'translateY(-50%)' }} />
+              <input 
+                type="text" 
+                placeholder="חיפוש מודל חופשי (למשל: תחרה, 42)..."
+                value={search}
+                onChange={e => setSearch(e.target.value)}
+                style={{ width: '100%', padding: '14px 44px 14px 14px', borderRadius: '14px', border: '1px solid #cbd5e1', fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s' }}
+                onFocus={e => e.currentTarget.style.borderColor = '#3b82f6'}
+                onBlur={e => e.currentTarget.style.borderColor = '#cbd5e1'}
+              />
+            </div>
+          </div>
+
+          {loading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 0', color: '#64748b' }}>
+              <Loader2 size={48} className="animate-spin" style={{ color: '#3b82f6', marginBottom: '16px' }} />
+              <span style={{ fontSize: '1.2rem' }}>טוען נתונים...</span>
+            </div>
+          ) : (
+            <div className="modern-grid">
+              {dresses.filter(d => {
+                const term = search.toLowerCase();
+                return (d.name || '').toLowerCase().includes(term) || (d.barcodePrefix && d.barcodePrefix.toString().includes(term));
+              }).map(model => {
+                
+                // Group sizes
+                const sizeMap = new Map();
+                model.items?.forEach(item => {
+                  if (item.notInUse || item.isDeleted) return;
+                  const st = item.sizeText || 'כללי';
+                  if (!sizeMap.has(st)) sizeMap.set(st, { available: 0, total: 0 });
+                  const info = sizeMap.get(st);
+                  info.total += 1;
+                  if (item.quantity > 0) info.available += 1;
+                });
+                
+                const sizesArray = Array.from(sizeMap.entries()).sort((a,b) => String(a[0]).localeCompare(String(b[0]), undefined, {numeric: true}));
+
+                return (
+                  <div key={model.id} className="dress-card" onClick={() => {
+                    setSelectedModel(model);
+                    setShowOrdersModal(true);
+                  }}>
+                    <div className="dress-image-placeholder">
+                      {model.imageUrl ? (
+                        <img src={model.imageUrl} alt={model.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      ) : (
+                        <Shirt size={48} opacity={0.5} />
+                      )}
+                    </div>
+                    <div className="dress-content">
+                      <div className="dress-title">{model.name}</div>
+                      <div className="dress-subtitle">קידומת ברקוד: {model.barcodePrefix || model.id}</div>
+                      
+                      <div className="sizes-row">
+                        {sizesArray.length === 0 ? (
+                          <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>אין מידות רשומות</span>
+                        ) : (
+                          sizesArray.map(([sName, sData]) => (
+                            <div key={sName} className={`size-pill ${sData.available > 0 ? 'available' : ''}`} title={`${sData.available} פנויות מתוך ${sData.total}`}>
+                              מידה {sName} ({sData.available})
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Modals from old interface */}
+      {showUnlockModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <form onSubmit={handleUnlock} style={{ background: 'white', padding: '32px', borderRadius: '24px', width: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+            <h3 style={{ margin: '0 0 24px 0', fontSize: '1.5rem', textAlign: 'center', color: '#1e293b' }}>שחרור מסך מנעילה</h3>
+            <div style={{ marginBottom: '16px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>בחר עובד:</label>
+              <select value={unlockEmployee} onChange={e => setUnlockEmployee(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+                <option value="">-- בחר --</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
+                ))}
+              </select>
+            </div>
+            <div style={{ marginBottom: '24px' }}>
+              <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>קוד גישה:</label>
+              <input type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1' }} />
+            </div>
+            {unlockError && <div style={{ color: '#ef4444', marginBottom: '16px', textAlign: 'center' }}>{unlockError}</div>}
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button type="button" onClick={() => setShowUnlockModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', background: 'white', cursor: 'pointer' }}>ביטול</button>
+              <button type="submit" disabled={unlockLoading} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: '#3b82f6', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+                {unlockLoading ? 'בודק...' : 'שחרר'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
       {showOrdersModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh',
-          backgroundColor: 'rgba(15, 23, 42, 0.7)', zIndex: 10000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', direction: 'rtl',
-          backdropFilter: 'blur(4px)'
-        }}>
-          <div style={{
-            background: 'white', borderRadius: '24px', width: '600px', maxWidth: '90%',
-            maxHeight: '80vh', display: 'flex', flexDirection: 'column',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden'
-          }}>
-            <div style={{
-              padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex',
-              alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc'
-            }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15, 23, 42, 0.7)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', direction: 'rtl', backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: 'white', borderRadius: '24px', width: '600px', maxWidth: '90%', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc' }}>
               <div>
                 <h3 style={{ margin: 0, fontSize: '20px', color: '#0f172a', fontWeight: 'bold' }}>
                   הזמנות - {ordersModalModel?.name} {ordersModalSize ? `(מידה ${ordersModalSize})` : ''}
                 </h3>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>טווח: {new Date(selectedDate.getTime() - 7*86400000).toLocaleDateString('he-IL')} עד {new Date(selectedDate.getTime() + 7*86400000).toLocaleDateString('he-IL')}</span>
+                <span style={{ fontSize: '13px', color: '#64748b' }}>טווח: שבוע לפני ואחרי תאריך האירוע</span>
               </div>
-              <button 
-                onClick={() => setShowOrdersModal(false)}
-                style={{ background: '#e2e8f0', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
-              >X</button>
+              <button onClick={() => setShowOrdersModal(false)} style={{ background: '#e2e8f0', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>X</button>
             </div>
             <div style={{ padding: '24px', overflowY: 'auto', flexGrow: 1 }}>
               {ordersModalLoading ? (
@@ -626,32 +981,18 @@ export default function CustomerInventoryViewer() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {ordersModalOrders.map(order => (
-                    <div key={order.orderId} style={{
-                      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      padding: '16px', border: '1px solid #e2e8f0', borderRadius: '16px',
-                      transition: 'all 0.2s', background: '#ffffff'
-                    }}>
+                    <div key={order.orderId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', border: '1px solid #e2e8f0', borderRadius: '16px', background: '#ffffff' }}>
                       <div>
                         <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#1e293b' }}>
                           הזמנה #{order.orderId} - {order.customer?.firstName} {order.customer?.lastName}
                         </div>
                         <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
-                          תאריך אירוע: {order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}
+                          תאריך אירוע: {new Date(order.eventDate).toLocaleDateString('he-IL')}
                         </div>
                       </div>
-                      <button 
-                        onClick={() => window.open(`/orders/${order.orderId}`, '_blank')}
-                        title="פתיחת הזמנה"
-                        style={{
-                          background: '#eff6ff', color: '#3b82f6', border: 'none', padding: '10px',
-                          borderRadius: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center',
-                          justifyContent: 'center', transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = '#3b82f6'; e.currentTarget.style.color = '#ffffff'; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.color = '#3b82f6'; }}
-                      >
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
-                      </button>
+                      <div style={{ background: order.status === 'סגור' ? '#f1f5f9' : '#dbeafe', color: order.status === 'סגור' ? '#475569' : '#1e40af', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 'bold' }}>
+                        {order.status || 'פעיל'}
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -660,442 +1001,6 @@ export default function CustomerInventoryViewer() {
           </div>
         </div>
       )}
-      
-      <style dangerouslySetInnerHTML={{__html: `
-        .customer-inventory { background-color: #f3f4f6; min-height: calc(100vh - 64px); display: flex; flex-direction: column; }
-        
-        .app-header { 
-          background: linear-gradient(to left, #2c3e50, #3498db); 
-          color: white; padding: 15px 20px; 
-          border-radius: 12px;
-          box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-          margin-bottom: 20px;
-          display: flex; align-items: center; justify-content: space-between; 
-        }
-        .header-title { font-size: 24px; font-weight: 300; }
-        .header-btn { background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white; padding: 8px 16px; border-radius: 20px; cursor: pointer; transition: all 0.3s; font-size: 15px; margin-left: 10px; }
-        .header-btn:hover { background: var(--input-bg); color: #3498db; }
-        
-        .btn-primary { color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: bold; }
-        .btn-primary:hover { opacity: 0.9; }
-
-        .main-wrapper { flex-grow: 1; display: flex; gap: 20px; flex-wrap: wrap; }
-        .col { display: flex; flex-direction: column; flex: 1; min-width: 300px; }
-        .col.cal { flex: 1.2; }
-        
-        .card { background: white; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e5e7eb; display: flex; flex-direction: column; flex-grow: 1; overflow: hidden; margin-bottom: 20px; }
-        .card-header { padding: 15px; border-bottom: 1px solid #f0f0f0; font-size: 18px; font-weight: 600; background: #fbfbfb; color: #374151; display: flex; justify-content: space-between; align-items: center; }
-        
-        .card-body { padding: 0; overflow-y: auto; flex-grow: 1; min-height: 400px; max-height: calc(100vh - 300px); scrollbar-width: thin; }
-        
-        .card-footer { background: #f8fafc; border-top: 1px solid #e2e8f0; padding: 12px 15px; font-size: 14px; font-weight: bold; color: #475569; display: flex; align-items: center; justify-content: space-between; }
-        
-        .date-navigator { display: flex; align-items: center; gap: 15px; color: #3498db; font-weight: bold; font-size: 20px; }
-        .nav-arrow { cursor: pointer; user-select: none; width: 30px; height: 30px; line-height: 30px; text-align: center; border-radius: 50%; transition: background 0.2s; }
-        .nav-arrow:hover { background: var(--element-bg); }
-        .toolbar { display: flex; gap: 5px; align-items: center; }
-        .search-input { padding: 6px 10px; border: 1px solid #ccc; border-radius: 15px; width: 140px; font-size: 14px; outline: none; }
-        .btn-sort { background: white; border: 1px solid #ccc; cursor: pointer; padding: 6px 10px; border-radius: 4px; font-size: 14px; }
-        
-        .cal-nav { cursor: pointer; color: #3498db; font-weight: bold; font-size: 24px; padding: 0 10px; user-select: none; }
-        .cal-table { width: 100%; border-collapse: collapse; text-align: center; table-layout: fixed; }
-        .cal-table th { color: #9ca3af; font-size: 14px; padding: 10px 0; border-bottom: 1px solid #eee; }
-        .cal-table td { height: 55px; border-bottom: 1px solid #f9fafb; cursor: pointer; position: relative; font-size: 16px; }
-        .cal-table td:hover { background: var(--element-bg); color: #0284c7; }
-        .cal-table td.today { font-weight: bold; color: #3498db; }
-        .cal-table td.selected { background: #3498db; color: white; border-radius: 8px; }
-        
-        .models-grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 15px; align-content: flex-start; }
-        .model-badge { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 8px 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; cursor: pointer; width: calc(50% - 6px); }
-        @media (max-width: 1400px) { .model-badge { width: 100%; } }
-        .model-badge:hover { border-color: #93c5fd; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12); transform: translateY(-2px); }
-        .model-badge.active { background: #eff6ff; border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.2); }
-        .model-info { display: flex; flex-direction: column; overflow: hidden; flex-grow: 1; }
-        .model-name { font-weight: 700; font-size: 14px; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .model-barcode { font-size: 11px; color: #64748b; margin-top: 2px; }
-        .model-qty { background: #4b5563; color: white; font-size: 13px; font-weight: bold; height: 28px; min-width: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; padding: 0 8px; flex-shrink: 0; }
-        .model-qty.zero { background: #e2e8f0; color: #94a3b8; }         
-        .sizes-grid { display: flex; flex-wrap: wrap; gap: 12px; padding: 15px; justify-content: center; }
-        .size-badge { display: flex; align-items: center; gap: 10px; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 6px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: all 0.2s ease; cursor: default; }
-        .size-badge:hover { border-color: #93c5fd; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.12); transform: translateY(-2px); }
-        .size-name { font-weight: 700; font-size: 16px; color: #1e293b; }
-        .size-qty { background: #3b82f6; color: white; font-size: 14px; font-weight: bold; height: 28px; min-width: 28px; border-radius: 14px; display: flex; align-items: center; justify-content: center; padding: 0 8px; box-shadow: 0 2px 4px rgba(59,130,246,0.3); }
-        .size-qty.zero { background: #e2e8f0; color: #94a3b8; box-shadow: none; }
-
-        .legend { font-size: 12px; display: flex; gap: 8px; margin-right: 10px; }
-        .legend span { display: flex; align-items: center; gap: 3px; }
-        .legend-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
-        
-        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; width: 32px; height: 32px; animation: spin 0.8s linear infinite; margin: 15px auto; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .listening-pulse { animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.2); opacity: 0.8; } 100% { transform: scale(1); opacity: 1; } }
-
-        @media print { 
-          .navbar, .app-header, .main-wrapper { display: none !important; } 
-          body { background: white; overflow: visible !important; height: auto; } 
-          #printArea { display: block !important; padding: 20px; font-family: 'Segoe UI', serif; } 
-        }
-        #printArea { display: none; }
-        .print-title { font-size: 28px; font-weight: bold; border-bottom: 2px solid #333; margin-bottom: 10px; }
-        .print-sizes { display: flex; flex-wrap: wrap; gap: 20px; }
-      `}} />
-
-      {/* Hidden Print Area */}
-      <div id="printArea">
-        <div className="print-title" id="printModelTitle">דוח מלאי: {selectedModel?.name}</div>
-        <div className="print-date" id="printDateStr">תאריך: {getHebrewDateString(selectedDate)}</div>
-        <div id="printContent" className="print-sizes">
-          {renderSizes()}
-        </div>
-      </div>
-
-      {/* The App Header */}
-      <div className="app-header">
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button className="header-btn" onClick={fetchInventory} title="רענון" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }}><RefreshCw size={20} /></button>
-          <button className="header-btn" onClick={handlePrint} title="הדפס דוח" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }}><Printer size={20} /></button>
-          {isLocked ? (
-            <button className="header-btn" style={{ background: '#e74c3c', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }} onClick={() => setShowUnlockModal(true)} title="שחרור מסך"><Lock size={20} /></button>
-          ) : (
-            <button className="header-btn" onClick={() => {
-              setIsLocked(true);
-              if (document.documentElement.requestFullscreen) {
-                document.documentElement.requestFullscreen().catch(err => console.warn(err));
-              }
-            }} title="תפיסת מסך" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', padding: 0 }}><Maximize size={20} /></button>
-          )}
-        </div>
-        <div 
-          className="header-title" 
-          onDoubleClick={() => {
-            setIsLocked(false);
-            if (document.fullscreenElement && document.exitFullscreen) {
-              document.exitFullscreen().catch(err => console.warn(err));
-            }
-          }} 
-          title={isLocked ? "לחיצה כפולה לשחרור חירום" : ""}
-          style={{ cursor: isLocked ? 'pointer' : 'default' }}
-        >
-          {getLabel('ca_title', 'ניהול מלאי')}
-        </div>
-      </div>
-
-      {/* Main Content Layout */}
-      {stage === 1 && !isLocked && (
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80vh', gap: '2rem' }}>
-          <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>בחר תאריך לאירוע</div>
-          <HebrewDatePicker
-            selectedDate={selectedDate}
-            onChange={(d) => { setSelectedDate(d); setStage(2); }}
-          />
-          <div style={{ marginTop: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <button style={{ background: '#ec4899', color: 'white', border: 'none', borderRadius: '50%', width: '80px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 10px 25px rgba(236,72,153,0.3)' }} onClick={() => setAiChatOpen(true)}>
-              <Bot size={40} />
-            </button>
-            <span style={{ fontSize: '1.2rem', color: '#6b7280' }}>חיפוש חכם</span>
-          </div>
-        </div>
-      )}
-
-      {stage === 2 && (
-      <div className="main-wrapper">
-        {/* Right Column: Calendar */}
-        <div className="col cal">
-          <div className="card">
-            <div className="card-header">
-              <span className="cal-nav" onClick={() => changeMonth(-1)}>&gt;</span>
-              <span className="cal-nav" onClick={() => changeMonth(1)}>&lt;</span>
-              <span id="calTitle" style={{float: 'left', direction: 'ltr'}}>{currentMonthYear}</span>
-            </div>
-            <div className="card-body" id="calBody">
-              {renderCalendar()}
-              {loading && <div id="loadingSpinner" className="spinner" style={{display: 'block'}}></div>}
-            </div>
-          </div>
-        </div>
-
-        {/* Middle Column: Models List */}
-        <div className="col">
-          <div className="card">
-            <div className="card-header">
-              <div className="date-navigator">
-                <span className="nav-arrow" onClick={() => changeDay(1)}>&gt;</span>
-                <span id="headerDate">{getHebrewDateString(selectedDate)}</span>
-                <span className="nav-arrow" onClick={() => changeDay(-1)}>&lt;</span>
-              </div>
-              <div className="toolbar">
-                <input 
-                  type="text" 
-                  className="search-input" 
-                  placeholder="חפש דגם..." 
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                />
-                <button className="btn-sort" id="btnSort" onClick={() => setSortAsc(!sortAsc)}>
-                  {sortAsc ? 'א-ת' : 'ת-א'}
-                </button>
-              </div>
-            </div>
-            <div className="card-body" id="modelsList">
-              {loading ? (
-                <div style={{padding:'20px', textAlign:'center', color:'var(--text-muted)'}}>טוען נתונים...</div>
-              ) : filteredDresses.length === 0 ? (
-                <div style={{padding:'20px', textAlign:'center'}}>אין תוצאות</div>
-              ) : (
-                <div className="models-grid">
-                {filteredDresses.map(model => {
-                  const { qOther } = getModelQuantities(model);
-                  const safeName = model.name;
-                  
-                  const icons = [Shirt, Crown, Star, Sparkles, Scissors, Gem, Heart, ShoppingBag, Feather, Palette, Camera, Tag, Gift, Sun, Moon, Music, Smile];
-                  const charCodeSum = (safeName || '').split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-                  const IconComponent = icons[charCodeSum % icons.length];
-                  const colors = ['#3b82f6', '#ec4899', '#8b5cf6', '#10b981', '#f59e0b', '#06b6d4', '#f43f5e', '#a855f7', '#14b8a6', '#f97316'];
-                  const color = colors[charCodeSum % colors.length];
-                  
-                  return (
-                    <div 
-                      key={model.id} 
-                      className={`model-badge ${selectedModel?.id === model.id ? 'active' : ''}`}
-                      onClick={() => setSelectedModel(model)}
-                      onDoubleClick={() => handleModelDoubleClick(model)}
-                    >
-                      <div className="model-avatar" style={{
-                        width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
-                        backgroundColor: model.imageUrl ? 'transparent' : `${color}20`,
-                        color: color, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        overflow: 'hidden', border: model.imageUrl ? '1px solid #e2e8f0' : 'none'
-                      }}>
-                        {model.imageUrl ? (
-                          <img src={model.imageUrl} alt={safeName} style={{width:'100%', height:'100%', objectFit:'cover'}} />
-                        ) : (
-                          <IconComponent size={18} />
-                        )}
-                      </div>
-                      <div className="model-info">
-                        <span className="model-name" title={safeName}>{safeName}</span>
-                        <span className="model-barcode">{model.barcodePrefix || model.id}</span>
-                      </div>
-                      
-                      <div style={{ position: 'relative' }}>
-                        <div className={`model-qty ${qOther === 0 ? 'zero' : ''}`}>{qOther}</div>
-                        {!isLocked && (
-                          <div 
-                            title="הזמנות של הדגם (לחץ כאן או לחיצה כפולה על הדגם)"
-                            onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model); }}
-                            style={{ 
-                              position: 'absolute', top: '-6px', right: '-6px',
-                              color: '#ffffff', background: '#3b82f6', cursor: 'pointer', padding: '3px',
-                              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 10,
-                              transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.15)'; }}
-                            onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-                          >
-                            <History size={10} strokeWidth={3} />
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-                </div>
-              )}
-            </div>
-            <div className="card-footer" id="modelsFooter">
-              <span>{getLabel('ca_total_models', 'סה״כ דגמים')}: {filteredDresses.length}</span>
-              <span>{getLabel('ca_items', 'פריטים')}: {grandTotalItems}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Left Column: Sizes */}
-        <div className="col">
-          <div className="card">
-            <div className="card-header">
-              <span>{getLabel('ca_sizes_title', 'זמינות מידות')}</span>
-              <div className="legend">
-                <span><span className="legend-dot q-dark"></span>כמות כללית</span>
-              </div>
-            </div>
-            <div className="card-body" id="sizesList">
-              {renderSizes()}
-            </div>
-            <div className="card-footer" id="sizesFooter">
-              <span>{getLabel('ca_total_sizes', 'סה״כ מידות')}: {sizesCount}</span>
-              <span>{getLabel('ca_items', 'פריטים')}: {itemsInSizesCount}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-      )}
-
-      {/* Floating AI Button */}
-      <button 
-        onClick={() => setAiChatOpen(!aiChatOpen)}
-        title="עוזר AI למלאי"
-        style={{
-          position: 'fixed', bottom: '30px', left: '30px', zIndex: 10000,
-          width: '60px', height: '60px', borderRadius: '30px',
-          background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
-          color: 'white', border: 'none',
-          boxShadow: '0 4px 12px rgba(99, 102, 241, 0.4)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          cursor: 'pointer', transition: 'transform 0.2s'
-        }}
-        onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
-        onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-      >
-        <Bot size={32} />
-      </button>
-
-      {/* AI Chat Pane */}
-      {aiChatOpen && (
-        <div style={{
-          position: 'fixed', bottom: '100px', left: '30px', zIndex: 10000,
-          width: '400px', height: '550px', backgroundColor: 'var(--card-bg)',
-          borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.15)',
-          display: 'flex', flexDirection: 'column', overflow: 'hidden',
-          border: '1px solid var(--element-border)'
-        }}>
-          {/* Header */}
-          <div style={{
-            background: 'linear-gradient(to left, #6366f1, #8b5cf6)',
-            color: 'white', padding: '15px 20px', fontWeight: 'bold',
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Bot size={24} />
-              <span>עוזר AI למלאי</span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <button 
-                onClick={() => setShowAiHistory(!showAiHistory)} 
-                style={{ background: 'none', border: 'none', color: showAiHistory ? '#fcd34d' : 'white', cursor: 'pointer', fontSize: '18px' }}
-                title="היסטוריית שיחות"
-              >
-                <History size={18} />
-              </button>
-              <button 
-                onClick={startNewAiChat} 
-                style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '15px', padding: '4px 10px', color: 'white', cursor: 'pointer', fontSize: '12px' }}
-                title="התחל שיחה חדשה"
-              >
-                שיחה חדשה
-              </button>
-              <button onClick={() => setAiChatOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', fontSize: '20px' }}>×</button>
-            </div>
-          </div>
-          
-          {/* Messages */}
-          <div style={{ flex: 1, padding: '15px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '10px', backgroundColor: 'var(--element-bg)', position: 'relative' }}>
-            {showAiHistory ? (
-              <div style={{ padding: '5px' }}>
-                <h3 style={{ marginTop: 0, color: 'var(--text-main)', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
-                {aiChatSessions.length === 0 ? (
-                  <div style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '10px' }}>אין היסטוריית שיחות שמורה.</div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
-                    {aiChatSessions.map((session) => (
-                      <div 
-                        key={session.id} 
-                        onClick={() => loadAiSession(session)}
-                        style={{
-                          padding: '12px', backgroundColor: 'var(--card-bg)', border: '1px solid var(--element-border)',
-                          borderRadius: '8px', cursor: 'pointer', display: 'flex', flexDirection: 'column', gap: '4px'
-                        }}
-                        onMouseOver={e => e.currentTarget.style.borderColor = '#6366f1'}
-                        onMouseOut={e => e.currentTarget.style.borderColor = '#e5e7eb'}
-                      >
-                        <span style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.9rem' }}>{session.date}</span>
-                        <span style={{ color: '#6b7280', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {session.messages.length > 1 ? session.messages[1].content : 'שיחה ריקה'}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              <>
-                {aiMessages.map((msg, idx) => (
-                  <div key={idx} style={{
-                    alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
-                    backgroundColor: msg.role === 'user' ? '#3b82f6' : 'var(--card-bg)',
-                    color: msg.role === 'user' ? 'white' : '#1f2937',
-                    padding: '10px 15px', borderRadius: '12px', maxWidth: '90%',
-                    boxShadow: '0 1px 2px rgba(0,0,0,0.05)',
-                    borderBottomRightRadius: msg.role === 'user' ? '0' : '12px',
-                    borderBottomLeftRadius: msg.role === 'assistant' ? '0' : '12px',
-                    border: msg.role === 'assistant' ? '1px solid var(--element-border)' : 'none'
-                  }}>
-                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '14px', lineHeight: '1.4' }}>{msg.content}</div>
-                    {msg.tableData && msg.tableData.length > 0 && (
-                       <div style={{ marginTop: '10px', overflowX: 'auto', border: '1px solid var(--element-border)', borderRadius: '8px' }}>
-                          <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse', backgroundColor: 'var(--card-bg)' }}>
-                            <thead>
-                              <tr style={{ background: 'var(--element-bg)' }}>
-                                {Object.keys(msg.tableData[0]).map(h => <th key={h} style={{ padding: '6px', textAlign: 'right', borderBottom: '1px solid #e5e7eb' }}>{h}</th>)}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {msg.tableData.map((row, i) => (
-                                <tr key={i} style={{ borderBottom: '1px solid #f3f4f6' }}>
-                                  {Object.keys(msg.tableData[0]).map(h => <td key={h} style={{ padding: '6px' }}>{row[h]}</td>)}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                       </div>
-                    )}
-                  </div>
-                ))}
-                {aiLoading && (
-                  <div style={{ alignSelf: 'flex-end', backgroundColor: 'var(--card-bg)', padding: '10px 15px', borderRadius: '12px', borderBottomLeftRadius: '0', border: '1px solid var(--element-border)', fontSize: '14px', color: '#6b7280' }}>
-                    <span className="spinner" style={{ width: '12px', height: '12px', margin: '0 0 0 8px', display: 'inline-block', verticalAlign: 'middle', borderTopColor: '#3b82f6', borderWidth: '2px' }}></span>
-                    מעבד נתונים...
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </>
-            )}
-          </div>
-
-          {/* Input */}
-          <form onSubmit={handleAiSubmit} style={{
-            display: 'flex', padding: '10px', borderTop: '1px solid #e5e7eb', backgroundColor: 'var(--card-bg)', gap: '8px'
-          }}>
-            <button 
-              type="button" 
-              onClick={toggleListen}
-              style={{
-                background: isListening ? '#ef4444' : 'var(--element-bg)', 
-                color: isListening ? 'white' : 'var(--text-main)', 
-                border: 'none', borderRadius: '50%', width: '40px', height: '40px',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0
-              }}
-              title="הקלט הודעה"
-            >
-              <Mic size={20} className={isListening ? 'listening-pulse' : ''} />
-            </button>
-            <input 
-              type="text" autoFocus value={aiInput} onChange={e => setAiInput(e.target.value)}
-              placeholder="שמלה שיש לתאריך X במידות בערך 4,6..."
-              style={{ flex: 1, padding: '10px 15px', borderRadius: '20px', border: '1px solid #d1d5db', outline: 'none', fontSize: '14px' }}
-            />
-            <button type="submit" disabled={aiLoading || !aiInput.trim()} style={{
-              background: '#3b82f6', color: 'white', border: 'none', borderRadius: '20px', padding: '0 15px',
-              cursor: (aiLoading || !aiInput.trim()) ? 'default' : 'pointer', opacity: (aiLoading || !aiInput.trim()) ? 0.5 : 1,
-              fontWeight: 'bold'
-            }}>שלח</button>
-          </form>
-        </div>
-      )}
-
     </div>
   );
 }

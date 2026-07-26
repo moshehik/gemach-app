@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Send, Inbox, Mail, Check, AlertCircle, Search, User, Archive, Tag, X, Plus } from 'lucide-react';

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useState, useEffect } from 'react';
 import { Database, Link as LinkIcon, Copy, Check, Server, FlaskConical, ChevronDown } from 'lucide-react';
 

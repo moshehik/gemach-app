@@ -801,23 +801,6 @@ export default function DressesManagement() {
                 <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הבא</button>
               </div>
             )}
-                  disabled={page === 1}
-                  className="btn btn-outline"
-                  style={{ padding: '0.4rem 1rem' }}
-                >
-                  הקודם
-                </button>
-                <span style={{ fontWeight: 'bold' }}>עמוד {page} מתוך {totalPages} (סה"כ {totalDresses} תוצאות)</span>
-                <button 
-                  onClick={() => setPage(p => Math.min(totalPages, p + 1))} 
-                  disabled={page === totalPages}
-                  className="btn btn-outline"
-                  style={{ padding: '0.4rem 1rem' }}
-                >
-                  הבא
-                </button>
-              </div>
-            )}
           </div>
         )}
       </main>

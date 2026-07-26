@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { getAvailableInventory } from '../../../../lib/inventory';
 
 import prisma from '@/app/lib/prisma';

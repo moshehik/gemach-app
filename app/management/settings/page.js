@@ -1,4 +1,4 @@
-import SettingsClient from './SettingsClient';
+﻿import SettingsClient from './SettingsClient';
 
 export const metadata = {
   title: 'ניהול הגדרות מנהל',

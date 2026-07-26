@@ -1,4 +1,4 @@
-import HistoryViewer from '@/components/HistoryViewer';
+﻿import HistoryViewer from '@/components/HistoryViewer';
 
 export default function DataHistoryPage() {
   return (

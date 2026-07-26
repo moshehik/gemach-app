@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { WifiOff } from 'lucide-react';
 import { useState } from 'react';

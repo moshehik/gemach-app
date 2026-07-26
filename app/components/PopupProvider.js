@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { AlertTriangle, CheckCircle, Info, HelpCircle, X } from 'lucide-react';
 

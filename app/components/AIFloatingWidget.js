@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Bot, X, MessageSquare, Maximize2, Minimize2, MessageSquarePlus, Mic, History } from 'lucide-react';

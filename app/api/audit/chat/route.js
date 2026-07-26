@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { generateContent } from '../../../../lib/ai/gemini';
 import { checkAuth } from '../../../../lib/auth';
 

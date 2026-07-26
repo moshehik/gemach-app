@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 
