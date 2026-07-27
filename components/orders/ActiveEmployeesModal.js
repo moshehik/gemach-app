@@ -63,7 +63,7 @@ export default function ActiveEmployeesModal({ orderId, isOpen, onClose }) {
         maxHeight: '90vh',
         overflowY: 'auto'
       }}>
-        <button 
+        <button data-agy-id="activeemployeesmodal_button_1" 
           onClick={onClose}
           style={{
             position: 'absolute',
@@ -141,7 +141,7 @@ export default function ActiveEmployeesModal({ orderId, isOpen, onClose }) {
         )}
 
         <div style={{ marginTop: '2rem', textAlign: 'left' }}>
-          <button 
+          <button data-agy-id="activeemployeesmodal_button_2" 
             onClick={onClose}
             style={{ padding: '0.6rem 1.5rem', background: 'var(--element-bg, #f1f5f9)', color: 'var(--text-main, #334155)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
           >

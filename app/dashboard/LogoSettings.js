@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from 'react';
 
@@ -43,7 +43,7 @@ export default function LogoSettings() {
   };
 
   return (
-    <div className="dress-card" style={{ padding: '2rem', marginTop: '2rem' }}>
+    <div className="dress-card" style={{ padding: '2rem', marginTop: '2rem' }} data-agy-id="logo_settings_container">
       <h3 style={{ marginBottom: '1rem' }}>הגדרות תצוגה - העלאת לוגו למערכת</h3>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
         <input 
@@ -51,11 +51,13 @@ export default function LogoSettings() {
           accept="image/*" 
           onChange={(e) => setFile(e.target.files[0])} 
           style={{ padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px' }}
+          data-agy-id="logo_file_input"
         />
         <button 
           className="btn btn-primary" 
           onClick={handleUpload} 
           disabled={!file || isUploading}
+          data-agy-id="upload_logo_btn"
         >
           {isUploading ? 'מעלה...' : 'העלה לוגו'}
         </button>

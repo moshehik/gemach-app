@@ -1,4 +1,4 @@
-﻿import './globals.css';
+import './globals.css';
 import { cookies } from 'next/headers';
 import prisma from './lib/prisma';
 
@@ -24,6 +24,8 @@ import { Users, Shirt, Settings } from 'lucide-react';
 
 import AppNavLinks from './components/AppNavLinks';
 import OfflineIndicator from './components/OfflineIndicator';
+import ErrorReportButton from './components/ErrorReportButton';
+import ClipboardDebugger from '../components/ClipboardDebugger';
 
 export default async function RootLayout({ children }) {
   // Check settings
@@ -80,6 +82,7 @@ export default async function RootLayout({ children }) {
         <meta charSet="utf-8" />
       </head>
       <body>
+        <ClipboardDebugger />
         <DevEnvBanner />
         {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator />}
         <Suspense fallback={null}>
@@ -110,6 +113,7 @@ export default async function RootLayout({ children }) {
                   )}
                   <ThemeToggle employeeId={authToken?.value} initialTheme={themePreference} />
                   <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 0.25rem' }}></div>
+                  <ErrorReportButton />
                   {authToken?.value && <NotificationBell employeeId={authToken.value} />}
                   <UserMenu />
                 </div>

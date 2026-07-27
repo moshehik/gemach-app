@@ -128,8 +128,8 @@
   background: var(--card-bg, #ffffff);
   border-radius: 12px;
   padding: 10px;
-  box-shadow: var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05));
-  border: 1px solid var(--border-color, #e2e8f0);
+  box-shadow: var(--day-shadow, var(--shadow-sm, 0 1px 3px rgba(0,0,0,0.05)));
+  border: 1px solid var(--day-border, var(--border-color, #e2e8f0));
   transition: all 0.2s;
   display: flex;
   flex-direction: column;
@@ -137,8 +137,8 @@
 }
 
 .dayCell:hover {
-  box-shadow: var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1));
-  border-color: var(--primary-color, #3498db);
+  box-shadow: var(--day-shadow-hover, var(--shadow-md, 0 4px 6px -1px rgba(0,0,0,0.1)));
+  border-color: var(--day-border-hover, var(--primary-color, #3498db));
 }
 
 .dayCell.empty {

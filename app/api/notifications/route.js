@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 
@@ -109,35 +109,34 @@ export async function POST(request) {
       }
     });
 
-    if (sendEmail) {
-      try {
-        const scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
-        let receivers = [];
-        if (parsedReceiver) {
-          const emp = await prisma.employee.findUnique({ where: { id: parsedReceiver } });
-          if (emp && emp.email) receivers.push(emp.email);
-        } else {
-          const emps = await prisma.employee.findMany({ where: { isActive: true, email: { not: null } } });
-          receivers = emps.map(e => e.email).filter(Boolean);
-        }
-        
-        for (const email of receivers) {
-          fetch(scriptUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              to: email,
-              cc: '',
-              subject: title || 'הודעה חדשה במערכת הגמח',
-              body: content || '',
-              fileName: 'message.txt',
-              fileContent: Buffer.from('נשלח ממערכת הגמח').toString('base64')
-            })
-          }).catch(e => console.error('Failed to send email alert to', email, e));
-        }
-      } catch (e) {
-        console.error('Email alert process failed:', e);
+    // Always try to send emails, filtering by receiveEmailAlerts
+    try {
+      const scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
+      let receivers = [];
+      if (parsedReceiver) {
+        const emp = await prisma.employee.findUnique({ where: { id: parsedReceiver } });
+        if (emp && emp.email && emp.receiveEmailAlerts) receivers.push(emp.email);
+      } else {
+        const emps = await prisma.employee.findMany({ where: { isActive: true, email: { not: null }, receiveEmailAlerts: true } });
+        receivers = emps.map(e => e.email).filter(Boolean);
       }
+      
+      for (const email of receivers) {
+        fetch(scriptUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            to: email,
+            cc: '',
+            subject: title || 'הודעה חדשה במערכת הגמח',
+            body: content || '',
+            fileName: 'message.txt',
+            fileContent: Buffer.from('נשלח ממערכת הגמח').toString('base64')
+          })
+        }).catch(e => console.error('Failed to send email alert to', email, e));
+      }
+    } catch (e) {
+      console.error('Email alert process failed:', e);
     }
 
     return NextResponse.json({ success: true, notification });

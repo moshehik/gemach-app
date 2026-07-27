@@ -258,9 +258,20 @@ export default function CustomerInventoryViewer() {
 
   const displayDresses = useMemo(() => {
     let list = dresses.filter(d => {
-      const term = search.toLowerCase();
+      const term = search.trim().toLowerCase();
       if (!term) return true;
-      const matchName = (d.name || '').toLowerCase().includes(term) || (d.barcodePrefix && d.barcodePrefix.toString().includes(term));
+
+      // Handle explicit size search
+      const sizeMatch = term.match(/^מידה\s*(.+)$/);
+      if (sizeMatch) {
+        const cleanTerm = sizeMatch[1].trim();
+        if (d.items) {
+          return d.items.some(item => (item.sizeText || 'כללי').toLowerCase().includes(cleanTerm));
+        }
+        return false;
+      }
+
+      const matchName = (d.name || '').toLowerCase().includes(term) || (d.barcodePrefix && d.barcodePrefix.toString() === term);
       if (matchName) return true;
       if (d.items) {
         return d.items.some(item => (item.sizeText || 'כללי').toLowerCase().includes(term));
@@ -460,7 +471,7 @@ export default function CustomerInventoryViewer() {
                   onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(selectedModel, item.name); }}
                   style={{ 
                     position: 'absolute', top: '-6px', right: '-6px',
-                    color: '#ffffff', background: '#3b82f6', cursor: 'pointer', padding: '3px',
+                    color: 'var(--card-bg)', background: 'var(--primary-color)', cursor: 'pointer', padding: '3px',
                     borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 10,
                     transition: 'all 0.2s'
@@ -517,7 +528,7 @@ export default function CustomerInventoryViewer() {
       const sizesArray = Array.from(sizeMap.entries()).sort((a,b) => String(a[0]).localeCompare(String(b[0]), undefined, {numeric: true}));
       let sizesHtml = sizesArray.map(([sName, sData]) => {
         const isAvail = sData.available > 0;
-        return `<span style="display:inline-block; margin:2px; padding:4px 8px; border-radius:6px; font-size:13px; border:1px solid ${isAvail ? '#86efac' : '#cbd5e1'}; background:${isAvail ? '#dcfce7' : '#e2e8f0'}; color:${isAvail ? '#166534' : '#475569'}; ${isAvail ? 'font-weight:bold;' : ''}">${sName} (${sData.available}/${sData.total})</span>`;
+        return `<span style="display:inline-block; margin:2px; padding:4px 8px; border-radius:6px; font-size:13px; border:1px solid ; background:; color:; ${isAvail ? 'font-weight:bold;' : ''}">${sName} (${sData.available}/${sData.total})</span>`;
       }).join('');
       
       tableRows += `
@@ -537,15 +548,15 @@ export default function CustomerInventoryViewer() {
         <meta charset="utf-8" />
         <title>דוח מלאי - ${dateStr}</title>
         <style>
-          body { font-family: system-ui, -apple-system, sans-serif; color: #1e293b; padding: 20px; margin: 0; background: white; }
-          .report-header { text-align: center; border-bottom: 2px solid #3b82f6; padding-bottom: 15px; margin-bottom: 25px; }
-          .report-header h1 { margin: 0 0 10px 0; font-size: 26px; color: #0f172a; }
-          .report-header p { margin: 0; font-size: 16px; color: #475569; }
+          body { font-family: system-ui, -apple-system, sans-serif; color: var(--text-main); padding: 20px; margin: 0; background: var(--card-bg); }
+          .report-header { text-align: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 15px; margin-bottom: 25px; }
+          .report-header h1 { margin: 0 0 10px 0; font-size: 26px; color: var(--text-main); }
+          .report-header p { margin: 0; font-size: 16px; color: var(--text-secondary); }
           table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid #e2e8f0; padding: 12px 16px; text-align: right; }
-          th { background: #f8fafc; font-weight: bold; color: #334155; font-size: 15px; border-bottom: 2px solid #cbd5e1; }
-          tr:nth-child(even) { background: #f8fafc; }
-          .summary { font-size: 16px; font-weight: bold; margin-top: 20px; text-align: right; padding-top: 15px; border-top: 2px solid #e2e8f0; }
+          th, td { border: 1px solid var(--border-main); padding: 12px 16px; text-align: right; }
+          th { background: var(--element-bg); font-weight: bold; color: var(--text-main); font-size: 15px; border-bottom: 2px solid var(--border-main); }
+          tr:nth-child(even) { background: var(--element-bg); }
+          .summary { font-size: 16px; font-weight: bold; margin-top: 20px; text-align: right; padding-top: 15px; border-top: 2px solid var(--border-main); }
           @media print {
             body { padding: 0; }
             table { box-shadow: none; }
@@ -592,7 +603,7 @@ export default function CustomerInventoryViewer() {
   };
 
   return (
-    <div className="layout-container" style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%)', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative', direction: 'rtl' }}>
+    <div data-agy-id="customer_inventory_main_container" className="layout-container" style={{ minHeight: '100vh', background: 'var(--bg-color)', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative', direction: 'rtl' }}>
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
@@ -602,12 +613,12 @@ export default function CustomerInventoryViewer() {
         
         ::-webkit-scrollbar { width: 8px; height: 8px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--border-main); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
 
         /* Glassmorphism Classes */
         .glass-panel {
-          background: rgba(255, 255, 255, 0.7);
+          background: var(--card-bg);
           backdrop-filter: blur(16px);
           -webkit-backdrop-filter: blur(16px);
           border-radius: 24px;
@@ -616,18 +627,18 @@ export default function CustomerInventoryViewer() {
         }
         
         .header-btn {
-          background: rgba(255, 255, 255, 0.8);
+          background: var(--card-bg);
           border: 1px solid rgba(200, 200, 200, 0.4);
           border-radius: 14px;
-          color: #475569;
+          color: var(--text-secondary);
           cursor: pointer;
           transition: all 0.3s ease;
         }
         .header-btn:hover {
-          background: #ffffff;
+          background: var(--card-bg);
           transform: translateY(-2px);
           box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-          color: #3b82f6;
+          color: var(--primary-color);
         }
         .header-btn:active { transform: scale(0.95); }
 
@@ -635,7 +646,7 @@ export default function CustomerInventoryViewer() {
         .hero-title {
           font-size: 3.5rem;
           font-weight: 800;
-          background: linear-gradient(135deg, #2563eb 0%, #9333ea 100%);
+          background: var(--gradient-primary);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           margin-bottom: 1rem;
@@ -656,7 +667,7 @@ export default function CustomerInventoryViewer() {
           font-size: 1.25rem;
           border-radius: 999px;
           border: 2px solid transparent;
-          background: white;
+          background: var(--card-bg);
           box-shadow: 0 10px 30px rgba(0,0,0,0.08);
           outline: none;
           transition: all 0.3s;
@@ -672,7 +683,7 @@ export default function CustomerInventoryViewer() {
           right: 12px;
           top: 12px;
           bottom: 12px;
-          background: linear-gradient(135deg, #a855f7, #6366f1);
+          background: var(--gradient-primary);
           color: white;
           border: none;
           border-radius: 999px;
@@ -703,11 +714,11 @@ export default function CustomerInventoryViewer() {
         }
         
         .dress-card {
-          background: white;
+          background: var(--card-bg);
           border-radius: 20px;
           overflow: hidden;
           box-shadow: 0 4px 15px rgba(0,0,0,0.03);
-          border: 1px solid #f1f5f9;
+          border: 1px solid var(--border-main);
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
           cursor: pointer;
           position: relative;
@@ -721,7 +732,7 @@ export default function CustomerInventoryViewer() {
         .dress-card:hover {
           transform: translateY(-8px);
           box-shadow: 0 20px 40px rgba(0,0,0,0.08);
-          border-color: #bfdbfe;
+          border-color: var(--primary-light);
         }
         .modern-rows .dress-card:hover {
           transform: translateY(-4px);
@@ -729,7 +740,7 @@ export default function CustomerInventoryViewer() {
         
         .dress-image-placeholder {
           height: 160px;
-          background: linear-gradient(45deg, #f1f5f9, #e2e8f0);
+          background: linear-gradient(45deg, var(--element-bg), var(--border-main));
           display: flex;
           align-items: center;
           justify-content: center;
@@ -755,14 +766,14 @@ export default function CustomerInventoryViewer() {
         .dress-title {
           font-size: 1.25rem;
           font-weight: 700;
-          color: #1e293b;
+          color: var(--text-main);
           margin-bottom: 4px;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
         .dress-subtitle {
-          color: #64748b;
+          color: var(--text-secondary);
           font-size: 0.9rem;
           margin-bottom: 16px;
         }
@@ -777,8 +788,8 @@ export default function CustomerInventoryViewer() {
           border-radius: 12px;
           font-size: 0.85rem;
           font-weight: 600;
-          background: #f1f5f9;
-          color: #64748b;
+          background: var(--element-bg);
+          color: var(--text-secondary);
         }
         .size-pill.available {
           background: #dcfce7;
@@ -797,11 +808,11 @@ export default function CustomerInventoryViewer() {
         
         /* Calendar */
         .cal-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: center; }
-        .cal-table th { color: #64748b; font-size: 13px; font-weight: 600; padding: 12px 0; }
+        .cal-table th { color: var(--text-secondary); font-size: 13px; font-weight: 600; padding: 12px 0; }
         .cal-table td { height: 50px; cursor: pointer; border-radius: 12px; transition: all 0.2s; margin: 2px; }
-        .cal-table td:hover { background: #f1f5f9; }
-        .cal-table td.selected { background: #3b82f6; color: white; font-weight: bold; box-shadow: 0 4px 12px rgba(59,130,246,0.3); }
-        .cal-table td.today { border: 2px solid #3b82f6; }
+        .cal-table td:hover { background: var(--element-bg); }
+        .cal-table td.selected { background: var(--primary-color); color: white; font-weight: bold; box-shadow: 0 4px 12px var(--border-color); }
+        .cal-table td.today { border: 2px solid var(--primary-color); }
         
         .model-card {
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -825,22 +836,22 @@ export default function CustomerInventoryViewer() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '70vh', padding: '0 24px', animation: 'fadeIn 0.5s ease-out' }}>
           <div style={{ textAlign: 'center', marginBottom: '3rem' }}>
             <h1 className="hero-title">מה תחפש היום?</h1>
-            <p style={{ fontSize: '1.2rem', color: '#64748b' }}>הזן סגנון, מידה או פשוט בחר תאריך מהיומן</p>
+            <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>הזן סגנון, מידה או פשוט בחר תאריך מהיומן</p>
           </div>
 
           <div className="ai-search-container" style={{ marginBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Chat History Above Input */}
             {aiMessages.length > 1 && (
-              <div style={{ background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(12px)', padding: '24px', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02)', color: '#1e293b', maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid rgba(0,0,0,0.05)', color: '#8b5cf6', fontWeight: 'bold', justifyContent: 'space-between' }}>
+              <div style={{ background: 'var(--card-bg)', backdropFilter: 'blur(12px)', padding: '24px', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02)', color: 'var(--text-main)', maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--border-main)', color: '#8b5cf6', fontWeight: 'bold', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)', padding: '8px', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(168,85,247,0.3)' }}>
+                    <div style={{ background: 'var(--gradient-primary)', padding: '8px', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(168,85,247,0.3)' }}>
                       <Sparkles size={16} />
                     </div>
-                    <span style={{ fontSize: '1.1rem', color: '#1e293b' }}>העוזר החכם</span>
+                    <span style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>העוזר החכם</span>
                   </div>
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => setAiChats(prev => ({ ...prev, [stage]: [{ role: 'assistant', content: 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' }] }))} title="שיחה חדשה" style={{ background: '#f1f5f9', border: 'none', color: '#64748b', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }} onMouseOver={e => {e.currentTarget.style.background='#e2e8f0'; e.currentTarget.style.color='#3b82f6'; e.currentTarget.style.transform='rotate(90deg)';}} onMouseOut={e => {e.currentTarget.style.background='#f1f5f9'; e.currentTarget.style.color='#64748b'; e.currentTarget.style.transform='rotate(0deg)';}}><Plus size={18} /></button>
+                    <button data-agy-id="new_ai_chat_btn" onClick={() => setAiChats(prev => ({ ...prev, [stage]: [{ role: 'assistant', content: 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' }] }))} title="שיחה חדשה" style={{ background: 'var(--element-bg)', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }} onMouseOver={e => {e.currentTarget.style.background='var(--border-main)'; e.currentTarget.style.color='var(--primary-color)'; e.currentTarget.style.transform='rotate(90deg)';}} onMouseOut={e => {e.currentTarget.style.background='var(--element-bg)'; e.currentTarget.style.color='var(--text-secondary)'; e.currentTarget.style.transform='rotate(0deg)';}}><Plus size={18} /></button>
                   </div>
                 </div>
                 
@@ -868,13 +879,13 @@ export default function CustomerInventoryViewer() {
                     return (
                       <div key={idx} style={{ 
                         alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                        background: msg.role === 'user' ? 'linear-gradient(135deg, #a855f7, #ec4899)' : 'white',
-                        color: msg.role === 'user' ? 'white' : '#1e293b',
+                        background: msg.role === 'user' ? 'var(--gradient-primary)' : 'var(--card-bg)',
+                        color: msg.role === 'user' ? 'white' : 'var(--text-main)',
                         padding: '14px 18px', 
                         borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px', 
                         maxWidth: '85%',
                         boxShadow: msg.role === 'user' ? '0 4px 15px rgba(168,85,247,0.3)' : '0 4px 15px rgba(0,0,0,0.04)',
-                        border: msg.role === 'user' ? 'none' : '1px solid #f1f5f9',
+                        border: msg.role === 'user' ? 'none' : '1px solid var(--border-main)',
                         lineHeight: '1.5'
                       }}>
                         <div>{displayContent}</div>
@@ -886,9 +897,9 @@ export default function CustomerInventoryViewer() {
                               setSelectedDate(new Date(`${isoDateMatch}T12:00:00`));
                               setStage(2);
                             }}
-                            style={{ marginTop: '12px', background: '#f8fafc', color: '#ec4899', border: '1px solid #fce7f3', padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(236,72,153,0.1)' }}
-                            onMouseOver={e => { e.currentTarget.style.background = '#fdf2f8'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(236,72,153,0.2)'; }}
-                            onMouseOut={e => { e.currentTarget.style.background = '#f8fafc'; e.currentTarget.style.boxShadow = '0 2px 5px rgba(236,72,153,0.1)'; }}
+                            style={{ marginTop: '12px', background: 'var(--element-bg)', color: '#ec4899', border: '1px solid #fce7f3', padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(236,72,153,0.1)' }}
+                            onMouseOver={e => { e.currentTarget.style.background = 'var(--primary-light)'; e.currentTarget.style.boxShadow = '0 4px 10px rgba(236,72,153,0.2)'; }}
+                            onMouseOut={e => { e.currentTarget.style.background='var(--element-bg)'; e.currentTarget.style.boxShadow = '0 2px 5px rgba(236,72,153,0.1)'; }}
                           >
                             👉 הצג מלאי לתאריך {getHebrewDateString(new Date(`${isoDateMatch}T12:00:00`))}
                           </button>
@@ -905,7 +916,7 @@ export default function CustomerInventoryViewer() {
                               }
                               setStage(2);
                             }} 
-                            style={{ marginTop: '12px', background: '#f8fafc', color: '#3b82f6', border: '1px solid #e2e8f0', padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
+                            style={{ marginTop: '12px', background: 'var(--element-bg)', color: 'var(--primary-color)', border: '1px solid var(--border-main)', padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
                             onMouseOver={e => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)'}
                             onMouseOut={e => e.currentTarget.style.boxShadow = '0 2px 5px rgba(0,0,0,0.05)'}
                           >
@@ -918,23 +929,24 @@ export default function CustomerInventoryViewer() {
                   })}
                 </div>
                 {aiLoading && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1rem', alignSelf: 'flex-start', background: 'white', padding: '16px 20px', borderRadius: '20px 20px 20px 4px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1rem', alignSelf: 'flex-start', background: 'var(--card-bg)', padding: '16px 20px', borderRadius: '20px 20px 20px 4px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)', border: '1px solid var(--border-main)' }}>
                     <div className="typing-dot" style={{ animationDelay: '0s' }}></div>
                     <div className="typing-dot" style={{ animationDelay: '0.2s' }}></div>
                     <div className="typing-dot" style={{ animationDelay: '0.4s' }}></div>
                   </div>
                 )}
                 
-                <form onSubmit={handleAiSubmit} style={{ marginTop: '24px', display: 'flex', gap: '12px', background: '#f8fafc', padding: '8px', borderRadius: '999px', border: '1px solid #e2e8f0', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                <form onSubmit={handleAiSubmit} style={{ marginTop: '24px', display: 'flex', gap: '12px', background: 'var(--element-bg)', padding: '8px', borderRadius: '999px', border: '1px solid var(--border-main)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
                   <input 
+                    data-agy-id="ai_chat_input"
                     type="text" 
                     value={aiInput}
                     onChange={e => setAiInput(e.target.value)}
                     disabled={aiLoading}
                     placeholder="מה תרצה לחפש?"
-                    style={{ flex: 1, padding: '10px 20px', borderRadius: '999px', border: 'none', outline: 'none', background: 'transparent', fontSize: '1.05rem', color: '#1e293b' }}
+                    style={{ flex: 1, padding: '10px 20px', borderRadius: '999px', border: 'none', outline: 'none', background: 'transparent', fontSize: '1.05rem', color: 'var(--text-main)' }}
                   />
-                  <button type="submit" disabled={aiLoading || !aiInput.trim()} style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)', color: 'white', border: 'none', width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (aiLoading || !aiInput.trim()) ? 0.6 : 1, transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(168,85,247,0.4)' }} onMouseOver={e => e.currentTarget.style.transform='scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>
+                  <button data-agy-id="ai_chat_submit_btn" type="submit" disabled={aiLoading || !aiInput.trim()} style={{ background: 'var(--gradient-primary)', color: 'white', border: 'none', width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (aiLoading || !aiInput.trim()) ? 0.6 : 1, transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(168,85,247,0.4)' }} onMouseOver={e => e.currentTarget.style.transform='scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>
                     <Send size={18} style={{ transform: 'rotate(-45deg)', marginLeft: '4px' }} />
                   </button>
                 </form>
@@ -945,6 +957,7 @@ export default function CustomerInventoryViewer() {
             <div style={{ position: 'relative', display: 'flex', gap: '12px', alignItems: 'center' }}>
               <form onSubmit={handleAiSubmit} style={{ position: 'relative', flex: 1 }}>
                 <input 
+                  data-agy-id="hero_ai_search_input"
                   type="text" 
                   className="ai-search-input" 
                   placeholder="לדוגמה: שמלה שחורה מידה 12..."
@@ -953,7 +966,7 @@ export default function CustomerInventoryViewer() {
                   disabled={aiLoading}
                   style={{ width: '100%', margin: 0 }}
                 />
-                <button type="submit" className="ai-search-btn" disabled={aiLoading}>
+                <button data-agy-id="hero_ai_search_btn" type="submit" className="ai-search-btn" disabled={aiLoading}>
                   {aiLoading ? <Loader2 size={24} className="animate-spin" /> : <Sparkles size={24} />}
                 </button>
               </form>
@@ -961,22 +974,27 @@ export default function CustomerInventoryViewer() {
           )}
           </div>
 
-          <div className="glass-panel" style={{ padding: '32px', width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <h3 style={{ fontSize: '1.5rem', fontWeight: '600', color: '#1e293b', margin: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Calendar size={24} color="#3b82f6" /> בחירת תאריך לאירוע
+          <div className="glass-panel" style={{ padding: '40px', width: '100%', maxWidth: '850px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'var(--card-bg)', border: '1px solid var(--border-main)', boxShadow: '0 20px 50px rgba(0,0,0,0.05)' }}>
+            <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--text-main)', margin: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+              <Calendar size={28} color="#a855f7" style={{ filter: 'drop-shadow(0 4px 6px rgba(168,85,247,0.2))' }} /> מתי האירוע שלכם?
             </h3>
-            <HebrewDatePicker
-              selectedDate={selectedDate}
-              onChange={(d) => { setSelectedDate(new Date(d)); setStage(2); }}
-            />
-            <button 
-              onClick={() => setStage(2)}
-              style={{ marginTop: '32px', padding: '16px 48px', background: '#3b82f6', color: 'white', fontSize: '1.1rem', fontWeight: 'bold', borderRadius: '999px', border: 'none', cursor: 'pointer', boxShadow: '0 10px 25px rgba(59, 130, 246, 0.3)', transition: 'all 0.2s' }}
-              onMouseOver={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-              onMouseOut={e => e.currentTarget.style.transform = 'translateY(0)'}
-            >
-              הצג מלאי פנוי לתאריך
-            </button>
+            <div style={{ display: 'flex', gap: '16px', width: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', flexWrap: 'wrap' }}>
+              <div style={{ flex: '1', minWidth: '280px', maxWidth: '400px' }}>
+                <HebrewDatePicker
+                  selectedDate={selectedDate}
+                  onChange={(d) => { setSelectedDate(new Date(d)); setStage(2); }}
+                />
+              </div>
+              <button 
+                data-agy-id="show_inventory_btn"
+                onClick={() => setStage(2)}
+                style={{ padding: '0 36px', height: '60px', background: 'var(--gradient-primary)', color: 'white', fontSize: '1.15rem', fontWeight: 'bold', borderRadius: '16px', border: 'none', cursor: 'pointer', boxShadow: '0 10px 25px rgba(168,85,247,0.3)', transition: 'all 0.3s', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}
+                onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 15px 35px rgba(168,85,247,0.4)'; }}
+                onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(168,85,247,0.3)'; }}
+              >
+                הצג מלאי <Sparkles size={20} />
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -988,11 +1006,11 @@ export default function CustomerInventoryViewer() {
           
           {/* Header Row */}
           <div style={{ 
-            background: 'linear-gradient(135deg, rgba(255,255,255,0.9) 0%, rgba(248,250,252,0.9) 100%)', 
+            background: 'var(--card-bg)', 
             backdropFilter: 'blur(20px)',
             borderRadius: '24px', 
             padding: '24px 32px', 
-            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08), inset 0 0 0 1px rgba(255,255,255,0.6)', 
+            boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08), inset 0 0 0 1px var(--border-main)', 
             marginBottom: '24px' 
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '20px', borderBottom: '1px solid rgba(226,232,240,0.8)', paddingBottom: '20px', marginBottom: '20px' }}>
@@ -1001,26 +1019,26 @@ export default function CustomerInventoryViewer() {
                   <h2 style={{ fontSize: '2.2rem', fontWeight: '800', margin: 0, background: 'linear-gradient(135deg, #0f172a 0%, #334155 100%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
                     קטלוג שמלות זמינות
                   </h2>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'rgba(255,255,255,0.6)', padding: '6px', borderRadius: '16px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                    <button className="header-btn" onClick={() => router.push('/')} title="חזור למערכת" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: '#ef4444', background: '#fee2e2', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><LogOut size={18} /></button>
-                    <button className="header-btn" onClick={() => setStage(1)} title="חיפוש חדש" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: '#3b82f6', background: '#dbeafe', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Search size={18} /></button>
-                    <button className="header-btn" onClick={fetchInventory} title="רענון מלאי" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: '#10b981', background: '#d1fae5', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><RefreshCw size={18} /></button>
-                    <button className="header-btn" onClick={handleCatalogPrint} title="הדפסה" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: '#8b5cf6', background: '#ede9fe', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Printer size={18} /></button>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--card-bg)', padding: '6px', borderRadius: '16px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                    <button data-agy-id="exit_to_system_btn" className="header-btn" onClick={() => router.push('/')} title="חזור למערכת" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--danger-text)', background: 'var(--danger-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><LogOut size={18} /></button>
+                    <button data-agy-id="new_search_btn" className="header-btn" onClick={() => setStage(1)} title="חיפוש חדש" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--primary-color)', background: 'var(--primary-light)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Search size={18} /></button>
+                    <button data-agy-id="refresh_inventory_btn" className="header-btn" onClick={fetchInventory} title="רענון מלאי" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--success-text)', background: 'var(--success-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><RefreshCw size={18} /></button>
+                    <button data-agy-id="print_catalog_btn" className="header-btn" onClick={handleCatalogPrint} title="הדפסה" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--accent-color)', background: 'var(--empty-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Printer size={18} /></button>
                     {isLocked ? (
-                      <button className="header-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, borderRadius: '12px', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(239,68,68,0.3)' }} onClick={() => setShowUnlockModal(true)} title="שחרור מסך"><Lock size={18} /></button>
+                      <button data-agy-id="unlock_screen_btn" className="header-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, borderRadius: '12px', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(239,68,68,0.3)' }} onClick={() => setShowUnlockModal(true)} title="שחרור מסך"><Lock size={18} /></button>
                     ) : (
-                      <button className="header-btn" onClick={() => {
+                      <button data-agy-id="lock_screen_btn" className="header-btn" onClick={() => {
                         setIsLocked(true);
                         if (document.documentElement.requestFullscreen) {
                           document.documentElement.requestFullscreen().catch(err => console.warn(err));
                         }
-                      }} title="תפיסת מסך ללקוח" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: '#f59e0b', background: '#fef3c7', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Maximize size={18} /></button>
+                      }} title="תפיסת מסך ללקוח" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--warning-color, #f59e0b)', background: 'var(--banner-rentals-border)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Maximize size={18} /></button>
                     )}
                   </div>
                 </div>
-                <div style={{ color: '#64748b', fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ color: 'var(--text-secondary)', fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Calendar size={20} color="#94a3b8" />
-                  לתאריך: <strong style={{ color: '#3b82f6', background: '#eff6ff', padding: '4px 12px', borderRadius: '999px', fontSize: '1rem' }}>{getHebrewDateString(new Date(selectedDate))}</strong> <span style={{opacity: 0.7}}>({(new Date(selectedDate)).toLocaleDateString('he-IL')})</span>
+                  לתאריך: <strong style={{ color: 'var(--primary-color)', background: 'var(--primary-light)', padding: '4px 12px', borderRadius: '999px', fontSize: '1rem' }}>{getHebrewDateString(new Date(selectedDate))}</strong> <span style={{opacity: 0.7}}>({(new Date(selectedDate)).toLocaleDateString('he-IL')})</span>
                 </div>
               </div>
               
@@ -1032,19 +1050,20 @@ export default function CustomerInventoryViewer() {
               <div style={{ position: 'relative', flex: '1 1 280px' }}>
                 <Search size={20} color="#94a3b8" style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)' }} />
                 <input 
+                  data-agy-id="catalog_search_input"
                   type="text" 
                   placeholder="חיפוש מודל (שם, תחרה, 42)..."
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  style={{ width: '100%', padding: '16px 48px 16px 20px', borderRadius: '16px', border: '1px solid #e2e8f0', background: 'rgba(255,255,255,0.8)', fontSize: '1.05rem', outline: 'none', transition: 'all 0.3s', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)' }}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#3b82f6'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(59,130,246,0.1)'; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#e2e8f0'; e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.01)'; }}
+                  style={{ width: '100%', padding: '16px 48px 16px 20px', borderRadius: '16px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', fontSize: '1.05rem', outline: 'none', transition: 'all 0.3s', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)' }}
+                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary-color)'; e.currentTarget.style.boxShadow = '0 0 0 4px var(--border-color)'; }}
+                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-main)'; e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.01)'; }}
                 />
               </div>
 
               {isAiChatVisible ? (
                 <div style={{ position: 'relative', flex: '1 1 280px', display: 'flex', alignItems: 'center' }}>
-                  <button onClick={() => setIsAiChatVisible(false)} style={{ width: '100%', padding: '16px', borderRadius: '16px', border: '1px solid #e2e8f0', background: 'white', color: '#a855f7', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.3s' }}>
+                  <button data-agy-id="catalog_close_ai_btn" onClick={() => setIsAiChatVisible(false)} style={{ width: '100%', padding: '16px', borderRadius: '16px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', color: '#a855f7', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.3s' }}>
                     <Sparkles size={20} />
                     העוזר החכם פעיל - לחץ לסגירה
                   </button>
@@ -1054,50 +1073,54 @@ export default function CustomerInventoryViewer() {
                   <form onSubmit={handleAiSubmit} style={{ margin: 0, width: '100%' }}>
                     <Sparkles size={20} color="#a855f7" style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)' }} />
                     <input 
+                      data-agy-id="catalog_ai_input"
                       type="text" 
                       placeholder="שאל את ה-AI..."
                       value={aiInput}
                       onChange={e => setAiInput(e.target.value)}
                       disabled={aiLoading}
-                      style={{ width: '100%', padding: '16px 48px 16px 20px', borderRadius: '16px', border: '2px solid transparent', background: 'linear-gradient(135deg, rgba(248,250,252,0.9), rgba(241,245,249,0.9))', fontSize: '1.05rem', outline: 'none', transition: 'all 0.3s' }}
-                      onFocus={e => { e.currentTarget.style.background = 'white'; e.currentTarget.style.borderColor = '#a855f7'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(168,85,247,0.1)'; }}
-                      onBlur={e => { if(!aiInput) { e.currentTarget.style.background = 'linear-gradient(135deg, rgba(248,250,252,0.9), rgba(241,245,249,0.9))'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.boxShadow = 'none'; } }}
+                      style={{ width: '100%', padding: '16px 48px 16px 20px', borderRadius: '16px', border: '2px solid transparent', background: 'var(--element-bg)', fontSize: '1.05rem', outline: 'none', transition: 'all 0.3s' }}
+                      onFocus={e => { e.currentTarget.style.background='var(--card-bg)'; e.currentTarget.style.borderColor = '#a855f7'; e.currentTarget.style.boxShadow = '0 0 0 4px rgba(168,85,247,0.1)'; }}
+                      onBlur={e => { if(!aiInput) { e.currentTarget.style.background = 'var(--element-bg)'; e.currentTarget.style.borderColor = 'transparent'; e.currentTarget.style.boxShadow = 'none'; } }}
                     />
                   </form>
                 </div>
               )}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'white', padding: '12px 24px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                <span style={{ fontSize: '1rem', fontWeight: '700', color: '#475569' }}>זום</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--card-bg)', padding: '12px 24px', borderRadius: '16px', border: '1px solid var(--border-main)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+                <span style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-main)' }}>זום</span>
                 <input 
+                  data-agy-id="zoom_range_input"
                   type="range" 
                   min="0.5" max="1.5" step="0.1" 
                   value={zoomLevel} 
                   onChange={e => setZoomLevel(parseFloat(e.target.value))} 
-                  style={{ cursor: 'pointer', accentColor: '#3b82f6', width: '100px' }}
+                  style={{ cursor: 'pointer', accentColor: 'var(--primary-color)', width: '100px' }}
                 />
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'white', padding: '6px', borderRadius: '16px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--card-bg)', padding: '6px', borderRadius: '16px', border: '1px solid var(--border-main)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
                 <button 
+                  data-agy-id="view_grid_btn"
                   onClick={() => setViewMode('grid')}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', border: 'none', borderRadius: '12px', background: viewMode === 'grid' ? '#eff6ff' : 'transparent', color: viewMode === 'grid' ? '#3b82f6' : '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', border: 'none', borderRadius: '12px', background: viewMode === 'grid' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'grid' ? 'var(--primary-color)' : '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' }}
                   title="תצוגת ריבועים"
                 >
                   <LayoutGrid size={20} />
                 </button>
                 <button 
+                  data-agy-id="view_rows_btn"
                   onClick={() => setViewMode('rows')}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', border: 'none', borderRadius: '12px', background: viewMode === 'rows' ? '#eff6ff' : 'transparent', color: viewMode === 'rows' ? '#3b82f6' : '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' }}
+                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', border: 'none', borderRadius: '12px', background: viewMode === 'rows' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'rows' ? 'var(--primary-color)' : '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' }}
                   title="תצוגת שורות"
                 >
                   <List size={20} />
                 </button>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none', background: showZeroSizes ? '#eff6ff' : 'white', padding: '14px 24px', borderRadius: '16px', border: `1px solid ${showZeroSizes ? '#bfdbfe' : '#e2e8f0'}`, transition: 'all 0.3s' }} onClick={() => setShowZeroSizes(!showZeroSizes)}>
-                <div style={{ width: '44px', height: '24px', background: showZeroSizes ? '#3b82f6' : '#cbd5e1', borderRadius: '999px', position: 'relative', transition: 'background 0.3s' }}>
-                  <div style={{ width: '20px', height: '20px', background: 'white', borderRadius: '50%', position: 'absolute', top: '2px', left: showZeroSizes ? '22px' : '2px', transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+              <div data-agy-id="toggle_zero_sizes_div" style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none', background: showZeroSizes ? 'var(--primary-light)' : 'var(--card-bg)', padding: '14px 24px', borderRadius: '16px', border: `1px solid ${showZeroSizes ? 'var(--primary-light)' : 'var(--border-main)'}`, transition: 'all 0.3s' }} onClick={() => setShowZeroSizes(!showZeroSizes)}>
+                <div style={{ width: '44px', height: '24px', background: showZeroSizes ? 'var(--primary-color)' : 'var(--element-bg)', borderRadius: '999px', position: 'relative', transition: 'background 0.3s' }}>
+                  <div style={{ width: '20px', height: '20px', background: 'var(--card-bg)', borderRadius: '50%', position: 'absolute', top: '2px', left: showZeroSizes ? '22px' : '2px', transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                 </div>
                 <span style={{ fontSize: '1rem', fontWeight: '700', color: showZeroSizes ? '#1d4ed8' : '#64748b' }}>
                   הצג תפוסה מלאה
@@ -1107,30 +1130,30 @@ export default function CustomerInventoryViewer() {
           </div>
           
           {isAiChatVisible && stage === 2 && (
-            <div style={{ background: 'rgba(255, 255, 255, 0.95)', backdropFilter: 'blur(12px)', padding: '24px', borderRadius: '24px', marginTop: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02)', maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', paddingBottom: '16px', color: '#8b5cf6', fontWeight: 'bold', justifyContent: 'space-between', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+            <div style={{ background: 'var(--card-bg)', backdropFilter: 'blur(12px)', padding: '24px', borderRadius: '24px', marginTop: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02)', maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', paddingBottom: '16px', color: '#8b5cf6', fontWeight: 'bold', justifyContent: 'space-between', borderBottom: '1px solid var(--border-main)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)', padding: '8px', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(168,85,247,0.3)' }}>
+                    <div style={{ background: 'var(--gradient-primary)', padding: '8px', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(168,85,247,0.3)' }}>
                       <Sparkles size={16} />
                     </div>
-                    <span style={{ fontSize: '1.1rem', color: '#1e293b' }}>העוזר החכם</span>
+                    <span style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>העוזר החכם</span>
                   </div>
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button onClick={() => setAiChats(prev => ({ ...prev, [stage]: [{ role: 'assistant', content: stage === 1 ? 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' : 'שלום! אני העוזר החכם של הקטלוג. אני יכול לסנן עבורך דגמים ולענות על שאלות. במה אפשר לעזור?' }] }))} title="שיחה חדשה" style={{ background: '#f1f5f9', border: 'none', color: '#64748b', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }} onMouseOver={e => {e.currentTarget.style.background='#e2e8f0'; e.currentTarget.style.color='#3b82f6'; e.currentTarget.style.transform='rotate(90deg)';}} onMouseOut={e => {e.currentTarget.style.background='#f1f5f9'; e.currentTarget.style.color='#64748b'; e.currentTarget.style.transform='rotate(0deg)';}}><Plus size={18} /></button>
-                    <button onClick={() => setIsAiChatVisible(false)} title="סגור" style={{ background: '#fee2e2', border: 'none', color: '#ef4444', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s', fontWeight: 'bold' }} onMouseOver={e => {e.currentTarget.style.background='#fecaca'; e.currentTarget.style.transform='scale(1.1)';}} onMouseOut={e => {e.currentTarget.style.background='#fee2e2'; e.currentTarget.style.transform='scale(1)';}}>X</button>
+                    <button data-agy-id="new_ai_chat_catalog_btn" onClick={() => setAiChats(prev => ({ ...prev, [stage]: [{ role: 'assistant', content: stage === 1 ? 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' : 'שלום! אני העוזר החכם של הקטלוג. אני יכול לסנן עבורך דגמים ולענות על שאלות. במה אפשר לעזור?' }] }))} title="שיחה חדשה" style={{ background: 'var(--element-bg)', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }} onMouseOver={e => {e.currentTarget.style.background='var(--border-main)'; e.currentTarget.style.color='var(--primary-color)'; e.currentTarget.style.transform='rotate(90deg)';}} onMouseOut={e => {e.currentTarget.style.background='var(--element-bg)'; e.currentTarget.style.color='var(--text-secondary)'; e.currentTarget.style.transform='rotate(0deg)';}}><Plus size={18} /></button>
+                    <button data-agy-id="close_ai_chat_catalog_btn" onClick={() => setIsAiChatVisible(false)} title="סגור" style={{ background: 'var(--danger-bg)', border: 'none', color: 'var(--danger-text)', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s', fontWeight: 'bold' }} onMouseOver={e => {e.currentTarget.style.background='var(--danger-text)'; e.currentTarget.style.transform='scale(1.1)';}} onMouseOut={e => {e.currentTarget.style.background='var(--danger-bg)'; e.currentTarget.style.transform='scale(1)';}}>X</button>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                   {aiMessages.slice(1).map((msg, idx) => (
                     <div key={idx} style={{ 
                       alignSelf: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                      background: msg.role === 'user' ? 'linear-gradient(135deg, #a855f7, #ec4899)' : 'white',
-                      color: msg.role === 'user' ? 'white' : '#1e293b',
+                      background: msg.role === 'user' ? 'var(--gradient-primary)' : 'var(--card-bg)',
+                      color: msg.role === 'user' ? 'white' : 'var(--text-main)',
                       padding: '14px 18px', 
                       borderRadius: msg.role === 'user' ? '20px 20px 4px 20px' : '20px 20px 20px 4px', 
                       maxWidth: '85%',
                       boxShadow: msg.role === 'user' ? '0 4px 15px rgba(168,85,247,0.3)' : '0 4px 15px rgba(0,0,0,0.04)',
-                      border: msg.role === 'user' ? 'none' : '1px solid #f1f5f9',
+                      border: msg.role === 'user' ? 'none' : '1px solid var(--border-main)',
                       lineHeight: '1.5'
                     }}>
                       <div>
@@ -1149,7 +1172,7 @@ export default function CustomerInventoryViewer() {
                                 e.currentTarget.style.transform = 'scale(0.95)';
                                 setTimeout(() => { if (e.currentTarget) e.currentTarget.style.transform = 'scale(1)'; }, 150);
                               }} 
-                              style={{ marginTop: '12px', background: msg.role === 'user' ? 'rgba(255,255,255,0.2)' : '#f8fafc', border: msg.role === 'user' ? '1px solid rgba(255,255,255,0.4)' : '1px solid #e2e8f0', color: msg.role === 'user' ? 'white' : '#3b82f6', padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
+                              style={{ marginTop: '12px', background: msg.role === 'user' ? 'rgba(255,255,255,0.2)' : 'var(--element-bg)', border: msg.role === 'user' ? '1px solid rgba(255,255,255,0.4)' : '1px solid var(--border-main)', color: msg.role === 'user' ? 'white' : 'var(--primary-color)', padding: '8px 16px', borderRadius: '999px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(0,0,0,0.05)' }}
                               onMouseOver={e => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)'}
                               onMouseOut={e => e.currentTarget.style.boxShadow = '0 2px 5px rgba(0,0,0,0.05)'}
                             >
@@ -1164,23 +1187,24 @@ export default function CustomerInventoryViewer() {
                   ))}
                 </div>
                 {aiLoading && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1rem', alignSelf: 'flex-start', background: 'white', padding: '16px 20px', borderRadius: '20px 20px 20px 4px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '1rem', alignSelf: 'flex-start', background: 'var(--card-bg)', padding: '16px 20px', borderRadius: '20px 20px 20px 4px', boxShadow: '0 4px 15px rgba(0,0,0,0.04)', border: '1px solid var(--border-main)' }}>
                     <div className="typing-dot" style={{ animationDelay: '0s' }}></div>
                     <div className="typing-dot" style={{ animationDelay: '0.2s' }}></div>
                     <div className="typing-dot" style={{ animationDelay: '0.4s' }}></div>
                   </div>
                 )}
                 
-                <form onSubmit={handleAiSubmit} style={{ marginTop: '24px', display: 'flex', gap: '12px', background: '#f8fafc', padding: '8px', borderRadius: '999px', border: '1px solid #e2e8f0', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
+                <form onSubmit={handleAiSubmit} style={{ marginTop: '24px', display: 'flex', gap: '12px', background: 'var(--element-bg)', padding: '8px', borderRadius: '999px', border: '1px solid var(--border-main)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
                   <input 
+                    data-agy-id="catalog_ai_chat_input"
                     type="text" 
                     value={aiInput}
                     onChange={e => setAiInput(e.target.value)}
                     disabled={aiLoading}
                     placeholder="מה תרצה לדעת?"
-                    style={{ flex: 1, padding: '10px 20px', borderRadius: '999px', border: 'none', outline: 'none', background: 'transparent', fontSize: '1.05rem', color: '#1e293b' }}
+                    style={{ flex: 1, padding: '10px 20px', borderRadius: '999px', border: 'none', outline: 'none', background: 'transparent', fontSize: '1.05rem', color: 'var(--text-main)' }}
                   />
-                  <button type="submit" disabled={aiLoading || !aiInput.trim()} style={{ background: 'linear-gradient(135deg, #a855f7, #ec4899)', color: 'white', border: 'none', width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (aiLoading || !aiInput.trim()) ? 0.6 : 1, transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(168,85,247,0.4)' }} onMouseOver={e => e.currentTarget.style.transform='scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>
+                  <button data-agy-id="catalog_ai_chat_submit_btn" type="submit" disabled={aiLoading || !aiInput.trim()} style={{ background: 'var(--gradient-primary)', color: 'white', border: 'none', width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (aiLoading || !aiInput.trim()) ? 0.6 : 1, transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(168,85,247,0.4)' }} onMouseOver={e => e.currentTarget.style.transform='scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>
                     <Send size={18} style={{ transform: 'rotate(-45deg)', marginLeft: '4px' }} />
                   </button>
                 </form>
@@ -1188,8 +1212,8 @@ export default function CustomerInventoryViewer() {
           )}
 
           {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 0', color: '#64748b' }}>
-              <Loader2 size={48} className="animate-spin" style={{ color: '#3b82f6', marginBottom: '16px' }} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 0', color: 'var(--text-secondary)' }}>
+              <Loader2 size={48} className="animate-spin" style={{ color: 'var(--primary-color)', marginBottom: '16px' }} />
               <span style={{ fontSize: '1.2rem' }}>טוען נתונים...</span>
             </div>
           ) : (
@@ -1241,7 +1265,7 @@ export default function CustomerInventoryViewer() {
                               style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px' }}
                             >
                               <span style={{ fontSize: '1.2rem', fontWeight: '800', color: sData.available > 0 ? '#14532d' : '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>{sName}</span>
-                              <span style={{ whiteSpace: 'nowrap', fontWeight: 'bold', fontSize: '0.85rem', background: sData.available > 0 ? '#bbf7d0' : '#e2e8f0', color: sData.available > 0 ? '#166534' : '#64748b', padding: '2px 8px', borderRadius: '12px' }}>{sData.available}</span>
+                              <span style={{ whiteSpace: 'nowrap', fontWeight: 'bold', fontSize: '0.85rem', background: sData.available > 0 ? '#bbf7d0' : 'var(--border-main)', color: sData.available > 0 ? '#166534' : '#64748b', padding: '2px 8px', borderRadius: '12px' }}>{sData.available}</span>
                             </div>
                           ))
                         )}
@@ -1259,11 +1283,11 @@ export default function CustomerInventoryViewer() {
       {/* Modals from old interface */}
       {showUnlockModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <form onSubmit={handleUnlock} style={{ background: 'white', padding: '32px', borderRadius: '24px', width: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
-            <h3 style={{ margin: '0 0 24px 0', fontSize: '1.5rem', textAlign: 'center', color: '#1e293b' }}>שחרור מסך מנעילה</h3>
+          <form onSubmit={handleUnlock} style={{ background: 'var(--card-bg)', padding: '32px', borderRadius: '24px', width: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+            <h3 style={{ margin: '0 0 24px 0', fontSize: '1.5rem', textAlign: 'center', color: 'var(--text-main)' }}>שחרור מסך מנעילה</h3>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>בחר עובד:</label>
-              <select value={unlockEmployee} onChange={e => setUnlockEmployee(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+              <select data-agy-id="unlock_employee_select" value={unlockEmployee} onChange={e => setUnlockEmployee(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--element-bg)', color: 'var(--text-main)' }}>
                 <option value="">-- בחר --</option>
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
@@ -1272,12 +1296,12 @@ export default function CustomerInventoryViewer() {
             </div>
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>קוד גישה:</label>
-              <input type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1' }} />
+              <input data-agy-id="unlock_password_input" type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--element-bg)', color: 'var(--text-main)' }} />
             </div>
-            {unlockError && <div style={{ color: '#ef4444', marginBottom: '16px', textAlign: 'center' }}>{unlockError}</div>}
+            {unlockError && <div style={{ color: 'var(--danger-text)', marginBottom: '16px', textAlign: 'center' }}>{unlockError}</div>}
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button type="button" onClick={() => setShowUnlockModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid #cbd5e1', background: 'white', cursor: 'pointer' }}>ביטול</button>
-              <button type="submit" disabled={unlockLoading} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: '#3b82f6', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+              <button data-agy-id="cancel_unlock_btn" type="button" onClick={() => setShowUnlockModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', color: 'var(--text-main)', cursor: 'pointer' }}>ביטול</button>
+              <button data-agy-id="submit_unlock_btn" type="submit" disabled={unlockLoading} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: 'var(--primary-color)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
                 {unlockLoading ? 'בודק...' : 'שחרר'}
               </button>
             </div>
@@ -1287,35 +1311,35 @@ export default function CustomerInventoryViewer() {
 
       {showOrdersModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(15, 23, 42, 0.7)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', direction: 'rtl', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: 'white', borderRadius: '24px', width: '600px', maxWidth: '90%', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
-            <div style={{ padding: '20px 24px', borderBottom: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#f8fafc' }}>
+          <div style={{ background: 'var(--card-bg)', borderRadius: '24px', width: '600px', maxWidth: '90%', maxHeight: '80vh', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+            <div style={{ padding: '20px 24px', borderBottom: '1px solid var(--border-main)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'var(--element-bg)' }}>
               <div>
-                <h3 style={{ margin: 0, fontSize: '20px', color: '#0f172a', fontWeight: 'bold' }}>
+                <h3 style={{ margin: 0, fontSize: '20px', color: 'var(--text-main)', fontWeight: 'bold' }}>
                   הזמנות - {ordersModalModel?.name} {ordersModalSize ? `(מידה ${ordersModalSize})` : ''}
                 </h3>
-                <span style={{ fontSize: '13px', color: '#64748b' }}>טווח: שבוע לפני ואחרי תאריך האירוע</span>
+                <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>טווח: שבוע לפני ואחרי תאריך האירוע</span>
               </div>
-              <button onClick={() => setShowOrdersModal(false)} style={{ background: '#e2e8f0', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}>X</button>
+              <button data-agy-id="close_orders_modal_btn" onClick={() => setShowOrdersModal(false)} style={{ background: 'var(--border-main)', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>X</button>
             </div>
             <div style={{ padding: '24px', overflowY: 'auto', flexGrow: 1 }}>
               {ordersModalLoading ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>טוען נתונים...</div>
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>טוען נתונים...</div>
               ) : ordersModalOrders.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#64748b' }}>לא נמצאו הזמנות לדגם זה בטווח התאריכים הנבחר.</div>
+                <div style={{ textAlign: 'center', padding: '40px', color: 'var(--text-secondary)' }}>לא נמצאו הזמנות לדגם זה בטווח התאריכים הנבחר.</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {ordersModalOrders.map(order => (
-                    <div key={order.orderId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', border: '1px solid #e2e8f0', borderRadius: '16px', background: '#ffffff' }}>
+                    <div key={order.orderId} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', border: '1px solid var(--border-main)', borderRadius: '16px', background: 'var(--card-bg)' }}>
                       <div>
-                        <div style={{ fontWeight: 'bold', fontSize: '15px', color: '#1e293b' }}>
+                        <div style={{ fontWeight: 'bold', fontSize: '15px', color: 'var(--text-main)' }}>
                           הזמנה #{order.orderId} - {order.customer?.firstName} {order.customer?.lastName}
                         </div>
-                        <div style={{ fontSize: '13px', color: '#64748b', marginTop: '4px' }}>
+                        <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
                           תאריך אירוע: {new Date(order.eventDate).toLocaleDateString('he-IL')}
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ background: order.status === 'סגור' ? '#f1f5f9' : '#dbeafe', color: order.status === 'סגור' ? '#475569' : '#1e40af', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 'bold' }}>
+                        <div style={{ background: order.status === 'סגור' ? '#f1f5f9' : 'var(--primary-light)', color: order.status === 'סגור' ? '#475569' : '#1e40af', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 'bold' }}>
                           {order.status || 'פעיל'}
                         </div>
                         <a 
@@ -1323,9 +1347,9 @@ export default function CustomerInventoryViewer() {
                           target="_blank" 
                           rel="noopener noreferrer" 
                           title="פתח הזמנה"
-                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', background: '#eff6ff', color: '#3b82f6', borderRadius: '12px', border: '1px solid #bfdbfe', cursor: 'pointer', transition: 'all 0.2s' }}
-                          onMouseOver={e => { e.currentTarget.style.background = '#dbeafe'; e.currentTarget.style.transform = 'scale(1.05)'; }}
-                          onMouseOut={e => { e.currentTarget.style.background = '#eff6ff'; e.currentTarget.style.transform = 'scale(1)'; }}
+                          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', background: 'var(--primary-light)', color: 'var(--primary-color)', borderRadius: '12px', border: '1px solid var(--primary-light)', cursor: 'pointer', transition: 'all 0.2s' }}
+                          onMouseOver={e => { e.currentTarget.style.background = 'var(--primary-light)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+                          onMouseOut={e => { e.currentTarget.style.background = 'var(--primary-light)'; e.currentTarget.style.transform = 'scale(1)'; }}
                         >
                           <ExternalLink size={18} />
                         </a>

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect } from 'react';
 
 export default function OrderSizeSelector({ modelId, order, value, onChange, placeholder = '-' }) {
@@ -50,6 +50,7 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
 
   return (
     <select
+      data-agy-id="order_size_selector_select"
       value={value || ''}
       onChange={(e) => onChange(e.target.value)}
       disabled={!modelId || loading}
@@ -74,6 +75,7 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
           
         return (
           <option 
+            data-agy-id="order_size_selector_option"
             key={sizeVal} 
             value={sizeVal} 
             title={availableInfo}

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
 import { HDate, gematriya, Sedra, Locale } from '@hebcal/core';
@@ -24,8 +24,10 @@ const getMonthsForYear = (year) => {
   ];
 };
 
-export default function HebrewDatePicker({ value, onChange }) {
+export default function HebrewDatePicker({ value, selectedDate, onChange, className, style }) {
+  const actualValue = value || selectedDate;
   const [isOpen, setIsOpen] = useState(false);
+  const [popupPos, setPopupPos] = useState({ vertical: 'bottom', horizontal: 'right' });
   const [hYear, setHYear] = useState('');
   const [hMonth, setHMonth] = useState('');
   const [hDay, setHDay] = useState('');
@@ -33,7 +35,7 @@ export default function HebrewDatePicker({ value, onChange }) {
 
   useEffect(() => {
     try {
-      const date = value ? new Date(value) : new Date();
+      const date = actualValue ? new Date(actualValue) : new Date();
       if (!isNaN(date.getTime())) {
         const hd = new HDate(date);
         setHYear(hd.getFullYear());
@@ -43,7 +45,7 @@ export default function HebrewDatePicker({ value, onChange }) {
     } catch (e) {
       console.error(e);
     }
-  }, [value, isOpen]);
+  }, [actualValue, isOpen]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -75,11 +77,11 @@ export default function HebrewDatePicker({ value, onChange }) {
   };
 
   const displayString = React.useMemo(() => {
-    if (!value) return 'בחר תאריך...';
+    if (!actualValue) return 'בחר תאריך...';
     let dStr = getHebrewDateString(value);
     
     try {
-      const d = new Date(value);
+      const d = new Date(actualValue);
       if (!isNaN(d.getTime())) {
          const hd = new HDate(d);
          if (hd.greg().getDay() === 6) {
@@ -94,7 +96,7 @@ export default function HebrewDatePicker({ value, onChange }) {
     } catch(e) {}
 
     return dStr || 'בחר תאריך...';
-  }, [value]);
+  }, [actualValue]);
 
   const currentYearOptions = [];
   const startYear = new HDate().getFullYear() - 50;
@@ -116,37 +118,43 @@ export default function HebrewDatePicker({ value, onChange }) {
 
   // Safe parsed date for native input
   const safeNativeDate = React.useMemo(() => {
-    if (!value) return '';
-    const d = new Date(value);
+    if (!actualValue) return '';
+    const d = new Date(actualValue);
     return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
-  }, [value]);
+  }, [actualValue]);
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      <div style={{ display: 'flex', width: '100%', border: '1px solid var(--element-border)', borderRadius: '8px', background: 'var(--card-bg)' }}>
+    <div data-agy-id="hebrew_date_picker_container" ref={containerRef} style={{ position: 'relative', width: '100%', zIndex: isOpen ? 99999 : 1 }}>
+      <div className={className} style={{ display: "flex", width: "100%", border: "2px solid transparent", borderRadius: "16px", background: "var(--card-bg)", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", transition: "all 0.3s", overflow: "hidden", ...(style || {}) }}
+           onFocus={(e) => { e.currentTarget.style.borderColor = "#a855f7"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(168, 85, 247, 0.15)"; }}
+           onBlur={(e) => { e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.05)"; }}>
         <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
+          data-agy-id="hebrew_date_picker_toggle_btn"          type="button"
+          onClick={() => {
+            if (!isOpen && containerRef.current) {
+              const rect = containerRef.current.getBoundingClientRect();
+              const spaceBelow = window.innerHeight - rect.bottom;
+              const spaceAbove = rect.top;
+              const vertical = (spaceBelow < 430 && spaceAbove > spaceBelow) ? 'top' : 'bottom';
+              
+              // In RTL, right:0 extends to the left, so we need space on the left side of the right edge
+              const horizontal = (rect.right < 360 && (window.innerWidth - rect.left) >= 360) ? 'left' : 'right';
+              
+              setPopupPos({ vertical, horizontal });
+            }
+            setIsOpen(!isOpen);
+          }}
           style={{
-            flex: 1,
-            padding: '0.75rem',
-            border: 'none',
-            background: 'transparent',
-            textAlign: 'right',
-            fontSize: '1rem',
-            cursor: 'pointer',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center'
+            flex: 1, padding: "16px 20px", border: "none", background: "transparent", textAlign: "right", fontSize: "1.1rem", fontWeight: "600", color: "var(--text-main)", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.2s"
           }}
         >
           <span>{displayString}</span>
           <Calendar size={18} />
         </button>
-        <div style={{ position: 'relative', borderRight: '1px solid #eee', width: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f9f9f9', borderTopLeftRadius: '8px', borderBottomLeftRadius: '8px' }}>
+        <div style={{ position: 'relative', borderRight: "1px solid var(--border-main)", width: "60px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--element-bg)", borderTopLeftRadius: "16px", borderBottomLeftRadius: "16px", transition: "all 0.2s" }}>
           <Globe size={18} style={{ color: 'var(--text-muted)', pointerEvents: 'none' }} />
           <input 
-             type="date"
+             data-agy-id="hebrew_date_picker_native_input"             type="date"
              value={safeNativeDate}
              onChange={(e) => {
                  if (e.target.value) {
@@ -163,47 +171,39 @@ export default function HebrewDatePicker({ value, onChange }) {
       {isOpen && (
         <div style={{
           position: 'absolute',
-          top: '100%',
-          right: 0,
-          marginTop: '0.5rem',
-          background: 'var(--card-bg)',
-          border: '1px solid #ddd',
-          borderRadius: '12px',
-          padding: '1.5rem',
-          boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
-          zIndex: 99999,
-          width: '320px',
-          direction: 'rtl'
+          ...(popupPos.vertical === 'top' ? { bottom: '100%', marginBottom: '0.5rem' } : { top: '100%', marginTop: '0.5rem' }),
+          ...(popupPos.horizontal === 'left' ? { left: 0 } : { right: 0 }),
+          background: "var(--card-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid var(--border-main)", borderRadius: "24px", padding: "20px", boxShadow: "0 20px 40px rgba(0,0,0,0.12)", zIndex: 99999, width: "360px", direction: "rtl", animation: "fadeIn 0.2s ease-out"
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
-            <button type="button" onClick={() => {
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center' }}>
+            <button data-agy-id="hebrew_date_picker_next_month_btn" type="button" onClick={() => {
                 const days = HDate.daysInMonth(hMonth, hYear);
                 const next = new HDate(1, hMonth, hYear).add(days, 'd');
                 setHMonth(next.getMonth());
                 setHYear(next.getFullYear());
-            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: 'var(--image-bg)', border: '1px solid var(--element-border)', borderRadius: '6px' }}><ChevronRight size={16} /> קדימה</button>
+            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: "var(--element-bg)", border: "none", borderRadius: "999px", color: "var(--text-main)", fontWeight: "600", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}><ChevronRight size={16} /> קדימה</button>
             
-            <button type="button" onClick={() => {
+            <button data-agy-id="hebrew_date_picker_today_btn" type="button" onClick={() => {
                 const hd = new HDate();
                 setHYear(hd.getFullYear());
                 setHMonth(hd.getMonth());
                 setHDay(hd.getDate());
-            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: '#e6f2ff', border: '1px solid #b3d9ff', borderRadius: '6px', fontWeight: 'bold' }} title="חזור להיום"><Home size={16} /> היום</button>
+            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: "var(--primary-light)", border: "none", borderRadius: "999px", color: "var(--primary-color)", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", fontWeight: 'bold' }} title="חזור להיום"><Home size={16} /> היום</button>
             
-            <button type="button" onClick={() => {
+            <button data-agy-id="hebrew_date_picker_prev_month_btn" type="button" onClick={() => {
                 const prev = new HDate(1, hMonth, hYear).subtract(1, 'd');
                 setHMonth(prev.getMonth());
                 setHYear(prev.getFullYear());
-            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: 'var(--image-bg)', border: '1px solid var(--element-border)', borderRadius: '6px' }}>אחורה <ChevronLeft size={16} /></button>
+            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: "var(--element-bg)", border: "none", borderRadius: "999px", color: "var(--text-main)", fontWeight: "600", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>אחורה <ChevronLeft size={16} /></button>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1.5rem' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>
             <div className="form-group" style={{ margin: 0 }}>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>יום</label>
               <select 
-                value={hDay} 
+                data-agy-id="hebrew_date_picker_day_select"                value={hDay} 
                 onChange={e => setHDay(parseInt(e.target.value))}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--card-bg)' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: "12px", border: "1px solid var(--border-main)", background: "var(--card-bg)", color: "var(--text-main)", fontWeight: "500", transition: "all 0.2s", outline: "none" }}
               >
                 {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
                   <option key={d} value={d}>{HEBREW_DAYS[d]}</option>
@@ -214,7 +214,7 @@ export default function HebrewDatePicker({ value, onChange }) {
             <div className="form-group" style={{ margin: 0 }}>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>חודש</label>
               <select 
-                value={hMonth} 
+                data-agy-id="hebrew_date_picker_month_select"                value={hMonth} 
                 onChange={e => {
                    const newMonth = parseInt(e.target.value);
                    setHMonth(newMonth);
@@ -222,7 +222,7 @@ export default function HebrewDatePicker({ value, onChange }) {
                       setHDay(HDate.daysInMonth(newMonth, hYear));
                    }
                 }}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--card-bg)' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: "12px", border: "1px solid var(--border-main)", background: "var(--card-bg)", color: "var(--text-main)", fontWeight: "500", transition: "all 0.2s", outline: "none" }}
               >
                 {months.map(m => (
                   <option key={m.value} value={m.value}>{m.label}</option>
@@ -233,7 +233,7 @@ export default function HebrewDatePicker({ value, onChange }) {
             <div className="form-group" style={{ margin: 0 }}>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>שנה</label>
               <select 
-                value={hYear} 
+                data-agy-id="hebrew_date_picker_year_select"                value={hYear} 
                 onChange={e => {
                    const newYear = parseInt(e.target.value);
                    setHYear(newYear);
@@ -241,7 +241,7 @@ export default function HebrewDatePicker({ value, onChange }) {
                       setHMonth(12); // Fallback to Adar if changing to non-leap year
                    }
                 }}
-                style={{ width: '100%', padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--card-bg)' }}
+                style={{ width: '100%', padding: '0.5rem', borderRadius: "12px", border: "1px solid var(--border-main)", background: "var(--card-bg)", color: "var(--text-main)", fontWeight: "500", transition: "all 0.2s", outline: "none" }}
               >
                 {currentYearOptions.map(y => (
                   <option key={y} value={y}>{gematriya(y)}</option>
@@ -250,11 +250,11 @@ export default function HebrewDatePicker({ value, onChange }) {
             </div>
           </div>
           
-          <div style={{ marginBottom: '1.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+          <div style={{ marginBottom: '0.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center', marginBottom: '4px', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               <div>א'</div><div>ב'</div><div>ג'</div><div>ד'</div><div>ה'</div><div>ו'</div><div>ש'</div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
               {(() => {
                 try {
                   const firstDayOfWeek = new HDate(1, hMonth, hYear).greg().getDay();
@@ -279,23 +279,14 @@ export default function HebrewDatePicker({ value, onChange }) {
                         return (
                         <div 
                           key={d} 
-                          onClick={() => setHDay(d)}
-                          onDoubleClick={() => handleApply(d)}
+                          onClick={() => { setHDay(d); handleApply(d); }}
+                          onMouseOver={(e) => { if(d !== hDay) e.currentTarget.style.background = "var(--element-bg)"; }}
+                          onMouseOut={(e) => { if(d !== hDay) e.currentTarget.style.background = "transparent"; }}
                           style={{
-                            padding: '4px',
+                            padding: '2px',
                             textAlign: 'center',
                             cursor: 'pointer',
-                            borderRadius: '4px',
-                            background: d === hDay ? 'var(--primary-color)' : '#f9f9f9',
-                            color: d === hDay ? 'white' : 'inherit',
-                            fontWeight: d === hDay ? 'bold' : 'normal',
-                            border: '1px solid #eee',
-                            display: 'flex',
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '4px',
-                            minHeight: '40px'
+                            borderRadius: "12px", background: d === hDay ? "var(--gradient-primary)" : "transparent", color: d === hDay ? "white" : "var(--text-main)", fontWeight: d === hDay ? "bold" : "500", border: d === hDay ? "none" : "1px solid transparent", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "2px", minHeight: "44px", transition: "all 0.2s", boxShadow: d === hDay ? "0 4px 10px rgba(168,85,247,0.3)" : "none"
                           }}
                         >
                           <div>{HEBREW_DAYS[d]}</div>
@@ -317,18 +308,18 @@ export default function HebrewDatePicker({ value, onChange }) {
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.5rem', marginTop: '1rem' }}>
             <button 
-              type="button" 
+              data-agy-id="hebrew_date_picker_cancel_btn"              type="button" 
               onClick={() => setIsOpen(false)}
               className="btn btn-outline"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'transparent', cursor: 'pointer' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 1rem', borderRadius: "999px", border: "1px solid var(--border-main)", background: "var(--element-bg)", color: "var(--text-main)", fontWeight: "600", transition: "all 0.2s", cursor: 'pointer' }}
             >
               <X size={16} /> ביטול
             </button>
             <button 
-              type="button" 
+              data-agy-id="hebrew_date_picker_apply_btn"              type="button" 
               onClick={() => handleApply()}
               className="btn btn-primary"
-              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 1.5rem', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', background: 'var(--primary-color)', color: 'white', border: 'none' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 1.5rem', borderRadius: "999px", fontWeight: "bold", cursor: "pointer", background: "var(--gradient-primary)", color: "white", border: "none", boxShadow: "0 4px 12px rgba(168,85,247,0.3)", transition: "all 0.2s" }}
             >
               <Check size={16} /> אישור
             </button>

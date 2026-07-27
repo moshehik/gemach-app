@@ -64,7 +64,8 @@ export async function PUT(request, { params }) {
         travelExpenses: typeof body.travelExpenses === 'boolean' ? body.travelExpenses : (body.travelExpenses === 'true' || body.travelExpenses === true),
         isActive: body.isActive !== undefined ? body.isActive : true,
         themeColor: body.themeColor,
-        profileImage: body.profileImage
+        profileImage: body.profileImage,
+        receiveEmailAlerts: typeof body.receiveEmailAlerts === 'boolean' ? body.receiveEmailAlerts : (body.receiveEmailAlerts === 'true' || body.receiveEmailAlerts === true)
       }
     });
 

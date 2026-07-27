@@ -185,7 +185,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   <ExternalLink size={16} /> מעבר לכרטיס
                 </Link>
               )}
-              <button type="button" onClick={() => setIsEditingCustomer(!isEditingCustomer)} style={{ fontSize: '0.9rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+              <button data-agy-id="ordergeneraldetails_button_1" type="button" onClick={() => setIsEditingCustomer(!isEditingCustomer)} style={{ fontSize: '0.9rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                 <RefreshCw size={16} /> החלף לקוח
               </button>
             </div>
@@ -215,8 +215,8 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
           ) : (
             <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
               <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                <button type="button" onClick={() => setCustomerMode('existing')} style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid', borderColor: customerMode === 'existing' ? '#2563eb' : '#cbd5e1', background: customerMode === 'existing' ? '#eff6ff' : 'white', color: customerMode === 'existing' ? '#1d4ed8' : '#475569', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}>בחר לקוח קיים</button>
-                <button type="button" onClick={() => setCustomerMode('new')} style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid', borderColor: customerMode === 'new' ? '#2563eb' : '#cbd5e1', background: customerMode === 'new' ? '#eff6ff' : 'white', color: customerMode === 'new' ? '#1d4ed8' : '#475569', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}>צור לקוח חדש</button>
+                <button data-agy-id="ordergeneraldetails_button_2" type="button" onClick={() => setCustomerMode('existing')} style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid', borderColor: customerMode === 'existing' ? '#2563eb' : '#cbd5e1', background: customerMode === 'existing' ? '#eff6ff' : 'white', color: customerMode === 'existing' ? '#1d4ed8' : '#475569', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}>בחר לקוח קיים</button>
+                <button data-agy-id="ordergeneraldetails_button_3" type="button" onClick={() => setCustomerMode('new')} style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid', borderColor: customerMode === 'new' ? '#2563eb' : '#cbd5e1', background: customerMode === 'new' ? '#eff6ff' : 'white', color: customerMode === 'new' ? '#1d4ed8' : '#475569', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}>צור לקוח חדש</button>
               </div>
               
               {customerMode === 'existing' ? (
@@ -234,12 +234,12 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                  <div><label style={labelStyle}>שם פרטי</label><input type="text" style={inputStyle} value={newCustomer.firstName} onChange={e => setNewCustomer({...newCustomer, firstName: e.target.value})} /></div>
-                  <div><label style={labelStyle}>שם משפחה</label><input type="text" style={inputStyle} value={newCustomer.lastName} onChange={e => setNewCustomer({...newCustomer, lastName: e.target.value})} /></div>
-                  <div><label style={labelStyle}>טלפון</label><input type="text" style={inputStyle} value={newCustomer.phone1} onChange={e => setNewCustomer({...newCustomer, phone1: e.target.value})} /></div>
-                  <div><label style={labelStyle}>עיר</label><input type="text" style={inputStyle} value={newCustomer.city} onChange={e => setNewCustomer({...newCustomer, city: e.target.value})} /></div>
+                  <div><label style={labelStyle}>שם פרטי</label><input data-agy-id="ordergeneraldetails_input_4" type="text" style={inputStyle} value={newCustomer.firstName} onChange={e => setNewCustomer({...newCustomer, firstName: e.target.value})} /></div>
+                  <div><label style={labelStyle}>שם משפחה</label><input data-agy-id="ordergeneraldetails_input_5" type="text" style={inputStyle} value={newCustomer.lastName} onChange={e => setNewCustomer({...newCustomer, lastName: e.target.value})} /></div>
+                  <div><label style={labelStyle}>טלפון</label><input data-agy-id="ordergeneraldetails_input_6" type="text" style={inputStyle} value={newCustomer.phone1} onChange={e => setNewCustomer({...newCustomer, phone1: e.target.value})} /></div>
+                  <div><label style={labelStyle}>עיר</label><input data-agy-id="ordergeneraldetails_input_7" type="text" style={inputStyle} value={newCustomer.city} onChange={e => setNewCustomer({...newCustomer, city: e.target.value})} /></div>
                   <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
-                     <button type="button" onClick={handleSaveNewCustomer} style={{ width: '100%', padding: '0.8rem', background: 'linear-gradient(to right, #2563eb, #3b82f6)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', boxShadow: '0 4px 6px rgba(37,99,235,0.2)' }}>שמור ובחר לקוח</button>
+                     <button data-agy-id="ordergeneraldetails_button_8" type="button" onClick={handleSaveNewCustomer} style={{ width: '100%', padding: '0.8rem', background: 'linear-gradient(to right, #2563eb, #3b82f6)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', boxShadow: '0 4px 6px rgba(37,99,235,0.2)' }}>שמור ובחר לקוח</button>
                   </div>
                 </div>
               )}
@@ -259,7 +259,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
             </div>
             
             <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-              <button type="button" onClick={() => setIsEditingOrderDetails(!isEditingOrderDetails)} style={{ fontSize: '0.9rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+              <button data-agy-id="ordergeneraldetails_button_9" type="button" onClick={() => setIsEditingOrderDetails(!isEditingOrderDetails)} style={{ fontSize: '0.9rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                 {isEditingOrderDetails ? <><Check size={16} /> סיים עריכה</> : <><Edit2 size={16} /> ערוך פרטים</>}
               </button>
             </div>
@@ -310,7 +310,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
               {/* Custom Duration / Abroad */}
               <div>
                 <div style={{ ...groupStyle, display: 'inline-flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '0.8rem 1.2rem', borderRadius: '10px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => validateAndChangeDate('isAbroad', !order.isAbroad)}>
-                  <input 
+                  <input data-agy-id="ordergeneraldetails_input_10" 
                     type="checkbox" 
                     id="isAbroad"
                     checked={order.isAbroad ?? false} 
@@ -358,7 +358,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
               {/* Notes */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <label style={labelStyle}>הערות להזמנה:</label>
-                <textarea 
+                <textarea data-agy-id="ordergeneraldetails_textarea_11" 
                   value={order.notes || ''} 
                   onChange={(e) => handleChange('notes', e.target.value)}
                   style={{ ...inputStyle, minHeight: '100px', resize: 'vertical', background: 'white' }}

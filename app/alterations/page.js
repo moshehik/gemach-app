@@ -186,35 +186,32 @@ export default function AlterationsPage() {
   };
 
   return (
-    <main className="container animate-fade-in" style={{ padding: '2rem 1rem', minHeight: '80vh' }}>
+    <main data-agy-id="alterations-page-main" className="container animate-fade-in" style={{ padding: '2rem 1rem', minHeight: '80vh' }}>
       <div style={{ 
         position: 'relative',
         marginBottom: '2rem', padding: '2.5rem 2rem', 
-        background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)', 
+        background: 'var(--card-bg)', 
         borderRadius: '24px', 
-        boxShadow: '0 20px 40px -10px rgba(0,0,0,0.3)',
-        color: 'white',
-        overflow: 'hidden',
+        boxShadow: 'var(--shadow-lg)',
+        border: 'var(--glass-border)',
+        color: 'var(--text-main)',
         display: 'flex',
         flexDirection: 'column',
         gap: '2rem'
       }}>
         {/* Decorative ambient blobs */}
-        <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '200px', height: '200px', background: 'linear-gradient(135deg, #a855f7, #ec4899)', borderRadius: '50%', filter: 'blur(60px)', opacity: 0.4 }}></div>
-        <div style={{ position: 'absolute', bottom: '-50px', left: '-50px', width: '250px', height: '250px', background: 'linear-gradient(135deg, #3b82f6, #2dd4bf)', borderRadius: '50%', filter: 'blur(70px)', opacity: 0.3 }}></div>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: '24px', pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '200px', height: '200px', background: 'linear-gradient(135deg, #a855f7, #ec4899)', borderRadius: '50%', filter: 'blur(60px)', opacity: 0.15 }}></div>
+          <div style={{ position: 'absolute', bottom: '-50px', left: '-50px', width: '250px', height: '250px', background: 'linear-gradient(135deg, #3b82f6, #2dd4bf)', borderRadius: '50%', filter: 'blur(70px)', opacity: 0.1 }}></div>
+        </div>
 
         {/* Top Header Row */}
         <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '2.5rem', display: 'flex', alignItems: 'center', gap: '12px', fontWeight: '800', textShadow: '0 2px 10px rgba(0,0,0,0.2)' }}>
-              <div style={{ background: 'linear-gradient(135deg, #ec4899, #f43f5e)', padding: '0.8rem', borderRadius: '16px', display: 'flex', boxShadow: '0 10px 20px rgba(236,72,153,0.3)' }}>
-                <Scissors size={32} color="white" />
-              </div>
+            <h1 style={{ margin: 0, fontSize: '2.5rem', display: 'flex', alignItems: 'center', gap: '12px', fontWeight: '800' }}>
+              <Scissors size={32} color="var(--primary-color)" />
               ניהול תפירות ותיקונים
             </h1>
-            <p style={{ margin: '0.5rem 0 0 0', color: '#cbd5e1', fontSize: '1.1rem', marginRight: '64px' }}>
-              נהל, סנן ובדוק את כל התיקונים העתידיים במערכת ביעילות מירבית.
-            </p>
           </div>
 
           <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
@@ -238,22 +235,24 @@ export default function AlterationsPage() {
               ]}
               iconOnly={true}
               onFetchData={fetchForExport}
-              customStyle={{ padding: '0.8rem', borderRadius: '12px', background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', color: 'white', backdropFilter: 'blur(10px)' }}
+              customStyle={{ padding: '0.8rem', borderRadius: '12px', background: 'var(--element-bg)', border: '1px solid var(--element-border)', color: 'var(--text-main)', backdropFilter: 'blur(10px)' }}
             />
             <button 
+              data-agy-id="print-wizard-button"
               onClick={() => setIsPrintWizardOpen(true)}
-              style={{ padding: '0.8rem', borderRadius: '12px', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.2)', color: 'white', background: 'rgba(255,255,255,0.1)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
-              onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-              onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              style={{ padding: '0.8rem', borderRadius: '12px', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--text-main)', background: 'var(--element-bg)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
+              onMouseOver={e => e.currentTarget.style.background = 'var(--divider)'}
+              onMouseOut={e => e.currentTarget.style.background = 'var(--element-bg)'}
               title="אשף הדפסה"
             >
               <Printer size={22} />
             </button>
             <button 
+              data-agy-id="legend-button"
               onClick={() => setIsLegendOpen(true)}
-              style={{ padding: '0.8rem', borderRadius: '12px', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid rgba(255,255,255,0.2)', color: 'white', background: 'rgba(255,255,255,0.1)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
-              onMouseOver={e => e.currentTarget.style.background = 'rgba(255,255,255,0.2)'}
-              onMouseOut={e => e.currentTarget.style.background = 'rgba(255,255,255,0.1)'}
+              style={{ padding: '0.8rem', borderRadius: '12px', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--text-main)', background: 'var(--element-bg)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
+              onMouseOver={e => e.currentTarget.style.background = 'var(--divider)'}
+              onMouseOut={e => e.currentTarget.style.background = 'var(--element-bg)'}
               title="מקרא"
             >
               <Info size={22} />
@@ -265,40 +264,40 @@ export default function AlterationsPage() {
         <div style={{ 
           position: 'relative', zIndex: 1, 
           display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap', 
-          background: 'rgba(255, 255, 255, 0.05)', padding: '1rem 1.5rem', 
-          borderRadius: '16px', border: '1px solid rgba(255, 255, 255, 0.1)',
-          backdropFilter: 'blur(12px)',
-          boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.1)'
+          background: 'var(--element-bg)', padding: '1rem 1.5rem', 
+          borderRadius: '16px', border: '1px solid var(--element-border)',
+          backdropFilter: 'blur(12px)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar size={18} color="#94a3b8" />
-            <label style={{ fontSize: '0.9rem', fontWeight: '600', color: '#e2e8f0' }}>מתאריך:</label>
-            <div style={{ width: '140px' }}>
+            <Calendar size={18} color="var(--text-muted)" />
+            <label style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>מתאריך:</label>
+            <div style={{ width: '200px' }}>
               <HebrewDatePicker value={startDate} onChange={setStartDate} />
             </div>
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar size={18} color="#94a3b8" />
-            <label style={{ fontSize: '0.9rem', fontWeight: '600', color: '#e2e8f0' }}>עד תאריך:</label>
-            <div style={{ width: '140px' }}>
+            <Calendar size={18} color="var(--text-muted)" />
+            <label style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>עד תאריך:</label>
+            <div style={{ width: '200px' }}>
               <HebrewDatePicker value={endDate} onChange={setEndDate} />
             </div>
           </div>
           
-          <div style={{ width: '1px', height: '30px', background: 'rgba(255,255,255,0.2)', margin: '0 0.5rem' }}></div>
+          <div style={{ width: '1px', height: '30px', background: 'var(--element-border)', margin: '0 0.5rem' }}></div>
           
-          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.95rem', fontWeight: '500', color: '#e2e8f0' }}>
+          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.95rem', fontWeight: '500', color: 'var(--text-main)' }}>
             <div style={{ 
               width: '20px', height: '20px', borderRadius: '6px', 
-              border: '2px solid rgba(255,255,255,0.4)', 
-              background: showOnlyPending ? '#ec4899' : 'rgba(0,0,0,0.2)',
+              border: '2px solid var(--element-border)', 
+              background: showOnlyPending ? '#ec4899' : 'var(--input-bg)',
               marginLeft: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.2s'
             }}>
               {showOnlyPending && <Check size={14} color="white" strokeWidth={3} />}
             </div>
             <input 
+              data-agy-id="checkbox-show-only-pending"
               type="checkbox" 
               checked={showOnlyPending} 
               onChange={e => setShowOnlyPending(e.target.checked)} 
@@ -310,14 +309,15 @@ export default function AlterationsPage() {
           <div style={{ flex: 1 }}></div>
 
           <button 
+            data-agy-id="mark-all-done-button"
             onClick={markAllDone} 
             disabled={!startDate}
             style={{ 
               padding: '0.6rem 1.2rem', fontSize: '0.95rem', borderRadius: '12px', 
               display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold',
-              background: !startDate ? 'rgba(255,255,255,0.1)' : 'linear-gradient(135deg, #10b981, #059669)',
-              color: !startDate ? 'rgba(255,255,255,0.4)' : 'white',
-              border: !startDate ? '1px solid rgba(255,255,255,0.1)' : 'none',
+              background: !startDate ? 'var(--element-bg)' : 'linear-gradient(135deg, #10b981, #059669)',
+              color: !startDate ? 'var(--text-muted)' : 'white',
+              border: !startDate ? '1px solid var(--element-border)' : 'none',
               boxShadow: !startDate ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.4)',
               cursor: !startDate ? 'not-allowed' : 'pointer',
               transition: 'all 0.2s'
@@ -442,7 +442,7 @@ export default function AlterationsPage() {
                         {!item.alterationDone && (
                           <button 
                             className="btn btn-primary" 
-                            style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: '#ecfdf5', color: '#10b981' }}
+                            style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}
                             onClick={() => markDone(item.id)}
                             title="סמן שבוצע"
                           >

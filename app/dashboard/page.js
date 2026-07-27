@@ -1,4 +1,4 @@
-﻿import prisma from '../lib/prisma';
+import prisma from '../lib/prisma';
 import DashboardCharts from './DashboardCharts';
 
 export const dynamic = 'force-dynamic';
@@ -53,26 +53,26 @@ export default async function Dashboard() {
     }));
 
   return (
-    <main className="container animate-fade-in" style={{ paddingTop: '3rem' }}>
+    <main className="container animate-fade-in" style={{ paddingTop: '3rem' }} data-agy-id="dashboard_main_container">
       <h1 style={{ marginBottom: '2rem' }}>אזור ניהול - סיכומים ופילוחים</h1>
       
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', marginBottom: '3rem' }}>
-        <div className="dress-card" style={{ padding: '2rem', textAlign: 'center' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem', marginBottom: '3rem' }} data-agy-id="dashboard_kpi_container">
+        <div className="dress-card" style={{ padding: '2rem', textAlign: 'center' }} data-agy-id="dashboard_revenue_card">
           <h3 style={{ color: 'var(--text-muted)' }}>סה"כ הכנסות</h3>
           <div style={{ fontSize: '2.5rem', fontWeight: '700', color: 'var(--primary-color)' }}>₪{totalRevenue.toLocaleString()}</div>
         </div>
         
-        <div className="dress-card" style={{ padding: '2rem', textAlign: 'center' }}>
+        <div className="dress-card" style={{ padding: '2rem', textAlign: 'center' }} data-agy-id="dashboard_customers_card">
           <h3 style={{ color: 'var(--text-muted)' }}>לקוחות פעילים</h3>
           <div style={{ fontSize: '2.5rem', fontWeight: '700', color: 'var(--primary-color)' }}>{totalCustomers.toLocaleString()}</div>
         </div>
 
-        <div className="dress-card" style={{ padding: '2rem', textAlign: 'center' }}>
+        <div className="dress-card" style={{ padding: '2rem', textAlign: 'center' }} data-agy-id="dashboard_orders_card">
           <h3 style={{ color: 'var(--text-muted)' }}>סה"כ הזמנות</h3>
           <div style={{ fontSize: '2.5rem', fontWeight: '700', color: 'var(--primary-color)' }}>{totalOrders.toLocaleString()}</div>
         </div>
         
-        <div className="dress-card" style={{ padding: '2rem', textAlign: 'center' }}>
+        <div className="dress-card" style={{ padding: '2rem', textAlign: 'center' }} data-agy-id="dashboard_employees_card">
           <h3 style={{ color: 'var(--text-muted)' }}>עובדים פעילים</h3>
           <div style={{ fontSize: '2.5rem', fontWeight: '700', color: '#e53935' }}>{totalEmployees}</div>
         </div>

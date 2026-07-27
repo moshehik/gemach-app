@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import './rentals.css';
@@ -165,12 +165,13 @@ export default function RentalsPage() {
   // Removed old inline modal functions
 
   return (
-    <main className="container rentals-page">
+    <main data-agy-id="rentals-page-main" className="container rentals-page">
       <div>
         <div className="quick-return-bar">
         <h2>החזרה מהירה</h2>
         <form onSubmit={handleQuickReturn} className="barcode-input-container" style={{ position: 'relative' }}>
           <input 
+            data-agy-id="input-barcode"
             type="text" 
             className={`barcode-input ${quickStatus === 'success' ? 'success-flash' : quickStatus === 'error' ? 'error-flash' : ''}`}
             placeholder="סרוק ברקוד כאן..." 
@@ -201,6 +202,7 @@ export default function RentalsPage() {
             loading={aiLoading}
           />
           <button 
+            data-agy-id="adv-search-button"
             onClick={() => setShowAdvSearch(true)}
             className="btn btn-outline"
             style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
@@ -218,23 +220,23 @@ export default function RentalsPage() {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('order_id', 'מספר הזמנה')}</label>
-                <input type="text" className="form-control" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} />
+                <input data-agy-id="input-adv-order-id" type="text" className="form-control" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>ברקוד/פרטי פריט</label>
-                <input type="text" className="form-control" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} />
+                <input data-agy-id="input-adv-item-details" type="text" className="form-control" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('order_customerName', 'שם לקוח')}</label>
-                <input type="text" className="form-control" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} />
+                <input data-agy-id="input-adv-customer-name" type="text" className="form-control" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>טלפון לקוח</label>
-                <input type="text" className="form-control" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} />
+                <input data-agy-id="input-adv-customer-phone" type="text" className="form-control" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>עיר מגורים</label>
-                <input type="text" className="form-control" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} />
+                <input data-agy-id="input-adv-customer-city" type="text" className="form-control" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
@@ -249,6 +251,7 @@ export default function RentalsPage() {
 
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
         <button 
+          data-agy-id="view-pending-button"
           className={`btn ${viewMode === 'pending' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setViewMode('pending')}
           style={{ borderRadius: '20px', padding: '0.5rem 1.5rem' }}
@@ -256,6 +259,7 @@ export default function RentalsPage() {
           השכרות (ממתינים)
         </button>
         <button 
+          data-agy-id="view-active-button"
           className={`btn ${viewMode === 'active' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setViewMode('active')}
           style={{ borderRadius: '20px', padding: '0.5rem 1.5rem' }}
@@ -263,6 +267,7 @@ export default function RentalsPage() {
           פעילים (אצל לקוח)
         </button>
         <button 
+          data-agy-id="view-returned-button"
           className={`btn ${viewMode === 'returned' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setViewMode('returned')}
           style={{ borderRadius: '20px', padding: '0.5rem 1.5rem' }}
@@ -270,6 +275,7 @@ export default function RentalsPage() {
           הוחזרו (חלקי/מלא)
         </button>
         <button 
+          data-agy-id="view-all-button"
           className={`btn ${viewMode === 'all' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setViewMode('all')}
           style={{ borderRadius: '20px', padding: '0.5rem 1.5rem' }}
@@ -277,6 +283,7 @@ export default function RentalsPage() {
           כל ההזמנות הפעילות
         </button>
         <button 
+          data-agy-id="view-archive-button"
           className={`btn ${viewMode === 'archive' ? 'btn-primary' : 'btn-outline'}`}
           onClick={() => setViewMode('archive')}
           style={{ borderRadius: '20px', padding: '0.5rem 1.5rem' }}

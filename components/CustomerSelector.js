@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect, useRef } from 'react';
 
 export default function CustomerSelector({ value, onChange, placeholder = 'חיפוש ובחירת לקוח...', error = false }) {
@@ -57,8 +57,9 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
   };
 
   return (
-    <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
+    <div data-agy-id="customer_selector_container" ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
       <input
+        data-agy-id="customer_selector_input"
         type="text"
         value={query}
         onChange={(e) => {

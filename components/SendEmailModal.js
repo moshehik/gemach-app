@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Send } from 'lucide-react';
@@ -120,8 +120,8 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
   };
 
   const content = (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} dir="rtl">
-      <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
+    <div data-agy-id="send_email_modal_backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} dir="rtl">
+      <div data-agy-id="send_email_modal_container" style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
         <h2 style={{ marginTop: 0, color: 'var(--primary-color)', marginBottom: '1.5rem', borderBottom: '2px solid #eee', paddingBottom: '0.5rem' }}>שליחת מייל</h2>
         
         {success ? (
@@ -135,27 +135,27 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
             
             <div>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', fontSize: '0.9rem' }}>אל (To):</label>
-              <input type="email" name="to" value={formData.to} onChange={handleChange} required style={inputStyle} dir="ltr" />
+              <input data-agy-id="send_email_to_input" type="email" name="to" value={formData.to} onChange={handleChange} required style={inputStyle} dir="ltr" />
             </div>
 
             <div>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', fontSize: '0.9rem' }}>עותק (CC):</label>
-              <input type="email" name="cc" value={formData.cc} onChange={handleChange} style={inputStyle} dir="ltr" />
+              <input data-agy-id="send_email_cc_input" type="email" name="cc" value={formData.cc} onChange={handleChange} style={inputStyle} dir="ltr" />
             </div>
 
             <div>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', fontSize: '0.9rem' }}>נושא:</label>
-              <input type="text" name="subject" value={formData.subject} onChange={handleChange} required style={inputStyle} />
+              <input data-agy-id="send_email_subject_input" type="text" name="subject" value={formData.subject} onChange={handleChange} required style={inputStyle} />
             </div>
 
             <div>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', fontSize: '0.9rem' }}>תוכן:</label>
-              <textarea name="body" value={formData.body} onChange={handleChange} required style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} />
+              <textarea data-agy-id="send_email_body_textarea" name="body" value={formData.body} onChange={handleChange} required style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} />
             </div>
 
             <div>
               <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', fontSize: '0.9rem' }}>קובץ מצורף:</label>
-              <input type="file" onChange={handleFileChange} style={inputStyle} />
+              <input data-agy-id="send_email_file_input" type="file" onChange={handleFileChange} style={inputStyle} />
             </div>
 
             <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '8px', border: '1px solid #e9ecef', marginTop: '0.5rem' }}>
@@ -163,7 +163,7 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
               
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem' }}>שם משתמש (מנהל):</label>
-                <select name="username" value={formData.username} onChange={handleChange} required style={inputStyle}>
+                <select data-agy-id="send_email_admin_select" name="username" value={formData.username} onChange={handleChange} required style={inputStyle}>
                   <option value="">-- בחר מנהל/מתכנת --</option>
                   {admins.map(admin => (
                     <option key={admin.id} value={admin.id}>{admin.firstName} {admin.lastName || ''}</option>
@@ -173,16 +173,16 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
 
               <div>
                 <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem' }}>סיסמה:</label>
-                <input type="password" name="password" value={formData.password} onChange={handleChange} required style={inputStyle} />
+                <input data-agy-id="send_email_password_input" type="password" name="password" value={formData.password} onChange={handleChange} required style={inputStyle} />
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-              <button type="submit" disabled={loading} className="btn btn-primary" style={{ flex: 1, padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+              <button data-agy-id="send_email_submit_btn" type="submit" disabled={loading} className="btn btn-primary" style={{ flex: 1, padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
                 <Send size={18} />
                 {loading ? 'שולח...' : 'שלח מייל'}
               </button>
-              <button type="button" onClick={onClose} disabled={loading} className="btn btn-outline" style={{ flex: 1, padding: '0.75rem' }}>
+              <button data-agy-id="send_email_cancel_btn" type="button" onClick={onClose} disabled={loading} className="btn btn-outline" style={{ flex: 1, padding: '0.75rem' }}>
                 ביטול
               </button>
             </div>

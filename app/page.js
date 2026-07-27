@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
@@ -267,8 +267,8 @@ export default function HomeDashboard() {
                     }, 100);
                   }}
                   style={{ background: 'var(--element-bg)', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer', transition: 'background 0.2s' }}
-                  onMouseOver={e => e.currentTarget.style.background = 'var(--element-bg)'}
-                  onMouseOut={e => e.currentTarget.style.background = '#f3f4f6'}
+                  onMouseOver={e => e.currentTarget.style.background = 'var(--primary-light, var(--element-bg))'}
+                  onMouseOut={e => e.currentTarget.style.background = 'var(--element-bg)'}
                 >
                   <Search size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
                   {s}

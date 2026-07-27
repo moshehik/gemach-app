@@ -506,3 +506,191 @@ AI RESPONSE:
 
 איך אוכל לעזור לך היום? למשל, אפשר לחפש דגם שמלה לפי שם, לבדוק פרטים של הזמנה ספציפית או למצוא פרטי לקוח.
 
+==== NEW REQUEST ====
+PROMPT:
+מידות 50
+AI RESPONSE:
+SQL: SELECT DM.name AS "שם הדגם", DI."sizeText" AS "מידה", DI."dressBarcode" AS "ברקוד", '/dresses/' || DM.id AS "_actionUrl", 'צפה בדגם' AS "_actionLabel" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM.id WHERE DI."sizeText" = '50' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false;
+
+מצאתי מספר שמלות במידה 50. הנה הרשימה המעודכנת של הדגמים הזמינים במידה זו:
+
+[FILTER:50]
+
+==== NEW REQUEST ====
+PROMPT:
+אני מחפשת שמלת תחרה במידה 42
+AI RESPONSE:
+SQL: SELECT DM."name" AS "שם הדגם", DI."sizeText" AS "מידה", DI."dressBarcode" AS "ברקוד", '/dresses/' || DM."id" AS "_actionUrl", 'פרטי דגם' AS "_actionLabel" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM."id" WHERE DM."name" ILIKE '%תחרה%' AND DI."sizeText" = '42' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false;
+
+==== NEW REQUEST ====
+PROMPT:
+אני מחפשת שמלת תחרה במידה 42
+AI RESPONSE:
+SQL: SELECT DM.name AS "שם הדגם", DI."sizeText" AS "מידה", DI."dressBarcode" AS "ברקוד", '/dresses/' || DM.id AS "_actionUrl", 'פרטי דגם' AS "_actionLabel" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM.id WHERE DM.name ILIKE '%תחרה%' AND DI."sizeText" = '42' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false;
+
+[FILTER:תחרה]
+
+==== NEW REQUEST ====
+PROMPT:
+מידות 50
+AI RESPONSE:
+SQL: SELECT DISTINCT DM.name AS "שם דגם", '/dress-models/' || DM.id AS "_actionUrl", 'צפייה בדגם' AS "_actionLabel" FROM "DressModel" DM JOIN "DressItem" DI ON DM.id = DI."dressModelId" WHERE DM."isDeleted" = false AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DI."sizeText" = '50';
+
+בשנית, הנה רשימת הדגמים הזמינים במידה 50:
+
+- שחור זהב ריבועים
+- שחור זיגזג
+- שחור אלכסונים (ארוך וקצר)
+- שחור שיפון
+- שחור מעוינים
+- שחור פרחים תלת מימד
+- שחור יהלומים קצר
+- קאמל
+- שחור פנינים
+- שחור תחרה לבנה
+- שחור קפלים
+- ורוד שחור רשת ארוך
+- כחול חלקים
+- כחול שפריץ זהב
+- שחור אורגנזה הדפס סגול
+- סגול אורגנזה
+- שחור נחושת
+- שחור הדפס ורוד
+- שחור הדפס מפושל
+- ורוד גוונים
+
+נשמח לעזור לך לבדוק זמינות של דגם ספציפי לתאריך הרצוי שלך. [FILTER:50]
+
+==== NEW REQUEST ====
+PROMPT:
+מידה 45 בלבד
+AI RESPONSE:
+SQL: SELECT DM."name" AS "שם הדגם", DI."sizeText" AS "מידה", '/models/' || DM."id" AS "_actionUrl", 'פרטי דגם' AS "_actionLabel" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM."id" WHERE DI."sizeText" = '45' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false GROUP BY DM."name", DI."sizeText", DM."id"
+
+שלום! מצאתי עבורך את הדגמים הבאים במידה 45:
+
+[כאן יופיעו תוצאות החיפוש ברגע שהשאילתה תרוץ]
+
+נשמח לעמוד לרשותך בכל שאלה נוספת או בתיאום הגעה למדידה. 
+
+[FILTER:45]
+
+==== NEW REQUEST ====
+PROMPT:
+מידות 16
+AI RESPONSE:
+SQL: SELECT DM."name" AS "שם דגם", DI."sizeText" AS "מידה", '/dress-models/' || DM."id" AS "_actionUrl", 'פרטי דגם' AS "_actionLabel" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM."id" WHERE DI."sizeText" = '16' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false GROUP BY DM."name", DI."sizeText", DM."id";
+
+שלום! מצאתי עבורך את הדגמים הזמינים במידה 16. הנה הרשימה:
+
+[FILTER:16]
+
+==== NEW REQUEST ====
+PROMPT:
+מידות 50 בלבד
+AI RESPONSE:
+SQL: SELECT DM."name" AS "שם הדגם", DI."sizeText" AS "מידה", DI."dressBarcode" AS "ברקוד", '/dresses/' || DM."id" AS "_actionUrl", 'צפייה בדגם' AS "_actionLabel" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM."id" WHERE DI."sizeText" = '50' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false;
+
+הנה כל השמלות הזמינות במידה 50:
+
+[FILTER:50]
+
+==== NEW REQUEST ====
+PROMPT:
+מידות 50 בלבד
+AI RESPONSE:
+SQL: SELECT DISTINCT DM.name AS "שם הדגם", DM.legacyId AS "מספר דגם", '/dress-models/' || DM.id AS "_actionUrl", 'צפייה בפרטי הדגם' AS "_actionLabel" FROM "DressModel" DM JOIN "DressItem" DI ON DM.id = DI."dressModelId" WHERE DM."isDeleted" = false AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DI."sizeText" = '50' ORDER BY DM.name ASC;
+
+==== NEW REQUEST ====
+PROMPT:
+מידה 50
+AI RESPONSE:
+SQL: SELECT DISTINCT DM."name" AS "שם דגם", DM."barcodePrefix" AS "מספר דגם", '/dress-models/' || DM."id" AS "_actionUrl", 'צפייה בדגם' AS "_actionLabel" FROM "DressModel" DM JOIN "DressItem" DI ON DM."id" = DI."dressModelId" WHERE DI."sizeText" = '50' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DI."location" NOT ILIKE '%מחסן%' AND DI."location" NOT ILIKE '%warehouse%' AND DI."location" NOT ILIKE '%רזרבה%' AND DI."location" NOT ILIKE '%reserve%' AND DM."isDeleted" = false;
+
+מצאתי מספר דגמים זמינים במידה 50. אלו הדגמים שתוכלי לעיין בהם:
+[FILTER:50]
+
+==== NEW REQUEST ====
+PROMPT:
+מידה 50
+AI RESPONSE:
+SQL: SELECT DM."name" AS "שם הדגם", DI."sizeText" AS "מידה", DI."dressBarcode" AS "ברקוד", '/dresses/' || DM."id" AS "_actionUrl", 'צפייה בפריט' AS "_actionLabel" FROM "DressItem" AS DI JOIN "DressModel" AS DM ON DI."dressModelId" = DM."id" WHERE DI."sizeText" = '50' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DI."location" NOT ILIKE '%מחסן%' AND DI."location" NOT ILIKE '%warehouse%' AND DI."location" NOT ILIKE '%רזרבה%' AND DI."location" NOT ILIKE '%reserve%' AND DM."isDeleted" = false;
+
+מצאתי מספר שמלות במידה 50 שזמינות כרגע להשכרה. אלו הדגמים שמתאימים למידה שלך:
+
+[FILTER:50]
+
+==== NEW REQUEST ====
+PROMPT:
+מידה 50 בלבד
+AI RESPONSE:
+SQL: SELECT DISTINCT DM.name AS "שם דגם", DM.barcodePrefix AS "מק"ט", '/models/' || DM.id AS "_actionUrl", 'צפייה בדגם' AS "_actionLabel" FROM "DressModel" DM JOIN "DressItem" DI ON DM.id = DI."dressModelId" WHERE DI."sizeText" = '50' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false AND DI."location" NOT ILIKE '%מחסן%' AND DI."location" NOT ILIKE '%warehouse%' AND DI."location" NOT ILIKE '%רזרבה%' AND DI."location" NOT ILIKE '%reserve%';
+
+מצאתי דגמים זמינים במידה 50. תוכל לעיין ברשימה למעלה וללחוץ על "צפייה בדגם" לפרטים נוספים.
+
+[FILTER:50]
+
+==== NEW REQUEST ====
+PROMPT:
+מידות 50 בלבד
+AI RESPONSE:
+SQL: SELECT DM."name" AS "שם הדגם", DI."sizeText" AS "מידה", DI."location" AS "מיקום", '/dresses/' || DM."id" AS "_actionUrl", 'צפייה בדגם' AS "_actionLabel" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM."id" WHERE DI."sizeText" = '50' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DI."location" NOT ILIKE '%מחסן%' AND DI."location" NOT ILIKE '%warehouse%' AND DI."location" NOT ILIKE '%רזרבה%' AND DI."location" NOT ILIKE '%reserve%';
+
+מצאתי מספר דגמים זמינים במידה 50. תוכל לעיין ברשימה להלן. אם תרצה לראות דגמים נוספים או לבצע סינון אחר, אני כאן לעזרתך. [FILTER:50]
+
+==== NEW REQUEST ====
+PROMPT:
+רק ורוד
+AI RESPONSE:
+SQL: SELECT DI."dressName" AS "שם הדגם", COUNT(DI.id) AS "כמות זמינה", '/dresses/' || DM."id" AS "_actionUrl", 'צפייה בדגם' AS "_actionLabel" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM."id" WHERE DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DI."location" NOT ILIKE '%מחסן%' AND DI."location" NOT ILIKE '%warehouse%' AND DI."location" NOT ILIKE '%רזרבה%' AND DI."location" NOT ILIKE '%reserve%' AND DI."sizeText" = '50' AND DI."dressName" ILIKE '%ורוד%' GROUP BY DI."dressName", DM."id";
+
+אלו הדגמים שזמינים כרגע במידה 50 ובצבע ורוד שנמצאים בחנות:
+
+- 4 שמלות מדגם ורוד שחור רשת ארוך
+
+נשמח לעמוד לרשותך לכל שאלה נוספת.
+
+[FILTER:ורוד]
+
+==== NEW REQUEST ====
+PROMPT:
+ורוד ורק מידה 50
+AI RESPONSE:
+SQL: SELECT DM."name" AS "שם הדגם", DI."sizeText" AS "מידה", DI."dressBarcode" AS "ברקוד", '/dresses/' || DM."id" AS "_actionUrl", 'פרטי דגם' AS "_actionLabel" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM."id" WHERE DM."name" ILIKE '%ורוד%' AND DI."sizeText" = '50' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false AND DI."location" NOT ILIKE '%מחסן%' AND DI."location" NOT ILIKE '%warehouse%' AND DI."location" NOT ILIKE '%רזרבה%' AND DI."location" NOT ILIKE '%reserve%';
+
+שלום! מצאתי עבורך את השמלות הבאות בצבע ורוד במידה 50:
+
+(תוצאות יוצגו בטבלה למעלה)
+
+האם תרצי לבדוק זמינות לתאריך מסוים עבור אחד הדגמים הללו?
+
+[FILTER:ורוד 50]
+
+==== NEW REQUEST ====
+PROMPT:
+מידה 50 בלבד
+AI RESPONSE:
+SQL: SELECT DISTINCT DM."name" AS "שם הדגם", DM."barcodePrefix" AS "מספר דגם", '/dress-models/' || DM."id" AS "_actionUrl", 'צפייה בדגם' AS "_actionLabel" FROM "DressModel" DM JOIN "DressItem" DI ON DM."id" = DI."dressModelId" WHERE DI."sizeText" = '50' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false AND DI."location" NOT ILIKE '%מחסן%' AND DI."location" NOT ILIKE '%warehouse%' AND DI."location" NOT ILIKE '%רזרבה%' AND DI."location" NOT ILIKE '%reserve%';
+
+מצאתי דגמים שקיימים במידה 50. תוכל לעיין ברשימה מטה. [FILTER:50]
+
+==== NEW REQUEST ====
+PROMPT:
+מידה 50
+AI RESPONSE:
+SQL: SELECT DISTINCT DM."name" AS "שם הדגם", DI."sizeText" AS "מידה", '/dress-models/' || DM."id" AS "_actionUrl", 'צפייה בדגם' AS "_actionLabel" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM."id" WHERE DI."sizeText" = '50' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false AND DI."location" NOT ILIKE '%מחסן%' AND DI."location" NOT ILIKE '%warehouse%' AND DI."location" NOT ILIKE '%רזרבה%' AND DI."location" NOT ILIKE '%reserve%';
+
+מצאתי מספר דגמים זמינים במידה 50. תוכל לעיין ברשימה למטה. אם תרצה לראות את כל הדגמים שמתאימים למידה זו, השתמש בכפתור הסינון: [FILTER:50]
+
+==== NEW REQUEST ====
+PROMPT:
+למה  אתה מביא לי הזמנה שהקידומת שלה 350 אפילו שאין מידה 50 ?
+AI RESPONSE:
+סליחה על אי-ההבנה. ייתכן שהמערכת הציגה תוצאות כלליות עבור דגמים תחת הקידומת הזו, גם אם הפריט הספציפי במידה 50 אינו זמין או אינו מוגדר כרגע.
+
+כדי שאוכל לבדוק זאת עבורך בצורה מדויקת, אשמח לדעת האם תרצה שאבדוק את הזמינות עבור תאריך אירוע מסוים? 
+
+בכל מקרה, אבצע חיפוש ממוקד בבסיס הנתונים עבור דגמים תחת קידומת 350 שיש להם פריטים במידה 50 באופן פעיל:
+
+SQL: SELECT DISTINCT DM.name AS "שם דגם", DM.barcodePrefix AS "קידומת דגם" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM."id" WHERE DI."barcodePrefix" = 350 AND DI."sizeText" = '50' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false AND DI."location" NOT ILIKE '%מחסן%' AND DI."location" NOT ILIKE '%warehouse%' AND DI."location" NOT ILIKE '%רזרבה%' AND DI."location" NOT ILIKE '%reserve%';
+

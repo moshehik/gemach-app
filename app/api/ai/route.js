@@ -95,7 +95,11 @@ export async function POST(req) {
     const dateContext = `\nCRITICAL DATE CONTEXT: Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. You MUST use this as the anchor to calculate any relative dates or Hebrew dates provided by the user. For example, if the user asks for a date in the current Hebrew year, it is the year ${todayHebrew.split(' ').pop()}.
 Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearContext()}.`;
     
-    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${employeeContext}${dateContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    const warehouseSetting = await prisma.systemSetting.findUnique({ where: { key: 'inventory_include_warehouse' } });
+    const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
+    const warehouseContext = includeWarehouse ? '' : `\nCRITICAL INVENTORY RULE: The system settings define that dresses in the warehouse MUST NOT be shown to customers! Whenever you query the "DressItem" table in SQL, you MUST add: AND "location" NOT ILIKE '%מחסן%' AND "location" NOT ILIKE '%warehouse%' AND "location" NOT ILIKE '%רזרבה%' AND "location" NOT ILIKE '%reserve%'.`;
+    
+    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${employeeContext}${dateContext}${warehouseContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
     
     let aiResponse = await generateContent(initialPrompt);
     
@@ -216,6 +220,7 @@ CRITICAL RULES FOR YOUR RESPONSE:
 2. Whenever you mention a date, you MUST mention BOTH the Hebrew date and the Gregorian date together, with the Gregorian date in parentheses (e.g., "י' בסיוון תשפ\"ו (26/05/2026)"). You MUST extract these dates EXACTLY from the "תאריך עברי" and "תאריך" fields in the availability results JSON provided to you. Do NOT calculate or guess any dates yourself.
 3. DO NOT output a long list of consecutive dates! If the results contain many consecutive days, group them into a simple range (e.g., "מ-א' בסיוון (17/05/2026) ועד כ' בסיוון (05/06/2026)"). Keep the response concise and natural.
 4. STRICT PRIVACY RULE: You must NEVER expose, mention, or list ANY customer names, phone numbers, or personal details in your text response. Your response is intended to be shown or forwarded to clients, so you must keep all other clients' information completely confidential. Only summarize inventory and availability.
+5. SMART FILTERING: If the user is asking about specific models, colors, or sizes, you MUST append a filter tag at the very end of your response: [FILTER:term] where term is the search term (e.g. [FILTER:זהב] or [FILTER:42]). The frontend will render this as a beautiful modern button to filter the display. Only provide ONE filter tag.
 Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${context}` : ''}`;
 
         try {
@@ -314,6 +319,7 @@ CRITICAL RULES FOR YOUR RESPONSE:
 3. DO NOT output a long list of consecutive dates! If the results contain many consecutive days, group them into a simple range (e.g., "מ-א' בסיוון (17/05/2026) ועד כ' בסיוון (05/06/2026)"). Keep the response concise and natural.
 4. DO NOT tell the user you are showing a table, and DO NOT output raw JSON or Markdown tables.
 5. STRICT PRIVACY RULE: You must NEVER expose, mention, or list ANY customer names, phone numbers, or personal details in your text response, even if you see them in the database results. Your response is intended to be shown or forwarded to clients, so you must keep all other clients' information completely confidential. Only summarize inventory and availability.
+6. SMART FILTERING: If the user is asking about specific models, colors, or sizes, you MUST append a filter tag at the very end of your response: [FILTER:term] where term is the search term (e.g. [FILTER:זהב] or [FILTER:42]). The frontend will render this as a beautiful modern button to filter the display. Only provide ONE filter tag.
 Summarize the information nicely as a helpful customer service representative. For example, instead of listing all items, say "יש לנו 5 שמלות מדגם זה במידות 38-42".`;
           
           aiResponse = await generateContent(followupPrompt);

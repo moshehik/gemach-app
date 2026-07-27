@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
@@ -246,6 +246,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
   return (
     <>
       <button 
+        data-agy-id="export_open_modal_btn"
         onClick={() => setIsModalOpen(true)}
         className={iconOnly ? "btn btn-outline" : "btn btn-primary"}
         title="מערכת הורדה ל-XL ודוחות"
@@ -258,20 +259,20 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
       </button>
 
       {isModalOpen && typeof document !== 'undefined' && createPortal(
-        <div style={{
+        <div data-agy-id="export_modal_backdrop" style={{
           position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
           backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
           display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
           paddingTop: '10vh', paddingBottom: '10vh'
         }}>
-          <div style={{
+          <div data-agy-id="export_modal_container" style={{
             background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px',
             width: '90%', maxWidth: '500px', position: 'relative',
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)', direction: 'rtl',
             maxHeight: '80vh', overflowY: 'auto'
           }}>
             <button 
-              onClick={() => setIsModalOpen(false)}
+              data-agy-id="export_modal_close_btn"              onClick={() => setIsModalOpen(false)}
               style={{ position: 'absolute', top: '15px', left: '15px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-main)' }}
             >
               <X size={24} />
@@ -288,14 +289,14 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                 <p style={{ fontSize: '0.85rem', color: '#664d03', marginBottom: '1rem' }}>ייצוא של מעל 200 שורות דורש אימות מנהל. אנא הזן סיסמת מנהל:</p>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
                   <input 
-                    type="password" 
+                    data-agy-id="export_admin_pin_input"                    type="password" 
                     value={adminPin}
                     onChange={(e) => setAdminPin(e.target.value)}
                     placeholder="סיסמת מנהל"
                     style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }}
                   />
                   <button 
-                    type="button"
+                    data-agy-id="export_admin_verify_btn"                    type="button"
                     onClick={handleAdminVerify}
                     disabled={isLoading}
                     style={{ padding: '0.5rem 1rem', background: '#198754', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
@@ -303,7 +304,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                     {isLoading ? <Loader2 size={18} className="animate-spin" /> : 'אישור'}
                   </button>
                   <button 
-                    type="button"
+                    data-agy-id="export_admin_cancel_btn"                    type="button"
                     onClick={() => { setShowAdminPrompt(false); setPendingAction(null); }}
                     style={{ padding: '0.5rem 1rem', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
                   >
@@ -316,7 +317,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                 <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', background: '#f8f9fa', padding: '1rem', borderRadius: '8px' }}>
                   <label style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>כמות שורות לייצוא:</label>
                   <input 
-                    type="number" 
+                    data-agy-id="export_limit_input"                    type="number" 
                     min="1" 
                     value={exportLimit}
                     onChange={(e) => {
@@ -338,7 +339,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                   <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: 'var(--text-muted)' }}>דוח מיידי מהנתונים (לפי הסינון הקיים):</h3>
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <button 
-                      type="button"
+                      data-agy-id="export_excel_btn"                      type="button"
                       onClick={() => handleActionClick('excel')}
                       className="btn btn-outline"
                       style={{ flex: 1, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer', background: '#f9f9f9' }}
@@ -347,7 +348,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                       <span>ייצוא לאקסל</span>
                     </button>
                     <button 
-                      type="button"
+                      data-agy-id="export_pdf_btn"                      type="button"
                       onClick={() => handleActionClick('pdf')}
                       className="btn btn-outline"
                       style={{ flex: 1, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer', background: '#f9f9f9' }}
@@ -370,7 +371,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                   </p>
                   
                   <textarea
-                    value={aiPrompt}
+                    data-agy-id="export_ai_prompt_textarea"                    value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
                     placeholder="הכנס את בקשתך לדוח..."
                     style={{ width: '100%', height: '80px', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', marginBottom: '1rem', fontFamily: 'inherit', resize: 'none' }}
@@ -379,7 +380,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                   
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <button 
-                      type="button"
+                      data-agy-id="export_excel_ai_btn"                      type="button"
                       onClick={() => handleActionClick('excel_ai')}
                       disabled={isLoading}
                       style={{ flex: 1, padding: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: '#9c27b0', color: 'white', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
@@ -388,7 +389,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                       <span>אקסל (AI)</span>
                     </button>
                     <button 
-                      type="button"
+                      data-agy-id="export_pdf_ai_btn"                      type="button"
                       onClick={() => handleActionClick('pdf_ai')}
                       disabled={isLoading}
                       style={{ flex: 1, padding: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: '#7b1fa2', color: 'white', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}

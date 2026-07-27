@@ -5,6 +5,7 @@ import { recalculateOrderObligations } from '../../../lib/pricingEngine';
 import { checkAuth } from '../../../lib/auth';
 import { cookies } from 'next/headers';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { validateOrderItemsAvailability } from '../../../lib/inventory';
 
 export const dynamic = 'force-dynamic';
 
@@ -323,6 +324,29 @@ export async function POST(request) {
       orderBy: { orderId: 'desc' }
     });
     const nextOrderId = maxOrder ? maxOrder.orderId + 1 : 1;
+
+    // Validate inventory availability
+    if (data.items && data.items.length > 0) {
+      const validationResult = await validateOrderItemsAvailability(
+        data.items,
+        data.eventDate,
+        data.isAbroad,
+        data.fromDate,
+        data.toDate,
+        null // orderId
+      );
+
+      if (validationResult.error) {
+        return NextResponse.json({ error: validationResult.error }, { status: 400 });
+      }
+      
+      if (!validationResult.valid) {
+        return NextResponse.json({
+          error: 'אחד או יותר מהפריטים שניסית להזמין כבר נתפסו לאחרונה על ידי הזמנה אחרת בתאריכים אלו.',
+          validationErrors: validationResult.errors
+        }, { status: 409 });
+      }
+    }
 
     const order = await prisma.order.create({
       data: {

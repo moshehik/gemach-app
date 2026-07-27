@@ -1,4 +1,4 @@
-﻿import Link from 'next/link';
+import Link from 'next/link';
 import { 
   Bot, 
   BarChart3, 
@@ -55,7 +55,7 @@ const categories = [
 
 export default function AdminHubPage() {
   return (
-    <div className="container animate-fade-in" style={{ paddingTop: '3rem', paddingBottom: '3rem' }}>
+    <div className="container animate-fade-in" style={{ paddingTop: '3rem', paddingBottom: '3rem' }} data-agy-id="admin_hub_main_container">
       
       <style dangerouslySetInnerHTML={{__html: `
         .admin-card {
@@ -165,8 +165,8 @@ export default function AdminHubPage() {
                 const Icon = item.icon;
                 
                 return (
-                  <Link href={item.href} key={itemIndex} style={{ textDecoration: 'none' }}>
-                    <div className="admin-card" style={category.colorVars}>
+                  <Link href={item.href} key={itemIndex} style={{ textDecoration: 'none' }} data-agy-id={`admin_hub_link_${catIndex}_${itemIndex}`}>
+                    <div className="admin-card" style={category.colorVars} data-agy-id={`admin_hub_card_${catIndex}_${itemIndex}`}>
                       <div className="admin-card-icon">
                         <Icon size={28} strokeWidth={2} />
                       </div>

@@ -303,7 +303,7 @@ export default function OrderDetailsPage({ params }) {
   const activeTabDetails = tabs[activeTabIndex];
 
   return (
-    <main style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
+    <main data-agy-id="[id]_page_main_1" style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
       
       {/* Header Sticky Bar */}
       <div style={{ 
@@ -387,7 +387,7 @@ export default function OrderDetailsPage({ params }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
             {saveMessage && <span style={{ color: saveMessage.includes('שגיאה') ? '#ef4444' : '#10b981', fontWeight: 'bold', background: saveMessage.includes('שגיאה') ? '#fee2e2' : '#d1fae5', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>{saveMessage}</span>}
             
-            <button 
+            <button data-agy-id="[id]_page_button_2" 
               onClick={handleSave} 
               disabled={saving || isLocked}
               title={isLocked ? "הזמנה נעולה" : "שמור שינויים"}
@@ -410,7 +410,7 @@ export default function OrderDetailsPage({ params }) {
               שמור
             </button>
             
-            <button 
+            <button data-agy-id="[id]_page_button_3" 
               onClick={() => setShowEmployeesModal(true)}
               title="עובדים פעילים"
               style={{ 
@@ -424,7 +424,7 @@ export default function OrderDetailsPage({ params }) {
               <Users size={20} />
             </button>
 
-            <button 
+            <button data-agy-id="[id]_page_button_4" 
               onClick={() => setActiveTab('payments')}
               title={`מעבר לתשלום (₪${totalRequired - totalPaid})`}
               style={{ 
@@ -438,7 +438,7 @@ export default function OrderDetailsPage({ params }) {
               <CreditCard size={20} />
             </button>
 
-            <button 
+            <button data-agy-id="[id]_page_button_5" 
               onClick={handleExit}
               title="חזרה"
               style={{ 
@@ -462,7 +462,7 @@ export default function OrderDetailsPage({ params }) {
               const TabIcon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
-                <button
+                <button data-agy-id="[id]_page_button_6"
                   key={tab.id}
                   onClick={() => {
                     setIsManualTabChange(true);
@@ -519,7 +519,7 @@ export default function OrderDetailsPage({ params }) {
           <div style={{ position: 'relative' }}>
             {isLocked && (
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.4)', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', backdropFilter: 'blur(2px)', borderRadius: '16px' }}>
-                <button 
+                <button data-agy-id="[id]_page_button_7" 
                   onClick={handleUnlock}
                   style={{ position: 'sticky', top: '150px', marginTop: '2rem', padding: '1rem 2.5rem', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 8px 16px rgba(220, 38, 38, 0.3)' }}
                 >

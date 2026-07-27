@@ -586,7 +586,7 @@ export default function NewOrderPage() {
         }
       `}</style>
       
-      <main style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', direction: 'rtl' }}>
+      <main data-agy-id="new_page_main_1" style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', direction: 'rtl' }}>
         
         {step === 1 && (
           <div className="fade-in" style={{ maxWidth: '650px', margin: '4rem auto', background: 'var(--card-bg)', padding: '3rem', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.08)' }}>
@@ -596,13 +596,13 @@ export default function NewOrderPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', marginBottom: '2.5rem' }}>
-              <button 
+              <button data-agy-id="new_page_button_2" 
                 onClick={() => setCustomerMode('existing')}
                 style={{ flex: 1, padding: '1.2rem', background: customerMode === 'existing' ? 'var(--primary-color)' : 'var(--element-bg)', color: customerMode === 'existing' ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', transition: 'all 0.2s', boxShadow: customerMode === 'existing' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none' }}
               >
                 לקוח קיים במערכת
               </button>
-              <button 
+              <button data-agy-id="new_page_button_3" 
                 onClick={() => setCustomerMode('new')}
                 style={{ flex: 1, padding: '1.2rem', background: customerMode === 'new' ? 'var(--primary-color)' : 'var(--element-bg)', color: customerMode === 'new' ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', transition: 'all 0.2s', boxShadow: customerMode === 'new' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none' }}
               >
@@ -619,7 +619,7 @@ export default function NewOrderPage() {
                   placeholder="חפש לקוח לפי שם, טלפון, עיר..."
                 />
                 
-                <button 
+                <button data-agy-id="new_page_button_4" 
                   onClick={proceedToStep2}
                   disabled={!order.customerId}
                   style={{ width: '100%', marginTop: '3rem', padding: '1.2rem', background: order.customerId ? 'var(--primary-color)' : 'var(--element-bg)', color: order.customerId ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: order.customerId ? 'pointer' : 'not-allowed', transition: 'all 0.3s', boxShadow: order.customerId ? '0 8px 24px rgba(0,0,0,0.15)' : 'none' }}
@@ -632,31 +632,31 @@ export default function NewOrderPage() {
                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>שם פרטי *</label>
-                    <input type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({...prev, firstName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
+                    <input data-agy-id="new_page_input_5" type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({...prev, firstName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>שם משפחה *</label>
-                    <input type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({...prev, lastName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
+                    <input data-agy-id="new_page_input_6" type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({...prev, lastName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
                   </div>
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>טלפון נייד *</label>
-                    <input type="text" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({...prev, phone1: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
+                    <input data-agy-id="new_page_input_7" type="text" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({...prev, phone1: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>אימייל</label>
-                    <input type="email" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({...prev, email: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
+                    <input data-agy-id="new_page_input_8" type="email" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({...prev, email: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
                   </div>
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>עיר מגורים</label>
-                  <input type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
+                  <input data-agy-id="new_page_input_9" type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
                 </div>
                 
-                <button 
+                <button data-agy-id="new_page_button_10" 
                   onClick={() => handleSaveNewCustomerAndProceed()}
                   style={{ width: '100%', marginTop: '2rem', padding: '1.2rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.3s', boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}
                 >
@@ -682,7 +682,7 @@ export default function NewOrderPage() {
                 <div style={{ color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '1.1rem' }}>
                   <span>לקוח נבחר: <strong>{selectedCustomerName}</strong></span>
                   <span style={{ color: '#ccc' }}>|</span>
-                  <button onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>החלף לקוח</button>
+                  <button data-agy-id="new_page_button_11" onClick={() => setStep(1)} style={{ background: 'none', border: 'none', color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', padding: 0, fontSize: '1rem' }}>החלף לקוח</button>
                 </div>
               </div>
               <Link href="/orders" style={{ textDecoration: 'none', color: 'var(--text-muted)', fontWeight: 'bold' }}>ביטול</Link>
@@ -710,7 +710,7 @@ export default function NewOrderPage() {
 
                 <div style={{ marginBottom: '1.5rem', background: '#f8f9fa', padding: '1rem', borderRadius: '10px' }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontWeight: 'bold', color: '#444' }}>
-                    <input 
+                    <input data-agy-id="new_page_input_12" 
                       type="checkbox" 
                       name="isAbroad" 
                       checked={order.isAbroad} 
@@ -750,7 +750,7 @@ export default function NewOrderPage() {
 
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 'bold', color: '#444' }}>הערות להזמנה</label>
-                  <textarea 
+                  <textarea data-agy-id="new_page_textarea_13" 
                     name="notes" 
                     value={order.notes} 
                     onChange={handleOrderChange}
@@ -798,7 +798,7 @@ export default function NewOrderPage() {
                           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#444' }}>
                             מידה {loadingSizes && <span style={{fontSize:'0.85rem', color:'var(--primary-color)', fontWeight: 'normal'}}>(טוען...)</span>}
                           </label>
-                          <select 
+                          <select data-agy-id="new_page_select_14" 
                             name="sizeText" 
                             value={newItem.sizeText} 
                             onChange={handleNewItemChange}
@@ -818,7 +818,7 @@ export default function NewOrderPage() {
                       {/* Row 2: Alterations */}
                       <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', background: '#f8f9fa', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e9ecef', flexWrap: 'wrap' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <input 
+                          <input data-agy-id="new_page_input_15" 
                             type="checkbox" 
                             name="neckAlteration"
                             checked={newItem.neckAlteration || false} 
@@ -828,7 +828,7 @@ export default function NewOrderPage() {
                           <label style={{ fontWeight: 'bold', color: '#444', cursor: 'pointer', fontSize: '1.05rem' }} onClick={() => handleNewItemChange({ target: { name: 'neckAlteration', value: !newItem.neckAlteration }})}>תיקון צוואר</label>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <input 
+                          <input data-agy-id="new_page_input_16" 
                             type="checkbox" 
                             name="sleeveAlteration"
                             checked={newItem.sleeveAlteration || false} 
@@ -839,7 +839,7 @@ export default function NewOrderPage() {
                         </div>
                         <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '1rem', borderRight: '2px solid #dee2e6', paddingRight: '2rem', marginRight: '1rem', minWidth: '200px' }}>
                           <label style={{ fontWeight: 'bold', color: '#444', whiteSpace: 'nowrap', fontSize: '1.05rem' }}>תיקון אורך:</label>
-                          <input 
+                          <input data-agy-id="new_page_input_17" 
                             type="number" 
                             name="lengthAlteration"
                             value={newItem.lengthAlteration || ''} 
@@ -853,7 +853,7 @@ export default function NewOrderPage() {
                       {/* Row 3: Repairs */}
                       <div>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#444' }}>פירוט תיקונים נוספים</label>
-                        <input 
+                        <input data-agy-id="new_page_input_18" 
                           type="text" 
                           name="repairs" 
                           value={newItem.repairs} 
@@ -865,7 +865,7 @@ export default function NewOrderPage() {
 
                       {/* Row 4: Button */}
                       <div style={{ marginTop: '0.5rem' }}>
-                        <button 
+                        <button data-agy-id="new_page_button_19" 
                           type="button" 
                           onClick={addItemToOrder}
                           style={{ width: '100%', padding: '1.2rem', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(46,125,50,0.2)' }}
@@ -934,7 +934,7 @@ export default function NewOrderPage() {
                                   {calculating && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>...מחשב</span>}
                                 </td>
                                 <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                                  <button onClick={() => removeItem(idx)} style={{ background: '#ffebee', color: '#e53935', border: '1px solid #ffcdd2', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.background = '#e53935'; e.currentTarget.style.color = 'white'; }} onMouseOut={(e) => { e.currentTarget.style.background = '#ffebee'; e.currentTarget.style.color = '#e53935'; }}>
+                                  <button data-agy-id="new_page_button_20" onClick={() => removeItem(idx)} style={{ background: '#ffebee', color: '#e53935', border: '1px solid #ffcdd2', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.background = '#e53935'; e.currentTarget.style.color = 'white'; }} onMouseOut={(e) => { e.currentTarget.style.background = '#ffebee'; e.currentTarget.style.color = '#e53935'; }}>
                                     X
                                   </button>
                                 </td>
@@ -954,7 +954,7 @@ export default function NewOrderPage() {
                 </div>
 
                 <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                  <button 
+                  <button data-agy-id="new_page_button_21" 
                     onClick={() => setStep(1)}
                     style={{ padding: '1.5rem 2rem', background: 'var(--card-bg)', color: 'var(--text-muted)', border: '2px solid #ddd', borderRadius: '16px', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
                     onMouseOver={(e) => e.target.style.background = 'var(--element-bg)'}
@@ -962,7 +962,7 @@ export default function NewOrderPage() {
                   >
                     חזור לשלב קודם
                   </button>
-                  <button 
+                  <button data-agy-id="new_page_button_22" 
                     onClick={() => setStep(3)}
                     disabled={order.items.length === 0}
                     style={{ flex: 1, padding: '1.5rem', background: (order.items.length === 0) ? 'var(--element-bg)' : 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '16px', fontSize: '1.5rem', fontWeight: 'bold', cursor: (order.items.length === 0) ? 'not-allowed' : 'pointer', boxShadow: (order.items.length === 0) ? 'none' : '0 8px 24px rgba(0,0,0,0.15)', transition: 'background 0.3s' }}
@@ -990,7 +990,7 @@ export default function NewOrderPage() {
             <div style={{ display: 'grid', gap: '1.5rem', marginBottom: '2.5rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#444' }}>סכום לתשלום כעת (₪)</label>
-                <input 
+                <input data-agy-id="new_page_input_23" 
                   type="number" 
                   value={payment.amount} 
                   onChange={e => setPayment(prev => ({...prev, amount: e.target.value}))} 
@@ -1000,7 +1000,7 @@ export default function NewOrderPage() {
 
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#444' }}>אופן תשלום</label>
-                <select 
+                <select data-agy-id="new_page_select_24" 
                   value={payment.method} 
                   onChange={e => setPayment(prev => ({...prev, method: e.target.value}))} 
                   style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '1px solid var(--element-border)', fontSize: '1.1rem' }}
@@ -1017,7 +1017,7 @@ export default function NewOrderPage() {
 
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#444' }}>הערות לתשלום</label>
-                <input 
+                <input data-agy-id="new_page_input_25" 
                   type="text" 
                   value={payment.notes} 
                   onChange={e => setPayment(prev => ({...prev, notes: e.target.value}))} 
@@ -1028,13 +1028,13 @@ export default function NewOrderPage() {
             </div>
 
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button 
+              <button data-agy-id="new_page_button_26" 
                 onClick={() => setStep(2)}
                 style={{ padding: '1.2rem 2rem', background: 'var(--card-bg)', color: 'var(--text-muted)', border: '2px solid #ddd', borderRadius: '12px', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
               >
                 חזור
               </button>
-              <button 
+              <button data-agy-id="new_page_button_27" 
                 onClick={saveOrder}
                 disabled={saving}
                 style={{ flex: 1, padding: '1.2rem', background: saving ? 'var(--element-bg)' : 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saving ? 'none' : '0 8px 24px rgba(0,0,0,0.15)', transition: 'all 0.3s' }}
@@ -1065,15 +1065,15 @@ export default function NewOrderPage() {
               </div>
               <p style={{ marginBottom: '1.5rem', fontWeight: 'bold', fontSize: '1.1rem', color: '#444' }}>הלקוח שהזנת זוהה במערכת על פי מספר הטלפון. האם תרצה להשתמש בלקוח הקיים עבור הזמנה זו?</p>
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button onClick={() => handleUseExistingCustomer(duplicateCustomer)} style={{ flex: 1, padding: '1rem', borderRadius: '10px', background: 'var(--primary-color)', color: 'white', fontWeight: 'bold', fontSize: '1.1rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                <button data-agy-id="new_page_button_28" onClick={() => handleUseExistingCustomer(duplicateCustomer)} style={{ flex: 1, padding: '1rem', borderRadius: '10px', background: 'var(--primary-color)', color: 'white', fontWeight: 'bold', fontSize: '1.1rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
                   כן, השתמש בלקוח הקיים
                 </button>
-                <button onClick={() => handleSaveNewCustomerAndProceed(true)} style={{ flex: 1, padding: '1rem', borderRadius: '10px', background: 'var(--card-bg)', color: '#d32f2f', border: '2px solid #d32f2f', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+                <button data-agy-id="new_page_button_29" onClick={() => handleSaveNewCustomerAndProceed(true)} style={{ flex: 1, padding: '1rem', borderRadius: '10px', background: 'var(--card-bg)', color: '#d32f2f', border: '2px solid #d32f2f', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', transition: 'all 0.2s' }}>
                   לא, צור לקוח חדש בכל זאת
                 </button>
               </div>
               <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                <button onClick={() => setDuplicateCustomer(null)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', textDecoration: 'underline', cursor: 'pointer', fontSize: '1rem' }}>
+                <button data-agy-id="new_page_button_30" onClick={() => setDuplicateCustomer(null)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', textDecoration: 'underline', cursor: 'pointer', fontSize: '1rem' }}>
                   ביטול וחזרה לעריכה
                 </button>
               </div>
@@ -1090,12 +1090,12 @@ export default function NewOrderPage() {
               
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>שם לקוח:</label>
-                <input type="text" readOnly value={`${(order.selectedCustomer || newCustomer)?.firstName || ''} ${(order.selectedCustomer || newCustomer)?.lastName || ''}`} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', background: 'var(--element-bg)' }} />
+                <input data-agy-id="new_page_input_31" type="text" readOnly value={`${(order.selectedCustomer || newCustomer)?.firstName || ''} ${(order.selectedCustomer || newCustomer)?.lastName || ''}`} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', background: 'var(--element-bg)' }} />
               </div>
               
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>סכום לחיוב (₪):</label>
-                <input 
+                <input data-agy-id="new_page_input_32" 
                   type="number" 
                   value={creditCardData.amount} 
                   onChange={e => setCreditCardData({...creditCardData, amount: e.target.value})}
@@ -1105,7 +1105,7 @@ export default function NewOrderPage() {
               
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>מספר כרטיס אשראי:</label>
-                <input 
+                <input data-agy-id="new_page_input_33" 
                   type="text" 
                   value={creditCardData.cardNumber} 
                   onChange={handleCardNumberChange}
@@ -1117,7 +1117,7 @@ export default function NewOrderPage() {
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>תוקף (MMYY):</label>
-                  <input 
+                  <input data-agy-id="new_page_input_34" 
                     type="text" 
                     value={creditCardData.tokef} 
                     onChange={e => setCreditCardData({...creditCardData, tokef: e.target.value})}
@@ -1128,7 +1128,7 @@ export default function NewOrderPage() {
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>תשלומים:</label>
-                  <input 
+                  <input data-agy-id="new_page_input_35" 
                     type="number" 
                     min="1" max="36"
                     value={creditCardData.installments} 
@@ -1140,7 +1140,7 @@ export default function NewOrderPage() {
               
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>הערות:</label>
-                <input 
+                <input data-agy-id="new_page_input_36" 
                   type="text" 
                   value={creditCardData.notes} 
                   onChange={e => setCreditCardData({...creditCardData, notes: e.target.value})}
@@ -1156,14 +1156,14 @@ export default function NewOrderPage() {
               )}
 
               <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                <button 
+                <button data-agy-id="new_page_button_37" 
                   onClick={() => setShowCreditModal(false)} 
                   disabled={isProcessingCredit}
                   style={{ padding: '0.5rem 1rem', background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--element-border)', borderRadius: '4px', cursor: 'pointer' }}
                 >
                   ביטול
                 </button>
-                <button 
+                <button data-agy-id="new_page_button_38" 
                   onClick={handleProcessCreditCard} 
                   disabled={isProcessingCredit}
                   style={{ padding: '0.5rem 1.5rem', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '4px', cursor: isProcessingCredit ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}

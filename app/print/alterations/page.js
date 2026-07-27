@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -8,6 +8,7 @@ export default function PrintAlterationsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [enableAlterations, setEnableAlterations] = useState(true);
 
   const reportType = searchParams.get('reportType') || 'alterations_pending';
   const dateMode = searchParams.get('dateMode') || 'today';
@@ -44,6 +45,18 @@ export default function PrintAlterationsPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
+      
+      const settingsRes = await fetch('/api/settings');
+      if (settingsRes.ok) {
+        const settingsData = await settingsRes.json();
+        const altSetting = settingsData.find(s => s.key === 'enable_alterations');
+        if (altSetting && altSetting.value === 'false') {
+          setEnableAlterations(false);
+          setLoading(false);
+          return;
+        }
+      }
+
       let showOnlyPending = reportType === 'alterations_pending';
       let hideNoAlterations = reportType === 'orders_no_alterations';
 
@@ -74,7 +87,7 @@ export default function PrintAlterationsPage() {
   };
 
   return (
-    <div className="print-container" style={{ padding: '20px', direction: 'rtl' }}>
+    <div data-agy-id="print-alterations-container" className="print-container" style={{ padding: '20px', direction: 'rtl' }}>
       <style>{`
         @media print {
           body * {
@@ -129,6 +142,10 @@ export default function PrintAlterationsPage() {
         <div>טוען נתונים להדפסה...</div>
       ) : error ? (
         <div style={{ color: 'red' }}>{error}</div>
+      ) : !enableAlterations ? (
+        <div style={{ textAlign: 'center', padding: '50px', fontSize: '20px', color: '#6c757d', fontWeight: 'bold' }}>
+          מערכת התיקונים מכובה בהגדרות. לא ניתן להפיק דוח תיקונים.
+        </div>
       ) : (
         <table className="print-table">
           <thead>

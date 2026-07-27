@@ -4,6 +4,7 @@ import prisma from '../../../lib/prisma';
 export const dynamic = 'force-dynamic';
 import { recalculateOrderObligations } from '../../../../lib/pricingEngine';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
+import { validateOrderItemsAvailability } from '../../../../lib/inventory';
 
 export async function GET(request, { params }) {
   try {
@@ -177,6 +178,48 @@ export async function PUT(request, { params }) {
           error: 'Data Collision', 
           message: 'הזמנה זו עודכנה בשרת לאחר הסנכרון האחרון שלך. כדי למנוע דריסת נתונים, אנא רענן את העמוד ושלב את השינויים שלך.',
         }, { status: 409 });
+      }
+    }
+
+    // Validate inventory availability
+    // Note: We need to reconstruct the items payload because the client might send partial items
+    if (data.items && Array.isArray(data.items)) {
+      // Find items that will remain or be added (not deleted)
+      const activeItems = data.items.filter(i => !i.isDeleted);
+      if (activeItems.length > 0) {
+        // Fetch current items if they are missing model/size info from client
+        for (const item of activeItems) {
+          if (!item.dressModelId && !item.isNew && item.id) {
+            const currentItem = await prisma.orderItem.findUnique({
+              where: { id: item.id },
+              include: { dressItem: true }
+            });
+            if (currentItem && currentItem.dressItem) {
+              item.dressModelId = currentItem.dressItem.dressModelId;
+              item.sizeText = item.sizeText || currentItem.sizeText || currentItem.dressItem.sizeText;
+            }
+          }
+        }
+
+        const validationResult = await validateOrderItemsAvailability(
+          activeItems,
+          data.eventDate !== undefined ? data.eventDate : existingOrder.eventDate,
+          data.isAbroad !== undefined ? data.isAbroad : existingOrder.isAbroad,
+          data.fromDate !== undefined ? data.fromDate : existingOrder.fromDate,
+          data.toDate !== undefined ? data.toDate : existingOrder.toDate,
+          parsedOrderId
+        );
+
+        if (validationResult.error) {
+          return NextResponse.json({ error: validationResult.error }, { status: 400 });
+        }
+        
+        if (!validationResult.valid) {
+          return NextResponse.json({
+            error: 'אחד או יותר מהפריטים שניסית לעדכן אינם זמינים במלאי בתאריכים החדשים.',
+            validationErrors: validationResult.errors
+          }, { status: 409 });
+        }
       }
     }
 

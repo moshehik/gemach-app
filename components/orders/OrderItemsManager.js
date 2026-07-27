@@ -42,8 +42,9 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       return;
     }
 
+    const enableAlterations = settings.enable_alterations !== 'false';
     const hasRepair = item.neckAlteration || item.sleeveAlteration || (item.lengthAlteration && item.lengthAlteration.trim() !== '');
-    if (hasRepair && (!item.alterationDetails || item.alterationDetails.trim() === '')) {
+    if (enableAlterations && hasRepair && (!item.alterationDetails || item.alterationDetails.trim() === '')) {
       alert('חובה להזין פירוט תיקון כאשר נבחר תיקון');
       return;
     }
@@ -245,7 +246,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
           <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {isExpanded && (
               <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.95rem', color: '#475569', background: '#f8fafc', padding: '0.6rem 1.2rem', borderRadius: '10px', border: '1px solid #e2e8f0', transition: 'all 0.2s', fontWeight: '600' }} onClick={(e) => e.stopPropagation()} onMouseOver={e => e.currentTarget.style.backgroundColor='#f1f5f9'} onMouseOut={e => e.currentTarget.style.backgroundColor='#f8fafc'}>
-                <input 
+                <input data-agy-id="orderitemsmanager_input_1" 
                   type="checkbox" 
                   checked={showDeleted} 
                   onChange={(e) => setShowDeleted(e.target.checked)} 
@@ -302,7 +303,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                 return (
                   <tr key={item.id || originalIndex} style={rowStyle} onMouseEnter={(e) => !isDeletedRow && (e.currentTarget.style.backgroundColor = isRented ? '#dbeafe' : isReturned ? '#dcfce7' : '#f8fafc')} onMouseLeave={(e) => !isDeletedRow && (e.currentTarget.style.backgroundColor = isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'white')}>
                     <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                      <button 
+                      <button data-agy-id="orderitemsmanager_button_2" 
                         onClick={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -353,7 +354,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                           onChange={(val) => handleItemChange(originalIndex, 'sizeText', val)} 
                         />
                       ) : (
-                        <input 
+                        <input data-agy-id="orderitemsmanager_input_3" 
                           type="text" 
                           value={item.sizeText || ''} 
                           disabled
@@ -364,7 +365,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                     {enableAlterations && (
                       <>
                         <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                          <input 
+                          <input data-agy-id="orderitemsmanager_input_4" 
                             type="checkbox" 
                             checked={item.neckAlteration === 1 || item.neckAlteration === true} 
                             onChange={(e) => handleItemChange(originalIndex, 'neckAlteration', e.target.checked ? 1 : 0)}
@@ -373,7 +374,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                           />
                         </td>
                         <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                          <input 
+                          <input data-agy-id="orderitemsmanager_input_5" 
                             type="checkbox" 
                             checked={item.sleeveAlteration === 1 || item.sleeveAlteration === true} 
                             onChange={(e) => handleItemChange(originalIndex, 'sleeveAlteration', e.target.checked ? 1 : 0)}
@@ -382,7 +383,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                           />
                         </td>
                         <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                          <input 
+                          <input data-agy-id="orderitemsmanager_input_6" 
                             type="number" 
                             value={item.lengthAlteration || ''} 
                             onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
@@ -392,7 +393,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                           />
                         </td>
                         <td style={{ padding: '1rem' }}>
-                          <input 
+                          <input data-agy-id="orderitemsmanager_input_7" 
                             type="text" 
                             value={item.alterationDetails || item.repairs || ''} 
                             onChange={(e) => handleItemChange(originalIndex, 'alterationDetails', e.target.value)}
@@ -401,7 +402,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                           />
                         </td>
                         <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                          <input 
+                          <input data-agy-id="orderitemsmanager_input_8" 
                             type="checkbox" 
                             checked={item.alterationDone || false} 
                             onChange={(e) => handleItemChange(originalIndex, 'alterationDone', e.target.checked)}
@@ -412,7 +413,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                     )}
                     <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
                       {item.isNew ? (
-                        <button 
+                        <button data-agy-id="orderitemsmanager_button_9" 
                           type="button"
                           onClick={(e) => {
                             e.preventDefault();
@@ -444,7 +445,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                         </button>
                       ) : (
                         <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'center' }}>
-                          <button 
+                          <button data-agy-id="orderitemsmanager_button_10" 
                             onClick={() => showItemDetails(item)}
                             style={{ 
                               background: '#eff6ff', 
@@ -472,7 +473,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                             <Info size={18} strokeWidth={2.5} />
                           </button>
                           
-                          <button 
+                          <button data-agy-id="orderitemsmanager_button_11" 
                             onClick={() => setCapacityModalItem(item)}
                             style={{ 
                               background: '#fdf4ff', 
@@ -520,7 +521,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
           <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '90%', maxWidth: '550px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
               <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.4rem' }}>פרטים נוספים לפריט</h3>
-              <button onClick={() => setDetailsModalItem(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+              <button data-agy-id="orderitemsmanager_button_12" onClick={() => setDetailsModalItem(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
             </div>
             
             <div style={{ margin: '1.5rem 0' }}>
@@ -642,7 +643,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
             </div>
             
             <div style={{ textAlign: 'left', marginTop: '2rem' }}>
-              <button 
+              <button data-agy-id="orderitemsmanager_button_13" 
                 onClick={() => setDetailsModalItem(null)}
                 style={{ padding: '0.8rem 2rem', background: '#e2e8f0', color: '#334155', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#cbd5e1'}
@@ -666,7 +667,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       )}
 
       <div style={{ marginTop: '2rem', textAlign: 'right' }}>
-        <button
+        <button data-agy-id="orderitemsmanager_button_14"
           onClick={handleAddItem}
           style={{
             padding: '0.8rem 1.8rem',

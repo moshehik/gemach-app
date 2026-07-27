@@ -369,11 +369,11 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                       <td style={{ padding: '0.8rem', color: '#991b1b', fontSize: '0.85em' }}>{new Date(obs.createdAt).toLocaleDateString('he-IL')}</td>
                       <td style={{ padding: '0.8rem', fontWeight: 'bold', color: '#b91c1c' }}>₪{obs.amount}</td>
                       <td style={{ padding: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                        <button onClick={() => setSelectedObligationDetails(obs)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="פרטים נוספים">
+                        <button data-agy-id="orderpaymentsmanager_button_1" onClick={() => setSelectedObligationDetails(obs)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="פרטים נוספים">
                           <Info size={16} />
                         </button>
                         {obs.isManual !== false && (
-                          <button onClick={() => removeObligation(obligations.indexOf(obs))} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.3rem', borderRadius: '6px' }} title="מחק">
+                          <button data-agy-id="orderpaymentsmanager_button_2" onClick={() => removeObligation(obligations.indexOf(obs))} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.3rem', borderRadius: '6px' }} title="מחק">
                             <Trash2 size={16} />
                           </button>
                         )}
@@ -388,7 +388,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
           )}
 
           <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <button 
+            <button data-agy-id="orderpaymentsmanager_button_3" 
               onClick={() => setShowAddChargeModal(true)} 
               style={{ 
                 padding: '0.6rem 1.5rem', 
@@ -437,10 +437,10 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                       <td style={{ padding: '0.8rem', color: '#166534', fontSize: '0.85em' }}>{new Date(p.paymentDate).toLocaleDateString('he-IL')}</td>
                       <td style={{ padding: '0.8rem', fontWeight: 'bold', color: '#16a34a' }}>₪{p.amount}</td>
                       <td style={{ padding: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                        <button onClick={() => setSelectedPaymentDetails(p)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="פרטים נוספים">
+                        <button data-agy-id="orderpaymentsmanager_button_4" onClick={() => setSelectedPaymentDetails(p)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="פרטים נוספים">
                           <Info size={16} />
                         </button>
-                        <button onClick={() => removePayment(payments.indexOf(p))} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="מחק">
+                        <button data-agy-id="orderpaymentsmanager_button_5" onClick={() => removePayment(payments.indexOf(p))} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="מחק">
                           <Trash2 size={16} />
                         </button>
                       </td>
@@ -454,7 +454,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
           )}
 
           <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center', background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #dcfce7' }}>
-              <select 
+              <select data-agy-id="orderpaymentsmanager_select_6" 
                 value={newPayment.paymentMethod} 
                 onChange={e => setNewPayment({...newPayment, paymentMethod: e.target.value})}
                 style={{ flex: '1', minWidth: '130px', padding: '0.7rem', borderRadius: '8px', border: '1px solid #86efac', outline: 'none', background: 'white', cursor: 'pointer' }}
@@ -466,14 +466,14 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                 <option value="המחאה">המחאה</option>
                 <option value="אחר">אחר</option>
               </select>
-              <input 
+              <input data-agy-id="orderpaymentsmanager_input_7" 
                 type="number" 
                 placeholder="₪ סכום" 
                 value={newPayment.amount} 
                 onChange={e => setNewPayment({...newPayment, amount: e.target.value})}
                 style={{ flex: '1', minWidth: '100px', padding: '0.7rem', borderRadius: '8px', border: '1px solid #86efac', outline: 'none' }}
               />
-            <input 
+            <input data-agy-id="orderpaymentsmanager_input_8" 
               type="text" 
               placeholder="הערות (אופציונלי)" 
               value={newPayment.notes} 
@@ -481,10 +481,10 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               style={{ flex: '2', minWidth: '150px', padding: '0.7rem', borderRadius: '8px', border: '1px solid #86efac', outline: 'none' }}
             />
             <div style={{ display: 'flex', gap: '0.5rem', flex: '1 0 auto', minWidth: '220px' }}>
-              <button onClick={addPayment} style={{ flex: 1, padding: '0.7rem 1rem', background: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#16a34a'} onMouseOut={e => e.currentTarget.style.backgroundColor='#22c55e'}>
+              <button data-agy-id="orderpaymentsmanager_button_9" onClick={addPayment} style={{ flex: 1, padding: '0.7rem 1rem', background: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#16a34a'} onMouseOut={e => e.currentTarget.style.backgroundColor='#22c55e'}>
                 <span>+</span> הוסף תשלום
               </button>
-              <button 
+              <button data-agy-id="orderpaymentsmanager_button_10" 
                 onClick={handleOpenCreditModal} 
                 style={{ flex: 1, padding: '0.7rem 1rem', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
                 onMouseOver={e => e.currentTarget.style.opacity=0.9} onMouseOut={e => e.currentTarget.style.opacity=1}
@@ -508,12 +508,12 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>שם לקוח:</label>
-                <input type="text" readOnly value={`${customer?.firstName || ''} ${customer?.lastName || ''}`} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b' }} />
+                <input data-agy-id="orderpaymentsmanager_input_11" type="text" readOnly value={`${customer?.firstName || ''} ${customer?.lastName || ''}`} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b' }} />
               </div>
               
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>סכום לחיוב (₪):</label>
-                <input 
+                <input data-agy-id="orderpaymentsmanager_input_12" 
                   type="number" 
                   value={creditCardData.amount} 
                   onChange={e => setCreditCardData({...creditCardData, amount: e.target.value})}
@@ -523,7 +523,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>מספר כרטיס אשראי:</label>
-                <input 
+                <input data-agy-id="orderpaymentsmanager_input_13" 
                   type="text" 
                   value={creditCardData.cardNumber} 
                   onChange={handleCardNumberChange}
@@ -535,7 +535,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>תוקף (MMYY):</label>
-                  <input 
+                  <input data-agy-id="orderpaymentsmanager_input_14" 
                     type="text" 
                     value={creditCardData.tokef} 
                     onChange={e => setCreditCardData({...creditCardData, tokef: e.target.value})}
@@ -546,7 +546,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>תשלומים:</label>
-                  <input 
+                  <input data-agy-id="orderpaymentsmanager_input_15" 
                     type="number" 
                     min="1" max="36"
                     value={creditCardData.installments} 
@@ -558,7 +558,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>הערות:</label>
-                <input 
+                <input data-agy-id="orderpaymentsmanager_input_16" 
                   type="text" 
                   value={creditCardData.notes} 
                   onChange={e => setCreditCardData({...creditCardData, notes: e.target.value})}
@@ -575,7 +575,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
             )}
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
-              <button 
+              <button data-agy-id="orderpaymentsmanager_button_17" 
                 onClick={() => setShowCreditModal(false)} 
                 disabled={isProcessing}
                 style={{ padding: '0.8rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s' }}
@@ -584,7 +584,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               >
                 ביטול
               </button>
-              <button 
+              <button data-agy-id="orderpaymentsmanager_button_18" 
                 onClick={handleProcessCreditCard} 
                 disabled={isProcessing}
                 style={{ padding: '0.8rem 2rem', background: 'linear-gradient(to right, #16a34a, #22c55e)', color: 'white', border: 'none', borderRadius: '8px', cursor: isProcessing ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem', opacity: isProcessing ? 0.7 : 1, boxShadow: '0 4px 6px rgba(22, 163, 74, 0.2)' }}
@@ -604,7 +604,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>
                 פרטי תשלום מלאים
               </h2>
-              <button onClick={() => setSelectedPaymentDetails(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+              <button data-agy-id="orderpaymentsmanager_button_19" onClick={() => setSelectedPaymentDetails(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
@@ -651,7 +651,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-              <button 
+              <button data-agy-id="orderpaymentsmanager_button_20" 
                 onClick={() => setSelectedPaymentDetails(null)} 
                 style={{ padding: '0.8rem 2rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s' }}
                 onMouseOver={e => e.currentTarget.style.backgroundColor='#e2e8f0'}
@@ -672,7 +672,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>
                 פרטי חיוב
               </h2>
-              <button onClick={() => setSelectedObligationDetails(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+              <button data-agy-id="orderpaymentsmanager_button_21" onClick={() => setSelectedObligationDetails(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
@@ -704,7 +704,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
             </div>
 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
-              <button 
+              <button data-agy-id="orderpaymentsmanager_button_22" 
                 onClick={() => setSelectedObligationDetails(null)} 
                 style={{ padding: '0.8rem 2rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s' }}
                 onMouseOver={e => e.currentTarget.style.backgroundColor='#e2e8f0'}
@@ -725,13 +725,13 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>
                 הוספת חיוב ידני
               </h2>
-              <button onClick={() => setShowAddChargeModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+              <button data-agy-id="orderpaymentsmanager_button_23" onClick={() => setShowAddChargeModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>תיאור החיוב:</label>
-                <input 
+                <input data-agy-id="orderpaymentsmanager_input_24" 
                   type="text" 
                   placeholder="לדוגמא: שמלה נוספת" 
                   value={newObligation.description} 
@@ -742,7 +742,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>סכום (₪):</label>
-                <input 
+                <input data-agy-id="orderpaymentsmanager_input_25" 
                   type="number" 
                   placeholder="0" 
                   value={newObligation.amount} 
@@ -753,7 +753,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
-              <button 
+              <button data-agy-id="orderpaymentsmanager_button_26" 
                 onClick={() => setShowAddChargeModal(false)} 
                 style={{ padding: '0.8rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s' }}
                 onMouseOver={e => e.currentTarget.style.backgroundColor='#e2e8f0'}
@@ -761,7 +761,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               >
                 ביטול
               </button>
-              <button 
+              <button data-agy-id="orderpaymentsmanager_button_27" 
                 onClick={addObligation} 
                 disabled={!newObligation.description || !newObligation.amount}
                 style={{ padding: '0.8rem 2rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: (!newObligation.description || !newObligation.amount) ? 'not-allowed' : 'pointer', fontWeight: 'bold', transition: 'opacity 0.2s', opacity: (!newObligation.description || !newObligation.amount) ? 0.6 : 1 }}

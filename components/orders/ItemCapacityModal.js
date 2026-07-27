@@ -92,7 +92,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
               זמינות: {item.dressItem?.dress?.name || item.description || 'פריט'} ({item.sizeText || item.size || 'ללא מידה'})
             </h2>
           </div>
-          <button onClick={onClose} style={{ background: 'var(--card-bg)', border: '1px solid #e2e8f0', cursor: 'pointer', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <button data-agy-id="itemcapacitymodal_button_1" onClick={onClose} style={{ background: 'var(--card-bg)', border: '1px solid #e2e8f0', cursor: 'pointer', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
             <X size={20} />
           </button>
         </div>

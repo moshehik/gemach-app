@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
@@ -74,9 +74,9 @@ export default function CustomerPage({ params }) {
   if (!customer) return null;
 
   return (
-    <main className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1000px' }}>
+    <main data-agy-id="customer_profile_main_container" className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1000px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <button type="button" onClick={() => router.back()} className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+        <button data-agy-id="customer_back_btn" type="button" onClick={() => router.back()} className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
           →
         </button>
         <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>
@@ -87,6 +87,7 @@ export default function CustomerPage({ params }) {
       {id !== 'new' && (
         <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #eee', marginBottom: '2rem' }}>
           <button 
+            data-agy-id="customer_details_tab_btn"
             className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} 
             onClick={() => setActiveTab('details')}
             style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'details' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'details' ? 'bold' : 'normal', color: activeTab === 'details' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s' }}
@@ -94,6 +95,7 @@ export default function CustomerPage({ params }) {
             פרטים אישיים
           </button>
           <button 
+            data-agy-id="customer_orders_tab_btn"
             className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`} 
             onClick={() => setActiveTab('orders')}
             style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'orders' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'orders' ? 'bold' : 'normal', color: activeTab === 'orders' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s' }}
@@ -101,6 +103,7 @@ export default function CustomerPage({ params }) {
             הזמנות
           </button>
           <button 
+            data-agy-id="customer_payments_tab_btn"
             className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`} 
             onClick={() => setActiveTab('payments')}
             style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'payments' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'payments' ? 'bold' : 'normal', color: activeTab === 'payments' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s' }}
@@ -108,6 +111,7 @@ export default function CustomerPage({ params }) {
             תשלומים
           </button>
           <button 
+            data-agy-id="customer_history_tab_btn"
             className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} 
             onClick={() => setActiveTab('history')}
             style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'history' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'history' ? 'bold' : 'normal', color: activeTab === 'history' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s' }}
@@ -118,34 +122,34 @@ export default function CustomerPage({ params }) {
       )}
 
       {activeTab === 'details' && (
-        <form onSubmit={handleSave} style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+        <form data-agy-id="customer_details_form" onSubmit={handleSave} style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם פרטי *</label>
-              <input type="text" name="firstName" value={customer.firstName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-agy-id="customer_firstname_input" type="text" name="firstName" value={customer.firstName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם משפחה *</label>
-              <input type="text" name="lastName" value={customer.lastName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-agy-id="customer_lastname_input" type="text" name="lastName" value={customer.lastName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>טלפון נייד *</label>
-              <input type="text" name="phone1" value={customer.phone1 || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-agy-id="customer_phone1_input" type="text" name="phone1" value={customer.phone1 || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>טלפון נוסף</label>
-              <input type="text" name="phone2" value={customer.phone2 || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-agy-id="customer_phone2_input" type="text" name="phone2" value={customer.phone2 || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>דוא"ל</label>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input type="email" name="email" value={customer.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+                <input data-agy-id="customer_email_input" type="email" name="email" value={customer.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
                 {customer.email && (
                   <>
-                    <button type="button" onClick={() => navigator.clipboard.writeText(customer.email)} title="העתק כתובת מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                    <button data-agy-id="copy_email_btn" type="button" onClick={() => navigator.clipboard.writeText(customer.email)} title="העתק כתובת מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
                       <Copy size={20} />
                     </button>
-                    <button type="button" onClick={() => setEmailModalOpen(true)} title="שלח מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)' }}>
+                    <button data-agy-id="send_email_btn" type="button" onClick={() => setEmailModalOpen(true)} title="שלח מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)' }}>
                       <Mail size={20} />
                     </button>
                   </>
@@ -154,6 +158,7 @@ export default function CustomerPage({ params }) {
               {(!customer.email || !customer.email.includes('@')) && (
                 <div style={{ marginTop: '0.5rem' }}>
                   <button
+                    data-agy-id="autocomplete_gmail_btn"
                     type="button"
                     onClick={() => {
                       const currentEmail = customer.email || '';
@@ -179,25 +184,25 @@ export default function CustomerPage({ params }) {
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>עיר</label>
-              <input type="text" name="city" value={customer.city || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-agy-id="customer_city_input" type="text" name="city" value={customer.city || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>רחוב</label>
-              <input type="text" name="street" value={customer.street || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-agy-id="customer_street_input" type="text" name="street" value={customer.street || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>מספר בית</label>
-              <input type="number" name="houseNum" value={customer.houseNum || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-agy-id="customer_housenum_input" type="number" name="houseNum" value={customer.houseNum || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
           </div>
           
           <div className="form-group" style={{ marginTop: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>הערות (רפואיות/כלליות)</label>
-            <textarea name="notes" value={customer.notes || ''} onChange={handleChange} rows={4} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', resize: 'vertical' }} />
+            <textarea data-agy-id="customer_notes_textarea" name="notes" value={customer.notes || ''} onChange={handleChange} rows={4} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', resize: 'vertical' }} />
           </div>
 
           <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.75rem 2rem', borderRadius: '24px', fontSize: '1.1rem' }}>
+            <button data-agy-id="save_customer_btn" type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.75rem 2rem', borderRadius: '24px', fontSize: '1.1rem' }}>
               {saving ? 'שומר...' : 'שמור פרטים'}
             </button>
           </div>

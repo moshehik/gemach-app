@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 import { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp, Search, Filter, MessageSquare, Loader2, X } from 'lucide-react';
 
@@ -270,9 +270,9 @@ export default function HistoryViewer({ entityType, entityId }) {
               
               if (isLongText) {
                 return (
-                  <div key={key} style={{ width: '100%', background: '#f8fafc', borderRadius: '12px', padding: '10px 14px', fontSize: '0.85rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <div key={key} style={{ width: '100%', background: 'var(--element-bg)', borderRadius: '12px', padding: '10px 14px', fontSize: '0.85rem', border: '1px solid var(--border-main)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     <span style={{ fontWeight: '600', color: '#64748b' }}>{label}:</span>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: '#fff', padding: '8px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--card-bg)', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-main)' }}>
                       {!isEmptyFrom && (
                         <div style={{ textDecoration: 'line-through', color: '#ef4444', whiteSpace: 'pre-wrap' }}>{formatValue(change.from)}</div>
                       )}
@@ -283,7 +283,7 @@ export default function HistoryViewer({ entityType, entityId }) {
               }
 
               return (
-                <div key={key} style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', borderRadius: '20px', padding: '6px 12px', fontSize: '0.85rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+                <div key={key} style={{ display: 'flex', alignItems: 'center', background: 'var(--element-bg)', borderRadius: '20px', padding: '6px 12px', fontSize: '0.85rem', border: '1px solid var(--border-main)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
                   <span style={{ fontWeight: '600', color: '#64748b', marginLeft: '6px' }}>{label}:</span>
                   {!isEmptyFrom && (
                     <>
@@ -300,9 +300,9 @@ export default function HistoryViewer({ entityType, entityId }) {
             
             if (isLongText) {
               return (
-                <div key={key} style={{ width: '100%', background: '#f8fafc', borderRadius: '12px', padding: '10px 14px', fontSize: '0.85rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <div key={key} style={{ width: '100%', background: 'var(--element-bg)', borderRadius: '12px', padding: '10px 14px', fontSize: '0.85rem', border: '1px solid var(--border-main)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
                   <span style={{ fontWeight: '600', color: '#64748b' }}>{label}:</span>
-                  <div style={{ color: '#0f172a', fontWeight: '500', whiteSpace: 'pre-wrap', background: '#fff', padding: '8px', borderRadius: '8px', border: '1px solid #f1f5f9' }}>
+                  <div style={{ color: 'var(--text-main)', fontWeight: '500', whiteSpace: 'pre-wrap', background: 'var(--card-bg)', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-main)' }}>
                     {formatValue(change)}
                   </div>
                 </div>
@@ -310,7 +310,7 @@ export default function HistoryViewer({ entityType, entityId }) {
             }
 
             return (
-              <div key={key} style={{ display: 'flex', alignItems: 'center', background: '#f8fafc', borderRadius: '20px', padding: '6px 12px', fontSize: '0.85rem', border: '1px solid #e2e8f0', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
+              <div key={key} style={{ display: 'flex', alignItems: 'center', background: 'var(--element-bg)', borderRadius: '20px', padding: '6px 12px', fontSize: '0.85rem', border: '1px solid var(--border-main)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
                 <span style={{ fontWeight: '600', color: '#64748b', marginLeft: '6px' }}>{label}:</span>
                 <span style={{ color: '#0f172a', fontWeight: '500' }}>{formatValue(change)}</span>
               </div>
@@ -329,7 +329,7 @@ export default function HistoryViewer({ entityType, entityId }) {
 
 
   return (
-    <div style={{ background: 'rgba(255,255,255,0.95)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--shadow-sm, 0 4px 6px rgba(0,0,0,0.05))', border: '1px solid #eee', marginTop: '1rem', /* Remove fixed height so it's less squished, except when in modal it can naturally scroll if restricted externally */ }} dir="rtl">
+    <div data-agy-id="history_viewer_container" style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--shadow-sm, 0 4px 6px rgba(0,0,0,0.05))', border: '1px solid var(--border-main)', marginTop: '1rem', /* Remove fixed height so it's less squished, except when in modal it can naturally scroll if restricted externally */ }} dir="rtl">
       <div 
         onClick={() => setIsExpanded(!isExpanded)}
         style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: isExpanded ? '24px' : '0', borderBottom: isExpanded ? '1px solid #eee' : 'none', paddingBottom: isExpanded ? '12px' : '0' }}
@@ -345,13 +345,13 @@ export default function HistoryViewer({ entityType, entityId }) {
             </span>
           )}
         </div>
-        <div style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
+        <div style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--element-bg)', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
           {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
         </div>
       </div>
       
       {isExpanded && (
-        <div style={{ marginBottom: '24px', background: '#f8fafc', padding: '20px', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+        <div style={{ marginBottom: '24px', background: 'var(--element-bg)', padding: '20px', borderRadius: '12px', border: '1px solid var(--border-main)' }}>
           
           {/* Search & Filters - One Line */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
@@ -362,7 +362,7 @@ export default function HistoryViewer({ entityType, entityId }) {
                   <MessageSquare size={18} />
                 </div>
                 <input 
-                  type="text" 
+                  data-agy-id="history_viewer_ai_search_input"                  type="text" 
                   placeholder='חיפוש AI חכם (לדוג: "מי מחק?")' 
                   value={chatQuery}
                   onChange={e => setChatQuery(e.target.value)}
@@ -372,7 +372,7 @@ export default function HistoryViewer({ entityType, entityId }) {
                 />
               </div>
               <button 
-                type="submit" 
+                data-agy-id="history_viewer_ai_search_btn"                type="submit" 
                 disabled={isAiLoading || !chatQuery.trim()}
                 style={{ background: 'var(--primary-color)', color: '#fff', padding: '0 16px', borderRadius: '6px', fontWeight: 'bold', border: 'none', cursor: isAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: isAiLoading || !chatQuery.trim() ? 0.7 : 1, fontSize: '0.9rem' }}
               >
@@ -384,7 +384,7 @@ export default function HistoryViewer({ entityType, entityId }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>פעולה</label>
               <select 
-                value={filterAction} 
+                data-agy-id="history_viewer_action_filter_select"                value={filterAction} 
                 onChange={e => setFilterAction(e.target.value)}
                 style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }}
               >
@@ -398,7 +398,7 @@ export default function HistoryViewer({ entityType, entityId }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>מתאריך</label>
               <input 
-                type="date" 
+                data-agy-id="history_viewer_start_date_input"                type="date" 
                 value={filterStartDate} 
                 onChange={e => setFilterStartDate(e.target.value)}
                 style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }}
@@ -408,7 +408,7 @@ export default function HistoryViewer({ entityType, entityId }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>עד תאריך</label>
               <input 
-                type="date" 
+                data-agy-id="history_viewer_end_date_input"                type="date" 
                 value={filterEndDate} 
                 onChange={e => setFilterEndDate(e.target.value)}
                 style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }}
@@ -419,7 +419,7 @@ export default function HistoryViewer({ entityType, entityId }) {
               <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>חיפוש חופשי</label>
               <div style={{ position: 'relative' }}>
                 <input 
-                  type="text" 
+                  data-agy-id="history_viewer_free_search_input"                  type="text" 
                   placeholder="הקלד חופשי..."
                   value={searchInput} 
                   onChange={e => setSearchInput(e.target.value)}
@@ -437,7 +437,7 @@ export default function HistoryViewer({ entityType, entityId }) {
 
             {(filterAction || filterStartDate || filterEndDate || filterSearch || chatQuery) && (
               <button 
-                onClick={resetFilters}
+                data-agy-id="history_viewer_clear_filters_btn"                onClick={resetFilters}
                 style={{ padding: '8px 12px', background: 'transparent', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500', fontSize: '0.9rem' }}
               >
                 <X size={14} />

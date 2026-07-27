@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
@@ -245,7 +245,7 @@ export default function PrintOrderPage() {
         }
       `}</style>
       
-      <div className="print-container">
+      <div data-agy-id="print-order-container" className="print-container">
         {loading ? (
           <div style={{ textAlign: 'center', padding: '50px', color: '#6c757d', fontSize: '18px' }}>טוען נתונים להדפסה...</div>
         ) : error ? (

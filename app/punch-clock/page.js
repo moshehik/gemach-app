@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 
@@ -51,8 +51,8 @@ export default function PunchClockPage() {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)', fontFamily: 'sans-serif' }}>
-      <div style={{ background: 'var(--card-bg)', padding: '3rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
+    <div data-agy-id="punch-clock-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)', fontFamily: 'sans-serif' }}>
+      <div data-agy-id="punch-clock-card" style={{ background: 'var(--card-bg)', padding: '3rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
         <h1 style={{ color: 'var(--primary-color)', marginBottom: '0.5rem', fontSize: '2rem' }}>שעון נוכחות</h1>
         <div style={{ fontSize: '3rem', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '2rem', letterSpacing: '2px' }}>
           {currentTime || '...'}
@@ -61,6 +61,7 @@ export default function PunchClockPage() {
         <div className="form-group" style={{ marginBottom: '1.5rem', textAlign: 'right' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-muted)' }}>קוד עובד</label>
           <input 
+            data-agy-id="input-employee-id"
             type="number" 
             value={employeeId} 
             onChange={(e) => setEmployeeId(e.target.value)} 
@@ -74,6 +75,7 @@ export default function PunchClockPage() {
         <div className="form-group" style={{ marginBottom: '2rem', textAlign: 'right' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-muted)' }}>סיסמא</label>
           <input 
+            data-agy-id="input-password"
             type="password" 
             value={password} 
             onChange={(e) => setPassword(e.target.value)} 
@@ -86,6 +88,7 @@ export default function PunchClockPage() {
 
         <div style={{ display: 'flex', gap: '1rem' }}>
           <button 
+            data-agy-id="punch-in-button"
             onClick={() => handlePunch('IN')} 
             disabled={isLoading}
             style={{ flex: 1, padding: '1.2rem', borderRadius: '12px', border: 'none', background: '#4CAF50', color: 'white', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(76,175,80,0.3)', transition: 'transform 0.1s' }}
@@ -95,6 +98,7 @@ export default function PunchClockPage() {
             כניסה
           </button>
           <button 
+            data-agy-id="punch-out-button"
             onClick={() => handlePunch('OUT')} 
             disabled={isLoading}
             style={{ flex: 1, padding: '1.2rem', borderRadius: '12px', border: 'none', background: '#f44336', color: 'white', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(244,67,54,0.3)', transition: 'transform 0.1s' }}

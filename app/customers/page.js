@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
@@ -148,7 +148,7 @@ export default function CustomersPage() {
 
   return (
     <>
-    <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
+    <main data-agy-id="customers_main_container" className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול לקוחות</h1>
       </div>
@@ -167,6 +167,7 @@ export default function CustomersPage() {
             loading={aiLoading}
           />
           <button 
+            data-agy-id="advanced_search_btn"
             onClick={() => setShowAdvSearch(true)}
             className="btn btn-outline"
             style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
@@ -177,6 +178,7 @@ export default function CustomersPage() {
         </div>
         <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
           <button 
+            data-agy-id="new_customer_btn"
             onClick={() => router.push('/customers/new')} 
             className="btn btn-primary" 
             style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
@@ -206,7 +208,7 @@ export default function CustomersPage() {
           <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
         ) : (
           <>
-            <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
+            <table data-agy-id="customers_table" style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
                   <th style={thStyle} onClick={() => handleSort('id')}>קוד לקוח <SortIcon column="id" /></th>
@@ -220,7 +222,7 @@ export default function CustomersPage() {
               <tbody>
 
                 {customers.map(customer => (
-                  <tr key={customer.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/customers/${customer.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <tr data-agy-id="customer_row_tr" key={customer.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/customers/${customer.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                     <td style={{ padding: '1rem' }}>{customer.legacyId || 'חדש'}</td>
                     <td style={{ padding: '1rem', fontWeight: '500' }}>{customer.firstName}</td>
                     <td style={{ padding: '1rem', fontWeight: '500' }}>{customer.lastName}</td>
@@ -234,6 +236,7 @@ export default function CustomersPage() {
 
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
               <button 
+                data-agy-id="next_page_btn"
                 className="btn btn-outline"
                 disabled={page >= totalPages || isAiModeActive} 
                 onClick={() => setPage(p => p + 1)}
@@ -244,6 +247,7 @@ export default function CustomersPage() {
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 עמוד
                 <input 
+                  data-agy-id="page_number_input"
                   type="number" 
                   min={1} 
                   max={totalPages || 1} 
@@ -258,6 +262,7 @@ export default function CustomersPage() {
                 מתוך {totalPages}
               </span>
               <button 
+                data-agy-id="prev_page_btn"
                 className="btn btn-outline"
                 disabled={page <= 1 || isAiModeActive} 
                 onClick={() => setPage(p => p - 1)}
@@ -279,34 +284,34 @@ export default function CustomersPage() {
       />
     </main>
       {showAdvSearch && (
-        <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+        <div data-agy-id="adv_search_modal_overlay" className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div data-agy-id="adv_search_modal_content" className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem' }}>חיפוש מתקדם (לקוחות)</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_firstName', 'שם פרטי')}</label>
-                <input type="text" className="form-control" value={advFilters.firstName} onChange={e => setAdvFilters(p => ({...p, firstName: e.target.value}))} />
+                <input data-agy-id="adv_search_firstname_input" type="text" className="form-control" value={advFilters.firstName} onChange={e => setAdvFilters(p => ({...p, firstName: e.target.value}))} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_lastName', 'שם משפחה')}</label>
-                <input type="text" className="form-control" value={advFilters.lastName} onChange={e => setAdvFilters(p => ({...p, lastName: e.target.value}))} />
+                <input data-agy-id="adv_search_lastname_input" type="text" className="form-control" value={advFilters.lastName} onChange={e => setAdvFilters(p => ({...p, lastName: e.target.value}))} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_phone1', 'טלפון')}</label>
-                <input type="text" className="form-control" value={advFilters.phone} onChange={e => setAdvFilters(p => ({...p, phone: e.target.value}))} />
+                <input data-agy-id="adv_search_phone_input" type="text" className="form-control" value={advFilters.phone} onChange={e => setAdvFilters(p => ({...p, phone: e.target.value}))} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_city', 'עיר מגורים')}</label>
-                <input type="text" className="form-control" value={advFilters.city} onChange={e => setAdvFilters(p => ({...p, city: e.target.value}))} />
+                <input data-agy-id="adv_search_city_input" type="text" className="form-control" value={advFilters.city} onChange={e => setAdvFilters(p => ({...p, city: e.target.value}))} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('customer_email', 'דוא"ל')}</label>
-                <input type="text" className="form-control" value={advFilters.email} onChange={e => setAdvFilters(p => ({...p, email: e.target.value}))} />
+                <input data-agy-id="adv_search_email_input" type="text" className="form-control" value={advFilters.email} onChange={e => setAdvFilters(p => ({...p, email: e.target.value}))} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>סגור והחל סינון</button>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
+              <button data-agy-id="apply_adv_search_btn" className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>סגור והחל סינון</button>
+              <button data-agy-id="clear_adv_search_btn" className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
                 setAdvFilters({ firstName: '', lastName: '', phone: '', city: '', email: '' });
               }}>נקה הכל</button>
             </div>

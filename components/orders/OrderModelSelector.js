@@ -1,4 +1,4 @@
-ï»¿'use client';
+'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
@@ -108,6 +108,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = '×‘×
     >
       {models.map((m) => (
         <div
+          data-agy-id="order_model_selector_dropdown_item"
           key={m.id}
           onClick={() => handleSelect(m)}
           style={{
@@ -137,6 +138,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = '×‘×
     <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
       <div style={{ position: 'relative' }}>
         <input
+          data-agy-id="order_model_selector_input"
           type="text"
           value={query}
           onChange={(e) => {

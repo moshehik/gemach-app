@@ -137,18 +137,18 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const content = (
-    <div className="modal-overlay" onClick={onClose} style={{ zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '2rem', paddingBottom: '2rem', backgroundColor: 'rgba(0,0,0,0.6)', position: 'fixed', inset: 0, overflowY: 'auto' }}>
-      <div className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '900px', backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', transition: 'all 0.3s ease', margin: 'auto' }}>
+    <div data-agy-id="capacity_search_modal_backdrop" className="modal-overlay" onClick={onClose} style={{ zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '2rem', paddingBottom: '2rem', backgroundColor: 'rgba(0,0,0,0.6)', position: 'fixed', inset: 0, overflowY: 'auto' }}>
+      <div data-agy-id="capacity_search_modal_container" className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '900px', backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', transition: 'all 0.3s ease', margin: 'auto' }}>
         
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
             <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>חיפוש הזמנות תפוסה</h2>
-            <button type="button" onClick={() => setShowHistory(!showHistory)} className="btn btn-outline" style={{ padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.9rem' }}>
+            <button data-agy-id="capacity_search_history_toggle_btn" type="button" onClick={() => setShowHistory(!showHistory)} className="btn btn-outline" style={{ padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.9rem' }}>
               {showHistory ? 'הסתר חיפושים קודמים' : 'חיפושים קודמים'}
             </button>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
+          <button data-agy-id="capacity_search_close_btn" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer' }}>
             <X size={24} color="#666" />
           </button>
         </div>
@@ -159,7 +159,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#334155' }}>היסטוריית חיפושים</h3>
               <input 
-                type="text" 
+                data-agy-id="capacity_search_history_filter_input"                type="text" 
                 placeholder="סינון לפי קוד עובד..." 
                 value={historyFilter}
                 onChange={e => setHistoryFilter(e.target.value)}
@@ -181,7 +181,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                         <span style={{ color: '#64748b' }}>{new Date(h.timestamp).toLocaleString('he-IL')}</span>
                       </div>
                       <button 
-                        onClick={() => {
+                        data-agy-id="capacity_search_history_select_btn"                        onClick={() => {
                           setEmployeeCode(h.employeeCode || '');
                           setCustomerName(h.customerName || '');
                           setBarcodePrefix(h.barcodePrefix || '');
@@ -229,7 +229,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>דגם</label>
             <select 
-              className="form-select" 
+              data-agy-id="capacity_search_model_select"              className="form-select" 
               value={barcodePrefix} 
               onChange={e => {
                 setBarcodePrefix(e.target.value);
@@ -249,7 +249,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>מידה</label>
             <select 
-              className="form-select" 
+              data-agy-id="capacity_search_size_select"              className="form-select" 
               value={size} 
               onChange={e => setSize(e.target.value)} 
               required
@@ -279,7 +279,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>קוד עובד</label>
             <input 
-              type="text" 
+              data-agy-id="capacity_search_employee_input"              type="text" 
               value={employeeCode} 
               onChange={e => setEmployeeCode(e.target.value)} 
               placeholder="אופציונלי"
@@ -289,7 +289,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>שם לקוח</label>
             <input 
-              type="text" 
+              data-agy-id="capacity_search_customer_input"              type="text" 
               value={customerName} 
               onChange={e => setCustomerName(e.target.value)} 
               placeholder="אופציונלי"
@@ -297,7 +297,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
             />
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-            <button type="button" onClick={() => {
+            <button data-agy-id="capacity_search_clear_btn" type="button" onClick={() => {
               setBarcodePrefix('');
               setSize('');
               setFromDate('');
@@ -309,7 +309,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
             }} className="btn btn-outline" style={{ padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', flex: 1 }}>
               נקה
             </button>
-            <button type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 2 }} disabled={loading}>
+            <button data-agy-id="capacity_search_submit_btn" type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 2 }} disabled={loading}>
               {loading ? 'מחפש...' : <><Search size={18} style={{ marginLeft: '0.5rem' }} /> חפש</>}
             </button>
           </div>
@@ -340,7 +340,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
               <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
                 <button 
-                  type="button"
+                  data-agy-id="capacity_search_view_list_btn"                  type="button"
                   onClick={() => setViewMode('list')}
                   style={{ 
                     padding: '0.5rem 1.5rem', 
@@ -355,7 +355,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                   <List size={18} /> תצוגת רשימה
                 </button>
                 <button 
-                  type="button"
+                  data-agy-id="capacity_search_view_calendar_btn"                  type="button"
                   onClick={() => setViewMode('calendar')}
                   style={{ 
                     padding: '0.5rem 1.5rem', 

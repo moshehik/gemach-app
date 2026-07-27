@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
@@ -36,7 +36,7 @@ export default function EmployeePage({ params }) {
         joinDate: '', password: '', roleId: '', hourlyWage: '', 
         travelExpenses: false, paymentMethod: '', notes: '', 
         themeColor: 'standard', profileImage: '',
-        isActive: true, shifts: [] 
+        isActive: true, receiveEmailAlerts: false, shifts: [] 
       });
       setLoading(false);
       return;
@@ -218,7 +218,7 @@ export default function EmployeePage({ params }) {
   }) || [];
 
   return (
-    <main className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1000px' }}>
+    <main data-agy-id="employee-details-main" className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1000px' }}>
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * { visibility: hidden; }
@@ -229,7 +229,7 @@ export default function EmployeePage({ params }) {
       `}} />
 
       <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <button type="button" onClick={() => router.back()} className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+        <button data-agy-id="back-button" type="button" onClick={() => router.back()} className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
           →
         </button>
         <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>
@@ -240,6 +240,7 @@ export default function EmployeePage({ params }) {
       {id !== 'new' && (
         <div className="no-print" style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #eee', marginBottom: '2rem' }}>
           <button 
+            data-agy-id="tab-employee-details"
             className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} 
             onClick={() => setActiveTab('details')}
             style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'details' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'details' ? 'bold' : 'normal', color: activeTab === 'details' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s' }}
@@ -247,6 +248,7 @@ export default function EmployeePage({ params }) {
             פרטי עובד
           </button>
           <button 
+            data-agy-id="tab-employee-attendance"
             className={`tab-btn ${activeTab === 'attendance' ? 'active' : ''}`} 
             onClick={() => setActiveTab('attendance')}
             style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'attendance' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'attendance' ? 'bold' : 'normal', color: activeTab === 'attendance' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s' }}
@@ -257,7 +259,7 @@ export default function EmployeePage({ params }) {
       )}
 
       {activeTab === 'details' && (
-        <form className="no-print" onSubmit={handleSave} style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+        <form data-agy-id="employee-form" className="no-print" onSubmit={handleSave} style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם פרטי *</label>
@@ -469,8 +471,15 @@ export default function EmployeePage({ params }) {
             </label>
           </div>
 
+          <div className="form-group" style={{ marginTop: '0.5rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500' }}>
+              <input type="checkbox" name="receiveEmailAlerts" checked={employee.receiveEmailAlerts || false} onChange={handleChange} style={{ width: '20px', height: '20px' }} />
+              קבלת התראות מערכת למייל
+            </label>
+          </div>
+
           <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.75rem 2rem', borderRadius: '24px', fontSize: '1.1rem' }}>
+            <button data-agy-id="save-employee-button" type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.75rem 2rem', borderRadius: '24px', fontSize: '1.1rem' }}>
               {saving ? 'שומר...' : 'שמור פרטים'}
             </button>
           </div>

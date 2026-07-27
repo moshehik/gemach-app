@@ -170,9 +170,9 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
       {isExpanded && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
           {/* Barcode Scanner Input */}
-          <form onSubmit={handleBarcodeScan} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <form data-agy-id="orderrentalsmanager_form_1" onSubmit={handleBarcodeScan} style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <div style={{ position: 'relative', width: '300px' }}>
-              <input
+              <input data-agy-id="orderrentalsmanager_input_2"
                 type="text"
                 value={barcodeInput}
                 onChange={e => setBarcodeInput(e.target.value)}
@@ -181,7 +181,7 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
               />
               <Scan size={18} color="#64748b" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
             </div>
-            <button type="submit" style={{ padding: '0.8rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>
+            <button data-agy-id="orderrentalsmanager_button_3" type="submit" style={{ padding: '0.8rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>
               בצע סריקה
             </button>
             {!isFullyPaid && (
@@ -196,13 +196,13 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
               <div className="animate-fade-in" style={{ backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--element-border)' }}>
                 <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', textAlign: 'center' }}>הזנת ברקוד ידנית</h3>
                 <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '1.5rem', textAlign: 'center' }}>הזן את הברקוד המופיע על הפריט כדי לאשר את הפעולה.</p>
-                <form onSubmit={(e) => {
+                <form data-agy-id="orderrentalsmanager_form_4" onSubmit={(e) => {
                   e.preventDefault();
                   setShowManualScanModal(false);
                   handleBarcodeScan(null, manualBarcode);
                   setManualBarcode('');
                 }}>
-                  <input
+                  <input data-agy-id="orderrentalsmanager_input_5"
                     type="text"
                     autoFocus
                     value={manualBarcode}
@@ -211,8 +211,8 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
                     style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1.1rem', marginBottom: '1.5rem', textAlign: 'center' }}
                   />
                   <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button type="submit" style={{ flex: 1, padding: '0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>אשר והמשך</button>
-                    <button type="button" onClick={() => { setShowManualScanModal(false); setManualBarcode(''); setSelectedItemForScan(null); }} style={{ flex: 1, padding: '0.8rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>ביטול</button>
+                    <button data-agy-id="orderrentalsmanager_button_6" type="submit" style={{ flex: 1, padding: '0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>אשר והמשך</button>
+                    <button data-agy-id="orderrentalsmanager_button_7" type="button" onClick={() => { setShowManualScanModal(false); setManualBarcode(''); setSelectedItemForScan(null); }} style={{ flex: 1, padding: '0.8rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>ביטול</button>
                   </div>
                 </form>
               </div>
@@ -284,25 +284,25 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                           {!item.isTaken && (
-                            <button onClick={(e) => { e.stopPropagation(); setSelectedItemForScan(item); setShowManualScanModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#3b82f6', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                            <button data-agy-id="orderrentalsmanager_button_8" onClick={(e) => { e.stopPropagation(); setSelectedItemForScan(item); setShowManualScanModal(true); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#3b82f6', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
                               <PackageOpen size={14} />
                               השכרה
                             </button>
                           )}
                           {item.isTaken && !item.isReturned && (
                             <>
-                              <button onClick={(e) => { e.stopPropagation(); handleReturn(item); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#10b981', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                              <button data-agy-id="orderrentalsmanager_button_9" onClick={(e) => { e.stopPropagation(); handleReturn(item); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#10b981', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
                                 <PackageCheck size={14} />
                                 החזרה
                               </button>
-                              <button onClick={(e) => { e.stopPropagation(); handleCancelRent(item); }} title="בטל השכרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                              <button data-agy-id="orderrentalsmanager_button_10" onClick={(e) => { e.stopPropagation(); handleCancelRent(item); }} title="בטל השכרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
                                 <XCircle size={14} />
                                 ביטול
                               </button>
                             </>
                           )}
                           {item.isReturned && (
-                            <button onClick={(e) => { e.stopPropagation(); handleCancelReturn(item); }} title="בטל החזרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                            <button data-agy-id="orderrentalsmanager_button_11" onClick={(e) => { e.stopPropagation(); handleCancelReturn(item); }} title="בטל החזרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
                               <Undo2 size={14} />
                               ביטול החזרה
                             </button>

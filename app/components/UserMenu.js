@@ -1,7 +1,8 @@
-﻿'use client';
+'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserCircle, LogOut, Clock, CheckCircle, LogIn } from 'lucide-react';
+import LoginScreen from './LoginScreen';
 
 export default function UserMenu() {
   const router = useRouter();
@@ -9,6 +10,7 @@ export default function UserMenu() {
   const [activeShift, setActiveShift] = useState(null);
   const [loading, setLoading] = useState(true);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   
   const menuRef = useRef(null);
@@ -78,16 +80,22 @@ export default function UserMenu() {
 
   if (!user) {
     return (
-      <div className="user-menu" style={{ position: 'relative' }}>
-        <div 
+      <>
+        {showLoginModal && <LoginScreen isModal={true} onClose={() => setShowLoginModal(false)} />}
+        <div className="user-menu" style={{ position: 'relative' }} ref={menuRef}>
+        <button 
+          onClick={() => setDropdownOpen(!dropdownOpen)}
           style={{ 
             background: 'transparent',
+            border: 'none',
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
             padding: '4px 8px',
             borderRadius: '24px',
+            cursor: 'pointer'
           }}
+          className="hover:bg-gray-100 dark:hover:bg-gray-800"
         >
           <div style={{
             width: '36px', height: '36px', borderRadius: '50%', 
@@ -105,8 +113,44 @@ export default function UserMenu() {
               התחברות לא פעילה
             </span>
           </div>
-        </div>
+        </button>
+
+        {dropdownOpen && (
+          <div style={{
+            position: 'absolute',
+            top: '100%',
+            left: 0,
+            marginTop: '0.5rem',
+            background: 'var(--card-bg)',
+            borderRadius: '12px',
+            boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
+            minWidth: '220px',
+            zIndex: 100,
+            border: '1px solid #f1f5f9',
+            overflow: 'hidden'
+          }}>
+            <div style={{ padding: '0.5rem' }}>
+              <button 
+                onClick={() => {
+                  setDropdownOpen(false);
+                  setShowLoginModal(true);
+                }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '0.75rem', background: '#ecfdf5', color: '#059669',
+                  border: 'none', borderRadius: '8px', cursor: 'pointer',
+                  fontWeight: '500', transition: 'background 0.2s'
+                }}
+                className="hover:bg-green-100 dark:hover:bg-green-900"
+              >
+                <LogIn size={18} />
+                היכנס למערכת
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+      </>
     );
   }
 

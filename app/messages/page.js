@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Send, Inbox, Mail, Check, AlertCircle, Search, User, Archive, Tag, X, Plus } from 'lucide-react';
@@ -294,7 +294,7 @@ export default function MessagesPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f1f5f9', padding: '2rem', direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div data-agy-id="messages-page-container" style={{ minHeight: '100vh', background: '#f1f5f9', padding: '2rem', direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         
         {/* Header Section */}
@@ -309,6 +309,7 @@ export default function MessagesPage() {
             </p>
           </div>
           <button 
+            data-agy-id="new-message-button"
             onClick={() => setActiveTab('compose')}
             style={{ 
               display: 'flex', alignItems: 'center', gap: '0.5rem', 
@@ -330,6 +331,7 @@ export default function MessagesPage() {
           {/* Sidebar Tabs */}
           <div style={{ width: '250px', background: '#f8fafc', borderLeft: '1px solid #e2e8f0', padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <button
+              data-agy-id="tab-incoming"
               onClick={() => setActiveTab('incoming')}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', width: '100%',
@@ -349,6 +351,7 @@ export default function MessagesPage() {
             </button>
 
             <button
+              data-agy-id="tab-outgoing"
               onClick={() => setActiveTab('outgoing')}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', width: '100%',
@@ -363,6 +366,7 @@ export default function MessagesPage() {
             </button>
 
             <button
+              data-agy-id="tab-archived"
               onClick={() => setActiveTab('archived')}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', width: '100%',
@@ -459,6 +463,7 @@ export default function MessagesPage() {
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '1rem', color: '#1e293b', fontWeight: '600' }}>שלח אל:</label>
                     <select 
+                      data-agy-id="select-receiver"
                       value={receiverId} 
                       onChange={e => setReceiverId(e.target.value)}
                       style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #cbd5e1', background: 'white', color: '#0f172a', fontSize: '1.1rem', outline: 'none', transition: 'border-color 0.2s' }}
@@ -475,6 +480,7 @@ export default function MessagesPage() {
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '1rem', color: '#1e293b', fontWeight: '600' }}>תוכן ההודעה:</label>
                     <textarea
+                      data-agy-id="textarea-content"
                       value={content}
                       onChange={e => setContent(e.target.value)}
                       placeholder="הקלד את הודעתך כאן..."
@@ -483,12 +489,13 @@ export default function MessagesPage() {
                   </div>
 
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '1.5rem', fontSize: '0.95rem', fontWeight: '500' }}>
-                    <input type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
+                    <input data-agy-id="checkbox-send-email" type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
                     שלח התראה גם למייל (לעובדים בעלי כתובת מייל מעודכנת)
                   </label>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
                     <button 
+                      data-agy-id="send-message-button"
                       onClick={handleSend}
                       disabled={isSending}
                       style={{ 

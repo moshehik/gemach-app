@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 
@@ -81,8 +81,8 @@ export default function SettingsPage() {
       <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
         <form onSubmit={handleSave}>
           
-          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 'bold', color: '#1e293b' }}>
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--element-bg)', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 'bold', color: 'var(--text-main)' }}>
               <input 
                 type="checkbox" 
                 name="inventory_include_warehouse" 
@@ -92,7 +92,7 @@ export default function SettingsPage() {
               />
               הצג וספור במלאי גם פריטים הנמצאים במחסן/רזרבה
             </label>
-            <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.5rem', marginRight: '2rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', marginRight: '2rem' }}>
               אם מסומן, מלאי שמוגדר במיקום מחסן או רזרבה ייספר כמלאי זמין ויוצג למשתמש. (ברירת מחדל: לא)
             </p>
           </div>
@@ -150,8 +150,8 @@ export default function SettingsPage() {
             </p>
           </div>
 
-          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#fff3cd', borderRadius: '8px', border: '1px solid #ffeeba' }}>
-            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 'bold', color: '#856404' }}>
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--element-bg)', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 'bold', color: 'var(--text-main)' }}>
               <input 
                 type="checkbox" 
                 name="require_login" 
@@ -161,7 +161,7 @@ export default function SettingsPage() {
               />
               דרוש התחברות עם קוד עובד וסיסמה (נעילת מערכת)
             </label>
-            <p style={{ color: '#856404', fontSize: '0.9rem', marginTop: '0.5rem', marginRight: '2rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', marginRight: '2rem' }}>
               אם מופעל, משתמשים יצטרכו להזין קוד עובד וסיסמה בכניסה למערכת. מומלץ לוודא שמוגדרים עובדים עם סיסמאות לפני הפעלת אפשרות זו.
             </p>
           </div>
@@ -191,7 +191,7 @@ export default function SettingsPage() {
           </button>
           
           {message && (
-            <span style={{ marginRight: '1rem', color: message.includes('שגיאה') ? '#e53935' : '#2e7d32', fontWeight: 'bold' }}>
+            <span style={{ marginRight: '1rem', color: message.includes('שגיאה') ? 'var(--error-color, #e53935)' : 'var(--success-color, #2e7d32)', fontWeight: 'bold' }}>
               {message}
             </span>
           )}

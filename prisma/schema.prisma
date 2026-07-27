@@ -71,6 +71,7 @@ model Employee {
   travelExpenses Boolean?       @default(false) // נסיעות
   themeColor     String?        @default("standard") // פלטת גוונים
   profileImage   String? // קובץ פלוס תמונה
+  receiveEmailAlerts Boolean    @default(false) // קבלת התראות למייל
   pageVisits     PageVisitLog[]
 
   shifts Shift[]
