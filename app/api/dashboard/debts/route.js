@@ -28,7 +28,7 @@ export async function GET(request) {
       orderBy: {
         eventDate: { sort: 'desc', nulls: 'last' }
       },
-      take: 1000
+      take: 100
     });
 
     // Fetch all DEBT_APPROVED audit logs for these orders

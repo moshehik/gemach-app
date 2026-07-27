@@ -33,6 +33,10 @@ export async function POST(request) {
 
     const scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
     
+    const hiddenData = JSON.stringify({
+      employeeName, time, title, url, queryParams, lastButtons, userText, status: 'OPEN'
+    });
+
     const emailContent = `
 דיווח שגיאה מאת: ${employeeName}
 זמן: ${time}
@@ -45,6 +49,10 @@ ${lastButtons && lastButtons.length > 0 ? lastButtons.map((b, i) => `${i + 1}. $
 
 תיאור השגיאה מהמשתמש:
 ${userText}
+
+---AI_DATA_START---
+${hiddenData}
+---AI_DATA_END---
     `.trim();
 
     for (const prog of programmers) {
@@ -55,7 +63,7 @@ ${userText}
           body: JSON.stringify({
             to: prog.email,
             cc: '',
-            subject: 'דיווח תקלה ממערכת הגמח',
+            subject: 'דיווח תקלה ממערכת הגמח - לטיפול AI',
             body: emailContent,
             fileName: 'error_report.txt',
             fileContent: Buffer.from('Error Report').toString('base64')

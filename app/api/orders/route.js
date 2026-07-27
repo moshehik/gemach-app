@@ -164,7 +164,8 @@ export async function GET(request) {
       const minimalOrders = await prisma.order.findMany({
         where,
         select: minimalSelect,
-        orderBy: { eventDate: { sort: 'desc', nulls: 'last' } }
+        orderBy: { eventDate: { sort: 'desc', nulls: 'last' } },
+        take: 500
       });
 
       let minimalFormatted = minimalOrders.map(o => {
