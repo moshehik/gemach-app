@@ -6,7 +6,7 @@ import { Trash2, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function OrderPaymentsManager({ orderId, obligations = [], payments = [], onObligationsChange, onPaymentsChange, totalRequired, totalPaid, customer = {} }) {
   const [newObligation, setNewObligation] = useState({ description: '', amount: '' });
-  const [newPayment, setNewPayment] = useState({ paymentMethod: 'מזומן', notes: '', amount: '' });
+  const [newPayment, setNewPayment] = useState({ paymentMethod: 'אשראי', notes: '', amount: '' });
   
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [showAddChargeModal, setShowAddChargeModal] = useState(false);
@@ -123,12 +123,12 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
     const added = {
       isNew: true,
       paymentMethod: newPayment.paymentMethod,
-      notes: newPayment.notes,
-      amount: parseFloat(newPayment.amount),
+      notes: newPayment.paymentMethod === 'יציאה באישור מנהל' ? `אושר על סך ₪${newPayment.amount} ` + newPayment.notes : newPayment.notes,
+      amount: newPayment.paymentMethod === 'יציאה באישור מנהל' ? 0 : paymentAmount,
       paymentDate: new Date().toISOString()
     };
     onPaymentsChange([...payments, added]);
-    setNewPayment({ paymentMethod: 'מזומן', notes: '', amount: '' });
+    setNewPayment({ paymentMethod: 'אשראי', notes: '', amount: '' });
   };
 
   const removePayment = async (idx) => {
@@ -459,12 +459,9 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                 onChange={e => setNewPayment({...newPayment, paymentMethod: e.target.value})}
                 style={{ flex: '1', minWidth: '130px', padding: '0.7rem', borderRadius: '8px', border: '1px solid #86efac', outline: 'none', background: 'white', cursor: 'pointer' }}
               >
-                <option value="מזומן">מזומן</option>
                 <option value="אשראי">אשראי (דרך נדרים פלוס)</option>
                 <option value="אשראי (קופה חיצונית)">אשראי (קופה חיצונית)</option>
-                <option value="העברה בנקאית">העברה בנקאית</option>
-                <option value="המחאה">המחאה</option>
-                <option value="אחר">אחר</option>
+                <option value="יציאה באישור מנהל">יציאה באישור מנהל</option>
               </select>
               <input data-agy-id="orderpaymentsmanager_input_7" 
                 type="number" 

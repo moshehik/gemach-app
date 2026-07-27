@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Send, Inbox, Mail, Check, AlertCircle, Search, User, Archive, Tag, X, Plus } from 'lucide-react';
+import { Send, Inbox, Mail, Check, AlertCircle, Search, User, Archive, Tag, X, Plus, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
@@ -12,6 +12,8 @@ export default function MessagesPage() {
   const [outgoing, setOutgoing] = useState([]);
   const [archived, setArchived] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   
@@ -32,13 +34,19 @@ export default function MessagesPage() {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [notifRes, empRes] = await Promise.all([
+      const [notifRes, empRes, meRes] = await Promise.all([
         fetch('/api/notifications'),
-        fetch('/api/employees')
+        fetch('/api/employees'),
+        fetch('/api/me')
       ]);
       
       const notifData = await notifRes.json();
       const empData = await empRes.json();
+      const meData = await meRes.json();
+
+      if (meData.success && meData.employee) {
+        setCurrentUser(meData.employee);
+      }
 
       if (notifData.success) {
         const inc = notifData.notifications || [];
@@ -174,6 +182,25 @@ export default function MessagesPage() {
       setError('שגיאת תקשורת');
     } finally {
       setIsSending(false);
+    }
+  };
+
+  const handleSaveSettings = async (receiveEmailAlerts) => {
+    setIsSavingSettings(true);
+    try {
+      const res = await fetch('/api/me', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiveEmailAlerts })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCurrentUser(data.employee);
+      }
+    } catch (err) {
+      console.error('Error saving settings:', err);
+    } finally {
+      setIsSavingSettings(false);
     }
   };
 
@@ -384,6 +411,22 @@ export default function MessagesPage() {
                 </span>
               )}
             </button>
+
+            <button
+              data-agy-id="tab-settings"
+              onClick={() => setActiveTab('settings')}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', width: '100%',
+                borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem',
+                background: activeTab === 'settings' ? '#e0f2fe' : 'transparent',
+                color: activeTab === 'settings' ? '#0369a1' : '#475569',
+                transition: 'all 0.2s',
+                marginTop: 'auto'
+              }}
+            >
+              <Settings size={20} />
+              הגדרות
+            </button>
           </div>
 
           {/* Content Pane */}
@@ -511,6 +554,45 @@ export default function MessagesPage() {
                       {isSending ? 'שולח...' : <><Send size={20} /> שלח הודעה</>}
                     </button>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* SETTINGS TAB */}
+            {activeTab === 'settings' && (
+              <div>
+                <h2 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '0 0 1.5rem 0' }}>הגדרות התראות</h2>
+                
+                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '2rem' }}>
+                  <h3 style={{ fontSize: '1.2rem', color: '#1e293b', marginBottom: '1rem' }}>התראות במייל</h3>
+                  
+                  {currentUser ? (
+                    <div>
+                      {currentUser.email ? (
+                        <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
+                          המייל המעודכן שלך במערכת הוא: <strong dir="ltr">{currentUser.email}</strong>
+                        </p>
+                      ) : (
+                        <p style={{ color: '#ef4444', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <AlertCircle size={16} /> לא מוגדרת עבורך כתובת מייל במערכת. אנא פנה למנהל לעדכון המייל.
+                        </p>
+                      )}
+
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '1.1rem', color: '#0f172a', opacity: isSavingSettings ? 0.7 : 1 }}>
+                        <input 
+                          type="checkbox" 
+                          checked={currentUser.receiveEmailAlerts || false} 
+                          onChange={(e) => handleSaveSettings(e.target.checked)}
+                          disabled={isSavingSettings || !currentUser.email}
+                          style={{ width: '20px', height: '20px' }}
+                        />
+                        קבל התראות למייל על הודעות חדשות
+                      </label>
+                      {isSavingSettings && <span style={{ fontSize: '0.9rem', color: '#3b82f6', marginTop: '0.5rem', display: 'block' }}>שומר שינויים...</span>}
+                    </div>
+                  ) : (
+                    <p style={{ color: '#64748b' }}>טוען נתוני עובד...</p>
+                  )}
                 </div>
               </div>
             )}

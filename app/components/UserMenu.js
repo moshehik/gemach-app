@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserCircle, LogOut, Clock, CheckCircle, LogIn } from 'lucide-react';
+import { UserCircle, LogOut, Clock, CheckCircle, LogIn, Monitor } from 'lucide-react';
 import LoginScreen from './LoginScreen';
 
 export default function UserMenu() {
@@ -24,7 +24,10 @@ export default function UserMenu() {
           setActiveShift(data.activeShift);
         }
       })
-      .catch(err => console.error('Error fetching user:', err))
+      .catch(err => {
+        // Log as string to prevent Next.js dev overlay from catching the Error object
+        console.warn('Network or fetch error checking user session:', err.message || 'Failed to fetch');
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -40,8 +43,14 @@ export default function UserMenu() {
 
   const handleLogout = async () => {
     setActionLoading(true);
-    await fetch('/api/logout', { method: 'POST' });
-    router.refresh();
+    try {
+      await fetch('/api/logout', { method: 'POST' });
+    } catch (err) {
+      console.warn('Logout error:', err.message || 'Failed to fetch');
+    } finally {
+      router.refresh();
+      setActionLoading(false);
+    }
   };
 
   const handlePunch = async (action) => {
@@ -145,6 +154,24 @@ export default function UserMenu() {
               >
                 <LogIn size={18} />
                 היכנס למערכת
+              </button>
+            </div>
+            <div style={{ padding: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
+              <button 
+                onClick={() => {
+                  setDropdownOpen(false);
+                  window.dispatchEvent(new Event('show-screensaver'));
+                }}
+                style={{
+                  width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                  padding: '0.75rem', background: 'transparent', color: '#64748b',
+                  border: 'none', borderRadius: '8px', cursor: 'pointer',
+                  transition: 'background 0.2s'
+                }}
+                className="hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <Monitor size={18} />
+                שומר מסך
               </button>
             </div>
           </div>
@@ -258,6 +285,24 @@ export default function UserMenu() {
             >
               <UserCircle size={18} />
               התנתק / החלף משתמש
+            </button>
+            <button 
+              onClick={() => {
+                setDropdownOpen(false);
+                window.dispatchEvent(new Event('show-screensaver'));
+              }}
+              disabled={actionLoading}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '0.75rem', background: 'transparent', color: '#64748b',
+                border: 'none', borderRadius: '8px', cursor: 'pointer',
+                transition: 'background 0.2s',
+                marginTop: '4px'
+              }}
+              className="hover:bg-gray-100 dark:hover:bg-gray-700"
+            >
+              <Monitor size={18} />
+              שומר מסך
             </button>
           </div>
         </div>

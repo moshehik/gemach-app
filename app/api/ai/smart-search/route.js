@@ -120,6 +120,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
       if (orderIds.length > 0) {
         const fullOrders = await prisma.order.findMany({
           where: { orderId: { in: orderIds } },
+          orderBy: { eventDate: { sort: 'desc', nulls: 'last' } },
           include: {
             customer: true,
             payments: true,

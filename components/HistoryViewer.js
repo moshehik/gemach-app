@@ -356,7 +356,7 @@ export default function HistoryViewer({ entityType, entityId }) {
           {/* Search & Filters - One Line */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
             
-            <form onSubmit={handleSmartSearch} style={{ display: 'flex', gap: '8px', flex: '2', minWidth: '250px' }}>
+            <form onSubmit={handleSmartSearch} className="ai-feature-element" style={{ display: 'flex', gap: '8px', flex: '2', minWidth: '250px' }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <div style={{ position: 'absolute', right: '12px', top: '10px', color: 'var(--primary-color)' }}>
                   <MessageSquare size={18} />

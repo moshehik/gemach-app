@@ -18,6 +18,7 @@ export default function AIFloatingWidget() {
   const [isListening, setIsListening] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [chatSessions, setChatSessions] = useState([]);
+  const [hideAi, setHideAi] = useState(false);
   
   const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
@@ -57,6 +58,18 @@ export default function AIFloatingWidget() {
   };
 
   useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          const aiSetting = data.find(s => s.key === 'hide_ai_features');
+          if (aiSetting && aiSetting.value === 'true') {
+            setHideAi(true);
+          }
+        }
+      })
+      .catch(err => console.warn('Failed to fetch AI settings:', err?.message || err));
+
     const savedSessions = localStorage.getItem('ai_employee_chat_sessions');
     let sessions = [];
     if (savedSessions) {
@@ -167,7 +180,7 @@ export default function AIFloatingWidget() {
           setActiveSessionId(syncData.session.id);
         }
       } catch (err) {
-        console.error('Failed to sync session', err);
+        console.warn('Failed to sync session:', err?.message || err);
       }
 
     } catch (error) {
@@ -260,7 +273,7 @@ export default function AIFloatingWidget() {
     setShowHistory(false);
   };
 
-  if (pathname === '/customer-interface') {
+  if (pathname === '/customer-interface' || hideAi) {
     return null;
   }
 

@@ -478,6 +478,13 @@ export default function EmployeePage({ params }) {
             </label>
           </div>
 
+          <div className="form-group" style={{ marginTop: '0.5rem' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500' }}>
+              <input type="checkbox" name="showAi" checked={employee.showAi || false} onChange={handleChange} style={{ width: '20px', height: '20px' }} />
+              הצג AI לעובד זה
+            </label>
+          </div>
+
           <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
             <button data-agy-id="save-employee-button" type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.75rem 2rem', borderRadius: '24px', fontSize: '1.1rem' }}>
               {saving ? 'שומר...' : 'שמור פרטים'}

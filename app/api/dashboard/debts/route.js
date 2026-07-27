@@ -26,7 +26,7 @@ export async function GET(request) {
         obligations: true
       },
       orderBy: {
-        orderId: 'desc'
+        eventDate: { sort: 'desc', nulls: 'last' }
       },
       take: 1000
     });
@@ -117,7 +117,7 @@ export async function GET(request) {
         }
       },
       orderBy: {
-        orderId: 'desc'
+        eventDate: { sort: 'desc', nulls: 'last' }
       },
       take: 10
     });

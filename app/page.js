@@ -252,30 +252,7 @@ export default function HomeDashboard() {
             onAiSearch={(q) => handleAiSearch(q, false)}
             loading={loadingSearch || (aiLoading && aiMessages.length === 0)}
           />
-          {recentSearches.length > 0 && !searchInput && (
-            <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-              <span style={{ fontSize: '0.9rem', color: '#6b7280' }}>חיפושים אחרונים:</span>
-              {recentSearches.map((s, idx) => (
-                <button 
-                  key={idx} 
-                  onClick={() => {
-                    setSearchInput(s);
-                    // trigger search in the next render cycle or call handleGlobalSearch directly by passing it
-                    // The simplest is to just set it and let user click search, or trigger it manually
-                    setTimeout(() => {
-                      document.querySelector('form')?.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
-                    }, 100);
-                  }}
-                  style={{ background: 'var(--element-bg)', border: 'none', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.85rem', color: 'var(--text-main)', cursor: 'pointer', transition: 'background 0.2s' }}
-                  onMouseOver={e => e.currentTarget.style.background = 'var(--primary-light, var(--element-bg))'}
-                  onMouseOut={e => e.currentTarget.style.background = 'var(--element-bg)'}
-                >
-                  <Search size={12} style={{ display: 'inline', marginRight: '4px', verticalAlign: 'middle' }} />
-                  {s}
-                </button>
-              ))}
-            </div>
-          )}
+          {/* Recent searches section removed */}
         </div>
       </div>
 

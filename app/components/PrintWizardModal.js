@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
@@ -77,6 +77,16 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
               <input type="radio" name="reportType" value="orders_no_alterations" checked={reportType === 'orders_no_alterations'} onChange={() => setReportType('orders_no_alterations')} style={{ margin: 0 }} />
               <FileText size={18} color={reportType === 'orders_no_alterations' ? 'var(--primary-color)' : 'var(--text-muted)'} />
               <span style={{ fontWeight: reportType === 'orders_no_alterations' ? 'bold' : 'normal' }}>רשימת הזמנות ללא תיקונים</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', border: reportType === 'orders_all' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)', background: reportType === 'orders_all' ? 'rgba(212,175,55,0.05)' : 'transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
+              <input type="radio" name="reportType" value="orders_all" checked={reportType === 'orders_all'} onChange={() => setReportType('orders_all')} style={{ margin: 0 }} />
+              <FileText size={18} color={reportType === 'orders_all' ? 'var(--primary-color)' : 'var(--text-muted)'} />
+              <span style={{ fontWeight: reportType === 'orders_all' ? 'bold' : 'normal' }}>דוח הזמנות כללי (כל ההזמנות)</span>
+            </label>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', border: reportType === 'labels' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)', background: reportType === 'labels' ? 'rgba(212,175,55,0.05)' : 'transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
+              <input type="radio" name="reportType" value="labels" checked={reportType === 'labels'} onChange={() => setReportType('labels')} style={{ margin: 0 }} />
+              <Printer size={18} color={reportType === 'labels' ? 'var(--primary-color)' : 'var(--text-muted)'} />
+              <span style={{ fontWeight: reportType === 'labels' ? 'bold' : 'normal' }}>הדפסת תוויות לתופרות (לתיקונים שטרם בוצעו)</span>
             </label>
           </div>
         </div>

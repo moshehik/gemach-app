@@ -446,7 +446,8 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                       ) : (
                         <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'center' }}>
                           <button data-agy-id="orderitemsmanager_button_10" 
-                            onClick={() => showItemDetails(item)}
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); showItemDetails(item); }}
                             style={{ 
                               background: '#eff6ff', 
                               border: '1px solid #bfdbfe',
@@ -517,7 +518,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       )}
       
       {mounted && detailsModalItem && createPortal(
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
           <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '90%', maxWidth: '550px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
               <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.4rem' }}>פרטים נוספים לפריט</h3>

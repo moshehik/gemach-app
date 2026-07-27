@@ -8,7 +8,11 @@ export default function SettingsPage() {
     nedarim_plus_terminal: '',
     ENABLE_SET_DISCOUNTS: 'false',
     require_login: 'false',
-    inventory_include_warehouse: 'false'
+    inventory_include_warehouse: 'false',
+    hide_internal_messaging: 'false',
+    print_rental_box1: 'נבקש לבדוק עוד היום שההזמנה סופקה.\nהדרכים ליצירת קשר-\nבמייל- amechubad@gmail.com\nבטלפון- בין השעות 10:00- 11:00 בבוקר.',
+    print_rental_box2: 'יש להחזיר את השמלות עם רוכסן סגור ושרוולים מסודרים כפי שקיבלתם אותם',
+    print_rental_footer: 'שמרנו על תקנון הגמ"ח, לא כיבסנו ולא עשינו תיקונים לבד!'
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -48,7 +52,11 @@ export default function SettingsPage() {
         'nedarim_plus_terminal': 'קוד מוסד נדרים פלוס',
         'ENABLE_SET_DISCOUNTS': 'הפעל מבצע סטים',
         'require_login': 'חובת התחברות למערכת',
-        'inventory_include_warehouse': 'ספירת מלאי מחסן'
+        'inventory_include_warehouse': 'ספירת מלאי מחסן',
+        'print_rental_box1': 'הערות השכרה - תיבה 1',
+        'print_rental_box2': 'הערות השכרה - תיבה 2',
+        'print_rental_footer': 'הערות השכרה - טקסט תחתון / תקנון',
+        'hide_internal_messaging': 'הסתר מערכת הודעות'
       };
       
       const payload = Object.entries(settings).map(([key, value]) => ({
@@ -166,6 +174,22 @@ export default function SettingsPage() {
             </p>
           </div>
 
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: 'var(--element-bg)', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 'bold', color: 'var(--text-main)' }}>
+              <input 
+                type="checkbox" 
+                name="hide_internal_messaging" 
+                checked={settings.hide_internal_messaging === 'true'} 
+                onChange={handleChange}
+                style={{ marginLeft: '0.5rem', width: '20px', height: '20px' }}
+              />
+              הסתר את מערכת ההודעות הפנימיות
+            </label>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '0.5rem', marginRight: '2rem' }}>
+              אם מסומן, פעמון ההתראות ומערכת ההודעות בין העובדים יוסתרו מהמערכת. (מצריך רענון דף להחלה)
+            </p>
+          </div>
+
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
               קוד מוסד (נדרים פלוס)
@@ -179,6 +203,49 @@ export default function SettingsPage() {
               value={settings.nedarim_plus_terminal || ''} 
               onChange={handleChange}
               style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', maxWidth: '200px' }}
+            />
+          </div>
+
+          <h3 style={{ color: 'var(--primary-color)', marginTop: '2rem', marginBottom: '1rem', borderBottom: '1px solid var(--element-border)', paddingBottom: '0.5rem' }}>
+            הגדרות הדפסה - כרטיס השכרה
+          </h3>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+              הערות השכרה - תיבה עליונה
+            </label>
+            <textarea 
+              name="print_rental_box1" 
+              value={settings.print_rental_box1 || ''} 
+              onChange={handleChange}
+              rows="4"
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+              הערות השכרה - תיבה אמצעית
+            </label>
+            <textarea 
+              name="print_rental_box2" 
+              value={settings.print_rental_box2 || ''} 
+              onChange={handleChange}
+              rows="2"
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', resize: 'vertical' }}
+            />
+          </div>
+
+          <div style={{ marginBottom: '1.5rem' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
+              הערות השכרה - טקסט חתימה (תקנון)
+            </label>
+            <input 
+              type="text" 
+              name="print_rental_footer" 
+              value={settings.print_rental_footer || ''} 
+              onChange={handleChange}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}
             />
           </div>
 

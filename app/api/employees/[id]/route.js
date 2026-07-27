@@ -65,7 +65,8 @@ export async function PUT(request, { params }) {
         isActive: body.isActive !== undefined ? body.isActive : true,
         themeColor: body.themeColor,
         profileImage: body.profileImage,
-        receiveEmailAlerts: typeof body.receiveEmailAlerts === 'boolean' ? body.receiveEmailAlerts : (body.receiveEmailAlerts === 'true' || body.receiveEmailAlerts === true)
+        receiveEmailAlerts: typeof body.receiveEmailAlerts === 'boolean' ? body.receiveEmailAlerts : (body.receiveEmailAlerts === 'true' || body.receiveEmailAlerts === true),
+        showAi: typeof body.showAi === 'boolean' ? body.showAi : (body.showAi === 'true' || body.showAi === true)
       }
     });
 

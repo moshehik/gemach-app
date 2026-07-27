@@ -13,6 +13,7 @@ import StatisticsModal from '../components/StatisticsModal';
 import { useLabels } from '@/app/components/LabelsContext';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
+import OrderModelSelector from '../../components/orders/OrderModelSelector';
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function OrdersPage() {
 
   const [advFilters, setAdvFilters] = useState({
     customerName: '', customerPhone: '', customerCity: '', 
-    advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: ''
+    advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: ''
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);
   const [showCapacitySearch, setShowCapacitySearch] = useState(false);
@@ -333,6 +334,25 @@ export default function OrdersPage() {
                 </div>
               </div>
               <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>דגם</label>
+                <div style={{ position: 'relative' }}>
+                  <OrderModelSelector 
+                    value={{ name: advFilters.advModelName }} 
+                    onChange={m => setAdvFilters(p => ({...p, advModelName: m ? m.name : ''}))} 
+                    placeholder="בחר דגם..."
+                  />
+                  {advFilters.advModelName && (
+                    <button 
+                      onClick={() => setAdvFilters(p => ({...p, advModelName: ''}))}
+                      style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error-color)' }}
+                      title="נקה בחירה"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>{getLabel('order_customerName', 'שם לקוח')}</label>
                 <input data-agy-id="orders_page_input_13" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} placeholder="שם הלקוח..." />
               </div>
@@ -347,7 +367,7 @@ export default function OrdersPage() {
             </div>
             <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid var(--divider)', paddingTop: '1.5rem', justifyContent: 'flex-end' }}>
               <button data-agy-id="orders_page_button_16" className="btn btn-outline" style={{ padding: '0.6rem 1.5rem', borderRadius: '8px' }} onClick={() => {
-                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: '' });
+                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '' });
               }}>נקה הכל</button>
               <button data-agy-id="orders_page_button_17" className="btn btn-primary" style={{ padding: '0.6rem 2.5rem', borderRadius: '8px' }} onClick={() => setShowAdvSearch(false)}>החל סינון</button>
             </div>
@@ -456,6 +476,13 @@ export default function OrdersPage() {
                       </tr>
                     )})}
                   </tbody>
+                  <tfoot>
+                    <tr>
+                      <td colSpan="8" style={{ padding: '1rem', fontWeight: 'bold', textAlign: 'center', background: 'var(--element-bg)', borderTop: '2px solid var(--element-border)' }}>
+                        סה"כ שורות מוצגות: {orders.length}
+                      </td>
+                    </tr>
+                  </tfoot>
                 </table>
                 
                 {/* Pagination Controls */}

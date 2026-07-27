@@ -205,8 +205,8 @@ export async function PUT(request, { params }) {
           activeItems,
           data.eventDate !== undefined ? data.eventDate : existingOrder.eventDate,
           data.isAbroad !== undefined ? data.isAbroad : existingOrder.isAbroad,
-          data.fromDate !== undefined ? data.fromDate : existingOrder.fromDate,
-          data.toDate !== undefined ? data.toDate : existingOrder.toDate,
+          data.fromDate !== undefined ? (data.fromDate ? new Date(data.fromDate) : null) : existingOrder.fromDate,
+          data.toDate !== undefined ? (data.toDate ? new Date(data.toDate) : null) : existingOrder.toDate,
           parsedOrderId
         );
 
@@ -233,10 +233,12 @@ export async function PUT(request, { params }) {
           eventDateHebrew: data.eventDateHebrew !== undefined ? data.eventDateHebrew : (data.eventDate ? getHebrewDateString(data.eventDate) : null),
           returnDate: data.returnDate ? new Date(data.returnDate) : null,
           isAbroad: data.isAbroad,
+          isWeekdayEvent: data.isWeekdayEvent,
           fromDate: data.fromDate ? new Date(data.fromDate) : null,
           toDate: data.toDate ? new Date(data.toDate) : null,
           notes: data.notes,
           status: data.status,
+          hasSignedRegulations: data.hasSignedRegulations !== undefined ? data.hasSignedRegulations : undefined,
         }
       });
 

@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { recalculateOrderObligations } from '@/lib/pricingEngine';
 
@@ -6,7 +6,7 @@ export async function POST(request) {
   try {
     const data = await request.json();
     
-    if (!data.orderId || !data.amount) {
+    if (!data.orderId || data.amount === undefined || data.amount === null) {
       return NextResponse.json({ error: 'חסרים נתונים חובה: מסנהזמנה וסכום' }, { status: 400 });
     }
 

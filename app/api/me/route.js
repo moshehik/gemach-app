@@ -25,7 +25,8 @@ export async function GET(request) {
         fullName: true,
         isActive: true,
         roleId: true,
-        // specifically excluding password here
+        receiveEmailAlerts: true,
+        email: true
       }
     });
 
@@ -58,6 +59,48 @@ export async function GET(request) {
 
   } catch (error) {
     console.error('Error in /api/me:', error);
+    return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
+  }
+}
+
+export async function PATCH(request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token');
+
+    if (!token?.value) {
+      return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
+    }
+
+    const employeeId = token.value;
+    if (!employeeId) {
+      return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 401 });
+    }
+
+    const body = await request.json();
+    const updateData = {};
+
+    if (typeof body.receiveEmailAlerts !== 'undefined') {
+      updateData.receiveEmailAlerts = Boolean(body.receiveEmailAlerts);
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      return NextResponse.json({ success: false, error: 'No data to update' }, { status: 400 });
+    }
+
+    const updatedEmployee = await prisma.employee.update({
+      where: { id: employeeId },
+      data: updateData,
+      select: {
+        id: true,
+        receiveEmailAlerts: true
+      }
+    });
+
+    return NextResponse.json({ success: true, employee: updatedEmployee });
+
+  } catch (error) {
+    console.error('Error in /api/me PATCH:', error);
     return NextResponse.json({ success: false, error: 'Internal Server Error' }, { status: 500 });
   }
 }

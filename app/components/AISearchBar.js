@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import { Search, Sparkles, X, BarChart3, Loader2 } from 'lucide-react';
@@ -130,6 +130,7 @@ export default function AISearchBar({
 
       {/* AI Toggle Button */}
       <button 
+        className="ai-feature-element"
         onClick={() => {
           if (!isAiMode) {
             setAiInput(value || '');

@@ -419,7 +419,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                           </td>
                           <td className="p-4">
                             <div className="flex justify-center gap-2">
-                              <button data-agy-id="rentalreturnmodal_button_8" onClick={() => showItemDetails(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200" title="פרטים נוספים"><Info size={18} /></button>
+                              <button data-agy-id="rentalreturnmodal_button_8" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); showItemDetails(item); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200" title="פרטים נוספים"><Info size={18} /></button>
                               {item.isTaken && (
                                 <button data-agy-id="rentalreturnmodal_button_9" onClick={() => undoRental(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200" title="בטל לקיחה"><Undo2 size={18} /></button>
                               )}
@@ -488,7 +488,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                           </td>
                           <td className="p-4">
                             <div className="flex justify-center gap-2 flex-wrap">
-                              <button data-agy-id="rentalreturnmodal_button_12" onClick={() => showItemDetails(item)} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200" title="פרטים נוספים"><Info size={18} /></button>
+                              <button data-agy-id="rentalreturnmodal_button_12" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); showItemDetails(item); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200" title="פרטים נוספים"><Info size={18} /></button>
                               {item.isReturned ? (
                                 <>
                                   <button data-agy-id="rentalreturnmodal_button_13" onClick={() => undoReturn(item.id)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" title="בטל החזרה"><Undo2 size={18} /></button>
@@ -520,13 +520,27 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         </div>
       </div>
 
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes fade-in {
+          from { opacity: 0; transform: scale(0.98); }
+          to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+          animation: fade-in 0.2s ease-out forwards;
+        }
+      `}} />
+    </div>
+  );
+
+  const additionalModals = (
+    <>
       {/* Item Details Modal */}
       {itemDetails && (
         <div className="modal-overlay" style={{ zIndex: 1200 }}>
           <div className="modal-content" style={{ maxWidth: '500px', width: '100%', padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
               <h3 className="font-bold text-lg text-slate-800">פרטי פריט: {itemDetails.item.barcode || itemDetails.item.description}</h3>
-              <button data-agy-id="rentalreturnmodal_button_16" onClick={() => setItemDetails(null)} className="text-slate-400 hover:text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-full p-1"><X size={20}/></button>
+              <button data-agy-id="rentalreturnmodal_button_16" type="button" onClick={() => setItemDetails(null)} className="text-slate-400 hover:text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-full p-1"><X size={20}/></button>
             </div>
             <div className="p-6 overflow-y-auto max-h-[70vh]">
               <div className="grid grid-cols-2 gap-4 mb-6">
@@ -556,10 +570,10 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
               <h4 className="font-bold text-slate-700 mb-3 border-b border-slate-200 pb-2">היסטוריית פעולות</h4>
               <div className="space-y-3">
-                {itemDetails.history.length === 0 ? (
+                {itemDetails.history && itemDetails.history.length === 0 ? (
                   <p className="text-slate-500 italic text-sm">אין היסטוריה לפריט זה</p>
                 ) : (
-                  itemDetails.history.map(log => (
+                  itemDetails.history && itemDetails.history.map(log => (
                     <div key={log.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
                       <div className="flex justify-between items-center mb-2">
                         <span className="font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded text-xs">{log.action}</span>
@@ -595,6 +609,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               <div className="grid gap-4">
                 {duplicates.map((opt, idx) => (
                   <button data-agy-id="rentalreturnmodal_button_17" 
+                    type="button"
                     key={opt.id} 
                     onClick={() => selectDuplicate(opt.id)}
                     className="flex items-center gap-4 p-4 bg-white border-2 border-slate-200 hover:border-blue-500 hover:shadow-md rounded-xl transition-all group text-right"
@@ -619,23 +634,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               </div>
             </div>
             <div className="bg-slate-100 p-4 flex justify-end border-t border-slate-200">
-               <button data-agy-id="rentalreturnmodal_button_18" onClick={() => setDuplicates(null)} className="px-6 py-2 rounded-lg text-slate-600 font-semibold hover:bg-slate-200 transition-colors">ביטול</button>
+               <button data-agy-id="rentalreturnmodal_button_18" type="button" onClick={() => setDuplicates(null)} className="px-6 py-2 rounded-lg text-slate-600 font-semibold hover:bg-slate-200 transition-colors">ביטול</button>
             </div>
           </div>
         </div>
       )}
-      
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes fade-in {
-          from { opacity: 0; transform: scale(0.98); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out forwards;
-        }
-      `}} />
-    </div>
+    </>
   );
 
-  return typeof document !== 'undefined' ? createPortal(modalContent, document.body) : modalContent;
+  return typeof document !== 'undefined' ? createPortal(<>{modalContent}{additionalModals}</>, document.body) : <>{modalContent}{additionalModals}</>;
 }

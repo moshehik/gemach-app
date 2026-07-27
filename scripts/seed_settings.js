@@ -10,6 +10,7 @@ async function main() {
     { key: "full_refund_days", name: "החזר מלא עד (מספר ימים)", value: "0", category: "תשלומים", notes: "מספר הימים מיום ההזמנה בהם ניתן לבטל ולקבל החזר מלא (0 = ללא)", type: "number" },
     
     { key: "calendar_filtering", name: "שימוש ביומן לסינון תאריכים", value: "true", category: "יומן", notes: "סינון הזמנות ותצוגות לפי חודשים ומועדים עבריים ביומן", type: "boolean" },
+    { key: "hide_gregorian_calendar", name: "הסתר תאריך לועזי", value: "false", category: "תצוגה", notes: "הסתרת אפשרות בחירת תאריך לועזי ביומנים", type: "boolean" },
     
     { key: "allow_alterations", name: "אפשרות לתיקונים", value: "true", category: "הזמנות", notes: "מעקב אחר תיקונים לשמלות", type: "boolean" },
     { key: "allow_free_exchange", name: "אפשר החלפת דגם חינם", value: "true", category: "הזמנות", notes: "החלפת דגם ללא גביית דמי טיפול", type: "boolean" },

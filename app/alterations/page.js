@@ -454,6 +454,15 @@ export default function AlterationsPage() {
                   ))
                 )}
               </tbody>
+              {items && items.length > 0 && (
+                <tfoot>
+                  <tr>
+                    <td colSpan="7" style={{ padding: '1rem', fontWeight: 'bold', textAlign: 'center', background: 'var(--element-bg)', borderTop: '2px solid var(--element-border)' }}>
+                      סה"כ שורות מוצגות: {items.length}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
             
             {/* Pagination Controls */}

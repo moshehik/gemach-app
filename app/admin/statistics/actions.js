@@ -1,4 +1,4 @@
-﻿'use server';
+'use server';
 
 import prisma from '../../lib/prisma';
 
@@ -274,7 +274,7 @@ export async function getDailyReport() {
 export async function getOrderSummaryStats() {
   const recentOrders = await prisma.order.findMany({
     take: 10,
-    orderBy: { orderDate: 'desc' },
+    orderBy: { eventDate: { sort: 'desc', nulls: 'last' } },
     include: { customer: true, items: true }
   });
   return recentOrders.map(order => ({

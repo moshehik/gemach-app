@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
 import { recalculateOrderObligations } from '../../../../../lib/pricingEngine';
 import { getAvailableInventory } from '../../../../../lib/inventory';
@@ -70,7 +70,7 @@ export async function POST(request, { params }) {
           quantity: 1,
           neckAlteration: itemData.neckAlteration ? parseInt(itemData.neckAlteration) : null,
           sleeveAlteration: itemData.sleeveAlteration ? parseInt(itemData.sleeveAlteration) : null,
-          lengthAlteration: itemData.lengthAlteration || null,
+          lengthAlteration: itemData.lengthAlteration ? String(itemData.lengthAlteration) : null,
           alterationDetails: itemData.alterationDetails || null,
           alterationDone: false,
           isDeleted: false,

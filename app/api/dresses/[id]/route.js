@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 
 export async function GET(request, { params }) {
@@ -78,6 +78,10 @@ export async function PUT(request, { params }) {
     
     if (body.exitDateFromRepo !== undefined) {
       updatedData.exitDateFromRepo = body.exitDateFromRepo ? new Date(body.exitDateFromRepo) : null;
+    }
+
+    if (body.inactiveReason !== undefined) {
+      updatedData.inactiveReason = body.inactiveReason;
     }
 
     if (body.isDeleted !== undefined) {

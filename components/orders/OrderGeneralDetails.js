@@ -84,7 +84,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
   const [isEditingCustomer, setIsEditingCustomer] = useState(false);
   const [isEditingOrderDetails, setIsEditingOrderDetails] = useState(!order?.eventDate);
   const [customerMode, setCustomerMode] = useState('existing');
-  const [newCustomer, setNewCustomer] = useState({ firstName: '', lastName: '', phone1: '', email: '', city: '' });
+  const [newCustomer, setNewCustomer] = useState({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '' });
 
   const handleSaveNewCustomer = async () => {
     if (!newCustomer.firstName || !newCustomer.lastName || !newCustomer.phone1) {
@@ -238,6 +238,8 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   <div><label style={labelStyle}>שם משפחה</label><input data-agy-id="ordergeneraldetails_input_5" type="text" style={inputStyle} value={newCustomer.lastName} onChange={e => setNewCustomer({...newCustomer, lastName: e.target.value})} /></div>
                   <div><label style={labelStyle}>טלפון</label><input data-agy-id="ordergeneraldetails_input_6" type="text" style={inputStyle} value={newCustomer.phone1} onChange={e => setNewCustomer({...newCustomer, phone1: e.target.value})} /></div>
                   <div><label style={labelStyle}>עיר</label><input data-agy-id="ordergeneraldetails_input_7" type="text" style={inputStyle} value={newCustomer.city} onChange={e => setNewCustomer({...newCustomer, city: e.target.value})} /></div>
+                  <div><label style={labelStyle}>רחוב</label><input data-agy-id="ordergeneraldetails_input_new_1" type="text" style={inputStyle} value={newCustomer.street} onChange={e => setNewCustomer({...newCustomer, street: e.target.value})} /></div>
+                  <div><label style={labelStyle}>בית</label><input data-agy-id="ordergeneraldetails_input_new_2" type="text" style={inputStyle} value={newCustomer.houseNum} onChange={e => setNewCustomer({...newCustomer, houseNum: e.target.value})} /></div>
                   <div style={{ gridColumn: '1 / -1', marginTop: '0.5rem' }}>
                      <button data-agy-id="ordergeneraldetails_button_8" type="button" onClick={handleSaveNewCustomer} style={{ width: '100%', padding: '0.8rem', background: 'linear-gradient(to right, #2563eb, #3b82f6)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 'bold', fontSize: '1rem', cursor: 'pointer', boxShadow: '0 4px 6px rgba(37,99,235,0.2)' }}>שמור ובחר לקוח</button>
                   </div>
@@ -273,18 +275,22 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   {order.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.eventDate)})` : 'לא נבחר'}
                 </div>
               </div>
-              {(order.fromDate || order.toDate || order.returnDate || order.isAbroad) && (
-                <>
+              <>
+                <div>
+                  <span style={{...labelStyle, color: '#64748b'}}>לקיחה:</span>
+                  <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{order.fromDate ? new Date(order.fromDate).toLocaleDateString('he-IL') : '-'}</div>
+                </div>
+                <div>
+                  <span style={{...labelStyle, color: '#64748b'}}>החזרה:</span>
+                  <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{order.toDate || order.returnDate ? new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL') : '-'}</div>
+                </div>
+                {order.isWeekdayEvent && (
                   <div>
-                    <span style={{...labelStyle, color: '#64748b'}}>לקיחה:</span>
-                    <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{order.fromDate ? new Date(order.fromDate).toLocaleDateString('he-IL') : '-'}</div>
+                    <span style={{...labelStyle, color: '#64748b'}}>סוג אירוע:</span>
+                    <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>אירוע חול</div>
                   </div>
-                  <div>
-                    <span style={{...labelStyle, color: '#64748b'}}>החזרה:</span>
-                    <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{order.toDate || order.returnDate ? new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL') : '-'}</div>
-                  </div>
-                </>
-              )}
+                )}
+              </>
               <div style={{ flex: '1 1 100%', marginTop: '0.5rem' }}>
                 <span style={{...labelStyle, color: '#64748b'}}>הערות להזמנה:</span>
                 <div style={{ fontSize: '1rem', color: '#334155', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', minHeight: '60px' }}>
@@ -320,39 +326,49 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   />
                   <label htmlFor="isAbroad" style={{ fontWeight: '700', color: '#334155', cursor: 'pointer', margin: 0 }}>אירוע חו"ל (תפוסה מותאמת אישית)</label>
                 </div>
+                
+                <div style={{ ...groupStyle, display: 'inline-flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '0.8rem 1.2rem', borderRadius: '10px', border: '1px solid #e2e8f0', cursor: 'pointer', marginRight: '1rem' }} onClick={() => validateAndChangeDate('isWeekdayEvent', !order.isWeekdayEvent)}>
+                  <input 
+                    type="checkbox" 
+                    id="isWeekdayEvent"
+                    checked={order.isWeekdayEvent ?? false} 
+                    onChange={(e) => validateAndChangeDate('isWeekdayEvent', e.target.checked)}
+                    onClick={e => e.stopPropagation()}
+                    style={{ transform: 'scale(1.2)', cursor: 'pointer', accentColor: '#2563eb' }}
+                  />
+                  <label htmlFor="isWeekdayEvent" style={{ fontWeight: '700', color: '#334155', cursor: 'pointer', margin: 0 }}>אירוע חול</label>
+                </div>
 
-                {order.isAbroad && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', border: '1px solid #bfdbfe', padding: '1.5rem', borderRadius: '12px', marginTop: '1rem', background: '#eff6ff' }}>
-                    <div>
-                      <label style={{...labelStyle, color: '#1e3a8a'}}>מתאריך (לקיחה):</label>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <div style={{ flex: 1 }}>
-                          <HebrewDatePicker 
-                            value={order.fromDate} 
-                            onChange={(date) => validateAndChangeDate('fromDate', date)} 
-                          />
-                        </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', border: '1px solid #bfdbfe', padding: '1.5rem', borderRadius: '12px', marginTop: '1rem', background: '#eff6ff' }}>
+                  <div>
+                    <label style={{...labelStyle, color: '#1e3a8a'}}>מתאריך (לקיחה):</label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ flex: 1 }}>
+                        <HebrewDatePicker 
+                          value={order.fromDate} 
+                          onChange={(date) => validateAndChangeDate('fromDate', date)} 
+                        />
                       </div>
                     </div>
-                    <div>
-                      <label style={{...labelStyle, color: '#1e3a8a'}}>עד תאריך (החזרה):</label>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <div style={{ flex: 1 }}>
-                          <HebrewDatePicker 
-                            value={order.toDate || order.returnDate} 
-                            onChange={(date) => validateAndChangeDate('toDate', date)} 
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    {order.eventDate && order.fromDate && order.toDate && 
-                     (new Date(order.eventDate) < new Date(order.fromDate) || new Date(order.eventDate) > new Date(order.toDate)) && (
-                      <div style={{ gridColumn: '1 / -1', color: '#b91c1c', background: '#fef2f2', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span>⚠️</span> שימו לב: תאריך האירוע חייב להיות בין תאריך הלקיחה לתאריך החזרה!
-                      </div>
-                    )}
                   </div>
-                )}
+                  <div>
+                    <label style={{...labelStyle, color: '#1e3a8a'}}>עד תאריך (החזרה):</label>
+                    <div style={{ display: 'flex', gap: '0.5rem' }}>
+                      <div style={{ flex: 1 }}>
+                        <HebrewDatePicker 
+                          value={order.toDate || order.returnDate} 
+                          onChange={(date) => validateAndChangeDate('toDate', date)} 
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {order.eventDate && order.fromDate && (order.toDate || order.returnDate) && 
+                   (new Date(order.eventDate) < new Date(order.fromDate) || new Date(order.eventDate) > new Date(order.toDate || order.returnDate)) && (
+                    <div style={{ gridColumn: '1 / -1', color: '#b91c1c', background: '#fef2f2', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span>⚠️</span> שימו לב: תאריך האירוע חייב להיות בין תאריך הלקיחה לתאריך החזרה!
+                    </div>
+                  )}
+                </div>
               </div>
 
               {/* Notes */}

@@ -9,6 +9,7 @@ import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
 import { useLabels } from '@/app/components/LabelsContext';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
+import OrderModelSelector from '../../components/orders/OrderModelSelector';
 
 export default function RentalsPage() {
   const { getLabel } = useLabels();
@@ -19,7 +20,7 @@ export default function RentalsPage() {
   
   const [advFilters, setAdvFilters] = useState({
     customerName: '', customerPhone: '', customerCity: '', 
-    advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: ''
+    advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: ''
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);
   
@@ -227,6 +228,25 @@ export default function RentalsPage() {
                 <input data-agy-id="input-adv-item-details" type="text" className="form-control" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} />
               </div>
               <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>דגם</label>
+                <div style={{ position: 'relative' }}>
+                  <OrderModelSelector 
+                    value={{ name: advFilters.advModelName }} 
+                    onChange={m => setAdvFilters(p => ({...p, advModelName: m ? m.name : ''}))} 
+                    placeholder="בחר דגם..."
+                  />
+                  {advFilters.advModelName && (
+                    <button 
+                      onClick={() => setAdvFilters(p => ({...p, advModelName: ''}))}
+                      style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error-color)' }}
+                      title="נקה בחירה"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              </div>
+              <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('order_customerName', 'שם לקוח')}</label>
                 <input data-agy-id="input-adv-customer-name" type="text" className="form-control" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} />
               </div>
@@ -242,7 +262,7 @@ export default function RentalsPage() {
             <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
               <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>סגור והחל סינון</button>
               <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
-                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: '' });
+                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '' });
               }}>נקה הכל</button>
             </div>
           </div>
@@ -310,62 +330,116 @@ export default function RentalsPage() {
         </div>
       </div>
 
-      <div className="orders-grid">
-        {loading ? (
-          <div style={{ padding: '2rem', textAlign: 'center', gridColumn: '1 / -1' }}>טוען נתונים...</div>
-        ) : orders.map(order => {
-          const statusLabel = calculateOrderStatus(order);
-          const statusColors = getStatusColor(statusLabel);
-          return (
-            <div key={order.orderId} className="order-card" onClick={() => openOrder(order.orderId)}>
-              <div className="order-header">
-                <span className="order-id">#{order.orderId}</span>
-                <span style={{ 
-                  padding: '0.3rem 0.8rem', 
-                  borderRadius: '20px', 
-                  fontSize: '0.85rem',
-                  fontWeight: 'bold',
-                  background: statusColors.bg,
-                  color: statusColors.text
-                }}>{statusLabel}</span>
-              </div>
-              <div style={{ fontWeight: '500', marginBottom: '0.5rem', fontSize: '1.1rem' }}>{order.customerName}</div>
-              <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>
-                <div><strong>תאריך אירוע עברי:</strong> {order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין תאריך')}</div>
-                <div><strong>תאריך אירוע לועזי:</strong> {order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</div>
-                {order.notes && <div style={{ marginTop: '0.2rem', color: 'var(--text-main)', fontStyle: 'italic' }}>הערות: {order.notes}</div>}
-              </div>
-              <div className="order-items-summary" style={{ borderTop: '1px solid #eee', paddingTop: '0.5rem', marginTop: '0.5rem', fontSize: '0.85rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.3rem', color: 'var(--primary-color)', fontWeight: 'bold', alignItems: 'center' }}>
-                  <span>סה"כ פריטים: {order.items?.length || 0}</span>
-                  <span style={{ color: '#e65100' }}>מושכרים: {order.items?.filter(i => i.isTaken && !i.isReturned && !i.isDeleted).length || 0}</span>
-                  <span style={{ color: '#2e7d32' }}>מוחזרים: {order.items?.filter(i => i.isReturned && !i.isDeleted).length || 0}</span>
-                  <button 
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setExpandedOrders(prev => ({ ...prev, [order.orderId]: !prev[order.orderId] }));
-                    }}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0 5px', fontSize: '0.8rem', color: 'var(--primary-color)' }}
-                    title={expandedOrders[order.orderId] ? 'הסתר רשימה' : 'הצג רשימה'}
-                  >
-                    {expandedOrders[order.orderId] ? '▲' : '▼'}
-                  </button>
-                </div>
+      <div style={{ overflowX: 'auto', background: 'var(--card-bg)', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
+        <table className="items-table" style={{ margin: 0, minWidth: '800px' }}>
+          <thead>
+            <tr>
+              <th>מספר הזמנה</th>
+              <th>לקוח</th>
+              <th>תאריך אירוע</th>
+              <th>סטטוס</th>
+              <th>פריטים (מתוך סה"כ)</th>
+              <th>הערות</th>
+            </tr>
+          </thead>
+          {loading ? (
+            <tbody>
+              <tr>
+                <td colSpan="6" style={{ padding: '3rem', textAlign: 'center' }}>טוען נתונים...</td>
+              </tr>
+            </tbody>
+          ) : orders.map(order => {
+            const statusLabel = calculateOrderStatus(order);
+            const statusColors = getStatusColor(statusLabel);
+            const totalItems = order.items?.filter(i => !i.isDeleted).length || 0;
+            const rentedItems = order.items?.filter(i => i.isTaken && !i.isReturned && !i.isDeleted).length || 0;
+            const returnedItems = order.items?.filter(i => i.isReturned && !i.isDeleted).length || 0;
+
+            return (
+              <tbody key={order.orderId}>
+                <tr 
+                  onClick={() => openOrder(order.orderId)} 
+                  style={{ cursor: 'pointer', transition: 'background 0.2s' }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                >
+                  <td style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>#{order.orderId}</td>
+                  <td style={{ fontWeight: '500', fontSize: '1.1rem' }}>{order.customerName}</td>
+                  <td>
+                    <div><strong>{order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין תאריך')}</strong></div>
+                    <div style={{ fontSize: '0.85em', color: 'var(--text-muted)' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : ''}</div>
+                  </td>
+                  <td>
+                    <span style={{ 
+                      padding: '0.3rem 0.8rem', 
+                      borderRadius: '20px', 
+                      fontSize: '0.85rem',
+                      fontWeight: 'bold',
+                      background: statusColors.bg,
+                      color: statusColors.text,
+                      display: 'inline-block'
+                    }}>{statusLabel}</span>
+                  </td>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 'bold' }}>סה"כ: {totalItems}</span>
+                      {rentedItems > 0 && <span style={{ color: '#e65100', fontSize: '0.9em', background: '#fff3e0', padding: '2px 6px', borderRadius: '4px' }}>מושכרים: {rentedItems}</span>}
+                      {returnedItems > 0 && <span style={{ color: '#2e7d32', fontSize: '0.9em', background: '#e8f5e9', padding: '2px 6px', borderRadius: '4px' }}>הוחזרו: {returnedItems}</span>}
+                      <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setExpandedOrders(prev => ({ ...prev, [order.orderId]: !prev[order.orderId] }));
+                        }}
+                        style={{ background: 'none', border: '1px solid var(--primary-color)', borderRadius: '4px', cursor: 'pointer', padding: '2px 8px', fontSize: '0.8rem', color: 'var(--primary-color)' }}
+                        title={expandedOrders[order.orderId] ? 'הסתר רשימה' : 'הצג רשימה'}
+                      >
+                        {expandedOrders[order.orderId] ? '▲ פירוט' : '▼ פירוט'}
+                      </button>
+                    </div>
+                  </td>
+                  <td style={{ maxWidth: '150px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-muted)' }} title={order.notes}>
+                    {order.notes || '-'}
+                  </td>
+                </tr>
                 {expandedOrders[order.orderId] && (
-                  order.items && order.items.length > 0 ? (
-                    <ul style={{ paddingRight: '1.2rem', margin: '0.5rem 0 0 0', color: '#444' }}>
-                      {order.items.filter(i => !i.isDeleted).map(item => (
-                        <li key={item.id}>{item.description}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <span style={{ color: 'var(--text-muted)', display: 'block', marginTop: '0.5rem' }}>אין פריטים</span>
-                  )
+                  <tr style={{ background: 'rgba(212, 175, 55, 0.02)' }}>
+                    <td colSpan="6" style={{ padding: '1rem 2rem', borderBottom: '2px solid rgba(212, 175, 55, 0.2)' }}>
+                      {order.items && order.items.filter(i => !i.isDeleted).length > 0 ? (
+                        <ul style={{ margin: 0, paddingRight: '1.2rem', color: 'var(--text-main)', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '0.5rem' }}>
+                          {order.items.filter(i => !i.isDeleted).map(item => (
+                            <li key={item.id} style={{ padding: '0.3rem 0' }}>
+                              <strong style={{ color: 'var(--primary-color)' }}>{item.description}</strong> {item.barcode && <span style={{ color: 'var(--text-muted)', fontSize: '0.9em' }}>({item.barcode})</span>}
+                              <div style={{ marginTop: '0.2rem' }}>
+                                {item.isReturned ? (
+                                  <span style={{ color: '#2e7d32', fontSize: '0.85em', background: '#e8f5e9', padding: '2px 6px', borderRadius: '4px' }}>✓ הוחזר</span>
+                                ) : item.isTaken ? (
+                                  <span style={{ color: '#e65100', fontSize: '0.85em', background: '#fff3e0', padding: '2px 6px', borderRadius: '4px' }}>⚠ מושכר</span>
+                                ) : (
+                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85em', background: 'var(--element-bg)', padding: '2px 6px', borderRadius: '4px' }}>טרם נלקח</span>
+                                )}
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <span style={{ color: 'var(--text-muted)' }}>אין פריטים פעילים</span>
+                      )}
+                    </td>
+                  </tr>
                 )}
-              </div>
-            </div>
-          );
-        })}
+              </tbody>
+            );
+          })}
+          {orders && orders.length > 0 && !loading && (
+            <tfoot>
+              <tr>
+                <td colSpan="6" style={{ padding: '1rem', fontWeight: 'bold', textAlign: 'center', background: 'var(--element-bg)', borderTop: '2px solid var(--element-border)' }}>
+                  סה"כ שורות מוצגות: {orders.length}
+                </td>
+              </tr>
+            </tfoot>
+          )}
+        </table>
       </div>
       </div>
 

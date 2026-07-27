@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 export default function PrintAlterationsPage() {
   const searchParams = useSearchParams();
@@ -57,10 +58,11 @@ export default function PrintAlterationsPage() {
         }
       }
 
-      let showOnlyPending = reportType === 'alterations_pending';
+      let showOnlyPending = reportType === 'alterations_pending' || reportType === 'labels';
       let hideNoAlterations = reportType === 'orders_no_alterations';
+      let showAllOrders = reportType === 'orders_all';
 
-      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&hideNoAlterations=${hideNoAlterations}`;
+      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&hideNoAlterations=${hideNoAlterations}&showAllOrders=${showAllOrders}`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
 
@@ -81,8 +83,10 @@ export default function PrintAlterationsPage() {
   };
 
   const getReportTitle = () => {
+    if (reportType === 'orders_all') return 'דוח הזמנות כללי';
     if (reportType === 'orders_no_alterations') return 'רשימת הזמנות ללא תיקונים';
     if (reportType === 'alterations_all') return 'כל התיקונים';
+    if (reportType === 'labels') return 'תוויות לתופרות';
     return 'רשימת תיקונים לביצוע';
   };
 
@@ -146,6 +150,43 @@ export default function PrintAlterationsPage() {
         <div style={{ textAlign: 'center', padding: '50px', fontSize: '20px', color: '#6c757d', fontWeight: 'bold' }}>
           מערכת התיקונים מכובה בהגדרות. לא ניתן להפיק דוח תיקונים.
         </div>
+      ) : reportType === 'labels' ? (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '20px' }}>
+          {items.length === 0 ? (
+            <div style={{ gridColumn: 'span 3', textAlign: 'center' }}>לא נמצאו תיקונים להדפסה</div>
+          ) : (
+            items.map(item => (
+              <div key={item.id} style={{ 
+                border: '1px solid #000', 
+                padding: '15px', 
+                borderRadius: '8px',
+                display: 'flex', 
+                flexDirection: 'column', 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                textAlign: 'center',
+                minHeight: '180px',
+                pageBreakInside: 'avoid'
+              }}>
+                <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>
+                  {item.order?.customer?.firstName} {item.order?.customer?.lastName}
+                </div>
+                <div style={{ fontSize: '16px', marginBottom: '5px' }}>
+                  <strong>{item.dressItem?.dress?.name || item.dressItem?.dressName}</strong> | מידה: {item.sizeText || item.size}
+                </div>
+                <div style={{ fontSize: '14px', marginBottom: '10px' }}>
+                  אירוע: <strong>{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</strong> {item.order?.eventDate ? `(${formatDate(item.order.eventDate)})` : ''}
+                </div>
+                <div style={{ fontSize: '15px', fontWeight: 'bold', borderTop: '1px dashed #ccc', paddingTop: '8px', width: '100%' }}>
+                  {item.neckAlteration > 0 ? `צוואר: הצרה ${item.neckAlteration} | ` : ''}
+                  {item.sleeveAlteration > 0 ? `שרוול: הארכה ${item.sleeveAlteration} | ` : ''}
+                  {item.lengthAlteration ? `אורך: ${item.lengthAlteration} | ` : ''}
+                  {item.alterationDetails || ''}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       ) : (
         <table className="print-table">
           <thead>
@@ -154,7 +195,7 @@ export default function PrintAlterationsPage() {
               <th>לקוח</th>
               <th>דגם שמלה</th>
               <th>מידה</th>
-              {reportType !== 'orders_no_alterations' && (
+              {reportType !== 'orders_no_alterations' && reportType !== 'orders_all' && (
                 <>
                   <th>צוואר</th>
                   <th>שרוול</th>
@@ -167,16 +208,19 @@ export default function PrintAlterationsPage() {
           <tbody>
             {items.length === 0 ? (
               <tr>
-                <td colSpan={reportType === 'orders_no_alterations' ? 4 : 8} style={{ textAlign: 'center' }}>לא נמצאו רשומות</td>
+                <td colSpan={(reportType === 'orders_no_alterations' || reportType === 'orders_all') ? 4 : 8} style={{ textAlign: 'center' }}>לא נמצאו רשומות</td>
               </tr>
             ) : (
               items.map(item => (
                 <tr key={item.id}>
-                  <td>{formatDate(item.order?.eventDate)}</td>
+                  <td>
+                    <div style={{ fontWeight: 'bold' }}>{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</div>
+                    {item.order?.eventDate && <div style={{ fontSize: '11px', color: '#666' }}>{formatDate(item.order.eventDate)}</div>}
+                  </td>
                   <td>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
                   <td>{item.dressItem?.dress?.name || item.dressItem?.dressName}</td>
                   <td>{item.sizeText || item.size}</td>
-                  {reportType !== 'orders_no_alterations' && (
+                  {reportType !== 'orders_no_alterations' && reportType !== 'orders_all' && (
                     <>
                       <td>{item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : ''}</td>
                       <td>{item.sleeveAlteration > 0 ? `הארכה ${item.sleeveAlteration}` : ''}</td>

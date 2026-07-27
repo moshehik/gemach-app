@@ -17,7 +17,7 @@ export function LabelsProvider({ children, initialLabels = {} }) {
           setLabels(data || {});
         }
       } catch (err) {
-        console.error('Failed to fetch UI labels', err);
+        console.warn('Failed to fetch UI labels:', err?.message || err);
       } finally {
         setLoading(false);
       }

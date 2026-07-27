@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { X, Check, Loader2, Search } from 'lucide-react';
@@ -82,9 +82,9 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
         body: JSON.stringify({
           orderId: orderId,
           customerId: orderData?.customerId,
-          amount: parseFloat(amount),
+          amount: paymentMethod === 'יציאה באישור מנהל' ? 0 : parseFloat(amount),
           paymentMethod,
-          notes
+          notes: paymentMethod === 'יציאה באישור מנהל' ? `אושר על סך ₪${amount} ` + notes : notes
         })
       });
 
@@ -171,11 +171,9 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
                   onChange={(e) => setPaymentMethod(e.target.value)}
                   style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', background: 'var(--card-bg)' }}
                 >
-                  <option value="אשראי">אשראי</option>
-                  <option value="מזומן">מזומן</option>
-                  <option value="העברה בנקאית">העברה בנקאית</option>
-                  <option value="המחאה">המחאה</option>
-                  <option value="אחר">אחר</option>
+                  <option value="אשראי">אשראי (דרך נדרים פלוס)</option>
+                  <option value="אשראי (קופה חיצונית)">אשראי (קופה חיצונית)</option>
+                  <option value="יציאה באישור מנהל">יציאה באישור מנהל</option>
                 </select>
               </div>
 

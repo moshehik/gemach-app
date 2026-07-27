@@ -34,6 +34,31 @@ export default function CustomerInventoryViewer() {
   const [ordersModalSize, setOrdersModalSize] = useState(null);
   const [ordersModalLoading, setOrdersModalLoading] = useState(false);
   const [ordersModalOrders, setOrdersModalOrders] = useState([]);
+  const [settings, setSettings] = useState({ hide_dress_images: 'false' });
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        const settingsObj = { hide_dress_images: 'false' };
+        if (Array.isArray(data)) {
+          data.forEach(s => {
+            if (s.key) settingsObj[s.key] = s.value;
+          });
+        }
+        setSettings(settingsObj);
+      })
+      .catch(console.error);
+  }, []);
+
+  useEffect(() => {
+    if (isLocked) {
+      document.body.classList.add('hide-global-nav');
+    } else {
+      document.body.classList.remove('hide-global-nav');
+    }
+    return () => document.body.classList.remove('hide-global-nav');
+  }, [isLocked]);
 
   // AI Chat State
   const [aiChatOpen, setAiChatOpen] = useState(false);
@@ -801,7 +826,6 @@ export default function CustomerInventoryViewer() {
           display: flex;
           flex-direction: column;
           gap: 24px;
-          max-width: 1600px;
           margin: 0 auto;
           padding: 24px;
         }
@@ -839,6 +863,7 @@ export default function CustomerInventoryViewer() {
             <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>הזן סגנון, מידה או פשוט בחר תאריך מהיומן</p>
           </div>
 
+          {settings.hide_ai_features !== 'true' && (
           <div className="ai-search-container" style={{ marginBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Chat History Above Input */}
             {aiMessages.length > 1 && (
@@ -973,6 +998,7 @@ export default function CustomerInventoryViewer() {
             </div>
           )}
           </div>
+          )}
 
           <div className="glass-panel" style={{ padding: '40px', width: '100%', maxWidth: '850px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'var(--card-bg)', border: '1px solid var(--border-main)', boxShadow: '0 20px 50px rgba(0,0,0,0.05)' }}>
             <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--text-main)', margin: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
@@ -1061,8 +1087,9 @@ export default function CustomerInventoryViewer() {
                 />
               </div>
 
-              {isAiChatVisible ? (
-                <div style={{ position: 'relative', flex: '1 1 280px', display: 'flex', alignItems: 'center' }}>
+              {settings.hide_ai_features !== 'true' && (
+                isAiChatVisible ? (
+                  <div style={{ position: 'relative', flex: '1 1 280px', display: 'flex', alignItems: 'center' }}>
                   <button data-agy-id="catalog_close_ai_btn" onClick={() => setIsAiChatVisible(false)} style={{ width: '100%', padding: '16px', borderRadius: '16px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', color: '#a855f7', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.3s' }}>
                     <Sparkles size={20} />
                     העוזר החכם פעיל - לחץ לסגירה
@@ -1085,7 +1112,7 @@ export default function CustomerInventoryViewer() {
                     />
                   </form>
                 </div>
-              )}
+              ))}
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--card-bg)', padding: '12px 24px', borderRadius: '16px', border: '1px solid var(--border-main)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
                 <span style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-main)' }}>זום</span>
@@ -1129,7 +1156,7 @@ export default function CustomerInventoryViewer() {
             </div>
           </div>
           
-          {isAiChatVisible && stage === 2 && (
+          {settings.hide_ai_features !== 'true' && isAiChatVisible && stage === 2 && (
             <div style={{ background: 'var(--card-bg)', backdropFilter: 'blur(12px)', padding: '24px', borderRadius: '24px', marginTop: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02)', maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', paddingBottom: '16px', color: '#8b5cf6', fontWeight: 'bold', justifyContent: 'space-between', borderBottom: '1px solid var(--border-main)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -1239,10 +1266,14 @@ export default function CustomerInventoryViewer() {
                     handleModelDoubleClick(model);
                   }}>
                     <div className="dress-image-placeholder">
-                      {model.imageUrl ? (
-                        <img src={model.imageUrl} alt={model.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      {settings.hide_dress_images !== 'true' ? (
+                        model.imageUrl ? (
+                          <img src={model.imageUrl} alt={model.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        ) : (
+                          <Shirt size={48} opacity={0.5} />
+                        )
                       ) : (
-                        <Shirt size={48} opacity={0.5} />
+                        <div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>אין תמונה</div>
                       )}
                     </div>
                     <div className="dress-content">

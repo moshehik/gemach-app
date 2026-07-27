@@ -119,6 +119,10 @@ a {
 }
 
 /* Navbar */
+body.hide-global-nav .navbar {
+  display: none !important;
+}
+
 .navbar {
   display: flex;
   justify-content: space-between;
@@ -506,6 +510,11 @@ a {
 }
 
 /* Modal Overlay */
+body:has(.modal-overlay),
+body:has(.popup-overlay) {
+  overflow: hidden;
+}
+
 .modal-overlay {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
@@ -1329,3 +1338,27 @@ button:disabled {
 [data-theme="dark"] .bg-slate-50\/50 {
   background-color: rgba(30, 30, 30, 0.5) !important;
 }
+
+
+/* Sticky Table Headers Globally */
+div:has(> table) {
+  max-height: 75vh;
+  overflow-y: auto;
+}
+
+thead th, th {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background-color: #f8fafc;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+[data-theme="dark"] thead th, [data-theme="dark"] th {
+  background-color: #1e1e1e;
+  box-shadow: 0 2px 4px rgba(255,255,255,0.05);
+}
+
+/* Hide Gregorian Calendar Setting */
+body.hide-gregorian-calendar .gregorian-calendar-toggle { display: none !important; }
+

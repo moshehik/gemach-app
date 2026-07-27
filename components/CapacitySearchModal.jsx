@@ -36,7 +36,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   useEffect(() => {
     const fetchModels = async () => {
       try {
-        const res = await fetch('/api/inventory/models');
+        const res = await fetch('/api/inventory/models?hasActiveItems=true');
         if (res.ok) {
           const data = await res.json();
           setModels(data.models || []);
@@ -68,6 +68,18 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
     };
     fetchSizes();
   }, [barcodePrefix]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown, true);
+    return () => window.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen]);
 
   const performSearch = async (searchParams = null) => {
     const pPrefix = searchParams ? searchParams.barcodePrefix : barcodePrefix;
@@ -137,8 +149,8 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const content = (
-    <div data-agy-id="capacity_search_modal_backdrop" className="modal-overlay" onClick={onClose} style={{ zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: '2rem', paddingBottom: '2rem', backgroundColor: 'rgba(0,0,0,0.6)', position: 'fixed', inset: 0, overflowY: 'auto' }}>
-      <div data-agy-id="capacity_search_modal_container" className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: '900px', backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', transition: 'all 0.3s ease', margin: 'auto' }}>
+    <div data-agy-id="capacity_search_modal_backdrop" className="modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', backgroundColor: 'var(--card-bg)', position: 'fixed', inset: 0, overflowY: 'auto' }}>
+      <div data-agy-id="capacity_search_modal_container" className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '100vw', minHeight: '100vh', backgroundColor: 'var(--card-bg)', padding: '2rem', transition: 'all 0.3s ease', margin: 0, borderRadius: 0 }}>
         
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>

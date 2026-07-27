@@ -2,36 +2,60 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Bug, X, Send } from 'lucide-react';
+import { LifeBuoy, X, Send } from 'lucide-react';
 
 export default function ErrorReportButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [userText, setUserText] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState(false);
+  const [toast, setToast] = useState(null);
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+
+    const handleGlobalClick = (e) => {
+      let target = e.target;
+      while (target && target !== document.body) {
+        if (target.tagName === 'BUTTON' || target.getAttribute('role') === 'button' || (target.tagName === 'A' && (target.classList?.contains('btn') || target.classList?.contains('button')))) {
+          let btnText = target.innerText || target.textContent || target.title || target.getAttribute('aria-label') || 'כפתור ללא טקסט';
+          btnText = btnText.trim().substring(0, 50).replace(/\n/g, ' ');
+          if (btnText) {
+            window.__lastButtons = window.__lastButtons || [];
+            window.__lastButtons.push(btnText);
+            if (window.__lastButtons.length > 5) {
+              window.__lastButtons.shift();
+            }
+          }
+          break;
+        }
+        target = target.parentElement;
+      }
+    };
+
+    document.addEventListener('click', handleGlobalClick);
+    return () => {
+      document.removeEventListener('click', handleGlobalClick);
+    };
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!userText.trim()) {
-      setError('יש להזין תיאור שגיאה');
+      setToast({ message: 'יש להזין תיאור שגיאה', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
       return;
     }
 
-    setLoading(true);
-    setError('');
+    setIsOpen(false);
+    setToast({ message: 'שולח דיווח למתכנת, אנא המתן...', type: 'info' });
 
     const payload = {
       userText,
       url: window.location.href,
       title: document.title,
       time: new Date().toLocaleString('he-IL'),
-      queryParams: window.location.search || 'אין'
+      queryParams: window.location.search || 'אין',
+      lastButtons: window.__lastButtons || []
     };
 
     try {
@@ -42,20 +66,18 @@ export default function ErrorReportButton() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setSuccess(true);
-        setTimeout(() => {
-          setIsOpen(false);
-          setSuccess(false);
-          setUserText('');
-        }, 2000);
+        setToast({ message: 'הדיווח נשלח בהצלחה למתכנת! תודה.', type: 'success' });
+        setUserText('');
       } else {
-        setError(data.error || 'שגיאה בשליחת דיווח');
+        setToast({ message: data.error || 'שגיאה בשליחת דיווח', type: 'error' });
       }
     } catch (err) {
-      setError('שגיאת תקשורת');
-    } finally {
-      setLoading(false);
+      setToast({ message: 'שגיאת תקשורת', type: 'error' });
     }
+    
+    setTimeout(() => {
+      setToast(null);
+    }, 4000);
   };
 
   return (
@@ -71,12 +93,12 @@ export default function ErrorReportButton() {
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
-          color: '#ef4444',
+          color: '#6366f1', // modern indigo instead of scary red
           position: 'relative',
           padding: '0.25rem'
         }}
       >
-        <Bug size={22} />
+        <LifeBuoy size={22} />
       </button>
 
       {isOpen && mounted && createPortal(
@@ -100,24 +122,23 @@ export default function ErrorReportButton() {
             flexDirection: 'column',
             overflow: 'hidden'
           }}>
-            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fef2f2' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#b91c1c', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Bug size={20} /> דיווח על שגיאה במערכת
+            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#eef2ff' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <LifeBuoy size={20} /> דיווח על שגיאה במערכת
               </h3>
-              <button onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#ef4444' }}>
+              <button onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6366f1' }}>
                 <X size={20} />
               </button>
             </div>
             
             <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {error && <div style={{ color: '#ef4444', fontSize: '0.9rem', background: '#fef2f2', padding: '0.5rem', borderRadius: '6px' }}>{error}</div>}
-              {success && <div style={{ color: '#16a34a', fontSize: '0.9rem', background: '#f0fdf4', padding: '0.5rem', borderRadius: '6px' }}>הדיווח נשלח בהצלחה למתכנת! תודה.</div>}
               
               <div style={{ background: 'var(--input-bg)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                 <p style={{ margin: '0 0 0.5rem 0' }}><strong>הנתונים הבאים יישלחו אוטומטית ברקע:</strong></p>
                 <ul style={{ margin: 0, paddingRight: '1.2rem' }}>
                   <li>שעת הדיווח וכתובת המסך הנוכחי</li>
                   <li>שם החלון ופרמטרים פעילים</li>
+                  <li>5 הלחצנים האחרונים שנלחצו</li>
                 </ul>
               </div>
 
@@ -145,14 +166,37 @@ export default function ErrorReportButton() {
                 </button>
                 <button 
                   type="submit"
-                  disabled={loading || success}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#ef4444', color: 'white', border: 'none', padding: '0.5rem 1.25rem', borderRadius: '8px', fontWeight: '500', cursor: (loading || success) ? 'not-allowed' : 'pointer', opacity: (loading || success) ? 0.7 : 1 }}
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#6366f1', color: 'white', border: 'none', padding: '0.5rem 1.25rem', borderRadius: '8px', fontWeight: '500', cursor: 'pointer' }}
                 >
-                  {loading ? 'שולח...' : <><Send size={16} /> שליחה למתכנת</>}
+                  <Send size={16} /> שליחה למתכנת
                 </button>
               </div>
             </form>
           </div>
+        </div>,
+        document.body
+      )}
+
+      {toast && mounted && createPortal(
+        <div style={{
+          position: 'fixed',
+          top: '20px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          zIndex: 9999999,
+          background: toast.type === 'error' ? '#ef4444' : toast.type === 'success' ? '#10b981' : '#3b82f6',
+          color: 'white',
+          padding: '0.75rem 1.5rem',
+          borderRadius: '8px',
+          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '0.5rem',
+          fontWeight: '500',
+          direction: 'rtl',
+          animation: 'fadeInDown 0.3s ease-out'
+        }}>
+          {toast.message}
         </div>,
         document.body
       )}

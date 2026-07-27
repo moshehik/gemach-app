@@ -16,7 +16,7 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { userText, url, title, time, queryParams } = body;
+    const { userText, url, title, time, queryParams, lastButtons } = body;
 
     if (!userText) {
       return NextResponse.json({ success: false, error: 'יש להזין תיאור שגיאה' }, { status: 400 });
@@ -39,6 +39,9 @@ export async function POST(request) {
 חלון/דף: ${title}
 כתובת URL: ${url}
 שאילתות/פרמטרים: ${queryParams}
+
+5 הלחצנים האחרונים שנלחצו:
+${lastButtons && lastButtons.length > 0 ? lastButtons.map((b, i) => `${i + 1}. ${b}`).join('\n') : 'אין פעולות מתועדות'}
 
 תיאור השגיאה מהמשתמש:
 ${userText}

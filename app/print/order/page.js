@@ -10,8 +10,10 @@ export default function PrintOrderPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [enableAlterations, setEnableAlterations] = useState(true);
+  const [printSettings, setPrintSettings] = useState(null);
 
   const orderId = searchParams.get('orderId');
+  const printType = searchParams.get('type') || 'order';
 
   const fetchData = async () => {
     try {
@@ -28,6 +30,14 @@ export default function PrintOrderPage() {
         if (altSetting && altSetting.value === 'false') {
           setEnableAlterations(false);
         }
+        
+        // Extract print settings
+        const pSettings = {
+          box1: settingsData.find(s => s.key === 'print_rental_box1')?.value || '',
+          box2: settingsData.find(s => s.key === 'print_rental_box2')?.value || '',
+          footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || ''
+        };
+        setPrintSettings(pSettings);
       }
     } catch (err) {
       setError(err.message);
@@ -255,12 +265,39 @@ export default function PrintOrderPage() {
             <div className="print-header">
               <div className="print-header-content">
                 <h1>גמ&quot;ח שמלות</h1>
-                <h2>דוח השכרות פירוט</h2>
+                <h2>{printType === 'rental' ? 'הערות להשכרה' : 'דוח השכרות פירוט'}</h2>
               </div>
               <div className="order-number-badge">
                 הזמנה #{order.orderId}
               </div>
             </div>
+
+            {printType === 'rental' && printSettings && (
+              <div style={{ marginBottom: '30px' }}>
+                {printSettings.box1 && (
+                  <div style={{ border: '1px solid #495057', padding: '15px', marginBottom: '15px', whiteSpace: 'pre-wrap', textAlign: 'center', fontSize: '15px', fontWeight: '500', color: '#212529' }}>
+                    {printSettings.box1}
+                  </div>
+                )}
+                {printSettings.box2 && (
+                  <div style={{ border: '1px solid #495057', padding: '10px', marginBottom: '15px', whiteSpace: 'pre-wrap', textAlign: 'center', fontSize: '15px', fontWeight: 'bold', color: '#212529', backgroundColor: '#f8f9fa', WebkitPrintColorAdjust: 'exact' }}>
+                    {printSettings.box2}
+                  </div>
+                )}
+                {printSettings.footer && (
+                  <div style={{ textAlign: 'center', marginTop: '20px', marginBottom: '20px' }}>
+                    <h3 style={{ fontSize: '22px', fontWeight: 'bold', margin: '0 0 10px 0' }}>{printSettings.footer}</h3>
+                    <div style={{ fontSize: '18px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                      <span>על החתום:</span>
+                      <span style={{ display: 'inline-block', width: '250px', borderBottom: '2px solid black', margin: '0 10px' }}></span>
+                    </div>
+                    <div style={{ marginTop: '15px', fontSize: '16px', fontWeight: 'bold' }}>
+                      נא להחזיר טופס זה חתום בעת החזרת השמלות
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="order-details-card">
               <div className="detail-item">
@@ -294,7 +331,7 @@ export default function PrintOrderPage() {
                 </span>
               </div>
 
-              {order.notes && (
+              {printType === 'order' && order.notes && (
                 <div className="detail-item full-width">
                   <span className="label">הערות הזמנה</span>
                   <span className="value">{order.notes}</span>

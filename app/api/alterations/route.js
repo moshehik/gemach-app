@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 
@@ -11,6 +11,7 @@ export async function GET(request) {
     const endDate = searchParams.get('endDate');
     const showOnlyPending = searchParams.get('showOnlyPending') === 'true'; // false means show all
     const hideNoAlterations = searchParams.get('hideNoAlterations') === 'true'; // Relevant for print wizard "רשימת הזמנות ללא תיקונים"
+    const showAllOrders = searchParams.get('showAllOrders') === 'true'; // Show all orders regardless of alterations
     const search = searchParams.get('search') || '';
     const page = searchParams.get('page') ? parseInt(searchParams.get('page')) : null;
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')) : 60;
@@ -37,7 +38,9 @@ export async function GET(request) {
       }
     }
 
-    if (hideNoAlterations) {
+    if (showAllOrders) {
+        // Do not add any filter on alterations, we want all orders matching the dates
+    } else if (hideNoAlterations) {
         // hideNoAlterations == true means we want to see orders WITHOUT alterations.
         // Wait, the legacy said "רשימת הזמנות ללא תיקונים" uses AND IIf([תיקון_אורך]>0 Or [תיקון_צוואר] Or [תיקון_שרוול],-1,0)=0
         whereClause.neckAlteration = { in: [0, null] };

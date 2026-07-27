@@ -151,7 +151,7 @@ export default function HebrewDatePicker({ value, selectedDate, onChange, classN
           <span>{displayString}</span>
           <Calendar size={18} />
         </button>
-        <div style={{ position: 'relative', borderRight: "1px solid var(--border-main)", width: "60px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--element-bg)", borderTopLeftRadius: "16px", borderBottomLeftRadius: "16px", transition: "all 0.2s" }}>
+        <div className="gregorian-calendar-toggle" style={{ position: 'relative', borderRight: "1px solid var(--border-main)", width: "60px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--element-bg)", borderTopLeftRadius: "16px", borderBottomLeftRadius: "16px", transition: "all 0.2s" }}>
           <Globe size={18} style={{ color: 'var(--text-muted)', pointerEvents: 'none' }} />
           <input 
              data-agy-id="hebrew_date_picker_native_input"             type="date"
@@ -251,7 +251,7 @@ export default function HebrewDatePicker({ value, selectedDate, onChange, classN
           </div>
           
           <div style={{ marginBottom: '0.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center', marginBottom: '4px', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid var(--border-main)', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
               <div>א'</div><div>ב'</div><div>ג'</div><div>ד'</div><div>ה'</div><div>ו'</div><div>ש'</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>

@@ -27,6 +27,9 @@ export default function DressesManagement() {
   const defaultNewItem = { sizeText: '', serialNumber: '', dressBarcode: '', location: '', entryDateToRepo: new Date().toISOString().split('T')[0] };
   const [newItem, setNewItem] = useState(defaultNewItem);
   
+  const [showInactiveReasonModal, setShowInactiveReasonModal] = useState(false);
+  const [tempInactiveReason, setTempInactiveReason] = useState('');
+  
   // For items search and sort in modal
   const [itemsSearch, setItemsSearch] = useState('');
   const [itemsSort, setItemsSort] = useState({ key: 'sizeText', direction: 'asc' });
@@ -91,9 +94,19 @@ export default function DressesManagement() {
   const fetchSettings = async () => {
     const res = await fetch('/api/settings');
     const data = await res.json();
-    setSettings(data);
-    if (data.item_locations) {
-      setLocations(data.item_locations.split(',').map(l => l.trim()));
+    
+    const settingsObj = { useModelNames: 'true', useFileNamesForImages: 'true', hide_dress_images: 'false' };
+    if (Array.isArray(data)) {
+      data.forEach(s => {
+        if (s.key) settingsObj[s.key] = s.value;
+      });
+    } else {
+      Object.assign(settingsObj, data);
+    }
+    
+    setSettings(settingsObj);
+    if (settingsObj.item_locations) {
+      setLocations(settingsObj.item_locations.split(',').map(l => l.trim()));
     }
   };
 
@@ -758,7 +771,7 @@ export default function DressesManagement() {
             <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--element-border)', background: 'var(--element-bg)' }}>
-                  <th style={{ padding: '1rem' }}>תמונה</th>
+                  {settings.hide_dress_images !== 'true' && <th style={{ padding: '1rem' }}>תמונה</th>}
                   <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('barcodePrefix')}>{getLabel('item_barcode', 'קוד')} {catalogSort.key === 'barcodePrefix' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</th>
                   {useModelNames && <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('name')}>{getLabel('item_modelName', 'שם דגם')} {catalogSort.key === 'name' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</th>}
                   <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('entryDateToRepo')}>תאריך כניסה {catalogSort.key === 'entryDateToRepo' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</th>
@@ -769,12 +782,14 @@ export default function DressesManagement() {
               <tbody>
                 {filteredDresses.map(dress => (
                   <tr key={dress.id} style={{ borderBottom: '1px solid var(--element-border)', background: dress.isDeleted ? 'var(--deleted-bg, #ffebee)' : ((!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo ? 'var(--inactive-bg, #fff5f5)' : 'transparent') }}>
-                    <td style={{ padding: '1rem' }}>
-                      {getImageSource(dress) ? (
-                        <img src={getImageSource(dress)} alt={dress.name} onError={(e) => {e.target.style.display='none'; e.target.nextSibling.style.display='flex';}} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
-                      ) : null}
-                      <div style={{ display: getImageSource(dress) ? 'none' : 'flex', width: '50px', height: '50px', background: 'var(--element-bg)', borderRadius: '4px', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>אין</div>
-                    </td>
+                    {settings.hide_dress_images !== 'true' && (
+                      <td style={{ padding: '1rem' }}>
+                        {getImageSource(dress) ? (
+                          <img src={getImageSource(dress)} alt={dress.name} onError={(e) => {e.target.style.display='none'; e.target.nextSibling.style.display='flex';}} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
+                        ) : null}
+                        <div style={{ display: getImageSource(dress) ? 'none' : 'flex', width: '50px', height: '50px', background: 'var(--element-bg)', borderRadius: '4px', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>אין</div>
+                      </td>
+                    )}
                     <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>{dress.barcodePrefix || '-'}</td>
                     {useModelNames && <td style={{ padding: '1rem', fontWeight: 'bold' }}>{dress.name}</td>}
                     <td style={{ padding: '1rem' }}>{formatHebrewDate(dress.entryDateToRepo)}</td>
@@ -792,6 +807,15 @@ export default function DressesManagement() {
                   </tr>
                 ))}
               </tbody>
+              {filteredDresses && filteredDresses.length > 0 && (
+                <tfoot>
+                  <tr>
+                    <td colSpan="6" style={{ padding: '1rem', fontWeight: 'bold', textAlign: 'center', background: 'var(--element-bg)', borderTop: '2px solid var(--element-border)' }}>
+                      סה"כ שורות מוצגות: {filteredDresses.length}
+                    </td>
+                  </tr>
+                </tfoot>
+              )}
             </table>
             
             {totalPages > 1 && (
@@ -841,15 +865,17 @@ export default function DressesManagement() {
                 <h3 style={{ marginBottom: '1rem', borderBottom: '2px solid var(--element-border)', paddingBottom: '0.5rem' }}>פרטי הדגם</h3>
                 <form onSubmit={handleSaveModel} style={{ display: 'flex', flexWrap: 'wrap', gap: '2rem' }}>
                   
-                  <div style={{ flex: '1 1 300px' }}>
-                    {getImageSource(editingDress) ? (
-                      <img src={getImageSource(editingDress)} alt="Preview" onError={(e) => {e.target.style.display='none'; e.target.nextSibling.style.display='flex';}} style={{ width: '100%', height: '250px', objectFit: 'contain', background: 'var(--element-bg)', borderRadius: '8px', border: '1px solid var(--element-border)', marginBottom: '1rem' }} />
-                    ) : null}
-                    <div style={{ display: getImageSource(editingDress) ? 'none' : 'flex', width: '100%', height: '250px', background: 'var(--element-bg)', borderRadius: '8px', border: '1px dashed var(--element-border)', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>אין תמונה</div>
-                    
-                    <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploading} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--element-border)', borderRadius: '8px' }} />
-                    {uploading && <small style={{ color: 'var(--primary-color)', display: 'block', marginTop: '0.5rem' }}>מעלה תמונה...</small>}
-                  </div>
+                  {settings.hide_dress_images !== 'true' && (
+                    <div style={{ flex: '1 1 300px' }}>
+                      {getImageSource(editingDress) ? (
+                        <img src={getImageSource(editingDress)} alt="Preview" onError={(e) => {e.target.style.display='none'; e.target.nextSibling.style.display='flex';}} style={{ width: '100%', height: '250px', objectFit: 'contain', background: 'var(--element-bg)', borderRadius: '8px', border: '1px solid var(--element-border)', marginBottom: '1rem' }} />
+                      ) : null}
+                      <div style={{ display: getImageSource(editingDress) ? 'none' : 'flex', width: '100%', height: '250px', background: 'var(--element-bg)', borderRadius: '8px', border: '1px dashed var(--element-border)', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>אין תמונה</div>
+                      
+                      <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploading} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--element-border)', borderRadius: '8px' }} />
+                      {uploading && <small style={{ color: 'var(--primary-color)', display: 'block', marginTop: '0.5rem' }}>מעלה תמונה...</small>}
+                    </div>
+                  )}
 
                   <div style={{ flex: '2 1 400px', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', alignContent: 'start' }}>
                     <div style={{ gridColumn: useModelNames ? '1 / -1' : '1' }}>
@@ -893,9 +919,10 @@ export default function DressesManagement() {
                             checked={!!editingDress.exitDateFromRepo}
                             onChange={(e) => {
                               if (e.target.checked) {
-                                setEditingDress({...editingDress, exitDateFromRepo: new Date().toISOString()});
+                                setTempInactiveReason(editingDress.inactiveReason || '');
+                                setShowInactiveReasonModal(true);
                               } else {
-                                setEditingDress({...editingDress, exitDateFromRepo: null});
+                                setEditingDress({...editingDress, exitDateFromRepo: null, inactiveReason: null});
                               }
                             }}
                             style={{ cursor: 'pointer' }}
@@ -907,6 +934,14 @@ export default function DressesManagement() {
                         value={editingDress.exitDateFromRepo} 
                         onChange={(date) => setEditingDress({...editingDress, exitDateFromRepo: date})} 
                       />
+                      {editingDress.exitDateFromRepo && (
+                        <div style={{ marginTop: '0.8rem', background: '#ffebee', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ffcdd2' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <span style={{ color: '#c62828', fontWeight: 'bold', fontSize: '0.9rem' }}>סיבת לא פעיל: {editingDress.inactiveReason || 'לא צוינה סיבה'}</span>
+                            <button type="button" onClick={() => { setTempInactiveReason(editingDress.inactiveReason || ''); setShowInactiveReasonModal(true); }} style={{ background: 'none', border: 'none', color: '#c62828', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}>ערוך סיבה</button>
+                          </div>
+                        </div>
+                      )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
                       <input type="checkbox" id="inInspection" checked={editingDress.inInspection || false} onChange={e => setEditingDress({...editingDress, inInspection: e.target.checked})} style={{ width: '18px', height: '18px' }} />
@@ -1204,6 +1239,56 @@ export default function DressesManagement() {
                 )}
               </div>
             )}
+          </div>
+        </div>
+      )}
+      {showInactiveReasonModal && (
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal-content" style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', width: '90%', maxWidth: '450px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', position: 'relative', animation: 'fadeIn 0.3s ease-out' }}>
+            <button onClick={() => setShowInactiveReasonModal(false)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <XCircle size={24} />
+            </button>
+            <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
+              <div style={{ display: 'inline-flex', padding: '15px', borderRadius: '50%', background: '#ffeeee', color: '#e53935', marginBottom: '1rem' }}>
+                <XCircle size={40} />
+              </div>
+              <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.5rem', fontWeight: 'bold' }}>סיבת לא-פעיל</h2>
+              <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.95rem' }}>אנא פרט מדוע דגם זה אינו פעיל יותר</p>
+            </div>
+            
+            <textarea 
+              value={tempInactiveReason}
+              onChange={(e) => setTempInactiveReason(e.target.value)}
+              placeholder="לדוגמה: הדגם התיישן, נתרם, הושמד..."
+              style={{ width: '100%', minHeight: '100px', padding: '1rem', borderRadius: '10px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-main)', fontSize: '1rem', marginBottom: '1.5rem', resize: 'vertical' }}
+              autoFocus
+            />
+            
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button 
+                type="button" 
+                className="btn btn-outline" 
+                onClick={() => {
+                  setShowInactiveReasonModal(false);
+                }} 
+                style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', flex: 1, borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
+                ביטול
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-primary" 
+                onClick={() => {
+                  setEditingDress({
+                    ...editingDress, 
+                    exitDateFromRepo: editingDress.exitDateFromRepo || new Date().toISOString(),
+                    inactiveReason: tempInactiveReason
+                  });
+                  setShowInactiveReasonModal(false);
+                }} 
+                style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', flex: 1, background: '#e53935', borderColor: '#e53935', color: 'white', fontWeight: 'bold' }}>
+                שמור
+              </button>
+            </div>
           </div>
         </div>
       )}

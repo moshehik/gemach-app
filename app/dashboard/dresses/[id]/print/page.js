@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
@@ -25,7 +25,15 @@ export default function PrintDressCard() {
         }
         if (settingsRes.ok) {
           const settingsData = await settingsRes.json();
-          setSettings(settingsData);
+          const settingsObj = { useModelNames: 'true', useFileNamesForImages: 'true', hide_dress_images: 'false' };
+          if (Array.isArray(settingsData)) {
+            settingsData.forEach(s => {
+              if (s.key) settingsObj[s.key] = s.value;
+            });
+          } else {
+            Object.assign(settingsObj, settingsData);
+          }
+          setSettings(settingsObj);
         }
       } catch (e) {
         console.error('Failed to load data for printing', e);
@@ -99,7 +107,7 @@ export default function PrintDressCard() {
           </div>
         </div>
         
-        {getImageSource(dress) && (
+        {settings.hide_dress_images !== 'true' && getImageSource(dress) && (
           <div>
             <img 
               src={getImageSource(dress)} 

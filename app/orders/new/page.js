@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import HebrewDatePicker from '../../../components/HebrewDatePicker';
@@ -11,7 +11,10 @@ export default function NewOrderPage() {
   const router = useRouter();
   
   const [step, setStep] = useState(1);
-  const [customerMode, setCustomerMode] = useState('existing'); // 'existing' or 'new'
+  const [searchMode, setSearchMode] = useState('phone'); // 'phone' | 'name' | 'new'
+  const [phoneSearchInput, setPhoneSearchInput] = useState('');
+  const [isCheckingPhone, setIsCheckingPhone] = useState(false);
+  const [foundCustomerFromPhone, setFoundCustomerFromPhone] = useState(null);
   
   const [order, setOrder] = useState({
     customerId: '',
@@ -20,6 +23,7 @@ export default function NewOrderPage() {
     eventDateHebrew: '',
     returnDate: '',
     isAbroad: false,
+    isWeekdayEvent: false,
     fromDate: '',
     toDate: '',
     notes: '',
@@ -169,6 +173,31 @@ export default function NewOrderPage() {
       .catch(err => console.error(err));
   }, []);
 
+  const handleCheckPhone = async () => {
+    if (!phoneSearchInput || phoneSearchInput.trim().length < 9) {
+      alert('נא להזין מספר טלפון תקין');
+      return;
+    }
+    
+    setIsCheckingPhone(true);
+    try {
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=1`);
+      const data = await res.json();
+      if (data.data && data.data.length > 0) {
+        setFoundCustomerFromPhone(data.data[0]);
+      } else {
+        setNewCustomer(prev => ({ ...prev, phone1: phoneSearchInput.trim() }));
+        setFoundCustomerFromPhone(null);
+        setSearchMode('new');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('שגיאה בחיפוש הלקוח');
+    } finally {
+      setIsCheckingPhone(false);
+    }
+  };
+
   const handleSaveNewCustomerAndProceed = async (skipDuplicateCheck = false) => {
     if (!newCustomer.firstName || !newCustomer.lastName || !newCustomer.phone1) {
        alert('יש למלא שם פרטי, משפחה וטלפון');
@@ -231,7 +260,8 @@ export default function NewOrderPage() {
       
       const queryParams = new URLSearchParams({
         dressModelId: newItem.dressModelId,
-        isAbroad: order.isAbroad || false
+        isAbroad: order.isAbroad || false,
+        isWeekdayEvent: order.isWeekdayEvent || false
       });
       
       if (order.eventDate) queryParams.append('eventDate', order.eventDate);
@@ -258,14 +288,20 @@ export default function NewOrderPage() {
             setAvailableSizes(adjustedData);
             return currOrder;
           });
-          setNewItem(prev => ({ ...prev, sizeText: '', sampleItemId: '', basePrice: 0, finalPrice: 0 }));
+          setNewItem(prev => {
+            if (prev.preserveSize) {
+              const { preserveSize, ...rest } = prev;
+              return rest;
+            }
+            return { ...prev, sizeText: '', sampleItemId: '', basePrice: 0, finalPrice: 0 };
+          });
           setLoadingSizes(false);
         })
         .catch(() => setLoadingSizes(false));
     } else {
       setAvailableSizes([]);
     }
-  }, [order.eventDate, order.fromDate, order.toDate, order.isAbroad, newItem.dressModelId]);
+  }, [order.eventDate, order.fromDate, order.toDate, order.isAbroad, order.isWeekdayEvent, newItem.dressModelId]);
 
   // When size is selected, fetch price
   useEffect(() => {
@@ -307,6 +343,7 @@ export default function NewOrderPage() {
             items: activeItems,
             eventDate: proposedOrder.eventDate,
             isAbroad: proposedOrder.isAbroad,
+            isWeekdayEvent: proposedOrder.isWeekdayEvent,
             fromDate: proposedOrder.fromDate,
             toDate: proposedOrder.toDate
           })
@@ -415,6 +452,31 @@ export default function NewOrderPage() {
     });
   };
 
+  const editItem = (index) => {
+    const itemToEdit = order.items[index];
+    setNewItem({
+      dressModelId: itemToEdit.dressModelId || '',
+      sizeText: itemToEdit.sizeText || '',
+      sampleItemId: itemToEdit.sampleItemId || '',
+      quantity: itemToEdit.quantity || 1,
+      basePrice: itemToEdit.basePrice || 0,
+      finalPrice: itemToEdit.finalPrice || 0,
+      repairs: itemToEdit.repairs || '',
+      dressName: itemToEdit.dressName || '',
+      neckAlteration: itemToEdit.neckAlteration || false,
+      sleeveAlteration: itemToEdit.sleeveAlteration || false,
+      lengthAlteration: itemToEdit.lengthAlteration || '',
+      preserveSize: true
+    });
+    
+    // Remove from the order list so it can be edited and re-added
+    removeItem(index);
+    
+    // Scroll to the items form
+    window.scrollTo({ top: document.body.scrollHeight / 2, behavior: 'smooth' });
+  };
+
+
   useEffect(() => {
     if (order.items.length === 0) {
       setCalculatedData({ totalAmount: 0, items: [] });
@@ -427,7 +489,8 @@ export default function NewOrderPage() {
       body: JSON.stringify({
         items: order.items,
         eventDate: order.eventDate,
-        isAbroad: order.isAbroad
+        isAbroad: order.isAbroad,
+        isWeekdayEvent: order.isWeekdayEvent
       })
     })
       .then(res => res.json())
@@ -439,7 +502,7 @@ export default function NewOrderPage() {
         setCalculating(false);
       })
       .catch(() => setCalculating(false));
-  }, [order.items, order.eventDate, order.isAbroad]);
+  }, [order.items, order.eventDate, order.isAbroad, order.isWeekdayEvent]);
 
   const totalAmount = calculatedData.totalAmount;
 
@@ -509,6 +572,7 @@ export default function NewOrderPage() {
           items: order.items,
           eventDate: order.eventDate,
           isAbroad: order.isAbroad,
+          isWeekdayEvent: order.isWeekdayEvent,
           fromDate: order.fromDate,
           toDate: order.toDate
         })
@@ -551,8 +615,10 @@ export default function NewOrderPage() {
         items: itemsToSave,
         payment: {
           ...payment,
-          amount: parseFloat(payment.amount) || 0,
-          notes: creditConfirmation ? `אישור נדרים: ${creditConfirmation} | ${payment.notes}` : payment.notes
+          amount: payment.method === 'יציאה באישור מנהל' ? 0 : (parseFloat(payment.amount) || 0),
+          notes: payment.method === 'יציאה באישור מנהל' 
+            ? `יציאה באישור מנהל (סכום מבוקש: ₪${payment.amount}) | ${payment.notes}`
+            : (creditConfirmation ? `אישור נדרים: ${creditConfirmation} | ${payment.notes}` : payment.notes)
         }
       };
 
@@ -595,31 +661,89 @@ export default function NewOrderPage() {
                <span style={{ background: '#e3f2fd', color: '#1976d2', padding: '0.4rem 1rem', borderRadius: '20px', fontSize: '1rem', fontWeight: 'bold' }}>1 מתוך 3</span>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem', marginBottom: '2.5rem' }}>
-              <button data-agy-id="new_page_button_2" 
-                onClick={() => setCustomerMode('existing')}
-                style={{ flex: 1, padding: '1.2rem', background: customerMode === 'existing' ? 'var(--primary-color)' : 'var(--element-bg)', color: customerMode === 'existing' ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', transition: 'all 0.2s', boxShadow: customerMode === 'existing' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none' }}
-              >
-                לקוח קיים במערכת
-              </button>
-              <button data-agy-id="new_page_button_3" 
-                onClick={() => setCustomerMode('new')}
-                style={{ flex: 1, padding: '1.2rem', background: customerMode === 'new' ? 'var(--primary-color)' : 'var(--element-bg)', color: customerMode === 'new' ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.1rem', transition: 'all 0.2s', boxShadow: customerMode === 'new' ? '0 4px 12px rgba(0,0,0,0.1)' : 'none' }}
-              >
-                יצירת לקוח חדש
-              </button>
-            </div>
+            {searchMode === 'phone' && !foundCustomerFromPhone && (
+              <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center' }}>
+                <div style={{ width: '100%' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', fontSize: '1.2rem', color: '#444' }}>מה מספר הטלפון שלך?</label>
+                  <input data-agy-id="new_page_input_phone_search" 
+                    type="tel" 
+                    value={phoneSearchInput} 
+                    onChange={e => setPhoneSearchInput(e.target.value)} 
+                    onKeyDown={e => e.key === 'Enter' && handleCheckPhone()}
+                    placeholder="הזן מספר טלפון או שם..."
+                    style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid var(--element-border)', fontSize: '1.5rem', textAlign: 'center', transition: 'border-color 0.3s' }} 
+                  />
+                </div>
+                
+                <button data-agy-id="new_page_button_check_phone" 
+                  onClick={handleCheckPhone}
+                  disabled={isCheckingPhone}
+                  style={{ width: '100%', padding: '1.2rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: isCheckingPhone ? 'wait' : 'pointer', transition: 'all 0.3s', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                >
+                  {isCheckingPhone ? (
+                    <>
+                      <span className="spinner" style={{ width: '20px', height: '20px', border: '3px solid rgba(255,255,255,0.3)', borderRadius: '50%', borderTopColor: 'white', animation: 'spin 1s ease-in-out infinite' }}></span>
+                      מחפש...
+                    </>
+                  ) : 'המשך ⬅'}
+                </button>
 
-            {customerMode === 'existing' ? (
+                <div style={{ marginTop: '1rem', width: '100%', textAlign: 'center' }}>
+                  <button data-agy-id="new_page_button_search_name"
+                    onClick={() => setSearchMode('name')}
+                    style={{ background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.1rem', textDecoration: 'underline', cursor: 'pointer' }}
+                  >
+                    או חפש לקוח קיים מהרשימה
+                  </button>
+                </div>
+                <style>{`
+                  @keyframes spin { to { transform: rotate(360deg); } }
+                `}</style>
+              </div>
+            )}
+
+            {searchMode === 'phone' && foundCustomerFromPhone && (
+              <div className="fade-in" style={{ textAlign: 'center', background: 'linear-gradient(135deg, rgba(227, 242, 253, 0.6) 0%, rgba(255, 255, 255, 0.9) 100%)', padding: '3rem 2rem', borderRadius: '16px', border: '1px solid rgba(25, 118, 210, 0.2)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.05)', backdropFilter: 'blur(8px)' }}>
+                <div style={{ width: '70px', height: '70px', background: 'var(--primary-color)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', margin: '0 auto 1.5rem auto' }}>
+                  👋
+                </div>
+                <h3 style={{ fontSize: '1.8rem', color: '#333', marginBottom: '0.5rem' }}>שלום {foundCustomerFromPhone.firstName} {foundCustomerFromPhone.lastName}!</h3>
+                <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)', marginBottom: '2.5rem' }}>מצאנו אותך במערכת (טלפון: {foundCustomerFromPhone.phone1}). האם זה אתה?</p>
+                
+                <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
+                  <button data-agy-id="new_page_button_yes_its_me"
+                    onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)}
+                    style={{ padding: '1.2rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(25, 118, 210, 0.3)' }}
+                  >
+                    כן, המשך להזמנה
+                  </button>
+                  <button data-agy-id="new_page_button_not_me"
+                    onClick={() => {
+                      setNewCustomer(prev => ({ ...prev, phone1: phoneSearchInput.trim() }));
+                      setFoundCustomerFromPhone(null);
+                      setSearchMode('new');
+                    }}
+                    style={{ padding: '1.2rem', background: 'white', color: 'var(--text-muted)', border: '2px solid var(--element-border)', borderRadius: '12px', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s' }}
+                  >
+                    לא, יצירת לקוח חדש
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {searchMode === 'name' && (
               <div className="fade-in">
-                <label style={{ display: 'block', marginBottom: '1rem', fontWeight: 'bold', fontSize: '1.1rem', color: '#444' }}>חיפוש ובחירת לקוח</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <label style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#444' }}>חיפוש ובחירת לקוח מהרשימה</label>
+                  <button onClick={() => setSearchMode('phone')} style={{ background: 'none', border: 'none', color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', fontSize: '1rem' }}>חזור להזנת טלפון</button>
+                </div>
                 <CustomerSelector 
                   value={order.selectedCustomer}
                   onChange={(c) => setOrder(prev => ({ ...prev, customerId: c.id, selectedCustomer: c }))}
                   placeholder="חפש לקוח לפי שם, טלפון, עיר..."
                 />
                 
-                <button data-agy-id="new_page_button_4" 
+                <button data-agy-id="new_page_button_proceed_name" 
                   onClick={proceedToStep2}
                   disabled={!order.customerId}
                   style={{ width: '100%', marginTop: '3rem', padding: '1.2rem', background: order.customerId ? 'var(--primary-color)' : 'var(--element-bg)', color: order.customerId ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: order.customerId ? 'pointer' : 'not-allowed', transition: 'all 0.3s', boxShadow: order.customerId ? '0 8px 24px rgba(0,0,0,0.15)' : 'none' }}
@@ -627,38 +751,45 @@ export default function NewOrderPage() {
                   המשך לשלב הבא ⬅
                 </button>
               </div>
-            ) : (
+            )}
+
+            {searchMode === 'new' && (
               <div className="fade-in">
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '1px solid var(--element-border)' }}>
+                  <h3 style={{ margin: 0, color: '#333' }}>יצירת לקוח חדש</h3>
+                  <button onClick={() => { setFoundCustomerFromPhone(null); setSearchMode('phone'); }} style={{ background: 'none', border: 'none', color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', fontSize: '1rem' }}>חזור</button>
+                 </div>
+
                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>שם פרטי *</label>
-                    <input data-agy-id="new_page_input_5" type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({...prev, firstName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
+                    <input data-agy-id="new_page_input_5" type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({...prev, firstName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>שם משפחה *</label>
-                    <input data-agy-id="new_page_input_6" type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({...prev, lastName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
+                    <input data-agy-id="new_page_input_6" type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({...prev, lastName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
                   </div>
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>טלפון נייד *</label>
-                    <input data-agy-id="new_page_input_7" type="text" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({...prev, phone1: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
+                    <input data-agy-id="new_page_input_7" type="text" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({...prev, phone1: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>אימייל</label>
-                    <input data-agy-id="new_page_input_8" type="email" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({...prev, email: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
+                    <input data-agy-id="new_page_input_8" type="email" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({...prev, email: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
                   </div>
                 </div>
 
                 <div style={{ marginBottom: '1.5rem' }}>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>עיר מגורים</label>
-                  <input data-agy-id="new_page_input_9" type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem' }} />
+                  <input data-agy-id="new_page_input_9" type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
                 </div>
                 
                 <button data-agy-id="new_page_button_10" 
                   onClick={() => handleSaveNewCustomerAndProceed()}
-                  style={{ width: '100%', marginTop: '2rem', padding: '1.2rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: 'pointer', transition: 'background 0.3s', boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}
+                  style={{ width: '100%', marginTop: '2rem', padding: '1.2rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}
                 >
                   שמור לקוח והמשך ⬅
                 </button>
@@ -899,7 +1030,7 @@ export default function NewOrderPage() {
                             <th style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>אורך</th>
                             <th style={{ padding: '1rem 0.5rem' }}>פירוט תיקונים</th>
                             <th style={{ padding: '1rem 0.5rem' }}>מחיר</th>
-                            <th style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>הסר</th>
+                            <th style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>פעולות</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -934,9 +1065,14 @@ export default function NewOrderPage() {
                                   {calculating && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>...מחשב</span>}
                                 </td>
                                 <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                                  <button data-agy-id="new_page_button_20" onClick={() => removeItem(idx)} style={{ background: '#ffebee', color: '#e53935', border: '1px solid #ffcdd2', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.background = '#e53935'; e.currentTarget.style.color = 'white'; }} onMouseOut={(e) => { e.currentTarget.style.background = '#ffebee'; e.currentTarget.style.color = '#e53935'; }}>
-                                    X
-                                  </button>
+                                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                                    <button data-agy-id="new_page_button_edit" onClick={() => editItem(idx)} style={{ background: '#e3f2fd', color: '#1976d2', border: '1px solid #bbdefb', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.background = '#1976d2'; e.currentTarget.style.color = 'white'; }} onMouseOut={(e) => { e.currentTarget.style.background = '#e3f2fd'; e.currentTarget.style.color = '#1976d2'; }} title="ערוך פריט">
+                                      ✏️
+                                    </button>
+                                    <button data-agy-id="new_page_button_20" onClick={() => removeItem(idx)} style={{ background: '#ffebee', color: '#e53935', border: '1px solid #ffcdd2', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.background = '#e53935'; e.currentTarget.style.color = 'white'; }} onMouseOut={(e) => { e.currentTarget.style.background = '#ffebee'; e.currentTarget.style.color = '#e53935'; }} title="מחק פריט">
+                                      X
+                                    </button>
+                                  </div>
                                 </td>
                               </tr>
                             );
@@ -982,9 +1118,46 @@ export default function NewOrderPage() {
                <span style={{ background: '#e3f2fd', color: '#1976d2', padding: '0.4rem 1rem', borderRadius: '20px', fontSize: '1rem', fontWeight: 'bold' }}>3 מתוך 3</span>
             </div>
             
-            <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', textAlign: 'center', border: '2px solid var(--element-border)' }}>
-              <div style={{ fontSize: '1.1rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>סה"כ לתשלום עבור ההזמנה</div>
-              <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#2e7d32' }}>₪{totalAmount}</div>
+            <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '2px solid var(--element-border)' }}>
+              <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--text-main)', textAlign: 'center', fontSize: '1.3rem' }}>פירוט חיובים עבור ההזמנה</h3>
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', marginBottom: '1.5rem' }}>
+                <tbody>
+                  {order.items.map((item, idx) => {
+                    const calcItem = calculatedData.items[idx];
+                    if (!calcItem) return null;
+                    const dressName = item.dressName || 'דגם לא ידוע';
+                    
+                    let repairsCost = 0;
+                    const repairList = [];
+                    if (item.neckAlteration) { repairsCost += 20; repairList.push('צוואר'); }
+                    if (item.sleeveAlteration) { repairsCost += 20; repairList.push('שרוול'); }
+                    if (item.lengthAlteration && String(item.lengthAlteration).trim() !== '') { repairsCost += 20; repairList.push('אורך'); }
+                    
+                    const basePrice = calcItem.calculatedPrice - repairsCost;
+                    
+                    return (
+                      <React.Fragment key={idx}>
+                        <tr style={{ borderBottom: repairsCost > 0 ? 'none' : '1px solid #f0f0f0' }}>
+                          <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{dressName}</td>
+                          <td style={{ padding: '0.75rem 0.5rem', color: calcItem.isDiscountedSet ? '#e53935' : '#444', textAlign: 'left' }}>
+                            {calcItem.isDiscountedSet ? 'חינם בסט' : `₪${basePrice}`}
+                          </td>
+                        </tr>
+                        {repairsCost > 0 && (
+                          <tr style={{ borderBottom: '1px solid #f0f0f0', fontSize: '0.95rem', color: '#666' }}>
+                            <td style={{ padding: '0 0.5rem 0.75rem 0.5rem' }}>↳ תיקונים: {repairList.join(', ')}</td>
+                            <td style={{ padding: '0 0.5rem 0.75rem 0.5rem', textAlign: 'left' }}>₪{repairsCost}</td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+              <div style={{ borderTop: '2px dashed var(--element-border)', paddingTop: '1.5rem', textAlign: 'center' }}>
+                <div style={{ fontSize: '1.1rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>סה"כ לתשלום</div>
+                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#2e7d32' }}>₪{totalAmount}</div>
+              </div>
             </div>
 
             <div style={{ display: 'grid', gap: '1.5rem', marginBottom: '2.5rem' }}>
@@ -1007,11 +1180,7 @@ export default function NewOrderPage() {
                 >
                   <option value="אשראי">אשראי (דרך נדרים פלוס)</option>
                   <option value="אשראי (קופה חיצונית)">אשראי (קופה חיצונית)</option>
-                  <option value="מזומן">מזומן</option>
-                  <option value="העברה בנקאית">העברה בנקאית</option>
-                  <option value="צ'ק">צ'ק</option>
-                  <option value="אפליקציית תשלום">אפליקציית תשלום (ביט/פייבוקס)</option>
-                  <option value="אחר">אחר</option>
+                  <option value="יציאה באישור מנהל">יציאה באישור מנהל</option>
                 </select>
               </div>
 

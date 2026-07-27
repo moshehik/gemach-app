@@ -3,7 +3,7 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, CreditCard, ArrowRight, Users, Info, Package, RefreshCcw, CreditCard as PaymentIcon, History } from 'lucide-react';
+import { Save, CreditCard, ArrowRight, Users, Info, Package, RefreshCcw, CreditCard as PaymentIcon, History, Printer } from 'lucide-react';
 import OrderGeneralDetails from '../../../components/orders/OrderGeneralDetails';
 import ActiveEmployeesModal from '../../../components/orders/ActiveEmployeesModal';
 import OrderItemsManager from '../../../components/orders/OrderItemsManager';
@@ -27,6 +27,7 @@ export default function OrderDetailsPage({ params }) {
   const [saveMessage, setSaveMessage] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showEmployeesModal, setShowEmployeesModal] = useState(false);
+  const [showPrintMenu, setShowPrintMenu] = useState(false);
   
   // Tab State
   const [activeTab, setActiveTab] = useState('details'); // details, items, rentals, payments, history
@@ -299,6 +300,75 @@ export default function OrderDetailsPage({ params }) {
     { id: 'history', label: 'היסטוריה', icon: History, color: '#64748b' }
   ];
 
+  const handlePrintOrder = () => {
+    if (order.hasSignedRegulations) {
+      setShowPrintMenu(!showPrintMenu);
+      return;
+    }
+    
+    if (window.confirm("חתמו על התקנון?")) {
+      const updatedOrder = { ...order, hasSignedRegulations: true };
+      setOrder(updatedOrder);
+      handleSave(updatedOrder);
+      setShowPrintMenu(!showPrintMenu);
+    }
+  };
+
+  const handleSendEmail = async (type) => {
+    setShowPrintMenu(false);
+    
+    let targetEmail = order.customer?.email;
+    
+    if (!targetEmail || !targetEmail.includes('@')) {
+      const emailInput = window.prompt('ללקוח זה אין כתובת מייל תקינה מעודכנת.\\nאנא הזן כתובת מייל לשליחה ושמירה בכרטיס הלקוח:');
+      if (!emailInput) return;
+      
+      const emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
+      if (!emailRegex.test(emailInput.trim())) {
+        alert('כתובת המייל שהוזנה אינה תקינה.');
+        return;
+      }
+      
+      targetEmail = emailInput.trim();
+      
+      if (order.customer?.id) {
+        try {
+          const res = await fetch(`/api/customers/${order.customer.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ ...order.customer, email: targetEmail })
+          });
+          if (res.ok) {
+            setOrder(prev => ({
+              ...prev,
+              customer: { ...prev.customer, email: targetEmail }
+            }));
+          }
+        } catch (e) {
+          console.error('Failed to update customer email:', e);
+        }
+      }
+    }
+    
+    setSaveMessage('שולח מייל...');
+    try {
+      const res = await fetch(`/api/orders/${order.orderId}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail, type: type })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSaveMessage('המייל נשלח בהצלחה!');
+      } else {
+        setSaveMessage('שגיאה: ' + (data.error || 'השליחה נכשלה'));
+      }
+    } catch (err) {
+      setSaveMessage('שגיאה בשליחת המייל');
+    }
+    setTimeout(() => setSaveMessage(''), 3000);
+  };
+
   const activeTabIndex = tabs.findIndex(t => t.id === activeTab);
   const activeTabDetails = tabs[activeTabIndex];
 
@@ -371,6 +441,16 @@ export default function OrderDetailsPage({ params }) {
                 </strong>
               </div>
 
+              {(order.fromDate || order.toDate || order.returnDate) && (
+                <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ fontWeight: '500' }}>לקיחה:</span> 
+                  <strong style={{ color: '#0f172a' }}>{order.fromDate ? new Date(order.fromDate).toLocaleDateString('he-IL') : '-'}</strong>
+                  <span style={{ margin: '0 0.2rem' }}>|</span>
+                  <span style={{ fontWeight: '500' }}>החזרה:</span> 
+                  <strong style={{ color: '#0f172a' }}>{order.toDate || order.returnDate ? new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL') : '-'}</strong>
+                </div>
+              )}
+
               <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                 <span style={{ fontWeight: '500' }}>קופאי:</span> 
                 <strong style={{ color: '#0f172a' }}>
@@ -437,6 +517,58 @@ export default function OrderDetailsPage({ params }) {
             >
               <CreditCard size={20} />
             </button>
+
+            <div style={{ position: 'relative' }}>
+              <button data-agy-id="[id]_page_button_print" 
+                onClick={handlePrintOrder}
+                title="הדפסת הזמנה"
+                style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                  padding: '0.7rem 1rem', background: '#f3e8ff', color: '#7e22ce', border: '1px solid #e9d5ff', 
+                  borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e9d5ff'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f3e8ff'}
+              >
+                <Printer size={20} />
+              </button>
+              {showPrintMenu && (
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 1050, minWidth: '150px', overflow: 'hidden' }}>
+                  <div 
+                    onClick={() => { setShowPrintMenu(false); window.open(`/print/order?orderId=${order.orderId}&type=order`, '_blank'); }}
+                    style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    הדפס הערות להזמנה
+                  </div>
+                  <div 
+                    onClick={() => { setShowPrintMenu(false); window.open(`/print/order?orderId=${order.orderId}&type=rental`, '_blank'); }}
+                    style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    הדפס הערות להשכרה
+                  </div>
+                  <div 
+                    onClick={() => handleSendEmail('order')}
+                    style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    📧 שלח הזמנה למייל
+                  </div>
+                  <div 
+                    onClick={() => handleSendEmail('rental')}
+                    style={{ padding: '0.8rem 1rem', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s' }}
+                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    📧 שלח השכרה למייל
+                  </div>
+                </div>
+              )}
+            </div>
 
             <button data-agy-id="[id]_page_button_5" 
               onClick={handleExit}

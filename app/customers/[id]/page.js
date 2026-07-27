@@ -197,7 +197,7 @@ export default function CustomerPage({ params }) {
           </div>
           
           <div className="form-group" style={{ marginTop: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>הערות (רפואיות/כלליות)</label>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>הערות</label>
             <textarea data-agy-id="customer_notes_textarea" name="notes" value={customer.notes || ''} onChange={handleChange} rows={4} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', resize: 'vertical' }} />
           </div>
 

@@ -97,6 +97,7 @@ export async function POST(request) {
       let repairsTotal = 0;
       if (item.neckAlteration) repairsTotal += 20;
       if (item.sleeveAlteration) repairsTotal += 20;
+      if (item.lengthAlteration && String(item.lengthAlteration).trim() !== '') repairsTotal += 20;
       finalPrice += repairsTotal;
 
       totalAmount += finalPrice;
