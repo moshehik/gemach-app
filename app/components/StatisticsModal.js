@@ -16,7 +16,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
     if (isOpen && messages.length === 0) {
       setMessages([{ 
         role: 'assistant', 
-        content: `׳©׳׳•׳! ׳׳ ׳™ ׳¢׳•׳–׳¨ ׳”׳¡׳˜׳˜׳™׳¡׳˜׳™׳§׳” ׳©׳ ${pageContext === 'orders' ? '׳”׳”׳–׳׳ ׳•׳×' : pageContext === 'customers' ? '׳”׳׳§׳•׳—׳•׳×' : '׳”׳׳¢׳¨׳›׳×'}. ׳©׳׳ ׳׳•׳×׳™ ׳©׳׳׳•׳× ׳¢׳ ׳”׳ ׳×׳•׳ ׳™׳ (׳׳׳©׳: '׳›׳׳” ׳”׳–׳׳ ׳•׳× ׳™׳© ׳”׳—׳•׳“׳©?' ׳׳• '׳׳” ׳₪׳™׳׳•׳— ׳”׳׳§׳•׳—׳•׳× ׳׳₪׳™ ׳¢׳¨׳™׳?').` 
+        content: `שלום! אני עוזר הסטטיסטיקה של ${pageContext === 'orders' ? 'ההזמנות' : pageContext === 'customers' ? 'הלקוחות' : 'המערכת'}. שאל אותי שאלות על הנתונים (למשל: 'כמה הזמנות יש החודש?' או 'מה פילוח הלקוחות לפי ערים?').` 
       }]);
       setActiveSessionId(null);
     }
@@ -57,7 +57,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
       
       const assistantMessage = res.ok 
         ? { role: 'assistant', content: data.response }
-        : { role: 'assistant', content: '׳׳¦׳˜׳¢׳¨, ׳—׳׳” ׳©׳’׳™׳׳” ׳‘׳”׳₪׳§׳× ׳”׳¡׳˜׳˜׳™׳¡׳˜׳™׳§׳”.' };
+        : { role: 'assistant', content: 'מצטער, חלה שגיאה בהפקת הסטטיסטיקה.' };
 
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
@@ -68,7 +68,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             sessionId: activeSessionId,
-            context: `׳“׳•׳— AI - ${pageContext}`,
+            context: `דוח AI - ${pageContext}`,
             messages: finalMessages
           })
         });
@@ -80,7 +80,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
         console.error('Failed to sync session', err);
       }
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: '׳©׳’׳™׳׳× ׳×׳§׳©׳•׳¨׳× ׳¢׳ ׳”׳©׳¨׳×.' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'שגיאת תקשורת עם השרת.' }]);
     } finally {
       setLoading(false);
     }
@@ -141,7 +141,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
             <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.5rem', borderRadius: '50%' }}>
               <BarChart3 size={24} />
             </div>
-            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>׳¡׳˜׳˜׳™׳¡׳˜׳™׳§׳•׳× ׳׳×׳§׳“׳׳•׳× AI</h2>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>סטטיסטיקות מתקדמות AI</h2>
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
             <X size={24} />
@@ -183,7 +183,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
                 <Bot size={18} />
               </div>
               <div style={{ padding: '0.8rem 1.2rem', borderRadius: '16px', borderTopLeftRadius: '4px', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
-                <Loader2 size={16} className="animate-spin" /> ׳׳ ׳×׳— ׳ ׳×׳•׳ ׳™׳...
+                <Loader2 size={16} className="animate-spin" /> מנתח נתונים...
               </div>
             </div>
           )}
@@ -197,7 +197,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
               type="text" 
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="׳©׳׳ ׳©׳׳׳” ׳¢׳ ׳”׳ ׳×׳•׳ ׳™׳..."
+              placeholder="שאל שאלה על הנתונים..."
               disabled={loading}
               style={{ 
                 flex: 1, 

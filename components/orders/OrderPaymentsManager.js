@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Trash2, Info, ChevronDown, ChevronUp } from 'lucide-react';
 
 export default function OrderPaymentsManager({ orderId, obligations = [], payments = [], onObligationsChange, onPaymentsChange, totalRequired, totalPaid, customer = {} }) {
@@ -21,6 +22,11 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
   const [settings, setSettings] = useState({});
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState(null);
   const [selectedObligationDetails, setSelectedObligationDetails] = useState(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     setNewPayment(prev => {
@@ -148,6 +154,41 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
     });
     setCreditError('');
     setShowCreditModal(true);
+  };
+
+  const handleCardNumberChange = (e) => {
+    const val = e.target.value;
+    
+    if (val.includes('=')) {
+      const parts = val.split('=');
+      const card = parts[0].replace(/[^0-9]/g, '');
+      const expYY = parts[1].substring(0, 2);
+      const expMM = parts[1].substring(2, 4);
+      
+      setCreditCardData(prev => ({
+        ...prev,
+        cardNumber: card,
+        tokef: (expMM && expYY) ? `${expMM}${expYY}` : prev.tokef
+      }));
+      return;
+    }
+    
+    if (val.includes('^')) {
+      const parts = val.split('^');
+      const card = parts[0].replace(/[^0-9]/g, '');
+      if (parts.length > 2) {
+        const expYY = parts[2].substring(0, 2);
+        const expMM = parts[2].substring(2, 4);
+        setCreditCardData(prev => ({
+          ...prev,
+          cardNumber: card,
+          tokef: (expMM && expYY) ? `${expMM}${expYY}` : prev.tokef
+        }));
+        return;
+      }
+    }
+
+    setCreditCardData(prev => ({ ...prev, cardNumber: val }));
   };
 
   const handleProcessCreditCard = async () => {
@@ -419,7 +460,8 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                 style={{ flex: '1', minWidth: '130px', padding: '0.7rem', borderRadius: '8px', border: '1px solid #86efac', outline: 'none', background: 'white', cursor: 'pointer' }}
               >
                 <option value="מזומן">מזומן</option>
-                <option value="אשראי">אשראי</option>
+                <option value="אשראי">אשראי (דרך נדרים פלוס)</option>
+                <option value="אשראי (קופה חיצונית)">אשראי (קופה חיצונית)</option>
                 <option value="העברה בנקאית">העברה בנקאית</option>
                 <option value="המחאה">המחאה</option>
                 <option value="אחר">אחר</option>
@@ -456,7 +498,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
       </div>
       )}
 
-      {showCreditModal && (
+      {mounted && showCreditModal && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
           <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '450px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             <h2 style={{ margin: '0 0 1.5rem 0', color: '#1e293b', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
@@ -484,7 +526,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                 <input 
                   type="text" 
                   value={creditCardData.cardNumber} 
-                  onChange={e => setCreditCardData({...creditCardData, cardNumber: e.target.value})}
+                  onChange={handleCardNumberChange}
                   placeholder="הכנס מספר כרטיס ללא רווחים"
                   style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} 
                 />
@@ -551,10 +593,11 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {selectedPaymentDetails && (
+      {mounted && selectedPaymentDetails && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
           <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -618,10 +661,11 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {selectedObligationDetails && (
+      {mounted && selectedObligationDetails && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
           <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
             <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -670,10 +714,11 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {showAddChargeModal && (
+      {mounted && showAddChargeModal && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
           <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '400px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -725,7 +770,8 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

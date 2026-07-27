@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import prisma from '@/app/lib/prisma';
 
@@ -31,7 +31,7 @@ export async function POST(request) {
     }
 
     // 3. Populate dress models for categories
-    const dressModelIds = items.map(i => parseInt(i.dressModelId)).filter(id => !isNaN(id));
+    const dressModelIds = items.map(i => i.dressModelId).filter(Boolean);
     const dbModels = await prisma.dressModel.findMany({
       where: { id: { in: dressModelIds } }
     });
@@ -40,7 +40,7 @@ export async function POST(request) {
     let mainDressesCount = 0;
     if (enableSetDiscounts) {
       for (const item of items) {
-        const dbModel = dbModels.find(d => d.id === parseInt(item.dressModelId));
+        const dbModel = dbModels.find(d => d.id === item.dressModelId);
         const category = dbModel?.priceCategory || '';
         if (!category.includes('כלול ב')) {
           mainDressesCount += (item.quantity || 1);
@@ -53,7 +53,7 @@ export async function POST(request) {
 
     // Calculate per item
     for (const item of items) {
-      const dbModel = dbModels.find(d => d.id === parseInt(item.dressModelId));
+      const dbModel = dbModels.find(d => d.id === item.dressModelId);
       if (!dbModel) {
         calculatedItems.push({ ...item, finalPrice: 0 });
         continue;

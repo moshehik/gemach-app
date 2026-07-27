@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -72,6 +72,41 @@ export default function NewOrderPage() {
   const [isProcessingCredit, setIsProcessingCredit] = useState(false);
   const [creditError, setCreditError] = useState('');
   const [creditProcessedConfirmation, setCreditProcessedConfirmation] = useState(null);
+
+  const handleCardNumberChange = (e) => {
+    const val = e.target.value;
+    
+    if (val.includes('=')) {
+      const parts = val.split('=');
+      const card = parts[0].replace(/[^0-9]/g, '');
+      const expYY = parts[1].substring(0, 2);
+      const expMM = parts[1].substring(2, 4);
+      
+      setCreditCardData(prev => ({
+        ...prev,
+        cardNumber: card,
+        tokef: (expMM && expYY) ? `${expMM}${expYY}` : prev.tokef
+      }));
+      return;
+    }
+    
+    if (val.includes('^')) {
+      const parts = val.split('^');
+      const card = parts[0].replace(/[^0-9]/g, '');
+      if (parts.length > 2) {
+        const expYY = parts[2].substring(0, 2);
+        const expMM = parts[2].substring(2, 4);
+        setCreditCardData(prev => ({
+          ...prev,
+          cardNumber: card,
+          tokef: (expMM && expYY) ? `${expMM}${expYY}` : prev.tokef
+        }));
+        return;
+      }
+    }
+
+    setCreditCardData(prev => ({ ...prev, cardNumber: val }));
+  };
 
   const handleProcessCreditCard = async () => {
     if (!creditCardData.cardNumber || !creditCardData.tokef || !creditCardData.amount) {
@@ -255,6 +290,50 @@ export default function NewOrderPage() {
     }));
   };
 
+  const handleDateChangeWithValidation = async (field, value) => {
+    const proposedOrder = {
+      ...order,
+      [field]: value
+    };
+    
+    const activeItems = order.items.filter(i => !i.isDeleted);
+    
+    if (activeItems.length > 0) {
+      try {
+        const validateRes = await fetch('/api/orders/validate-inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: activeItems,
+            eventDate: proposedOrder.eventDate,
+            isAbroad: proposedOrder.isAbroad,
+            fromDate: proposedOrder.fromDate,
+            toDate: proposedOrder.toDate
+          })
+        });
+        
+        const validateData = await validateRes.json();
+        if (validateData.error) {
+          alert(`שגיאה בבדיקת מלאי: ${validateData.error}`);
+          return;
+        }
+        if (!validateData.valid) {
+          const errorLines = validateData.errors.map(e => 
+            `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
+          ).join('\n');
+          alert(`לא ניתן לשנות את התאריך עקב חוסר במלאי לפריטים הקיימים בהזמנה:\n\n${errorLines}`);
+          return;
+        }
+      } catch (err) {
+        console.error('Validation fetch error', err);
+        alert('שגיאה בבדיקת המלאי מול השרת.');
+        return; 
+      }
+    }
+    
+    setOrder(prev => ({ ...prev, [field]: value }));
+  };
+
   const handleNewItemChange = (e) => {
     const { name, value } = e.target;
     if (name === 'sizeText') {
@@ -364,11 +443,9 @@ export default function NewOrderPage() {
 
   const totalAmount = calculatedData.totalAmount;
 
-  // Auto-update payment amount to total amount when items change, if payment amount hasn't been manually set yet
+  // Auto-update payment amount to total amount when items change
   useEffect(() => {
-    if (totalAmount > 0 && payment.amount === '') {
-      setPayment(prev => ({ ...prev, amount: totalAmount }));
-    }
+    setPayment(prev => ({ ...prev, amount: totalAmount }));
   }, [totalAmount]);
 
   const saveOrder = async () => {
@@ -623,7 +700,7 @@ export default function NewOrderPage() {
                     <div style={{ flex: 1, minWidth: '150px' }}>
                       <HebrewDatePicker 
                         value={order.eventDate} 
-                        onChange={(date) => handleOrderChange({ target: { name: 'eventDate', value: date }})} 
+                        onChange={(date) => handleDateChangeWithValidation('eventDate', date)} 
                       />
                     </div>
                   </div>
@@ -637,7 +714,7 @@ export default function NewOrderPage() {
                       type="checkbox" 
                       name="isAbroad" 
                       checked={order.isAbroad} 
-                      onChange={handleOrderChange} 
+                      onChange={(e) => handleDateChangeWithValidation('isAbroad', e.target.checked)} 
                       style={{ width: '22px', height: '22px', accentColor: 'var(--primary-color)' }} 
                     />
                     אירוע חו"ל (תפוסה מותאמת אישית)
@@ -651,7 +728,7 @@ export default function NewOrderPage() {
                           <div style={{ flex: 1 }}>
                             <HebrewDatePicker 
                               value={order.fromDate} 
-                              onChange={(date) => handleOrderChange({ target: { name: 'fromDate', value: date }})} 
+                              onChange={(date) => handleDateChangeWithValidation('fromDate', date)} 
                             />
                           </div>
                         </div>
@@ -662,7 +739,7 @@ export default function NewOrderPage() {
                           <div style={{ flex: 1 }}>
                             <HebrewDatePicker 
                               value={order.toDate} 
-                              onChange={(date) => handleOrderChange({ target: { name: 'toDate', value: date }})} 
+                              onChange={(date) => handleDateChangeWithValidation('toDate', date)} 
                             />
                           </div>
                         </div>
@@ -928,7 +1005,8 @@ export default function NewOrderPage() {
                   onChange={e => setPayment(prev => ({...prev, method: e.target.value}))} 
                   style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '1px solid var(--element-border)', fontSize: '1.1rem' }}
                 >
-                  <option value="אשראי">אשראי</option>
+                  <option value="אשראי">אשראי (דרך נדרים פלוס)</option>
+                  <option value="אשראי (קופה חיצונית)">אשראי (קופה חיצונית)</option>
                   <option value="מזומן">מזומן</option>
                   <option value="העברה בנקאית">העברה בנקאית</option>
                   <option value="צ'ק">צ'ק</option>
@@ -1030,7 +1108,7 @@ export default function NewOrderPage() {
                 <input 
                   type="text" 
                   value={creditCardData.cardNumber} 
-                  onChange={e => setCreditCardData({...creditCardData, cardNumber: e.target.value})}
+                  onChange={handleCardNumberChange}
                   placeholder="הכנס מספר כרטיס ללא רווחים"
                   style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)', direction: 'ltr', textAlign: 'left' }} 
                 />

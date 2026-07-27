@@ -7,7 +7,8 @@ export default function SettingsPage() {
     BUFFER_DAYS: '7',
     nedarim_plus_terminal: '',
     ENABLE_SET_DISCOUNTS: 'false',
-    require_login: 'false'
+    require_login: 'false',
+    inventory_include_warehouse: 'false'
   });
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -46,7 +47,8 @@ export default function SettingsPage() {
         'PAYMENT_APPROVAL_LEVEL': 'אישור תשלום ללא העברת אשראי',
         'nedarim_plus_terminal': 'קוד מוסד נדרים פלוס',
         'ENABLE_SET_DISCOUNTS': 'הפעל מבצע סטים',
-        'require_login': 'דרוש התחברות עם קוד עובד וסיסמה'
+        'require_login': 'חובת התחברות למערכת',
+        'inventory_include_warehouse': 'ספירת מלאי מחסן'
       };
       
       const payload = Object.entries(settings).map(([key, value]) => ({
@@ -78,9 +80,26 @@ export default function SettingsPage() {
       
       <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
         <form onSubmit={handleSave}>
+          
+          <div style={{ marginBottom: '1.5rem', padding: '1rem', background: '#f8fafc', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+            <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontWeight: 'bold', color: '#1e293b' }}>
+              <input 
+                type="checkbox" 
+                name="inventory_include_warehouse" 
+                checked={settings.inventory_include_warehouse === 'true'} 
+                onChange={handleChange}
+                style={{ marginLeft: '0.5rem', width: '20px', height: '20px' }}
+              />
+              הצג וספור במלאי גם פריטים הנמצאים במחסן/רזרבה
+            </label>
+            <p style={{ color: '#64748b', fontSize: '0.9rem', marginTop: '0.5rem', marginRight: '2rem' }}>
+              אם מסומן, מלאי שמוגדר במיקום מחסן או רזרבה ייספר כמלאי זמין ויוצג למשתמש. (ברירת מחדל: לא)
+            </p>
+          </div>
+
           <div style={{ marginBottom: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-              ימי מרווח להזמנה (ימים להגבלה)
+              מסוף נדרים פלוס
             </label>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>
               מספר הימים לפני ואחרי תאריך אירוע שבו השמלה נחשבת 'תפוסה' במלאי ולא ניתנת להזמנה במקביל.

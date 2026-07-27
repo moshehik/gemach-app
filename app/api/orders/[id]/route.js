@@ -1,8 +1,9 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 
 export const dynamic = 'force-dynamic';
 import { recalculateOrderObligations } from '../../../../lib/pricingEngine';
+import { getHebrewDateString } from '../../../../lib/hebrewDate';
 
 export async function GET(request, { params }) {
   try {
@@ -186,7 +187,7 @@ export async function PUT(request, { params }) {
         data: {
           totalAmount: data.totalAmount !== undefined && data.totalAmount !== null ? (parseFloat(data.totalAmount) || 0) : undefined,
           eventDate: data.eventDate ? new Date(data.eventDate) : null,
-          eventDateHebrew: data.eventDateHebrew !== undefined ? data.eventDateHebrew : undefined,
+          eventDateHebrew: data.eventDateHebrew !== undefined ? data.eventDateHebrew : (data.eventDate ? getHebrewDateString(data.eventDate) : null),
           returnDate: data.returnDate ? new Date(data.returnDate) : null,
           isAbroad: data.isAbroad,
           fromDate: data.fromDate ? new Date(data.fromDate) : null,

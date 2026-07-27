@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { generateContent } from '../../../lib/ai/gemini';
 import { checkAuth } from '../../../lib/auth';
 import { getBulkAvailableInventory } from '../../../lib/inventory';
@@ -47,8 +47,8 @@ IMPORTANT: If the user searches for a whole Hebrew month (e.g. "מתי בסיו�
 5. Be aware of the field names exactly as defined in the schema.
 6. If it's a general question that doesn't need database access, just answer it naturally in Hebrew without the "SQL: " prefix.
 7. IMPORTANT: When selecting columns, ALWAYS use 'AS' to alias the column names into Hebrew using double quotes. For example: SELECT "firstName" AS "שם פרטי", "lastName" AS "שם משפחה". DO NOT return English column names in the output.
-8. CRITICAL RULE FOR TEXT FIELDS: NEVER EVER use '=' to search for text fields like name, model name, customer name, or description! You MUST use 'ILIKE' or 'LIKE' with wildcards. For example, use DM.name LIKE '%אפור טול%' instead of DM.name = 'אפור טול'. This is because the database has full names like "אפור טול שמנת" and exact matches will FAIL.
-9. IMPORTANT RULE FOR SIZES: Whenever querying for dress sizes in "DressItem" or "OrderItem", ALWAYS use the "sizeText" column (e.g. "sizeText" = '36'). DO NOT use the "size" column, which is often null for future orders!
+8. CRITICAL RULE FOR TEXT FIELDS: NEVER EVER use '=' to search for text fields like name, model name, customer name, or description! You MUST use 'ILIKE' or 'LIKE' with wildcards. For example, use DM.name LIKE '%אפור טול%' instead of DM.name = 'אפור טול'. If a user searches for a multi-word name (e.g., 'זהב קומות'), use a single ILIKE '%זהב קומות%' or use AND (e.g., ILIKE '%זהב%' AND ILIKE '%קומות%'). DO NOT use OR unless the user explicitly asks for "this OR that", as OR will return too many irrelevant results.
+9. IMPORTANT RULE FOR SIZES: Whenever querying for dress sizes in "DressItem" or "OrderItem", ALWAYS use the "sizeText" column (e.g. "sizeText" = '36'). DO NOT use the "size" column, which is often null for future orders! CRITICAL: Single-digit sizes (e.g., 2, 4, 6, 8) are stored with a leading zero in the database! You MUST pad them (e.g., '02', '04', '06', '08'). If the user asks for models that have MULTIPLE specific sizes, DO NOT restrict the model to ONLY those sizes using BOOL_AND. Instead, use a HAVING clause to ensure it has all of them, e.g.: HAVING COUNT(DISTINCT CASE WHEN DI."sizeText" IN ('02','04','06','08') THEN DI."sizeText" END) = 4.
 10. IMPORTANT: Whenever querying orders or events, ALWAYS select "eventDateHebrew" as the primary date to display to the user, since the system prefers Hebrew dates.
 11. IMPORTANT UI FEATURE: If you want to provide a clickable action button for a row, you MUST include two hidden columns in your query: "_actionUrl" and "_actionLabel". 
     - For Customers: Use the UUID 'id' for the URL. Example: SELECT "firstName" AS "שם", "legacyId" AS "מספר לקוח", '/customers/' || "id" AS "_actionUrl", 'תיק לקוח' AS "_actionLabel" FROM "Customer".
@@ -216,7 +216,7 @@ CRITICAL RULES FOR YOUR RESPONSE:
 2. Whenever you mention a date, you MUST mention BOTH the Hebrew date and the Gregorian date together, with the Gregorian date in parentheses (e.g., "י' בסיוון תשפ\"ו (26/05/2026)"). You MUST extract these dates EXACTLY from the "תאריך עברי" and "תאריך" fields in the availability results JSON provided to you. Do NOT calculate or guess any dates yourself.
 3. DO NOT output a long list of consecutive dates! If the results contain many consecutive days, group them into a simple range (e.g., "מ-א' בסיוון (17/05/2026) ועד כ' בסיוון (05/06/2026)"). Keep the response concise and natural.
 4. STRICT PRIVACY RULE: You must NEVER expose, mention, or list ANY customer names, phone numbers, or personal details in your text response. Your response is intended to be shown or forwarded to clients, so you must keep all other clients' information completely confidential. Only summarize inventory and availability.
-Summarize the information nicely.`;
+Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${context}` : ''}`;
 
         try {
            fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== FOLLOWUP PROMPT ====\n' + followupPrompt + '\n');

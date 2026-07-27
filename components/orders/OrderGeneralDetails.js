@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -7,10 +7,73 @@ import HebrewDatePicker from '../HebrewDatePicker';
 import CustomerSelector from '../CustomerSelector';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 
-export default function OrderGeneralDetails({ order, onOrderChange }) {
+export default function OrderGeneralDetails({ order, onOrderChange, items = [], onSaveRequest }) {
   
   const handleChange = (field, value) => {
     onOrderChange({ ...order, [field]: value });
+  };
+
+  const validateAndChangeDate = async (field, value) => {
+    const currentItems = items && items.length > 0 ? items : (order.items || []);
+    const activeItems = currentItems.filter(i => !i.isDeleted);
+    
+    const proposedOrder = {
+      ...order,
+      [field]: value
+    };
+
+    if (activeItems.length === 0) {
+      handleChange(field, value);
+      if (['isAbroad', 'eventDate', 'fromDate', 'toDate', 'returnDate'].includes(field)) {
+        if (onSaveRequest) setTimeout(() => onSaveRequest(proposedOrder), 0);
+      }
+      return;
+    }
+
+    // Skip validation if it's an abroad event but dates aren't fully entered yet
+    if (proposedOrder.isAbroad && (!proposedOrder.fromDate || !proposedOrder.toDate)) {
+      handleChange(field, value);
+      if (['isAbroad', 'eventDate', 'fromDate', 'toDate', 'returnDate'].includes(field)) {
+        if (onSaveRequest) setTimeout(() => onSaveRequest(proposedOrder), 0);
+      }
+      return;
+    }
+
+    try {
+      const validateRes = await fetch('/api/orders/validate-inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: activeItems,
+          eventDate: proposedOrder.eventDate,
+          isAbroad: proposedOrder.isAbroad,
+          fromDate: proposedOrder.fromDate,
+          toDate: proposedOrder.toDate,
+          orderId: proposedOrder.orderId
+        })
+      });
+      
+      const validateData = await validateRes.json();
+      if (validateData.error) {
+        alert(`שגיאה בבדיקת מלאי: ${validateData.error}`);
+        return;
+      }
+      if (!validateData.valid) {
+        const errorLines = validateData.errors.map(e => 
+          `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
+        ).join('\n');
+        alert(`לא ניתן לשנות את התאריך עקב חוסר במלאי לפריטים הקיימים בהזמנה:\n\n${errorLines}`);
+        return;
+      }
+      
+      handleChange(field, value);
+      if (['isAbroad', 'eventDate', 'fromDate', 'toDate', 'returnDate'].includes(field)) {
+        if (onSaveRequest) setTimeout(() => onSaveRequest(proposedOrder), 0);
+      }
+    } catch (err) {
+      console.error('Validation fetch error', err);
+      alert('שגיאה בבדיקת המלאי מול השרת.');
+    }
   };
 
   const [isExpanded, setIsExpanded] = useState(true);
@@ -238,7 +301,7 @@ export default function OrderGeneralDetails({ order, onOrderChange }) {
                   <div style={{ flex: 1, minWidth: '200px' }}>
                     <HebrewDatePicker 
                       value={order.eventDate} 
-                      onChange={(date) => handleChange('eventDate', date)} 
+                      onChange={(date) => validateAndChangeDate('eventDate', date)} 
                     />
                   </div>
                 </div>
@@ -246,12 +309,12 @@ export default function OrderGeneralDetails({ order, onOrderChange }) {
 
               {/* Custom Duration / Abroad */}
               <div>
-                <div style={{ ...groupStyle, display: 'inline-flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '0.8rem 1.2rem', borderRadius: '10px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => handleChange('isAbroad', !order.isAbroad)}>
+                <div style={{ ...groupStyle, display: 'inline-flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '0.8rem 1.2rem', borderRadius: '10px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => validateAndChangeDate('isAbroad', !order.isAbroad)}>
                   <input 
                     type="checkbox" 
                     id="isAbroad"
                     checked={order.isAbroad ?? false} 
-                    onChange={(e) => handleChange('isAbroad', e.target.checked)}
+                    onChange={(e) => validateAndChangeDate('isAbroad', e.target.checked)}
                     onClick={e => e.stopPropagation()}
                     style={{ transform: 'scale(1.2)', cursor: 'pointer', accentColor: '#2563eb' }}
                   />
@@ -266,7 +329,7 @@ export default function OrderGeneralDetails({ order, onOrderChange }) {
                         <div style={{ flex: 1 }}>
                           <HebrewDatePicker 
                             value={order.fromDate} 
-                            onChange={(date) => handleChange('fromDate', date)} 
+                            onChange={(date) => validateAndChangeDate('fromDate', date)} 
                           />
                         </div>
                       </div>
@@ -277,7 +340,7 @@ export default function OrderGeneralDetails({ order, onOrderChange }) {
                         <div style={{ flex: 1 }}>
                           <HebrewDatePicker 
                             value={order.toDate || order.returnDate} 
-                            onChange={(date) => handleChange('toDate', date)} 
+                            onChange={(date) => validateAndChangeDate('toDate', date)} 
                           />
                         </div>
                       </div>

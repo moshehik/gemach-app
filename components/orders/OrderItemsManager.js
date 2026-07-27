@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import OrderModelSelector from './OrderModelSelector';
@@ -6,6 +6,7 @@ import OrderSizeSelector from './OrderSizeSelector';
 import { Info, Trash2, RotateCcw, CalendarSearch, ChevronDown, ChevronUp } from 'lucide-react';
 import ItemCapacityModal from './ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
+import { createPortal } from 'react-dom';
 
 export default function OrderItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated }) {
   const [showDeleted, setShowDeleted] = useState(false);
@@ -13,12 +14,14 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
   const [capacityModalItem, setCapacityModalItem] = useState(null);
   const [savingItemIndex, setSavingItemIndex] = useState(null);
   const [settings, setSettings] = useState({});
+  const [mounted, setMounted] = useState(false);
 
   const [isExpanded, setIsExpanded] = useState(true);
   const activeItemsCount = items ? items.filter(i => !i.isDeleted).length : 0;
   const summaryText = `${activeItemsCount} פריטים פעילים בהזמנה`;
 
   React.useEffect(() => {
+    setMounted(true);
     fetch('/api/settings')
       .then(res => res.json())
       .then(data => {
@@ -48,11 +51,12 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
     setSavingItemIndex(index);
     try {
       // Validate inventory before saving single item
+      const activeItems = items.filter(i => !i.isDeleted);
       const validateRes = await fetch('/api/orders/validate-inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: [item],
+          items: activeItems,
           eventDate: order.eventDate,
           isAbroad: order.isAbroad,
           fromDate: order.fromDate,
@@ -108,6 +112,13 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
 
   const toggleDeleted = async (index) => {
     const isCurrentlyDeleted = items[index].isDeleted;
+    const item = items[index];
+
+    if (!isCurrentlyDeleted && item.isTaken) {
+      alert('לא ניתן למחוק פריט שכבר נלקח (מושכר). יש להחזירו קודם לכן או לבטל את הלקיחה.');
+      return;
+    }
+
     if (isCurrentlyDeleted) { // trying to restore
       const maxItems = parseInt(settings.max_items_per_order);
       const activeCount = items.filter(i => !i.isDeleted).length;
@@ -118,12 +129,15 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
 
       // Check stock before restoring
       try {
-        const item = items[index];
+        const restoredItem = { ...items[index], isDeleted: false };
+        const activeItems = items.filter((i, idx) => !i.isDeleted && idx !== index);
+        const itemsToValidate = [...activeItems, restoredItem];
+        
         const validateRes = await fetch('/api/orders/validate-inventory', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            items: [item],
+            items: itemsToValidate,
             eventDate: order.eventDate,
             isAbroad: order.isAbroad,
             fromDate: order.fromDate,
@@ -501,7 +515,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
         </div>
       )}
       
-      {detailsModalItem && (
+      {mounted && detailsModalItem && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
           <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '90%', maxWidth: '550px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
@@ -638,7 +652,8 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {capacityModalItem && (

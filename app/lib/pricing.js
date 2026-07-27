@@ -1,4 +1,4 @@
-﻿import prisma from './prisma';
+import prisma from './prisma';
 
 /**
  * Calculates the exact price for a dress model based on its category and size.
@@ -9,8 +9,8 @@
  * @param {Date} eventDate 
  */
 export async function calculatePrice(dressModelId, sizeText, eventDate = new Date()) {
-  const modelId = parseInt(dressModelId, 10);
-  if (isNaN(modelId)) throw new Error('Invalid dressModelId');
+  const modelId = dressModelId;
+  if (!modelId) throw new Error('Invalid dressModelId');
 
   const dressModel = await prisma.dressModel.findUnique({
     where: { id: modelId }
@@ -30,14 +30,14 @@ export async function calculatePrice(dressModelId, sizeText, eventDate = new Dat
 
   // Find all price rules for this category
   // In Access, if a specific category isn't found, it might fall back to 'כללי'
-  let rules = await prisma.priceRule.findMany({
+  let rules = await prisma.priceList.findMany({
     where: {
       category: category
     }
   });
 
   if (rules.length === 0 && category !== 'כללי') {
-    rules = await prisma.priceRule.findMany({
+    rules = await prisma.priceList.findMany({
       where: {
         category: 'כללי'
       }
@@ -47,8 +47,8 @@ export async function calculatePrice(dressModelId, sizeText, eventDate = new Dat
   // Filter by size and date
   const validRules = rules.filter(r => {
     // Check size range
-    const minSize = r.minSize !== null ? r.minSize : -999;
-    const maxSize = r.maxSize !== null ? r.maxSize : 999;
+    const minSize = r.fromSize !== null ? r.fromSize : -999;
+    const maxSize = r.toSize !== null ? r.toSize : 999;
     if (sizeNum < minSize || sizeNum > maxSize) return false;
 
     // Check dates

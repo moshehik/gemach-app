@@ -1,15 +1,18 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { X, Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
 import { getHebrewDateString } from '@/lib/hebrewDate';
+import { createPortal } from 'react-dom';
 
 export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     const hasIdentifier = item && (item.dressModelId || item.dressItem?.dressModelId || item.barcodePrefix || item.dressItem?.barcodePrefix || item.dressItem?.dress?.barcodePrefix);
     const actualSize = item?.sizeText || item?.size;
     
@@ -73,10 +76,10 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
     }
   };
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
-    <div className="modal-overlay" style={{ zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
+  return createPortal(
+    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
       <div className="modal-content animate-fade-in" style={{ width: '95%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '0', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', direction: 'rtl' }}>
         
         {/* Header */}
@@ -177,6 +180,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
             )}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

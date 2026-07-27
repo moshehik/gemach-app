@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
@@ -99,9 +99,11 @@ export default function OrderDetailsPage({ params }) {
   }, [totalRequired, totalPaid, debtApproved]);
 
   // Save changes
-  const handleSave = async () => {
+  const handleSave = async (overrideOrder = null) => {
     setSaving(true);
     setSaveMessage('');
+    
+    const currentOrder = overrideOrder || order;
     
     // VALIDATE REPAIRS
     for (const item of items) {
@@ -122,11 +124,11 @@ export default function OrderDetailsPage({ params }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           items: items, 
-          eventDate: order.eventDate,
-          isAbroad: order.isAbroad,
-          fromDate: order.fromDate,
-          toDate: order.toDate,
-          orderId: order.orderId 
+          eventDate: currentOrder.eventDate,
+          isAbroad: currentOrder.isAbroad,
+          fromDate: currentOrder.fromDate,
+          toDate: currentOrder.toDate,
+          orderId: currentOrder.orderId 
         })
       });
       
@@ -185,7 +187,7 @@ export default function OrderDetailsPage({ params }) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...order,
+          ...currentOrder,
           items: items,
           obligations: obligations,
           payments: payments,
@@ -528,7 +530,7 @@ export default function OrderDetailsPage({ params }) {
             <div className="animate-fade-in" style={{ opacity: isLocked ? 0.7 : 1, pointerEvents: isLocked ? 'none' : 'auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               
               <div id="details">
-                <OrderGeneralDetails order={order} onOrderChange={setOrder} />
+                <OrderGeneralDetails order={order} items={items} onOrderChange={setOrder} onSaveRequest={handleSave} />
               </div>
 
               <div id="items">

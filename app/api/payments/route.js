@@ -7,7 +7,7 @@ export async function POST(request) {
     const data = await request.json();
     
     if (!data.orderId || !data.amount) {
-      return NextResponse.json({ error: 'חסרים נתונים חובה: מס׳ הזמנה וסכום' }, { status: 400 });
+      return NextResponse.json({ error: 'חסרים נתונים חובה: מסנהזמנה וסכום' }, { status: 400 });
     }
 
     const parsedOrderId = parseInt(data.orderId);

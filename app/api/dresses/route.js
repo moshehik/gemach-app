@@ -11,6 +11,8 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const eventDateStr = searchParams.get('eventDate');
+    const warehouseSetting = await prisma.systemSetting.findUnique({ where: { key: 'inventory_include_warehouse' } });
+    const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
     const pageParam = searchParams.get('page');
     const limitParam = searchParams.get('limit');
     
@@ -131,8 +133,8 @@ export async function GET(request) {
       const adjustedItems = model.items.map(item => {
         const size = item.sizeText || item.size || 'כללי';
         let availableQtyForThisItem = 1;
-        const isUnusable = item.inRepair || item.notInUse || item.isDeleted || 
-           (item.location && (item.location.includes('מחסן') || item.location.includes('warehouse') || item.location.includes('רזרבה') || item.location.includes('reserve')));
+        const isWarehouse = item.location && (item.location.includes('מחסן') || item.location.includes('warehouse') || item.location.includes('רזרבה') || item.location.includes('reserve'));
+        const isUnusable = item.inRepair || item.notInUse || item.isDeleted || (!includeWarehouse && isWarehouse);
 
         if (bulkAvailable) {
           if (isUnusable) {
@@ -198,6 +200,7 @@ export async function GET(request) {
           inRepair: i.inRepair,
           notInUse: i.notInUse,
           isDeleted: i.isDeleted,
+          isUnusable: i.inRepair || i.notInUse || i.isDeleted || (!includeWarehouse && (i.location && (i.location.includes('מחסן') || i.location.includes('warehouse') || i.location.includes('רזרבה') || i.location.includes('reserve')))),
           rentalsCount: i.rentalsCount
         }))
       };

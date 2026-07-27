@@ -1,11 +1,11 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, List, Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
 import HebrewDatePicker from './HebrewDatePicker';
-import { HDate } from '@hebcal/core';
-import { getHebrewDateString, HEBREW_DAYS } from '@/lib/hebrewDate';
+import { HDate, HebrewCalendar } from '@hebcal/core';
+import { getHebrewDateString, HEBREW_DAYS, getHebrewYearString, getHebrewMonthName } from '@/lib/hebrewDate';
 
 export default function CapacitySearchModal({ isOpen, onClose }) {
   const [barcodePrefix, setBarcodePrefix] = useState('');
@@ -483,9 +483,26 @@ function CapacityCalendar({ fromDate, toDate, occupiedOrders }) {
 }
 
 function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
-  const hMonthName = month.getMonthName('h');
+  const hMonthNum = month.getMonth();
   const hYear = month.getFullYear();
-  const daysInMonth = HDate.daysInMonth(month.getMonth(), hYear);
+  const isLeap = month.isLeapYear();
+  const hMonthName = getHebrewMonthName(hMonthNum, isLeap);
+  const hYearString = getHebrewYearString(hYear);
+  const daysInMonth = HDate.daysInMonth(hMonthNum, hYear);
+  
+  // Get all events for this Hebrew year, including sedrot (parashot)
+  const allEvents = React.useMemo(() => {
+    try {
+      return HebrewCalendar.calendar({
+        year: hYear,
+        isHebrewYear: true,
+        il: true,
+        sedrot: true
+      });
+    } catch (e) {
+      return [];
+    }
+  }, [hYear]);
   
   // Create grid
   const days = [];
@@ -533,7 +550,7 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
   return (
     <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
       <div style={{ backgroundColor: '#f8fafc', padding: '1rem', textAlign: 'center', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0' }}>
-        {hMonthName} {hYear}
+        {hMonthName} {hYearString}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', backgroundColor: '#e2e8f0' }}>
         {['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'].map(d => (
@@ -546,7 +563,19 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
           
           const inRange = isDayInRange(hd);
           const occQty = isDayOccupied(hd);
+          const gregDay = hd.greg().getDate();
+          const hebrewDay = HEBREW_DAYS[hd.getDate()];
           
+          let holidays = [];
+          try {
+            const dayEvents = allEvents.filter(e => e.getDate().abs() === hd.abs());
+            holidays = dayEvents.filter(e => {
+              const flags = e.getFlags();
+              if (flags & 8192) return false;
+              return (flags & 1) || (flags & 524288) || (flags & 2097152) || (flags & 16384) || (flags & 256) || (flags & 1024);
+            }).map(e => e.render('he'));
+          } catch (e) {}
+
           return (
             <div key={i} style={{ 
               backgroundColor: inRange ? (occQty > 0 ? '#fee2e2' : '#f0fdf4') : 'var(--card-bg)',
@@ -554,9 +583,18 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
               minHeight: '80px',
               display: 'flex',
               flexDirection: 'column',
-              opacity: inRange ? 1 : 0.5
+              opacity: inRange ? 1 : 0.5,
+              position: 'relative'
             }}>
-              <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>{hd.getDate()}</div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#1e293b' }}>{hebrewDay}</span>
+                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{gregDay}</span>
+              </div>
+              {holidays.length > 0 && (
+                <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '2px', lineHeight: '1.1' }}>
+                  {holidays.join(', ')}
+                </div>
+              )}
               {occQty > 0 && (
                 <div style={{ marginTop: 'auto', backgroundColor: '#ef4444', color: 'white', borderRadius: '4px', padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold' }}>
                   {occQty} תפוס

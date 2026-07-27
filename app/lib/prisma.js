@@ -26,23 +26,23 @@ const createPrismaClient = (url) => {
             return query(args);
           }
           
-          let employeeId = null;
-          try {
-            const cookieStore = await cookies();
-            const token = cookieStore.get('auth_token')?.value;
-            if (token) {
-              if (token.includes('.')) {
-                try {
-                  const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-                  employeeId = decoded.id || decoded.employeeId || null;
-                } catch (e) {}
-              } else {
-                employeeId = token;
-              }
-            }
-          } catch (e) {}
-          
           if (['create', 'update', 'delete'].includes(operation)) {
+             let employeeId = null;
+             try {
+               const cookieStore = await cookies();
+               const token = cookieStore.get('auth_token')?.value;
+               if (token) {
+                 if (token.includes('.')) {
+                   try {
+                     const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+                     employeeId = decoded.id || decoded.employeeId || null;
+                   } catch (e) {}
+                 } else {
+                   employeeId = token;
+                 }
+               }
+             } catch (e) {}
+             
              const result = await query(args);
              if (!result) return result;
              

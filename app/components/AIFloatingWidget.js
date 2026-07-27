@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
 import { Bot, X, MessageSquare, Maximize2, Minimize2, MessageSquarePlus, Mic, History } from 'lucide-react';
@@ -24,9 +24,9 @@ export default function AIFloatingWidget() {
 
   const parseMessageToLinks = (text) => {
     if (!text) return null;
-    const parts = text.split(/(׳”׳–׳׳ ׳”\s*\d+|׳׳§׳•׳—\s*[\w-]+)/g);
+    const parts = text.split(/(הזמנה\s*\d+|לקוח\s*[\w-]+)/g);
     return parts.map((part, i) => {
-      let match = part.match(/׳”׳–׳׳ ׳”\s*(\d+)/);
+      let match = part.match(/הזמנה\s*(\d+)/);
       if (match) {
         return (
           <a
@@ -39,7 +39,7 @@ export default function AIFloatingWidget() {
           </a>
         );
       }
-      match = part.match(/׳׳§׳•׳—\s*([\w-]+)/);
+      match = part.match(/לקוח\s*([\w-]+)/);
       if (match) {
         return (
           <a
@@ -78,7 +78,7 @@ export default function AIFloatingWidget() {
     }
     
     setChatSessions(sessions);
-    setMessages([{ role: 'assistant', content: '׳©׳׳•׳! ׳׳ ׳™ ׳¢׳•׳–׳¨ ׳”-AI. ׳›׳™׳¦׳“ ׳׳•׳›׳ ׳׳¢׳–׳•׳¨ ׳׳ ׳׳׳¦׳•׳ ׳ ׳×׳•׳ ׳™׳ ׳‘׳׳¢׳¨׳›׳×?' }]);
+    setMessages([{ role: 'assistant', content: 'שלום! אני עוזר ה-AI. כיצד אוכל לעזור לך למצוא נתונים במערכת?' }]);
   }, []);
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export default function AIFloatingWidget() {
       setChatSessions(updatedSessions);
       localStorage.setItem('ai_employee_chat_sessions', JSON.stringify(updatedSessions));
     }
-    setMessages([{ role: 'assistant', content: '׳©׳׳•׳! ׳׳ ׳™ ׳¢׳•׳–׳¨ ׳”-AI. ׳›׳™׳¦׳“ ׳׳•׳›׳ ׳׳¢׳–׳•׳¨ ׳׳ ׳׳׳¦׳•׳ ׳ ׳×׳•׳ ׳™׳ ׳‘׳׳¢׳¨׳›׳×?' }]);
+    setMessages([{ role: 'assistant', content: 'שלום! אני עוזר ה-AI. כיצד אוכל לעזור לך למצוא נתונים במערכת?' }]);
     setActiveSessionId(null);
     setShowHistory(false);
   };
@@ -123,7 +123,7 @@ export default function AIFloatingWidget() {
       let currentContext = '';
       if (pathname.includes('/orders/')) {
         const orderIdMatch = pathname.match(/\/orders\/(\d+|-)/);
-        if (orderIdMatch) currentContext = `׳”׳׳§׳•׳— ׳ ׳׳¦׳ ׳›׳¢׳× ׳‘׳׳¡׳ ׳›׳¨׳˜׳™׳¡ ׳”׳–׳׳ ׳” ׳׳¡' ${orderIdMatch[1]}. `;
+        if (orderIdMatch) currentContext = `הלקוח נמצא כעת במסך כרטיס הזמנה מס' ${orderIdMatch[1]}. `;
       }
       
       const res = await fetch('/api/ai', {
@@ -132,7 +132,7 @@ export default function AIFloatingWidget() {
         body: JSON.stringify({ 
           prompt: userMsg, 
           history: historyContext,
-          context: `׳”׳×׳׳¨׳™׳ ׳”׳™׳•׳ ׳”׳•׳: ${new Date().toLocaleDateString('he-IL')}. ${currentContext}׳׳×׳” ׳¢׳•׳–׳¨ ׳•׳™׳¨׳˜׳•׳׳׳™ ׳¢׳‘׳•׳¨ ׳¢׳•׳‘׳“׳™ ׳”׳’׳"׳—. ׳׳•׳×׳¨ ׳׳ ׳׳¡׳₪׳§ ׳ ׳×׳•׳ ׳™׳ ׳¢׳ ׳׳§׳•׳—׳•׳×, ׳”׳–׳׳ ׳•׳×, ׳₪׳¨׳™׳˜׳™׳ ׳•׳׳׳׳™ ׳›׳“׳™ ׳׳¢׳–׳•׳¨ ׳‘׳©׳™׳¨׳•׳× ׳׳§׳•׳—׳•׳×. ׳׳¡׳•׳¨ ׳׳ ׳׳—׳©׳•׳£ ׳׳™׳“׳¢ ׳¢׳ ׳¢׳•׳‘׳“׳™׳ ׳׳—׳¨׳™׳, ׳׳©׳׳¨׳•׳× ׳׳• ׳”׳¨׳©׳׳•׳×. ׳׳¡׳•׳¨ ׳׳ ׳׳”׳¦׳™׳’ ׳¡׳˜׳˜׳™׳¡׳˜׳™׳§׳•׳× ׳›׳׳׳™׳•׳×, ׳¡׳™׳›׳•׳׳™ ׳¨׳•׳•׳—׳™׳, ׳“׳•׳—׳•׳× ׳׳• ׳₪׳™׳׳•׳—׳™׳ ׳ ׳™׳”׳•׳׳™׳™׳ ׳׳×׳§׳“׳׳™׳ (׳׳ ׳”׳¢׳•׳‘׳“ ׳׳‘׳§׳© ׳¡׳˜׳˜׳™׳¡׳˜׳™׳§׳•׳× ׳›׳׳׳•, ׳׳׳•׳¨ ׳׳• ׳©׳–׳” ׳–׳׳™׳ ׳¨׳§ ׳‘׳׳׳©׳§ ׳׳ ׳”׳).`
+          context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ${currentContext}אתה עוזר וירטואלי עבור עובדי הגמ"ח. מותר לך לספק נתונים על לקוחות, הזמנות, פריטים ומלאי כדי לעזור בשירות לקוחות. אסור לך לחשוף מידע על עובדים אחרים, משמרות או הרשאות. אסור לך להציג סטטיסטיקות כלליות, סיכומי רווחים, דוחות או פילוחים ניהוליים מתקדמים (אם העובד מבקש סטטיסטיקות כאלו, אמור לו שזה זמין רק בממשק מנהל).`
         }),
       });
 
@@ -140,18 +140,18 @@ export default function AIFloatingWidget() {
       
       const assistantMessage = res.ok 
         ? { role: 'assistant', content: data.response, tableData: data.tableData }
-        : { role: 'assistant', content: '׳׳¦׳˜׳¢׳¨, ׳—׳׳” ׳©׳’׳™׳׳” ׳‘׳—׳™׳‘׳•׳¨ ׳׳׳¢׳¨׳›׳× ׳”-AI.' };
+        : { role: 'assistant', content: 'מצטער, חלה שגיאה בחיבור למערכת ה-AI.' };
 
       const finalMessages = [...newMessages, assistantMessage];
       setMessages(finalMessages);
       
       // Sync to DB
       try {
-        let currentContext = '׳›׳׳׳™';
-        if (pathname.includes('/orders/')) currentContext = '׳”׳–׳׳ ׳•׳×';
-        else if (pathname.includes('/customers/')) currentContext = '׳׳§׳•׳—׳•׳×';
-        else if (pathname.includes('/employees/')) currentContext = '׳¢׳•׳‘׳“׳™׳';
-        else if (pathname.includes('/dashboard')) currentContext = '׳“׳©׳‘׳•׳¨׳“';
+        let currentContext = 'כללי';
+        if (pathname.includes('/orders/')) currentContext = 'הזמנות';
+        else if (pathname.includes('/customers/')) currentContext = 'לקוחות';
+        else if (pathname.includes('/employees/')) currentContext = 'עובדים';
+        else if (pathname.includes('/dashboard')) currentContext = 'דשבורד';
 
         const syncRes = await fetch('/api/ai/sessions', {
           method: 'POST',
@@ -171,14 +171,14 @@ export default function AIFloatingWidget() {
       }
 
     } catch (error) {
-      setMessages(prev => [...prev, { role: 'assistant', content: '׳©׳’׳™׳׳× ׳×׳§׳©׳•׳¨׳× ׳¢׳ ׳”׳©׳¨׳×.' }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: 'שגיאת תקשורת עם השרת.' }]);
     } finally {
       setLoading(false);
     }
   };
 
   const clearChat = async () => {
-    if (await window.customConfirm('׳”׳׳ ׳׳×׳” ׳‘׳˜׳•׳— ׳©׳‘׳¨׳¦׳•׳ ׳ ׳׳ ׳§׳•׳× ׳׳× ׳—׳׳•׳ ׳”׳©׳™׳—׳”?')) {
+    if (await window.customConfirm('האם אתה בטוח שברצונך לנקות את חלון השיחה?')) {
       startNewChat();
     }
   };
@@ -203,7 +203,7 @@ export default function AIFloatingWidget() {
             gap: '0.3rem'
           }}
         >
-          <span>נ“</span> ׳”׳¦׳’ ׳˜׳‘׳׳”
+          <span>נ“</span> הצג טבלה
         </button>
       </div>
     );
@@ -220,7 +220,7 @@ export default function AIFloatingWidget() {
     
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
-      alert("׳”׳“׳₪׳“׳₪׳ ׳©׳׳ ׳׳™׳ ׳• ׳×׳•׳׳ ׳‘׳”׳§׳׳˜׳× ׳§׳•׳.");
+      alert("הדפדפן שלך אינו תומך בהקלטת קול.");
       return;
     }
     
@@ -288,7 +288,7 @@ export default function AIFloatingWidget() {
         }}
         onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
         onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-        title="׳¢׳•׳–׳¨ AI"
+        title="עוזר AI"
       >
         <Bot size={32} />
       </button>
@@ -328,19 +328,19 @@ export default function AIFloatingWidget() {
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <Bot size={20} />
-            <span style={{ fontWeight: 'bold' }}>׳¢׳•׳–׳¨ AI</span>
+            <span style={{ fontWeight: 'bold' }}>עוזר AI</span>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={() => setShowHistory(!showHistory)} style={{ background: 'none', border: 'none', color: showHistory ? '#fcd34d' : 'white', cursor: 'pointer', opacity: 0.9 }} title="׳”׳™׳¡׳˜׳•׳¨׳™׳™׳× ׳©׳™׳—׳•׳×">
+            <button onClick={() => setShowHistory(!showHistory)} style={{ background: 'none', border: 'none', color: showHistory ? '#fcd34d' : 'white', cursor: 'pointer', opacity: 0.9 }} title="היסטוריית שיחות">
               <History size={18} />
             </button>
-            <button onClick={clearChat} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title="׳©׳™׳—׳” ׳—׳“׳©׳”">
+            <button onClick={clearChat} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title="שיחה חדשה">
               <MessageSquarePlus size={18} />
             </button>
-            <button onClick={() => setIsExpanded(!isExpanded)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title={isExpanded ? '׳”׳§׳˜׳' : '׳”׳’׳“׳'}>
+            <button onClick={() => setIsExpanded(!isExpanded)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title={isExpanded ? 'הקטן' : 'הגדל'}>
               {isExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
             </button>
-            <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title="׳¡׳’׳•׳¨">
+            <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title="סגור">
               <X size={20} />
             </button>
           </div>
@@ -350,7 +350,7 @@ export default function AIFloatingWidget() {
         <div style={{ flex: 1, overflowY: 'auto', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px', backgroundColor: 'var(--element-bg)', position: 'relative' }}>
           {showHistory ? (
             <div style={{ padding: '10px' }}>
-              <h3 style={{ marginTop: 0, color: 'var(--text-main)', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>׳”׳™׳¡׳˜׳•׳¨׳™׳™׳× ׳©׳™׳—׳•׳×</h3>
+              <h3 style={{ marginTop: 0, color: 'var(--text-main)', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
               {messages.length > 1 && (
                 <div 
                   onClick={() => setShowHistory(false)}
@@ -360,14 +360,14 @@ export default function AIFloatingWidget() {
                     marginBottom: '10px'
                   }}
                 >
-                  <span style={{ fontWeight: 'bold', color: '#065f46', fontSize: '0.9rem' }}>׳©׳™׳—׳” ׳ ׳•׳›׳—׳™׳× (׳₪׳¢׳™׳׳”)</span>
+                  <span style={{ fontWeight: 'bold', color: '#065f46', fontSize: '0.9rem' }}>שיחה נוכחית (פעילה)</span>
                   <span style={{ color: '#047857', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                     {messages[1].content}
                   </span>
                 </div>
               )}
               {chatSessions.length === 0 && messages.length <= 1 ? (
-                <div style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '10px' }}>׳׳™׳ ׳”׳™׳¡׳˜׳•׳¨׳™׳™׳× ׳©׳™׳—׳•׳× ׳©׳׳•׳¨׳”.</div>
+                <div style={{ color: '#6b7280', fontSize: '0.9rem', marginTop: '10px' }}>אין היסטוריית שיחות שמורה.</div>
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
                   {chatSessions.map((session) => (
@@ -383,7 +383,7 @@ export default function AIFloatingWidget() {
                     >
                       <span style={{ fontWeight: 'bold', color: '#1f2937', fontSize: '0.9rem' }}>{session.date}</span>
                       <span style={{ color: '#6b7280', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {session.messages.length > 1 ? session.messages[1].content : '׳©׳™׳—׳” ׳¨׳™׳§׳”'}
+                        {session.messages.length > 1 ? session.messages[1].content : 'שיחה ריקה'}
                       </span>
                     </div>
                   ))}
@@ -406,7 +406,7 @@ export default function AIFloatingWidget() {
                   fontSize: '0.95rem',
                   lineHeight: '1.4'
                 }}>
-                  <div style={{ whiteSpace: 'pre-wrap' }}><FormattedMessage content={msg.content} /></div>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(msg.content)}</div>
                   {msg.tableData && renderTable(msg.tableData)}
                 </div>
               ))}
@@ -422,7 +422,7 @@ export default function AIFloatingWidget() {
                   fontSize: '0.9rem',
                   boxShadow: '0 1px 3px rgba(0,0,0,0.1)'
                 }}>
-                  ׳׳¢׳‘׳“ ׳ ׳×׳•׳ ׳™׳...
+                  מעבד נתונים...
                 </div>
               )}
               <div ref={chatEndRef} />
@@ -449,7 +449,7 @@ export default function AIFloatingWidget() {
               cursor: 'pointer', transition: 'background 0.2s', flexShrink: 0,
               animation: isListening ? 'pulse 1.5s infinite' : 'none'
             }}
-            title="׳”׳§׳׳˜ ׳”׳•׳“׳¢׳”"
+            title="הקלט הודעה"
           >
             <Mic size={20} />
           </button>
@@ -458,7 +458,7 @@ export default function AIFloatingWidget() {
             autoFocus
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="׳©׳׳ ׳©׳׳׳”..."
+            placeholder="שאל שאלה..."
             style={{
               flex: 1,
               padding: '10px 14px',
@@ -514,7 +514,7 @@ export default function AIFloatingWidget() {
             boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
-              <h3 style={{ margin: 0, color: 'var(--primary-color)' }}>׳ ׳×׳•׳ ׳™׳ ({modalTableData.length} ׳©׳•׳¨׳•׳×)</h3>
+              <h3 style={{ margin: 0, color: 'var(--primary-color)' }}>נתונים ({modalTableData.length} שורות)</h3>
               <button 
                 onClick={() => setShowTableModal(false)}
                 style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}

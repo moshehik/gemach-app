@@ -1,9 +1,10 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 
 import prisma from '@/app/lib/prisma';
 import { recalculateOrderObligations } from '../../../lib/pricingEngine';
 import { checkAuth } from '../../../lib/auth';
 import { cookies } from 'next/headers';
+import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 export const dynamic = 'force-dynamic';
 
@@ -49,7 +50,7 @@ export async function GET(request) {
       ...(filterStatus === 'soon' ? { OR: [{ eventDate: null }, { eventDate: { gte: today } }] } : {}),
       ...(filterStatus === 'all' && !search && !advOrderId && !advCustomerName && !advCustomerPhone && !advCustomerCity && !advEventDateFrom && !advEventDateTo ? {
         OR: [
-          { createdAt: { gte: threeMonthsAgo } },
+          { orderDate: { gte: threeMonthsAgo } },
           { eventDate: { gte: threeMonthsAgo } },
           { eventDate: null }
         ]
@@ -212,7 +213,9 @@ export async function GET(request) {
           }
         }
       },
-      orderBy: (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') ? undefined : { [sort]: order },
+      orderBy: (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') ? undefined : 
+        (sort === 'eventDate' ? { eventDate: { sort: order, nulls: 'last' } } : 
+        (sort === 'customerName' ? { customer: { firstName: order } } : { [sort]: order })),
       ...((filterStatus === 'unpaid' || filterStatus === 'unpaid_all') ? {} : { skip, take: limit })
     });
 
@@ -328,7 +331,7 @@ export async function POST(request) {
         totalAmount: data.totalAmount ? parseFloat(data.totalAmount) : null,
         orderDate: new Date(),
         eventDate: data.eventDate ? new Date(data.eventDate) : null,
-        eventDateHebrew: data.eventDateHebrew || null,
+        eventDateHebrew: data.eventDateHebrew || (data.eventDate ? getHebrewDateString(data.eventDate) : null),
         returnDate: data.returnDate ? new Date(data.returnDate) : null,
         employeeId: data.employeeId || loggedInEmployeeId || null,
         isAbroad: data.isAbroad ?? false,

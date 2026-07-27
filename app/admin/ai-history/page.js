@@ -44,11 +44,11 @@ export default function AiHistoryPage() {
 
   const getContextColor = (context) => {
     if (!context) return '#64748b';
-    if (context.includes('׳“׳•׳— AI') || context.includes('׳¡׳˜׳˜׳™׳¡׳˜׳™׳§׳”')) return '#8b5cf6';
-    if (context.includes('׳“׳©׳‘׳•׳¨׳“') || context.includes('׳‘׳™׳×')) return '#3b82f6';
-    if (context.includes('׳׳§׳•׳—׳•׳×')) return '#06b6d4';
-    if (context.includes('׳¢׳•׳‘׳“׳™׳')) return '#10b981';
-    if (context.includes('׳”׳–׳׳ ׳•׳×')) return '#f59e0b';
+    if (context.includes('דוח AI') || context.includes('סטטיסטיקה')) return '#8b5cf6';
+    if (context.includes('דשבורד') || context.includes('בית')) return '#3b82f6';
+    if (context.includes('לקוחות')) return '#06b6d4';
+    if (context.includes('עובדים')) return '#10b981';
+    if (context.includes('הזמנות')) return '#f59e0b';
     return '#64748b';
   };
 
@@ -56,31 +56,31 @@ export default function AiHistoryPage() {
     <div className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
         <Link href="/admin" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px', textDecoration: 'none' }}>
-          <ArrowLeft size={18} /> ׳—׳–׳¨׳”
+          <ArrowLeft size={18} /> חזרה
         </Link>
         <h1 style={{ margin: 0, color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Bot size={28} /> ׳”׳™׳¡׳˜׳•׳¨׳™׳™׳× ׳©׳™׳—׳•׳× AI
+          <Bot size={28} /> היסטוריית שיחות AI
         </h1>
         <div style={{ flex: 1 }}></div>
         <button onClick={fetchSessions} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px' }}>
-          <RefreshCw size={18} /> ׳¨׳¢׳ ׳
+          <RefreshCw size={18} /> רענן
         </button>
       </div>
 
       <div style={{ background: 'var(--card-bg)', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <h3 style={{ margin: 0, color: 'var(--text-main)' }}>׳¡׳”"׳› ׳©׳™׳—׳•׳×: {total}</h3>
+          <h3 style={{ margin: 0, color: 'var(--text-main)' }}>סה"כ שיחות: {total}</h3>
         </div>
 
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
             <thead>
               <tr style={{ background: 'var(--element-bg)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>׳×׳׳¨׳™׳ ׳”׳×׳—׳׳”</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>׳”׳§׳©׳¨ (׳¢׳׳•׳“)</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>׳¢׳•׳‘׳“</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>׳”׳•׳“׳¢׳•׳×</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>׳₪׳¢׳•׳׳•׳×</th>
+                <th style={{ padding: '1rem', fontWeight: '600' }}>תאריך התחלה</th>
+                <th style={{ padding: '1rem', fontWeight: '600' }}>הקשר (עמוד)</th>
+                <th style={{ padding: '1rem', fontWeight: '600' }}>עובד</th>
+                <th style={{ padding: '1rem', fontWeight: '600' }}>הודעות</th>
+                <th style={{ padding: '1rem', fontWeight: '600' }}>פעולות</th>
               </tr>
             </thead>
             <tbody>
@@ -93,7 +93,7 @@ export default function AiHistoryPage() {
               ) : sessions.length === 0 ? (
                 <tr>
                   <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)' }}>
-                    ׳׳ ׳ ׳׳¦׳׳• ׳©׳™׳—׳•׳×
+                    לא נמצאו שיחות
                   </td>
                 </tr>
               ) : (
@@ -126,11 +126,11 @@ export default function AiHistoryPage() {
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <User size={16} color="var(--text-muted)" />
-                          {session.employee ? `${session.employee.firstName} ${session.employee.lastName || ''}` : '׳׳ ׳™׳“׳•׳¢'}
+                          {session.employee ? `${session.employee.firstName} ${session.employee.lastName || ''}` : 'לא ידוע'}
                         </div>
                       </td>
                       <td style={{ padding: '1rem' }}>
-                        <div style={{ fontWeight: 'bold' }}>{msgCount} ׳”׳•׳“׳¢׳•׳×</div>
+                        <div style={{ fontWeight: 'bold' }}>{msgCount} הודעות</div>
                       </td>
                       <td style={{ padding: '1rem' }}>
                         <button 
@@ -148,7 +148,7 @@ export default function AiHistoryPage() {
                             fontWeight: '500'
                           }}
                         >
-                          <Eye size={16} /> ׳¦׳₪׳” ׳‘׳©׳™׳—׳”
+                          <Eye size={16} /> צפה בשיחה
                         </button>
                       </td>
                     </tr>
@@ -189,12 +189,12 @@ export default function AiHistoryPage() {
               <div>
                 <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <Bot size={24} color="#38bdf8" />
-                  ׳×׳™׳¢׳•׳“ ׳©׳™׳—׳× AI
+                  תיעוד שיחת AI
                 </h2>
                 <div style={{ fontSize: '0.9rem', color: '#cbd5e1', marginTop: '0.5rem' }}>
-                  ׳¢׳•׳‘׳“: {selectedSession.employee ? `${selectedSession.employee.firstName} ${selectedSession.employee.lastName || ''}` : '׳׳ ׳™׳“׳•׳¢'} | 
-                  ׳”׳§׳©׳¨: {selectedSession.context} | 
-                  ׳×׳׳¨׳™׳: {new Date(selectedSession.startedAt).toLocaleString('he-IL')}
+                  עובד: {selectedSession.employee ? `${selectedSession.employee.firstName} ${selectedSession.employee.lastName || ''}` : 'לא ידוע'} | 
+                  הקשר: {selectedSession.context} | 
+                  תאריך: {new Date(selectedSession.startedAt).toLocaleString('he-IL')}
                 </div>
               </div>
               <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0.5rem' }}>

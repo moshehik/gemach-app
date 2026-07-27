@@ -8,19 +8,19 @@ import { Calendar, Globe, ChevronRight, Home, ChevronLeft, X, Check } from 'luci
 const getMonthsForYear = (year) => {
   const isLeap = HDate.isLeapYear(year);
   return [
-    { value: 7, label: '׳×׳©׳¨׳™' },
-    { value: 8, label: '׳—׳©׳•׳•׳' },
-    { value: 9, label: '׳›׳¡׳׳•' },
-    { value: 10, label: '׳˜׳‘׳×' },
-    { value: 11, label: '׳©׳‘׳˜' },
-    { value: 12, label: isLeap ? "׳׳“׳¨ ׳'" : '׳׳“׳¨' },
-    ...(isLeap ? [{ value: 13, label: "׳׳“׳¨ ׳‘'" }] : []),
-    { value: 1, label: '׳ ׳™׳¡׳' },
-    { value: 2, label: '׳׳™׳™׳¨' },
-    { value: 3, label: '׳¡׳™׳•׳•׳' },
-    { value: 4, label: '׳×׳׳•׳–' },
-    { value: 5, label: '׳׳‘' },
-    { value: 6, label: '׳׳׳•׳' },
+    { value: 7, label: 'תשרי' },
+    { value: 8, label: 'חשוון' },
+    { value: 9, label: 'כסלו' },
+    { value: 10, label: 'טבת' },
+    { value: 11, label: 'שבט' },
+    { value: 12, label: isLeap ? "אדר א'" : 'אדר' },
+    ...(isLeap ? [{ value: 13, label: "אדר ב'" }] : []),
+    { value: 1, label: 'ניסן' },
+    { value: 2, label: 'אייר' },
+    { value: 3, label: 'סיוון' },
+    { value: 4, label: 'תמוז' },
+    { value: 5, label: 'אב' },
+    { value: 6, label: 'אלול' },
   ];
 };
 
@@ -75,7 +75,7 @@ export default function HebrewDatePicker({ value, onChange }) {
   };
 
   const displayString = React.useMemo(() => {
-    if (!value) return '׳‘׳—׳¨ ׳×׳׳¨׳™׳...';
+    if (!value) return 'בחר תאריך...';
     let dStr = getHebrewDateString(value);
     
     try {
@@ -87,13 +87,13 @@ export default function HebrewDatePicker({ value, onChange }) {
              const lookup = s.lookup(hd);
              const parashaName = lookup && lookup.parsha ? lookup.parsha.map(p => Locale.gettext(p, 'he-x-NoNikud')).join('-') : '';
              if (parashaName) {
-                 dStr += ` - ׳₪׳¨׳©׳× ${parashaName}`;
+                 dStr += ` - פרשת ${parashaName}`;
              }
          }
       }
     } catch(e) {}
 
-    return dStr || '׳‘׳—׳¨ ׳×׳׳¨׳™׳...';
+    return dStr || 'בחר תאריך...';
   }, [value]);
 
   const currentYearOptions = [];
@@ -155,7 +155,7 @@ export default function HebrewDatePicker({ value, onChange }) {
                  }
              }}
              style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
-             title="׳‘׳—׳¨ ׳×׳׳¨׳™׳ ׳׳•׳¢׳–׳™"
+             title="בחר תאריך לועזי"
           />
         </div>
       </div>
@@ -181,25 +181,25 @@ export default function HebrewDatePicker({ value, onChange }) {
                 const next = new HDate(1, hMonth, hYear).add(days, 'd');
                 setHMonth(next.getMonth());
                 setHYear(next.getFullYear());
-            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: 'var(--image-bg)', border: '1px solid var(--element-border)', borderRadius: '6px' }}><ChevronRight size={16} /> ׳§׳“׳™׳׳”</button>
+            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: 'var(--image-bg)', border: '1px solid var(--element-border)', borderRadius: '6px' }}><ChevronRight size={16} /> קדימה</button>
             
             <button type="button" onClick={() => {
                 const hd = new HDate();
                 setHYear(hd.getFullYear());
                 setHMonth(hd.getMonth());
                 setHDay(hd.getDate());
-            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: '#e6f2ff', border: '1px solid #b3d9ff', borderRadius: '6px', fontWeight: 'bold' }} title="׳—׳–׳•׳¨ ׳׳”׳™׳•׳"><Home size={16} /> ׳”׳™׳•׳</button>
+            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: '#e6f2ff', border: '1px solid #b3d9ff', borderRadius: '6px', fontWeight: 'bold' }} title="חזור להיום"><Home size={16} /> היום</button>
             
             <button type="button" onClick={() => {
                 const prev = new HDate(1, hMonth, hYear).subtract(1, 'd');
                 setHMonth(prev.getMonth());
                 setHYear(prev.getFullYear());
-            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: 'var(--image-bg)', border: '1px solid var(--element-border)', borderRadius: '6px' }}>׳׳—׳•׳¨׳” <ChevronLeft size={16} /></button>
+            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: 'var(--image-bg)', border: '1px solid var(--element-border)', borderRadius: '6px' }}>אחורה <ChevronLeft size={16} /></button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '1.5rem' }}>
             <div className="form-group" style={{ margin: 0 }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>׳™׳•׳</label>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>יום</label>
               <select 
                 value={hDay} 
                 onChange={e => setHDay(parseInt(e.target.value))}
@@ -212,7 +212,7 @@ export default function HebrewDatePicker({ value, onChange }) {
             </div>
             
             <div className="form-group" style={{ margin: 0 }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>׳—׳•׳“׳©</label>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>חודש</label>
               <select 
                 value={hMonth} 
                 onChange={e => {
@@ -231,7 +231,7 @@ export default function HebrewDatePicker({ value, onChange }) {
             </div>
 
             <div className="form-group" style={{ margin: 0 }}>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>׳©׳ ׳”</label>
+              <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>שנה</label>
               <select 
                 value={hYear} 
                 onChange={e => {
@@ -252,7 +252,7 @@ export default function HebrewDatePicker({ value, onChange }) {
           
           <div style={{ marginBottom: '1.5rem' }}>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', marginBottom: '8px', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              <div>׳'</div><div>׳‘'</div><div>׳’'</div><div>׳“'</div><div>׳”'</div><div>׳•'</div><div>׳©'</div>
+              <div>א'</div><div>ב'</div><div>ג'</div><div>ד'</div><div>ה'</div><div>ו'</div><div>ש'</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px' }}>
               {(() => {
@@ -322,7 +322,7 @@ export default function HebrewDatePicker({ value, onChange }) {
               className="btn btn-outline"
               style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 1rem', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'transparent', cursor: 'pointer' }}
             >
-              <X size={16} /> ׳‘׳™׳˜׳•׳
+              <X size={16} /> ביטול
             </button>
             <button 
               type="button" 
@@ -330,7 +330,7 @@ export default function HebrewDatePicker({ value, onChange }) {
               className="btn btn-primary"
               style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.5rem 1.5rem', borderRadius: '6px', fontWeight: 'bold', cursor: 'pointer', background: 'var(--primary-color)', color: 'white', border: 'none' }}
             >
-              <Check size={16} /> ׳׳™׳©׳•׳¨
+              <Check size={16} /> אישור
             </button>
           </div>
         </div>
