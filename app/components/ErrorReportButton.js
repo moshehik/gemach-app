@@ -124,7 +124,7 @@ export default function ErrorReportButton() {
           }}>
             <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#eef2ff' }}>
               <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <LifeBuoy size={20} /> דיווח על שגיאה במערכת
+                <LifeBuoy size={20} /> דיווח על תקלה / בקשה לשיפור
               </h3>
               <button onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6366f1' }}>
                 <X size={20} />
@@ -133,24 +133,15 @@ export default function ErrorReportButton() {
             
             <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               
-              <div style={{ background: 'var(--input-bg)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                <p style={{ margin: '0 0 0.5rem 0' }}><strong>הנתונים הבאים יישלחו אוטומטית ברקע:</strong></p>
-                <ul style={{ margin: 0, paddingRight: '1.2rem' }}>
-                  <li>שעת הדיווח וכתובת המסך הנוכחי</li>
-                  <li>שם החלון ופרמטרים פעילים</li>
-                  <li>5 הלחצנים האחרונים שנלחצו</li>
-                </ul>
-              </div>
-
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: 'var(--text-color)', fontWeight: '500' }}>
-                  אנא תאר בקצרה מה ניסית לעשות ומה קרה:
+                  המערכת יודעת איפה אתה נמצא, רק כתוב מהי התקלה / בקשה לשיפור:
                 </label>
                 <textarea
                   value={userText}
                   onChange={e => setUserText(e.target.value)}
                   className="form-control"
-                  placeholder="לדוגמה: לחצתי על כפתור השמירה אך הדף נתקע והופיעה שגיאה אדומה..."
+                  placeholder="פרט כאן..."
                   style={{ width: '100%', height: '120px', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-color)', resize: 'none' }}
                   required
                 />

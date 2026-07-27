@@ -191,7 +191,7 @@ export async function POST(request, { params }) {
     const googlePayload = {
       to: email,
       cc: '',
-      subject: \`הזמנה #\${order.orderId} - גמ"ח שמלות\`,
+      subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
       body: htmlBody,
       fileName: 'order.txt',
       fileContent: Buffer.from('Email body contains the order details').toString('base64')
@@ -221,7 +221,7 @@ export async function POST(request, { params }) {
       data: {
         to: email,
         cc: null,
-        subject: \`הזמנה #\${order.orderId} - גמ"ח שמלות\`,
+        subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
         body: 'HTML body sent',
         fileName: null,
         status: isSuccess ? 'success' : 'error',
@@ -238,7 +238,7 @@ export async function POST(request, { params }) {
           entityId: order.orderId,
           action: 'EMAIL_SENT',
           changesJson: JSON.stringify({
-            subject: \`הזמנה #\${order.orderId} - גמ"ח שמלות\`,
+            subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
             to: email,
             type: printType
           }),
