@@ -440,7 +440,6 @@ export default function RentalsPage() {
           </div>
         )}
       </div>
-      </div>
 
       {selectedOrderId && (
         <RentalReturnModal

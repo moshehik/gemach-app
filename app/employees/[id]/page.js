@@ -4,29 +4,45 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SendEmailModal from '@/components/SendEmailModal';
-import { Copy, Mail } from 'lucide-react';
+import HebrewDatePicker from '@/components/HebrewDatePicker';
+import { Copy, Mail, History, RotateCcw } from 'lucide-react';
+
 export default function EmployeePage({ params }) {
   const router = useRouter();
   const { id } = use(params);
   const [employee, setEmployee] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('details');
+  const [activeTab, setActiveTab] = useState('details'); // details, attendance, history
   const [saving, setSaving] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  
   // Attendance specific states
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth());
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
   const [editingShiftId, setEditingShiftId] = useState(null);
   const [editShiftData, setEditShiftData] = useState({});
   const [isAddingShift, setIsAddingShift] = useState(false);
+  const [showDeletedShifts, setShowDeletedShifts] = useState(false);
+
+  // Password states
   const [showPassword, setShowPassword] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [oldPasswordInput, setOldPasswordInput] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
 
+  // History state
+  const [historyLogs, setHistoryLogs] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+
   useEffect(() => {
     fetchEmployee();
   }, [id, router]);
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      fetchHistory();
+    }
+  }, [activeTab]);
 
   const fetchEmployee = () => {
     if (id === 'new') {
@@ -48,6 +64,19 @@ export default function EmployeePage({ params }) {
         else setEmployee(data);
         setLoading(false);
       });
+  };
+
+  const fetchHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch(`/api/employees/${id}/history`);
+      const data = await res.json();
+      setHistoryLogs(data);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
 
   const handleChange = (e) => {
@@ -86,34 +115,16 @@ export default function EmployeePage({ params }) {
 
   const handleShiftEditChange = (e) => {
     const { name, value } = e.target;
-    setEditShiftData(prev => {
-      const newData = { ...prev, [name]: value };
-      
-      if (name === 'entryTime' || name === 'exitTime' || name === 'date') {
-        const entryStr = name === 'entryTime' ? value : newData.entryTime;
-        const exitStr = name === 'exitTime' ? value : newData.exitTime;
-        const dateStr = name === 'date' ? value : newData.date;
-        
-        if (dateStr && entryStr && exitStr) {
-          const entry = new Date(`${dateStr.split('T')[0]}T${entryStr}`);
-          let exit = new Date(`${dateStr.split('T')[0]}T${exitStr}`);
-          // Handle case where exit is after midnight
-          if (exit < entry) {
-            exit = new Date(exit.getTime() + 24 * 60 * 60 * 1000);
-          }
-          const diffMs = exit - entry;
-          const diffMins = Math.round(diffMs / 60000);
-          newData.totalMinutes = diffMins;
-          const hourlyWage = parseFloat(employee.hourlyWage) || 0;
-          newData.totalCalculated = parseFloat(((diffMins / 60) * hourlyWage).toFixed(2));
-        }
-      }
-      return newData;
-    });
+    setEditShiftData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleHebrewDateChange = (dateStr) => {
+    setEditShiftData(prev => ({ ...prev, date: dateStr }));
   };
 
   const startEditShift = (shift) => {
     setEditingShiftId(shift.id);
+    setIsAddingShift(false);
     setEditShiftData({
       date: shift.date ? shift.date.split('T')[0] : '',
       hebrewDate: shift.hebrewDate || '',
@@ -121,7 +132,8 @@ export default function EmployeePage({ params }) {
       exitTime: shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', hour12: false }) : '',
       totalMinutes: shift.totalMinutes || '',
       totalCalculated: shift.totalCalculated || '',
-      notes: shift.notes || ''
+      notes: shift.notes || '',
+      isDeleted: shift.isDeleted || false
     });
   };
 
@@ -135,7 +147,8 @@ export default function EmployeePage({ params }) {
       exitTime: '',
       totalMinutes: '',
       totalCalculated: '',
-      notes: ''
+      notes: '',
+      isDeleted: false
     });
   };
 
@@ -166,20 +179,18 @@ export default function EmployeePage({ params }) {
         payload.exitTime = exit.toISOString();
     } else { payload.exitTime = null; }
 
-    payload.totalMinutes = payload.totalMinutes ? parseInt(payload.totalMinutes, 10) : null;
-    payload.totalCalculated = payload.totalCalculated ? parseFloat(payload.totalCalculated) : null;
-
     try {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
+      const data = await res.json();
       if (res.ok) {
         cancelEditShift();
         fetchEmployee();
       } else {
-        alert('שגיאה בשמירת משמרת');
+        alert(data.error || 'שגיאה בשמירת משמרת');
       }
     } catch (e) {
       alert('שגיאה בתקשורת');
@@ -197,12 +208,28 @@ export default function EmployeePage({ params }) {
     }
   };
 
+  const restoreShift = async (shift) => {
+    if (!await window.customConfirm('האם לשחזר משמרת זו?')) return;
+    try {
+      const res = await fetch(`/api/employees/${id}/shifts/${shift.id}`, { 
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isDeleted: false })
+      });
+      const data = await res.json();
+      if (res.ok) fetchEmployee();
+      else alert(data.error || 'שגיאה בשחזור המשמרת');
+    } catch (e) {
+      alert('שגיאה בתקשורת');
+    }
+  };
+
   const calculateMonthlySalary = () => {
     if (!employee || !employee.shifts) return 0;
     let total = 0;
     employee.shifts.forEach(shift => {
        const shiftDate = new Date(shift.date);
-       if (shiftDate.getMonth() === filterMonth && shiftDate.getFullYear() === filterYear && shift.totalCalculated) {
+       if (!shift.isDeleted && shiftDate.getMonth() === filterMonth && shiftDate.getFullYear() === filterYear && shift.totalCalculated) {
           total += shift.totalCalculated;
        }
     });
@@ -214,6 +241,7 @@ export default function EmployeePage({ params }) {
 
   const filteredShifts = employee.shifts?.filter(shift => {
     const d = new Date(shift.date);
+    if (!showDeletedShifts && shift.isDeleted) return false;
     return d.getMonth() === filterMonth && d.getFullYear() === filterYear;
   }) || [];
 
@@ -222,9 +250,18 @@ export default function EmployeePage({ params }) {
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * { visibility: hidden; }
-          .print-area, .print-area * { visibility: visible; }
-          .print-area { position: absolute; left: 0; top: 0; width: 100%; direction: rtl; }
+          .print-area, .print-area * { 
+            visibility: visible; 
+            color: black !important;
+            filter: grayscale(100%) !important;
+          }
+          .print-area { 
+            position: absolute; left: 0; top: 0; width: 100%; direction: rtl; 
+            overflow: visible !important;
+          }
           .no-print { display: none !important; }
+          .bsd-header { display: block !important; text-align: center; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; }
+          ::-webkit-scrollbar { display: none; }
         }
       `}} />
 
@@ -254,6 +291,14 @@ export default function EmployeePage({ params }) {
             style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'attendance' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'attendance' ? 'bold' : 'normal', color: activeTab === 'attendance' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s' }}
           >
             נוכחות וסיכום
+          </button>
+          <button 
+            data-agy-id="tab-employee-history"
+            className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} 
+            onClick={() => setActiveTab('history')}
+            style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'history' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'history' ? 'bold' : 'normal', color: activeTab === 'history' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s', display: 'flex', gap: '0.5rem', alignItems: 'center' }}
+          >
+            <History size={18} /> היסטוריה
           </button>
         </div>
       )}
@@ -495,9 +540,14 @@ export default function EmployeePage({ params }) {
 
       {activeTab === 'attendance' && (
         <div className="print-area" style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+          <div className="bsd-header" style={{ display: 'none' }}>בס"ד</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
             <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>דוח נוכחות וסיכום - {employee.firstName} {employee.lastName}</h2>
             <div className="no-print" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.9rem', cursor: 'pointer' }}>
+                <input type="checkbox" checked={showDeletedShifts} onChange={(e) => setShowDeletedShifts(e.target.checked)} />
+                הצג מחוקות
+              </label>
               <select 
                 value={filterMonth} 
                 onChange={(e) => setFilterMonth(parseInt(e.target.value, 10))}
@@ -519,7 +569,7 @@ export default function EmployeePage({ params }) {
               <button className="btn btn-outline" onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 🖨️ הדפס / ייצא PDF
               </button>
-              <button className="btn btn-primary" onClick={startAddShift} disabled={isAddingShift}>
+              <button className="btn btn-primary" onClick={startAddShift} disabled={isAddingShift || editingShiftId !== null}>
                 + הוסף משמרת
               </button>
             </div>
@@ -541,11 +591,13 @@ export default function EmployeePage({ params }) {
             <tbody>
               {isAddingShift && (
                 <tr style={{ borderBottom: '1px solid #eee', background: '#f9f9f9' }}>
-                  <td style={{ padding: '0.5rem' }}>
-                    <input type="date" name="date" value={editShiftData.date || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    <input type="text" name="hebrewDate" value={editShiftData.hebrewDate || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} placeholder="אופציונלי" />
+                  <td colSpan="2" style={{ padding: '0.5rem' }}>
+                    <div style={{ position: 'relative', width: '250px' }}>
+                      <HebrewDatePicker 
+                        selectedDate={editShiftData.date}
+                        onChange={handleHebrewDateChange}
+                      />
+                    </div>
                   </td>
                   <td style={{ padding: '0.5rem' }}>
                     <input type="time" name="entryTime" value={editShiftData.entryTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
@@ -554,10 +606,10 @@ export default function EmployeePage({ params }) {
                     <input type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
-                    <input type="number" name="totalMinutes" value={editShiftData.totalMinutes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
+                    <input type="number" disabled placeholder="מחושב אוטומטית" style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
-                    <input type="number" step="0.01" name="totalCalculated" value={editShiftData.totalCalculated || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
+                    <input type="number" disabled placeholder="מחושב אוטומטית" style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
                     <input type="text" name="notes" value={editShiftData.notes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
@@ -570,14 +622,14 @@ export default function EmployeePage({ params }) {
               )}
 
               {filteredShifts.map(shift => (
-                <tr key={shift.id} style={{ borderBottom: '1px solid #eee' }}>
+                <tr key={shift.id} style={{ borderBottom: '1px solid #eee', opacity: shift.isDeleted ? 0.6 : 1, textDecoration: shift.isDeleted ? 'line-through' : 'none' }}>
                   {editingShiftId === shift.id ? (
                     <>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="date" name="date" value={editShiftData.date || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
+                         <input type="date" value={editShiftData.date || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="text" name="hebrewDate" value={editShiftData.hebrewDate || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
+                         <input type="text" value={shift.hebrewDate || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
                         <input type="time" name="entryTime" value={editShiftData.entryTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
@@ -586,13 +638,13 @@ export default function EmployeePage({ params }) {
                         <input type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="number" name="totalMinutes" value={editShiftData.totalMinutes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
+                        <input type="number" value={shift.totalMinutes || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="number" step="0.01" name="totalCalculated" value={editShiftData.totalCalculated || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
+                        <input type="number" value={shift.totalCalculated || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input type="text" name="notes" value={editShiftData.notes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
+                        <input type="text" value={shift.notes || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
                       </td>
                       <td className="no-print" style={{ padding: '0.5rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                         <button onClick={saveShift} className="btn" style={{ background: '#2e7d32', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.9rem', borderRadius: '6px' }}>שמור</button>
@@ -609,8 +661,16 @@ export default function EmployeePage({ params }) {
                       <td style={{ padding: '1rem', fontWeight: 'bold' }}>{shift.totalCalculated ? `₪${shift.totalCalculated}` : '-'}</td>
                       <td style={{ padding: '1rem' }}>{shift.notes || '-'}</td>
                       <td className="no-print" style={{ padding: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                        <button onClick={() => startEditShift(shift)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: '0.2rem' }} title="ערוך">✏️</button>
-                        <button onClick={() => deleteShift(shift.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#d32f2f', padding: '0.2rem' }} title="מחק">🗑️</button>
+                        {!shift.isDeleted ? (
+                          <>
+                            <button onClick={() => startEditShift(shift)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: '0.2rem' }} title="ערוך רק כניסה ויציאה">✏️</button>
+                            <button onClick={() => deleteShift(shift.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#d32f2f', padding: '0.2rem' }} title="מחק">🗑️</button>
+                          </>
+                        ) : (
+                          <button onClick={() => restoreShift(shift)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#2e7d32', padding: '0.2rem' }} title="שחזר">
+                            <RotateCcw size={18} />
+                          </button>
+                        )}
                       </td>
                     </>
                   )}
@@ -635,6 +695,37 @@ export default function EmployeePage({ params }) {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {activeTab === 'history' && (
+        <div className="no-print animate-fade-in" style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+          <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <History size={24} /> היסטוריית שינויים (Audit Log)
+          </h2>
+          {loadingHistory ? (
+            <div style={{ textAlign: 'center', padding: '2rem' }}>טוען היסטוריה...</div>
+          ) : historyLogs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>אין תיעוד היסטוריה לעובד זה.</div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              {historyLogs.map(log => (
+                <div key={log.id} style={{ border: '1px solid var(--element-border)', borderRadius: '8px', padding: '1rem', background: '#fafafa' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+                    <strong style={{ color: 'var(--text-main)' }}>
+                      {log.action === 'CREATE' ? 'הוספה' : log.action === 'UPDATE' ? 'עדכון' : 'מחיקה'} - {log.entityType === 'Shift' ? 'משמרת' : log.entityType}
+                    </strong>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                      {new Date(log.createdAt).toLocaleString('he-IL')}
+                    </span>
+                  </div>
+                  <pre style={{ margin: 0, fontSize: '0.85rem', background: '#eee', padding: '0.5rem', borderRadius: '4px', overflowX: 'auto', direction: 'ltr' }}>
+                    {JSON.stringify(JSON.parse(log.changesJson), null, 2)}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

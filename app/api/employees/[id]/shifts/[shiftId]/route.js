@@ -1,30 +1,70 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 
-
-
 export async function PUT(request, { params }) {
   try {
     const resolvedParams = await params;
-    const employeeId = parseInt(resolvedParams.id, 10);
-    const shiftId = parseInt(resolvedParams.shiftId, 10);
+    const employeeId = resolvedParams.id;
+    const shiftId = resolvedParams.shiftId;
     
-    if (isNaN(employeeId) || isNaN(shiftId)) {
+    if (!employeeId || !shiftId) {
       return NextResponse.json({ error: 'Invalid ID parameters' }, { status: 400 });
     }
 
     const body = await request.json();
+
+    const entryTime = body.entryTime !== undefined ? (body.entryTime ? new Date(body.entryTime) : null) : undefined;
+    const exitTime = body.exitTime !== undefined ? (body.exitTime ? new Date(body.exitTime) : null) : undefined;
+
+    // Check for overlap if entryTime or exitTime is being updated
+    if (entryTime !== undefined || exitTime !== undefined) {
+      const existingShift = await prisma.shift.findUnique({ where: { id: shiftId } });
+      const checkEntry = entryTime !== undefined ? entryTime : existingShift.entryTime;
+      const checkExit = exitTime !== undefined ? exitTime : existingShift.exitTime;
+
+      if (checkEntry && checkExit) {
+        const overlappingShifts = await prisma.shift.findMany({
+          where: {
+            employeeId: employeeId,
+            id: { not: shiftId },
+            isDeleted: false,
+            OR: [
+              {
+                entryTime: { lt: checkExit },
+                exitTime: { gt: checkEntry }
+              }
+            ]
+          }
+        });
+        if (overlappingShifts.length > 0) {
+          return NextResponse.json({ error: 'שגיאה: קיימת משמרת חופפת בזמנים אלו' }, { status: 400 });
+        }
+      }
+    }
+
+    const oldShift = await prisma.shift.findUnique({ where: { id: shiftId } });
 
     const updatedShift = await prisma.shift.update({
       where: { id: shiftId },
       data: {
         date: body.date ? new Date(body.date) : undefined,
         hebrewDate: body.hebrewDate !== undefined ? body.hebrewDate : undefined,
-        entryTime: body.entryTime !== undefined ? (body.entryTime ? new Date(body.entryTime) : null) : undefined,
-        exitTime: body.exitTime !== undefined ? (body.exitTime ? new Date(body.exitTime) : null) : undefined,
+        entryTime: entryTime,
+        exitTime: exitTime,
         totalMinutes: body.totalMinutes !== undefined ? body.totalMinutes : undefined,
         totalCalculated: body.totalCalculated !== undefined ? body.totalCalculated : undefined,
         notes: body.notes !== undefined ? body.notes : undefined,
+        isDeleted: body.isDeleted !== undefined ? body.isDeleted : undefined
+      }
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        entityType: 'Shift',
+        entityId: shiftId,
+        action: 'UPDATE',
+        changesJson: JSON.stringify({ from: oldShift, to: updatedShift }),
+        employeeId: employeeId
       }
     });
 
@@ -38,17 +78,29 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const resolvedParams = await params;
-    const employeeId = parseInt(resolvedParams.id, 10);
-    const shiftId = parseInt(resolvedParams.shiftId, 10);
+    const employeeId = resolvedParams.id;
+    const shiftId = resolvedParams.shiftId;
 
-    if (isNaN(employeeId) || isNaN(shiftId)) {
+    if (!employeeId || !shiftId) {
       return NextResponse.json({ error: 'Invalid ID parameters' }, { status: 400 });
     }
+
+    const oldShift = await prisma.shift.findUnique({ where: { id: shiftId } });
 
     // Soft delete
     const deletedShift = await prisma.shift.update({
       where: { id: shiftId },
       data: { isDeleted: true }
+    });
+
+    await prisma.auditLog.create({
+      data: {
+        entityType: 'Shift',
+        entityId: shiftId,
+        action: 'DELETE',
+        changesJson: JSON.stringify({ from: oldShift, to: deletedShift }),
+        employeeId: employeeId
+      }
     });
 
     return NextResponse.json({ success: true, id: deletedShift.id });

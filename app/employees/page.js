@@ -29,6 +29,7 @@ export default function EmployeesPage() {
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
   const [attendanceData, setAttendanceData] = useState([]);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const [printEmployeeId, setPrintEmployeeId] = useState(null);
 
   // Fetch Employees List
   useEffect(() => {
@@ -122,8 +123,11 @@ export default function EmployeesPage() {
     return d.toLocaleDateString('he-IL', { month: 'long' });
   };
 
-  const handlePrintPdfs = () => {
-    window.print();
+  const handlePrintPdfs = (employeeId = null) => {
+    setPrintEmployeeId(employeeId);
+    setTimeout(() => {
+      window.print();
+    }, 100);
   };
 
   // Process Attendance Data for the Table
@@ -165,28 +169,22 @@ export default function EmployeesPage() {
   return (
     <main data-agy-id="employees-page-main" className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       
-      {/* Print Styles for PDFs */}
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          body * {
-            visibility: hidden;
+          body * { visibility: hidden; }
+          #print-area, #print-area * { 
+            visibility: visible; 
+            color: black !important;
+            filter: grayscale(100%) !important;
           }
-          #print-area, #print-area * {
-            visibility: visible;
+          #print-area { 
+            position: absolute; left: 0; top: 0; width: 100%; direction: rtl; 
+            overflow: visible !important;
           }
-          #print-area {
-            position: absolute;
-            left: 0;
-            top: 0;
-            width: 100%;
-          }
-          .no-print {
-            display: none !important;
-          }
-          .employee-page {
-            page-break-after: always;
-            margin-bottom: 2cm;
-          }
+          .no-print { display: none !important; }
+          .bsd-header { display: block !important; text-align: center; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; }
+          ::-webkit-scrollbar { display: none; }
+          .employee-page { page-break-after: always; margin-bottom: 2cm; }
         }
       `}} />
 

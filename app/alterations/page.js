@@ -461,7 +461,6 @@ export default function AlterationsPage() {
                   ))
                 )}
               </tbody>
-              </tbody>
             </table>
           </div>
           
