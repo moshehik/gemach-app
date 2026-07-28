@@ -169,7 +169,7 @@ export default function RentalsPage() {
     <main data-agy-id="rentals-page-main" className="container rentals-page">
       <div>
         <div className="quick-return-bar">
-        <h2>החזרה מהירה</h2>
+        <h2><span style={{ fontSize: '1.2em', marginRight: '5px' }}>⚡</span> החזרה מהירה</h2>
         <form onSubmit={handleQuickReturn} className="barcode-input-container" style={{ position: 'relative' }}>
           <input 
             data-agy-id="input-barcode"
@@ -430,16 +430,15 @@ export default function RentalsPage() {
               </tbody>
             );
           })}
-          {orders && orders.length > 0 && !loading && (
-            <tfoot>
-              <tr>
-                <td colSpan="6" style={{ padding: '1rem', fontWeight: 'bold', textAlign: 'center', background: 'var(--element-bg)', borderTop: '2px solid var(--element-border)' }}>
-                  סה"כ שורות מוצגות: {orders.length}
-                </td>
-              </tr>
-            </tfoot>
-          )}
-        </table>
+          </table>
+        </div>
+        
+        {/* Sticky Bottom Bar */}
+        {orders && orders.length > 0 && !loading && (
+          <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 -1rem -1rem -1rem', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ fontWeight: 'bold', width: '100%', textAlign: 'center' }}>סה"כ שורות מוצגות: {orders.length}</div>
+          </div>
+        )}
       </div>
       </div>
 

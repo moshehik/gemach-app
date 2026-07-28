@@ -4,6 +4,22 @@ import React, { useState, useEffect } from 'react';
 export default function OrderSizeSelector({ modelId, order, value, onChange, placeholder = '-' }) {
   const [sizes, setSizes] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [defaultSpacing, setDefaultSpacing] = useState(null);
+
+  useEffect(() => {
+    // Fetch default spacing to show "X out of Y" if custom spacing is used
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        const bufferSetting = (Array.isArray(data) ? data : []).find(s => s.key === 'inventory_buffer_days');
+        if (bufferSetting) {
+          setDefaultSpacing(parseInt(bufferSetting.value, 10));
+        } else {
+          setDefaultSpacing(3); // system fallback
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   useEffect(() => {
     if (!modelId) {
@@ -29,6 +45,9 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
             if (order.isAbroad) {
               if (order.fromDate) queryParams.append('fromDate', order.fromDate);
               if (order.toDate) queryParams.append('toDate', order.toDate);
+            }
+            if (order.customSpacing !== undefined && order.customSpacing !== null) {
+              queryParams.append('customSpacing', order.customSpacing);
             }
             url = `/api/orders/availability?${queryParams.toString()}`;
           }
@@ -68,10 +87,16 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
         const sizeVal = s.sizeText || s.size;
         const isUnavailable = s.availableQuantity !== undefined && s.availableQuantity <= 0;
         
-        // Exact format requested: פנוי X מתוך Y
-        const availableInfo = s.availableQuantity !== undefined 
-          ? `פנוי ${s.availableQuantity} מתוך ${s.totalInStock}` 
-          : `במלאי: ${s.totalQuantity}`;
+        let availableInfo = '';
+        if (s.availableQuantity !== undefined) {
+          if (order && order.customSpacing !== undefined && order.customSpacing !== null) {
+            availableInfo = `זמין ${s.availableQuantity}, ציפוף: ${order.customSpacing} מתוך ${defaultSpacing || 3}`;
+          } else {
+            availableInfo = `פנוי ${s.availableQuantity} מתוך ${s.totalInStock}`;
+          }
+        } else {
+          availableInfo = `במלאי: ${s.totalQuantity}`;
+        }
           
         return (
           <option 

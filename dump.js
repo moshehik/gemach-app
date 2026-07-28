@@ -1,3 +1,4 @@
-﻿const fs = require('fs');
-const content = fs.readFileSync('app/page.js', 'utf8');
-fs.writeFileSync('page_dump.js', content, 'utf8');
+const {PrismaClient} = require('@prisma/client');
+const fs = require('fs');
+const prisma = new PrismaClient();
+prisma.systemSetting.findMany().then(s => fs.writeFileSync('settings_dump.json', JSON.stringify(s, null, 2))).finally(() => prisma.$disconnect());

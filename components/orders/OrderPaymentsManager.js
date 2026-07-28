@@ -10,6 +10,17 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
   
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [showAddChargeModal, setShowAddChargeModal] = useState(false);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [refundData, setRefundData] = useState({
+    amount: '',
+    reason: '',
+    bankName: '',
+    bankBranch: '',
+    bankAccount: '',
+    bankAccountName: '',
+    paymentDetails: '',
+    email: ''
+  });
   const [creditCardData, setCreditCardData] = useState({
     cardNumber: '',
     tokef: '', // MMYY
@@ -142,6 +153,49 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
       updated.splice(idx, 1);
     }
     onPaymentsChange(updated);
+  };
+
+  const handleOpenRefundModal = () => {
+    setRefundData({
+      amount: '',
+      reason: '',
+      bankName: customer?.bankName || '',
+      bankBranch: customer?.bankBranch || '',
+      bankAccount: customer?.bankAccount || '',
+      bankAccountName: customer?.bankAccountName || '',
+      paymentDetails: '',
+      email: customer?.email || ''
+    });
+    setShowRefundModal(true);
+  };
+
+  const submitRefund = async () => {
+    if (!refundData.amount || parseFloat(refundData.amount) <= 0) {
+      alert('יש להזין סכום חיובי לזיכוי');
+      return;
+    }
+    
+    setIsProcessing(true);
+    try {
+      const res = await fetch('/api/refunds', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          customerId: customer?.id,
+          orderId,
+          ...refundData
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create refund');
+      
+      alert('בקשת הזיכוי נוצרה בהצלחה. ניתן לנהל אותה במסמך הזיכויים הראשי.');
+      setShowRefundModal(false);
+    } catch (err) {
+      alert(err.message || 'שגיאה ביצירת הזיכוי');
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleOpenCreditModal = () => {
@@ -489,6 +543,14 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               >
                 💳 סליקת אשראי
               </button>
+              <button data-agy-id="orderpaymentsmanager_button_refund" 
+                onClick={handleOpenRefundModal} 
+                style={{ flex: 1, padding: '0.7rem 1rem', background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
+                onMouseOver={e => e.currentTarget.style.opacity=0.9} onMouseOut={e => e.currentTarget.style.opacity=1}
+                title="בקשת זיכוי ללקוח"
+              >
+                🔄 יצירת זיכוי
+              </button>
             </div>
           </div>
         </div>
@@ -764,6 +826,65 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                 style={{ padding: '0.8rem 2rem', background: '#ef4444', color: 'white', border: 'none', borderRadius: '8px', cursor: (!newObligation.description || !newObligation.amount) ? 'not-allowed' : 'pointer', fontWeight: 'bold', transition: 'opacity 0.2s', opacity: (!newObligation.description || !newObligation.amount) ? 0.6 : 1 }}
               >
                 שמור חיוב
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {mounted && showRefundModal && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>יצירת בקשת זיכוי</h2>
+              <button onClick={() => setShowRefundModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', maxHeight: '60vh', overflowY: 'auto', paddingRight: '0.5rem' }}>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>סכום לזיכוי (₪) *</label>
+                <input type="number" value={refundData.amount} onChange={e => setRefundData({...refundData, amount: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #c4b5fd', background: '#f5f3ff', color: '#6d28d9', fontWeight: 'bold', fontSize: '1.1rem' }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>סיבה לזיכוי / הערות</label>
+                <input type="text" value={refundData.reason} onChange={e => setRefundData({...refundData, reason: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+              
+              <div style={{ gridColumn: '1 / -1', marginTop: '1rem' }}>
+                <h4 style={{ margin: '0 0 0.5rem 0', color: '#1e293b' }}>פרטי בנק לזיכוי</h4>
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>בנק</label>
+                <input type="text" value={refundData.bankName} onChange={e => setRefundData({...refundData, bankName: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>סניף</label>
+                <input type="text" value={refundData.bankBranch} onChange={e => setRefundData({...refundData, bankBranch: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>מספר חשבון</label>
+                <input type="text" value={refundData.bankAccount} onChange={e => setRefundData({...refundData, bankAccount: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>שם בעל החשבון</label>
+                <input type="text" value={refundData.bankAccountName} onChange={e => setRefundData({...refundData, bankAccountName: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+              
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>פרטי אשראי מקורי (אופציונלי - 4 ספרות)</label>
+                <input type="text" value={refundData.paymentDetails} onChange={e => setRefundData({...refundData, paymentDetails: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+              </div>
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>מייל לקוח (לשליחת אישור זיכוי)</label>
+                <input type="email" value={refundData.email} onChange={e => setRefundData({...refundData, email: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', direction: 'ltr', textAlign: 'right' }} />
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
+              <button onClick={() => setShowRefundModal(false)} style={{ padding: '0.8rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>ביטול</button>
+              <button onClick={submitRefund} disabled={isProcessing} style={{ padding: '0.8rem 2rem', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
+                {isProcessing ? 'מעבד...' : 'צור בקשת זיכוי'}
               </button>
             </div>
           </div>

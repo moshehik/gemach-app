@@ -11,6 +11,7 @@ export default function CustomerPage({ params }) {
   const router = useRouter();
   const { id } = use(params);
   const [customer, setCustomer] = useState(null);
+  const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details');
   const [saving, setSaving] = useState(false);
@@ -26,6 +27,13 @@ export default function CustomerPage({ params }) {
       .then(data => {
         if (data.error) router.push('/customers');
         else setCustomer(data);
+        
+        // Fetch refunds for customer
+        return fetch(`/api/refunds?customerId=${id}`);
+      })
+      .then(res => res ? res.json() : [])
+      .then(refundsData => {
+        if (Array.isArray(refundsData)) setRefunds(refundsData);
         setLoading(false);
       });
   }, [id, router]);
@@ -109,6 +117,14 @@ export default function CustomerPage({ params }) {
             style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'payments' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'payments' ? 'bold' : 'normal', color: activeTab === 'payments' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s' }}
           >
             תשלומים
+          </button>
+          <button 
+            data-agy-id="customer_refunds_tab_btn"
+            className={`tab-btn ${activeTab === 'refunds' ? 'active' : ''}`} 
+            onClick={() => setActiveTab('refunds')}
+            style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'refunds' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'refunds' ? 'bold' : 'normal', color: activeTab === 'refunds' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s' }}
+          >
+            זיכויים ופרטי בנק
           </button>
           <button 
             data-agy-id="customer_history_tab_btn"
@@ -276,6 +292,86 @@ export default function CustomerPage({ params }) {
           ) : (
             <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>אין היסטוריית תשלומים ללקוח זה.</div>
           )}
+        </div>
+      )}
+
+      {activeTab === 'refunds' && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+          {/* Bank Details Form */}
+          <form data-agy-id="customer_bank_details_form" onSubmit={handleSave} style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--primary-color)' }}>פרטי חשבון בנק לזיכויים</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם בנק</label>
+                <input data-agy-id="customer_bankName_input" type="text" name="bankName" value={customer.bankName || ''} onChange={handleChange} placeholder="למשל: לאומי" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              </div>
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>סניף</label>
+                <input data-agy-id="customer_bankBranch_input" type="text" name="bankBranch" value={customer.bankBranch || ''} onChange={handleChange} placeholder="מספר סניף" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              </div>
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>מספר חשבון</label>
+                <input data-agy-id="customer_bankAccount_input" type="text" name="bankAccount" value={customer.bankAccount || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              </div>
+              <div className="form-group">
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם בעל החשבון</label>
+                <input data-agy-id="customer_bankAccountName_input" type="text" name="bankAccountName" value={customer.bankAccountName || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              </div>
+            </div>
+            <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
+              <button data-agy-id="save_bank_details_btn" type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.5rem 1.5rem', borderRadius: '12px' }}>
+                {saving ? 'שומר...' : 'שמור פרטי בנק'}
+              </button>
+            </div>
+          </form>
+
+          {/* Refunds Table */}
+          <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
+            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--primary-color)' }}>היסטוריית זיכויים</h3>
+            {refunds.length > 0 ? (
+              <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
+                    <th style={{ padding: '1rem' }}>תאריך בקשה</th>
+                    <th style={{ padding: '1rem' }}>מס' הזמנה</th>
+                    <th style={{ padding: '1rem' }}>סכום</th>
+                    <th style={{ padding: '1rem' }}>סיבה</th>
+                    <th style={{ padding: '1rem' }}>סטטוס</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {refunds.map(refund => (
+                    <tr key={refund.id} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '1rem' }}>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</td>
+                      <td style={{ padding: '1rem' }}>
+                        {refund.orderId ? (
+                          <Link href={`/orders/${refund.orderId}`} style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }}>
+                            {refund.orderId}
+                          </Link>
+                        ) : '-'}
+                      </td>
+                      <td style={{ padding: '1rem', fontWeight: 'bold', color: '#ef4444' }}>₪{refund.amount}</td>
+                      <td style={{ padding: '1rem' }}>{refund.reason || '-'}</td>
+                      <td style={{ padding: '1rem' }}>
+                        <span style={{
+                          padding: '0.3rem 0.6rem',
+                          borderRadius: '12px',
+                          fontSize: '0.85rem',
+                          fontWeight: 'bold',
+                          background: refund.isExecuted ? '#dcfce7' : '#fef08a',
+                          color: refund.isExecuted ? '#166534' : '#854d0e'
+                        }}>
+                          {refund.isExecuted ? 'בוצע (' + new Date(refund.executionDate).toLocaleDateString('he-IL') + ')' : 'ממתין לביצוע'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>אין זיכויים ללקוח זה.</div>
+            )}
+          </div>
         </div>
       )}
 

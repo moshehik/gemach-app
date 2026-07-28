@@ -23,8 +23,16 @@ model Customer {
   registrationDate String? // תאריך_רישום
   officeNotes      String? // נתוני_משרד
   isDeleted        Boolean   @default(false) // לקוח_מחוק
+  
+  // Bank details for refunds
+  bankName         String? // שם בנק
+  bankBranch       String? // סניף
+  bankAccount      String? // חשבון
+  bankAccountName  String? // שם בעל חשבון
+
   orders           Order[]
   payments         Payment[]
+  refunds          Refund[]
   updatedAt        DateTime  @updatedAt
 
   @@index([phone1])
@@ -216,9 +224,12 @@ model Order {
   isWeekdayEvent Boolean @default(false) // אירוע חול
   fromDate DateTime? // מתאריך
   toDate   DateTime? // עד תאריך
+  
+  customSpacing Int? // ציפוף ימים מותאם אישית להזמנה זו
 
   items       OrderItem[]
   payments    Payment[]
+  refunds     Refund[]
   obligations PaymentObligation[]
   updatedAt   DateTime            @updatedAt
 
@@ -242,7 +253,10 @@ model Payment {
   paymentMethod String? // אמצעי תשלום
   notes         String? // הערות
   isDeleted     Boolean   @default(false) // נמחק
+  isRefund      Boolean   @default(false) // האם זה תשלום הפכי (זיכוי)
   updatedAt     DateTime  @updatedAt
+  
+  refunds       Refund[]
 
   @@index([customerId])
   @@index([orderId])
@@ -446,4 +460,36 @@ model AIChatSession {
 
   @@index([employeeId])
   @@index([startedAt])
+}
+
+model Refund {
+  id              String    @id @default(uuid())
+  customerId      String
+  customer        Customer  @relation(fields: [customerId], references: [id])
+  orderId         Int?
+  order           Order?    @relation(fields: [orderId], references: [orderId])
+  amount          Float
+  reason          String?   // הערות: על מה
+  bankName        String?   // שם בנק
+  bankBranch      String?   // סניף
+  bankAccount     String?   // חשבון
+  bankAccountName String?   // שם בעל חשבון
+  paymentDetails  String?   // פרטי תשלומים ו4 ספרות אחרונות
+  email           String?   // מייל
+  
+  isExecuted      Boolean   @default(false) // בוצע החזר
+  executionDate   DateTime? // תאריך ביצוע
+  executedBy      String?   // קוד עובד שביצע
+  
+  paymentId       String?   // מזהה התשלום ההפכי שנוצר
+  payment         Payment?  @relation(fields: [paymentId], references: [id])
+  
+  isDeleted       Boolean   @default(false)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([customerId])
+  @@index([orderId])
+  @@index([isExecuted])
+  @@index([isDeleted])
 }

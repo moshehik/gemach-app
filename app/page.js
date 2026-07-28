@@ -646,7 +646,11 @@ export default function HomeDashboard() {
                         <Shirt size={20} />
                       </div>
                       <div>
-                        <Link href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', textDecoration: 'none', color: 'inherit' }}>הזמנה #{rental.order?.orderId} • {rental.dressItem?.dress?.name || 'שמלה'}</Link>
+                        <Link href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', textDecoration: 'none', color: 'inherit' }}>
+                          הזמנה #{rental.order?.orderId} • {rental.dressItem?.dress?.name 
+                            ? `${rental.dressItem.dress.name} ${rental.dressItem.dress.barcodePrefix || rental.dressItem.barcodePrefix || rental.barcodePrefix ? `(קוד: ${rental.dressItem.dress.barcodePrefix || rental.dressItem.barcodePrefix || rental.barcodePrefix})` : ''}`
+                            : (rental.description || rental.dressItem?.dressName || 'שמלה')}
+                        </Link>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem' }}>
                            ברקוד: {rental.barcode || '-'} • מידה: {rental.sizeText || rental.dressItem?.sizeText || '-'}
                         </div>

@@ -107,17 +107,23 @@ export default function PrintOrderPage() {
           direction: rtl;
         }
         @media print {
-          body {
-            background-color: white;
-            margin: 0;
-            padding: 0;
+          html, body {
+            background-color: white !important;
+            color: black !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: auto !important;
+            min-height: auto !important;
+            overflow: visible !important;
+            -webkit-print-color-adjust: exact;
           }
           .print-container {
-            box-shadow: none;
-            padding: 0;
-            margin: 0;
-            max-width: 100%;
-            border-radius: 0;
+            box-shadow: none !important;
+            padding: 0 10px !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+            border-radius: 0 !important;
+            filter: grayscale(100%);
           }
           body * {
             visibility: hidden;
@@ -131,131 +137,158 @@ export default function PrintOrderPage() {
             top: 0;
             width: 100%;
           }
+          /* To prevent cutoff in multi-page prints while using absolute positioning, 
+             we actually shouldn't use absolute positioning. */
+          .print-container {
+            position: relative !important;
+            left: auto !important;
+            top: auto !important;
+          }
           /* Hide the layout nav inside print */
-          nav {
+          nav, .navbar {
             display: none !important;
           }
+          @page {
+            margin: 1cm;
+          }
+        }
+        .bsd {
+          position: absolute;
+          top: 10px;
+          right: 20px;
+          font-size: 12px;
+          font-weight: bold;
+          color: #000;
         }
         .print-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-bottom: 30px;
-          border-bottom: 2px solid #e9ecef;
-          padding-bottom: 20px;
+          margin-top: 15px;
+          margin-bottom: 15px;
+          border-bottom: 2px solid #000;
+          padding-bottom: 10px;
         }
         .print-header-content h1 {
           margin: 0;
-          font-size: 28px;
-          color: #2c3e50;
+          font-size: 24px;
+          color: #000;
           font-weight: 700;
         }
         .print-header-content h2 {
-          margin: 5px 0 0 0;
-          font-size: 16px;
-          color: #6c757d;
-          font-weight: 400;
+          margin: 0;
+          font-size: 18px;
+          color: #333;
+          font-weight: 600;
         }
         .order-number-badge {
-          background: #e3f2fd;
-          color: #1976d2;
-          padding: 8px 20px;
-          border-radius: 30px;
-          font-size: 20px;
+          background: #f8f9fa;
+          color: #000;
+          padding: 4px 15px;
+          border: 1px solid #000;
+          border-radius: 20px;
+          font-size: 18px;
           font-weight: 700;
-          -webkit-print-color-adjust: exact;
         }
         .order-details-card {
-          background: #f8f9fa;
-          border: 1px solid #e9ecef;
-          border-radius: 12px;
-          padding: 24px;
-          margin-bottom: 35px;
+          background: #fff;
+          border: 1px solid #000;
+          border-radius: 8px;
+          padding: 12px 16px;
+          margin-bottom: 20px;
           display: grid;
           grid-template-columns: 1fr 1fr;
-          gap: 20px;
-          -webkit-print-color-adjust: exact;
+          gap: 12px;
         }
         .detail-item {
           display: flex;
           flex-direction: column;
         }
         .detail-item span.label {
-          font-size: 13px;
-          color: #6c757d;
-          margin-bottom: 4px;
-          font-weight: 600;
+          font-size: 12px;
+          color: #555;
+          margin-bottom: 2px;
+          font-weight: 700;
         }
         .detail-item span.value {
-          font-size: 16px;
-          color: #212529;
-          font-weight: 500;
+          font-size: 14px;
+          color: #000;
+          font-weight: 600;
         }
         .full-width {
           grid-column: 1 / -1;
         }
         .section-title {
-          font-size: 20px;
-          color: #2c3e50;
-          margin-bottom: 15px;
-          font-weight: 600;
-          border-bottom: 2px solid #e9ecef;
-          padding-bottom: 8px;
+          font-size: 18px;
+          color: #000;
+          margin-bottom: 10px;
+          font-weight: 700;
+          border-bottom: 1px solid #000;
+          padding-bottom: 4px;
         }
         .print-table {
           width: 100%;
-          border-collapse: separate;
-          border-spacing: 0;
-          border: 1px solid #e9ecef;
-          border-radius: 8px;
-          overflow: hidden;
+          border-collapse: collapse;
+          border: 1px solid #000;
+          margin-bottom: 15px;
         }
         .print-table th, .print-table td {
-          padding: 12px 16px;
+          padding: 6px 10px;
           text-align: right;
-          font-size: 14px;
+          font-size: 13px;
+          border: 1px solid #000;
         }
         .print-table th {
-          background-color: #f1f3f5;
-          color: #495057;
-          font-weight: 600;
-          border-bottom: 2px solid #e9ecef;
-          -webkit-print-color-adjust: exact;
+          background-color: #f1f1f1;
+          color: #000;
+          font-weight: 700;
         }
         .print-table td {
-          border-bottom: 1px solid #e9ecef;
-          color: #212529;
-        }
-        .print-table tr:last-child td {
-          border-bottom: none;
+          color: #000;
+          font-weight: 500;
         }
         .print-table tr:nth-child(even) td {
-          background-color: #fcfcfc;
-          -webkit-print-color-adjust: exact;
+          background-color: #f9f9f9;
         }
         .status-badge {
           display: inline-block;
-          padding: 4px 10px;
-          border-radius: 12px;
-          font-size: 13px;
           font-weight: 600;
+          color: #000;
         }
-        .status-pending { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; -webkit-print-color-adjust: exact; }
-        .status-active { background: #cce5ff; color: #004085; border: 1px solid #b8daff; -webkit-print-color-adjust: exact; }
-        .status-returned { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; -webkit-print-color-adjust: exact; }
-        .status-archived { background: #e2e3e5; color: #383d41; border: 1px solid #d6d8db; -webkit-print-color-adjust: exact; }
+        .status-pending, .status-active, .status-returned, .status-archived { 
+          background: none; 
+          border: none; 
+          color: #000;
+        }
         
         .print-footer {
-          margin-top: 40px;
+          margin-top: 20px;
           text-align: center;
-          font-size: 13px;
-          color: #adb5bd;
-          border-top: 1px solid #e9ecef;
-          padding-top: 20px;
+          font-size: 12px;
+          color: #555;
+          border-top: 1px solid #000;
+          padding-top: 10px;
         }
+        
+        /* Adjust rental notes for space */
+        .rental-notes-box {
+          border: 1px solid #000; 
+          padding: 8px 12px; 
+          margin-bottom: 10px; 
+          white-space: pre-wrap; 
+          text-align: center; 
+          font-size: 13px; 
+          font-weight: 600; 
+          color: #000;
+        }
+        .rental-notes-box-bg {
+          background-color: #f1f1f1;
+        }
+
       `}</style>
       
       <div data-agy-id="print-order-container" className="print-container">
+        <div className="bsd">בס&quot;ד</div>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '50px', color: '#6c757d', fontSize: '18px' }}>טוען נתונים להדפסה...</div>
         ) : error ? (
@@ -265,7 +298,7 @@ export default function PrintOrderPage() {
             <div className="print-header">
               <div className="print-header-content">
                 <h1>גמ&quot;ח שמלות</h1>
-                <h2>{printType === 'rental' ? 'הערות להשכרה' : 'דוח השכרות פירוט'}</h2>
+                <h2>{printType === 'rental' ? 'סיכום השכרה' : 'סיכום הזמנה'}</h2>
               </div>
               <div className="order-number-badge">
                 הזמנה #{order.orderId}
@@ -273,25 +306,25 @@ export default function PrintOrderPage() {
             </div>
 
             {printType === 'rental' && printSettings && (
-              <div style={{ marginBottom: '30px' }}>
+              <div style={{ marginBottom: '15px' }}>
                 {printSettings.box1 && (
-                  <div style={{ border: '1px solid #495057', padding: '15px', marginBottom: '15px', whiteSpace: 'pre-wrap', textAlign: 'center', fontSize: '15px', fontWeight: '500', color: '#212529' }}>
+                  <div className="rental-notes-box">
                     {printSettings.box1}
                   </div>
                 )}
                 {printSettings.box2 && (
-                  <div style={{ border: '1px solid #495057', padding: '10px', marginBottom: '15px', whiteSpace: 'pre-wrap', textAlign: 'center', fontSize: '15px', fontWeight: 'bold', color: '#212529', backgroundColor: '#f8f9fa', WebkitPrintColorAdjust: 'exact' }}>
+                  <div className="rental-notes-box rental-notes-box-bg">
                     {printSettings.box2}
                   </div>
                 )}
                 {printSettings.footer && (
-                  <div style={{ textAlign: 'center', marginTop: '20px', marginBottom: '20px' }}>
-                    <h3 style={{ fontSize: '22px', fontWeight: 'bold', margin: '0 0 10px 0' }}>{printSettings.footer}</h3>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  <div style={{ textAlign: 'center', marginTop: '15px', marginBottom: '15px' }}>
+                    <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 5px 0' }}>{printSettings.footer}</h3>
+                    <div style={{ fontSize: '16px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
                       <span>על החתום:</span>
-                      <span style={{ display: 'inline-block', width: '250px', borderBottom: '2px solid black', margin: '0 10px' }}></span>
+                      <span style={{ display: 'inline-block', width: '200px', borderBottom: '1px solid black', margin: '0 10px' }}></span>
                     </div>
-                    <div style={{ marginTop: '15px', fontSize: '16px', fontWeight: 'bold' }}>
+                    <div style={{ marginTop: '5px', fontSize: '14px', fontWeight: 'bold' }}>
                       נא להחזיר טופס זה חתום בעת החזרת השמלות
                     </div>
                   </div>
@@ -392,20 +425,20 @@ export default function PrintOrderPage() {
               </tbody>
             </table>
 
-            <h3 className="section-title" style={{ marginTop: '30px' }}>פירוט תשלומים וחובות</h3>
+            <h3 className="section-title" style={{ marginTop: '15px' }}>פירוט תשלומים וחובות</h3>
             
-            <div className="order-details-card" style={{ marginBottom: '20px' }}>
+            <div className="order-details-card" style={{ marginBottom: '10px' }}>
               <div className="detail-item">
                 <span className="label">סה&quot;כ לחיוב</span>
-                <span className="value" style={{ color: '#b91c1c', fontWeight: 'bold' }}>₪{order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0}</span>
+                <span className="value" style={{ fontWeight: 'bold' }}>₪{order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0}</span>
               </div>
               <div className="detail-item">
                 <span className="label">סה&quot;כ שולם</span>
-                <span className="value" style={{ color: '#166534', fontWeight: 'bold' }}>₪{order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0}</span>
+                <span className="value" style={{ fontWeight: 'bold' }}>₪{order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0}</span>
               </div>
               <div className="detail-item full-width">
                 <span className="label">יתרה לתשלום</span>
-                <span className="value" style={{ color: ((order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0) - (order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0)) > 0 ? '#b91c1c' : '#212529', fontWeight: 'bold', fontSize: '18px' }}>
+                <span className="value" style={{ fontWeight: 'bold', fontSize: '16px' }}>
                   ₪{Math.max(0, (order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0) - (order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0))}
                 </span>
               </div>
@@ -440,7 +473,7 @@ export default function PrintOrderPage() {
                         <tr key={idx}>
                           <td>{new Date(p.paymentDate).toLocaleDateString('he-IL')}</td>
                           <td>{p.paymentMethod || '-'}</td>
-                          <td style={{ fontWeight: 'bold', color: '#16a34a' }}>₪{p.amount}</td>
+                          <td style={{ fontWeight: 'bold' }}>₪{p.amount}</td>
                           <td>{notes}</td>
                         </tr>
                       );

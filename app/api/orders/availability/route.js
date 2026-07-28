@@ -12,6 +12,7 @@ export async function GET(request) {
     const toDate = searchParams.get('toDate');
     const bufferDays = searchParams.get('bufferDays') ? parseInt(searchParams.get('bufferDays')) : 3;
     const isAbroad = searchParams.get('isAbroad') === 'true';
+    const customSpacing = searchParams.has('customSpacing') ? parseInt(searchParams.get('customSpacing')) : null;
 
     if (!dressModelId) {
       return NextResponse.json({ error: 'Missing dressModelId' }, { status: 400 });
@@ -32,7 +33,7 @@ export async function GET(request) {
       targetMaxDate = eventDate;
     }
 
-    const availability = await getAvailableInventory(dressModelId, targetMinDate, bufferDays, true, isAbroad, targetMaxDate);
+    const availability = await getAvailableInventory(dressModelId, targetMinDate, bufferDays, true, isAbroad, targetMaxDate, null, customSpacing);
     
     return NextResponse.json(availability);
   } catch (error) {

@@ -266,6 +266,8 @@ export default function EmployeesPage() {
               {loading ? (
                 <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
               ) : (
+                <>
+                <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
                 <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
@@ -302,16 +304,16 @@ export default function EmployeesPage() {
                       </tr>
                     )}
                   </tbody>
-                  {filteredEmployees.length > 0 && (
-                    <tfoot>
-                      <tr>
-                        <td colSpan="5" style={{ padding: '1rem', fontWeight: 'bold', textAlign: 'center', background: 'var(--element-bg)', borderTop: '2px solid var(--element-border)' }}>
-                          סה"כ שורות מוצגות: {filteredEmployees.length}
-                        </td>
-                      </tr>
-                    </tfoot>
-                  )}
                 </table>
+                </div>
+                
+                {/* Sticky Bottom Bar */}
+                {filteredEmployees.length > 0 && (
+                  <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 -1rem -1rem -1rem', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
+                    <div style={{ fontWeight: 'bold', width: '100%', textAlign: 'center' }}>סה"כ שורות מוצגות: {filteredEmployees.length}</div>
+                  </div>
+                )}
+                </>
               )}
             </div>
           </div>
@@ -360,6 +362,7 @@ export default function EmployeesPage() {
             </div>
 
             <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)' }}>
+              <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
               <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #ddd', color: 'var(--text-muted)' }}>
@@ -410,16 +413,15 @@ export default function EmployeesPage() {
                     ))
                   )}
                 </tbody>
-                {!loadingAttendance && processedAttendance.length > 0 && (
-                  <tfoot>
-                    <tr>
-                      <td colSpan="6" style={{ padding: '1rem', fontWeight: 'bold', textAlign: 'center', background: 'var(--element-bg)', borderTop: '2px solid var(--element-border)' }}>
-                        סה"כ שורות מוצגות: {processedAttendance.length}
-                      </td>
-                    </tr>
-                  </tfoot>
-                )}
               </table>
+              </div>
+              
+              {/* Sticky Bottom Bar */}
+              {!loadingAttendance && processedAttendance.length > 0 && (
+                <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 -1rem -1rem -1rem', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div style={{ fontWeight: 'bold', width: '100%', textAlign: 'center' }}>סה"כ שורות מוצגות: {processedAttendance.length}</div>
+                </div>
+              )}
             </div>
           </div>
         )}

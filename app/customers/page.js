@@ -203,12 +203,13 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)' }}>
         {loading && customers.length === 0 ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
         ) : (
           <>
-            <table data-agy-id="customers_table" style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
+            <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
+              <table data-agy-id="customers_table" style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
                   <th style={thStyle} onClick={() => handleSort('id')}>קוד לקוח <SortIcon column="id" /></th>
@@ -232,51 +233,52 @@ export default function CustomersPage() {
                   </tr>
                 ))}
               </tbody>
-              <tfoot>
-                <tr>
-                  <td colSpan="6" style={{ padding: '1rem', fontWeight: 'bold', textAlign: 'center', background: 'var(--element-bg)', borderTop: '2px solid var(--element-border)' }}>
-                    סה"כ שורות מוצגות: {customers.length}
-                  </td>
-                </tr>
-              </tfoot>
-            </table>
+              </table>
+            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
-              <button 
-                data-agy-id="next_page_btn"
-                className="btn btn-outline"
-                disabled={page >= totalPages || isAiModeActive} 
-                onClick={() => setPage(p => p + 1)}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                הבא
-              </button>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                עמוד
-                <input 
-                  data-agy-id="page_number_input"
-                  type="number" 
-                  min={1} 
-                  max={totalPages || 1} 
-                  value={page} 
-                  onChange={(e) => { 
-                    const v = parseInt(e.target.value); 
-                    if (v >= 1 && v <= totalPages) setPage(v); 
-                  }} 
-                  style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }} 
-                  disabled={isAiModeActive} 
-                />
-                מתוך {totalPages}
-              </span>
-              <button 
-                data-agy-id="prev_page_btn"
-                className="btn btn-outline"
-                disabled={page <= 1 || isAiModeActive} 
-                onClick={() => setPage(p => p - 1)}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                הקודם
-              </button>
+            {/* Sticky Bottom Bar */}
+            <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 -1rem -1rem -1rem', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ fontWeight: 'bold' }}>סה"כ שורות מוצגות: {customers.length}</div>
+              
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
+                  <button 
+                    data-agy-id="next_page_btn"
+                    className="btn btn-outline"
+                    disabled={page >= totalPages || isAiModeActive} 
+                    onClick={() => setPage(p => p + 1)}
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    הבא &gt;
+                  </button>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    עמוד 
+                    <input 
+                      data-agy-id="current_page_input"
+                      type="number" 
+                      min={1} 
+                      max={totalPages || 1} 
+                      value={page} 
+                      onChange={(e) => {
+                        const v = parseInt(e.target.value);
+                        if (v >= 1 && v <= totalPages) setPage(v);
+                      }} 
+                      style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} 
+                      disabled={isAiModeActive}
+                    /> 
+                    מתוך {totalPages}
+                  </span>
+                  <button 
+                    data-agy-id="prev_page_btn"
+                    className="btn btn-outline"
+                    disabled={page <= 1 || isAiModeActive} 
+                    onClick={() => setPage(p => p - 1)}
+                    style={{ padding: '0.5rem 1rem' }}
+                  >
+                    &lt; הקודם
+                  </button>
+                </div>
+              )}
             </div>
           </>
         )}

@@ -1,0 +1,289 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { Search, CheckCircle, XCircle, Download, CreditCard, Banknote, Mail } from 'lucide-react';
+
+export default function RefundsPage() {
+  const [refunds, setRefunds] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'pending', 'executed'
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  useEffect(() => {
+    fetchRefunds();
+  }, []);
+
+  const fetchRefunds = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/refunds');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setRefunds(data);
+      } else {
+        setRefunds([]);
+      }
+    } catch (err) {
+      console.error('Failed to fetch refunds:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const executeRefund = async (id) => {
+    if (!(await window.customConfirm('האם אתה בטוח שברצונך לסמן זיכוי זה כ"בוצע"?\nפעולה זו תיצור תשלום הפכי (מינוס) בכרטיס ההזמנה המקושר.'))) {
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const res = await fetch(`/api/refunds/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isExecuted: true })
+      });
+      
+      if (!res.ok) throw new Error('Failed to execute refund');
+      
+      const updatedRefund = await res.json();
+      setRefunds(prev => prev.map(r => r.id === id ? { ...r, ...updatedRefund } : r));
+      alert('הזיכוי סומן כבוצע בהצלחה והתעדכן בכרטיס ההזמנה.');
+    } catch (err) {
+      alert('שגיאה בביצוע הזיכוי: ' + err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const cancelRefund = async (id) => {
+    if (!(await window.customConfirm('האם אתה בטוח שברצונך לבטל ולמחוק בקשת זיכוי זו לחלוטין?'))) {
+      return;
+    }
+
+    setIsProcessing(true);
+    try {
+      const res = await fetch(`/api/refunds/${id}`, {
+        method: 'DELETE'
+      });
+      
+      if (!res.ok) throw new Error('Failed to cancel refund');
+      
+      setRefunds(prev => prev.filter(r => r.id !== id));
+      alert('בקשת הזיכוי בוטלה.');
+    } catch (err) {
+      alert('שגיאה בביטול הזיכוי: ' + err.message);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const exportToCSV = () => {
+    const headers = ['תאריך בקשה', 'לקוח', 'טלפון', 'מייל', 'מספר הזמנה', 'סכום לזיכוי', 'סיבה', 'בנק', 'סניף', 'חשבון', 'שם בעל החשבון', 'פרטי אשראי מקורי', 'סטטוס', 'תאריך ביצוע'];
+    const csvData = [
+      headers.join(','),
+      ...filteredRefunds.map(r => {
+        const customerName = r.customer ? `${r.customer.firstName || ''} ${r.customer.lastName || ''}`.trim() : '';
+        const phone = r.customer?.phone1 || '';
+        const email = r.email || r.customer?.email || '';
+        const dateStr = new Date(r.createdAt).toLocaleDateString('he-IL');
+        const execDateStr = r.isExecuted && r.executionDate ? new Date(r.executionDate).toLocaleDateString('he-IL') : '';
+        const statusStr = r.isExecuted ? 'בוצע' : 'ממתין';
+        
+        return [
+          dateStr,
+          `"${customerName}"`,
+          `"${phone}"`,
+          `"${email}"`,
+          r.orderId || '',
+          r.amount || 0,
+          `"${r.reason || ''}"`,
+          `"${r.bankName || ''}"`,
+          `"${r.bankBranch || ''}"`,
+          `"${r.bankAccount || ''}"`,
+          `"${r.bankAccountName || ''}"`,
+          `"${r.paymentDetails || ''}"`,
+          statusStr,
+          execDateStr
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob(['\uFEFF' + csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `refunds_export_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  const filteredRefunds = refunds.filter(r => {
+    const matchesSearch = 
+      (r.customer?.firstName || '').includes(searchTerm) ||
+      (r.customer?.lastName || '').includes(searchTerm) ||
+      (r.customer?.phone1 || '').includes(searchTerm) ||
+      (r.orderId?.toString() || '').includes(searchTerm) ||
+      (r.amount?.toString() || '').includes(searchTerm);
+      
+    if (filterStatus === 'all') return matchesSearch;
+    if (filterStatus === 'pending') return matchesSearch && !r.isExecuted;
+    if (filterStatus === 'executed') return matchesSearch && r.isExecuted;
+    return matchesSearch;
+  });
+
+  return (
+    <main data-agy-id="refunds_page_main" className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1400px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+        <h1 style={{ color: 'var(--primary-color)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+          <Banknote size={32} />
+          ניהול זיכויים
+        </h1>
+        <button data-agy-id="refunds_export_btn" onClick={exportToCSV} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '12px' }}>
+          <Download size={18} />
+          ייצוא לאקסל
+        </button>
+      </div>
+
+      <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+        <div style={{ position: 'relative', flex: '1', minWidth: '300px' }}>
+          <Search size={20} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input data-agy-id="refunds_search_input"
+            type="text" 
+            placeholder="חיפוש לפי שם לקוח, טלפון, הזמנה או סכום..." 
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            style={{ width: '100%', padding: '0.8rem 2.8rem 0.8rem 1rem', borderRadius: '12px', border: '1px solid var(--element-border)', fontSize: '1rem' }}
+          />
+        </div>
+        
+        <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '0.4rem', borderRadius: '12px' }}>
+          <button data-agy-id="filter_all" onClick={() => setFilterStatus('all')} style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', border: 'none', background: filterStatus === 'all' ? 'white' : 'transparent', color: filterStatus === 'all' ? 'var(--primary-color)' : '#64748b', fontWeight: filterStatus === 'all' ? 'bold' : 'normal', cursor: 'pointer', boxShadow: filterStatus === 'all' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>הכל</button>
+          <button data-agy-id="filter_pending" onClick={() => setFilterStatus('pending')} style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', border: 'none', background: filterStatus === 'pending' ? 'white' : 'transparent', color: filterStatus === 'pending' ? '#d97706' : '#64748b', fontWeight: filterStatus === 'pending' ? 'bold' : 'normal', cursor: 'pointer', boxShadow: filterStatus === 'pending' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>ממתינים</button>
+          <button data-agy-id="filter_executed" onClick={() => setFilterStatus('executed')} style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', border: 'none', background: filterStatus === 'executed' ? 'white' : 'transparent', color: filterStatus === 'executed' ? '#16a34a' : '#64748b', fontWeight: filterStatus === 'executed' ? 'bold' : 'normal', cursor: 'pointer', boxShadow: filterStatus === 'executed' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>בוצעו</button>
+        </div>
+      </div>
+
+      <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: 'var(--shadow-md)', overflow: 'hidden' }}>
+        {loading ? (
+          <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+             <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem auto' }} />
+             טוען נתונים...
+          </div>
+        ) : filteredRefunds.length === 0 ? (
+          <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '1.2rem' }}>
+            לא נמצאו זיכויים תואמים.
+          </div>
+        ) : (
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
+              <thead>
+                <tr style={{ background: '#f8fafc', color: '#475569', borderBottom: '2px solid #e2e8f0' }}>
+                  <th style={{ padding: '1rem' }}>תאריך</th>
+                  <th style={{ padding: '1rem' }}>לקוח</th>
+                  <th style={{ padding: '1rem' }}>הזמנה</th>
+                  <th style={{ padding: '1rem' }}>סכום</th>
+                  <th style={{ padding: '1rem' }}>פרטי בנק</th>
+                  <th style={{ padding: '1rem' }}>אשראי מקורי</th>
+                  <th style={{ padding: '1rem' }}>סטטוס</th>
+                  <th style={{ padding: '1rem', textAlign: 'center' }}>פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredRefunds.map(refund => (
+                  <tr key={refund.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                    <td style={{ padding: '1rem', color: '#64748b' }}>
+                      <div style={{ fontWeight: '500', color: '#334155' }}>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</div>
+                      {refund.isExecuted && <div style={{ fontSize: '0.8rem' }}>בוצע: {new Date(refund.executionDate).toLocaleDateString('he-IL')}</div>}
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      <div style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
+                        <Link href={`/customers/${refund.customerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                          {refund.customer ? `${refund.customer.firstName || ''} ${refund.customer.lastName || ''}`.trim() : 'לקוח לא ידוע'}
+                        </Link>
+                      </div>
+                      <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{refund.customer?.phone1}</div>
+                      {refund.email && <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Mail size={12}/> {refund.email}</div>}
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      {refund.orderId ? (
+                        <Link href={`/orders/${refund.orderId}`} style={{ color: '#0ea5e9', textDecoration: 'none', fontWeight: 'bold' }}>
+                          #{refund.orderId}
+                        </Link>
+                      ) : '-'}
+                    </td>
+                    <td style={{ padding: '1rem', fontWeight: 'bold', color: '#ef4444', fontSize: '1.1rem' }}>
+                      ₪{refund.amount}
+                      {refund.reason && <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 'normal' }}>{refund.reason}</div>}
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      {refund.bankName || refund.bankAccount ? (
+                        <div style={{ fontSize: '0.9rem', color: '#334155' }}>
+                          <div>{refund.bankName || 'בנק חסר'} {refund.bankBranch ? `(סניף ${refund.bankBranch})` : ''}</div>
+                          <div style={{ fontWeight: '600' }}>{refund.bankAccount || 'חשבון חסר'}</div>
+                          {refund.bankAccountName && <div style={{ color: '#64748b', fontSize: '0.8rem' }}>{refund.bankAccountName}</div>}
+                        </div>
+                      ) : (
+                        <span style={{ color: '#94a3b8' }}>לא הוזנו</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      {refund.paymentDetails ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#334155', fontSize: '0.9rem' }}>
+                          <CreditCard size={14} /> {refund.paymentDetails}
+                        </div>
+                      ) : <span style={{ color: '#94a3b8' }}>-</span>}
+                    </td>
+                    <td style={{ padding: '1rem' }}>
+                      <span style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        padding: '0.4rem 0.8rem',
+                        borderRadius: '20px',
+                        fontSize: '0.85rem',
+                        fontWeight: 'bold',
+                        background: refund.isExecuted ? '#dcfce7' : '#fef08a',
+                        color: refund.isExecuted ? '#166534' : '#854d0e'
+                      }}>
+                        {refund.isExecuted ? <CheckCircle size={14}/> : <Info size={14}/>}
+                        {refund.isExecuted ? 'בוצע' : 'ממתין לביצוע'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        {!refund.isExecuted && (
+                          <button data-agy-id={`execute_btn_${refund.id}`}
+                            onClick={() => executeRefund(refund.id)}
+                            disabled={isProcessing}
+                            title="סמן כבוצע"
+                            style={{ background: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#bbf7d0'}
+                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
+                          >
+                            <CheckCircle size={18} />
+                          </button>
+                        )}
+                        <button data-agy-id={`cancel_btn_${refund.id}`}
+                          onClick={() => cancelRefund(refund.id)}
+                          disabled={isProcessing}
+                          title="בטל בקשה"
+                          style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fecaca'}
+                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+                        >
+                          <XCircle size={18} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+    </main>
+  );
+}

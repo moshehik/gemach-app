@@ -6,17 +6,30 @@ export const dynamic = 'force-dynamic';
 export async function POST(request) {
   try {
     const data = await request.json();
-    const { items, eventDate, isAbroad, fromDate, toDate, orderId } = data;
+    const { items, eventDate, isAbroad, fromDate, toDate, orderId, customSpacing, simulateIfError } = data;
 
-    const result = await validateOrderItemsAvailability(items, eventDate, isAbroad, fromDate, toDate, orderId);
+    const result = await validateOrderItemsAvailability(items, eventDate, isAbroad, fromDate, toDate, orderId, customSpacing);
 
     if (result.error) {
       return NextResponse.json({ error: result.error }, { status: 400 });
     }
 
+    let simulation = null;
+    if (!result.valid && simulateIfError) {
+      simulation = {};
+      for (const spacing of [1, 2, 3]) {
+        const simResult = await validateOrderItemsAvailability(items, eventDate, isAbroad, fromDate, toDate, orderId, spacing);
+        simulation[spacing] = {
+          valid: simResult.valid,
+          errors: simResult.errors
+        };
+      }
+    }
+
     return NextResponse.json({
       valid: result.valid,
-      errors: result.errors
+      errors: result.errors,
+      simulation
     });
   } catch (error) {
     console.error('Validation error:', error);

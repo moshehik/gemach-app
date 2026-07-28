@@ -175,7 +175,9 @@ export default function AlterationsPage() {
         ...item,
         orderId: item.order?.orderId,
         customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
-        dressName: item.dressItem?.dress?.name || item.dressItem?.dressName,
+        dressName: item.dressItem?.dress?.name 
+          ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+          : (item.description || item.dressItem?.dressName),
         eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
         alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין'
       }));
@@ -220,7 +222,9 @@ export default function AlterationsPage() {
                 ...item,
                 orderId: item.order?.orderId,
                 customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
-                dressName: item.dressItem?.dress?.name || item.dressItem?.dressName,
+                dressName: item.dressItem?.dress?.name 
+                  ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                  : (item.description || item.dressItem?.dressName),
                 eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
                 alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין'
               }))}
@@ -358,8 +362,8 @@ export default function AlterationsPage() {
           <p>{error}</p>
         </div>
       ) : (
-        <div className="dress-card" style={{ overflow: 'hidden', padding: 0 }}>
-          <div style={{ overflowX: 'auto' }}>
+        <div className="dress-card" style={{ padding: 0 }}>
+          <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
               <thead>
                 <tr style={{ background: 'rgba(212, 175, 55, 0.1)', borderBottom: '2px solid var(--border-color)' }}>
@@ -393,11 +397,14 @@ export default function AlterationsPage() {
                       onMouseLeave={e => e.currentTarget.style.background = item.alterationDone ? 'rgba(67, 160, 71, 0.05)' : (index % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)')}
                     >
                       <td style={{ padding: '1rem' }}>
-                        <div>{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</div>
-                        {item.order?.eventDate && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{formatDate(item.order.eventDate)}</div>}
+                        <div style={{ fontWeight: 'bold' }}>{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</div>
                       </td>
                       <td style={{ padding: '1rem', fontWeight: '600' }}>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
-                      <td style={{ padding: '1rem', color: 'var(--primary-color)' }}>{item.dressItem?.dress?.name || item.dressItem?.dressName}</td>
+                      <td style={{ padding: '1rem', color: 'var(--primary-color)' }}>
+                        {item.dressItem?.dress?.name 
+                          ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                          : (item.description || item.dressItem?.dressName)}
+                      </td>
                       <td style={{ padding: '1rem' }}>
                         <span style={{ background: 'var(--bg-color)', border: '1px solid #ddd', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.9rem', fontWeight: '500' }}>
                           {item.sizeText || item.size}
@@ -454,24 +461,20 @@ export default function AlterationsPage() {
                   ))
                 )}
               </tbody>
-              {items && items.length > 0 && (
-                <tfoot>
-                  <tr>
-                    <td colSpan="7" style={{ padding: '1rem', fontWeight: 'bold', textAlign: 'center', background: 'var(--element-bg)', borderTop: '2px solid var(--element-border)' }}>
-                      סה"כ שורות מוצגות: {items.length}
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
+              </tbody>
             </table>
+          </div>
+          
+          {/* Sticky Bottom Bar */}
+          <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 0 -1rem 0', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ fontWeight: 'bold' }}>סה"כ שורות מוצגות: {items.length}</div>
             
-            {/* Pagination Controls */}
             {totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
-                  <button className="btn btn-outline" disabled={page >= totalPages } onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>הבא &gt;</button>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }}  /> מתוך {totalPages}</span>
-                  <button className="btn btn-outline" disabled={page <= 1 } onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הקודם</button>
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
+                <button className="btn btn-outline" disabled={page >= totalPages } onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>הבא &gt;</button>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages}</span>
+                <button className="btn btn-outline" disabled={page <= 1 } onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הקודם</button>
+              </div>
             )}
           </div>
         </div>

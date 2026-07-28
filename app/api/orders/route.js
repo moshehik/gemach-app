@@ -76,7 +76,8 @@ export async function GET(request) {
         OR: [
           { orderId: isNaN(parseInt(search)) ? undefined : parseInt(search) },
           { customer: { firstName: { contains: search } } },
-          { customer: { lastName: { contains: search } } }
+          { customer: { lastName: { contains: search } } },
+          { items: { some: { isDeleted: false, dressItem: { dress: { name: { contains: search } } } } } }
         ]
       } : {}),
       ...(advOrderId ? { orderId: parseInt(advOrderId) } : {}),

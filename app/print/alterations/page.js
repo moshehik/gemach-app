@@ -90,6 +90,39 @@ export default function PrintAlterationsPage() {
     return 'רשימת תיקונים לביצוע';
   };
 
+  let groupedItems = [];
+  if ((reportType === 'labels' || reportType === 'orders_all') && items.length > 0) {
+    const sorted = [...items].sort((a, b) => {
+      const dateA = new Date(a.order?.eventDate || '2100-01-01').getTime();
+      const dateB = new Date(b.order?.eventDate || '2100-01-01').getTime();
+      if (dateA !== dateB) return dateA - dateB;
+
+      const nameA = ((a.order?.customer?.firstName || '') + ' ' + (a.order?.customer?.lastName || '')).toLowerCase();
+      const nameB = ((b.order?.customer?.firstName || '') + ' ' + (b.order?.customer?.lastName || '')).toLowerCase();
+      if (nameA !== nameB) return nameA.localeCompare(nameB, 'he');
+
+      const dressA = (a.dressItem?.dress?.name || a.dressItem?.dressName || '').toLowerCase();
+      const dressB = (b.dressItem?.dress?.name || b.dressItem?.dressName || '').toLowerCase();
+      if (dressA !== dressB) return dressA.localeCompare(dressB, 'he');
+
+      const sizeA = (a.sizeText || a.size || '').toString().toLowerCase();
+      const sizeB = (b.sizeText || b.size || '').toString().toLowerCase();
+      return sizeA.localeCompare(sizeB, 'he', { numeric: true });
+    });
+
+    const groups = {};
+    sorted.forEach(item => {
+      const dateKey = item.order?.eventDate ? item.order.eventDate.split('T')[0] : 'ללא תאריך';
+      if (!groups[dateKey]) groups[dateKey] = [];
+      groups[dateKey].push(item);
+    });
+    
+    groupedItems = Object.keys(groups).map(key => ({
+       date: key,
+       items: groups[key]
+    }));
+  }
+
   return (
     <div data-agy-id="print-alterations-container" className="print-container" style={{ padding: '20px', direction: 'rtl' }}>
       <style>{`
@@ -135,6 +168,10 @@ export default function PrintAlterationsPage() {
         }
       `}</style>
 
+      {reportType === 'orders_all' && (
+        <div style={{ position: 'absolute', top: '20px', right: '20px', fontWeight: 'bold', fontSize: '14px' }}>בס"ד</div>
+      )}
+
       <div className="print-header">
         <h1>{getReportTitle()}</h1>
         <h3>
@@ -151,40 +188,94 @@ export default function PrintAlterationsPage() {
           מערכת התיקונים מכובה בהגדרות. לא ניתן להפיק דוח תיקונים.
         </div>
       ) : reportType === 'labels' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px', marginTop: '20px' }}>
-          {items.length === 0 ? (
-            <div style={{ gridColumn: 'span 3', textAlign: 'center' }}>לא נמצאו תיקונים להדפסה</div>
+        <div style={{ marginTop: '20px' }}>
+          {groupedItems.length === 0 ? (
+            <div style={{ textAlign: 'center' }}>לא נמצאו תיקונים להדפסה</div>
           ) : (
-            items.map(item => (
-              <div key={item.id} style={{ 
-                border: '1px solid #000', 
-                padding: '15px', 
-                borderRadius: '8px',
-                display: 'flex', 
-                flexDirection: 'column', 
-                justifyContent: 'center', 
-                alignItems: 'center',
-                textAlign: 'center',
-                minHeight: '180px',
-                pageBreakInside: 'avoid'
-              }}>
-                <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '8px' }}>
-                  {item.order?.customer?.firstName} {item.order?.customer?.lastName}
-                </div>
-                <div style={{ fontSize: '16px', marginBottom: '5px' }}>
-                  <strong>{item.dressItem?.dress?.name || item.dressItem?.dressName}</strong> | מידה: {item.sizeText || item.size}
-                </div>
-                <div style={{ fontSize: '14px', marginBottom: '10px' }}>
-                  אירוע: <strong>{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</strong> {item.order?.eventDate ? `(${formatDate(item.order.eventDate)})` : ''}
-                </div>
-                <div style={{ fontSize: '15px', fontWeight: 'bold', borderTop: '1px dashed #ccc', paddingTop: '8px', width: '100%' }}>
-                  {item.neckAlteration > 0 ? `צוואר: הצרה ${item.neckAlteration} | ` : ''}
-                  {item.sleeveAlteration > 0 ? `שרוול: הארכה ${item.sleeveAlteration} | ` : ''}
-                  {item.lengthAlteration ? `אורך: ${item.lengthAlteration} | ` : ''}
-                  {item.alterationDetails || ''}
+            groupedItems.map(group => (
+              <div key={group.date} style={{ marginBottom: '30px' }}>
+                <h3 style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '15px', color: 'black' }}>
+                  תאריך אירוע: {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')} {group.date !== 'ללא תאריך' ? `(${formatDate(group.date)})` : ''}
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+                  {group.items.map(item => (
+                    <div key={item.id} style={{ 
+                      position: 'relative',
+                      border: '1px solid #000', 
+                      padding: '15px', 
+                      borderRadius: '8px',
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      justifyContent: 'center', 
+                      alignItems: 'center',
+                      textAlign: 'center',
+                      minHeight: '150px',
+                      pageBreakInside: 'avoid',
+                      background: '#fff',
+                      color: '#000'
+                    }}>
+                      <div style={{ position: 'absolute', top: '5px', right: '10px', fontSize: '12px', fontWeight: 'bold' }}>בס"ד</div>
+                      <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
+                        {item.order?.customer?.firstName} {item.order?.customer?.lastName}
+                      </div>
+                        דגם: {
+                          item.dressItem?.dress?.name 
+                            ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                            : (item.dressItem?.dressName || item.description || '-')
+                        }
+                      <div style={{ fontSize: '16px', marginBottom: '15px' }}>
+                        מידה: <strong>{item.sizeText || item.size}</strong>
+                      </div>
+                      <div style={{ fontSize: '15px', fontWeight: 'bold', borderTop: '1px dashed #000', paddingTop: '10px', width: '100%' }}>
+                        {item.neckAlteration > 0 ? `צוואר: הצרה ${item.neckAlteration} | ` : ''}
+                        {item.sleeveAlteration > 0 ? `שרוול: הארכה ${item.sleeveAlteration} | ` : ''}
+                        {item.lengthAlteration ? `אורך: ${item.lengthAlteration} | ` : ''}
+                        {item.alterationDetails || ''}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             ))
+          )}
+        </div>
+      ) : reportType === 'orders_all' ? (
+        <div style={{ marginTop: '20px' }}>
+          {groupedItems.length === 0 ? (
+            <div style={{ textAlign: 'center' }}>לא נמצאו רשומות</div>
+          ) : (
+            groupedItems.map(group => {
+              const dayOfWeek = group.date !== 'ללא תאריך' ? new Date(group.date).toLocaleDateString('he-IL', { weekday: 'long' }) : '';
+              return (
+                <div key={group.date} style={{ marginBottom: '40px', pageBreakInside: 'avoid' }}>
+                  <h3 style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '10px' }}>
+                    יום {dayOfWeek} - {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')} {group.date !== 'ללא תאריך' ? `(${formatDate(group.date)})` : ''}
+                  </h3>
+                  <table className="print-table" style={{ background: '#fff', border: '1px solid #000' }}>
+                    <thead>
+                      <tr>
+                        <th style={{ backgroundColor: '#fff', color: '#000', border: '1px solid #000', WebkitPrintColorAdjust: 'exact', padding: '8px' }}>לקוח</th>
+                        <th style={{ backgroundColor: '#fff', color: '#000', border: '1px solid #000', WebkitPrintColorAdjust: 'exact', padding: '8px' }}>דגם שמלה</th>
+                        <th style={{ backgroundColor: '#fff', color: '#000', border: '1px solid #000', WebkitPrintColorAdjust: 'exact', padding: '8px' }}>מידה</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {group.items.map(item => (
+                        <tr key={item.id}>
+                          <td style={{ border: '1px solid #000', padding: '8px' }}>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
+                          <td style={{ border: '1px solid #000', padding: '8px' }}>
+                            {item.dressItem?.dress?.name 
+                              ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                              : (item.dressItem?.dressName || item.description || '-')}
+                          </td>
+                          <td style={{ border: '1px solid #000', padding: '8px' }}>{item.sizeText || item.size}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              );
+            })
           )}
         </div>
       ) : (
@@ -215,10 +306,13 @@ export default function PrintAlterationsPage() {
                 <tr key={item.id}>
                   <td>
                     <div style={{ fontWeight: 'bold' }}>{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</div>
-                    {item.order?.eventDate && <div style={{ fontSize: '11px', color: '#666' }}>{formatDate(item.order.eventDate)}</div>}
                   </td>
                   <td>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
-                  <td>{item.dressItem?.dress?.name || item.dressItem?.dressName}</td>
+                  <td>
+                    {item.dressItem?.dress?.name 
+                      ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                      : (item.dressItem?.dressName || item.description || '-')}
+                  </td>
                   <td>{item.sizeText || item.size}</td>
                   {reportType !== 'orders_no_alterations' && reportType !== 'orders_all' && (
                     <>

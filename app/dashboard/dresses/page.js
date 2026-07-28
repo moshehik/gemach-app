@@ -767,8 +767,9 @@ export default function DressesManagement() {
         {loading ? (
           <div style={{ textAlign: 'center', padding: '3rem' }}>טוען נתונים...</div>
         ) : (
-          <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
-            <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
+          <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)' }}>
+            <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
+              <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--element-border)', background: 'var(--element-bg)' }}>
                   {settings.hide_dress_images !== 'true' && <th style={{ padding: '1rem' }}>תמונה</th>}
@@ -807,24 +808,21 @@ export default function DressesManagement() {
                   </tr>
                 ))}
               </tbody>
-              {filteredDresses && filteredDresses.length > 0 && (
-                <tfoot>
-                  <tr>
-                    <td colSpan="6" style={{ padding: '1rem', fontWeight: 'bold', textAlign: 'center', background: 'var(--element-bg)', borderTop: '2px solid var(--element-border)' }}>
-                      סה"כ שורות מוצגות: {filteredDresses.length}
-                    </td>
-                  </tr>
-                </tfoot>
-              )}
             </table>
+            </div>
             
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', padding: '1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--element-border)', borderRadius: '0 0 12px 12px' }}>
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הקודם</button>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }} /> מתוך {totalPages} (סה"כ {totalDresses} תוצאות)</span>
-                <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הבא</button>
-              </div>
-            )}
+            {/* Sticky Bottom Bar */}
+            <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 -1rem -1rem -1rem', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ fontWeight: 'bold' }}>סה"כ שורות מוצגות: {filteredDresses.length}</div>
+              
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
+                  <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הבא</button>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages} (סה"כ {totalDresses} תוצאות)</span>
+                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הקודם</button>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </main>

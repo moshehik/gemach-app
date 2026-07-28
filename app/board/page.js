@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { HDate, Sedra, Locale, HebrewCalendar } from '@hebcal/core';
 import { getHebrewMonthYear } from '@/lib/hebrewDate';
-import { ChevronRight, ChevronLeft, Calendar as CalendarIcon, FileText, MapPin, Search, AlertCircle, RefreshCw, Smartphone, List, CheckCircle2, Phone, Calendar as CalendarIcon2, Shirt, CreditCard, Info, Maximize2, User, X } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Calendar as CalendarIcon, FileText, MapPin, Search, AlertCircle, RefreshCw, Smartphone, List, CheckCircle2, Phone, Calendar as CalendarIcon2, Shirt, CreditCard, Info, Maximize2, User, X, Filter } from 'lucide-react';
 import AISearchBar from '../components/AISearchBar';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import StatisticsModal from '../components/StatisticsModal';
@@ -503,25 +503,27 @@ export default function BoardPage() {
                   onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
                   loading={aiLoading}
                 />
-          <button 
-            data-agy-id="global-search-button"
-            onClick={handleGlobalSearch}
-            className="btn btn-outline"
-            style={{ borderRadius: '8px', padding: '0 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}
-            title="חיפוש בכל החודשים"
-          >
-            <Search size={18} /> גלובלי
-          </button>
               </div>
-              <button 
-                data-agy-id="adv-search-button"
-                onClick={() => setShowAdvSearch(true)}
-                className="btn btn-outline"
-                style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}
-                title="חיפוש מתקדם"
-              >
-                נ”
-              </button>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <button 
+                  data-agy-id="global-search-button"
+                  onClick={handleGlobalSearch}
+                  className="btn btn-outline"
+                  style={{ borderRadius: '8px', padding: '0 1rem', height: '45px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}
+                  title="חיפוש בכל החודשים"
+                >
+                  <Search size={18} /> גלובלי
+                </button>
+                <button 
+                  data-agy-id="adv-search-button"
+                  onClick={() => setShowAdvSearch(true)}
+                  className="btn btn-outline"
+                  style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}
+                  title="חיפוש מתקדם"
+                >
+                  <Filter size={20} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -680,19 +682,32 @@ export default function BoardPage() {
               ) : globalSearchResults && globalSearchResults.length > 0 ? (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                   {globalSearchResults.map(order => (
-                    <Link key={order.orderId} href={`/orders/${order.orderId}`} target="_blank" style={{ textDecoration: 'none', color: 'inherit' }}>
-                      <div style={{ padding: '1rem', border: '1px solid var(--element-border)', borderRadius: '8px', background: 'var(--input-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s', cursor: 'pointer' }}
-                           onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
-                           onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--element-border)'}>
-                        <div>
-                          <div style={{ fontWeight: 'bold', marginBottom: '0.25rem', color: 'var(--text-main)' }}>הזמנה #{order.orderId} - {order.customer?.firstName} {order.customer?.lastName}</div>
-                          <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : ''}</div>
-                        </div>
-                        <div style={{ background: 'var(--primary-color)', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '24px', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                          צפה בהזמנה
-                        </div>
+                    <div key={order.orderId} style={{ padding: '1rem', border: '1px solid var(--element-border)', borderRadius: '8px', background: 'var(--input-bg)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', transition: 'all 0.2s' }}
+                         onMouseEnter={e => e.currentTarget.style.borderColor = 'var(--primary-color)'}
+                         onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--element-border)'}>
+                      <div>
+                        <div style={{ fontWeight: 'bold', marginBottom: '0.25rem', color: 'var(--text-main)' }}>הזמנה #{order.orderId} - {order.customer?.firstName || ''} {order.customer?.lastName || order.customerName || ''}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : ''}</div>
                       </div>
-                    </Link>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button 
+                          onClick={() => {
+                            if (order.eventDate) {
+                              setJumpDate(new Date(order.eventDate));
+                              setShowGlobalSearchModal(false);
+                            }
+                          }}
+                          style={{ background: 'var(--element-bg)', border: 'none', color: 'var(--text-main)', padding: '0.4rem 0.8rem', borderRadius: '24px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer' }}
+                        >
+                          קפוץ לחודש
+                        </button>
+                        <Link href={`/orders/${order.orderId}`} target="_blank" style={{ textDecoration: 'none' }}>
+                          <div style={{ background: 'var(--primary-color)', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '24px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer' }}>
+                            צפה בהזמנה
+                          </div>
+                        </Link>
+                      </div>
+                    </div>
                   ))}
                 </div>
               ) : (

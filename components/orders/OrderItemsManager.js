@@ -342,7 +342,9 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                           onChange={(model) => handleModelChange(originalIndex, model)} 
                         />
                       ) : (
-                        item.dressItem?.dress?.name || item.description || 'פריט כללי'
+                        item.dressItem?.dress?.name 
+                          ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                          : (item.description || item.dressItem?.dressName || 'פריט כללי')
                       )}
                     </td>
                     <td style={{ padding: '1rem' }}>

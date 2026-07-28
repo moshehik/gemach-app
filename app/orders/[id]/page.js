@@ -28,6 +28,7 @@ export default function OrderDetailsPage({ params }) {
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showEmployeesModal, setShowEmployeesModal] = useState(false);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
+  const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   
   // Tab State
   const [activeTab, setActiveTab] = useState('details'); // details, items, rentals, payments, history
@@ -306,12 +307,7 @@ export default function OrderDetailsPage({ params }) {
       return;
     }
     
-    if (window.confirm("חתמו על התקנון?")) {
-      const updatedOrder = { ...order, hasSignedRegulations: true };
-      setOrder(updatedOrder);
-      handleSave(updatedOrder);
-      setShowPrintMenu(!showPrintMenu);
-    }
+    setShowRegulationsModal(true);
   };
 
   const handleSendEmail = async (type) => {
@@ -390,7 +386,7 @@ export default function OrderDetailsPage({ params }) {
         top: '1rem',
         zIndex: 100,
         transition: 'background-color 0.3s ease',
-        overflow: 'hidden'
+        overflow: 'visible'
       }}>
         {/* Top Header Information */}
         <div style={{
@@ -459,7 +455,7 @@ export default function OrderDetailsPage({ params }) {
               </div>
 
               <div style={{ background: isPaid ? '#dcfce7' : '#fee2e2', padding: '0.4rem 0.8rem', borderRadius: '8px', color: isPaid ? '#166534' : '#991b1b', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '600' }}>
-                <span>חוב: ₪{totalRequired}</span> | <span>שולם: ₪{totalPaid}</span>
+                <span>{isPaid ? 'שולם' : (totalPaid > 0 ? 'שולם חלקי' : 'לא שולם')}</span>
               </div>
             </div>
           </div>
@@ -588,7 +584,7 @@ export default function OrderDetailsPage({ params }) {
         </div>
 
         {/* Tab Navigation */}
-        <div style={{ position: 'relative', background: 'rgba(241, 245, 249, 0.4)', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ position: 'relative', background: 'rgba(241, 245, 249, 0.4)', borderTop: '1px solid #e2e8f0', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px', overflow: 'hidden' }}>
           <div style={{ display: 'flex', padding: '0 1rem' }}>
             {tabs.map((tab, idx) => {
               const TabIcon = tab.icon;
@@ -715,6 +711,38 @@ export default function OrderDetailsPage({ params }) {
         isOpen={showEmployeesModal}
         onClose={() => setShowEmployeesModal(false)}
       />
+
+      {/* Regulations Modal */}
+      {showRegulationsModal && typeof document !== 'undefined' && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
+          <div className="animate-slide-in" style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', textAlign: 'center' }}>
+            <h2 style={{ color: 'var(--primary-color)', marginTop: 0, marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>חתימה על תקנון</h2>
+            <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: 'var(--text-main)' }}>האם הלקוח חתם על התקנון?</p>
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button 
+                onClick={() => {
+                  const updatedOrder = { ...order, hasSignedRegulations: true };
+                  setOrder(updatedOrder);
+                  handleSave(updatedOrder);
+                  setShowRegulationsModal(false);
+                  setShowPrintMenu(true);
+                }}
+                className="btn btn-primary"
+                style={{ padding: '0.8rem 2rem', borderRadius: '8px', fontSize: '1rem', fontWeight: 'bold' }}
+              >
+                כן, חתם
+              </button>
+              <button 
+                onClick={() => setShowRegulationsModal(false)}
+                className="btn btn-outline"
+                style={{ padding: '0.8rem 2rem', borderRadius: '8px', fontSize: '1rem', fontWeight: 'bold' }}
+              >
+                לא (ביטול)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

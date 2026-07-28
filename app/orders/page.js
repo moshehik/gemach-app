@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FileText, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays, AlertCircle, Info, Phone, Calendar as CalendarIcon2, CreditCard, CheckCircle2, Filter, Search } from 'lucide-react';
+import { FileText, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays, AlertCircle, Info, Phone, Calendar as CalendarIcon2, CreditCard, CheckCircle2, Filter, Search, Printer } from 'lucide-react';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import CapacitySearchModal from '../../components/CapacitySearchModal';
 import ExportButtons from '../../components/ExportButtons';
@@ -14,6 +14,7 @@ import { useLabels } from '@/app/components/LabelsContext';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import OrderModelSelector from '../../components/orders/OrderModelSelector';
+import PrintWizardModal from '../components/PrintWizardModal';
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -41,6 +42,7 @@ export default function OrdersPage() {
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);
   const [showCapacitySearch, setShowCapacitySearch] = useState(false);
+  const [showPrintWizard, setShowPrintWizard] = useState(false);
   const [rentalModalOrderId, setRentalModalOrderId] = useState(null);
 
   const [showStatistics, setShowStatistics] = useState(false);
@@ -246,6 +248,15 @@ export default function OrdersPage() {
             <CalendarSearch size={22} />
           </button>
 
+          <button 
+             onClick={() => setShowPrintWizard(true)} 
+             className="btn btn-outline" 
+             style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--primary-color, #8b5cf6)', backgroundColor: 'var(--element-bg)', cursor: 'pointer' }}
+             title="הדפסת דוחות"
+          >
+            <Printer size={22} />
+          </button>
+
           <ExportButtons 
             data={orders.map(o => ({
               ...o,
@@ -380,12 +391,13 @@ export default function OrdersPage() {
         
         {/* Orders List */}
         <div style={{ flex: '1 1 600px' }}>
-          <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
+          <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)' }}>
             {loading && orders.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
             ) : (
               <>
-                <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
+                <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
+                  <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--element-border)', color: 'var(--text-muted)' }}>
                       <th style={thStyle} onClick={() => handleSort('orderId')}>{getLabel('order_id', 'קוד הזמנה')} <SortIcon column="orderId" /></th>
@@ -401,13 +413,14 @@ export default function OrdersPage() {
                   <tbody>
                     {orders.map(order => {
                       const isUnpaid = order.totalPaid < order.totalAmount && order.totalAmount > 0;
+                      const hasCustomSpacing = order.customSpacing !== null && order.customSpacing !== undefined;
                       return (
                       <tr key={order.orderId} style={{ 
                         borderBottom: '1px solid var(--element-border)', 
                         transition: 'background 0.2s', 
                         cursor: 'pointer', 
-                        background: selectedOrder?.orderId === order.orderId ? 'var(--element-bg)' : (isUnpaid ? 'var(--error-bg, rgba(239, 68, 68, 0.1))' : 'transparent'),
-                        borderRight: isUnpaid ? '4px solid var(--error-color, #ef4444)' : 'none'
+                        background: selectedOrder?.orderId === order.orderId ? 'var(--element-bg)' : (isUnpaid ? 'var(--error-bg, rgba(239, 68, 68, 0.1))' : (hasCustomSpacing ? '#fef9c3' : 'transparent')),
+                        borderRight: isUnpaid ? '4px solid var(--error-color, #ef4444)' : (hasCustomSpacing ? '4px solid #facc15' : 'none')
                       }} onClick={() => router.push(`/orders/${order.orderId}`)}>
                         <td style={{ padding: '1rem', fontWeight: isUnpaid ? 'bold' : 'normal', color: isUnpaid ? 'var(--error-color, #b91c1c)' : 'inherit' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -476,20 +489,20 @@ export default function OrdersPage() {
                       </tr>
                     )})}
                   </tbody>
-                  <tfoot>
-                    <tr>
-                      <td colSpan="8" style={{ padding: '1rem', fontWeight: 'bold', textAlign: 'center', background: 'var(--element-bg)', borderTop: '2px solid var(--element-border)' }}>
-                        סה"כ שורות מוצגות: {orders.length}
-                      </td>
-                    </tr>
-                  </tfoot>
-                </table>
+                  </table>
+                </div>
                 
-                {/* Pagination Controls */}
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
-                  <button data-agy-id="orders_page_button_20" className="btn btn-outline" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>הבא &gt;</button>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input data-agy-id="orders_page_input_21" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} disabled={isAiModeActive} /> מתוך {totalPages}</span>
-                  <button data-agy-id="orders_page_button_22" className="btn btn-outline" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הקודם</button>
+                {/* Sticky Bottom Bar */}
+                <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 -1rem -1rem -1rem', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
+                  <div style={{ fontWeight: 'bold' }}>סה"כ שורות מוצגות: {orders.length}</div>
+                  
+                  {totalPages > 1 && (
+                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
+                      <button data-agy-id="orders_page_button_20" className="btn btn-outline" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>הבא &gt;</button>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input data-agy-id="orders_page_input_21" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} disabled={isAiModeActive} /> מתוך {totalPages}</span>
+                      <button data-agy-id="orders_page_button_22" className="btn btn-outline" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הקודם</button>
+                    </div>
+                  )}
                 </div>
               </>
             )}
@@ -502,6 +515,13 @@ export default function OrdersPage() {
         isOpen={showCapacitySearch} 
         onClose={() => setShowCapacitySearch(false)} 
       />
+
+      {showPrintWizard && (
+        <PrintWizardModal 
+          onClose={() => setShowPrintWizard(false)}
+          defaultReportType="orders_all" 
+        />
+      )}
 
       {/* Rental Modal */}
       {rentalModalOrderId && (

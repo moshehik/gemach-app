@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, PackageCheck, PackageOpen, Scan, Undo2, XCircle } from 'lucide-react';
@@ -251,7 +251,9 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
                     return (
                       <tr key={item.id || index} style={rowStyle} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isRented ? '#dbeafe' : isReturned ? '#dcfce7' : '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'white'}>
                         <td style={{ padding: '1rem', fontWeight: 'bold', color: '#1e293b' }}>
-                          {item.dressItem?.dress?.name || item.description || 'פריט כללי'}
+                          {item.dressItem?.dress?.name 
+                            ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                            : (item.description || item.dressItem?.dressName || 'פריט כללי')}
                         </td>
                         <td style={{ padding: '1rem' }}>
                           {item.sizeText || '-'}

@@ -5,11 +5,11 @@ import { createPortal } from 'react-dom';
 import { Printer, Calendar as CalendarIcon, Clock, CheckCircle, FileText, X } from 'lucide-react';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 
-export default function PrintWizardModal({ onClose, defaultStartDate, defaultEndDate }) {
+export default function PrintWizardModal({ onClose, defaultStartDate, defaultEndDate, defaultReportType }) {
   const [dateMode, setDateMode] = useState('current'); // 'current', 'today', 'custom'
   const [startDate, setStartDate] = useState(defaultStartDate || '');
   const [endDate, setEndDate] = useState(defaultEndDate || '');
-  const [reportType, setReportType] = useState('alterations_pending'); // 'alterations_pending', 'alterations_all', 'orders_no_alterations'
+  const [reportType, setReportType] = useState(defaultReportType || 'alterations_pending'); // 'alterations_pending', 'alterations_all', 'orders_no_alterations', 'orders_all'
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {

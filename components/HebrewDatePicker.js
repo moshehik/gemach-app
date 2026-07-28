@@ -251,8 +251,21 @@ export default function HebrewDatePicker({ value, selectedDate, onChange, classN
           </div>
           
           <div style={{ marginBottom: '0.5rem' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px', textAlign: 'center', marginBottom: '8px', paddingBottom: '8px', borderBottom: '1px solid var(--border-main)', fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-muted)' }}>
-              <div>א'</div><div>ב'</div><div>ג'</div><div>ד'</div><div>ה'</div><div>ו'</div><div>ש'</div>
+            <div style={{ 
+              display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', 
+              marginBottom: '12px', padding: '8px', 
+              background: 'var(--element-bg)', 
+              borderRadius: '14px', fontWeight: '700', fontSize: '0.85rem', color: 'var(--text-muted)',
+              border: '1px solid var(--border-main)',
+              boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02), 0 2px 6px rgba(0,0,0,0.02)'
+            }}>
+              <div style={{ background: 'var(--card-bg)', borderRadius: '8px', padding: '4px 0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>א'</div>
+              <div style={{ background: 'var(--card-bg)', borderRadius: '8px', padding: '4px 0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>ב'</div>
+              <div style={{ background: 'var(--card-bg)', borderRadius: '8px', padding: '4px 0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>ג'</div>
+              <div style={{ background: 'var(--card-bg)', borderRadius: '8px', padding: '4px 0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>ד'</div>
+              <div style={{ background: 'var(--card-bg)', borderRadius: '8px', padding: '4px 0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>ה'</div>
+              <div style={{ background: 'var(--card-bg)', borderRadius: '8px', padding: '4px 0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)' }}>ו'</div>
+              <div style={{ background: 'var(--primary-light)', borderRadius: '8px', padding: '4px 0', boxShadow: '0 1px 2px rgba(0,0,0,0.03)', color: 'var(--primary-color)', fontWeight: '800' }}>ש'</div>
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '2px' }}>
               {(() => {

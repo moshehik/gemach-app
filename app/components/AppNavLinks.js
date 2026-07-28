@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import Link from 'next/link';
 import { useLabels } from './LabelsContext';
@@ -15,6 +15,7 @@ export default function AppNavLinks({ enableAlterations }) {
       <Link href="/orders" className="nav-link">{getLabel('tab_orders', 'הזמנות')}</Link>
       <Link href="/rentals" className="nav-link">{getLabel('tab_rentals', 'השכרות והחזרות')}</Link>
       {enableAlterations && <Link href="/alterations" className="nav-link">תפירות</Link>}
+      <Link href="/refunds" className="nav-link">זיכויים</Link>
     </div>
   );
 }

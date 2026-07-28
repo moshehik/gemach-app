@@ -9,6 +9,8 @@ import { getHebrewDateString } from '../../lib/hebrewDate';
 
 export default function OrderGeneralDetails({ order, onOrderChange, items = [], onSaveRequest }) {
   
+  const [simulationModalData, setSimulationModalData] = useState(null);
+
   const handleChange = (field, value) => {
     onOrderChange({ ...order, [field]: value });
   };
@@ -33,9 +35,6 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
     // Skip validation if it's an abroad event but dates aren't fully entered yet
     if (proposedOrder.isAbroad && (!proposedOrder.fromDate || !proposedOrder.toDate)) {
       handleChange(field, value);
-      if (['isAbroad', 'eventDate', 'fromDate', 'toDate', 'returnDate'].includes(field)) {
-        if (onSaveRequest) setTimeout(() => onSaveRequest(proposedOrder), 0);
-      }
       return;
     }
 
@@ -49,7 +48,9 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
           isAbroad: proposedOrder.isAbroad,
           fromDate: proposedOrder.fromDate,
           toDate: proposedOrder.toDate,
-          orderId: proposedOrder.orderId
+          orderId: proposedOrder.orderId,
+          customSpacing: proposedOrder.customSpacing,
+          simulateIfError: true
         })
       });
       
@@ -58,21 +59,64 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
         alert(`שגיאה בבדיקת מלאי: ${validateData.error}`);
         return;
       }
+      
       if (!validateData.valid) {
-        const errorLines = validateData.errors.map(e => 
-          `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
-        ).join('\n');
-        alert(`לא ניתן לשנות את התאריך עקב חוסר במלאי לפריטים הקיימים בהזמנה:\n\n${errorLines}`);
+        if (validateData.simulation) {
+          // Open simulation modal
+          setSimulationModalData({
+            errors: validateData.errors,
+            simulation: validateData.simulation,
+            field,
+            value
+          });
+        } else {
+          const errorLines = validateData.errors.map(e => 
+            `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
+          ).join('\n');
+          alert(`לא ניתן לשנות את התאריך עקב חוסר במלאי לפריטים הקיימים בהזמנה:\n\n${errorLines}`);
+        }
         return;
       }
       
       handleChange(field, value);
-      if (['isAbroad', 'eventDate', 'fromDate', 'toDate', 'returnDate'].includes(field)) {
+      if (['isAbroad', 'eventDate', 'fromDate', 'toDate', 'returnDate', 'customSpacing'].includes(field)) {
         if (onSaveRequest) setTimeout(() => onSaveRequest(proposedOrder), 0);
       }
     } catch (err) {
       console.error('Validation fetch error', err);
       alert('שגיאה בבדיקת המלאי מול השרת.');
+    }
+  };
+
+  const applyCustomSpacing = async (spacing) => {
+    const authResult = await window.customAuthPrompt("שינוי ציפוף ימים מותאם אישית דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
+    if (!authResult || !authResult.pin) return;
+    try {
+      const res = await fetch('/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
+        return;
+      }
+      
+      if (simulationModalData) {
+        // We are applying this from the simulation modal
+        const { field, value } = simulationModalData;
+        
+        // Update both the customSpacing and the date field
+        onOrderChange({ ...order, customSpacing: spacing, [field]: value });
+        setSimulationModalData(null);
+        if (onSaveRequest) setTimeout(() => onSaveRequest({ ...order, customSpacing: spacing, [field]: value }), 0);
+      } else {
+        // Just setting custom spacing directly
+        validateAndChangeDate('customSpacing', spacing);
+      }
+    } catch (err) {
+      alert('שגיאה באימות קוד מנהל.');
     }
   };
 
@@ -211,6 +255,32 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   <div style={{ fontSize: '1.1rem', direction: 'ltr', textAlign: 'right', color: '#334155', fontWeight: '500' }}>{order.customer.phone2}</div>
                 </div>
               )}
+              <div style={{ flex: '1 1 100%', marginTop: '0.5rem' }}>
+                <div 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const newValue = !order.hasSignedRegulations;
+                    handleChange('hasSignedRegulations', newValue);
+                    if (onSaveRequest) onSaveRequest({ ...order, hasSignedRegulations: newValue });
+                  }}
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer',
+                    padding: '0.6rem 1.2rem', background: order.hasSignedRegulations ? '#dcfce7' : '#f8fafc',
+                    borderRadius: '10px', border: `1px solid ${order.hasSignedRegulations ? '#86efac' : '#e2e8f0'}`,
+                    color: order.hasSignedRegulations ? '#166534' : '#475569', fontWeight: '700',
+                    boxShadow: '0 2px 4px rgba(0,0,0,0.02)', transition: 'all 0.2s'
+                  }}
+                >
+                  <input 
+                    type="checkbox" 
+                    checked={!!order.hasSignedRegulations} 
+                    onChange={() => {}} // handled by parent div
+                    style={{ transform: 'scale(1.4)', cursor: 'pointer', accentColor: '#16a34a', margin: 0 }}
+                  />
+                  <span>חתם על תקנון השכרה</span>
+                  {order.hasSignedRegulations && <Check size={18} color="#166534" style={{ marginRight: 'auto' }} />}
+                </div>
+              </div>
             </div>
           ) : (
             <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
@@ -284,12 +354,6 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   <span style={{...labelStyle, color: '#64748b'}}>החזרה:</span>
                   <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{order.toDate || order.returnDate ? new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL') : '-'}</div>
                 </div>
-                {order.isWeekdayEvent && (
-                  <div>
-                    <span style={{...labelStyle, color: '#64748b'}}>סוג אירוע:</span>
-                    <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>אירוע חול</div>
-                  </div>
-                )}
               </>
               <div style={{ flex: '1 1 100%', marginTop: '0.5rem' }}>
                 <span style={{...labelStyle, color: '#64748b'}}>הערות להזמנה:</span>
@@ -327,48 +391,38 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   <label htmlFor="isAbroad" style={{ fontWeight: '700', color: '#334155', cursor: 'pointer', margin: 0 }}>אירוע חו"ל (תפוסה מותאמת אישית)</label>
                 </div>
                 
-                <div style={{ ...groupStyle, display: 'inline-flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '0.8rem 1.2rem', borderRadius: '10px', border: '1px solid #e2e8f0', cursor: 'pointer', marginRight: '1rem' }} onClick={() => validateAndChangeDate('isWeekdayEvent', !order.isWeekdayEvent)}>
-                  <input 
-                    type="checkbox" 
-                    id="isWeekdayEvent"
-                    checked={order.isWeekdayEvent ?? false} 
-                    onChange={(e) => validateAndChangeDate('isWeekdayEvent', e.target.checked)}
-                    onClick={e => e.stopPropagation()}
-                    style={{ transform: 'scale(1.2)', cursor: 'pointer', accentColor: '#2563eb' }}
-                  />
-                  <label htmlFor="isWeekdayEvent" style={{ fontWeight: '700', color: '#334155', cursor: 'pointer', margin: 0 }}>אירוע חול</label>
-                </div>
-
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', border: '1px solid #bfdbfe', padding: '1.5rem', borderRadius: '12px', marginTop: '1rem', background: '#eff6ff' }}>
-                  <div>
-                    <label style={{...labelStyle, color: '#1e3a8a'}}>מתאריך (לקיחה):</label>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <div style={{ flex: 1 }}>
-                        <HebrewDatePicker 
-                          value={order.fromDate} 
-                          onChange={(date) => validateAndChangeDate('fromDate', date)} 
-                        />
+                {order.isAbroad && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', border: '1px solid #bfdbfe', padding: '1.5rem', borderRadius: '12px', marginTop: '1rem', background: '#eff6ff' }}>
+                    <div>
+                      <label style={{...labelStyle, color: '#1e3a8a'}}>מתאריך (לקיחה):</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <HebrewDatePicker 
+                            value={order.fromDate} 
+                            onChange={(date) => validateAndChangeDate('fromDate', date)} 
+                          />
+                        </div>
                       </div>
                     </div>
-                  </div>
-                  <div>
-                    <label style={{...labelStyle, color: '#1e3a8a'}}>עד תאריך (החזרה):</label>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <div style={{ flex: 1 }}>
-                        <HebrewDatePicker 
-                          value={order.toDate || order.returnDate} 
-                          onChange={(date) => validateAndChangeDate('toDate', date)} 
-                        />
+                    <div>
+                      <label style={{...labelStyle, color: '#1e3a8a'}}>עד תאריך (החזרה):</label>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <div style={{ flex: 1 }}>
+                          <HebrewDatePicker 
+                            value={order.toDate || order.returnDate} 
+                            onChange={(date) => validateAndChangeDate('toDate', date)} 
+                          />
+                        </div>
                       </div>
                     </div>
+                    {order.eventDate && order.fromDate && (order.toDate || order.returnDate) && 
+                     (new Date(order.eventDate) < new Date(order.fromDate) || new Date(order.eventDate) > new Date(order.toDate || order.returnDate)) && (
+                      <div style={{ gridColumn: '1 / -1', color: '#b91c1c', background: '#fef2f2', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>⚠️</span> שימו לב: תאריך האירוע חייב להיות בין תאריך הלקיחה לתאריך החזרה!
+                      </div>
+                    )}
                   </div>
-                  {order.eventDate && order.fromDate && (order.toDate || order.returnDate) && 
-                   (new Date(order.eventDate) < new Date(order.fromDate) || new Date(order.eventDate) > new Date(order.toDate || order.returnDate)) && (
-                    <div style={{ gridColumn: '1 / -1', color: '#b91c1c', background: '#fef2f2', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span>⚠️</span> שימו לב: תאריך האירוע חייב להיות בין תאריך הלקיחה לתאריך החזרה!
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
 
               {/* Notes */}
@@ -381,10 +435,103 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   placeholder="הערות כלליות לגבי ההזמנה..."
                 />
               </div>
+
+              {/* Custom Spacing UI */}
+              <div style={{ marginTop: '1rem', background: '#fffbeb', border: '1px solid #fde68a', padding: '1rem', borderRadius: '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label style={{ ...labelStyle, color: '#92400e', marginBottom: 0 }}>ציפוף ימים מיוחד:</label>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <select
+                      value={order.customSpacing !== null && order.customSpacing !== undefined ? order.customSpacing : ''}
+                      onChange={(e) => {
+                        const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                        if (val !== order.customSpacing) {
+                          applyCustomSpacing(val);
+                        }
+                      }}
+                      style={{ ...inputStyle, width: '150px', backgroundColor: 'white', borderColor: '#fcd34d', fontWeight: 'bold' }}
+                    >
+                      <option value="">רגיל (לפי המערכת)</option>
+                      <option value="1">1 יום רווח</option>
+                      <option value="2">2 ימי רווח</option>
+                      <option value="3">3 ימי רווח</option>
+                      <option value="4">4 ימי רווח</option>
+                      <option value="0">ללא רווח כלל (0)</option>
+                    </select>
+                  </div>
+                </div>
+                <p style={{ fontSize: '0.85rem', color: '#b45309', margin: '0.5rem 0 0 0' }}>* בחירת ציפוף מיוחד תצבע את ההזמנה בצהוב ותשפיע על בדיקת המלאי להזמנה זו בלבד (דורש הרשאת מנהל).</p>
+              </div>
+
             </div>
           )}
 
         </div>
+        </div>
+      )}
+
+      {/* Simulation Modal */}
+      {simulationModalData && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
+          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '90%', maxWidth: '650px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 1.5rem 0', color: '#1e293b', fontSize: '1.4rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>חוסר במלאי עבור התאריך המבוקש</h3>
+            
+            <p style={{ color: '#475569', fontSize: '1.05rem', marginBottom: '1.5rem' }}>
+              שימו לב, אין מספיק מלאי להזמנה זו בציפוף הימים הרגיל. להלן מצב המלאי עבור כל פריט חסר בכל אחד מפוערי הציפוף האפשריים:
+            </p>
+
+            <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '1.5rem' }}>
+              {simulationModalData.errors.map((err, idx) => (
+                <div key={idx} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#0f172a', marginBottom: '0.5rem' }}>
+                    {err.dressName} (מידה: {err.sizeText}) - נדרש: {err.requested}
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: '#fee2e2', borderRadius: '6px', color: '#991b1b' }}>
+                      <span>ציפוף רגיל:</span>
+                      <strong>זמין: {err.available}</strong>
+                    </div>
+                    
+                    {[3, 2, 1, 0].map(spacing => {
+                      const simData = simulationModalData.simulation[spacing];
+                      if (!simData) return null;
+                      const sizeError = simData.errors.find(e => e.dressModelId === err.dressModelId && e.sizeText === err.sizeText);
+                      const isSufficient = !sizeError; // If there's no error for this size, it means requested <= available!
+                      // If there is an error, available is sizeError.available, otherwise it's at least requested
+                      const availableQty = sizeError ? sizeError.available : `מספיק (${err.requested}+)`;
+                      
+                      return (
+                        <div key={spacing} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: isSufficient ? '#dcfce7' : '#f1f5f9', borderRadius: '6px', color: isSufficient ? '#166534' : '#475569', border: isSufficient ? '1px solid #bbf7d0' : 'none' }}>
+                          <span>בציפוף של {spacing} ימים:</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                            <strong>זמין: {availableQty}</strong>
+                            {isSufficient && simData.valid && (
+                              <button
+                                onClick={() => applyCustomSpacing(spacing)}
+                                style={{ background: '#22c55e', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem' }}
+                              >
+                                החל ציפוף זה 🔒
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '2px solid #f1f5f9', paddingTop: '1.5rem' }}>
+              <button 
+                onClick={() => setSimulationModalData(null)}
+                style={{ padding: '0.8rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+              >
+                ביטול שינוי התאריך
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
