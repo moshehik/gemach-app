@@ -54,9 +54,26 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
   useEffect(() => {
     fetch('/api/settings')
       .then(res => res.json())
-      .then(data => setSettings(data))
+      .then(data => {
+        if (Array.isArray(data)) {
+          const settingsObj = data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
+          setSettings(settingsObj);
+          if (settingsObj.ALLOWED_PAYMENT_METHODS) {
+            const opts = settingsObj.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean);
+            if (opts.length > 0) {
+              setNewPayment(prev => ({...prev, paymentMethod: opts[0]}));
+            }
+          }
+        } else {
+          setSettings(data || {});
+        }
+      })
       .catch(err => console.error(err));
   }, []);
+
+  const paymentMethodOptions = settings.ALLOWED_PAYMENT_METHODS 
+    ? settings.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean) 
+    : ['אשראי (דרך נדרים פלוס)', 'יציאה באישור מנהל'];
 
   const addObligation = () => {
     if (!newObligation.description || !newObligation.amount) return;
@@ -97,7 +114,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
     }
     
     let isCodeRequired = false;
-    if (newPayment.paymentMethod !== 'אשראי') {
+    if (!(newPayment.paymentMethod.includes('אשראי') && !newPayment.paymentMethod.includes('חיצונית'))) {
       const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
       if (level === 'מנהל' || level === 'עובד') {
         isCodeRequired = true;
@@ -513,9 +530,9 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                 onChange={e => setNewPayment({...newPayment, paymentMethod: e.target.value})}
                 style={{ flex: '1', minWidth: '130px', padding: '0.7rem', borderRadius: '8px', border: '1px solid #86efac', outline: 'none', background: 'white', cursor: 'pointer' }}
               >
-                <option value="אשראי">אשראי (דרך נדרים פלוס)</option>
-                <option value="אשראי (קופה חיצונית)">אשראי (קופה חיצונית)</option>
-                <option value="יציאה באישור מנהל">יציאה באישור מנהל</option>
+                {paymentMethodOptions.map(opt => (
+                  <option key={opt} value={opt}>{opt}</option>
+                ))}
               </select>
               <input data-agy-id="orderpaymentsmanager_input_7" 
                 type="number" 

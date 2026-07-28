@@ -107,7 +107,11 @@ export default function PrintOrderPage() {
           direction: rtl;
         }
         @media print {
-          html, body {
+          @page {
+            size: A4 portrait;
+            margin: 15mm;
+          }
+          html, body, #__next, .__next {
             background-color: white !important;
             color: black !important;
             margin: 0 !important;
@@ -117,6 +121,12 @@ export default function PrintOrderPage() {
             overflow: visible !important;
             -webkit-print-color-adjust: exact;
           }
+          * {
+            overflow: visible !important;
+          }
+          ::-webkit-scrollbar {
+            display: none !important;
+          }
           .print-container {
             box-shadow: none !important;
             padding: 0 10px !important;
@@ -124,165 +134,143 @@ export default function PrintOrderPage() {
             max-width: 100% !important;
             border-radius: 0 !important;
             filter: grayscale(100%);
-          }
-          body * {
-            visibility: hidden;
-          }
-          .print-container, .print-container * {
-            visibility: visible;
-          }
-          .print-container {
-            position: absolute;
-            left: 0;
-            top: 0;
             width: 100%;
-          }
-          /* To prevent cutoff in multi-page prints while using absolute positioning, 
-             we actually shouldn't use absolute positioning. */
-          .print-container {
-            position: relative !important;
-            left: auto !important;
-            top: auto !important;
-          }
-          /* Hide the layout nav inside print */
-          nav, .navbar {
-            display: none !important;
-          }
-          @page {
-            margin: 1cm;
+            height: auto !important;
+            display: block !important;
+            color: black !important;
           }
         }
         .bsd {
-          position: absolute;
-          top: 10px;
-          right: 20px;
-          font-size: 12px;
-          font-weight: bold;
-          color: #000;
+            text-align: right;
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
         }
         .print-header {
           display: flex;
           justify-content: space-between;
           align-items: center;
-          margin-top: 15px;
-          margin-bottom: 15px;
-          border-bottom: 2px solid #000;
-          padding-bottom: 10px;
+          margin-bottom: 20px;
+          border-bottom: 1px solid #ccc;
+          padding-bottom: 12px;
         }
         .print-header-content h1 {
           margin: 0;
-          font-size: 24px;
-          color: #000;
+          font-size: 22px;
+          color: #222;
           font-weight: 700;
         }
         .print-header-content h2 {
           margin: 0;
-          font-size: 18px;
-          color: #333;
+          font-size: 16px;
+          color: #555;
           font-weight: 600;
         }
         .order-number-badge {
-          background: #f8f9fa;
-          color: #000;
-          padding: 4px 15px;
-          border: 1px solid #000;
-          border-radius: 20px;
-          font-size: 18px;
-          font-weight: 700;
+          background: #fff;
+          color: #333;
+          padding: 4px 12px;
+          border: 1px solid #ccc;
+          border-radius: 6px;
+          font-size: 16px;
+          font-weight: 600;
         }
         .order-details-card {
           background: #fff;
-          border: 1px solid #000;
-          border-radius: 8px;
-          padding: 12px 16px;
-          margin-bottom: 20px;
+          border-top: 1px dashed #ccc;
+          border-bottom: 1px dashed #ccc;
+          padding: 12px 0;
+          margin-bottom: 25px;
           display: grid;
           grid-template-columns: 1fr 1fr;
           gap: 12px;
         }
         .detail-item {
           display: flex;
-          flex-direction: column;
+          flex-direction: row;
+          align-items: baseline;
+          gap: 8px;
         }
         .detail-item span.label {
-          font-size: 12px;
-          color: #555;
-          margin-bottom: 2px;
-          font-weight: 700;
+          font-size: 13px;
+          color: #666;
+          margin-bottom: 0;
+          font-weight: 500;
+          min-width: 110px;
         }
         .detail-item span.value {
           font-size: 14px;
-          color: #000;
+          color: #222;
           font-weight: 600;
         }
         .full-width {
           grid-column: 1 / -1;
         }
         .section-title {
-          font-size: 18px;
-          color: #000;
-          margin-bottom: 10px;
+          font-size: 16px;
+          color: #333;
+          margin-bottom: 12px;
           font-weight: 700;
-          border-bottom: 1px solid #000;
-          padding-bottom: 4px;
         }
         .print-table {
           width: 100%;
           border-collapse: collapse;
-          border: 1px solid #000;
-          margin-bottom: 15px;
+          margin-bottom: 20px;
         }
         .print-table th, .print-table td {
-          padding: 6px 10px;
+          padding: 8px 10px;
           text-align: right;
           font-size: 13px;
-          border: 1px solid #000;
+          border-bottom: 1px solid #eaeaea;
         }
         .print-table th {
-          background-color: #f1f1f1;
-          color: #000;
-          font-weight: 700;
+          background-color: transparent;
+          color: #555;
+          font-weight: 600;
+          border-bottom: 2px solid #ccc;
         }
         .print-table td {
-          color: #000;
+          color: #333;
           font-weight: 500;
         }
         .print-table tr:nth-child(even) td {
-          background-color: #f9f9f9;
+          background-color: transparent;
         }
         .status-badge {
           display: inline-block;
-          font-weight: 600;
-          color: #000;
+          font-weight: 500;
+          color: #444;
         }
         .status-pending, .status-active, .status-returned, .status-archived { 
           background: none; 
           border: none; 
-          color: #000;
+          color: #444;
         }
         
         .print-footer {
           margin-top: 20px;
           text-align: center;
-          font-size: 12px;
-          color: #555;
-          border-top: 1px solid #000;
+          font-size: 11px;
+          color: #888;
+          border-top: 1px solid #eaeaea;
           padding-top: 10px;
         }
         
         /* Adjust rental notes for space */
         .rental-notes-box {
-          border: 1px solid #000; 
-          padding: 8px 12px; 
-          margin-bottom: 10px; 
+          border: 1px solid #ccc; 
+          border-radius: 6px;
+          padding: 10px 14px; 
+          margin-bottom: 12px; 
           white-space: pre-wrap; 
           text-align: center; 
           font-size: 13px; 
-          font-weight: 600; 
-          color: #000;
+          font-weight: 500; 
+          color: #333;
         }
         .rental-notes-box-bg {
-          background-color: #f1f1f1;
+          background-color: transparent;
         }
 
       `}</style>
@@ -319,12 +307,12 @@ export default function PrintOrderPage() {
                 )}
                 {printSettings.footer && (
                   <div style={{ textAlign: 'center', marginTop: '15px', marginBottom: '15px' }}>
-                    <h3 style={{ fontSize: '18px', fontWeight: 'bold', margin: '0 0 5px 0' }}>{printSettings.footer}</h3>
-                    <div style={{ fontSize: '16px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#222' }}>{printSettings.footer}</h3>
+                    <div style={{ fontSize: '15px', fontWeight: '600', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#444' }}>
                       <span>על החתום:</span>
-                      <span style={{ display: 'inline-block', width: '200px', borderBottom: '1px solid black', margin: '0 10px' }}></span>
+                      <span style={{ display: 'inline-block', width: '200px', borderBottom: '1px dashed #666', margin: '0 10px' }}></span>
                     </div>
-                    <div style={{ marginTop: '5px', fontSize: '14px', fontWeight: 'bold' }}>
+                    <div style={{ marginTop: '8px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
                       נא להחזיר טופס זה חתום בעת החזרת השמלות
                     </div>
                   </div>
@@ -345,10 +333,6 @@ export default function PrintOrderPage() {
               <div className="detail-item">
                 <span className="label">טלפון</span>
                 <span className="value" style={{ direction: 'ltr', textAlign: 'right' }}>{order.customer?.phone1 || order.customer?.phone || '-'}</span>
-              </div>
-              <div className="detail-item">
-                <span className="label">תאריך אירוע לועזי</span>
-                <span className="value">{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : '-'}</span>
               </div>
               
               <div className="detail-item">
@@ -405,7 +389,7 @@ export default function PrintOrderPage() {
                       <tr key={item.id}>
                         <td style={{ fontWeight: '500' }}>{item.description || '-'}</td>
                         <td>{item.sizeText || '-'}</td>
-                        <td style={{ fontWeight: '600', color: '#495057' }}>{item.barcode || '-'}</td>
+                        <td style={{ fontWeight: '600', color: '#495057' }}>{item.barcode || item.dressItem?.barcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : '-')}</td>
                         {enableAlterations && (
                           <>
                             <td>{item.neckAlteration ? `הצרה ${item.neckAlteration}` : '-'}</td>

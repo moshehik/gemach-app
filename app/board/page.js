@@ -53,7 +53,10 @@ export default function BoardPage() {
   }, [jumpDate]);
 
   const handleGlobalSearch = async () => {
-    if (!searchInput) return;
+    if (!searchInput) {
+      alert("נא להזין טקסט לחיפוש גלובלי (לפי מספר הזמנה או שם לקוח)");
+      return;
+    }
     setGlobalSearchLoading(true);
     setShowGlobalSearchModal(true);
     try {
@@ -687,7 +690,7 @@ export default function BoardPage() {
                          onMouseLeave={e => e.currentTarget.style.borderColor = 'var(--element-border)'}>
                       <div>
                         <div style={{ fontWeight: 'bold', marginBottom: '0.25rem', color: 'var(--text-main)' }}>הזמנה #{order.orderId} - {order.customer?.firstName || ''} {order.customer?.lastName || order.customerName || ''}</div>
-                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : ''}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{order.eventDateHebrew || (order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : '')}</div>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <button 

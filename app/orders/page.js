@@ -498,9 +498,9 @@ export default function OrdersPage() {
                   
                   {totalPages > 1 && (
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
-                      <button data-agy-id="orders_page_button_20" className="btn btn-outline" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>הבא &gt;</button>
+                      <button data-agy-id="orders_page_button_22" className="btn btn-outline" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>הקודם &gt;</button>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input data-agy-id="orders_page_input_21" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} disabled={isAiModeActive} /> מתוך {totalPages}</span>
-                      <button data-agy-id="orders_page_button_22" className="btn btn-outline" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הקודם</button>
+                      <button data-agy-id="orders_page_button_20" className="btn btn-outline" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הבא</button>
                     </div>
                   )}
                 </div>
@@ -561,10 +561,7 @@ export default function OrdersPage() {
             <span><CalendarIcon2 size={14} /> תאריך עברי:</span>
             <span>{hoveredOrder.eventDateHebrew || 'לא צוין'}</span>
           </div>
-          <div className="global-popoverRow">
-            <span><CalendarIcon2 size={14} /> תאריך לועזי:</span>
-            <span>{hoveredOrder.eventDate ? new Date(hoveredOrder.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</span>
-          </div>
+
           <div className="global-popoverRow">
             <span><Shirt size={14} /> הושכר:</span>
             <span>{hoveredOrder.items ? hoveredOrder.items.filter(i => !i.isDeleted && i.isTaken).length : 0}</span>

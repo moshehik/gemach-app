@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Printer, FileSpreadsheet, ArrowRight, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 export default function AttendanceReportPage() {
   const router = useRouter();
@@ -72,7 +73,7 @@ export default function AttendanceReportPage() {
       
       const empData = emp.shifts.map(shift => {
         return {
-          'תאריך': shift.date ? new Date(shift.date).toLocaleDateString('he-IL') : '',
+          'תאריך': shift.date ? getHebrewDateString(shift.date) : '',
           'כניסה': shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '',
           'יציאה': shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '',
           'סה"כ דקות': shift.totalMinutes || 0,
@@ -238,7 +239,7 @@ export default function AttendanceReportPage() {
                       {employee.shifts.map((shift) => (
                         <tr key={shift.id}>
                           <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee' }}>
-                            {shift.date ? new Date(shift.date).toLocaleDateString('he-IL') : '-'}
+                            {shift.date ? getHebrewDateString(shift.date) : '-'}
                           </td>
                           <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>
                             {shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}

@@ -190,28 +190,7 @@ export default function RentalsPage() {
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ color: 'var(--primary-color)' }}>ניהול השכרות והחזרות</h1>
-        <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%', maxWidth: '600px' }}>
-          <AISearchBar 
-            placeholder="חיפוש חופשי (הזמנה, לקוח, תאריך)..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onSearch={(e) => { e.preventDefault(); if(isAiModeActive) setIsAiModeActive(false); }}
-            onClear={handleClearSearch}
-            onAiSearch={handleAiSearch}
-            onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-            loading={aiLoading}
-          />
-          <button 
-            data-agy-id="adv-search-button"
-            onClick={() => setShowAdvSearch(true)}
-            className="btn btn-outline"
-            style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-            title="חיפוש מתקדם"
-          >
-            🔍
-          </button>
-        </div>
+        <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול השכרות והחזרות</h1>
       </div>
 
       {showAdvSearch && (
@@ -269,64 +248,91 @@ export default function RentalsPage() {
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap' }}>
-        <button 
-          data-agy-id="view-pending-button"
-          className={`btn ${viewMode === 'pending' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setViewMode('pending')}
-          style={{ borderRadius: '20px', padding: '0.5rem 1.5rem' }}
-        >
-          השכרות (ממתינים)
-        </button>
-        <button 
-          data-agy-id="view-active-button"
-          className={`btn ${viewMode === 'active' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setViewMode('active')}
-          style={{ borderRadius: '20px', padding: '0.5rem 1.5rem' }}
-        >
-          פעילים (אצל לקוח)
-        </button>
-        <button 
-          data-agy-id="view-returned-button"
-          className={`btn ${viewMode === 'returned' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setViewMode('returned')}
-          style={{ borderRadius: '20px', padding: '0.5rem 1.5rem' }}
-        >
-          הוחזרו (חלקי/מלא)
-        </button>
-        <button 
-          data-agy-id="view-all-button"
-          className={`btn ${viewMode === 'all' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setViewMode('all')}
-          style={{ borderRadius: '20px', padding: '0.5rem 1.5rem' }}
-        >
-          כל ההזמנות הפעילות
-        </button>
-        <button 
-          data-agy-id="view-archive-button"
-          className={`btn ${viewMode === 'archive' ? 'btn-primary' : 'btn-outline'}`}
-          onClick={() => setViewMode('archive')}
-          style={{ borderRadius: '20px', padding: '0.5rem 1.5rem' }}
-        >
-          ארכיון / עבר
-        </button>
-        <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', paddingRight: '1rem' }}>
-          <ExportButtons 
-            data={orders.map(o => ({
-              ...o,
-              status: calculateOrderStatus(o),
-              eventDateFormatted: o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : 'לא צוין'),
-              itemsSummary: o.items ? o.items.filter(i => !i.isDeleted).map(i => `${i.description} (${i.barcode || 'ללא ברקוד'})`).join(' | ') : ''
-            }))} 
-            filename="השכרות" 
-            columns={[
-              { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
-              { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
-              { key: 'eventDateFormatted', label: getLabel('order_eventDate', 'תאריך אירוע') },
-              { key: 'status', label: getLabel('order_status', 'סטטוס') },
-              { key: 'itemsSummary', label: 'פריטים' }
-            ]} 
-          />
+      <div className="rentals-controls" style={{ 
+        display: 'flex', 
+        alignItems: 'center', 
+        justifyContent: 'space-between',
+        background: 'var(--card-bg)',
+        padding: '0.75rem 1.5rem',
+        borderRadius: '16px',
+        boxShadow: 'var(--shadow-sm)',
+        border: '1px solid var(--border-color)',
+        marginBottom: '1.5rem',
+        gap: '1.5rem',
+        flexWrap: 'wrap'
+      }}>
+        {/* Right side: Filters */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          <span style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>תצוגה:</span>
+          <select 
+            value={viewMode}
+            onChange={(e) => setViewMode(e.target.value)}
+            className="form-control"
+            style={{
+              borderRadius: '20px',
+              padding: '0.4rem 1rem',
+              border: '2px solid var(--primary-color)',
+              background: 'rgba(212,175,55,0.05)',
+              color: 'var(--primary-color)',
+              fontWeight: 'bold',
+              cursor: 'pointer',
+              outline: 'none',
+              minWidth: '220px',
+              fontSize: '1rem'
+            }}
+          >
+            <option value="pending">השכרות (ממתינים)</option>
+            <option value="active">פעילים (אצל לקוח)</option>
+            <option value="returned">הוחזרו (חלקי/מלא)</option>
+            <option value="all">כל ההזמנות הפעילות</option>
+            <option value="archive">ארכיון / עבר</option>
+          </select>
+        </div>
+
+        {/* Center/Left side: Search & Actions */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ flex: 1, maxWidth: '400px', minWidth: '250px' }}>
+            <AISearchBar 
+              placeholder="חיפוש חופשי (הזמנה, לקוח, דגם)..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onSearch={(e) => { e.preventDefault(); if(isAiModeActive) setIsAiModeActive(false); }}
+              onClear={handleClearSearch}
+              onAiSearch={handleAiSearch}
+              onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+              loading={aiLoading}
+            />
+          </div>
+          <button 
+            data-agy-id="adv-search-button"
+            onClick={() => setShowAdvSearch(true)}
+            className="btn btn-outline"
+            style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}
+            title="חיפוש מתקדם"
+          >
+            🔍
+          </button>
+          
+          <div style={{ width: '1px', height: '30px', background: 'var(--divider)', margin: '0 0.25rem' }}></div>
+          
+          <div style={{ flexShrink: 0 }}>
+            <ExportButtons 
+              data={orders.map(o => ({
+                ...o,
+                status: calculateOrderStatus(o),
+                eventDateFormatted: o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : 'לא צוין'),
+                itemsSummary: o.items ? o.items.filter(i => !i.isDeleted).map(i => `${i.description} (${i.barcode || 'ללא ברקוד'})`).join(' | ') : ''
+              }))} 
+              filename="השכרות" 
+              columns={[
+                { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
+                { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
+                { key: 'eventDateFormatted', label: getLabel('order_eventDate', 'תאריך אירוע') },
+                { key: 'status', label: getLabel('order_status', 'סטטוס') },
+                { key: 'itemsSummary', label: 'פריטים' }
+              ]} 
+            />
+          </div>
         </div>
       </div>
 
@@ -367,7 +373,6 @@ export default function RentalsPage() {
                   <td style={{ fontWeight: '500', fontSize: '1.1rem' }}>{order.customerName}</td>
                   <td>
                     <div><strong>{order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין תאריך')}</strong></div>
-                    <div style={{ fontSize: '0.85em', color: 'var(--text-muted)' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : ''}</div>
                   </td>
                   <td>
                     <span style={{ 

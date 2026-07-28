@@ -243,13 +243,13 @@ export default function CustomersPage() {
               {totalPages > 1 && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
                   <button 
-                    data-agy-id="next_page_btn"
+                    data-agy-id="prev_page_btn"
                     className="btn btn-outline"
-                    disabled={page >= totalPages || isAiModeActive} 
-                    onClick={() => setPage(p => p + 1)}
+                    disabled={page <= 1 || isAiModeActive} 
+                    onClick={() => setPage(p => p - 1)}
                     style={{ padding: '0.5rem 1rem' }}
                   >
-                    הבא &gt;
+                    הקודם &gt;
                   </button>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     עמוד 
@@ -269,13 +269,13 @@ export default function CustomersPage() {
                     מתוך {totalPages}
                   </span>
                   <button 
-                    data-agy-id="prev_page_btn"
+                    data-agy-id="next_page_btn"
                     className="btn btn-outline"
-                    disabled={page <= 1 || isAiModeActive} 
-                    onClick={() => setPage(p => p - 1)}
+                    disabled={page >= totalPages || isAiModeActive} 
+                    onClick={() => setPage(p => p + 1)}
                     style={{ padding: '0.5rem 1rem' }}
                   >
-                    &lt; הקודם
+                    &lt; הבא
                   </button>
                 </div>
               )}

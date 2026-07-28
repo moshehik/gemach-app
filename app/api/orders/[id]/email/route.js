@@ -28,7 +28,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'הזמנה לא נמצאה' }, { status: 404 });
     }
 
-    const settingsData = await prisma.setting.findMany();
+    const settingsData = await prisma.systemSetting.findMany();
     const enableAlterations = settingsData.find(s => s.key === 'enable_alterations')?.value !== 'false';
     const printSettings = {
       box1: settingsData.find(s => s.key === 'print_rental_box1')?.value || '',

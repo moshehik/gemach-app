@@ -74,6 +74,22 @@ ${hiddenData}
       }
     }
 
+    // Save locally for Antigravity AI to read instantly
+    try {
+        const fs = require('fs');
+        const csvPath = 'C:\\Users\\moshe\\Desktop\\מערכת AI\\AI_Errors.csv';
+        const id = new Date().getTime().toString();
+        const csvLine = `"${id}","${time}","OPEN","${(employeeName||'').replace(/"/g, '""')}","${(title||'').replace(/"/g, '""')}","${(url||'').replace(/"/g, '""')}","${(userText||'').replace(/"/g, '""')}"\n`;
+        
+        if (!fs.existsSync(csvPath)) {
+            const header = `"ID","Time","Status","Reporter","Title","URL","Description"\n`;
+            fs.writeFileSync(csvPath, header, 'utf8');
+        }
+        fs.appendFileSync(csvPath, csvLine, 'utf8');
+    } catch(err) {
+        console.error('Failed to append to local CSV', err);
+    }
+
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error sending error report:', error);

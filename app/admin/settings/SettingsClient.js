@@ -1,7 +1,7 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Save, Check, Loader2, AlertCircle } from 'lucide-react';
+import { Save, Check, Loader2, AlertCircle, Sparkles, Upload } from 'lucide-react';
 
 export default function SettingsClient() {
   const [settings, setSettings] = useState([]);
@@ -13,7 +13,6 @@ export default function SettingsClient() {
   const [error, setError] = useState(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   
-  // Local modifications before saving
   const [modified, setModified] = useState({});
 
   useEffect(() => {
@@ -29,7 +28,6 @@ export default function SettingsClient() {
       
       setSettings(data);
       
-      // Extract categories
       const cats = [...new Set(data.map(s => s.category).filter(Boolean))];
       if (!cats.includes('תצוגה')) {
         cats.unshift('תצוגה');
@@ -56,7 +54,6 @@ export default function SettingsClient() {
     setSaveMessage(null);
     setError(null);
     
-    // Build payload: array of { key, value }
     const payload = Object.entries(modified).map(([key, value]) => ({ key, value }));
 
     try {
@@ -71,7 +68,6 @@ export default function SettingsClient() {
       setSaveMessage('ההגדרות נשמרו בהצלחה!');
       setModified({});
       
-      // Update local state with saved values
       setSettings(prev => prev.map(s => {
         if (modified[s.key] !== undefined) {
           return { ...s, value: modified[s.key] };
@@ -118,147 +114,197 @@ export default function SettingsClient() {
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-64">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="relative w-16 h-16">
+          <div className="absolute inset-0 rounded-full border-t-4 border-blue-500 animate-spin opacity-80"></div>
+          <div className="absolute inset-2 rounded-full border-r-4 border-purple-500 animate-spin opacity-60" style={{ animationDuration: '1.5s' }}></div>
+        </div>
       </div>
     );
   }
 
-  // Filter settings by active tab
   const activeSettings = settings.filter(s => s.category === activeTab);
+  const hasChanges = Object.keys(modified).length > 0;
 
   return (
-    <div className="rounded-xl shadow-sm border overflow-hidden" style={{ background: 'var(--card-bg)', borderColor: 'var(--element-border)' }}>
-      {/* Tabs */}
-      <div className="flex overflow-x-auto border-b" style={{ borderColor: 'var(--element-border)', background: 'var(--element-bg)' }}>
-        {categories.map(cat => (
-          <button
-            key={cat}
-            onClick={() => setActiveTab(cat)}
-            className={`px-6 py-4 text-sm font-medium whitespace-nowrap transition-colors ${
-              activeTab === cat 
-                ? 'border-b-2 text-blue-600'
-                : 'text-gray-500 hover:text-gray-700'
-            }`}
-            style={{ 
-              borderColor: activeTab === cat ? 'var(--primary-color)' : 'transparent',
-              background: activeTab === cat ? 'var(--card-bg)' : 'transparent',
-              color: activeTab === cat ? 'var(--primary-color)' : 'var(--text-muted)'
-            }}
-          >
-            {cat}
-          </button>
-        ))}
-      </div>
+    <div className="max-w-6xl mx-auto px-4 py-8 relative">
+      {/* Background aesthetics */}
+      <div className="absolute top-0 right-0 -z-10 w-96 h-96 bg-blue-100/40 rounded-full blur-3xl opacity-50 dark:bg-blue-900/20 transform translate-x-1/3 -translate-y-1/4"></div>
+      <div className="absolute bottom-0 left-0 -z-10 w-96 h-96 bg-purple-100/40 rounded-full blur-3xl opacity-50 dark:bg-purple-900/20 transform -translate-x-1/3 translate-y-1/4"></div>
 
-      <div className="p-6 md:p-8">
-        {error && (
-          <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 flex-shrink-0" />
-            <p>{error}</p>
+      {/* Header section */}
+      <div className="sticky top-0 z-20 flex flex-col md:flex-row items-center justify-between gap-4 p-6 mb-8 bg-white/70 dark:bg-gray-900/70 backdrop-blur-xl border border-gray-200/50 dark:border-gray-800/50 rounded-2xl shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl shadow-lg shadow-blue-500/20">
+            <Sparkles className="w-6 h-6 text-white" />
           </div>
-        )}
-        
-        {saveMessage && (
-          <div className="mb-6 p-4 bg-green-50 border border-green-200 text-green-700 rounded-lg flex items-center gap-3">
-            <Check className="w-5 h-5 flex-shrink-0" />
-            <p>{saveMessage}</p>
+          <div>
+            <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300">
+              הגדרות מערכת
+            </h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">ניהול מתקדם של חוויית המשתמש והלוגיקה</p>
           </div>
-        )}
+        </div>
 
-        <div className="space-y-8">
-          {activeTab === 'תצוגה' && (
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 py-4 border-b border-gray-50 last:border-0">
-              <div className="flex-1 max-w-2xl">
-                <label className="block text-base font-medium text-gray-900">
-                  לוגו מערכת
-                </label>
-                <p className="mt-1 text-sm text-gray-500">
-                  העלה לוגו חדש למערכת (מומלץ בפורמט PNG עם רקע שקוף)
-                </p>
-              </div>
-              <div className="sm:ml-6 flex-shrink-0 flex items-center gap-4">
-                <input 
-                  type="file" 
-                  accept="image/*" 
-                  onChange={handleLogoUpload} 
-                  disabled={uploadingLogo}
-                  className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
-                />
-                {uploadingLogo && <Loader2 className="w-5 h-5 animate-spin text-blue-500" />}
-              </div>
-            </div>
+        <div className="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+          {hasChanges && (
+            <span className="text-sm font-medium text-amber-600 bg-amber-50 px-3 py-1.5 rounded-full border border-amber-200/50 animate-pulse">
+              ישנם {Object.keys(modified).length} שינויים ממתינים
+            </span>
           )}
-          {activeSettings.map(setting => {
-            const currentValue = modified[setting.key] !== undefined ? modified[setting.key] : setting.value;
-            const isBoolean = setting.type === 'boolean';
-            const isNumber = setting.type === 'number';
-
-            return (
-              <div key={setting.key} className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 py-4 border-b border-gray-50 last:border-0">
-                <div className="flex-1 max-w-2xl">
-                  <label htmlFor={setting.key} className="block text-base font-medium text-gray-900">
-                    {setting.name}
-                  </label>
-                  {setting.notes && (
-                    <p className="mt-1 text-sm text-gray-500">
-                      {setting.notes}
-                    </p>
-                  )}
-                </div>
-                
-                <div className="sm:ml-6 flex-shrink-0">
-                  {isBoolean ? (
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={currentValue === 'true'}
-                      onClick={() => handleChange(setting.key, currentValue === 'true' ? 'false' : 'true')}
-                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-600 focus:ring-offset-2 ${
-                        currentValue === 'true' ? 'bg-blue-600' : 'bg-gray-200'
-                      }`}
-                    >
-                      <span
-                        aria-hidden="true"
-                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                          currentValue === 'true' ? '-translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  ) : (
-                    <input
-                      id={setting.key}
-                      type={isNumber ? 'number' : 'text'}
-                      value={currentValue || ''}
-                      onChange={(e) => handleChange(setting.key, e.target.value)}
-                      className="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm py-2 px-3 border"
-                      placeholder={setting.name}
-                    />
-                  )}
-                </div>
-              </div>
-            );
-          })}
+          <button
+            onClick={handleSave}
+            disabled={saving || !hasChanges}
+            className={`group relative overflow-hidden inline-flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-medium transition-all duration-300 shadow-lg
+              ${hasChanges 
+                ? 'bg-gray-900 text-white hover:bg-gray-800 hover:shadow-gray-900/25 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100' 
+                : 'bg-gray-100 text-gray-400 cursor-not-allowed dark:bg-gray-800 dark:text-gray-500 shadow-none'
+              }`}
+          >
+            {hasChanges && (
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-500 to-purple-600 opacity-0 group-hover:opacity-10 transition-opacity duration-300"></div>
+            )}
+            {saving ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Save className={`w-5 h-5 transition-transform duration-300 ${hasChanges ? 'group-hover:scale-110' : ''}`} />
+            )}
+            <span className="relative z-10">שמור שינויים</span>
+          </button>
         </div>
       </div>
 
-      {/* Footer */}
-      <div className="px-6 py-4 flex items-center justify-end border-t gap-4" style={{ background: 'var(--element-bg)', borderColor: 'var(--element-border)' }}>
-        <span className="text-sm text-gray-500">
-          {Object.keys(modified).length > 0 ? `ישנם ${Object.keys(modified).length} שינויים שלא נשמרו` : ''}
-        </span>
-        <button
-          onClick={handleSave}
-          disabled={saving || Object.keys(modified).length === 0}
-          className="inline-flex items-center gap-2 px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-        >
-          {saving ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Save className="w-4 h-4" />
-          )}
-          שמור שינויים
-        </button>
+      {error && (
+        <div className="mb-6 p-4 bg-red-50/80 backdrop-blur-sm border border-red-200 text-red-700 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
+          <AlertCircle className="w-5 h-5 flex-shrink-0" />
+          <p>{error}</p>
+        </div>
+      )}
+      
+      {saveMessage && (
+        <div className="mb-6 p-4 bg-green-50/80 backdrop-blur-sm border border-green-200 text-green-700 rounded-xl flex items-center gap-3 animate-in fade-in slide-in-from-top-4">
+          <Check className="w-5 h-5 flex-shrink-0" />
+          <p className="font-medium">{saveMessage}</p>
+        </div>
+      )}
+
+      <div className="flex flex-col lg:flex-row gap-8">
+        {/* Sidebar Tabs */}
+        <div className="w-full lg:w-64 flex-shrink-0">
+          <div className="flex lg:flex-col gap-2 overflow-x-auto pb-4 lg:pb-0 scrollbar-hide sticky top-36">
+            {categories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => setActiveTab(cat)}
+                className={`relative px-5 py-3.5 text-right font-medium whitespace-nowrap rounded-xl transition-all duration-300
+                  ${activeTab === cat 
+                    ? 'text-blue-700 bg-blue-50/80 dark:bg-blue-900/20 dark:text-blue-400 shadow-sm'
+                    : 'text-gray-600 hover:bg-gray-50 dark:text-gray-400 dark:hover:bg-gray-800/50'
+                  }`}
+              >
+                {activeTab === cat && (
+                  <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-blue-600 rounded-r-full dark:bg-blue-500"></div>
+                )}
+                {cat}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Content Area */}
+        <div className="flex-1 space-y-6">
+          <div className="bg-white/60 dark:bg-gray-900/60 backdrop-blur-xl rounded-2xl shadow-sm border border-gray-200/50 dark:border-gray-800/50 overflow-hidden transition-all duration-500">
+            
+            {activeTab === 'תצוגה' && (
+              <div className="p-6 md:p-8 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-white/40 dark:hover:bg-gray-800/40 transition-colors">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-6">
+                  <div className="flex-1 max-w-2xl">
+                    <label className="block text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      לוגו מערכת
+                    </label>
+                    <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                      העלה לוגו חדש למערכת (מומלץ בפורמט PNG עם רקע שקוף). הלוגו יופיע בכותרת המערכת ובמסמכים המודפסים.
+                    </p>
+                  </div>
+                  <div className="sm:ml-6 flex-shrink-0 flex items-center gap-4">
+                    <label className="relative cursor-pointer bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-blue-400 dark:hover:border-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-all rounded-xl px-4 py-3 flex items-center gap-3 shadow-sm group">
+                      <Upload className="w-5 h-5 text-blue-500 group-hover:scale-110 transition-transform" />
+                      <span className="text-sm font-medium text-gray-700 dark:text-gray-200">בחר תמונה</span>
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        onChange={handleLogoUpload} 
+                        disabled={uploadingLogo}
+                        className="sr-only"
+                      />
+                    </label>
+                    {uploadingLogo && <Loader2 className="w-5 h-5 animate-spin text-blue-500" />}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeSettings.map(setting => {
+              const currentValue = modified[setting.key] !== undefined ? modified[setting.key] : setting.value;
+              const isBoolean = setting.type === 'boolean';
+              const isNumber = setting.type === 'number';
+
+              return (
+                <div key={setting.key} className="group p-6 md:p-8 border-b border-gray-100 dark:border-gray-800 last:border-0 hover:bg-white/40 dark:hover:bg-gray-800/40 transition-colors">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                    <div className="flex-1 max-w-2xl">
+                      <label htmlFor={setting.key} className="block text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        {setting.name}
+                      </label>
+                      {setting.notes && (
+                        <p className="mt-2 text-sm text-gray-500 dark:text-gray-400 leading-relaxed">
+                          {setting.notes}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="sm:ml-6 flex-shrink-0">
+                      {isBoolean ? (
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={currentValue === 'true'}
+                          onClick={() => handleChange(setting.key, currentValue === 'true' ? 'false' : 'true')}
+                          className={`relative inline-flex h-8 w-14 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                            currentValue === 'true' 
+                              ? 'bg-blue-600 shadow-inner' 
+                              : 'bg-gray-200 dark:bg-gray-700 shadow-inner'
+                          }`}
+                          dir="ltr"
+                        >
+                          <span className="sr-only">Toggle {setting.name}</span>
+                          <span
+                            aria-hidden="true"
+                            className={`pointer-events-none inline-block h-7 w-7 transform rounded-full bg-white shadow-sm ring-0 transition duration-300 ease-in-out ${
+                              currentValue === 'true' ? 'translate-x-6' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      ) : (
+                        <div className="relative">
+                          <input
+                            id={setting.key}
+                            type={isNumber ? 'number' : 'text'}
+                            value={currentValue || ''}
+                            onChange={(e) => handleChange(setting.key, e.target.value)}
+                            className="block w-full sm:w-64 rounded-xl border-gray-200 dark:border-gray-700 bg-white/50 dark:bg-gray-800/50 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 sm:text-sm py-2.5 px-4 transition-all"
+                            placeholder={setting.name}
+                          />
+                          <div className="absolute inset-0 -z-10 bg-gradient-to-r from-blue-500/10 to-purple-500/10 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </div>
     </div>
   );

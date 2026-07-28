@@ -27,7 +27,6 @@ const getMonthsForYear = (year) => {
 export default function HebrewDatePicker({ value, selectedDate, onChange, className, style }) {
   const actualValue = value || selectedDate;
   const [isOpen, setIsOpen] = useState(false);
-  const [popupPos, setPopupPos] = useState({ vertical: 'bottom', horizontal: 'right' });
   const [hYear, setHYear] = useState('');
   const [hMonth, setHMonth] = useState('');
   const [hDay, setHDay] = useState('');
@@ -125,34 +124,23 @@ export default function HebrewDatePicker({ value, selectedDate, onChange, classN
 
   return (
     <div data-agy-id="hebrew_date_picker_container" ref={containerRef} style={{ position: 'relative', width: '100%', zIndex: isOpen ? 99999 : 1 }}>
-      <div className={className} style={{ display: "flex", width: "100%", border: "2px solid transparent", borderRadius: "16px", background: "var(--card-bg)", boxShadow: "0 4px 15px rgba(0,0,0,0.05)", transition: "all 0.3s", overflow: "hidden", ...(style || {}) }}
-           onFocus={(e) => { e.currentTarget.style.borderColor = "#a855f7"; e.currentTarget.style.boxShadow = "0 4px 20px rgba(168, 85, 247, 0.15)"; }}
-           onBlur={(e) => { e.currentTarget.style.borderColor = "transparent"; e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.05)"; }}>
+      <div className={className} style={{ display: "flex", width: "100%", border: "1px solid var(--element-border)", borderRadius: "8px", background: "var(--card-bg)", transition: "all 0.2s", overflow: "hidden", ...(style || {}) }}
+           onFocus={(e) => { e.currentTarget.style.borderColor = "var(--primary-color)"; e.currentTarget.style.boxShadow = "0 0 0 2px rgba(168, 85, 247, 0.2)"; }}
+           onBlur={(e) => { e.currentTarget.style.borderColor = "var(--element-border)"; e.currentTarget.style.boxShadow = "none"; }}>
         <button
           data-agy-id="hebrew_date_picker_toggle_btn"          type="button"
           onClick={() => {
-            if (!isOpen && containerRef.current) {
-              const rect = containerRef.current.getBoundingClientRect();
-              const spaceBelow = window.innerHeight - rect.bottom;
-              const spaceAbove = rect.top;
-              const vertical = (spaceBelow < 430 && spaceAbove > spaceBelow) ? 'top' : 'bottom';
-              
-              // In RTL, right:0 extends to the left, so we need space on the left side of the right edge
-              const horizontal = (rect.right < 360 && (window.innerWidth - rect.left) >= 360) ? 'left' : 'right';
-              
-              setPopupPos({ vertical, horizontal });
-            }
             setIsOpen(!isOpen);
           }}
           style={{
-            flex: 1, padding: "16px 20px", border: "none", background: "transparent", textAlign: "right", fontSize: "1.1rem", fontWeight: "600", color: "var(--text-main)", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", transition: "all 0.2s"
+            flex: 1, padding: "0 0.75rem", height: "45px", border: "none", background: "transparent", textAlign: "right", fontSize: "0.95rem", color: "var(--text-main)", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center"
           }}
         >
           <span>{displayString}</span>
-          <Calendar size={18} />
+          <Calendar size={18} style={{ color: 'var(--text-muted)' }} />
         </button>
-        <div className="gregorian-calendar-toggle" style={{ position: 'relative', borderRight: "1px solid var(--border-main)", width: "60px", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--element-bg)", borderTopLeftRadius: "16px", borderBottomLeftRadius: "16px", transition: "all 0.2s" }}>
-          <Globe size={18} style={{ color: 'var(--text-muted)', pointerEvents: 'none' }} />
+        <div className="gregorian-calendar-toggle" style={{ position: 'relative', borderRight: "1px solid var(--element-border)", width: "44px", display: "flex", alignItems: "center", justifyContent: "center", background: "#f8fafc", transition: "all 0.2s" }}>
+          <Globe size={16} style={{ color: 'var(--text-muted)', pointerEvents: 'none' }} />
           <input 
              data-agy-id="hebrew_date_picker_native_input"             type="date"
              value={safeNativeDate}
@@ -169,13 +157,37 @@ export default function HebrewDatePicker({ value, selectedDate, onChange, classN
       </div>
 
       {isOpen && (
-        <div style={{
-          position: 'absolute',
-          ...(popupPos.vertical === 'top' ? { bottom: '100%', marginBottom: '0.5rem' } : { top: '100%', marginTop: '0.5rem' }),
-          ...(popupPos.horizontal === 'left' ? { left: 0 } : { right: 0 }),
-          background: "var(--card-bg)", backdropFilter: "blur(16px)", WebkitBackdropFilter: "blur(16px)", border: "1px solid var(--border-main)", borderRadius: "24px", padding: "20px", boxShadow: "0 20px 40px rgba(0,0,0,0.12)", zIndex: 99999, width: "360px", direction: "rtl", animation: "fadeIn 0.2s ease-out"
-        }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center' }}>
+        <div 
+          style={{
+            position: 'fixed',
+            top: 0, left: 0, right: 0, bottom: 0,
+            background: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 999999,
+            animation: 'fadeIn 0.2s ease-out'
+          }}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) setIsOpen(false);
+          }}
+        >
+          <div style={{
+            background: "var(--card-bg)", 
+            border: "1px solid var(--border-main)", 
+            borderRadius: "24px", 
+            padding: "24px", 
+            boxShadow: "0 24px 48px rgba(0,0,0,0.2)", 
+            width: "360px",
+            maxWidth: "92vw",
+            maxHeight: "90vh",
+            overflowY: "auto",
+            direction: "rtl", 
+            animation: "fadeIn 0.2s ease-out"
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center' }}>
             <button data-agy-id="hebrew_date_picker_next_month_btn" type="button" onClick={() => {
                 const days = HDate.daysInMonth(hMonth, hYear);
                 const next = new HDate(1, hMonth, hYear).add(days, 'd');
@@ -336,6 +348,7 @@ export default function HebrewDatePicker({ value, selectedDate, onChange, classN
             >
               <Check size={16} /> אישור
             </button>
+          </div>
           </div>
         </div>
       )}

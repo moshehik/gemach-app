@@ -244,7 +244,8 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
                       transition: 'all 0.2s'
                     };
 
-                    const barcode = item.dressItem?.barcode || item.barcode || 'לא שויך';
+                    const computedBarcode = item.dressItem?.barcode || item.barcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : null);
+                    const barcode = computedBarcode || 'לא שויך';
                     const takenDate = item.takenDate ? new Date(item.takenDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }) : '-';
                     const returnDate = item.returnDate ? new Date(item.returnDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }) : '-';
                     

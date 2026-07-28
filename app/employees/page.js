@@ -370,6 +370,7 @@ export default function EmployeesPage() {
                     <th style={{ padding: '1rem' }}>תקלות</th>
                     <th style={{ padding: '1rem' }}>ס"ה</th>
                     <th style={{ padding: '1rem' }}>נסיעות</th>
+                    <th className="no-print" style={{ padding: '1rem', textAlign: 'center' }}>פעולות</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -407,6 +408,12 @@ export default function EmployeesPage() {
                         </td>
                         <td style={{ padding: '1rem', fontWeight: '500' }}>{emp.totalCalculated.toFixed(2)}</td>
                         <td style={{ padding: '1rem' }}>{emp.hasTravels}</td>
+                        <td className="no-print" style={{ padding: '1rem', textAlign: 'center' }}>
+                          <button onClick={(e) => { e.stopPropagation(); handlePrintPdfs(emp.id); }} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הדפס דוח אישי לעובד זה">
+                            <Printer size={16} />
+                            הדפס
+                          </button>
+                        </td>
                       </tr>
                     ))
                   )}
@@ -428,7 +435,8 @@ export default function EmployeesPage() {
       {/* Hidden Print Area for Individual PDF Reports */}
       {activeTab === 'attendance' && (
         <div id="print-area">
-          {!loadingAttendance && processedAttendance.length > 0 && processedAttendance.map(emp => {
+          <div className="bsd-header" style={{ display: 'none' }}>בס"ד</div>
+          {!loadingAttendance && processedAttendance.length > 0 && processedAttendance.filter(emp => !printEmployeeId || emp.id === printEmployeeId).map(emp => {
             const totalHours = (emp.totalMinutes / 60).toFixed(2);
             return (
               <div key={emp.id} className="employee-page" style={{ background: '#fff', color: '#000', padding: '2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>

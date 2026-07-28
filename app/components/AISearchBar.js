@@ -45,8 +45,8 @@ export default function AISearchBar({
               value={value}
               onChange={onChange}
               style={{ 
-                width: '100%',
-                padding: '0.75rem 3rem 0.75rem 1rem', 
+                width: '100%', height: '45px',
+                padding: '0 3rem 0 1rem', 
                 borderRadius: '24px', 
                 border: '1px solid #ddd',
                 boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
@@ -66,7 +66,7 @@ export default function AISearchBar({
               </button>
             )}
           </div>
-          <button type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0.75rem 1.5rem' }}>
+          <button type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0 1.5rem', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             חיפוש
           </button>
         </form>
@@ -80,8 +80,8 @@ export default function AISearchBar({
               onChange={(e) => setAiInput(e.target.value)}
               disabled={loading}
               style={{ 
-                width: '100%',
-                padding: '0.75rem 3rem 0.75rem 1rem', 
+                width: '100%', height: '45px',
+                padding: '0 3rem 0 1rem', 
                 borderRadius: '24px', 
                 border: '2px solid transparent',
                 background: 'linear-gradient(white, white) padding-box, linear-gradient(45deg, #a855f7, #ec4899, #f59e0b) border-box',
@@ -112,7 +112,7 @@ export default function AISearchBar({
             disabled={loading}
             style={{ 
               borderRadius: '24px', 
-              padding: '0.75rem 1.5rem', 
+              padding: '0 1.5rem', height: '45px', 
               background: 'linear-gradient(45deg, #a855f7, #ec4899)',
               color: 'white',
               border: 'none',
@@ -120,6 +120,7 @@ export default function AISearchBar({
               fontWeight: 'bold',
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '0.5rem'
             }}
           >

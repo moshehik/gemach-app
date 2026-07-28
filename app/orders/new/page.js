@@ -7,6 +7,13 @@ import HebrewDatePicker from '../../../components/HebrewDatePicker';
 import CustomerSelector from '../../../components/CustomerSelector';
 import OrderModelSelector from '../../../components/orders/OrderModelSelector';
 
+export const getCustomerFullName = (c) => {
+  if (!c) return 'לא נבחר';
+  const f = (c.firstName === 'null' || c.firstName === 'undefined' || !c.firstName) ? '' : c.firstName;
+  const l = (c.lastName === 'null' || c.lastName === 'undefined' || !c.lastName) ? '' : c.lastName;
+  return `${f} ${l}`.trim() || 'לקוח ללא שם';
+};
+
 export default function NewOrderPage() {
   const router = useRouter();
   
@@ -52,7 +59,7 @@ export default function NewOrderPage() {
   const [saving, setSaving] = useState(false);
   
   const [newCustomer, setNewCustomer] = useState({
-    firstName: '', lastName: '', phone1: '', email: '', city: ''
+    firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: ''
   });
 
   const [duplicateCustomer, setDuplicateCustomer] = useState(null);
@@ -129,7 +136,7 @@ export default function NewOrderPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          clientName: `${cust.firstName || ''} ${cust.lastName || ''}`.trim(),
+          clientName: getCustomerFullName(cust),
           phone: cust.phone1 || '',
           address: fullAddress,
           cardNumber: creditCardData.cardNumber,
@@ -166,12 +173,22 @@ export default function NewOrderPage() {
         if (Array.isArray(data)) {
           const settingsObj = data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
           setSettings(settingsObj);
+          if (settingsObj.ALLOWED_PAYMENT_METHODS) {
+            const opts = settingsObj.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean);
+            if (opts.length > 0) {
+              setPayment(prev => ({...prev, method: opts[0]}));
+            }
+          }
         } else {
           setSettings(data || {});
         }
       })
       .catch(err => console.error(err));
   }, []);
+
+  const paymentMethodOptions = settings.ALLOWED_PAYMENT_METHODS 
+    ? settings.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean) 
+    : ['אשראי (דרך נדרים פלוס)', 'יציאה באישור מנהל'];
 
   const handleCheckPhone = async () => {
     if (!phoneSearchInput || phoneSearchInput.trim().length < 9) {
@@ -517,7 +534,7 @@ export default function NewOrderPage() {
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
 
     if (payment.amount && parseFloat(payment.amount) > 0) {
-      if (payment.method === 'אשראי' && !creditProcessedConfirmation) {
+      if (payment.method.includes('אשראי') && !payment.method.includes('חיצונית') && !creditProcessedConfirmation) {
         // Open Nedarim modal to process before saving
         setCreditCardData({
           cardNumber: '',
@@ -529,7 +546,7 @@ export default function NewOrderPage() {
         setCreditError('');
         setShowCreditModal(true);
         return; // Stop saving, wait for credit modal
-      } else if (payment.method !== 'אשראי') {
+      } else if (!(payment.method.includes('אשראי') && !payment.method.includes('חיצונית'))) {
         const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
         if (level === 'מנהל' || level === 'עובד') {
           const authResult = await window.customAuthPrompt(`פעולה זו דורשת הרשאת ${level}. אנא בחר משתמש והזן סיסמה:`, level);
@@ -638,7 +655,8 @@ export default function NewOrderPage() {
     }
   };
 
-  const selectedCustomerName = order.selectedCustomer ? `${order.selectedCustomer.firstName} ${order.selectedCustomer.lastName}` : 'לא נבחר';
+
+  const selectedCustomerName = getCustomerFullName(order.selectedCustomer);
 
   return (
     <>
@@ -707,7 +725,7 @@ export default function NewOrderPage() {
                 <div style={{ width: '70px', height: '70px', background: 'var(--primary-color)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', margin: '0 auto 1.5rem auto' }}>
                   👋
                 </div>
-                <h3 style={{ fontSize: '1.8rem', color: '#333', marginBottom: '0.5rem' }}>שלום {foundCustomerFromPhone.firstName} {foundCustomerFromPhone.lastName}!</h3>
+                <h3 style={{ fontSize: '1.8rem', color: '#333', marginBottom: '0.5rem' }}>שלום {getCustomerFullName(foundCustomerFromPhone)}!</h3>
                 <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)', marginBottom: '2.5rem' }}>מצאנו אותך במערכת (טלפון: {foundCustomerFromPhone.phone1}). האם זה אתה?</p>
                 
                 <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
@@ -782,9 +800,19 @@ export default function NewOrderPage() {
                   </div>
                 </div>
 
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>עיר מגורים</label>
-                  <input data-agy-id="new_page_input_9" type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>עיר מגורים</label>
+                    <input data-agy-id="new_page_input_9" type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>רחוב</label>
+                    <input data-agy-id="new_page_input_10" type="text" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({...prev, street: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>בית</label>
+                    <input data-agy-id="new_page_input_11" type="text" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({...prev, houseNum: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
+                  </div>
                 </div>
                 
                 <button data-agy-id="new_page_button_10" 
@@ -1127,11 +1155,11 @@ export default function NewOrderPage() {
                     if (!calcItem) return null;
                     const dressName = item.dressName || 'דגם לא ידוע';
                     
-                    let repairsCost = 0;
+                    const repairsCost = calcItem.repairsCost || 0;
                     const repairList = [];
-                    if (item.neckAlteration) { repairsCost += 20; repairList.push('צוואר'); }
-                    if (item.sleeveAlteration) { repairsCost += 20; repairList.push('שרוול'); }
-                    if (item.lengthAlteration && String(item.lengthAlteration).trim() !== '') { repairsCost += 20; repairList.push('אורך'); }
+                    if (item.neckAlteration) repairList.push('צוואר');
+                    if (item.sleeveAlteration) repairList.push('שרוול');
+                    if (item.lengthAlteration && String(item.lengthAlteration).trim() !== '') repairList.push('אורך');
                     
                     const basePrice = calcItem.calculatedPrice - repairsCost;
                     
@@ -1178,9 +1206,9 @@ export default function NewOrderPage() {
                   onChange={e => setPayment(prev => ({...prev, method: e.target.value}))} 
                   style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '1px solid var(--element-border)', fontSize: '1.1rem' }}
                 >
-                  <option value="אשראי">אשראי (דרך נדרים פלוס)</option>
-                  <option value="אשראי (קופה חיצונית)">אשראי (קופה חיצונית)</option>
-                  <option value="יציאה באישור מנהל">יציאה באישור מנהל</option>
+                  {paymentMethodOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
                 </select>
               </div>
 
@@ -1223,7 +1251,7 @@ export default function NewOrderPage() {
               <div style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid #eee' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
                   <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--text-main)' }}>
-                    {duplicateCustomer.firstName} {duplicateCustomer.lastName}
+                    {getCustomerFullName(duplicateCustomer)}
                   </p>
                   <Link href={`/customers/${duplicateCustomer.id}`} target="_blank" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', background: '#e3f2fd', color: '#1976d2', borderRadius: '50%', textDecoration: 'none', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(25,118,210,0.2)' }} title="פתיחת כרטיס לקוח בטאב חדש">
                     ↗
@@ -1259,7 +1287,7 @@ export default function NewOrderPage() {
               
               <div style={{ marginBottom: '1rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>שם לקוח:</label>
-                <input data-agy-id="new_page_input_31" type="text" readOnly value={`${(order.selectedCustomer || newCustomer)?.firstName || ''} ${(order.selectedCustomer || newCustomer)?.lastName || ''}`} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', background: 'var(--element-bg)' }} />
+                <input data-agy-id="new_page_input_31" type="text" readOnly value={getCustomerFullName(order.selectedCustomer || newCustomer)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', background: 'var(--element-bg)' }} />
               </div>
               
               <div style={{ marginBottom: '1rem' }}>

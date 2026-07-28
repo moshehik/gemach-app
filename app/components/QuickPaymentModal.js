@@ -13,6 +13,24 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [settings, setSettings] = useState({});
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setSettings(data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {}));
+        } else {
+          setSettings(data || {});
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  const paymentMethodOptions = settings.ALLOWED_PAYMENT_METHODS 
+    ? settings.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean) 
+    : ['אשראי (דרך נדרים פלוס)', 'יציאה באישור מנהל'];
 
   const handleSearch = async () => {
     if (!orderId) return;
@@ -56,7 +74,7 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
         setOrderId('');
         setOrderData(null);
         setAmount('');
-        setPaymentMethod('אשראי');
+        setPaymentMethod(paymentMethodOptions[0] || 'אשראי');
         setNotes('');
         setError('');
         setSuccess('');
@@ -171,9 +189,9 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
                   onChange={(e) => setPaymentMethod(e.target.value)}
                   style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', background: 'var(--card-bg)' }}
                 >
-                  <option value="אשראי">אשראי (דרך נדרים פלוס)</option>
-                  <option value="אשראי (קופה חיצונית)">אשראי (קופה חיצונית)</option>
-                  <option value="יציאה באישור מנהל">יציאה באישור מנהל</option>
+                  {paymentMethodOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
                 </select>
               </div>
 

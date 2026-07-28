@@ -79,7 +79,7 @@ export default function PrintAlterationsPage() {
 
   const formatDate = (dateString) => {
     if (!dateString) return '';
-    return new Date(dateString).toLocaleDateString('he-IL');
+    return getHebrewDateString(dateString);
   };
 
   const getReportTitle = () => {
@@ -127,21 +127,31 @@ export default function PrintAlterationsPage() {
     <div data-agy-id="print-alterations-container" className="print-container" style={{ padding: '20px', direction: 'rtl' }}>
       <style>{`
         @media print {
-          body * {
-            visibility: hidden;
+          @page {
+            size: A4 portrait;
+            margin: 15mm;
           }
-          .print-container, .print-container * {
-            visibility: visible;
+          body {
+            background: white !important;
+            height: auto !important;
+            overflow: visible !important;
+          }
+          /* Hide layout elements instead of visibility trick */
+          nav.navbar, 
+          .dev-env-container, 
+          .offline-indicator,
+          .ai-floating-widget {
+            display: none !important;
           }
           .print-container {
-            position: absolute;
-            left: 0;
-            top: 0;
             width: 100%;
-          }
-          /* Hide the layout nav inside print */
-          nav {
-            display: none !important;
+            height: auto !important;
+            overflow: visible !important;
+            margin: 0;
+            padding: 0;
+            display: block !important;
+            filter: grayscale(100%);
+            color: black !important;
           }
         }
         .print-table {
@@ -175,7 +185,7 @@ export default function PrintAlterationsPage() {
       <div className="print-header">
         <h1>{getReportTitle()}</h1>
         <h3>
-          {dateMode === 'today' ? `תאריך: ${new Date().toLocaleDateString('he-IL')}` : `מתאריך: ${formatDate(startDate)} | עד תאריך: ${formatDate(endDate)}`}
+          {dateMode === 'today' ? `תאריך: ${getHebrewDateString(new Date().toISOString())}` : `מתאריך: ${formatDate(startDate)} | עד תאריך: ${formatDate(endDate)}`}
         </h3>
       </div>
 
@@ -195,7 +205,7 @@ export default function PrintAlterationsPage() {
             groupedItems.map(group => (
               <div key={group.date} style={{ marginBottom: '30px' }}>
                 <h3 style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '15px', color: 'black' }}>
-                  תאריך אירוע: {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')} {group.date !== 'ללא תאריך' ? `(${formatDate(group.date)})` : ''}
+                  תאריך אירוע: {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
                 </h3>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
                   {group.items.map(item => (
@@ -249,7 +259,7 @@ export default function PrintAlterationsPage() {
               return (
                 <div key={group.date} style={{ marginBottom: '40px', pageBreakInside: 'avoid' }}>
                   <h3 style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '10px' }}>
-                    יום {dayOfWeek} - {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')} {group.date !== 'ללא תאריך' ? `(${formatDate(group.date)})` : ''}
+                    יום {dayOfWeek} - {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
                   </h3>
                   <table className="print-table" style={{ background: '#fff', border: '1px solid #000' }}>
                     <thead>

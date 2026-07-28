@@ -81,9 +81,35 @@ export default function PrintDressCard() {
     <div style={{ padding: '2rem', maxWidth: '800px', margin: '0 auto', fontFamily: 'Arial, sans-serif', direction: 'rtl' }}>
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
-          body { background: white; margin: 0; padding: 0; }
+          @page { size: A4 portrait; margin: 15mm; }
+          html, body { 
+            background: white !important; 
+            margin: 0 !important; 
+            padding: 0 !important; 
+            height: auto !important; 
+            overflow: visible !important;
+            color: black !important;
+          }
+          /* Hide layout wrappers */
+          nav.navbar, 
+          .dev-env-container, 
+          .offline-indicator,
+          .ai-floating-widget,
+          .popup-overlay,
+          .landing-page { display: none !important; }
           .no-print { display: none !important; }
-          @page { margin: 1.5cm; }
+          
+          /* Target the main container directly since it might not have .print-container class */
+          body > :has(button.no-print),
+          body > :has(button.no-print) > *,
+          body > :has(button.no-print) > * > * {
+            display: block !important;
+            filter: grayscale(100%);
+            color: black !important;
+            width: 100%;
+            height: auto !important;
+            overflow: visible !important;
+          }
         }
         table { border-collapse: collapse; width: 100%; margin-top: 1rem; }
         th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: right; }

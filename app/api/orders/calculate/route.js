@@ -95,15 +95,25 @@ export async function POST(request) {
       let finalPrice = basePrice * abroadMarkup;
 
       let repairsTotal = 0;
-      if (item.neckAlteration) repairsTotal += 20;
-      if (item.sleeveAlteration) repairsTotal += 20;
-      if (item.lengthAlteration && String(item.lengthAlteration).trim() !== '') repairsTotal += 20;
+      if (item.neckAlteration) {
+        const p = priceList.find(p => p.category === 'תיקונים' && p.description === 'תיקון צוואר');
+        repairsTotal += p ? p.price : 0;
+      }
+      if (item.sleeveAlteration) {
+        const p = priceList.find(p => p.category === 'תיקונים' && p.description === 'תיקון שרוול');
+        repairsTotal += p ? p.price : 0;
+      }
+      if (item.lengthAlteration && String(item.lengthAlteration).trim() !== '') {
+        const p = priceList.find(p => p.category === 'תיקון אורך' && size >= (p.fromSize || 0) && (p.toSize === null || size <= p.toSize));
+        repairsTotal += p ? p.price : 0;
+      }
       finalPrice += repairsTotal;
 
       totalAmount += finalPrice;
       calculatedItems.push({
         ...item,
         calculatedPrice: finalPrice,
+        repairsCost: repairsTotal,
         isDiscountedSet
       });
     }

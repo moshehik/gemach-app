@@ -191,27 +191,27 @@ export default function AlterationsPage() {
     <main data-agy-id="alterations-page-main" className="container animate-fade-in" style={{ padding: '2rem 1rem', minHeight: '80vh' }}>
       <div style={{ 
         position: 'relative',
-        marginBottom: '2rem', padding: '2.5rem 2rem', 
+        marginBottom: '1rem', padding: '1.5rem', 
         background: 'var(--card-bg)', 
-        borderRadius: '24px', 
-        boxShadow: 'var(--shadow-lg)',
-        border: 'var(--glass-border)',
+        borderRadius: '16px', 
+        boxShadow: 'var(--shadow-sm)',
+        border: '1px solid var(--element-border)',
         color: 'var(--text-main)',
         display: 'flex',
         flexDirection: 'column',
-        gap: '2rem'
+        gap: '1.2rem'
       }}>
         {/* Decorative ambient blobs */}
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: '24px', pointerEvents: 'none' }}>
-          <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '200px', height: '200px', background: 'linear-gradient(135deg, #a855f7, #ec4899)', borderRadius: '50%', filter: 'blur(60px)', opacity: 0.15 }}></div>
-          <div style={{ position: 'absolute', bottom: '-50px', left: '-50px', width: '250px', height: '250px', background: 'linear-gradient(135deg, #3b82f6, #2dd4bf)', borderRadius: '50%', filter: 'blur(70px)', opacity: 0.1 }}></div>
+        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: '16px', pointerEvents: 'none' }}>
+          <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '200px', height: '200px', background: 'linear-gradient(135deg, #a855f7, #ec4899)', borderRadius: '50%', filter: 'blur(60px)', opacity: 0.1 }}></div>
+          <div style={{ position: 'absolute', bottom: '-50px', left: '-50px', width: '250px', height: '250px', background: 'linear-gradient(135deg, #3b82f6, #2dd4bf)', borderRadius: '50%', filter: 'blur(70px)', opacity: 0.08 }}></div>
         </div>
 
         {/* Top Header Row */}
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+        <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '2.5rem', display: 'flex', alignItems: 'center', gap: '12px', fontWeight: '800' }}>
-              <Scissors size={32} color="var(--primary-color)" />
+            <h1 style={{ margin: 0, fontSize: '1.8rem', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '800' }}>
+              <Scissors size={26} color="var(--primary-color)" />
               ניהול תפירות ותיקונים
             </h1>
           </div>
@@ -239,27 +239,27 @@ export default function AlterationsPage() {
               ]}
               iconOnly={true}
               onFetchData={fetchForExport}
-              customStyle={{ padding: '0.8rem', borderRadius: '12px', background: 'var(--element-bg)', border: '1px solid var(--element-border)', color: 'var(--text-main)', backdropFilter: 'blur(10px)' }}
+              customStyle={{ padding: '0.6rem 1rem', borderRadius: '10px', background: 'var(--element-bg)', border: '1px solid var(--element-border)', color: 'var(--text-main)', backdropFilter: 'blur(10px)', height: '42px' }}
             />
             <button 
               data-agy-id="print-wizard-button"
               onClick={() => setIsPrintWizardOpen(true)}
-              style={{ padding: '0.8rem', borderRadius: '12px', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--text-main)', background: 'var(--element-bg)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
+              style={{ padding: '0.5rem', borderRadius: '10px', width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--text-main)', background: 'var(--element-bg)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
               onMouseOver={e => e.currentTarget.style.background = 'var(--divider)'}
               onMouseOut={e => e.currentTarget.style.background = 'var(--element-bg)'}
               title="אשף הדפסה"
             >
-              <Printer size={22} />
+              <Printer size={20} />
             </button>
             <button 
               data-agy-id="legend-button"
               onClick={() => setIsLegendOpen(true)}
-              style={{ padding: '0.8rem', borderRadius: '12px', width: '50px', height: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--text-main)', background: 'var(--element-bg)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
+              style={{ padding: '0.5rem', borderRadius: '10px', width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--text-main)', background: 'var(--element-bg)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
               onMouseOver={e => e.currentTarget.style.background = 'var(--divider)'}
               onMouseOut={e => e.currentTarget.style.background = 'var(--element-bg)'}
               title="מקרא"
             >
-              <Info size={22} />
+              <Info size={20} />
             </button>
           </div>
         </div>
@@ -267,9 +267,9 @@ export default function AlterationsPage() {
         {/* Filter Toolbar (Glassmorphism) */}
         <div style={{ 
           position: 'relative', zIndex: 1, 
-          display: 'flex', gap: '1.5rem', alignItems: 'center', flexWrap: 'wrap', 
-          background: 'var(--element-bg)', padding: '1rem 1.5rem', 
-          borderRadius: '16px', border: '1px solid var(--element-border)',
+          display: 'flex', gap: '1.2rem', alignItems: 'center', flexWrap: 'wrap', 
+          background: 'var(--element-bg)', padding: '0.75rem 1rem', 
+          borderRadius: '12px', border: '1px solid var(--element-border)',
           backdropFilter: 'blur(12px)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -317,22 +317,22 @@ export default function AlterationsPage() {
             onClick={markAllDone} 
             disabled={!startDate}
             style={{ 
-              padding: '0.6rem 1.2rem', fontSize: '0.95rem', borderRadius: '12px', 
-              display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 'bold',
+              padding: '0.5rem 1rem', fontSize: '0.9rem', borderRadius: '10px', 
+              display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold',
               background: !startDate ? 'var(--element-bg)' : 'linear-gradient(135deg, #10b981, #059669)',
               color: !startDate ? 'var(--text-muted)' : 'white',
               border: !startDate ? '1px solid var(--element-border)' : 'none',
-              boxShadow: !startDate ? 'none' : '0 4px 15px rgba(16, 185, 129, 0.4)',
+              boxShadow: !startDate ? 'none' : '0 4px 10px rgba(16, 185, 129, 0.3)',
               cursor: !startDate ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s', height: '40px'
             }}
           >
-            <CheckCircle size={18} /> סמן יום כבוצע
+            <CheckCircle size={16} /> סמן יום כבוצע
           </button>
         </div>
 
       {/* Search and Filters */}
-      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '600px' }}>
           <AISearchBar 
             placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
@@ -346,7 +346,6 @@ export default function AlterationsPage() {
           />
         </div>
         <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center', fontWeight: '500' }}>
-          <span>סה"כ רשומות: {totalCount}</span>
         </div>
       </div>
       </div>
@@ -464,15 +463,15 @@ export default function AlterationsPage() {
             </table>
           </div>
           
-          {/* Sticky Bottom Bar */}
-          <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 0 -1rem 0', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
-            <div style={{ fontWeight: 'bold' }}>סה"כ שורות מוצגות: {items.length}</div>
+          {/* Bottom Bar - Floating/Sticky */}
+          <div style={{ position: 'sticky', bottom: '0', background: 'var(--card-bg)', padding: '0.75rem 1.5rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '0 0 12px 12px', flexWrap: 'wrap', gap: '1rem', boxShadow: '0 -4px 12px rgba(0,0,0,0.06)', zIndex: 10, margin: '0' }}>
+            <div style={{ fontWeight: 'bold' }}>סה"כ מוצג בעמוד: {items.length} | סה"כ תיקונים תואמים: {totalCount}</div>
             
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
-                <button className="btn btn-outline" disabled={page >= totalPages } onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>הבא &gt;</button>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages}</span>
-                <button className="btn btn-outline" disabled={page <= 1 } onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הקודם</button>
+                <button className="btn btn-outline" disabled={page <= 1 } onClick={() => setPage(p => p - 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>הקודם &gt;</button>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '50px', padding: '0.2rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages}</span>
+                <button className="btn btn-outline" disabled={page >= totalPages } onClick={() => setPage(p => p + 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>&lt; הבא</button>
               </div>
             )}
           </div>
