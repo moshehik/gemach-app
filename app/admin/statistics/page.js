@@ -114,7 +114,7 @@ export default function StatisticsPage() {
           onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
           onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
         >
-          <FileDown size={20} />
+          <FileDown data-element-name="רכיב_page_1" size={20} />
           דוח הגירת נתונים מאקסס
         </a>
       </div>
@@ -122,20 +122,20 @@ export default function StatisticsPage() {
       <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', backgroundColor: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
         <div>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-color)' }}>מתאריך אירוע / התחלה</label>
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="form-input" style={{ width: '200px' }} />
+          <input data-element-name="שדה_page_2" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="form-input" style={{ width: '200px' }} />
         </div>
         <div>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-color)' }}>עד תאריך אירוע / סיום</label>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="form-input" style={{ width: '200px' }} />
+          <input data-element-name="שדה_page_3" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="form-input" style={{ width: '200px' }} />
         </div>
-        <button onClick={fetchData} className="btn-primary" style={{ height: '42px', padding: '0 2rem' }}>
+        <button data-element-name="כפתור_page_4" onClick={fetchData} className="btn-primary" style={{ height: '42px', padding: '0 2rem' }}>
           החל סינון
         </button>
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
         {tabs.map(t => (
-          <button 
+          <button data-element-name="כפתור_page_5" 
             key={t.id} 
             onClick={() => setActiveTab(t.id)}
             style={{
@@ -159,12 +159,12 @@ export default function StatisticsPage() {
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>טוען נתונים...</div>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            {activeTab === 'daily' && <DailyTable data={data} />}
-            {activeTab === 'model' && <ModelSizeTable data={data} type="דגם" showAlterations={enableAlterations} />}
-            {activeTab === 'size' && <ModelSizeTable data={data} type="מידה" showAlterations={enableAlterations} />}
-            {activeTab === 'seamstress' && <SeamstressTable data={data} />}
-            {activeTab === 'payments' && <PaymentsTable data={data} />}
-            {activeTab === 'inventory' && <InventoryTable data={data} />}
+            {activeTab === 'daily' && <DailyTable data-element-name="רכיב_page_6" data={data} />}
+            {activeTab === 'model' && <ModelSizeTable data-element-name="רכיב_page_7" data={data} type="דגם" showAlterations={enableAlterations} />}
+            {activeTab === 'size' && <ModelSizeTable data-element-name="רכיב_page_8" data={data} type="מידה" showAlterations={enableAlterations} />}
+            {activeTab === 'seamstress' && <SeamstressTable data-element-name="רכיב_page_9" data={data} />}
+            {activeTab === 'payments' && <PaymentsTable data-element-name="רכיב_page_10" data={data} />}
+            {activeTab === 'inventory' && <InventoryTable data-element-name="רכיב_page_11" data={data} />}
           </div>
         )}
       </div>
@@ -188,7 +188,7 @@ export default function StatisticsPage() {
 }
 
 function DailyTable({ data }) {
-  if (!data || data.length === 0) return <EmptyState />;
+  if (!data || data.length === 0) return <EmptyState data-element-name="רכיב_page_12" />;
   return (
     <table className="stats-table">
       <thead>
@@ -216,7 +216,7 @@ function DailyTable({ data }) {
 }
 
 function ModelSizeTable({ data, type, showAlterations }) {
-  if (!data || data.length === 0) return <EmptyState />;
+  if (!data || data.length === 0) return <EmptyState data-element-name="רכיב_page_13" />;
   return (
     <table className="stats-table">
       <thead>
@@ -252,7 +252,7 @@ function ModelSizeTable({ data, type, showAlterations }) {
 }
 
 function SeamstressTable({ data }) {
-  if (!data || data.length === 0) return <EmptyState />;
+  if (!data || data.length === 0) return <EmptyState data-element-name="רכיב_page_14" />;
   return (
     <table className="stats-table">
       <thead>
@@ -280,7 +280,7 @@ function SeamstressTable({ data }) {
 }
 
 function PaymentsTable({ data }) {
-  if (!data || data.length === 0) return <EmptyState />;
+  if (!data || data.length === 0) return <EmptyState data-element-name="רכיב_page_15" />;
   return (
     <table className="stats-table">
       <thead>
@@ -312,7 +312,7 @@ function PaymentsTable({ data }) {
 }
 
 function InventoryTable({ data }) {
-  if (!data || data.length === 0) return <EmptyState />;
+  if (!data || data.length === 0) return <EmptyState data-element-name="רכיב_page_16" />;
   return (
     <table className="stats-table">
       <thead>

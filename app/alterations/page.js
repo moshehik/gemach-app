@@ -11,6 +11,8 @@ import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
 
+const alterationsCache = new Map();
+
 export default function AlterationsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -41,28 +43,56 @@ export default function AlterationsPage() {
   useEffect(() => setMounted(true), []);
 
   useEffect(() => {
-    fetchAlterations();
-  }, [startDate, endDate, showOnlyPending, page, search]);
+    fetchAlterations(false, page);
+    
+    // Background Prefetching for the next page
+    const timer = setTimeout(() => {
+      if (page < totalPages) {
+        fetchAlterations(true, page + 1);
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [startDate, endDate, showOnlyPending, page, search, totalPages]);
 
-  const fetchAlterations = async () => {
+  const fetchAlterations = async (isPrefetch = false, targetPage = page) => {
     try {
-      setLoading(true);
-      setError('');
-      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=${page}&limit=${limit}`;
+      if (!isPrefetch) {
+        setLoading(true);
+        setError('');
+      }
+      
+      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=${targetPage}&limit=${limit}`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
       if (search) url += `&search=${search}`;
 
+      const cacheKey = url;
+      
+      // SWR: Instant Cache Hit
+      if (!isPrefetch && alterationsCache.has(cacheKey)) {
+        const cachedData = alterationsCache.get(cacheKey);
+        setItems(cachedData.data || []);
+        setTotalPages(cachedData.totalPages || 1);
+        setTotalCount(cachedData.total || 0);
+        setLoading(false); // UI becomes interactive instantly
+      }
+
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch alterations');
       const data = await res.json();
-      setItems(data.data || []);
-      setTotalPages(data.totalPages || 1);
-      setTotalCount(data.total || 0);
+      
+      // Update Cache silently
+      alterationsCache.set(cacheKey, data);
+
+      if (!isPrefetch && targetPage === page) {
+        setItems(data.data || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalCount(data.total || 0);
+      }
     } catch (err) {
-      setError(err.message);
+      if (!isPrefetch) setError(err.message);
     } finally {
-      setLoading(false);
+      if (!isPrefetch) setLoading(false);
     }
   };
 
@@ -211,13 +241,13 @@ export default function AlterationsPage() {
         <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '1.8rem', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '800' }}>
-              <Scissors size={26} color="var(--primary-color)" />
+              <Scissors data-element-name="רכיב_page_1" size={26} color="var(--primary-color)" />
               ניהול תפירות ותיקונים
             </h1>
           </div>
 
           <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <ExportButtons 
+            <ExportButtons data-element-name="רכיב_page_2" 
               data={items.map(item => ({
                 ...item,
                 orderId: item.order?.orderId,
@@ -241,7 +271,7 @@ export default function AlterationsPage() {
               onFetchData={fetchForExport}
               customStyle={{ padding: '0.6rem 1rem', borderRadius: '10px', background: 'var(--element-bg)', border: '1px solid var(--element-border)', color: 'var(--text-main)', backdropFilter: 'blur(10px)', height: '42px' }}
             />
-            <button 
+            <button data-element-name="כפתור_page_3" 
               data-agy-id="print-wizard-button"
               onClick={() => setIsPrintWizardOpen(true)}
               style={{ padding: '0.5rem', borderRadius: '10px', width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--text-main)', background: 'var(--element-bg)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
@@ -249,9 +279,9 @@ export default function AlterationsPage() {
               onMouseOut={e => e.currentTarget.style.background = 'var(--element-bg)'}
               title="אשף הדפסה"
             >
-              <Printer size={20} />
+              <Printer data-element-name="רכיב_page_4" size={20} />
             </button>
-            <button 
+            <button data-element-name="כפתור_page_5" 
               data-agy-id="legend-button"
               onClick={() => setIsLegendOpen(true)}
               style={{ padding: '0.5rem', borderRadius: '10px', width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--text-main)', background: 'var(--element-bg)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
@@ -259,7 +289,7 @@ export default function AlterationsPage() {
               onMouseOut={e => e.currentTarget.style.background = 'var(--element-bg)'}
               title="מקרא"
             >
-              <Info size={20} />
+              <Info data-element-name="רכיב_page_6" size={20} />
             </button>
           </div>
         </div>
@@ -273,18 +303,18 @@ export default function AlterationsPage() {
           backdropFilter: 'blur(12px)'
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar size={18} color="var(--text-muted)" />
+            <Calendar data-element-name="רכיב_page_7" size={18} color="var(--text-muted)" />
             <label style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>מתאריך:</label>
             <div style={{ width: '200px' }}>
-              <HebrewDatePicker value={startDate} onChange={setStartDate} />
+              <HebrewDatePicker data-element-name="רכיב_page_8" value={startDate} onChange={setStartDate} />
             </div>
           </div>
           
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar size={18} color="var(--text-muted)" />
+            <Calendar data-element-name="רכיב_page_9" size={18} color="var(--text-muted)" />
             <label style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>עד תאריך:</label>
             <div style={{ width: '200px' }}>
-              <HebrewDatePicker value={endDate} onChange={setEndDate} />
+              <HebrewDatePicker data-element-name="רכיב_page_10" value={endDate} onChange={setEndDate} />
             </div>
           </div>
           
@@ -298,9 +328,9 @@ export default function AlterationsPage() {
               marginLeft: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
               transition: 'all 0.2s'
             }}>
-              {showOnlyPending && <Check size={14} color="white" strokeWidth={3} />}
+              {showOnlyPending && <Check data-element-name="רכיב_page_11" size={14} color="white" strokeWidth={3} />}
             </div>
-            <input 
+            <input data-element-name="שדה_page_12" 
               data-agy-id="checkbox-show-only-pending"
               type="checkbox" 
               checked={showOnlyPending} 
@@ -312,7 +342,7 @@ export default function AlterationsPage() {
 
           <div style={{ flex: 1 }}></div>
 
-          <button 
+          <button data-element-name="כפתור_page_13" 
             data-agy-id="mark-all-done-button"
             onClick={markAllDone} 
             disabled={!startDate}
@@ -327,14 +357,14 @@ export default function AlterationsPage() {
               transition: 'all 0.2s', height: '40px'
             }}
           >
-            <CheckCircle size={16} /> סמן יום כבוצע
+            <CheckCircle data-element-name="רכיב_page_14" size={16} /> סמן יום כבוצע
           </button>
         </div>
 
       {/* Search and Filters */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
         <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '600px' }}>
-          <AISearchBar 
+          <AISearchBar data-element-name="רכיב_page_15" 
             placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -430,29 +460,29 @@ export default function AlterationsPage() {
                           border: `1px solid ${item.alterationDone ? 'rgba(67, 160, 71, 0.2)' : 'rgba(229, 57, 53, 0.2)'}`
                         }}>
                           {item.alterationDone ? (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle size={14} /> בוצע</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle data-element-name="רכיב_page_16" size={14} /> בוצע</span>
                           ) : (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Clock size={14} /> ממתין</span>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Clock data-element-name="רכיב_page_17" size={14} /> ממתין</span>
                           )}
                         </span>
                       </td>
                       <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
-                          <Link 
+                          <Link data-element-name="רכיב_page_18" 
                             href={`/orders/${item.order?.orderId}`} 
                             className="btn btn-outline" 
                             style={{ padding: '0.5rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px' }}
                             title="כרטיס הזמנה"
                           >
-                            <FileText size={18} />
+                            <FileText data-element-name="רכיב_page_19" size={18} />
                           </Link>
                         {!item.alterationDone && (
-                          <button 
+                          <button data-element-name="כפתור_page_20" 
                             className="btn btn-primary" 
                             style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}
                             onClick={() => markDone(item.id)}
                             title="סמן שבוצע"
                           >
-                            <CheckCircle size={18} />
+                            <CheckCircle data-element-name="רכיב_page_21" size={18} />
                           </button>
                         )}
                       </td>
@@ -469,9 +499,9 @@ export default function AlterationsPage() {
             
             {totalPages > 1 && (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
-                <button className="btn btn-outline" disabled={page <= 1 } onClick={() => setPage(p => p - 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>הקודם &gt;</button>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '50px', padding: '0.2rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages}</span>
-                <button className="btn btn-outline" disabled={page >= totalPages } onClick={() => setPage(p => p + 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>&lt; הבא</button>
+                <button data-element-name="כפתור_page_22" className="btn btn-outline" disabled={page <= 1 } onClick={() => setPage(p => p - 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>הקודם &gt;</button>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>עמוד <input data-element-name="שדה_page_23" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '50px', padding: '0.2rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages}</span>
+                <button data-element-name="כפתור_page_24" className="btn btn-outline" disabled={page >= totalPages } onClick={() => setPage(p => p + 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>&lt; הבא</button>
               </div>
             )}
           </div>
@@ -479,7 +509,7 @@ export default function AlterationsPage() {
       )}
 
       {isPrintWizardOpen && (
-        <PrintWizardModal 
+        <PrintWizardModal data-element-name="רכיב_page_25" 
           onClose={() => setIsPrintWizardOpen(false)} 
           defaultStartDate={startDate}
           defaultEndDate={endDate}
@@ -487,14 +517,14 @@ export default function AlterationsPage() {
       )}
 
       {isLegendOpen && mounted && createPortal(
-        <div style={{
+        <div data-element-name="לחיץ_page_26" style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
           background: 'rgba(0,0,0,0.4)',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           zIndex: 9999
         }} onClick={() => setIsLegendOpen(false)}>
-          <div style={{
+          <div data-element-name="לחיץ_page_27" style={{
             background: 'var(--card-bg)',
             padding: '2rem',
             borderRadius: '16px',
@@ -503,14 +533,14 @@ export default function AlterationsPage() {
             width: '100%',
             position: 'relative'
           }} onClick={e => e.stopPropagation()}>
-            <button 
+            <button data-element-name="כפתור_page_28" 
               onClick={() => setIsLegendOpen(false)}
               style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
             >
-              <X size={20} />
+              <X data-element-name="רכיב_page_29" size={20} />
             </button>
             <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Info size={24} /> מקרא צבעים
+              <Info data-element-name="רכיב_page_30" size={24} /> מקרא צבעים
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -523,13 +553,13 @@ export default function AlterationsPage() {
               </div>
             </div>
             <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-              <button className="btn btn-primary" onClick={() => setIsLegendOpen(false)}>הבנתי</button>
+              <button data-element-name="כפתור_page_31" className="btn btn-primary" onClick={() => setIsLegendOpen(false)}>הבנתי</button>
             </div>
           </div>
         </div>, document.body
       )}
 
-      <StatisticsModal 
+      <StatisticsModal data-element-name="רכיב_page_32" 
         isOpen={!!showStatistics} 
         onClose={() => setShowStatistics(false)} 
         pageContext="alterations"

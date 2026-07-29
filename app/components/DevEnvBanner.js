@@ -55,21 +55,21 @@ export default function DevEnvBanner() {
       {/* Links Panel */}
       <div className={`dev-env-links-panel ${showLinks ? 'visible' : 'hidden'}`}>
         <h3 className="dev-env-links-title">
-          <Database size={14} style={{ color: '#9ca3af' }} />
+          <Database data-element-name="רכיב_DevEnvBanner_1" size={14} style={{ color: '#9ca3af' }} />
           קישורי מסד נתונים
         </h3>
         
         <div className="dev-env-link-group">
           <div className="dev-env-link-header">
             <span className="dev-env-link-label prod">
-              <Server size={12}/> PROD
+              <Server data-element-name="רכיב_DevEnvBanner_2" size={12}/> PROD
             </span>
-            <button 
+            <button data-element-name="כפתור_DevEnvBanner_3" 
               onClick={() => copyToClipboard(urls.prod, 'prod')}
               className="dev-env-copy-btn"
               title="העתק קישור"
             >
-              {copied === 'prod' ? <Check size={14} style={{ color: '#34d399' }} /> : <Copy size={14} />}
+              {copied === 'prod' ? <Check data-element-name="רכיב_DevEnvBanner_4" size={14} style={{ color: '#34d399' }} /> : <Copy data-element-name="רכיב_DevEnvBanner_5" size={14} />}
             </button>
           </div>
           <div className="dev-env-url-box">
@@ -80,14 +80,14 @@ export default function DevEnvBanner() {
         <div className="dev-env-link-group" style={{ marginBottom: 0 }}>
           <div className="dev-env-link-header">
             <span className="dev-env-link-label test">
-              <FlaskConical size={12}/> TEST
+              <FlaskConical data-element-name="רכיב_DevEnvBanner_6" size={12}/> TEST
             </span>
-            <button 
+            <button data-element-name="כפתור_DevEnvBanner_7" 
               onClick={() => copyToClipboard(urls.test, 'test')}
               className="dev-env-copy-btn"
               title="העתק קישור"
             >
-              {copied === 'test' ? <Check size={14} style={{ color: '#fbbf24' }} /> : <Copy size={14} />}
+              {copied === 'test' ? <Check data-element-name="רכיב_DevEnvBanner_8" size={14} style={{ color: '#fbbf24' }} /> : <Copy data-element-name="רכיב_DevEnvBanner_9" size={14} />}
             </button>
           </div>
           <div className="dev-env-url-box">
@@ -98,12 +98,12 @@ export default function DevEnvBanner() {
 
       {/* Main Widget Segmented Control */}
       <div className={`dev-env-widget ${modeClass}`}>
-        <button
+        <button data-element-name="כפתור_DevEnvBanner_10"
           onClick={() => setShowLinks(!showLinks)}
           className={`dev-env-toggle-links ${showLinks ? `active ${modeClass}` : ''}`}
           title="הצג קישורים"
         >
-          {showLinks ? <ChevronDown size={16} /> : <LinkIcon size={14} />}
+          {showLinks ? <ChevronDown data-element-name="רכיב_DevEnvBanner_11" size={16} /> : <LinkIcon data-element-name="רכיב_DevEnvBanner_12" size={14} />}
         </button>
 
         <div className={`dev-env-separator ${modeClass}`}></div>
@@ -111,20 +111,20 @@ export default function DevEnvBanner() {
         <div className="dev-env-segmented-control">
           <div className={`dev-env-pill ${mode}`}></div>
           
-          <button 
+          <button data-element-name="כפתור_DevEnvBanner_13" 
             onClick={() => changeMode('prod')}
             disabled={loading}
             className={`dev-env-segment-btn ${mode === 'prod' ? 'active prod' : ''}`}
           >
-            <Server size={12} /> Prod
+            <Server data-element-name="רכיב_DevEnvBanner_14" size={12} /> Prod
           </button>
           
-          <button 
+          <button data-element-name="כפתור_DevEnvBanner_15" 
             onClick={() => changeMode('test')}
             disabled={loading}
             className={`dev-env-segment-btn ${mode === 'test' ? 'active test' : ''}`}
           >
-            <FlaskConical size={12} /> Test
+            <FlaskConical data-element-name="רכיב_DevEnvBanner_16" size={12} /> Test
           </button>
         </div>
       </div>

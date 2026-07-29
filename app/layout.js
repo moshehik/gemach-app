@@ -20,7 +20,8 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import { PopupProvider } from './components/PopupProvider';
 import { LabelsProvider } from './components/LabelsContext';
-import { Users, Shirt, Settings } from 'lucide-react';
+import { Users, Shirt, Settings, Coins } from 'lucide-react';
+import { UniqueNamesProvider } from './components/UniqueNamesContext';
 
 import AppNavLinks from './components/AppNavLinks';
 import OfflineIndicator from './components/OfflineIndicator';
@@ -84,8 +85,14 @@ export default async function RootLayout({ children }) {
   let employeeShowAi = false;
   if (isAuthenticated) {
     try {
-      const emp = await prisma.employee.findUnique({
-        where: { id: authToken.value },
+      const parsedLegacy = parseInt(authToken.value, 10);
+      const emp = await prisma.employee.findFirst({
+        where: {
+          OR: [
+            { id: authToken.value },
+            ...(isNaN(parsedLegacy) ? [] : [{ legacyId: parsedLegacy }])
+          ]
+        },
         select: { roleId: true, showAi: true }
       });
       if (emp && (emp.roleId === 1 || emp.roleId === 2)) {
@@ -124,54 +131,129 @@ export default async function RootLayout({ children }) {
     <html lang="he" dir="rtl" data-theme={!showLogin ? themePreference : 'light'}>
       <head>
         <meta charSet="utf-8" />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function() {
+  if (typeof window === 'undefined' || window.__apiInterceptorInstalled) return;
+  window.__apiInterceptorInstalled = true;
+  var originalFetch = window.fetch;
+  window.fetch = async function() {
+    var args = arguments;
+    var url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : '');
+    var startTime = performance.now();
+    var response = await originalFetch.apply(this, args);
+
+    if (url && url.indexOf('/api/') !== -1 && url.indexOf('/api/log-visit') === -1 && url.indexOf('/api/queries-by-path') === -1) {
+      var recordAndDispatch = function(respSize, execTime) {
+        try {
+          var parsedUrl = new URL(url, window.location.origin);
+          var endpoint = parsedUrl.pathname;
+          var requestQuery = parsedUrl.search;
+          if (!requestQuery && args[1] && args[1].body) {
+            requestQuery = typeof args[1].body === 'string' ? args[1].body : JSON.stringify(args[1].body);
+          }
+          window.__GLOBAL_LAST_API_CALL__ = url;
+          window.__LAST_API_CALLS__ = window.__LAST_API_CALLS__ || {};
+          window.__LAST_API_CALLS__[window.location.pathname] = url;
+          window.__LAST_API_METADATA__ = window.__LAST_API_METADATA__ || {};
+          window.__LAST_API_METADATA__[url] = { responseSize: respSize, executionTime: execTime, timestamp: new Date().toISOString() };
+          window.dispatchEvent(new CustomEvent('agy_api_call', { detail: { url: url, endpoint: endpoint, requestQuery: requestQuery, responseSize: respSize, executionTime: execTime } }));
+          originalFetch('/api/log-visit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ pageUrl: url, requestQuery: requestQuery || null, responseSize: respSize, executionTime: execTime }) }).catch(function(){});
+        } catch(e) {}
+      };
+
+      var contentLength = response.headers.get('content-length');
+      if (contentLength && !isNaN(parseInt(contentLength, 10))) {
+        recordAndDispatch(parseInt(contentLength, 10), Math.round(performance.now() - startTime));
+      } else {
+        var originalJson = response.json;
+        var originalText = response.text;
+        if (originalJson) {
+          response.json = async function() {
+            var data = await originalJson.apply(this, arguments);
+            try {
+              var str = JSON.stringify(data);
+              var respSize = new Blob([str]).size;
+              var execTime = Math.round(performance.now() - startTime);
+              recordAndDispatch(respSize, execTime);
+            } catch(e) {}
+            return data;
+          };
+        }
+        if (originalText) {
+          response.text = async function() {
+            var text = await originalText.apply(this, arguments);
+            try {
+              var textStr = typeof text === 'string' ? text : JSON.stringify(text);
+              var respSize = new Blob([textStr]).size;
+              var execTime = Math.round(performance.now() - startTime);
+              recordAndDispatch(respSize, execTime);
+            } catch(e) {}
+            return text;
+          };
+        }
+      }
+    }
+    return response;
+  };
+})();
+`
+          }}
+        />
       </head>
       <body className={bodyClassName}>
-        <ClipboardDebugger />
-        <DevEnvBanner />
-        {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator />}
-        <Suspense fallback={null}>
-          <PageTracker />
+        <UniqueNamesProvider data-element-name="רכיב_layout_1">
+          <ClipboardDebugger data-element-name="רכיב_layout_2" />
+          <DevEnvBanner data-element-name="רכיב_layout_3" />
+        {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator data-element-name="רכיב_layout_4" />}
+        <Suspense data-element-name="רכיב_layout_5" fallback={null}>
+          <PageTracker data-element-name="רכיב_layout_6" />
         </Suspense>
         {showLogin ? (
-          <LoginScreen />
+          <LoginScreen data-element-name="רכיב_layout_7" />
         ) : (
-          <LabelsProvider>
+          <LabelsProvider data-element-name="רכיב_layout_8">
             <>
               <nav className="navbar">
                 <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <BrandLogo />
-                  <NavigationArrows />
+                  <BrandLogo data-element-name="רכיב_layout_9" />
+                  <NavigationArrows data-element-name="רכיב_layout_10" />
                 </div>
-                <AppNavLinks enableAlterations={enableAlterations} />
+                <AppNavLinks data-element-name="רכיב_layout_11" enableAlterations={enableAlterations} />
                 <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
                   {showEmployeesTab && (
-                    <Link href="/employees" title="עובדים ונוכחות" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
-                      <Users size={22} />
+                    <Link data-element-name="רכיב_layout_12" href="/employees" title="עובדים ונוכחות" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
+                      <Users data-element-name="רכיב_layout_13" size={22} />
                     </Link>
                   )}
-                  <Link href="/dashboard/dresses" title="ניהול קטלוג" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
-                    <Shirt size={22} />
+                  <Link data-element-name="רכיב_layout_refunds" href="/refunds" title="זיכויים" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
+                    <Coins data-element-name="רכיב_layout_refunds_icon" size={22} />
+                  </Link>
+                  <Link data-element-name="רכיב_layout_14" href="/dashboard/dresses" title="ניהול קטלוג" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
+                    <Shirt data-element-name="רכיב_layout_15" size={22} />
                   </Link>
                   {showAdminTab && (
-                    <Link href="/admin" title="אזור ניהול מתקדם" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--primary-color)', textDecoration: 'none' }}>
-                      <Settings size={22} />
+                    <Link data-element-name="רכיב_layout_16" href="/admin" title="אזור ניהול מתקדם" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--primary-color)', textDecoration: 'none' }}>
+                      <Settings data-element-name="רכיב_layout_17" size={22} />
                     </Link>
                   )}
-                  <ThemeToggle employeeId={authToken?.value} initialTheme={themePreference} />
+                  <ThemeToggle data-element-name="רכיב_layout_18" employeeId={authToken?.value} initialTheme={themePreference} />
                   <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 0.25rem' }}></div>
-                  <ErrorReportButton />
-                  {authToken?.value && !hideInternalMessaging && <NotificationBell employeeId={authToken.value} />}
-                  <UserMenu />
+                  <ErrorReportButton data-element-name="רכיב_layout_19" />
+                  {authToken?.value && !hideInternalMessaging && <NotificationBell data-element-name="רכיב_layout_20" employeeId={authToken.value} />}
+                  <UserMenu data-element-name="רכיב_layout_21" />
                 </div>
               </nav>
-              <PopupProvider>
+              <PopupProvider data-element-name="רכיב_layout_22">
                 {children}
               </PopupProvider>
-              {!hideAIFeatures && <AIFloatingWidget />}
+              {!hideAIFeatures && <AIFloatingWidget data-element-name="רכיב_layout_23" />}
             </>
           </LabelsProvider>
         )}
-        <LandingPage />
+        <LandingPage data-element-name="רכיב_layout_24" />
+        </UniqueNamesProvider>
       </body>
     </html>
   );

@@ -100,14 +100,14 @@ export default function RecalculationsPage() {
         <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, minWidth: '250px' }}>
             <label style={{ display: 'block', marginBottom: '5px' }}>תאריך התחלה (אירוע)</label>
-            <HebrewDatePicker value={startDate} onChange={setStartDate} />
+            <HebrewDatePicker data-element-name="רכיב_page_1" value={startDate} onChange={setStartDate} />
           </div>
           <div style={{ flex: 1, minWidth: '250px' }}>
             <label style={{ display: 'block', marginBottom: '5px' }}>תאריך סיום (אירוע)</label>
-            <HebrewDatePicker value={endDate} onChange={setEndDate} />
+            <HebrewDatePicker data-element-name="רכיב_page_2" value={endDate} onChange={setEndDate} />
           </div>
           <div style={{ marginBottom: '5px' }}>
-            <button className="btn btn-primary" onClick={handleSearch} disabled={loading}>
+            <button data-element-name="כפתור_page_3" className="btn btn-primary" onClick={handleSearch} disabled={loading}>
               {loading ? 'סורק...' : 'חפש פערים'}
             </button>
           </div>
@@ -127,7 +127,7 @@ export default function RecalculationsPage() {
                   <thead>
                     <tr style={{ background: 'var(--element-bg)' }}>
                       <th style={{ padding: '10px' }}>
-                        <input 
+                        <input data-element-name="שדה_page_4" 
                           type="checkbox" 
                           checked={selectedIds.size === results.length && results.length > 0}
                           onChange={handleSelectAll}
@@ -146,7 +146,7 @@ export default function RecalculationsPage() {
                     {results.map(row => (
                       <tr key={row.orderId} style={{ borderBottom: '1px solid #eee' }}>
                         <td style={{ padding: '10px' }}>
-                          <input 
+                          <input data-element-name="שדה_page_5" 
                             type="checkbox" 
                             checked={selectedIds.has(row.orderId)}
                             onChange={() => toggleSelect(row.orderId)}
@@ -182,7 +182,7 @@ export default function RecalculationsPage() {
                 <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
                   <div style={{ flex: 1, maxWidth: '400px' }}>
                     <label style={{ display: 'block', marginBottom: '5px' }}>הערה מיוחדת לצירוף לשורות החיוב</label>
-                    <input 
+                    <input data-element-name="שדה_page_6" 
                       type="text" 
                       className="form-control"
                       value={customNote}
@@ -191,7 +191,7 @@ export default function RecalculationsPage() {
                     />
                   </div>
                   <div>
-                    <button 
+                    <button data-element-name="כפתור_page_7" 
                       className="btn btn-primary" 
                       onClick={handleApply} 
                       disabled={applying || selectedIds.size === 0}

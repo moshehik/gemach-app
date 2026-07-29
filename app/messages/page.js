@@ -220,17 +220,17 @@ export default function MessagesPage() {
     
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem', alignItems: 'center' }}>
-        <Tag size={14} color="#64748b" />
+        <Tag data-element-name="רכיב_page_1" size={14} color="#64748b" />
         {tags.map((tag, idx) => (
           <span key={idx} style={{ background: '#e2e8f0', color: '#334155', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
             {tag}
-            <button onClick={() => removeTag(notif, tag)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748b' }} title="הסר תגית">
-              <X size={12} />
+            <button data-element-name="כפתור_page_2" onClick={() => removeTag(notif, tag)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748b' }} title="הסר תגית">
+              <X data-element-name="רכיב_page_3" size={12} />
             </button>
           </span>
         ))}
         <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', borderRadius: '999px', padding: '0.1rem 0.5rem' }}>
-          <input 
+          <input data-element-name="שדה_page_4" 
             type="text" 
             placeholder="הוסף תגית..." 
             value={inputVal}
@@ -243,8 +243,8 @@ export default function MessagesPage() {
             }}
             style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.8rem', width: '80px', color: '#334155' }}
           />
-          <button onClick={() => addTag(notif, inputVal)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#3b82f6' }} title="שמור תגית">
-            <Plus size={14} />
+          <button data-element-name="כפתור_page_5" onClick={() => addTag(notif, inputVal)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#3b82f6' }} title="שמור תגית">
+            <Plus data-element-name="רכיב_page_6" size={14} />
           </button>
         </div>
       </div>
@@ -263,37 +263,37 @@ export default function MessagesPage() {
       }}>
         {type === 'incoming' && !notif.isRead && (
           <div style={{ position: 'absolute', top: '1.5rem', left: '1.5rem' }}>
-            <button
+            <button data-element-name="כפתור_page_7"
               onClick={() => markAsRead(notif.id)}
               style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#dbeafe', color: '#2563eb', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}
             >
-              <Check size={14} /> סמן כנקרא
+              <Check data-element-name="רכיב_page_8" size={14} /> סמן כנקרא
             </button>
           </div>
         )}
         <div style={{ position: 'absolute', top: '1.5rem', left: type === 'incoming' && !notif.isRead ? '7rem' : '1.5rem', display: 'flex', gap: '0.5rem' }}>
           {notif.isArchived ? (
-            <button
+            <button data-element-name="כפתור_page_9"
               onClick={() => handleArchive(notif.id, false)}
               style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}
               title="החזר מארכיון"
             >
-              <Archive size={14} /> שחזר
+              <Archive data-element-name="רכיב_page_10" size={14} /> שחזר
             </button>
           ) : (
-            <button
+            <button data-element-name="כפתור_page_11"
               onClick={() => handleArchive(notif.id, true)}
               style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}
               title="העבר לארכיון"
             >
-              <Archive size={14} /> ארכיון
+              <Archive data-element-name="רכיב_page_12" size={14} /> ארכיון
             </button>
           )}
         </div>
 
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', paddingLeft: '6rem' }}>
           <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: notif.receiverId === null ? '#f59e0b' : '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}>
-            {type === 'outgoing' ? <User size={24} /> : (notif.sender ? notif.sender.firstName.charAt(0) : 'מ')}
+            {type === 'outgoing' ? <User data-element-name="רכיב_page_13" size={24} /> : (notif.sender ? notif.sender.firstName.charAt(0) : 'מ')}
           </div>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
@@ -328,14 +328,14 @@ export default function MessagesPage() {
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '2rem', color: '#0f172a', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Mail size={32} color="#3b82f6" />
+              <Mail data-element-name="רכיב_page_14" size={32} color="#3b82f6" />
               מרכז הודעות
             </h1>
             <p style={{ margin: '0.5rem 0 0 0', color: '#64748b', fontSize: '1.1rem' }}>
               נהל את ההתראות וההודעות הפנימיות שלך
             </p>
           </div>
-          <button 
+          <button data-element-name="כפתור_page_15" 
             data-agy-id="new-message-button"
             onClick={() => setActiveTab('compose')}
             style={{ 
@@ -347,7 +347,7 @@ export default function MessagesPage() {
               transition: 'transform 0.2s, box-shadow 0.2s'
             }}
           >
-            <Send size={18} />
+            <Send data-element-name="רכיב_page_16" size={18} />
             הודעה חדשה
           </button>
         </div>
@@ -357,7 +357,7 @@ export default function MessagesPage() {
           
           {/* Sidebar Tabs */}
           <div style={{ width: '250px', background: '#f8fafc', borderLeft: '1px solid #e2e8f0', padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            <button
+            <button data-element-name="כפתור_page_17"
               data-agy-id="tab-incoming"
               onClick={() => setActiveTab('incoming')}
               style={{
@@ -368,7 +368,7 @@ export default function MessagesPage() {
                 transition: 'all 0.2s'
               }}
             >
-              <Inbox size={20} />
+              <Inbox data-element-name="רכיב_page_18" size={20} />
               נכנסות
               {incoming.filter(n => !n.isRead).length > 0 && (
                 <span style={{ background: '#ef4444', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.75rem', marginLeft: 'auto' }}>
@@ -377,7 +377,7 @@ export default function MessagesPage() {
               )}
             </button>
 
-            <button
+            <button data-element-name="כפתור_page_19"
               data-agy-id="tab-outgoing"
               onClick={() => setActiveTab('outgoing')}
               style={{
@@ -388,11 +388,11 @@ export default function MessagesPage() {
                 transition: 'all 0.2s'
               }}
             >
-              <Send size={20} />
+              <Send data-element-name="רכיב_page_20" size={20} />
               יוצאות
             </button>
 
-            <button
+            <button data-element-name="כפתור_page_21"
               data-agy-id="tab-archived"
               onClick={() => setActiveTab('archived')}
               style={{
@@ -403,7 +403,7 @@ export default function MessagesPage() {
                 transition: 'all 0.2s'
               }}
             >
-              <Archive size={20} />
+              <Archive data-element-name="רכיב_page_22" size={20} />
               ארכיון
               {archived.length > 0 && (
                 <span style={{ background: '#94a3b8', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.75rem', marginLeft: 'auto' }}>
@@ -412,7 +412,7 @@ export default function MessagesPage() {
               )}
             </button>
 
-            <button
+            <button data-element-name="כפתור_page_23"
               data-agy-id="tab-settings"
               onClick={() => setActiveTab('settings')}
               style={{
@@ -424,7 +424,7 @@ export default function MessagesPage() {
                 marginTop: 'auto'
               }}
             >
-              <Settings size={20} />
+              <Settings data-element-name="רכיב_page_24" size={20} />
               הגדרות
             </button>
           </div>
@@ -438,7 +438,7 @@ export default function MessagesPage() {
                 <h2 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '0 0 1.5rem 0' }}>דואר נכנס</h2>
                 {incoming.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '4rem 0', color: '#94a3b8' }}>
-                    <Inbox size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
+                    <Inbox data-element-name="רכיב_page_25" size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
                     <p style={{ fontSize: '1.1rem' }}>תיבת הדואר הנכנס ריקה</p>
                   </div>
                 ) : (
@@ -455,7 +455,7 @@ export default function MessagesPage() {
                 <h2 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '0 0 1.5rem 0' }}>דואר יוצא</h2>
                 {outgoing.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '4rem 0', color: '#94a3b8' }}>
-                    <Send size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
+                    <Send data-element-name="רכיב_page_26" size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
                     <p style={{ fontSize: '1.1rem' }}>לא שלחת הודעות עדיין</p>
                   </div>
                 ) : (
@@ -472,7 +472,7 @@ export default function MessagesPage() {
                 <h2 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '0 0 1.5rem 0' }}>ארכיון הודעות</h2>
                 {archived.length === 0 ? (
                   <div style={{ textAlign: 'center', padding: '4rem 0', color: '#94a3b8' }}>
-                    <Archive size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
+                    <Archive data-element-name="רכיב_page_27" size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
                     <p style={{ fontSize: '1.1rem' }}>אין הודעות בארכיון</p>
                   </div>
                 ) : (
@@ -490,14 +490,14 @@ export default function MessagesPage() {
                 
                 {error && (
                   <div style={{ background: '#fef2f2', color: '#991b1b', padding: '1rem', borderRadius: '12px', border: '1px solid #fecaca', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <AlertCircle size={20} />
+                    <AlertCircle data-element-name="רכיב_page_28" size={20} />
                     {error}
                   </div>
                 )}
 
                 {sendSuccess && (
                   <div style={{ background: '#f0fdf4', color: '#166534', padding: '1rem', borderRadius: '12px', border: '1px solid #bbf7d0', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Check size={20} />
+                    <Check data-element-name="רכיב_page_29" size={20} />
                     ההודעה נשלחה בהצלחה!
                   </div>
                 )}
@@ -505,7 +505,7 @@ export default function MessagesPage() {
                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '2rem' }}>
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '1rem', color: '#1e293b', fontWeight: '600' }}>שלח אל:</label>
-                    <select 
+                    <select data-element-name="בחירה_page_30" 
                       data-agy-id="select-receiver"
                       value={receiverId} 
                       onChange={e => setReceiverId(e.target.value)}
@@ -522,7 +522,7 @@ export default function MessagesPage() {
 
                   <div style={{ marginBottom: '1.5rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '1rem', color: '#1e293b', fontWeight: '600' }}>תוכן ההודעה:</label>
-                    <textarea
+                    <textarea data-element-name="טקסט_page_31"
                       data-agy-id="textarea-content"
                       value={content}
                       onChange={e => setContent(e.target.value)}
@@ -532,12 +532,12 @@ export default function MessagesPage() {
                   </div>
 
                   <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '1.5rem', fontSize: '0.95rem', fontWeight: '500' }}>
-                    <input data-agy-id="checkbox-send-email" type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
+                    <input data-element-name="שדה_page_32" data-agy-id="checkbox-send-email" type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
                     שלח התראה גם למייל (לעובדים בעלי כתובת מייל מעודכנת)
                   </label>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <button 
+                    <button data-element-name="כפתור_page_33" 
                       data-agy-id="send-message-button"
                       onClick={handleSend}
                       disabled={isSending}
@@ -551,7 +551,7 @@ export default function MessagesPage() {
                         transition: 'transform 0.2s, box-shadow 0.2s'
                       }}
                     >
-                      {isSending ? 'שולח...' : <><Send size={20} /> שלח הודעה</>}
+                      {isSending ? 'שולח...' : <><Send data-element-name="רכיב_page_34" size={20} /> שלח הודעה</>}
                     </button>
                   </div>
                 </div>
@@ -574,12 +574,12 @@ export default function MessagesPage() {
                         </p>
                       ) : (
                         <p style={{ color: '#ef4444', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <AlertCircle size={16} /> לא מוגדרת עבורך כתובת מייל במערכת. אנא פנה למנהל לעדכון המייל.
+                          <AlertCircle data-element-name="רכיב_page_35" size={16} /> לא מוגדרת עבורך כתובת מייל במערכת. אנא פנה למנהל לעדכון המייל.
                         </p>
                       )}
 
                       <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '1.1rem', color: '#0f172a', opacity: isSavingSettings ? 0.7 : 1 }}>
-                        <input 
+                        <input data-element-name="שדה_page_36" 
                           type="checkbox" 
                           checked={currentUser.receiveEmailAlerts || false} 
                           onChange={(e) => handleSaveSettings(e.target.checked)}

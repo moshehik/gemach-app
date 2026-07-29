@@ -52,7 +52,7 @@ export default function EmailLogsPage() {
   return (
     <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <Link href="/management" className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+        <Link data-element-name="רכיב_page_1" href="/management" className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
           →
         </Link>
         <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול לוגים של שליחת מיילים</h1>
@@ -61,7 +61,7 @@ export default function EmailLogsPage() {
       {/* Filters and Search */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
         <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', flex: 1, minWidth: '300px' }}>
-          <input 
+          <input data-element-name="שדה_page_2" 
             type="text" 
             placeholder="חיפוש נמען, נושא או תוכן..."
             value={searchInput}
@@ -74,7 +74,7 @@ export default function EmailLogsPage() {
               outline: 'none',
             }}
           />
-          <button type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0.5rem 1.5rem' }}>
+          <button data-element-name="כפתור_page_3" type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0.5rem 1.5rem' }}>
             חיפוש
           </button>
         </form>
@@ -137,7 +137,7 @@ export default function EmailLogsPage() {
 
             {/* Pagination Controls */}
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
-              <button 
+              <button data-element-name="כפתור_page_4" 
                 className="btn btn-outline"
                 disabled={page >= totalPages} 
                 onClick={() => setPage(p => p + 1)}
@@ -146,9 +146,9 @@ export default function EmailLogsPage() {
                 הבא
               </button>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }}  /> מתוך {totalPages}
+                עמוד <input data-element-name="שדה_page_5" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }}  /> מתוך {totalPages}
               </span>
-              <button 
+              <button data-element-name="כפתור_page_6" 
                 className="btn btn-outline"
                 disabled={page <= 1} 
                 onClick={() => setPage(p => p - 1)}

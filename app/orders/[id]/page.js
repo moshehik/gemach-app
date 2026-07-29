@@ -476,7 +476,7 @@ export default function OrderDetailsPage({ params }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
             {saveMessage && <span style={{ color: saveMessage.includes('שגיאה') ? '#ef4444' : '#10b981', fontWeight: 'bold', background: saveMessage.includes('שגיאה') ? '#fee2e2' : '#d1fae5', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>{saveMessage}</span>}
             
-            <button data-agy-id="[id]_page_button_2" 
+            <button data-element-name="כפתור_page_1" data-agy-id="[id]_page_button_2" 
               onClick={handleSave} 
               disabled={saving || isLocked}
               title={isLocked ? "הזמנה נעולה" : "שמור שינויים"}
@@ -495,11 +495,11 @@ export default function OrderDetailsPage({ params }) {
                 transform: saving ? 'scale(0.98)' : 'scale(1)'
               }}
             >
-              {saving ? <div className="spinner" style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Save size={20} />}
+              {saving ? <div className="spinner" style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Save data-element-name="רכיב_page_2" size={20} />}
               שמור
             </button>
             
-            <button data-agy-id="[id]_page_button_3" 
+            <button data-element-name="כפתור_page_3" data-agy-id="[id]_page_button_3" 
               onClick={() => setShowEmployeesModal(true)}
               title="עובדים פעילים"
               style={{ 
@@ -510,10 +510,10 @@ export default function OrderDetailsPage({ params }) {
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#ffedd5'}
               onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fff7ed'}
             >
-              <Users size={20} />
+              <Users data-element-name="רכיב_page_4" size={20} />
             </button>
 
-            <button data-agy-id="[id]_page_button_4" 
+            <button data-element-name="כפתור_page_5" data-agy-id="[id]_page_button_4" 
               onClick={() => setActiveTab('payments')}
               title={`מעבר לתשלום (₪${totalRequired - totalPaid})`}
               style={{ 
@@ -524,11 +524,11 @@ export default function OrderDetailsPage({ params }) {
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
               onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}
             >
-              <CreditCard size={20} />
+              <CreditCard data-element-name="רכיב_page_6" size={20} />
             </button>
 
             <div style={{ position: 'relative' }}>
-              <button data-agy-id="[id]_page_button_print" 
+              <button data-element-name="כפתור_page_7" data-agy-id="[id]_page_button_print" 
                 onClick={handlePrintOrder}
                 title="הדפסת הזמנה"
                 style={{ 
@@ -539,47 +539,47 @@ export default function OrderDetailsPage({ params }) {
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e9d5ff'}
                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f3e8ff'}
               >
-                <Printer size={20} />
+                <Printer data-element-name="רכיב_page_8" size={20} />
               </button>
               {showPrintMenu && (
                 <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 1050, minWidth: '150px', overflow: 'hidden' }}>
-                  <div 
+                  <div data-element-name="לחיץ_page_9" 
                     onClick={() => { setShowPrintMenu(false); window.open(`/print/order?orderId=${order.orderId}&type=order`, '_blank'); }}
                     style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <FileText size={18} /> הזמנה
+                    <FileText data-element-name="רכיב_page_10" size={18} /> הזמנה
                   </div>
-                  <div 
+                  <div data-element-name="לחיץ_page_11" 
                     onClick={() => { setShowPrintMenu(false); window.open(`/print/order?orderId=${order.orderId}&type=rental`, '_blank'); }}
                     style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <ClipboardList size={18} /> השכרה
+                    <ClipboardList data-element-name="רכיב_page_12" size={18} /> השכרה
                   </div>
-                  <div 
+                  <div data-element-name="לחיץ_page_13" 
                     onClick={() => handleSendEmail('order')}
                     style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <Mail size={18} /> מייל הזמנה
+                    <Mail data-element-name="רכיב_page_14" size={18} /> מייל הזמנה
                   </div>
-                  <div 
+                  <div data-element-name="לחיץ_page_15" 
                     onClick={() => handleSendEmail('rental')}
                     style={{ padding: '0.8rem 1rem', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <Mail size={18} /> מייל השכרה
+                    <Mail data-element-name="רכיב_page_16" size={18} /> מייל השכרה
                   </div>
                 </div>
               )}
             </div>
 
-            <button data-agy-id="[id]_page_button_5" 
+            <button data-element-name="כפתור_page_17" data-agy-id="[id]_page_button_5" 
               onClick={handleExit}
               title="חזרה"
               style={{ 
@@ -590,7 +590,7 @@ export default function OrderDetailsPage({ params }) {
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
               onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
             >
-              <ArrowRight size={20} />
+              <ArrowRight data-element-name="רכיב_page_18" size={20} />
               חזור
             </button>
           </div>
@@ -603,7 +603,7 @@ export default function OrderDetailsPage({ params }) {
               const TabIcon = tab.icon;
               const isActive = activeTab === tab.id;
               return (
-                <button data-agy-id="[id]_page_button_6"
+                <button data-element-name="כפתור_page_19" data-agy-id="[id]_page_button_6"
                   key={tab.id}
                   onClick={() => {
                     setIsManualTabChange(true);
@@ -632,7 +632,7 @@ export default function OrderDetailsPage({ params }) {
                     position: 'relative'
                   }}
                 >
-                  <TabIcon size={18} />
+                  <TabIcon data-element-name="רכיב_page_20" size={18} />
                   {tab.label}
                 </button>
               );
@@ -660,7 +660,7 @@ export default function OrderDetailsPage({ params }) {
           <div style={{ position: 'relative' }}>
             {isLocked && (
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.4)', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', backdropFilter: 'blur(2px)', borderRadius: '16px' }}>
-                <button data-agy-id="[id]_page_button_7" 
+                <button data-element-name="כפתור_page_21" data-agy-id="[id]_page_button_7" 
                   onClick={handleUnlock}
                   style={{ position: 'sticky', top: '150px', marginTop: '2rem', padding: '1rem 2.5rem', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 8px 16px rgba(220, 38, 38, 0.3)' }}
                 >
@@ -671,11 +671,11 @@ export default function OrderDetailsPage({ params }) {
             <div className="animate-fade-in" style={{ opacity: isLocked ? 0.7 : 1, pointerEvents: isLocked ? 'none' : 'auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
               
               <div id="details">
-                <OrderGeneralDetails order={order} items={items} onOrderChange={setOrder} onSaveRequest={handleSave} />
+                <OrderGeneralDetails data-element-name="רכיב_page_22" order={order} items={items} onOrderChange={setOrder} onSaveRequest={handleSave} />
               </div>
 
               <div id="items">
-                <OrderItemsManager 
+                <OrderItemsManager data-element-name="רכיב_page_23" 
                   orderId={order.orderId}
                   order={order}
                   items={items} 
@@ -685,7 +685,7 @@ export default function OrderDetailsPage({ params }) {
               </div>
 
               <div id="rentals">
-                <OrderRentalsManager 
+                <OrderRentalsManager data-element-name="רכיב_page_24" 
                   items={items} 
                   onItemsChange={setItems}
                   order={order}
@@ -695,7 +695,7 @@ export default function OrderDetailsPage({ params }) {
               </div>
 
               <div id="payments">
-                <OrderPaymentsManager 
+                <OrderPaymentsManager data-element-name="רכיב_page_25" 
                   orderId={order.orderId}
                   obligations={obligations} 
                   payments={payments} 
@@ -709,7 +709,7 @@ export default function OrderDetailsPage({ params }) {
 
               <div id="history">
                 <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
-                  <HistoryViewer entityType="Order" entityId={order.orderId} />
+                  <HistoryViewer data-element-name="רכיב_page_26" entityType="Order" entityId={order.orderId} />
                 </div>
               </div>
 
@@ -719,7 +719,7 @@ export default function OrderDetailsPage({ params }) {
 
       </div>
 
-      <ActiveEmployeesModal 
+      <ActiveEmployeesModal data-element-name="רכיב_page_27" 
         orderId={order.orderId}
         isOpen={showEmployeesModal}
         onClose={() => setShowEmployeesModal(false)}
@@ -732,7 +732,7 @@ export default function OrderDetailsPage({ params }) {
             <h2 style={{ color: 'var(--primary-color)', marginTop: 0, marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>חתימה על תקנון</h2>
             <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: 'var(--text-main)' }}>האם הלקוח חתם על התקנון?</p>
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button 
+              <button data-element-name="כפתור_page_28" 
                 onClick={() => {
                   const updatedOrder = { ...order, hasSignedRegulations: true };
                   setOrder(updatedOrder);
@@ -745,7 +745,7 @@ export default function OrderDetailsPage({ params }) {
               >
                 כן, חתם
               </button>
-              <button 
+              <button data-element-name="כפתור_page_29" 
                 onClick={() => setShowRegulationsModal(false)}
                 className="btn btn-outline"
                 style={{ padding: '0.8rem 2rem', borderRadius: '8px', fontSize: '1rem', fontWeight: 'bold' }}
@@ -761,13 +761,13 @@ export default function OrderDetailsPage({ params }) {
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
           <div className="animate-slide-in" style={{ background: 'white', padding: '2.5rem', borderRadius: '20px', width: '100%', maxWidth: '420px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0', textAlign: 'center' }}>
             <div style={{ width: '60px', height: '60px', background: '#eff6ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
-              <Mail size={30} color="#3b82f6" />
+              <Mail data-element-name="רכיב_page_30" size={30} color="#3b82f6" />
             </div>
             <h2 style={{ color: '#1e293b', marginTop: 0, marginBottom: '0.5rem', fontSize: '1.5rem', fontWeight: '800' }}>כתובת מייל חסרה</h2>
             <p style={{ fontSize: '1rem', marginBottom: '2rem', color: '#64748b', lineHeight: '1.5' }}>
               ללקוח זה לא מעודכנת כתובת מייל במערכת. אנא הזן כתובת מייל עדכנית לשליחת הדוח (תישמר אוטומטית בכרטיס הלקוח).
             </p>
-            <input 
+            <input data-element-name="שדה_page_31" 
               type="email" 
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
@@ -782,7 +782,7 @@ export default function OrderDetailsPage({ params }) {
               onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
             />
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button 
+              <button data-element-name="כפתור_page_32" 
                 onClick={handleEmailSubmit}
                 style={{ flex: 1, padding: '0.8rem 1.5rem', borderRadius: '10px', fontSize: '1rem', fontWeight: 'bold', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', transition: 'background-color 0.2s', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
                 onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
@@ -790,7 +790,7 @@ export default function OrderDetailsPage({ params }) {
               >
                 שמור ושלח
               </button>
-              <button 
+              <button data-element-name="כפתור_page_33" 
                 onClick={() => setShowEmailPrompt(false)}
                 style={{ flex: 1, padding: '0.8rem 1.5rem', borderRadius: '10px', fontSize: '1rem', fontWeight: 'bold', background: '#f1f5f9', color: '#475569', border: 'none', cursor: 'pointer', transition: 'background-color 0.2s' }}
                 onMouseOver={(e) => e.target.style.backgroundColor = '#e2e8f0'}

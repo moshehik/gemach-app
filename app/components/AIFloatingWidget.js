@@ -60,11 +60,24 @@ export default function AIFloatingWidget() {
   useEffect(() => {
     fetch('/api/settings')
       .then(res => res.json())
-      .then(data => {
+      .then(async (data) => {
         if (Array.isArray(data)) {
           const aiSetting = data.find(s => s.key === 'hide_ai_features');
           if (aiSetting && aiSetting.value === 'true') {
             setHideAi(true);
+            return;
+          }
+          const enableAiSpecific = data.find(s => s.key === 'enable_ai_specific_employees');
+          if (enableAiSpecific && enableAiSpecific.value === 'true') {
+            try {
+              const meRes = await fetch('/api/me');
+              const meData = await meRes.json();
+              if (!meData.success || !meData.employee?.showAi) {
+                setHideAi(true);
+              }
+            } catch (e) {
+              setHideAi(true);
+            }
           }
         }
       })
@@ -200,7 +213,7 @@ export default function AIFloatingWidget() {
     if (!tableData || tableData.length === 0) return null;
     return (
       <div style={{ marginTop: '0.5rem' }}>
-        <button 
+        <button data-element-name="כפתור_AIFloatingWidget_1" 
           type="button"
           onClick={() => { setModalTableData(tableData); setShowTableModal(true); }}
           style={{
@@ -279,7 +292,7 @@ export default function AIFloatingWidget() {
 
   if (!isOpen) {
     return (
-      <button 
+      <button data-element-name="כפתור_AIFloatingWidget_2" 
         onClick={() => setIsOpen(true)}
         style={{
           position: 'fixed',
@@ -303,7 +316,7 @@ export default function AIFloatingWidget() {
         onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
         title="עוזר AI"
       >
-        <Bot size={32} />
+        <Bot data-element-name="רכיב_AIFloatingWidget_3" size={32} />
       </button>
     );
   }
@@ -340,21 +353,21 @@ export default function AIFloatingWidget() {
           borderTopRightRadius: '16px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Bot size={20} />
+            <Bot data-element-name="רכיב_AIFloatingWidget_4" size={20} />
             <span style={{ fontWeight: 'bold' }}>עוזר AI</span>
           </div>
           <div style={{ display: 'flex', gap: '12px' }}>
-            <button onClick={() => setShowHistory(!showHistory)} style={{ background: 'none', border: 'none', color: showHistory ? '#fcd34d' : 'white', cursor: 'pointer', opacity: 0.9 }} title="היסטוריית שיחות">
-              <History size={18} />
+            <button data-element-name="כפתור_AIFloatingWidget_5" onClick={() => setShowHistory(!showHistory)} style={{ background: 'none', border: 'none', color: showHistory ? '#fcd34d' : 'white', cursor: 'pointer', opacity: 0.9 }} title="היסטוריית שיחות">
+              <History data-element-name="רכיב_AIFloatingWidget_6" size={18} />
             </button>
-            <button onClick={clearChat} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title="שיחה חדשה">
-              <MessageSquarePlus size={18} />
+            <button data-element-name="כפתור_AIFloatingWidget_7" onClick={clearChat} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title="שיחה חדשה">
+              <MessageSquarePlus data-element-name="רכיב_AIFloatingWidget_8" size={18} />
             </button>
-            <button onClick={() => setIsExpanded(!isExpanded)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title={isExpanded ? 'הקטן' : 'הגדל'}>
-              {isExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
+            <button data-element-name="כפתור_AIFloatingWidget_9" onClick={() => setIsExpanded(!isExpanded)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title={isExpanded ? 'הקטן' : 'הגדל'}>
+              {isExpanded ? <Minimize2 data-element-name="רכיב_AIFloatingWidget_10" size={18} /> : <Maximize2 data-element-name="רכיב_AIFloatingWidget_11" size={18} />}
             </button>
-            <button onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title="סגור">
-              <X size={20} />
+            <button data-element-name="כפתור_AIFloatingWidget_12" onClick={() => setIsOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', opacity: 0.8 }} title="סגור">
+              <X data-element-name="רכיב_AIFloatingWidget_13" size={20} />
             </button>
           </div>
         </div>
@@ -365,7 +378,7 @@ export default function AIFloatingWidget() {
             <div style={{ padding: '10px' }}>
               <h3 style={{ marginTop: 0, color: 'var(--text-main)', fontSize: '1.1rem', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
               {messages.length > 1 && (
-                <div 
+                <div data-element-name="לחיץ_AIFloatingWidget_14" 
                   onClick={() => setShowHistory(false)}
                   style={{
                     padding: '12px', backgroundColor: '#ecfdf5', border: '1px solid #10b981',
@@ -384,7 +397,7 @@ export default function AIFloatingWidget() {
               ) : (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
                   {chatSessions.map((session) => (
-                    <div 
+                    <div data-element-name="לחיץ_AIFloatingWidget_15" 
                       key={session.id} 
                       onClick={() => loadSession(session)}
                       style={{
@@ -451,7 +464,7 @@ export default function AIFloatingWidget() {
           backgroundColor: 'var(--card-bg)',
           gap: '8px'
         }}>
-          <button 
+          <button data-element-name="כפתור_AIFloatingWidget_16" 
             type="button" 
             onClick={toggleListen}
             style={{
@@ -464,9 +477,9 @@ export default function AIFloatingWidget() {
             }}
             title="הקלט הודעה"
           >
-            <Mic size={20} />
+            <Mic data-element-name="רכיב_AIFloatingWidget_17" size={20} />
           </button>
-          <input 
+          <input data-element-name="שדה_AIFloatingWidget_18" 
             type="text" 
             autoFocus
             value={input}
@@ -482,7 +495,7 @@ export default function AIFloatingWidget() {
               fontFamily: 'inherit'
             }}
           />
-          <button 
+          <button data-element-name="כפתור_AIFloatingWidget_19" 
             type="submit" 
             disabled={loading}
             style={{
@@ -498,7 +511,7 @@ export default function AIFloatingWidget() {
               alignItems: 'center',
               opacity: loading ? 0.7 : 1
             }}>
-            <MessageSquare size={18} />
+            <MessageSquare data-element-name="רכיב_AIFloatingWidget_20" size={18} />
           </button>
         </form>
       </div>
@@ -528,7 +541,7 @@ export default function AIFloatingWidget() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
               <h3 style={{ margin: 0, color: 'var(--primary-color)' }}>נתונים ({modalTableData.length} שורות)</h3>
-              <button 
+              <button data-element-name="כפתור_AIFloatingWidget_21" 
                 onClick={() => setShowTableModal(false)}
                 style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#6b7280' }}
               >

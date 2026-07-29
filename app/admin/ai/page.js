@@ -136,7 +136,7 @@ export default function AIPage() {
     
     return (
       <div style={{ marginTop: '1rem' }}>
-        <button 
+        <button data-element-name="כפתור_page_1" 
           type="button"
           onClick={() => { setModalTableData(tableData); setShowTableModal(true); }}
           style={{
@@ -188,7 +188,7 @@ export default function AIPage() {
           flexDirection: 'column'
         }}>
           <div style={{ padding: '1rem', borderBottom: '1px solid #eee' }}>
-            <button 
+            <button data-element-name="כפתור_page_2" 
               onClick={startNewChat}
               style={{
                 width: '100%',
@@ -210,7 +210,7 @@ export default function AIPage() {
           </div>
           <div style={{ flex: 1, overflowY: 'auto' }}>
             {threads.map(t => (
-              <div 
+              <div data-element-name="לחיץ_page_3" 
                 key={t.id}
                 onClick={() => setActiveThreadId(t.id)}
                 style={{
@@ -227,7 +227,7 @@ export default function AIPage() {
                 <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.9rem', flex: 1 }}>
                   {t.title}
                 </span>
-                <button 
+                <button data-element-name="כפתור_page_4" 
                   onClick={(e) => deleteThread(e, t.id)}
                   style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', padding: '0 5px' }}
                   title="מחק שיחה"
@@ -283,7 +283,7 @@ export default function AIPage() {
             backgroundColor: '#fafafa',
             gap: '1rem'
           }}>
-            <button 
+            <button data-element-name="כפתור_page_5" 
               type="submit" 
               disabled={loading || !activeThreadId}
               style={{
@@ -299,7 +299,7 @@ export default function AIPage() {
               }}>
               שלח
             </button>
-            <input 
+            <input data-element-name="שדה_page_6" 
               type="text" 
               autoFocus
               value={input}
@@ -344,7 +344,7 @@ export default function AIPage() {
           }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
               <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>תצוגת נתונים ({modalTableData.length} שורות)</h2>
-              <button 
+              <button data-element-name="כפתור_page_7" 
                 onClick={() => setShowTableModal(false)}
                 style={{
                   background: 'none',

@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 
@@ -13,14 +13,22 @@ export async function GET(request) {
     const employeeId = searchParams.get('employeeId') || ''; // can be "guest", number, or empty
     const sort = searchParams.get('sort') || 'timestamp';
     const order = searchParams.get('order') || 'desc';
+    const filterType = searchParams.get('filterType') || ''; // 'api', 'pages', or ''
 
     const where = {};
 
     if (search) {
       where.OR = [
         { pageUrl: { contains: search } },
+        { requestQuery: { contains: search } },
         { loadingError: { contains: search } },
       ];
+    }
+
+    if (filterType === 'api') {
+      where.pageUrl = { contains: '/api/' };
+    } else if (filterType === 'pages') {
+      where.NOT = { pageUrl: { contains: '/api/' } };
     }
 
     if (employeeId) {

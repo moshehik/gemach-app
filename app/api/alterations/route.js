@@ -61,15 +61,35 @@ export async function GET(request) {
 
     const items = await prisma.orderItem.findMany({
       where: whereClause,
-      include: {
+      select: {
+        id: true,
+        neckAlteration: true,
+        lengthAlteration: true,
+        sleeveAlteration: true,
+        alterationDone: true,
         order: {
-          include: {
-            customer: true
+          select: {
+            orderId: true,
+            eventDate: true,
+            customer: {
+              select: {
+                firstName: true,
+                lastName: true,
+                phone1: true,
+                city: true
+              }
+            }
           }
         },
         dressItem: {
-          include: {
-            dress: true
+          select: {
+            sizeText: true,
+            serialNumber: true,
+            dress: {
+              select: {
+                name: true
+              }
+            }
           }
         }
       }

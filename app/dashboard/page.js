@@ -78,7 +78,7 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      <DashboardCharts revenueByMethod={revenueByMethod} revenueTrend={revenueTrend} />
+      <DashboardCharts data-element-name="רכיב_page_1" revenueByMethod={revenueByMethod} revenueTrend={revenueTrend} />
       
     </main>
   );

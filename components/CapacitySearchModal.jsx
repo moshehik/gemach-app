@@ -120,6 +120,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
       setResults(data);
 
       const newSearch = {
+        // eslint-disable-next-line react-hooks/rules-of-hooks
         id: Date.now(),
         timestamp: new Date().toISOString(),
         employeeCode: pEmployeeCode,

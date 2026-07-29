@@ -88,7 +88,7 @@ export default function DatabaseManagementPage() {
         <div className="space-y-6">
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-main)' }}>1. בחר קובץ נתונים (JSON)</label>
-            <input 
+            <input data-element-name="שדה_page_1" 
               id="file-upload"
               type="file" 
               accept=".json"
@@ -101,7 +101,7 @@ export default function DatabaseManagementPage() {
           <div>
             <label className="block text-sm font-medium mb-2" style={{ color: 'var(--text-main)' }}>2. אישור מחיקה</label>
             <p className="text-sm mb-2" style={{ color: 'var(--text-muted)' }}>כדי לאשר את הפעולה, הקלד את המשפט: <strong>אני מאשר למחוק</strong></p>
-            <input 
+            <input data-element-name="שדה_page_2" 
               type="text" 
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value)}
@@ -112,7 +112,7 @@ export default function DatabaseManagementPage() {
           </div>
 
           <div className="pt-4 border-t" style={{ borderColor: 'var(--divider)' }}>
-            <button
+            <button data-element-name="כפתור_page_3"
               onClick={handleUpload}
               disabled={status.loading || confirmText !== 'אני מאשר למחוק' || !file}
               className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-lg font-medium focus:outline-none transition-colors"

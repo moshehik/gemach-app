@@ -108,9 +108,33 @@ export async function GET(request) {
         orderBy,
         skip,
         take: limit,
-        include: {
+        select: {
+          id: true,
+          name: true,
+          barcodePrefix: true,
+          priceCategory: true,
+          notes: true,
+          inInspection: true,
+          imageUrl: true,
+          entryDateToRepo: true,
+          exitDateFromRepo: true,
+          inactiveReason: true,
+          isDeleted: true,
           items: {
-            include: { _count: { select: { orderItems: true } } }
+            select: {
+              id: true,
+              sizeText: true,
+              size: true,
+              quantity: true,
+              location: true,
+              inRepair: true,
+              notInUse: true,
+              isDeleted: true,
+              serialNumber: true,
+              dressBarcode: true,
+              notes: true,
+              _count: { select: { orderItems: true } }
+            }
           }
         }
       }),

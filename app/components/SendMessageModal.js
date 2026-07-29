@@ -80,8 +80,8 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
       }}>
         <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-color)' }}>שליחת הודעה</h3>
-          <button onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
-            <X size={20} />
+          <button data-element-name="כפתור_SendMessageModal_1" onClick={onClose} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94a3b8' }}>
+            <X data-element-name="רכיב_SendMessageModal_2" size={20} />
           </button>
         </div>
         
@@ -90,7 +90,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
           
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-color)', fontWeight: '500' }}>נמען:</label>
-            <select 
+            <select data-element-name="בחירה_SendMessageModal_3" 
               value={receiverId} 
               onChange={e => setReceiverId(e.target.value)}
               className="form-control"
@@ -107,7 +107,7 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
 
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-color)', fontWeight: '500' }}>תוכן ההודעה:</label>
-            <textarea
+            <textarea data-element-name="טקסט_SendMessageModal_4"
               value={content}
               onChange={e => setContent(e.target.value)}
               className="form-control"
@@ -118,18 +118,18 @@ export default function SendMessageModal({ isOpen, onClose, onSuccess }) {
         </div>
 
         <div style={{ padding: '1rem 1.5rem', background: 'var(--input-bg)', borderTop: '1px solid var(--border-color)', display: 'flex', justifyContent: 'flex-end', gap: '1rem' }}>
-          <button 
+          <button data-element-name="כפתור_SendMessageModal_5" 
             onClick={onClose}
             style={{ background: 'transparent', color: '#64748b', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '500', cursor: 'pointer' }}
           >
             ביטול
           </button>
-          <button 
+          <button data-element-name="כפתור_SendMessageModal_6" 
             onClick={handleSend}
             disabled={loading}
             style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#2563eb', color: 'white', border: 'none', padding: '0.5rem 1.25rem', borderRadius: '8px', fontWeight: '500', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}
           >
-            {loading ? 'שולח...' : <><Send size={16} /> שליחה</>}
+            {loading ? 'שולח...' : <><Send data-element-name="רכיב_SendMessageModal_7" size={16} /> שליחה</>}
           </button>
         </div>
       </div>

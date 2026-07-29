@@ -364,8 +364,8 @@ export default function DataExplorerPage() {
           <h1 style={{ margin: 0, fontSize: '1.8rem', fontWeight: '700', letterSpacing: '-0.025em' }}>סייר נתונים ושאילתות</h1>
           <p style={{ margin: '0.5rem 0 0 0', opacity: 0.8, fontSize: '0.95rem' }}>ניהול מתקדם של מסד הנתונים, ייצוא נתונים והרצת שאילתות מותאמות אישית</p>
         </div>
-        <Link href="/admin">
-          <button className="btn" style={{ 
+        <Link data-element-name="רכיב_page_1" href="/admin">
+          <button data-element-name="כפתור_page_2" className="btn" style={{ 
             background: 'rgba(255,255,255,0.2)', 
             color: 'white', 
             border: '1px solid rgba(255,255,255,0.3)',
@@ -420,7 +420,7 @@ export default function DataExplorerPage() {
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 200px' }}>
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#334155', fontSize: '0.9rem' }}>בחר טבלה לבדיקה:</label>
-              <select 
+              <select data-element-name="בחירה_page_3" 
                 className="form-control" 
                 value={selectedTable} 
                 onChange={e => setSelectedTable(e.target.value)}
@@ -442,7 +442,7 @@ export default function DataExplorerPage() {
               </select>
             </div>
             
-            <button 
+            <button data-element-name="כפתור_page_4" 
               className="btn" 
               disabled={!selectedTable}
               onClick={() => handleDownloadExport(selectedTable, '5000')}
@@ -460,7 +460,7 @@ export default function DataExplorerPage() {
             >
               📥 הורד 5,000 אחרונים
             </button>
-            <button 
+            <button data-element-name="כפתור_page_5" 
               className="btn btn-primary" 
               disabled={!selectedTable}
               onClick={() => handleDownloadExport(selectedTable, 'all', 'csv')}
@@ -478,7 +478,7 @@ export default function DataExplorerPage() {
             >
               🚀 הורד הכל מלא ל-CSV
             </button>
-            <button 
+            <button data-element-name="כפתור_page_6" 
               className="btn btn-primary" 
               disabled={!selectedTable}
               onClick={() => handleDownloadExport(selectedTable, 'all', 'excel')}
@@ -516,7 +516,7 @@ export default function DataExplorerPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
                 <span style={{ fontWeight: '600', color: '#334155', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   שדות הטבלה: 
-                  <span 
+                  <span data-element-name="לחיץ_page_7" 
                     style={{ background: '#e2e8f0', padding: '0.2rem 0.6rem', borderRadius: '4px', cursor: 'pointer' }}
                     title="לחץ להעתקת שם הטבלה לשאילתה"
                     onClick={() => {
@@ -528,7 +528,7 @@ export default function DataExplorerPage() {
                   </span>
                   ({tableColumns.length})
                 </span>
-                <button 
+                <button data-element-name="כפתור_page_8" 
                   onClick={() => {
                     navigator.clipboard.writeText(tableColumns.join(', '));
                     alert('השדות הועתקו ללוח!');
@@ -546,7 +546,7 @@ export default function DataExplorerPage() {
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
                 {tableColumns.map(col => (
-                  <span key={col} style={{ background: 'var(--card-bg)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer', transition: 'all 0.2s' }}
+                  <span data-element-name="לחיץ_page_9" key={col} style={{ background: 'var(--card-bg)', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', color: '#475569', border: '1px solid #cbd5e1', cursor: 'pointer', transition: 'all 0.2s' }}
                     onClick={() => {
                       navigator.clipboard.writeText(`"${col}"`);
                       insertToQuery(`"${col}"`);
@@ -575,7 +575,7 @@ export default function DataExplorerPage() {
                   <span style={{ background: '#e0f2fe', color: '#0369a1', padding: '0.2rem 0.6rem', borderRadius: '4px', fontSize: '0.8rem', fontWeight: '600' }}>
                     טבלה: {selectedTable}
                   </span>
-                  <button 
+                  <button data-element-name="כפתור_page_10" 
                     onClick={() => {
                       sessionStorage.setItem('fullViewQuery', `SELECT * FROM "${selectedTable}"`);
                       window.open('/admin/data-explorer/full-view', '_blank');
@@ -660,7 +660,7 @@ export default function DataExplorerPage() {
             }}>
               <span style={{ fontSize: '1.2em' }}>⌨️</span> הרצת שאילתת SQL מותאמת
             </h2>
-            <button 
+            <button data-element-name="כפתור_page_11" 
               className="btn"
               onClick={() => { setShowLogModal(true); fetchLogs(); }}
               style={{
@@ -679,7 +679,7 @@ export default function DataExplorerPage() {
             <p style={{ fontSize: '0.9rem', color: '#3b82f6', marginBottom: '1rem' }}>תאר במילים מה תרצה לשלוף או לעדכן, וה-AI יכתוב את השאילתה עבורך.</p>
             <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
               <div style={{ flex: 1 }}>
-                <input 
+                <input data-element-name="שדה_page_12" 
                   type="text" 
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
@@ -689,7 +689,7 @@ export default function DataExplorerPage() {
                 />
                 {aiError && <div style={{ color: '#ef4444', fontSize: '0.85rem', marginTop: '0.5rem' }}>{aiError}</div>}
               </div>
-              <button 
+              <button data-element-name="כפתור_page_13" 
                 onClick={generateAiQuery}
                 disabled={isGeneratingAi || !aiPrompt.trim()}
                 style={{
@@ -707,7 +707,7 @@ export default function DataExplorerPage() {
               הזן שאילתה (PostgreSQL):
               <span style={{ fontSize: '0.8rem', color: '#64748b', marginRight: '0.5rem', fontWeight: 'normal' }}>(לחץ Ctrl+Space להשלמה אוטומטית)</span>
             </label>
-            <textarea 
+            <textarea data-element-name="טקסט_page_14" 
               ref={textareaRef}
               className="form-control" 
               style={{ 
@@ -786,7 +786,7 @@ export default function DataExplorerPage() {
           </div>
           
           <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-            <button 
+            <button data-element-name="כפתור_page_15" 
               className="btn btn-primary" 
               onClick={runCustomQuery}
               disabled={loading || !customQuery.trim()}
@@ -804,7 +804,7 @@ export default function DataExplorerPage() {
               {loading ? 'מריץ...' : '▶️ הרץ שאילתה'}
             </button>
             
-            <button 
+            <button data-element-name="כפתור_page_16" 
               className="btn" 
               disabled={queryResult.length === 0}
               onClick={() => downloadCSV(queryResult, 'query_results')}
@@ -822,7 +822,7 @@ export default function DataExplorerPage() {
               📥 הורד תוצאות CSV
             </button>
 
-            <button 
+            <button data-element-name="כפתור_page_17" 
               className="btn" 
               disabled={queryResult.length === 0}
               onClick={() => downloadExcel(queryResult, 'query_results')}
@@ -861,7 +861,7 @@ export default function DataExplorerPage() {
              <div style={{ marginTop: '1rem', flex: 1, display: 'flex', flexDirection: 'column' }}>
              <div style={{ marginBottom: '1rem', color: '#64748b', fontSize: '0.9rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                <span>נמצאו <strong>{queryResult.length}</strong> רשומות</span>
-               <button 
+               <button data-element-name="כפתור_page_18" 
                  onClick={() => {
                    sessionStorage.setItem('fullViewQuery', customQuery);
                    window.open('/admin/data-explorer/full-view', '_blank');
@@ -937,7 +937,7 @@ export default function DataExplorerPage() {
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
                 היסטוריית שאילתות
               </h3>
-              <button onClick={() => setShowLogModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+              <button data-element-name="כפתור_page_19" onClick={() => setShowLogModal(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
               </button>
             </div>
@@ -973,7 +973,7 @@ export default function DataExplorerPage() {
                         </div>
                       )}
                       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
-                        <button 
+                        <button data-element-name="כפתור_page_20" 
                           className="btn"
                           style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', cursor: 'pointer' }}
                           onClick={() => {

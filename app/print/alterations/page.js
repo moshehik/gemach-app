@@ -43,7 +43,7 @@ export default function PrintAlterationsPage() {
     }
   }, [loading, error, reportType, startDate, endDate]);
 
-  const fetchData = async () => {
+  async function fetchData() {
     try {
       setLoading(true);
       
@@ -82,7 +82,7 @@ export default function PrintAlterationsPage() {
     return getHebrewDateString(dateString);
   };
 
-  const getReportTitle = () => {
+  function getReportTitle() {
     if (reportType === 'orders_all') return 'דוח הזמנות כללי';
     if (reportType === 'orders_no_alterations') return 'רשימת הזמנות ללא תיקונים';
     if (reportType === 'alterations_all') return 'כל התיקונים';

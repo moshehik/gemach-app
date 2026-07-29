@@ -359,9 +359,9 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                   </div>
                 </div>
 
-                <hr style={{ borderTop: '1px solid #eee', marginBottom: '1.5rem' }} />
+                <hr className="ai-feature-element" style={{ borderTop: '1px solid #eee', marginBottom: '1.5rem' }} />
 
-                <div>
+                <div className="ai-feature-element">
                   <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
                     <Sparkles size={18} color="#9c27b0" />
                     דוח מותאם אישית באמצעות AI

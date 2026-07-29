@@ -9,8 +9,8 @@ export default function OfflineIndicator() {
   if (!isVisible) return null;
 
   return (
-    <div className="offline-indicator" title="מערכת אופליין פעילה" onClick={() => setIsVisible(false)}>
-      <WifiOff size={20} />
+    <div data-element-name="לחיץ_OfflineIndicator_1" className="offline-indicator" title="מערכת אופליין פעילה" onClick={() => setIsVisible(false)}>
+      <WifiOff data-element-name="רכיב_OfflineIndicator_2" size={20} />
       <span>אופליין</span>
     </div>
   );

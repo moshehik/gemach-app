@@ -131,12 +131,12 @@ export default function AttendanceReportPage() {
       `}} />
 
       <div className="no-print">
-        <button 
+        <button data-element-name="כפתור_page_1" 
           onClick={() => router.push('/employees')}
           className="btn btn-ghost" 
           style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
         >
-          <ArrowRight size={20} />
+          <ArrowRight data-element-name="רכיב_page_2" size={20} />
           חזור לניהול עובדים
         </button>
         
@@ -150,7 +150,7 @@ export default function AttendanceReportPage() {
           
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <select 
+              <select data-element-name="בחירה_page_3" 
                 value={selectedMonth} 
                 onChange={e => setSelectedMonth(parseInt(e.target.value))}
                 style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
@@ -159,7 +159,7 @@ export default function AttendanceReportPage() {
                   <option key={i+1} value={i+1}>{getMonthName(i+1)}</option>
                 ))}
               </select>
-              <select 
+              <select data-element-name="בחירה_page_4" 
                 value={selectedYear} 
                 onChange={e => setSelectedYear(parseInt(e.target.value))}
                 style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
@@ -171,22 +171,22 @@ export default function AttendanceReportPage() {
               </select>
             </div>
             
-            <button 
+            <button data-element-name="כפתור_page_5" 
               onClick={handlePrint} 
               className="btn btn-secondary" 
               style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               disabled={loading || data.length === 0}
             >
-              <Printer size={18} />
+              <Printer data-element-name="רכיב_page_6" size={18} />
               הדפס / PDF
             </button>
-            <button 
+            <button data-element-name="כפתור_page_7" 
               onClick={handleExportExcel} 
               className="btn btn-primary" 
               style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               disabled={loading || data.length === 0}
             >
-              <FileSpreadsheet size={18} />
+              <FileSpreadsheet data-element-name="רכיב_page_8" size={18} />
               ייצוא לאקסל
             </button>
           </div>
@@ -196,7 +196,7 @@ export default function AttendanceReportPage() {
       <div id="print-area">
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-            <Loader2 className="animate-spin" size={40} style={{ color: 'var(--primary-color)' }} />
+            <Loader2 data-element-name="רכיב_page_9" className="animate-spin" size={40} style={{ color: 'var(--primary-color)' }} />
           </div>
         ) : data.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '4rem', background: 'var(--card-bg)', borderRadius: '12px' }}>

@@ -46,14 +46,14 @@ export default function LogoSettings() {
     <div className="dress-card" style={{ padding: '2rem', marginTop: '2rem' }} data-agy-id="logo_settings_container">
       <h3 style={{ marginBottom: '1rem' }}>הגדרות תצוגה - העלאת לוגו למערכת</h3>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-        <input 
+        <input data-element-name="שדה_LogoSettings_1" 
           type="file" 
           accept="image/*" 
           onChange={(e) => setFile(e.target.files[0])} 
           style={{ padding: '0.5rem', border: '1px solid var(--border-color)', borderRadius: '4px' }}
           data-agy-id="logo_file_input"
         />
-        <button 
+        <button data-element-name="כפתור_LogoSettings_2" 
           className="btn btn-primary" 
           onClick={handleUpload} 
           disabled={!file || isUploading}

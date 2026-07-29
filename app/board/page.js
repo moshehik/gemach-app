@@ -273,7 +273,7 @@ export default function BoardPage() {
     }
     
     return (
-      <div
+      <div data-element-name="לחיץ_page_1"
         key={order.orderId} 
         className={styles.orderCard}
         style={{ background: colorStyle.background, borderColor: colorStyle.border, color: colorStyle.color, cursor: 'pointer', position: 'relative' }}
@@ -289,7 +289,7 @@ export default function BoardPage() {
             {order.customerName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`}
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '4px', fontWeight: isOrderLate ? 'bold' : 'normal' }}>
-            {isOrderLate && <AlertCircle size={14} color="var(--danger-color, #ef4444)" />}
+            {isOrderLate && <AlertCircle data-element-name="רכיב_page_2" size={14} color="var(--danger-color, #ef4444)" />}
             #{order.orderId}
           </span>
         </div>
@@ -312,7 +312,7 @@ export default function BoardPage() {
               e.stopPropagation();
             }}
           >
-            <Info size={16} strokeWidth={2.5} />
+            <Info data-element-name="רכיב_page_3" size={16} strokeWidth={2.5} />
           </div>
         </div>
       </div>
@@ -424,7 +424,7 @@ export default function BoardPage() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                     <div className={styles.hebrewDate}>{hebrewDayStr}</div>
                     {dayOrders.length > 2 && (
-                      <button
+                      <button data-element-name="כפתור_page_4"
                         onClick={(e) => {
                           e.stopPropagation();
                           const rect = e.currentTarget.getBoundingClientRect();
@@ -438,7 +438,7 @@ export default function BoardPage() {
                         style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary-color)', display: 'flex', padding: 0 }}
                         title="תצוגה מורחבת ליום זה"
                       >
-                        <Maximize2 size={16} />
+                        <Maximize2 data-element-name="רכיב_page_5" size={16} />
                       </button>
                     )}
                   </div>
@@ -473,21 +473,19 @@ export default function BoardPage() {
       <div className={styles.header}>
         <div className={styles.headerTop}>
           <h1 className={styles.title} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <CalendarIcon size={28} />
+            <CalendarIcon data-element-name="רכיב_page_6" size={28} />
             לוח שנה
           </h1>
                     <div className={styles.navControls}>
-            <button data-agy-id="nav-next-month-button" className={styles.navBtn} onClick={() => changeMonth(1)} title="חודש הבא">
-              <ChevronRight size={24} />
+            <button data-element-name="כפתור_page_7" data-agy-id="nav-prev-month-button" className={styles.navBtn} onClick={() => changeMonth(-1)} title="חודש קודם">
+              <ChevronRight data-element-name="רכיב_page_8" size={20} />
             </button>
-            <div className={styles.monthDisplay} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {currentMonthYear}
-              <div style={{ width: '130px', fontWeight: 'normal', fontSize: '0.9rem' }}>
-                <HebrewDatePicker value={jumpDate} onChange={setJumpDate} placeholder="קפוץ לתאריך..." />
-              </div>
+            <div className={styles.monthDisplay} style={{ position: 'relative' }}>
+              <span>{currentMonthYear}</span>
+              <HebrewDatePicker data-element-name="רכיב_page_9" value={jumpDate} onChange={setJumpDate} placeholder="קפוץ לתאריך..." iconOnly={true} />
             </div>
-            <button data-agy-id="nav-prev-month-button" className={styles.navBtn} onClick={() => changeMonth(-1)} title="חודש קודם">
-              <ChevronLeft size={24} />
+            <button data-element-name="כפתור_page_10" data-agy-id="nav-next-month-button" className={styles.navBtn} onClick={() => changeMonth(1)} title="חודש הבא">
+              <ChevronLeft data-element-name="רכיב_page_11" size={20} />
             </button>
           </div>
         </div>
@@ -496,7 +494,7 @@ export default function BoardPage() {
           <div className={styles.searchWrapper}>
             <div style={{ display: 'flex', gap: '1rem', width: '100%', alignItems: 'center', flexWrap: 'wrap' }}>
               <div style={{ flexGrow: 1, minWidth: '300px' }}>
-                <AISearchBar 
+                <AISearchBar data-element-name="רכיב_page_12" 
                   placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
@@ -508,23 +506,23 @@ export default function BoardPage() {
                 />
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <button 
+                <button data-element-name="כפתור_page_13" 
                   data-agy-id="global-search-button"
                   onClick={handleGlobalSearch}
                   className="btn btn-outline"
                   style={{ borderRadius: '8px', padding: '0 1rem', height: '45px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}
                   title="חיפוש בכל החודשים"
                 >
-                  <Search size={18} /> גלובלי
+                  <Search data-element-name="רכיב_page_14" size={18} /> גלובלי
                 </button>
-                <button 
+                <button data-element-name="כפתור_page_15" 
                   data-agy-id="adv-search-button"
                   onClick={() => setShowAdvSearch(true)}
                   className="btn btn-outline"
                   style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}
                   title="חיפוש מתקדם"
                 >
-                  <Filter size={20} />
+                  <Filter data-element-name="רכיב_page_16" size={20} />
                 </button>
               </div>
             </div>
@@ -557,40 +555,40 @@ export default function BoardPage() {
           style={{ top: popoverPos.top, left: popoverPos.left, zIndex: 10000 }}
         >
           <div className="global-popoverHeader">
-            <Info size={18} />
+            <Info data-element-name="רכיב_page_17" size={18} />
             פרטים על הזמנה #{hoveredOrder.order.orderId}
           </div>
           <div className="global-popoverRow">
             <span>לקוח:</span>
-            <span><Phone size={14} /> טלפון:</span>
+            <span><Phone data-element-name="רכיב_page_18" size={14} /> טלפון:</span>
             <span dir="ltr">{hoveredOrder.order.customerPhone || 'לא הוזן'}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><CalendarIcon2 size={14} /> תאריך עברי:</span>
+            <span><CalendarIcon2 data-element-name="רכיב_page_19" size={14} /> תאריך עברי:</span>
             <span>{hoveredOrder.order.eventDateHebrew || 'לא צוין'}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><CalendarIcon2 size={14} /> תאריך לועזי:</span>
+            <span><CalendarIcon2 data-element-name="רכיב_page_20" size={14} /> תאריך לועזי:</span>
             <span>{hoveredOrder.order.eventDate ? new Date(hoveredOrder.order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><Shirt size={14} /> פריטים בהזמנה:</span>
+            <span><Shirt data-element-name="רכיב_page_21" size={14} /> פריטים בהזמנה:</span>
             <span>{hoveredOrder.order.items?.filter(i => !i.isDeleted).length || 0}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><Shirt size={14} /> הושכר:</span>
+            <span><Shirt data-element-name="רכיב_page_22" size={14} /> הושכר:</span>
             <span>{hoveredOrder.order.items?.filter(i => !i.isDeleted && i.isTaken).length || 0}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><Shirt size={14} /> הוחזר:</span>
+            <span><Shirt data-element-name="רכיב_page_23" size={14} /> הוחזר:</span>
             <span>{hoveredOrder.order.items?.filter(i => !i.isDeleted && i.isReturned).length || 0}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><CreditCard size={14} /> סה"כ לתשלום:</span>
+            <span><CreditCard data-element-name="רכיב_page_24" size={14} /> סה"כ לתשלום:</span>
             <span>₪{hoveredOrder.order.totalAmount || 0}</span>
           </div>
           <div className={styles.popoverRow}>
-            <span><CheckCircle2 size={14} /> שולם:</span>
+            <span><CheckCircle2 data-element-name="רכיב_page_25" size={14} /> שולם:</span>
             <span style={{ color: hoveredOrder.order.totalPaid >= hoveredOrder.order.totalAmount && hoveredOrder.order.totalAmount > 0 ? 'var(--success-color, #10b981)' : (hoveredOrder.order.totalPaid > 0 ? 'var(--warning-color, #f59e0b)' : 'var(--danger-color, #ef4444)'), fontWeight: 'bold' }}>
               ₪{hoveredOrder.order.totalPaid || 0}
             </span>
@@ -604,25 +602,25 @@ export default function BoardPage() {
       )}
 
       {showAdvSearch && typeof document !== 'undefined' && createPortal(
-        <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+        <div data-element-name="לחיץ_page_26" className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div data-element-name="לחיץ_page_27" className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--divider)', paddingBottom: '1rem' }}>
               <h2 style={{ color: 'var(--primary-color)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Filter size={24} /> חיפוש מתקדם
+                <Filter data-element-name="רכיב_page_28" size={24} /> חיפוש מתקדם
               </h2>
-              <button onClick={() => setShowAdvSearch(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={24} />
+              <button data-element-name="כפתור_page_29" onClick={() => setShowAdvSearch(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X data-element-name="רכיב_page_30" size={24} />
               </button>
             </div>
             
             <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>מתאריך אירוע</label>
-                <HebrewDatePicker value={advFilters.eventDateFrom} onChange={d => setAdvFilters(p => ({...p, eventDateFrom: d}))} placeholder="מתאריך..." />
+                <HebrewDatePicker data-element-name="רכיב_page_31" value={advFilters.eventDateFrom} onChange={d => setAdvFilters(p => ({...p, eventDateFrom: d}))} placeholder="מתאריך..." />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>עד תאריך אירוע</label>
-                <HebrewDatePicker value={advFilters.eventDateTo} onChange={d => setAdvFilters(p => ({...p, eventDateTo: d}))} placeholder="עד תאריך..." />
+                <HebrewDatePicker data-element-name="רכיב_page_32" value={advFilters.eventDateTo} onChange={d => setAdvFilters(p => ({...p, eventDateTo: d}))} placeholder="עד תאריך..." />
               </div>
             </div>
 
@@ -630,35 +628,35 @@ export default function BoardPage() {
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>מספר הזמנה</label>
                 <div style={{ position: 'relative' }}>
-                  <Search size={16} style={{ position: 'absolute', right: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                  <input data-agy-id="input-adv-order-id" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem 2.5rem 0.6rem 0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} placeholder="חפש לפי מספר..." />
+                  <Search data-element-name="רכיב_page_33" size={16} style={{ position: 'absolute', right: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                  <input data-element-name="שדה_page_34" data-agy-id="input-adv-order-id" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem 2.5rem 0.6rem 0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} placeholder="חפש לפי מספר..." />
                 </div>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>ברקוד/פרטי פריט</label>
                 <div style={{ position: 'relative' }}>
-                  <Shirt size={16} style={{ position: 'absolute', right: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                  <input type="text" className="form-control" style={{ width: '100%', padding: '0.6rem 2.5rem 0.6rem 0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} placeholder="ברקוד או תיאור..." />
+                  <Shirt data-element-name="רכיב_page_35" size={16} style={{ position: 'absolute', right: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                  <input data-element-name="שדה_page_36" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem 2.5rem 0.6rem 0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} placeholder="ברקוד או תיאור..." />
                 </div>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>שם לקוח</label>
-                <input type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} placeholder="שם הלקוח..." />
+                <input data-element-name="שדה_page_37" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} placeholder="שם הלקוח..." />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>טלפון לקוח</label>
-                <input type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} placeholder="מספר טלפון..." />
+                <input data-element-name="שדה_page_38" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} placeholder="מספר טלפון..." />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>עיר מגורים</label>
-                <input type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} placeholder="עיר..." />
+                <input data-element-name="שדה_page_39" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} placeholder="עיר..." />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid var(--divider)', paddingTop: '1.5rem', justifyContent: 'flex-end' }}>
-              <button className="btn btn-outline" style={{ padding: '0.6rem 1.5rem', borderRadius: '8px' }} onClick={() => {
+              <button data-element-name="כפתור_page_40" className="btn btn-outline" style={{ padding: '0.6rem 1.5rem', borderRadius: '8px' }} onClick={() => {
                 setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: '' });
               }}>נקה הכל</button>
-              <button className="btn btn-primary" style={{ padding: '0.6rem 2.5rem', borderRadius: '8px' }} onClick={() => setShowAdvSearch(false)}>החל סינון</button>
+              <button data-element-name="כפתור_page_41" className="btn btn-primary" style={{ padding: '0.6rem 2.5rem', borderRadius: '8px' }} onClick={() => setShowAdvSearch(false)}>החל סינון</button>
             </div>
           </div>
         </div>,
@@ -666,14 +664,14 @@ export default function BoardPage() {
       )}
 
       {showGlobalSearchModal && typeof document !== 'undefined' && createPortal(
-        <div className="modal-overlay" onClick={() => setShowGlobalSearchModal(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }}>
-          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', display: 'flex', flexDirection: 'column', maxHeight: '80vh' }}>
+        <div data-element-name="לחיץ_page_42" className="modal-overlay" onClick={() => setShowGlobalSearchModal(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div data-element-name="לחיץ_page_43" className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', display: 'flex', flexDirection: 'column', maxHeight: '80vh' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--divider)', paddingBottom: '1rem' }}>
               <h2 style={{ color: 'var(--primary-color)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Search size={24} /> תוצאות חיפוש גלובלי
+                <Search data-element-name="רכיב_page_44" size={24} /> תוצאות חיפוש גלובלי
               </h2>
-              <button onClick={() => setShowGlobalSearchModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={24} />
+              <button data-element-name="כפתור_page_45" onClick={() => setShowGlobalSearchModal(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X data-element-name="רכיב_page_46" size={24} />
               </button>
             </div>
             
@@ -693,7 +691,7 @@ export default function BoardPage() {
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{order.eventDateHebrew || (order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : '')}</div>
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button 
+                        <button data-element-name="כפתור_page_47" 
                           onClick={() => {
                             if (order.eventDate) {
                               setJumpDate(new Date(order.eventDate));
@@ -704,7 +702,7 @@ export default function BoardPage() {
                         >
                           קפוץ לחודש
                         </button>
-                        <Link href={`/orders/${order.orderId}`} target="_blank" style={{ textDecoration: 'none' }}>
+                        <Link data-element-name="רכיב_page_48" href={`/orders/${order.orderId}`} target="_blank" style={{ textDecoration: 'none' }}>
                           <div style={{ background: 'var(--primary-color)', color: 'white', padding: '0.4rem 0.8rem', borderRadius: '24px', fontSize: '0.85rem', fontWeight: 'bold', cursor: 'pointer' }}>
                             צפה בהזמנה
                           </div>
@@ -724,7 +722,7 @@ export default function BoardPage() {
         document.body
       )}
 
-      <StatisticsModal 
+      <StatisticsModal data-element-name="רכיב_page_49" 
         isOpen={!!showStatistics} 
         onClose={() => setShowStatistics(false)} 
         pageContext="board"
@@ -735,11 +733,11 @@ export default function BoardPage() {
       
       {selectedDayOrders && typeof document !== 'undefined' && createPortal(
         <>
-          <div 
+          <div data-element-name="לחיץ_page_50" 
             style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9998, backgroundColor: 'rgba(0,0,0,0.5)' }}
             onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }}
           />
-          <div 
+          <div data-element-name="לחיץ_page_51" 
             className="animate-fade-in" 
             onClick={e => e.stopPropagation()} 
             style={{ 
@@ -761,13 +759,13 @@ export default function BoardPage() {
             }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', borderBottom: '1px solid var(--divider, #f1f5f9)', paddingBottom: '0.5rem', flexShrink: 0 }}>
               <h3 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '1.2rem' }}>הזמנות ליום {selectedDayOrders.date.toLocaleDateString('he-IL')} ({selectedDayOrders.hebrewDate})</h3>
-              <button onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '50%' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg, #f1f5f9)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} title="סגור">
-                <X size={20} strokeWidth={2.5} />
+              <button data-element-name="כפתור_page_52" onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px', borderRadius: '50%' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg, #f1f5f9)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'} title="סגור">
+                <X data-element-name="רכיב_page_53" size={20} strokeWidth={2.5} />
               </button>
             </div>
             
             <div style={{ position: 'relative', width: '100%', marginBottom: '1rem', flexShrink: 0 }}>
-               <input
+               <input data-element-name="שדה_page_54"
                   type="text"
                   placeholder="חיפוש הזמנה ביום זה (שם, טלפון, מספר)..."
                   value={dayOrdersFilter}
@@ -785,9 +783,9 @@ export default function BoardPage() {
                   onFocus={(e) => { e.target.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.15)'; e.target.style.borderColor = 'var(--primary-color, #3b82f6)'; e.target.style.background = 'var(--input-focus-bg, #ffffff)'; }}
                   onBlur={(e) => { e.target.style.boxShadow = '0 2px 5px rgba(0,0,0,0.05)'; e.target.style.borderColor = 'var(--element-border, #e2e8f0)'; e.target.style.background = 'var(--input-bg, #f8fafc)'; }}
                 />
-                <Search size={16} color="var(--text-muted, #94a3b8)" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <Search data-element-name="רכיב_page_55" size={16} color="var(--text-muted, #94a3b8)" style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)' }} />
                 {dayOrdersFilter && (
-                  <button
+                  <button data-element-name="כפתור_page_56"
                     onClick={() => setDayOrdersFilter('')}
                     style={{
                       position: 'absolute',
@@ -808,7 +806,7 @@ export default function BoardPage() {
                     }}
                     title="נקה סינון"
                   >
-                    <X size={14} strokeWidth={3} />
+                    <X data-element-name="רכיב_page_57" size={14} strokeWidth={3} />
                   </button>
                 )}
             </div>
@@ -829,7 +827,7 @@ export default function BoardPage() {
       )}
 
       {selectedRentalOrderId && (
-        <RentalReturnModal
+        <RentalReturnModal data-element-name="רכיב_page_58"
           orderId={selectedRentalOrderId}
           onClose={() => setSelectedRentalOrderId(null)}
           onUpdate={fetchOrdersForMonth}
@@ -840,11 +838,11 @@ export default function BoardPage() {
       {/* Action Menu Popover */}
       {actionOrder && typeof document !== 'undefined' && createPortal(
         <>
-          <div 
+          <div data-element-name="לחיץ_page_59" 
             style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9998 }}
             onClick={() => setActionOrder(null)}
           />
-          <div 
+          <div data-element-name="לחיץ_page_60" 
             style={{
               position: 'absolute',
               top: actionPos.top,
@@ -865,25 +863,25 @@ export default function BoardPage() {
             <div style={{ padding: '0 8px 8px', fontSize: '0.9rem', color: 'var(--text-muted, #64748b)', borderBottom: '1px solid var(--divider, #f1f5f9)', marginBottom: '4px', fontWeight: 'bold' }}>
               הזמנה #{actionOrder.orderId}
             </div>
-            <Link 
+            <Link data-element-name="רכיב_page_61" 
               href={`/orders/${actionOrder.orderId}`}
               style={{ padding: '10px 12px', textDecoration: 'none', color: 'var(--text-main, #1e293b)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', transition: 'background 0.2s', fontWeight: '500' }}
               onMouseEnter={(e) => e.currentTarget.style.background = 'var(--element-bg, #f1f5f9)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              <FileText size={18} color="var(--primary-color, #3b82f6)" /> כרטיס הזמנה
+              <FileText data-element-name="רכיב_page_62" size={18} color="var(--primary-color, #3b82f6)" /> כרטיס הזמנה
             </Link>
             {(actionOrder.customerId || actionOrder.customer?.id) && (
-              <Link 
+              <Link data-element-name="רכיב_page_63" 
                 href={`/customers/${actionOrder.customerId || actionOrder.customer?.id}`}
                 style={{ padding: '10px 12px', textDecoration: 'none', color: 'var(--text-main, #1e293b)', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '10px', transition: 'background 0.2s', fontWeight: '500' }}
                 onMouseEnter={(e) => e.currentTarget.style.background = 'var(--element-bg, #f1f5f9)'}
                 onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
               >
-                <User size={18} color="var(--success-color, #10b981)" /> כרטיס לקוח
+                <User data-element-name="רכיב_page_64" size={18} color="var(--success-color, #10b981)" /> כרטיס לקוח
               </Link>
             )}
-            <button 
+            <button data-element-name="כפתור_page_65" 
               onClick={() => {
                 setSelectedRentalOrderId(actionOrder.orderId);
                 setActionOrder(null);
@@ -893,7 +891,7 @@ export default function BoardPage() {
               onMouseEnter={(e) => e.currentTarget.style.background = 'var(--element-bg, #f1f5f9)'}
               onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
             >
-              <Shirt size={18} color="var(--warning-color, #f59e0b)" /> כרטיס השכרה
+              <Shirt data-element-name="רכיב_page_66" size={18} color="var(--warning-color, #f59e0b)" /> כרטיס השכרה
             </button>
           </div>
         </>,

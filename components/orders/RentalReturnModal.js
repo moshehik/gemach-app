@@ -29,7 +29,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     }
   }, [orderId]);
 
-  const loadOrder = async (id) => {
+  async function loadOrder(id) {
     setLoading(true);
     try {
       const timestamp = new Date().getTime();

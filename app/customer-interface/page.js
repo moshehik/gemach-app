@@ -16,7 +16,7 @@ export default function CustomerInventoryViewer() {
   const [stage, setStage] = useState(1);
   const [search, setSearch] = useState('');
   const [showZeroSizes, setShowZeroSizes] = useState(false);
-  const [viewMode, setViewMode] = useState('grid');
+  const [viewMode, setViewMode] = useState('rows');
   const [zoomLevel, setZoomLevel] = useState(1);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedModel, setSelectedModel] = useState(null);
@@ -421,7 +421,7 @@ export default function CustomerInventoryViewer() {
                 } catch (e) {}
 
                 return (
-                  <td 
+                  <td data-element-name="לחיץ_page_1" 
                     key={j} 
                     className={`${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
                     onClick={() => setSelectedDate(cellGreg)}
@@ -491,7 +491,7 @@ export default function CustomerInventoryViewer() {
                 <div className="size-qty zero">-</div>
               )}
               {!isLocked && (
-                <div 
+                <div data-element-name="לחיץ_page_2" 
                   title="הזמנות של המידה (לחץ כאן או לחיצה כפולה)"
                   onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(selectedModel, item.name); }}
                   style={{ 
@@ -504,7 +504,7 @@ export default function CustomerInventoryViewer() {
                   onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.15)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
                 >
-                  <History size={10} strokeWidth={3} />
+                  <History data-element-name="רכיב_page_3" size={10} strokeWidth={3} />
                 </div>
               )}
             </div>
@@ -628,7 +628,7 @@ export default function CustomerInventoryViewer() {
   };
 
   return (
-    <div data-agy-id="customer_inventory_main_container" className="layout-container" style={{ minHeight: '100vh', background: 'var(--bg-color)', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative', direction: 'rtl' }}>
+    <div data-agy-id="customer_inventory_main_container" className="layout-container" style={{ minHeight: '100vh', background: 'var(--bg-color)', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative', direction: 'rtl', width: '100%', maxWidth: '100%', margin: 0, boxSizing: 'border-box' }}>
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
@@ -826,8 +826,11 @@ export default function CustomerInventoryViewer() {
           display: flex;
           flex-direction: column;
           gap: 24px;
-          margin: 0 auto;
+          margin: 0;
+          width: 100%;
+          max-width: 100%;
           padding: 24px;
+          box-sizing: border-box;
         }
         
         /* Calendar */
@@ -863,20 +866,20 @@ export default function CustomerInventoryViewer() {
             <p style={{ fontSize: '1.2rem', color: 'var(--text-secondary)' }}>הזן סגנון, מידה או פשוט בחר תאריך מהיומן</p>
           </div>
 
-          {settings.hide_ai_features !== 'true' && (
-          <div className="ai-search-container" style={{ marginBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && (
+          <div className="ai-search-container ai-feature-element" style={{ marginBottom: '4rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
             {/* Chat History Above Input */}
             {aiMessages.length > 1 && (
               <div style={{ background: 'var(--card-bg)', backdropFilter: 'blur(12px)', padding: '24px', borderRadius: '24px', boxShadow: '0 10px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02)', color: 'var(--text-main)', maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', paddingBottom: '16px', borderBottom: '1px solid var(--border-main)', color: '#8b5cf6', fontWeight: 'bold', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ background: 'var(--gradient-primary)', padding: '8px', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(168,85,247,0.3)' }}>
-                      <Sparkles size={16} />
+                      <Sparkles data-element-name="רכיב_page_4" size={16} />
                     </div>
                     <span style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>העוזר החכם</span>
                   </div>
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button data-agy-id="new_ai_chat_btn" onClick={() => setAiChats(prev => ({ ...prev, [stage]: [{ role: 'assistant', content: 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' }] }))} title="שיחה חדשה" style={{ background: 'var(--element-bg)', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }} onMouseOver={e => {e.currentTarget.style.background='var(--border-main)'; e.currentTarget.style.color='var(--primary-color)'; e.currentTarget.style.transform='rotate(90deg)';}} onMouseOut={e => {e.currentTarget.style.background='var(--element-bg)'; e.currentTarget.style.color='var(--text-secondary)'; e.currentTarget.style.transform='rotate(0deg)';}}><Plus size={18} /></button>
+                    <button data-element-name="כפתור_page_5" data-agy-id="new_ai_chat_btn" onClick={() => setAiChats(prev => ({ ...prev, [stage]: [{ role: 'assistant', content: 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' }] }))} title="שיחה חדשה" style={{ background: 'var(--element-bg)', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }} onMouseOver={e => {e.currentTarget.style.background='var(--border-main)'; e.currentTarget.style.color='var(--primary-color)'; e.currentTarget.style.transform='rotate(90deg)';}} onMouseOut={e => {e.currentTarget.style.background='var(--element-bg)'; e.currentTarget.style.color='var(--text-secondary)'; e.currentTarget.style.transform='rotate(0deg)';}}><Plus data-element-name="רכיב_page_6" size={18} /></button>
                   </div>
                 </div>
                 
@@ -915,7 +918,7 @@ export default function CustomerInventoryViewer() {
                       }}>
                         <div>{displayContent}</div>
                         {msg.role === 'assistant' && isoDateMatch && !filterMatchStr && (
-                          <button 
+                          <button data-element-name="כפתור_page_7" 
                             type="button"
                             onClick={(e) => {
                               e.preventDefault();
@@ -930,7 +933,7 @@ export default function CustomerInventoryViewer() {
                           </button>
                         )}
                         {msg.role === 'assistant' && filterMatchStr && (
-                          <button 
+                          <button data-element-name="כפתור_page_8" 
                             type="button"
                             onClick={(e) => {
                               e.preventDefault();
@@ -945,7 +948,7 @@ export default function CustomerInventoryViewer() {
                             onMouseOver={e => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)'}
                             onMouseOut={e => e.currentTarget.style.boxShadow = '0 2px 5px rgba(0,0,0,0.05)'}
                           >
-                            <Search size={14} style={{ marginRight: '6px', marginLeft: '6px' }} />
+                            <Search data-element-name="רכיב_page_9" size={14} style={{ marginRight: '6px', marginLeft: '6px' }} />
                             סנן והצג: {filterMatchStr} {isoDateMatch ? `(לתאריך ${getHebrewDateString(new Date(`${isoDateMatch}T12:00:00`))})` : ''}
                           </button>
                         )}
@@ -962,7 +965,7 @@ export default function CustomerInventoryViewer() {
                 )}
                 
                 <form onSubmit={handleAiSubmit} style={{ marginTop: '24px', display: 'flex', gap: '12px', background: 'var(--element-bg)', padding: '8px', borderRadius: '999px', border: '1px solid var(--border-main)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                  <input 
+                  <input data-element-name="שדה_page_10" 
                     data-agy-id="ai_chat_input"
                     type="text" 
                     value={aiInput}
@@ -971,8 +974,8 @@ export default function CustomerInventoryViewer() {
                     placeholder="מה תרצה לחפש?"
                     style={{ flex: 1, padding: '10px 20px', borderRadius: '999px', border: 'none', outline: 'none', background: 'transparent', fontSize: '1.05rem', color: 'var(--text-main)' }}
                   />
-                  <button data-agy-id="ai_chat_submit_btn" type="submit" disabled={aiLoading || !aiInput.trim()} style={{ background: 'var(--gradient-primary)', color: 'white', border: 'none', width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (aiLoading || !aiInput.trim()) ? 0.6 : 1, transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(168,85,247,0.4)' }} onMouseOver={e => e.currentTarget.style.transform='scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>
-                    <Send size={18} style={{ transform: 'rotate(-45deg)', marginLeft: '4px' }} />
+                  <button data-element-name="כפתור_page_11" data-agy-id="ai_chat_submit_btn" type="submit" disabled={aiLoading || !aiInput.trim()} style={{ background: 'var(--gradient-primary)', color: 'white', border: 'none', width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (aiLoading || !aiInput.trim()) ? 0.6 : 1, transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(168,85,247,0.4)' }} onMouseOver={e => e.currentTarget.style.transform='scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>
+                    <Send data-element-name="רכיב_page_12" size={18} style={{ transform: 'rotate(-45deg)', marginLeft: '4px' }} />
                   </button>
                 </form>
             </div>
@@ -981,7 +984,7 @@ export default function CustomerInventoryViewer() {
             {aiMessages.length <= 1 && (
             <div style={{ position: 'relative', display: 'flex', gap: '12px', alignItems: 'center' }}>
               <form onSubmit={handleAiSubmit} style={{ position: 'relative', flex: 1 }}>
-                <input 
+                <input data-element-name="שדה_page_13" 
                   data-agy-id="hero_ai_search_input"
                   type="text" 
                   className="ai-search-input" 
@@ -991,8 +994,8 @@ export default function CustomerInventoryViewer() {
                   disabled={aiLoading}
                   style={{ width: '100%', margin: 0 }}
                 />
-                <button data-agy-id="hero_ai_search_btn" type="submit" className="ai-search-btn" disabled={aiLoading}>
-                  {aiLoading ? <Loader2 size={24} className="animate-spin" /> : <Sparkles size={24} />}
+                <button data-element-name="כפתור_page_14" data-agy-id="hero_ai_search_btn" type="submit" className="ai-search-btn" disabled={aiLoading}>
+                  {aiLoading ? <Loader2 data-element-name="רכיב_page_15" size={24} className="animate-spin" /> : <Sparkles data-element-name="רכיב_page_16" size={24} />}
                 </button>
               </form>
             </div>
@@ -1002,23 +1005,23 @@ export default function CustomerInventoryViewer() {
 
           <div className="glass-panel" style={{ padding: '40px', width: '100%', maxWidth: '850px', display: 'flex', flexDirection: 'column', alignItems: 'center', background: 'var(--card-bg)', border: '1px solid var(--border-main)', boxShadow: '0 20px 50px rgba(0,0,0,0.05)' }}>
             <h3 style={{ fontSize: '1.8rem', fontWeight: '800', color: 'var(--text-main)', margin: '0 0 24px 0', display: 'flex', alignItems: 'center', gap: '12px', background: 'var(--gradient-primary)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-              <Calendar size={28} color="#a855f7" style={{ filter: 'drop-shadow(0 4px 6px rgba(168,85,247,0.2))' }} /> מתי האירוע שלכם?
+              <Calendar data-element-name="רכיב_page_17" size={28} color="#a855f7" style={{ filter: 'drop-shadow(0 4px 6px rgba(168,85,247,0.2))' }} /> מתי האירוע שלכם?
             </h3>
             <div style={{ display: 'flex', gap: '16px', width: '100%', alignItems: 'center', justifyContent: 'center', flexDirection: 'row', flexWrap: 'wrap' }}>
               <div style={{ flex: '1', minWidth: '280px', maxWidth: '400px' }}>
-                <HebrewDatePicker
+                <HebrewDatePicker data-element-name="רכיב_page_18"
                   selectedDate={selectedDate}
                   onChange={(d) => { setSelectedDate(new Date(d)); setStage(2); }}
                 />
               </div>
-              <button 
+              <button data-element-name="כפתור_page_19" 
                 data-agy-id="show_inventory_btn"
                 onClick={() => setStage(2)}
                 style={{ padding: '0 36px', height: '60px', background: 'var(--gradient-primary)', color: 'white', fontSize: '1.15rem', fontWeight: 'bold', borderRadius: '16px', border: 'none', cursor: 'pointer', boxShadow: '0 10px 25px rgba(168,85,247,0.3)', transition: 'all 0.3s', display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}
                 onMouseOver={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 15px 35px rgba(168,85,247,0.4)'; }}
                 onMouseOut={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(168,85,247,0.3)'; }}
               >
-                הצג מלאי <Sparkles size={20} />
+                הצג מלאי <Sparkles data-element-name="רכיב_page_20" size={20} />
               </button>
             </div>
           </div>
@@ -1046,24 +1049,24 @@ export default function CustomerInventoryViewer() {
                     קטלוג שמלות זמינות
                   </h2>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--card-bg)', padding: '6px', borderRadius: '16px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                    <button data-agy-id="exit_to_system_btn" className="header-btn" onClick={() => router.push('/')} title="חזור למערכת" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--danger-text)', background: 'var(--danger-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><LogOut size={18} /></button>
-                    <button data-agy-id="new_search_btn" className="header-btn" onClick={() => setStage(1)} title="חיפוש חדש" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--primary-color)', background: 'var(--primary-light)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Search size={18} /></button>
-                    <button data-agy-id="refresh_inventory_btn" className="header-btn" onClick={fetchInventory} title="רענון מלאי" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--success-text)', background: 'var(--success-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><RefreshCw size={18} /></button>
-                    <button data-agy-id="print_catalog_btn" className="header-btn" onClick={handleCatalogPrint} title="הדפסה" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--accent-color)', background: 'var(--empty-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Printer size={18} /></button>
+                    <button data-element-name="כפתור_page_21" data-agy-id="exit_to_system_btn" className="header-btn" onClick={() => router.push('/')} title="חזור למערכת" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--danger-text)', background: 'var(--danger-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><LogOut data-element-name="רכיב_page_22" size={18} /></button>
+                    <button data-element-name="כפתור_page_23" data-agy-id="new_search_btn" className="header-btn" onClick={() => setStage(1)} title="חיפוש חדש" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--primary-color)', background: 'var(--primary-light)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Search data-element-name="רכיב_page_24" size={18} /></button>
+                    <button data-element-name="כפתור_page_25" data-agy-id="refresh_inventory_btn" className="header-btn" onClick={fetchInventory} title="רענון מלאי" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--success-text)', background: 'var(--success-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><RefreshCw data-element-name="רכיב_page_26" size={18} /></button>
+                    <button data-element-name="כפתור_page_27" data-agy-id="print_catalog_btn" className="header-btn" onClick={handleCatalogPrint} title="הדפסה" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--accent-color)', background: 'var(--empty-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Printer data-element-name="רכיב_page_28" size={18} /></button>
                     {isLocked ? (
-                      <button data-agy-id="unlock_screen_btn" className="header-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, borderRadius: '12px', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(239,68,68,0.3)' }} onClick={() => setShowUnlockModal(true)} title="שחרור מסך"><Lock size={18} /></button>
+                      <button data-element-name="כפתור_page_29" data-agy-id="unlock_screen_btn" className="header-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, borderRadius: '12px', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(239,68,68,0.3)' }} onClick={() => setShowUnlockModal(true)} title="שחרור מסך"><Lock data-element-name="רכיב_page_30" size={18} /></button>
                     ) : (
-                      <button data-agy-id="lock_screen_btn" className="header-btn" onClick={() => {
+                      <button data-element-name="כפתור_page_31" data-agy-id="lock_screen_btn" className="header-btn" onClick={() => {
                         setIsLocked(true);
                         if (document.documentElement.requestFullscreen) {
                           document.documentElement.requestFullscreen().catch(err => console.warn(err));
                         }
-                      }} title="תפיסת מסך ללקוח" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--warning-color, #f59e0b)', background: 'var(--banner-rentals-border)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Maximize size={18} /></button>
+                      }} title="תפיסת מסך ללקוח" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--warning-color, #f59e0b)', background: 'var(--banner-rentals-border)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Maximize data-element-name="רכיב_page_32" size={18} /></button>
                     )}
                   </div>
                 </div>
                 <div style={{ color: 'var(--text-secondary)', fontSize: '1.15rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Calendar size={20} color="#94a3b8" />
+                  <Calendar data-element-name="רכיב_page_33" size={20} color="#94a3b8" />
                   לתאריך: <strong style={{ color: 'var(--primary-color)', background: 'var(--primary-light)', padding: '4px 12px', borderRadius: '999px', fontSize: '1rem' }}>{getHebrewDateString(new Date(selectedDate))}</strong> <span style={{opacity: 0.7}}>({(new Date(selectedDate)).toLocaleDateString('he-IL')})</span>
                 </div>
               </div>
@@ -1074,8 +1077,8 @@ export default function CustomerInventoryViewer() {
             {/* Filter Tools */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
               <div style={{ position: 'relative', flex: '1 1 280px' }}>
-                <Search size={20} color="#94a3b8" style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input 
+                <Search data-element-name="רכיב_page_34" size={20} color="#94a3b8" style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input data-element-name="שדה_page_35" 
                   data-agy-id="catalog_search_input"
                   type="text" 
                   placeholder="חיפוש מודל (שם, תחרה, 42)..."
@@ -1087,19 +1090,19 @@ export default function CustomerInventoryViewer() {
                 />
               </div>
 
-              {settings.hide_ai_features !== 'true' && (
+              {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && (
                 isAiChatVisible ? (
-                  <div style={{ position: 'relative', flex: '1 1 280px', display: 'flex', alignItems: 'center' }}>
-                  <button data-agy-id="catalog_close_ai_btn" onClick={() => setIsAiChatVisible(false)} style={{ width: '100%', padding: '16px', borderRadius: '16px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', color: '#a855f7', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.3s' }}>
-                    <Sparkles size={20} />
+                  <div style={{ position: 'relative', flex: '1 1 280px', display: 'flex', alignItems: 'center' }} className="ai-feature-element">
+                  <button data-element-name="כפתור_page_36" data-agy-id="catalog_close_ai_btn" onClick={() => setIsAiChatVisible(false)} style={{ width: '100%', padding: '16px', borderRadius: '16px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', color: '#a855f7', fontWeight: 'bold', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', transition: 'all 0.3s' }}>
+                    <Sparkles data-element-name="רכיב_page_37" size={20} />
                     העוזר החכם פעיל - לחץ לסגירה
                   </button>
                 </div>
               ) : (
-                <div style={{ position: 'relative', flex: '1 1 280px' }}>
+                <div style={{ position: 'relative', flex: '1 1 280px' }} className="ai-feature-element">
                   <form onSubmit={handleAiSubmit} style={{ margin: 0, width: '100%' }}>
-                    <Sparkles size={20} color="#a855f7" style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)' }} />
-                    <input 
+                    <Sparkles data-element-name="רכיב_page_38" size={20} color="#a855f7" style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)' }} />
+                    <input data-element-name="שדה_page_39" 
                       data-agy-id="catalog_ai_input"
                       type="text" 
                       placeholder="שאל את ה-AI..."
@@ -1116,7 +1119,7 @@ export default function CustomerInventoryViewer() {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--card-bg)', padding: '12px 24px', borderRadius: '16px', border: '1px solid var(--border-main)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
                 <span style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-main)' }}>זום</span>
-                <input 
+                <input data-element-name="שדה_page_40" 
                   data-agy-id="zoom_range_input"
                   type="range" 
                   min="0.5" max="1.5" step="0.1" 
@@ -1127,25 +1130,25 @@ export default function CustomerInventoryViewer() {
               </div>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--card-bg)', padding: '6px', borderRadius: '16px', border: '1px solid var(--border-main)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                <button 
+                <button data-element-name="כפתור_page_41" 
                   data-agy-id="view_grid_btn"
                   onClick={() => setViewMode('grid')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', border: 'none', borderRadius: '12px', background: viewMode === 'grid' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'grid' ? 'var(--primary-color)' : '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' }}
                   title="תצוגת ריבועים"
                 >
-                  <LayoutGrid size={20} />
+                  <LayoutGrid data-element-name="רכיב_page_42" size={20} />
                 </button>
-                <button 
+                <button data-element-name="כפתור_page_43" 
                   data-agy-id="view_rows_btn"
                   onClick={() => setViewMode('rows')}
                   style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', border: 'none', borderRadius: '12px', background: viewMode === 'rows' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'rows' ? 'var(--primary-color)' : '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' }}
                   title="תצוגת שורות"
                 >
-                  <List size={20} />
+                  <List data-element-name="רכיב_page_44" size={20} />
                 </button>
               </div>
 
-              <div data-agy-id="toggle_zero_sizes_div" style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none', background: showZeroSizes ? 'var(--primary-light)' : 'var(--card-bg)', padding: '14px 24px', borderRadius: '16px', border: `1px solid ${showZeroSizes ? 'var(--primary-light)' : 'var(--border-main)'}`, transition: 'all 0.3s' }} onClick={() => setShowZeroSizes(!showZeroSizes)}>
+              <div data-element-name="לחיץ_page_45" data-agy-id="toggle_zero_sizes_div" style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none', background: showZeroSizes ? 'var(--primary-light)' : 'var(--card-bg)', padding: '14px 24px', borderRadius: '16px', border: `1px solid ${showZeroSizes ? 'var(--primary-light)' : 'var(--border-main)'}`, transition: 'all 0.3s' }} onClick={() => setShowZeroSizes(!showZeroSizes)}>
                 <div style={{ width: '44px', height: '24px', background: showZeroSizes ? 'var(--primary-color)' : 'var(--element-bg)', borderRadius: '999px', position: 'relative', transition: 'background 0.3s' }}>
                   <div style={{ width: '20px', height: '20px', background: 'var(--card-bg)', borderRadius: '50%', position: 'absolute', top: '2px', left: showZeroSizes ? '22px' : '2px', transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
                 </div>
@@ -1156,18 +1159,18 @@ export default function CustomerInventoryViewer() {
             </div>
           </div>
           
-          {settings.hide_ai_features !== 'true' && isAiChatVisible && stage === 2 && (
-            <div style={{ background: 'var(--card-bg)', backdropFilter: 'blur(12px)', padding: '24px', borderRadius: '24px', marginTop: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02)', maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+          {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && isAiChatVisible && stage === 2 && (
+            <div className="ai-feature-element" style={{ background: 'var(--card-bg)', backdropFilter: 'blur(12px)', padding: '24px', borderRadius: '24px', marginTop: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.08), 0 0 0 1px rgba(0,0,0,0.02)', maxHeight: '450px', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '20px', paddingBottom: '16px', color: '#8b5cf6', fontWeight: 'bold', justifyContent: 'space-between', borderBottom: '1px solid var(--border-main)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                     <div style={{ background: 'var(--gradient-primary)', padding: '8px', borderRadius: '50%', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(168,85,247,0.3)' }}>
-                      <Sparkles size={16} />
+                      <Sparkles data-element-name="רכיב_page_46" size={16} />
                     </div>
                     <span style={{ fontSize: '1.1rem', color: 'var(--text-main)' }}>העוזר החכם</span>
                   </div>
                   <div style={{ display: 'flex', gap: '12px' }}>
-                    <button data-agy-id="new_ai_chat_catalog_btn" onClick={() => setAiChats(prev => ({ ...prev, [stage]: [{ role: 'assistant', content: stage === 1 ? 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' : 'שלום! אני העוזר החכם של הקטלוג. אני יכול לסנן עבורך דגמים ולענות על שאלות. במה אפשר לעזור?' }] }))} title="שיחה חדשה" style={{ background: 'var(--element-bg)', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }} onMouseOver={e => {e.currentTarget.style.background='var(--border-main)'; e.currentTarget.style.color='var(--primary-color)'; e.currentTarget.style.transform='rotate(90deg)';}} onMouseOut={e => {e.currentTarget.style.background='var(--element-bg)'; e.currentTarget.style.color='var(--text-secondary)'; e.currentTarget.style.transform='rotate(0deg)';}}><Plus size={18} /></button>
-                    <button data-agy-id="close_ai_chat_catalog_btn" onClick={() => setIsAiChatVisible(false)} title="סגור" style={{ background: 'var(--danger-bg)', border: 'none', color: 'var(--danger-text)', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s', fontWeight: 'bold' }} onMouseOver={e => {e.currentTarget.style.background='var(--danger-text)'; e.currentTarget.style.transform='scale(1.1)';}} onMouseOut={e => {e.currentTarget.style.background='var(--danger-bg)'; e.currentTarget.style.transform='scale(1)';}}>X</button>
+                    <button data-element-name="כפתור_page_47" data-agy-id="new_ai_chat_catalog_btn" onClick={() => setAiChats(prev => ({ ...prev, [stage]: [{ role: 'assistant', content: stage === 1 ? 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' : 'שלום! אני העוזר החכם של הקטלוג. אני יכול לסנן עבורך דגמים ולענות על שאלות. במה אפשר לעזור?' }] }))} title="שיחה חדשה" style={{ background: 'var(--element-bg)', border: 'none', color: 'var(--text-secondary)', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s' }} onMouseOver={e => {e.currentTarget.style.background='var(--border-main)'; e.currentTarget.style.color='var(--primary-color)'; e.currentTarget.style.transform='rotate(90deg)';}} onMouseOut={e => {e.currentTarget.style.background='var(--element-bg)'; e.currentTarget.style.color='var(--text-secondary)'; e.currentTarget.style.transform='rotate(0deg)';}}><Plus data-element-name="רכיב_page_48" size={18} /></button>
+                    <button data-element-name="כפתור_page_49" data-agy-id="close_ai_chat_catalog_btn" onClick={() => setIsAiChatVisible(false)} title="סגור" style={{ background: 'var(--danger-bg)', border: 'none', color: 'var(--danger-text)', cursor: 'pointer', width: '36px', height: '36px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.3s', fontWeight: 'bold' }} onMouseOver={e => {e.currentTarget.style.background='var(--danger-text)'; e.currentTarget.style.transform='scale(1.1)';}} onMouseOut={e => {e.currentTarget.style.background='var(--danger-bg)'; e.currentTarget.style.transform='scale(1)';}}>X</button>
                   </div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
@@ -1190,7 +1193,7 @@ export default function CustomerInventoryViewer() {
                         const match = msg.content.match(/\[FILTER:(.*?)\]/);
                         if (match && match[1]) {
                           return (
-                            <button 
+                            <button data-element-name="כפתור_page_50" 
                               type="button"
                               onClick={(e) => {
                                 e.preventDefault();
@@ -1203,7 +1206,7 @@ export default function CustomerInventoryViewer() {
                               onMouseOver={e => e.currentTarget.style.boxShadow = '0 4px 10px rgba(0,0,0,0.1)'}
                               onMouseOut={e => e.currentTarget.style.boxShadow = '0 2px 5px rgba(0,0,0,0.05)'}
                             >
-                              <Search size={14} style={{ marginRight: '6px', marginLeft: '6px' }} />
+                              <Search data-element-name="רכיב_page_51" size={14} style={{ marginRight: '6px', marginLeft: '6px' }} />
                               סנן דגמים: {match[1]}
                             </button>
                           )
@@ -1222,7 +1225,7 @@ export default function CustomerInventoryViewer() {
                 )}
                 
                 <form onSubmit={handleAiSubmit} style={{ marginTop: '24px', display: 'flex', gap: '12px', background: 'var(--element-bg)', padding: '8px', borderRadius: '999px', border: '1px solid var(--border-main)', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                  <input 
+                  <input data-element-name="שדה_page_52" 
                     data-agy-id="catalog_ai_chat_input"
                     type="text" 
                     value={aiInput}
@@ -1231,8 +1234,8 @@ export default function CustomerInventoryViewer() {
                     placeholder="מה תרצה לדעת?"
                     style={{ flex: 1, padding: '10px 20px', borderRadius: '999px', border: 'none', outline: 'none', background: 'transparent', fontSize: '1.05rem', color: 'var(--text-main)' }}
                   />
-                  <button data-agy-id="catalog_ai_chat_submit_btn" type="submit" disabled={aiLoading || !aiInput.trim()} style={{ background: 'var(--gradient-primary)', color: 'white', border: 'none', width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (aiLoading || !aiInput.trim()) ? 0.6 : 1, transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(168,85,247,0.4)' }} onMouseOver={e => e.currentTarget.style.transform='scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>
-                    <Send size={18} style={{ transform: 'rotate(-45deg)', marginLeft: '4px' }} />
+                  <button data-element-name="כפתור_page_53" data-agy-id="catalog_ai_chat_submit_btn" type="submit" disabled={aiLoading || !aiInput.trim()} style={{ background: 'var(--gradient-primary)', color: 'white', border: 'none', width: '44px', height: '44px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', opacity: (aiLoading || !aiInput.trim()) ? 0.6 : 1, transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(168,85,247,0.4)' }} onMouseOver={e => e.currentTarget.style.transform='scale(1.05)'} onMouseOut={e => e.currentTarget.style.transform='scale(1)'}>
+                    <Send data-element-name="רכיב_page_54" size={18} style={{ transform: 'rotate(-45deg)', marginLeft: '4px' }} />
                   </button>
                 </form>
             </div>
@@ -1240,7 +1243,7 @@ export default function CustomerInventoryViewer() {
 
           {loading ? (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 0', color: 'var(--text-secondary)' }}>
-              <Loader2 size={48} className="animate-spin" style={{ color: 'var(--primary-color)', marginBottom: '16px' }} />
+              <Loader2 data-element-name="רכיב_page_55" size={48} className="animate-spin" style={{ color: 'var(--primary-color)', marginBottom: '16px' }} />
               <span style={{ fontSize: '1.2rem' }}>טוען נתונים...</span>
             </div>
           ) : (
@@ -1262,7 +1265,7 @@ export default function CustomerInventoryViewer() {
                 const sizesArray = Array.from(sizeMap.entries()).sort((a,b) => String(a[0]).localeCompare(String(b[0]), undefined, {numeric: true}));
 
                 return (
-                  <div key={model.id} className="dress-card" onClick={() => {
+                  <div data-element-name="לחיץ_page_56" key={model.id} className="dress-card" onClick={() => {
                     handleModelDoubleClick(model);
                   }}>
                     <div className="dress-image-placeholder">
@@ -1270,7 +1273,7 @@ export default function CustomerInventoryViewer() {
                         model.imageUrl ? (
                           <img src={model.imageUrl} alt={model.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                         ) : (
-                          <Shirt size={48} opacity={0.5} />
+                          <Shirt data-element-name="רכיב_page_57" size={48} opacity={0.5} />
                         )
                       ) : (
                         <div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>אין תמונה</div>
@@ -1318,7 +1321,7 @@ export default function CustomerInventoryViewer() {
             <h3 style={{ margin: '0 0 24px 0', fontSize: '1.5rem', textAlign: 'center', color: 'var(--text-main)' }}>שחרור מסך מנעילה</h3>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>בחר עובד:</label>
-              <select data-agy-id="unlock_employee_select" value={unlockEmployee} onChange={e => setUnlockEmployee(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--element-bg)', color: 'var(--text-main)' }}>
+              <select data-element-name="בחירה_page_58" data-agy-id="unlock_employee_select" value={unlockEmployee} onChange={e => setUnlockEmployee(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--element-bg)', color: 'var(--text-main)' }}>
                 <option value="">-- בחר --</option>
                 {employees.map(emp => (
                   <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
@@ -1327,12 +1330,12 @@ export default function CustomerInventoryViewer() {
             </div>
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>קוד גישה:</label>
-              <input data-agy-id="unlock_password_input" type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--element-bg)', color: 'var(--text-main)' }} />
+              <input data-element-name="שדה_page_59" data-agy-id="unlock_password_input" type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--element-bg)', color: 'var(--text-main)' }} />
             </div>
             {unlockError && <div style={{ color: 'var(--danger-text)', marginBottom: '16px', textAlign: 'center' }}>{unlockError}</div>}
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button data-agy-id="cancel_unlock_btn" type="button" onClick={() => setShowUnlockModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', color: 'var(--text-main)', cursor: 'pointer' }}>ביטול</button>
-              <button data-agy-id="submit_unlock_btn" type="submit" disabled={unlockLoading} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: 'var(--primary-color)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
+              <button data-element-name="כפתור_page_60" data-agy-id="cancel_unlock_btn" type="button" onClick={() => setShowUnlockModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', color: 'var(--text-main)', cursor: 'pointer' }}>ביטול</button>
+              <button data-element-name="כפתור_page_61" data-agy-id="submit_unlock_btn" type="submit" disabled={unlockLoading} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: 'var(--primary-color)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
                 {unlockLoading ? 'בודק...' : 'שחרר'}
               </button>
             </div>
@@ -1350,7 +1353,7 @@ export default function CustomerInventoryViewer() {
                 </h3>
                 <span style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>טווח: שבוע לפני ואחרי תאריך האירוע</span>
               </div>
-              <button data-agy-id="close_orders_modal_btn" onClick={() => setShowOrdersModal(false)} style={{ background: 'var(--border-main)', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>X</button>
+              <button data-element-name="כפתור_page_62" data-agy-id="close_orders_modal_btn" onClick={() => setShowOrdersModal(false)} style={{ background: 'var(--border-main)', border: 'none', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-secondary)' }}>X</button>
             </div>
             <div style={{ padding: '24px', overflowY: 'auto', flexGrow: 1 }}>
               {ordersModalLoading ? (
@@ -1382,7 +1385,7 @@ export default function CustomerInventoryViewer() {
                           onMouseOver={e => { e.currentTarget.style.background = 'var(--primary-light)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
                           onMouseOut={e => { e.currentTarget.style.background = 'var(--primary-light)'; e.currentTarget.style.transform = 'scale(1)'; }}
                         >
-                          <ExternalLink size={18} />
+                          <ExternalLink data-element-name="רכיב_page_63" size={18} />
                         </a>
                       </div>
                     </div>

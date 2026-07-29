@@ -1,14 +1,14 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, X, Copy } from 'lucide-react';
+import { LifeBuoy, X, Send } from 'lucide-react';
 
 export default function ErrorReportButton() {
-  const [isQueryOpen, setIsQueryOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false);
+  const [userText, setUserText] = useState('');
   const [toast, setToast] = useState(null);
   const [mounted, setMounted] = useState(false);
-  const [buttonRect, setButtonRect] = useState(null);
 
   useEffect(() => {
     setMounted(true);
@@ -17,7 +17,7 @@ export default function ErrorReportButton() {
       let target = e.target;
       while (target && target !== document.body) {
         if (target.tagName === 'BUTTON' || target.getAttribute('role') === 'button' || (target.tagName === 'A' && (target.classList?.contains('btn') || target.classList?.contains('button')))) {
-          let btnText = target.innerText || target.textContent || target.title || target.getAttribute('aria-label') || '׳׳—׳¦׳ ׳׳׳ ׳˜׳§׳¡׳˜';
+          let btnText = target.innerText || target.textContent || target.title || target.getAttribute('aria-label') || 'כפתור ללא טקסט';
           btnText = btnText.trim().substring(0, 50).replace(/\n/g, ' ');
           if (btnText) {
             window.__lastButtons = window.__lastButtons || [];
@@ -38,45 +38,53 @@ export default function ErrorReportButton() {
     };
   }, []);
 
-  const handleClick = async (e) => {
-    alert('Button clicked! isQueryOpen: ' + isQueryOpen);
-    const target = e.currentTarget;
-    const rect = target.getBoundingClientRect();
-    
-    // Copy the last button clicked to the clipboard
-    const lastButtons = window.__lastButtons || [];
-    const lastBtn = lastButtons.length > 0 ? lastButtons[lastButtons.length - 1] : '׳׳ ׳ ׳׳—׳¥ ׳›׳₪׳×׳•׳¨';
-    
-    try {
-      await navigator.clipboard.writeText(lastBtn);
-    } catch (err) {
-      console.error('Failed to copy', err);
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!userText.trim()) {
+      setToast({ message: 'יש להזין תיאור שגיאה', type: 'error' });
+      setTimeout(() => setToast(null), 3000);
+      return;
     }
 
-    // Toggle the floating query window
-    if (!isQueryOpen) {
-      setButtonRect(rect);
-    }
-    setIsQueryOpen((prev) => !prev);
-  };
+    setIsOpen(false);
+    setToast({ message: 'שולח דיווח למתכנת, אנא המתן...', type: 'info' });
 
-  const copyQueryToClipboard = async () => {
-    const currentQuery = window.location.search || '׳׳™׳ ׳©׳׳™׳׳×׳” ׳‘׳׳¡׳ ׳–׳”';
+    const payload = {
+      userText,
+      url: window.location.href,
+      title: document.title,
+      time: new Date().toLocaleString('he-IL'),
+      queryParams: window.location.search || 'אין',
+      lastButtons: window.__lastButtons || []
+    };
+
     try {
-      await navigator.clipboard.writeText(currentQuery);
-      setToast({ message: '׳”׳©׳׳™׳׳×׳” ׳”׳•׳¢׳×׳§׳” ׳׳׳•׳—!', type: 'success' });
-      setTimeout(() => setToast(null), 3000);
+      const res = await fetch('/api/error-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setToast({ message: 'הדיווח נשלח בהצלחה למתכנת! תודה.', type: 'success' });
+        setUserText('');
+      } else {
+        setToast({ message: data.error || 'שגיאה בשליחת דיווח', type: 'error' });
+      }
     } catch (err) {
-      setToast({ message: '׳©׳’׳™׳׳” ׳‘׳”׳¢׳×׳§׳”', type: 'error' });
-      setTimeout(() => setToast(null), 3000);
+      setToast({ message: 'שגיאת תקשורת', type: 'error' });
     }
+    
+    setTimeout(() => {
+      setToast(null);
+    }, 4000);
   };
 
   return (
     <>
-      <button 
-        onClick={handleClick}
-        title="׳“׳™׳•׳•׳—"
+      <button data-element-name="כפתור_ErrorReportButton_1" 
+        onClick={() => setIsOpen(true)}
+        title="דיווח על שגיאה"
         className="icon-nav-link"
         style={{ 
           background: 'none', 
@@ -85,73 +93,86 @@ export default function ErrorReportButton() {
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
-          color: '#6366f1',
+          color: '#6366f1', // modern indigo instead of scary red
           position: 'relative',
           padding: '0.25rem'
         }}
       >
-        <AlertCircle size={22} />
+        <LifeBuoy data-element-name="רכיב_ErrorReportButton_2" size={22} />
       </button>
 
-      {isQueryOpen && mounted && createPortal(
+      {isOpen && mounted && createPortal(
         <div style={{
           position: 'fixed',
-          top: buttonRect ? buttonRect.bottom + 10 : 60,
-          left: buttonRect ? Math.max(10, buttonRect.left - 250) : 10,
-          background: 'var(--card-bg, #ffffff)',
-          border: '1px solid var(--border-color, #e5e7eb)',
-          borderRadius: '12px',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-          padding: '1rem',
-          zIndex: 9999999,
-          width: 'max-content',
-          maxWidth: '300px',
-          direction: 'rtl',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.5)',
+          zIndex: 999999,
           display: 'flex',
-          flexDirection: 'column',
-          gap: '0.75rem'
+          alignItems: 'center',
+          justifyContent: 'center',
+          direction: 'rtl'
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontWeight: '600', fontSize: '0.9rem', color: '#4f46e5' }}>׳©׳׳™׳׳×׳× ׳”׳׳¡׳ ׳”׳ ׳•׳›׳—׳™:</span>
-            <button 
-              onClick={() => setIsQueryOpen(false)} 
-              style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: 0 }}
-            >
-              <X size={16} />
-            </button>
-          </div>
-          
-          <div style={{ 
-            background: 'var(--input-bg, #f3f4f6)', 
-            padding: '0.5rem', 
-            borderRadius: '6px',
-            fontSize: '0.85rem',
-            color: 'var(--text-color, #374151)',
-            wordBreak: 'break-all'
+          <div style={{
+            background: 'var(--card-bg)',
+            width: '90%',
+            maxWidth: '500px',
+            borderRadius: '16px',
+            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            display: 'flex',
+            flexDirection: 'column',
+            overflow: 'hidden'
           }}>
-            {window.location.search || '׳׳™׳ ׳©׳׳™׳׳×׳” ׳‘׳›׳×׳•׳‘׳× ׳–׳•'}
+            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#eef2ff' }}>
+              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <LifeBuoy data-element-name="רכיב_ErrorReportButton_3" size={20} /> דיווח על שגיאה במערכת
+              </h3>
+              <button data-element-name="כפתור_ErrorReportButton_4" onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6366f1' }}>
+                <X data-element-name="רכיב_ErrorReportButton_5" size={20} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              
+              <div style={{ background: 'var(--input-bg)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                <p style={{ margin: '0 0 0.5rem 0' }}><strong>הנתונים הבאים יישלחו אוטומטית ברקע:</strong></p>
+                <ul style={{ margin: 0, paddingRight: '1.2rem' }}>
+                  <li>שעת הדיווח וכתובת המסך הנוכחי</li>
+                  <li>שם החלון ופרמטרים פעילים</li>
+                  <li>5 הלחצנים האחרונים שנלחצו</li>
+                </ul>
+              </div>
+
+              <div>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: 'var(--text-color)', fontWeight: '500' }}>
+                  אנא תאר בקצרה מה ניסית לעשות ומה קרה:
+                </label>
+                <textarea data-element-name="טקסט_ErrorReportButton_6"
+                  value={userText}
+                  onChange={e => setUserText(e.target.value)}
+                  className="form-control"
+                  placeholder="לדוגמה: לחצתי על כפתור השמירה אך הדף נתקע והופיעה שגיאה אדומה..."
+                  style={{ width: '100%', height: '120px', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-color)', resize: 'none' }}
+                  required
+                />
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
+                <button data-element-name="כפתור_ErrorReportButton_7" 
+                  type="button"
+                  onClick={() => setIsOpen(false)}
+                  style={{ background: 'transparent', color: '#64748b', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '500', cursor: 'pointer' }}
+                >
+                  ביטול
+                </button>
+                <button data-element-name="כפתור_ErrorReportButton_8" 
+                  type="submit"
+                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#6366f1', color: 'white', border: 'none', padding: '0.5rem 1.25rem', borderRadius: '8px', fontWeight: '500', cursor: 'pointer' }}
+                >
+                  <Send data-element-name="רכיב_ErrorReportButton_9" size={16} /> שליחה למתכנת
+                </button>
+              </div>
+            </form>
           </div>
-          
-          <button 
-            onClick={copyQueryToClipboard}
-            style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              justifyContent: 'center',
-              gap: '0.4rem', 
-              background: '#4f46e5', 
-              color: 'white', 
-              border: 'none', 
-              padding: '0.4rem 0.8rem', 
-              borderRadius: '6px', 
-              fontWeight: '500', 
-              cursor: 'pointer',
-              fontSize: '0.85rem',
-              alignSelf: 'flex-start'
-            }}
-          >
-            <Copy size={14} /> ׳”׳¢׳×׳§ ׳©׳׳™׳׳×׳”
-          </button>
         </div>,
         document.body
       )}
@@ -182,5 +203,3 @@ export default function ErrorReportButton() {
     </>
   );
 }
-
-

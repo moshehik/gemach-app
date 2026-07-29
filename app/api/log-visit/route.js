@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { checkAuth } from '../../../lib/auth';
@@ -8,7 +8,7 @@ export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
-    const { pageUrl, loadingError } = body;
+    const { pageUrl, loadingError, requestQuery, responseSize, executionTime } = body;
 
     if (!pageUrl) {
       return NextResponse.json({ success: false, message: 'URL is required' }, { status: 400 });
@@ -46,6 +46,9 @@ export async function POST(request) {
         employeeName,
         loadingError: loadingError || null,
         isGuest,
+        requestQuery: requestQuery || null,
+        responseSize: typeof responseSize === 'number' ? responseSize : null,
+        executionTime: typeof executionTime === 'number' ? executionTime : null,
       }
     });
 

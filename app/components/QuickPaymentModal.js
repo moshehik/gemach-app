@@ -125,13 +125,13 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
       <div className="animate-fade-in" style={{ background: 'var(--card-bg)', borderRadius: '16px', width: '100%', maxWidth: '450px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', overflow: 'hidden', direction: 'rtl' }}>
         <div style={{ padding: '1.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: '700' }}>קבלת תשלום מהיר</h3>
-          <button onClick={() => onClose(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={24} /></button>
+          <button data-element-name="כפתור_QuickPaymentModal_1" onClick={() => onClose(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}><X data-element-name="רכיב_QuickPaymentModal_2" size={24} /></button>
         </div>
         
         <div style={{ padding: '1.5rem' }}>
           {success ? (
             <div style={{ textAlign: 'center', color: '#16a34a', padding: '2rem 0' }}>
-              <Check size={48} style={{ margin: '0 auto 1rem auto' }} />
+              <Check data-element-name="רכיב_QuickPaymentModal_3" size={48} style={{ margin: '0 auto 1rem auto' }} />
               <h4 style={{ margin: 0, fontSize: '1.2rem' }}>{success}</h4>
             </div>
           ) : (
@@ -139,15 +139,15 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
               <div style={{ marginBottom: '1.2rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#334155' }}>מספר הזמנה</label>
                 <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input 
+                  <input data-element-name="שדה_QuickPaymentModal_4" 
                     type="number" 
                     value={orderId} 
                     onChange={(e) => setOrderId(e.target.value)} 
                     placeholder="הזן מס' הזמנה"
                     style={{ flex: 1, padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem' }} 
                   />
-                  <button type="button" onClick={handleSearch} disabled={searching || !orderId} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '45px', padding: 0 }}>
-                    {searching ? <Loader2 size={20} className="animate-spin" /> : <Search size={20} />}
+                  <button data-element-name="כפתור_QuickPaymentModal_5" type="button" onClick={handleSearch} disabled={searching || !orderId} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '45px', padding: 0 }}>
+                    {searching ? <Loader2 data-element-name="רכיב_QuickPaymentModal_6" size={20} className="animate-spin" /> : <Search data-element-name="רכיב_QuickPaymentModal_7" size={20} />}
                   </button>
                 </div>
               </div>
@@ -172,7 +172,7 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
 
               <div style={{ marginBottom: '1.2rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#334155' }}>סכום תשלום (₪)</label>
-                <input 
+                <input data-element-name="שדה_QuickPaymentModal_8" 
                   type="number" 
                   step="0.01"
                   value={amount} 
@@ -184,7 +184,7 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
 
               <div style={{ marginBottom: '1.2rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#334155' }}>אופן תשלום</label>
-                <select 
+                <select data-element-name="בחירה_QuickPaymentModal_9" 
                   value={paymentMethod} 
                   onChange={(e) => setPaymentMethod(e.target.value)}
                   style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', fontSize: '1rem', background: 'var(--card-bg)' }}
@@ -197,7 +197,7 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
 
               <div style={{ marginBottom: '1.5rem' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: '#334155' }}>הערות</label>
-                <input 
+                <input data-element-name="שדה_QuickPaymentModal_10" 
                   type="text" 
                   value={notes} 
                   onChange={(e) => setNotes(e.target.value)} 
@@ -206,11 +206,11 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
               </div>
 
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button type="button" onClick={() => onClose(false)} style={{ flex: 1, padding: '0.75rem', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>
+                <button data-element-name="כפתור_QuickPaymentModal_11" type="button" onClick={() => onClose(false)} style={{ flex: 1, padding: '0.75rem', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}>
                   ביטול
                 </button>
-                <button type="submit" disabled={loading} style={{ flex: 2, padding: '0.75rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                  {loading ? <Loader2 className="animate-spin" /> : 'שמור תשלום'}
+                <button data-element-name="כפתור_QuickPaymentModal_12" type="submit" disabled={loading} style={{ flex: 2, padding: '0.75rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                  {loading ? <Loader2 data-element-name="רכיב_QuickPaymentModal_13" className="animate-spin" /> : 'שמור תשלום'}
                 </button>
               </div>
             </form>

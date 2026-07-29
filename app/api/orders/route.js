@@ -194,10 +194,31 @@ export async function GET(request) {
 
     const orders = await prisma.order.findMany({
       where: fullOrdersWhere,
-      include: {
-        customer: true,
-        payments: !forRentals,
-        obligations: !forRentals,
+      select: {
+        orderId: true,
+        customerId: true,
+        totalAmount: true,
+        paymentDate: true,
+        paymentMethod: true,
+        status: true,
+        notes: true,
+        eventDate: true,
+        eventDateHebrew: true,
+        returnDate: true,
+        isAbroad: true,
+        fromDate: true,
+        toDate: true,
+        customSpacing: true,
+        customer: {
+          select: {
+            firstName: true,
+            lastName: true,
+            phone1: true,
+            phone2: true
+          }
+        },
+        payments: forRentals ? false : { select: { amount: true, isDeleted: true } },
+        obligations: forRentals ? false : { select: { amount: true, isDeleted: true } },
         items: {
           select: {
             id: true,

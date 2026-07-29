@@ -34,13 +34,13 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
   if (!mounted) return null;
 
   return createPortal(
-    <div className="modal-overlay" onClick={onClose} style={{
+    <div data-element-name="לחיץ_PrintWizardModal_1" className="modal-overlay" onClick={onClose} style={{
       position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
       background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)',
       display: 'flex', justifyContent: 'center', alignItems: 'center',
       zIndex: 9999
     }}>
-      <div 
+      <div data-element-name="לחיץ_PrintWizardModal_2" 
         className="modal-content animate-fade-in" 
         onClick={e => e.stopPropagation()}
         style={{
@@ -49,43 +49,43 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
           position: 'relative'
         }}
       >
-        <button 
+        <button data-element-name="כפתור_PrintWizardModal_3" 
           onClick={onClose}
           style={{ position: 'absolute', top: '20px', right: '20px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
         >
-          <X size={24} />
+          <X data-element-name="רכיב_PrintWizardModal_4" size={24} />
         </button>
 
         <h2 style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--primary-color)', margin: '0 0 1.5rem 0' }}>
-          <Printer size={28} /> אשף הדפסה
+          <Printer data-element-name="רכיב_PrintWizardModal_5" size={28} /> אשף הדפסה
         </h2>
 
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '8px', color: 'var(--text-main)' }}>סוג הדוח</label>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', border: reportType === 'alterations_pending' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)', background: reportType === 'alterations_pending' ? 'rgba(212,175,55,0.05)' : 'transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
-              <input type="radio" name="reportType" value="alterations_pending" checked={reportType === 'alterations_pending'} onChange={() => setReportType('alterations_pending')} style={{ margin: 0 }} />
-              <Clock size={18} color={reportType === 'alterations_pending' ? 'var(--primary-color)' : 'var(--text-muted)'} />
+              <input data-element-name="שדה_PrintWizardModal_6" type="radio" name="reportType" value="alterations_pending" checked={reportType === 'alterations_pending'} onChange={() => setReportType('alterations_pending')} style={{ margin: 0 }} />
+              <Clock data-element-name="רכיב_PrintWizardModal_7" size={18} color={reportType === 'alterations_pending' ? 'var(--primary-color)' : 'var(--text-muted)'} />
               <span style={{ fontWeight: reportType === 'alterations_pending' ? 'bold' : 'normal' }}>רשימת תיקונים (טרם בוצעו)</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', border: reportType === 'alterations_all' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)', background: reportType === 'alterations_all' ? 'rgba(212,175,55,0.05)' : 'transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
-              <input type="radio" name="reportType" value="alterations_all" checked={reportType === 'alterations_all'} onChange={() => setReportType('alterations_all')} style={{ margin: 0 }} />
-              <CheckCircle size={18} color={reportType === 'alterations_all' ? 'var(--primary-color)' : 'var(--text-muted)'} />
+              <input data-element-name="שדה_PrintWizardModal_8" type="radio" name="reportType" value="alterations_all" checked={reportType === 'alterations_all'} onChange={() => setReportType('alterations_all')} style={{ margin: 0 }} />
+              <CheckCircle data-element-name="רכיב_PrintWizardModal_9" size={18} color={reportType === 'alterations_all' ? 'var(--primary-color)' : 'var(--text-muted)'} />
               <span style={{ fontWeight: reportType === 'alterations_all' ? 'bold' : 'normal' }}>רשימת כל התיקונים (כולל בוצעו)</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', border: reportType === 'orders_no_alterations' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)', background: reportType === 'orders_no_alterations' ? 'rgba(212,175,55,0.05)' : 'transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
-              <input type="radio" name="reportType" value="orders_no_alterations" checked={reportType === 'orders_no_alterations'} onChange={() => setReportType('orders_no_alterations')} style={{ margin: 0 }} />
-              <FileText size={18} color={reportType === 'orders_no_alterations' ? 'var(--primary-color)' : 'var(--text-muted)'} />
+              <input data-element-name="שדה_PrintWizardModal_10" type="radio" name="reportType" value="orders_no_alterations" checked={reportType === 'orders_no_alterations'} onChange={() => setReportType('orders_no_alterations')} style={{ margin: 0 }} />
+              <FileText data-element-name="רכיב_PrintWizardModal_11" size={18} color={reportType === 'orders_no_alterations' ? 'var(--primary-color)' : 'var(--text-muted)'} />
               <span style={{ fontWeight: reportType === 'orders_no_alterations' ? 'bold' : 'normal' }}>רשימת הזמנות ללא תיקונים</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', border: reportType === 'orders_all' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)', background: reportType === 'orders_all' ? 'rgba(212,175,55,0.05)' : 'transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
-              <input type="radio" name="reportType" value="orders_all" checked={reportType === 'orders_all'} onChange={() => setReportType('orders_all')} style={{ margin: 0 }} />
-              <FileText size={18} color={reportType === 'orders_all' ? 'var(--primary-color)' : 'var(--text-muted)'} />
+              <input data-element-name="שדה_PrintWizardModal_12" type="radio" name="reportType" value="orders_all" checked={reportType === 'orders_all'} onChange={() => setReportType('orders_all')} style={{ margin: 0 }} />
+              <FileText data-element-name="רכיב_PrintWizardModal_13" size={18} color={reportType === 'orders_all' ? 'var(--primary-color)' : 'var(--text-muted)'} />
               <span style={{ fontWeight: reportType === 'orders_all' ? 'bold' : 'normal' }}>דוח הזמנות כללי (כל ההזמנות)</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '12px', borderRadius: '8px', border: reportType === 'labels' ? '2px solid var(--primary-color)' : '1px solid var(--border-color)', background: reportType === 'labels' ? 'rgba(212,175,55,0.05)' : 'transparent', cursor: 'pointer', transition: 'all 0.2s' }}>
-              <input type="radio" name="reportType" value="labels" checked={reportType === 'labels'} onChange={() => setReportType('labels')} style={{ margin: 0 }} />
-              <Printer size={18} color={reportType === 'labels' ? 'var(--primary-color)' : 'var(--text-muted)'} />
+              <input data-element-name="שדה_PrintWizardModal_14" type="radio" name="reportType" value="labels" checked={reportType === 'labels'} onChange={() => setReportType('labels')} style={{ margin: 0 }} />
+              <Printer data-element-name="רכיב_PrintWizardModal_15" size={18} color={reportType === 'labels' ? 'var(--primary-color)' : 'var(--text-muted)'} />
               <span style={{ fontWeight: reportType === 'labels' ? 'bold' : 'normal' }}>הדפסת תוויות לתופרות (לתיקונים שטרם בוצעו)</span>
             </label>
           </div>
@@ -95,15 +95,15 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
           <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '12px', color: 'var(--text-main)' }}>טווח תאריכים</label>
           <div style={{ display: 'flex', gap: '15px', marginBottom: '15px', flexWrap: 'wrap' }}>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="radio" name="dateMode" value="current" checked={dateMode === 'current'} onChange={() => setDateMode('current')} />
+              <input data-element-name="שדה_PrintWizardModal_16" type="radio" name="dateMode" value="current" checked={dateMode === 'current'} onChange={() => setDateMode('current')} />
               <span>הנתונים המוצגים כעת</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="radio" name="dateMode" value="today" checked={dateMode === 'today'} onChange={() => setDateMode('today')} />
+              <input data-element-name="שדה_PrintWizardModal_17" type="radio" name="dateMode" value="today" checked={dateMode === 'today'} onChange={() => setDateMode('today')} />
               <span>אירועים להיום בלבד</span>
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-              <input type="radio" name="dateMode" value="custom" checked={dateMode === 'custom'} onChange={() => setDateMode('custom')} />
+              <input data-element-name="שדה_PrintWizardModal_18" type="radio" name="dateMode" value="custom" checked={dateMode === 'custom'} onChange={() => setDateMode('custom')} />
               <span>טווח מותאם אישית</span>
             </label>
           </div>
@@ -118,29 +118,29 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
           }}>
             <div>
               <label style={{ display: 'block', fontSize: '0.9em', color: 'var(--text-muted)', marginBottom: '4px' }}>מתאריך:</label>
-              <HebrewDatePicker value={startDate} onChange={setStartDate} />
+              <HebrewDatePicker data-element-name="רכיב_PrintWizardModal_19" value={startDate} onChange={setStartDate} />
             </div>
             <div>
               <label style={{ display: 'block', fontSize: '0.9em', color: 'var(--text-muted)', marginBottom: '4px' }}>עד תאריך:</label>
-              <HebrewDatePicker value={endDate} onChange={setEndDate} />
+              <HebrewDatePicker data-element-name="רכיב_PrintWizardModal_20" value={endDate} onChange={setEndDate} />
             </div>
           </div>
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
-          <button 
+          <button data-element-name="כפתור_PrintWizardModal_21" 
             className="btn btn-outline" 
             onClick={onClose}
             style={{ padding: '0.75rem 1.5rem', borderRadius: '8px' }}
           >
             ביטול
           </button>
-          <button 
+          <button data-element-name="כפתור_PrintWizardModal_22" 
             className="btn btn-primary" 
             onClick={handlePrint}
             style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}
           >
-            <Printer size={18} /> הכן להדפסה
+            <Printer data-element-name="רכיב_PrintWizardModal_23" size={18} /> הכן להדפסה
           </button>
         </div>
       </div>

@@ -165,10 +165,10 @@ export default function AdminHubPage() {
                 const Icon = item.icon;
                 
                 return (
-                  <Link href={item.href} key={itemIndex} style={{ textDecoration: 'none' }} data-agy-id={`admin_hub_link_${catIndex}_${itemIndex}`}>
+                  <Link data-element-name="רכיב_page_1" href={item.href} key={itemIndex} style={{ textDecoration: 'none' }} data-agy-id={`admin_hub_link_${catIndex}_${itemIndex}`}>
                     <div className="admin-card" style={category.colorVars} data-agy-id={`admin_hub_card_${catIndex}_${itemIndex}`}>
                       <div className="admin-card-icon">
-                        <Icon size={28} strokeWidth={2} />
+                        <Icon data-element-name="רכיב_page_2" size={28} strokeWidth={2} />
                       </div>
                       
                       <div>

@@ -32,7 +32,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
     }
   }, [isOpen, item, order]);
 
-  const fetchCapacity = async (actualSize) => {
+  async function fetchCapacity(actualSize) {
     setLoading(true);
     setError('');
     try {

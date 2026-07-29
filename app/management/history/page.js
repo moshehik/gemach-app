@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 
@@ -18,6 +18,8 @@ export default function HistoryPage() {
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
   const [employeeId, setEmployeeId] = useState('');
+  const [filterType, setFilterType] = useState('api'); // default to 'api' queries history as requested
+  const [activeQueryModal, setActiveQueryModal] = useState(null);
   
   // Sorting
   const [sort, setSort] = useState('timestamp');
@@ -31,7 +33,7 @@ export default function HistoryPage() {
   const fetchHistory = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/history?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&employeeId=${employeeId}&sort=${sort}&order=${order}`);
+      const res = await fetch(`/api/history?page=${page}&limit=${limit}&search=${encodeURIComponent(search)}&employeeId=${employeeId}&filterType=${filterType}&sort=${sort}&order=${order}`);
       const data = await res.json();
       if (data.success) {
         setLogs(data.data || []);
@@ -44,7 +46,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, limit, search, employeeId, sort, order]);
+  }, [page, limit, search, employeeId, filterType, sort, order]);
 
   useEffect(() => {
     fetchHistory();
@@ -148,6 +150,13 @@ export default function HistoryPage() {
     return d.toLocaleDateString('he-IL', { weekday: 'long' });
   };
 
+  const formatSize = (bytes) => {
+    if (bytes === null || bytes === undefined) return '-';
+    if (bytes >= 1048576) return `${(bytes / 1048576).toFixed(2)} MB`;
+    if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${bytes} B`;
+  };
+
   const SortIcon = ({ column }) => {
     if (sort !== column) return <span style={{ opacity: 0.3, marginRight: '4px' }}>⇅</span>;
     return <span style={{ marginRight: '4px' }}>{order === 'asc' ? '↑' : '↓'}</span>;
@@ -155,6 +164,7 @@ export default function HistoryPage() {
 
   const formatPageName = (url) => {
     if (!url) return url;
+    if (url.startsWith('/api')) return 'שאילתת שרת (API)';
     if (url === '/' || url === '/desktop') return 'דלפק';
     if (url.startsWith('/management/history')) return 'היסטורית מערכת';
     if (url.startsWith('/management')) return 'ניהול';
@@ -164,7 +174,6 @@ export default function HistoryPage() {
     if (url.startsWith('/admin')) return 'הגדרות מתקדמות';
     if (url.startsWith('/employees') || url.startsWith('/punch-clock')) return 'שעון נוכחות / עובדים';
     if (url.startsWith('/dashboard')) return 'ניהול מלאי ודגמים';
-    if (url.startsWith('/api')) return 'בקשת שרת (API)';
     return url;
   };
 
@@ -173,7 +182,7 @@ export default function HistoryPage() {
   return (
     <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול היסטוריית מערכת</h1>
+        <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול היסטוריית שאילתות ו-API</h1>
       </div>
 
       {totalOverall > 10000 && (
@@ -182,12 +191,70 @@ export default function HistoryPage() {
         </div>
       )}
 
+      {/* Filter Mode Tabs */}
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '1.25rem' }}>
+        <button
+          onClick={() => { setFilterType('api'); setPage(1); }}
+          style={{
+            padding: '0.6rem 1.25rem',
+            borderRadius: '20px',
+            border: filterType === 'api' ? '2px solid #4f46e5' : '1px solid #cbd5e1',
+            background: filterType === 'api' ? '#4f46e5' : '#f8fafc',
+            color: filterType === 'api' ? 'white' : '#475569',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          ⚡ שאילתות API בלבד
+        </button>
+        <button
+          onClick={() => { setFilterType('pages'); setPage(1); }}
+          style={{
+            padding: '0.6rem 1.25rem',
+            borderRadius: '20px',
+            border: filterType === 'pages' ? '2px solid #4f46e5' : '1px solid #cbd5e1',
+            background: filterType === 'pages' ? '#4f46e5' : '#f8fafc',
+            color: filterType === 'pages' ? 'white' : '#475569',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          📄 ביקורי מסכים בלבד
+        </button>
+        <button
+          onClick={() => { setFilterType(''); setPage(1); }}
+          style={{
+            padding: '0.6rem 1.25rem',
+            borderRadius: '20px',
+            border: filterType === '' ? '2px solid #4f46e5' : '1px solid #cbd5e1',
+            background: filterType === '' ? '#4f46e5' : '#f8fafc',
+            color: filterType === '' ? 'white' : '#475569',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            fontSize: '0.9rem',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px'
+          }}
+        >
+          🌐 הכל
+        </button>
+      </div>
+
       {/* Filters and Search */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
         <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', flex: 1, minWidth: '300px' }}>
-          <input 
+          <input data-element-name="שדה_page_1" 
             type="text" 
-            placeholder="חיפוש נתיב או שגיאה..."
+            placeholder="חיפוש נתיב, שאילתת API או שגיאה..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             style={{ 
@@ -198,13 +265,13 @@ export default function HistoryPage() {
               outline: 'none',
             }}
           />
-          <button type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0.5rem 1.5rem' }}>
+          <button data-element-name="כפתור_page_2" type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0.5rem 1.5rem' }}>
             חיפוש
           </button>
         </form>
 
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <select 
+          <select data-element-name="בחירה_page_3" 
             value={employeeId} 
             onChange={(e) => { setEmployeeId(e.target.value); setPage(1); }}
             style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #ddd' }}
@@ -226,7 +293,7 @@ export default function HistoryPage() {
           נמצאו {totalCount} רשומות (מציג 60 לעמוד)
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button 
+          <button data-element-name="כפתור_page_4" 
             onClick={() => promptDelete(false)}
             disabled={selectedIds.size === 0 || isDeleting}
             style={{ 
@@ -238,7 +305,7 @@ export default function HistoryPage() {
             מחק נבחרים ({selectedIds.size})
           </button>
           
-          <button 
+          <button data-element-name="כפתור_page_5" 
             onClick={() => promptDelete(true)}
             disabled={isDeleting || totalOverall === 0}
             style={{ 
@@ -264,25 +331,27 @@ export default function HistoryPage() {
               <thead>
                 <tr style={{ borderBottom: '2px solid #eee', color: 'var(--text-muted)' }}>
                   <th style={{ padding: '1rem', width: '40px' }}>
-                    <input 
+                    <input data-element-name="שדה_page_6" 
                       type="checkbox" 
                       checked={logs.length > 0 && selectedIds.size === logs.length}
                       onChange={toggleAll}
                       style={{ cursor: 'pointer' }}
                     />
                   </th>
-                  <th style={thStyle} onClick={() => handleSort('timestamp')}>זמן <SortIcon column="timestamp" /></th>
+                  <th data-element-name="לחיץ_page_7" style={thStyle} onClick={() => handleSort('timestamp')}>זמן <SortIcon data-element-name="רכיב_page_8" column="timestamp" /></th>
                   <th style={thStyle}>יום בשבוע</th>
-                  <th style={thStyle} onClick={() => handleSort('employeeName')}>שם עובד <SortIcon column="employeeName" /></th>
-                  <th style={thStyle} onClick={() => handleSort('pageUrl')}>נתיב <SortIcon column="pageUrl" /></th>
-                  <th style={thStyle} onClick={() => handleSort('loadingError')}>שגיאות <SortIcon column="loadingError" /></th>
+                  <th data-element-name="לחיץ_page_9" style={thStyle} onClick={() => handleSort('employeeName')}>שם עובד <SortIcon data-element-name="רכיב_page_10" column="employeeName" /></th>
+                  <th data-element-name="לחיץ_page_11" style={thStyle} onClick={() => handleSort('pageUrl')}>נתיב / שאילתת API <SortIcon data-element-name="רכיב_page_12" column="pageUrl" /></th>
+                  <th data-element-name="לחיץ_page_size" style={thStyle} onClick={() => handleSort('responseSize')}>נפח נתונים (Payload) <SortIcon data-element-name="רכיב_page_size_icon" column="responseSize" /></th>
+                  <th data-element-name="לחיץ_page_time" style={thStyle} onClick={() => handleSort('executionTime')}>משך (ms) <SortIcon data-element-name="רכיב_page_time_icon" column="executionTime" /></th>
+                  <th data-element-name="לחיץ_page_13" style={thStyle} onClick={() => handleSort('loadingError')}>סטטוס/שגיאות <SortIcon data-element-name="רכיב_page_14" column="loadingError" /></th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map(log => (
                   <tr key={log.id} style={{ borderBottom: '1px solid #eee', transition: 'background 0.2s', background: selectedIds.has(log.id) ? '#f8f9fa' : 'transparent' }}>
                     <td style={{ padding: '1rem' }}>
-                      <input 
+                      <input data-element-name="שדה_page_15" 
                         type="checkbox" 
                         checked={selectedIds.has(log.id)}
                         onChange={() => toggleSelection(log.id)}
@@ -302,12 +371,58 @@ export default function HistoryPage() {
                         {log.employeeName}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={log.pageUrl} dir="rtl">
-                      <span style={{ fontWeight: '500', marginLeft: '0.5rem' }}>{formatPageName(log.pageUrl)}</span>
-                      <span style={{ fontSize: '0.85em', color: 'var(--text-muted)' }} dir="ltr">{log.pageUrl}</span>
+                    <td style={{ padding: '1rem', maxWidth: '340px' }} dir="rtl">
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                        <span style={{ fontWeight: '600', color: log.pageUrl.includes('/api/') ? '#4f46e5' : 'inherit' }}>
+                          {formatPageName(log.pageUrl)}
+                        </span>
+                        <span style={{ fontSize: '0.8em', color: 'var(--text-muted)', wordBreak: 'break-all' }} dir="ltr">
+                          {log.pageUrl}
+                        </span>
+                        {log.requestQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveQueryModal(log)}
+                            style={{
+                              alignSelf: 'flex-start',
+                              marginTop: '2px',
+                              background: '#eff6ff',
+                              border: '1px solid #bfdbfe',
+                              color: '#1d4ed8',
+                              padding: '2px 8px',
+                              borderRadius: '6px',
+                              fontSize: '0.75rem',
+                              cursor: 'pointer',
+                              fontWeight: '600'
+                            }}
+                          >
+                            🔍 הצג פרמטרי שאילתה
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                    <td style={{ padding: '1rem', whiteSpace: 'nowrap' }} dir="ltr">
+                      {log.responseSize !== null && log.responseSize !== undefined ? (
+                        <span style={{
+                          padding: '3px 8px',
+                          borderRadius: '6px',
+                          fontWeight: 'bold',
+                          fontSize: '0.82rem',
+                          background: log.responseSize > 1048576 ? '#fef2f2' : log.responseSize > 102400 ? '#fffbeb' : '#f0fdf4',
+                          color: log.responseSize > 1048576 ? '#dc2626' : log.responseSize > 102400 ? '#d97706' : '#16a34a',
+                          border: `1px solid ${log.responseSize > 1048576 ? '#fecaca' : log.responseSize > 102400 ? '#fef3c7' : '#dcfce7'}`
+                        }}>
+                          📦 {formatSize(log.responseSize)}
+                        </span>
+                      ) : (
+                        <span style={{ color: '#9ca3af' }}>-</span>
+                      )}
+                    </td>
+                    <td style={{ padding: '1rem', whiteSpace: 'nowrap' }} dir="ltr">
+                      {log.executionTime ? `${log.executionTime} ms` : '-'}
                     </td>
                     <td style={{ padding: '1rem', color: log.loadingError ? '#dc3545' : 'inherit' }}>
-                      {log.loadingError || '-'}
+                      {log.loadingError || 'תקין (200 OK)'}
                     </td>
                   </tr>
                 ))}
@@ -316,7 +431,7 @@ export default function HistoryPage() {
 
             {/* Pagination Controls */}
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
-              <button 
+              <button data-element-name="כפתור_page_16" 
                 className="btn btn-outline"
                 disabled={page >= totalPages} 
                 onClick={() => setPage(p => p + 1)}
@@ -325,9 +440,9 @@ export default function HistoryPage() {
                 הבא
               </button>
               <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }}  /> מתוך {totalPages}
+                עמוד <input data-element-name="שדה_page_17" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }}  /> מתוך {totalPages}
               </span>
-              <button 
+              <button data-element-name="כפתור_page_18" 
                 className="btn btn-outline"
                 disabled={page <= 1} 
                 onClick={() => setPage(p => p - 1)}
@@ -362,7 +477,7 @@ export default function HistoryPage() {
               
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>שם משתמש (או קוד עובד)</label>
-                <input 
+                <input data-element-name="שדה_page_19" 
                   type="text" 
                   value={deleteModal.username}
                   onChange={e => setDeleteModal(prev => ({ ...prev, username: e.target.value }))}
@@ -373,7 +488,7 @@ export default function HistoryPage() {
 
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-muted)' }}>סיסמה</label>
-                <input 
+                <input data-element-name="שדה_page_20" 
                   type="password" 
                   value={deleteModal.password}
                   onChange={e => setDeleteModal(prev => ({ ...prev, password: e.target.value }))}
@@ -383,14 +498,65 @@ export default function HistoryPage() {
               </div>
 
               <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                <button type="submit" disabled={isDeleting} className="btn btn-primary" style={{ flex: 1, padding: '0.75rem', background: '#dc3545', borderColor: '#dc3545' }}>
+                <button data-element-name="כפתור_page_21" type="submit" disabled={isDeleting} className="btn btn-primary" style={{ flex: 1, padding: '0.75rem', background: '#dc3545', borderColor: '#dc3545' }}>
                   {isDeleting ? 'מוחק...' : 'אשר מחיקה'}
                 </button>
-                <button type="button" onClick={() => setDeleteModal({ open: false, isDeleteAll: false, username: '', password: '', error: '' })} disabled={isDeleting} className="btn btn-outline" style={{ flex: 1, padding: '0.75rem' }}>
+                <button data-element-name="כפתור_page_22" type="button" onClick={() => setDeleteModal({ open: false, isDeleteAll: false, username: '', password: '', error: '' })} disabled={isDeleting} className="btn btn-outline" style={{ flex: 1, padding: '0.75rem' }}>
                   ביטול
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Query Detail Modal */}
+      {activeQueryModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} dir="rtl">
+          <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', width: '100%', maxWidth: '550px', boxShadow: '0 4px 15px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ margin: 0, color: '#4f46e5' }}>🔍 פרמטרים ושאילתת API</h3>
+              <button
+                onClick={() => setActiveQueryModal(null)}
+                style={{ background: 'none', border: 'none', fontSize: '1.2rem', cursor: 'pointer', color: '#9ca3af' }}
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div style={{ fontSize: '0.85rem', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+              <div><strong>נתיב API:</strong> <code dir="ltr" style={{ color: '#4f46e5' }}>{activeQueryModal.pageUrl}</code></div>
+              <div><strong>ביצוע ע"י:</strong> {activeQueryModal.employeeName}</div>
+              <div><strong>זמן קריאה:</strong> {formatDate(activeQueryModal.timestamp)}</div>
+              <div><strong>נפח נתונים:</strong> {formatSize(activeQueryModal.responseSize)}</div>
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '4px', fontSize: '0.85rem' }}>פרמטרי שאילתה / Body שנשלחו:</label>
+              <pre dir="ltr" style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: '8px',
+                padding: '0.75rem',
+                fontSize: '0.8rem',
+                maxHeight: '200px',
+                overflowY: 'auto',
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-all'
+              }}>
+                {activeQueryModal.requestQuery}
+              </pre>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                onClick={() => setActiveQueryModal(null)}
+                className="btn btn-outline"
+                style={{ padding: '0.4rem 1.2rem' }}
+              >
+                סגור
+              </button>
+            </div>
           </div>
         </div>
       )}

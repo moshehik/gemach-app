@@ -122,8 +122,8 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
   };
 
   const content = (
-    <div className="modal-overlay" onClick={onClose} style={overlayStyle}>
-      <div 
+    <div data-element-name="לחיץ_StatisticsModal_1" className="modal-overlay" onClick={onClose} style={overlayStyle}>
+      <div data-element-name="לחיץ_StatisticsModal_2" 
         className="modal-content animate-fade-in" 
         onClick={e => e.stopPropagation()} 
         style={modalStyle}
@@ -139,12 +139,12 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
             <div style={{ background: 'rgba(255,255,255,0.2)', padding: '0.5rem', borderRadius: '50%' }}>
-              <BarChart3 size={24} />
+              <BarChart3 data-element-name="רכיב_StatisticsModal_3" size={24} />
             </div>
             <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 'bold' }}>סטטיסטיקות מתקדמות AI</h2>
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
-            <X size={24} />
+          <button data-element-name="כפתור_StatisticsModal_4" onClick={onClose} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer' }}>
+            <X data-element-name="רכיב_StatisticsModal_5" size={24} />
           </button>
         </div>
 
@@ -158,7 +158,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
             }}>
               {msg.role === 'assistant' && (
                 <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669', flexShrink: 0 }}>
-                  <Bot size={18} />
+                  <Bot data-element-name="רכיב_StatisticsModal_6" size={18} />
                 </div>
               )}
               <div style={{ 
@@ -173,17 +173,17 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
                 lineHeight: '1.5',
                 whiteSpace: 'pre-wrap'
               }}>
-                <FormattedMessage content={msg.content} />
+                <FormattedMessage data-element-name="רכיב_StatisticsModal_7" content={msg.content} />
               </div>
             </div>
           ))}
           {loading && (
             <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '0.5rem' }}>
               <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
-                <Bot size={18} />
+                <Bot data-element-name="רכיב_StatisticsModal_8" size={18} />
               </div>
               <div style={{ padding: '0.8rem 1.2rem', borderRadius: '16px', borderTopLeftRadius: '4px', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
-                <Loader2 size={16} className="animate-spin" /> מנתח נתונים...
+                <Loader2 data-element-name="רכיב_StatisticsModal_9" size={16} className="animate-spin" /> מנתח נתונים...
               </div>
             </div>
           )}
@@ -193,7 +193,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
         {/* Input Area */}
         <div style={{ padding: '1rem', background: 'var(--card-bg)', borderTop: '1px solid #e2e8f0' }}>
           <form onSubmit={sendMessage} style={{ display: 'flex', gap: '0.5rem' }}>
-            <input 
+            <input data-element-name="שדה_StatisticsModal_10" 
               type="text" 
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -209,7 +209,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
                 backgroundColor: '#f8fafc'
               }}
             />
-            <button 
+            <button data-element-name="כפתור_StatisticsModal_11" 
               type="submit" 
               disabled={loading || !input.trim()}
               style={{ 
@@ -226,7 +226,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
                 transition: 'background 0.2s'
               }}
             >
-              <Send size={20} style={{ transform: 'translateX(-2px)' }} />
+              <Send data-element-name="רכיב_StatisticsModal_12" size={20} style={{ transform: 'translateX(-2px)' }} />
             </button>
           </form>
         </div>

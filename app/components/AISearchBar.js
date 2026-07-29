@@ -39,7 +39,7 @@ export default function AISearchBar({
       {!isAiMode ? (
         <form onSubmit={handleRegularSubmit} style={{ display: 'flex', gap: '0.5rem', flex: 1, position: 'relative' }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <input 
+            <input data-element-name="שדה_AISearchBar_1" 
               type="text" 
               placeholder={placeholder}
               value={value}
@@ -56,24 +56,24 @@ export default function AISearchBar({
               }}
             />
             {value && (
-              <button 
+              <button data-element-name="כפתור_AISearchBar_2" 
                 type="button"
                 onClick={handleClear}
                 style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0' }}
                 title="נקה חיפוש"
               >
-                <X size={18} />
+                <X data-element-name="רכיב_AISearchBar_3" size={18} />
               </button>
             )}
           </div>
-          <button type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0 1.5rem', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button data-element-name="כפתור_AISearchBar_4" type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0 1.5rem', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             חיפוש
           </button>
         </form>
       ) : (
         <form onSubmit={handleAiSubmit} style={{ display: 'flex', gap: '0.5rem', flex: 1, position: 'relative' }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <input 
+            <input data-element-name="שדה_AISearchBar_5" 
               type="text" 
               placeholder="בקש מה-AI למצוא נתונים (למשל: 'הזמנות של משפחת שיינועטר')..."
               value={aiInput}
@@ -92,22 +92,22 @@ export default function AISearchBar({
               }}
             />
             {aiInput && !loading && (
-              <button 
+              <button data-element-name="כפתור_AISearchBar_6" 
                 type="button"
                 onClick={() => setAiInput('')}
                 style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '0' }}
                 title="נקה"
               >
-                <X size={18} />
+                <X data-element-name="רכיב_AISearchBar_7" size={18} />
               </button>
             )}
             {loading && (
               <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#ec4899' }}>
-                <Loader2 size={18} className="animate-spin" />
+                <Loader2 data-element-name="רכיב_AISearchBar_8" size={18} className="animate-spin" />
               </div>
             )}
           </div>
-          <button 
+          <button data-element-name="כפתור_AISearchBar_9" 
             type="submit" 
             disabled={loading}
             style={{ 
@@ -130,7 +130,7 @@ export default function AISearchBar({
       )}
 
       {/* AI Toggle Button */}
-      <button 
+      <button data-element-name="כפתור_AISearchBar_10" 
         className="ai-feature-element"
         onClick={() => {
           if (!isAiMode) {
@@ -159,12 +159,13 @@ export default function AISearchBar({
         }}
         title="חיפוש חכם (AI)"
       >
-        <Sparkles size={20} />
+        <Sparkles data-element-name="רכיב_AISearchBar_11" size={20} />
       </button>
 
       {/* Statistics Toggle Button */}
       {onStatistics && (
-        <button 
+        <button data-element-name="כפתור_AISearchBar_12" 
+          className="ai-feature-element"
           onClick={(e) => onStatistics(e)}
           style={{ 
             borderRadius: '50%', 
@@ -182,7 +183,7 @@ export default function AISearchBar({
           }}
           title="שאלות סטטיסטיקה"
         >
-          <BarChart3 size={20} />
+          <BarChart3 data-element-name="רכיב_AISearchBar_13" size={20} />
         </button>
       )}
     </div>

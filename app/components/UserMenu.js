@@ -90,9 +90,9 @@ export default function UserMenu() {
   if (!user) {
     return (
       <>
-        {showLoginModal && <LoginScreen isModal={true} onClose={() => setShowLoginModal(false)} />}
+        {showLoginModal && <LoginScreen data-element-name="רכיב_UserMenu_1" isModal={true} onClose={() => setShowLoginModal(false)} />}
         <div className="user-menu" style={{ position: 'relative' }} ref={menuRef}>
-        <button 
+        <button data-element-name="כפתור_UserMenu_2" 
           onClick={() => setDropdownOpen(!dropdownOpen)}
           style={{ 
             background: 'transparent',
@@ -139,7 +139,7 @@ export default function UserMenu() {
             overflow: 'hidden'
           }}>
             <div style={{ padding: '0.5rem' }}>
-              <button 
+              <button data-element-name="כפתור_UserMenu_3" 
                 onClick={() => {
                   setDropdownOpen(false);
                   setShowLoginModal(true);
@@ -152,12 +152,12 @@ export default function UserMenu() {
                 }}
                 className="hover:bg-green-100 dark:hover:bg-green-900"
               >
-                <LogIn size={18} />
+                <LogIn data-element-name="רכיב_UserMenu_4" size={18} />
                 היכנס למערכת
               </button>
             </div>
             <div style={{ padding: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
-              <button 
+              <button data-element-name="כפתור_UserMenu_5" 
                 onClick={() => {
                   setDropdownOpen(false);
                   window.dispatchEvent(new Event('show-screensaver'));
@@ -170,7 +170,7 @@ export default function UserMenu() {
                 }}
                 className="hover:bg-gray-100 dark:hover:bg-gray-700"
               >
-                <Monitor size={18} />
+                <Monitor data-element-name="רכיב_UserMenu_6" size={18} />
                 שומר מסך
               </button>
             </div>
@@ -183,7 +183,7 @@ export default function UserMenu() {
 
   return (
     <div className="user-menu" style={{ position: 'relative' }} ref={menuRef}>
-      <button 
+      <button data-element-name="כפתור_UserMenu_7" 
         onClick={() => setDropdownOpen(!dropdownOpen)}
         style={{ 
           background: 'transparent',
@@ -239,7 +239,7 @@ export default function UserMenu() {
           
           <div style={{ padding: '0.5rem' }}>
             {!activeShift ? (
-              <button 
+              <button data-element-name="כפתור_UserMenu_8" 
                 onClick={() => handlePunch('IN')}
                 disabled={actionLoading}
                 style={{
@@ -250,11 +250,11 @@ export default function UserMenu() {
                 }}
                 className="hover:bg-green-100"
               >
-                <LogIn size={18} />
+                <LogIn data-element-name="רכיב_UserMenu_9" size={18} />
                 כניסה לעבודה (שעון נוכחות)
               </button>
             ) : (
-              <button 
+              <button data-element-name="כפתור_UserMenu_10" 
                 onClick={() => handlePunch('OUT')}
                 disabled={actionLoading}
                 style={{
@@ -265,14 +265,14 @@ export default function UserMenu() {
                 }}
                 className="hover:bg-red-100"
               >
-                <LogOut size={18} />
+                <LogOut data-element-name="רכיב_UserMenu_11" size={18} />
                 יציאה ממשמרת
               </button>
             )}
           </div>
 
           <div style={{ padding: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
-            <button 
+            <button data-element-name="כפתור_UserMenu_12" 
               onClick={handleLogout}
               disabled={actionLoading}
               style={{
@@ -283,10 +283,10 @@ export default function UserMenu() {
               }}
               className="hover:bg-gray-100"
             >
-              <UserCircle size={18} />
+              <UserCircle data-element-name="רכיב_UserMenu_13" size={18} />
               התנתק / החלף משתמש
             </button>
-            <button 
+            <button data-element-name="כפתור_UserMenu_14" 
               onClick={() => {
                 setDropdownOpen(false);
                 window.dispatchEvent(new Event('show-screensaver'));
@@ -301,7 +301,7 @@ export default function UserMenu() {
               }}
               className="hover:bg-gray-100 dark:hover:bg-gray-700"
             >
-              <Monitor size={18} />
+              <Monitor data-element-name="רכיב_UserMenu_15" size={18} />
               שומר מסך
             </button>
           </div>

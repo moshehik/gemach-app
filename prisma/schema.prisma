@@ -387,9 +387,13 @@ model PageVisitLog {
   timestamp    DateTime  @default(now()) // Exact time of visit
   loadingError String? // Details of any error that occurred
   isGuest      Boolean   @default(false)
+  requestQuery String? // השאילתה/פרמטרים שנשלחו ל-API
+  responseSize Int? // כמות המידע שהוחזר בבתים (Bytes)
+  executionTime Int? // משך ביצוע השאילתה במאיות שנייה
   updatedAt    DateTime  @updatedAt
 
   @@index([employeeId])
+  @@index([timestamp])
 }
 
 model EmailLog {

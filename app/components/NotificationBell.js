@@ -58,7 +58,7 @@ export default function NotificationBell({ employeeId }) {
 
   return (
     <div style={{ position: 'relative' }} ref={menuRef}>
-      <button
+      <button data-element-name="כפתור_NotificationBell_1"
         onClick={() => setIsOpen(!isOpen)}
         style={{
           background: 'transparent',
@@ -76,7 +76,7 @@ export default function NotificationBell({ employeeId }) {
         }}
         className="hover:bg-gray-100 dark:hover:bg-gray-800"
       >
-        <Bell size={22} />
+        <Bell data-element-name="רכיב_NotificationBell_2" size={22} />
         {unreadCount > 0 && (
           <span style={{
             position: 'absolute',
@@ -115,19 +115,19 @@ export default function NotificationBell({ employeeId }) {
         }}>
           <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-color)' }}>התראות ({unreadCount})</h3>
-            <Link 
+            <Link data-element-name="לחיץ_NotificationBell_3" 
               href="/messages"
               onClick={() => setIsOpen(false)}
               style={{ background: '#eff6ff', color: '#2563eb', border: 'none', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}
             >
-              <Mail size={14} /> פתח מרכז הודעות
+              <Mail data-element-name="רכיב_NotificationBell_4" size={14} /> פתח מרכז הודעות
             </Link>
           </div>
           
           <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
             {notifications.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
-                <MessageSquare size={32} style={{ opacity: 0.2, margin: '0 auto 0.5rem' }} />
+                <MessageSquare data-element-name="רכיב_NotificationBell_5" size={32} style={{ opacity: 0.2, margin: '0 auto 0.5rem' }} />
                 אין הודעות חדשות
               </div>
             ) : (
@@ -159,11 +159,11 @@ export default function NotificationBell({ employeeId }) {
                       {notif.content}
                     </div>
                     {!notif.isRead && (
-                      <button
+                      <button data-element-name="כפתור_NotificationBell_6"
                         onClick={() => markAsRead(notif.id)}
                         style={{ background: 'transparent', border: 'none', color: '#3b82f6', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', padding: 0 }}
                       >
-                        <Check size={14} /> סמן כנקרא
+                        <Check data-element-name="רכיב_NotificationBell_7" size={14} /> סמן כנקרא
                       </button>
                     )}
                   </div>

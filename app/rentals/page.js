@@ -171,7 +171,7 @@ export default function RentalsPage() {
         <div className="quick-return-bar">
         <h2><span style={{ fontSize: '1.2em', marginRight: '5px' }}>⚡</span> החזרה מהירה</h2>
         <form onSubmit={handleQuickReturn} className="barcode-input-container" style={{ position: 'relative' }}>
-          <input 
+          <input data-element-name="שדה_page_1" 
             data-agy-id="input-barcode"
             type="text" 
             className={`barcode-input ${quickStatus === 'success' ? 'success-flash' : quickStatus === 'error' ? 'error-flash' : ''}`}
@@ -194,28 +194,28 @@ export default function RentalsPage() {
       </div>
 
       {showAdvSearch && (
-        <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+        <div data-element-name="לחיץ_page_2" className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div data-element-name="לחיץ_page_3" className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
             <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem' }}>חיפוש מתקדם</h2>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('order_id', 'מספר הזמנה')}</label>
-                <input data-agy-id="input-adv-order-id" type="text" className="form-control" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} />
+                <input data-element-name="שדה_page_4" data-agy-id="input-adv-order-id" type="text" className="form-control" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>ברקוד/פרטי פריט</label>
-                <input data-agy-id="input-adv-item-details" type="text" className="form-control" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} />
+                <input data-element-name="שדה_page_5" data-agy-id="input-adv-item-details" type="text" className="form-control" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>דגם</label>
                 <div style={{ position: 'relative' }}>
-                  <OrderModelSelector 
+                  <OrderModelSelector data-element-name="רכיב_page_6" 
                     value={{ name: advFilters.advModelName }} 
                     onChange={m => setAdvFilters(p => ({...p, advModelName: m ? m.name : ''}))} 
                     placeholder="בחר דגם..."
                   />
                   {advFilters.advModelName && (
-                    <button 
+                    <button data-element-name="כפתור_page_7" 
                       onClick={() => setAdvFilters(p => ({...p, advModelName: ''}))}
                       style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error-color)' }}
                       title="נקה בחירה"
@@ -227,20 +227,20 @@ export default function RentalsPage() {
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>{getLabel('order_customerName', 'שם לקוח')}</label>
-                <input data-agy-id="input-adv-customer-name" type="text" className="form-control" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} />
+                <input data-element-name="שדה_page_8" data-agy-id="input-adv-customer-name" type="text" className="form-control" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>טלפון לקוח</label>
-                <input data-agy-id="input-adv-customer-phone" type="text" className="form-control" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} />
+                <input data-element-name="שדה_page_9" data-agy-id="input-adv-customer-phone" type="text" className="form-control" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>עיר מגורים</label>
-                <input data-agy-id="input-adv-customer-city" type="text" className="form-control" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} />
+                <input data-element-name="שדה_page_10" data-agy-id="input-adv-customer-city" type="text" className="form-control" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>סגור והחל סינון</button>
-              <button className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
+              <button data-element-name="כפתור_page_11" className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>סגור והחל סינון</button>
+              <button data-element-name="כפתור_page_12" className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
                 setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '' });
               }}>נקה הכל</button>
             </div>
@@ -264,7 +264,7 @@ export default function RentalsPage() {
         {/* Right side: Filters */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <span style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>תצוגה:</span>
-          <select 
+          <select data-element-name="בחירה_page_13" 
             value={viewMode}
             onChange={(e) => setViewMode(e.target.value)}
             className="form-control"
@@ -292,7 +292,7 @@ export default function RentalsPage() {
         {/* Center/Left side: Search & Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, maxWidth: '400px', minWidth: '250px' }}>
-            <AISearchBar 
+            <AISearchBar data-element-name="רכיב_page_14" 
               placeholder="חיפוש חופשי (הזמנה, לקוח, דגם)..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -303,7 +303,7 @@ export default function RentalsPage() {
               loading={aiLoading}
             />
           </div>
-          <button 
+          <button data-element-name="כפתור_page_15" 
             data-agy-id="adv-search-button"
             onClick={() => setShowAdvSearch(true)}
             className="btn btn-outline"
@@ -316,7 +316,7 @@ export default function RentalsPage() {
           <div style={{ width: '1px', height: '30px', background: 'var(--divider)', margin: '0 0.25rem' }}></div>
           
           <div style={{ flexShrink: 0 }}>
-            <ExportButtons 
+            <ExportButtons data-element-name="רכיב_page_16" 
               data={orders.map(o => ({
                 ...o,
                 status: calculateOrderStatus(o),
@@ -363,7 +363,7 @@ export default function RentalsPage() {
 
             return (
               <tbody key={order.orderId}>
-                <tr 
+                <tr data-element-name="לחיץ_page_17" 
                   onClick={() => openOrder(order.orderId)} 
                   style={{ cursor: 'pointer', transition: 'background 0.2s' }}
                   onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.05)'}
@@ -390,7 +390,7 @@ export default function RentalsPage() {
                       <span style={{ fontWeight: 'bold' }}>סה"כ: {totalItems}</span>
                       {rentedItems > 0 && <span style={{ color: '#e65100', fontSize: '0.9em', background: '#fff3e0', padding: '2px 6px', borderRadius: '4px' }}>מושכרים: {rentedItems}</span>}
                       {returnedItems > 0 && <span style={{ color: '#2e7d32', fontSize: '0.9em', background: '#e8f5e9', padding: '2px 6px', borderRadius: '4px' }}>הוחזרו: {returnedItems}</span>}
-                      <button 
+                      <button data-element-name="כפתור_page_18" 
                         onClick={(e) => {
                           e.stopPropagation();
                           setExpandedOrders(prev => ({ ...prev, [order.orderId]: !prev[order.orderId] }));
@@ -447,14 +447,14 @@ export default function RentalsPage() {
       </div>
 
       {selectedOrderId && (
-        <RentalReturnModal
+        <RentalReturnModal data-element-name="רכיב_page_19"
           orderId={selectedOrderId}
           onClose={() => setSelectedOrderId(null)}
           onUpdate={fetchOrders}
         />
       )}
 
-      <StatisticsModal 
+      <StatisticsModal data-element-name="רכיב_page_20" 
         isOpen={!!showStatistics} 
         onClose={() => setShowStatistics(false)} 
         pageContext="rentals"

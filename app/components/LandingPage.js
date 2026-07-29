@@ -73,7 +73,7 @@ export default function LandingPage() {
   if (!isActive) return null;
 
   return (
-    <div 
+    <div data-element-name="לחיץ_LandingPage_1" 
       style={{
         position: 'fixed',
         top: 0,

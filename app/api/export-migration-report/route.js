@@ -259,7 +259,7 @@ export async function GET() {
         <div class="header">
             <h1>דוח השוואת הגירת נתונים</h1>
             <p>השוואה מדויקת של ספירת הנתונים במערכת החדשה (Prisma) לעומת מערכת האקסס הישנה</p>
-            <button class="print-btn" onclick="window.print()">הדפס דוח</button>
+            <button data-element-name="כפתור_route_1" class="print-btn" onclick="window.print()">הדפס דוח</button>
         </div>
 `;
 

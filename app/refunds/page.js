@@ -2,7 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, CheckCircle, XCircle, Download, CreditCard, Banknote, Mail } from 'lucide-react';
+import { Search, CheckCircle, XCircle, Download, CreditCard, Coins, Mail, Info } from 'lucide-react';
+
+const refundsCache = new Map();
 
 export default function RefundsPage() {
   const [refunds, setRefunds] = useState([]);
@@ -15,20 +17,28 @@ export default function RefundsPage() {
     fetchRefunds();
   }, []);
 
-  const fetchRefunds = async () => {
-    setLoading(true);
+  async function fetchRefunds(isPrefetch = false) {
+    if (!isPrefetch) setLoading(true);
+    
+    // SWR Cache Hit
+    if (!isPrefetch && refundsCache.has('refunds')) {
+      setRefunds(refundsCache.get('refunds'));
+      setLoading(false); // UI becomes interactive instantly
+    }
+
     try {
       const res = await fetch('/api/refunds');
       const data = await res.json();
       if (Array.isArray(data)) {
-        setRefunds(data);
+        refundsCache.set('refunds', data); // Update Cache silently
+        if (!isPrefetch) setRefunds(data);
       } else {
-        setRefunds([]);
+        if (!isPrefetch) setRefunds([]);
       }
     } catch (err) {
       console.error('Failed to fetch refunds:', err);
     } finally {
-      setLoading(false);
+      if (!isPrefetch) setLoading(false);
     }
   };
 
@@ -136,19 +146,19 @@ export default function RefundsPage() {
     <main data-agy-id="refunds_page_main" className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1400px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: 'var(--primary-color)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-          <Banknote size={32} />
+          <Coins data-element-name="רכיב_page_1" size={32} />
           ניהול זיכויים
         </h1>
-        <button data-agy-id="refunds_export_btn" onClick={exportToCSV} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '12px' }}>
-          <Download size={18} />
+        <button data-element-name="כפתור_page_2" data-agy-id="refunds_export_btn" onClick={exportToCSV} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '12px' }}>
+          <Download data-element-name="רכיב_page_3" size={18} />
           ייצוא לאקסל
         </button>
       </div>
 
       <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
         <div style={{ position: 'relative', flex: '1', minWidth: '300px' }}>
-          <Search size={20} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
-          <input data-agy-id="refunds_search_input"
+          <Search data-element-name="רכיב_page_4" size={20} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+          <input data-element-name="שדה_page_5" data-agy-id="refunds_search_input"
             type="text" 
             placeholder="חיפוש לפי שם לקוח, טלפון, הזמנה או סכום..." 
             value={searchTerm}
@@ -158,9 +168,9 @@ export default function RefundsPage() {
         </div>
         
         <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '0.4rem', borderRadius: '12px' }}>
-          <button data-agy-id="filter_all" onClick={() => setFilterStatus('all')} style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', border: 'none', background: filterStatus === 'all' ? 'white' : 'transparent', color: filterStatus === 'all' ? 'var(--primary-color)' : '#64748b', fontWeight: filterStatus === 'all' ? 'bold' : 'normal', cursor: 'pointer', boxShadow: filterStatus === 'all' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>הכל</button>
-          <button data-agy-id="filter_pending" onClick={() => setFilterStatus('pending')} style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', border: 'none', background: filterStatus === 'pending' ? 'white' : 'transparent', color: filterStatus === 'pending' ? '#d97706' : '#64748b', fontWeight: filterStatus === 'pending' ? 'bold' : 'normal', cursor: 'pointer', boxShadow: filterStatus === 'pending' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>ממתינים</button>
-          <button data-agy-id="filter_executed" onClick={() => setFilterStatus('executed')} style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', border: 'none', background: filterStatus === 'executed' ? 'white' : 'transparent', color: filterStatus === 'executed' ? '#16a34a' : '#64748b', fontWeight: filterStatus === 'executed' ? 'bold' : 'normal', cursor: 'pointer', boxShadow: filterStatus === 'executed' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>בוצעו</button>
+          <button data-element-name="כפתור_page_6" data-agy-id="filter_all" onClick={() => setFilterStatus('all')} style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', border: 'none', background: filterStatus === 'all' ? 'white' : 'transparent', color: filterStatus === 'all' ? 'var(--primary-color)' : '#64748b', fontWeight: filterStatus === 'all' ? 'bold' : 'normal', cursor: 'pointer', boxShadow: filterStatus === 'all' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>הכל</button>
+          <button data-element-name="כפתור_page_7" data-agy-id="filter_pending" onClick={() => setFilterStatus('pending')} style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', border: 'none', background: filterStatus === 'pending' ? 'white' : 'transparent', color: filterStatus === 'pending' ? '#d97706' : '#64748b', fontWeight: filterStatus === 'pending' ? 'bold' : 'normal', cursor: 'pointer', boxShadow: filterStatus === 'pending' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>ממתינים</button>
+          <button data-element-name="כפתור_page_8" data-agy-id="filter_executed" onClick={() => setFilterStatus('executed')} style={{ padding: '0.5rem 1.2rem', borderRadius: '8px', border: 'none', background: filterStatus === 'executed' ? 'white' : 'transparent', color: filterStatus === 'executed' ? '#16a34a' : '#64748b', fontWeight: filterStatus === 'executed' ? 'bold' : 'normal', cursor: 'pointer', boxShadow: filterStatus === 'executed' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none', transition: 'all 0.2s' }}>בוצעו</button>
         </div>
       </div>
 
@@ -198,16 +208,16 @@ export default function RefundsPage() {
                     </td>
                     <td style={{ padding: '1rem' }}>
                       <div style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
-                        <Link href={`/customers/${refund.customerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <Link data-element-name="רכיב_page_9" href={`/customers/${refund.customerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                           {refund.customer ? `${refund.customer.firstName || ''} ${refund.customer.lastName || ''}`.trim() : 'לקוח לא ידוע'}
                         </Link>
                       </div>
                       <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{refund.customer?.phone1}</div>
-                      {refund.email && <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Mail size={12}/> {refund.email}</div>}
+                      {refund.email && <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Mail data-element-name="רכיב_page_10" size={12}/> {refund.email}</div>}
                     </td>
                     <td style={{ padding: '1rem' }}>
                       {refund.orderId ? (
-                        <Link href={`/orders/${refund.orderId}`} style={{ color: '#0ea5e9', textDecoration: 'none', fontWeight: 'bold' }}>
+                        <Link data-element-name="רכיב_page_11" href={`/orders/${refund.orderId}`} style={{ color: '#0ea5e9', textDecoration: 'none', fontWeight: 'bold' }}>
                           #{refund.orderId}
                         </Link>
                       ) : '-'}
@@ -230,7 +240,7 @@ export default function RefundsPage() {
                     <td style={{ padding: '1rem' }}>
                       {refund.paymentDetails ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#334155', fontSize: '0.9rem' }}>
-                          <CreditCard size={14} /> {refund.paymentDetails}
+                          <CreditCard data-element-name="רכיב_page_12" size={14} /> {refund.paymentDetails}
                         </div>
                       ) : <span style={{ color: '#94a3b8' }}>-</span>}
                     </td>
@@ -246,14 +256,14 @@ export default function RefundsPage() {
                         background: refund.isExecuted ? '#dcfce7' : '#fef08a',
                         color: refund.isExecuted ? '#166534' : '#854d0e'
                       }}>
-                        {refund.isExecuted ? <CheckCircle size={14}/> : <Info size={14}/>}
+                        {refund.isExecuted ? <CheckCircle data-element-name="רכיב_page_13" size={14}/> : <Info data-element-name="רכיב_page_14" size={14}/>}
                         {refund.isExecuted ? 'בוצע' : 'ממתין לביצוע'}
                       </span>
                     </td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                         {!refund.isExecuted && (
-                          <button data-agy-id={`execute_btn_${refund.id}`}
+                          <button data-element-name="כפתור_page_15" data-agy-id={`execute_btn_${refund.id}`}
                             onClick={() => executeRefund(refund.id)}
                             disabled={isProcessing}
                             title="סמן כבוצע"
@@ -261,10 +271,10 @@ export default function RefundsPage() {
                             onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#bbf7d0'}
                             onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
                           >
-                            <CheckCircle size={18} />
+                            <CheckCircle data-element-name="רכיב_page_16" size={18} />
                           </button>
                         )}
-                        <button data-agy-id={`cancel_btn_${refund.id}`}
+                        <button data-element-name="כפתור_page_17" data-agy-id={`cancel_btn_${refund.id}`}
                           onClick={() => cancelRefund(refund.id)}
                           disabled={isProcessing}
                           title="בטל בקשה"
@@ -272,7 +282,7 @@ export default function RefundsPage() {
                           onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fecaca'}
                           onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
                         >
-                          <XCircle size={18} />
+                          <XCircle data-element-name="רכיב_page_18" size={18} />
                         </button>
                       </div>
                     </td>

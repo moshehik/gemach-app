@@ -60,24 +60,24 @@ export default function FullViewPage() {
         מציג {(currentPage - 1) * itemsPerPage + 1} עד {Math.min(currentPage * itemsPerPage, data.length)} מתוך {data.length}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-        <button 
+        <button data-element-name="כפתור_page_1" 
           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
           disabled={currentPage === 1}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #cbd5e1', background: currentPage === 1 ? '#f1f5f9' : 'white', color: currentPage === 1 ? '#94a3b8' : '#334155', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
         >
-          <ChevronRight size={18} />
+          <ChevronRight data-element-name="רכיב_page_2" size={18} />
         </button>
         
         <span style={{ fontWeight: '500', color: '#0f172a', margin: '0 0.5rem' }}>
           עמוד {currentPage} מתוך {totalPages}
         </span>
         
-        <button 
+        <button data-element-name="כפתור_page_3" 
           onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
           disabled={currentPage === totalPages}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #cbd5e1', background: currentPage === totalPages ? '#f1f5f9' : 'white', color: currentPage === totalPages ? '#94a3b8' : '#334155', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
         >
-          <ChevronLeft size={18} />
+          <ChevronLeft data-element-name="רכיב_page_4" size={18} />
         </button>
       </div>
     </div>
@@ -128,7 +128,7 @@ export default function FullViewPage() {
   if (error) {
     return (
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f8fafc', padding: '2rem' }}>
-        <AlertCircle size={48} color="#ef4444" style={{ marginBottom: '1rem' }} />
+        <AlertCircle data-element-name="רכיב_page_5" size={48} color="#ef4444" style={{ marginBottom: '1rem' }} />
         <h2 style={{ color: '#1e293b', marginBottom: '1rem' }}>שגיאה</h2>
         <div style={{ background: '#fef2f2', color: '#991b1b', padding: '1rem 2rem', borderRadius: '8px', border: '1px solid #fecaca', textAlign: 'center' }}>
           {error}
@@ -145,7 +145,7 @@ export default function FullViewPage() {
         <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
           <div>
             <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Maximize size={24} color="#3b82f6" />
+              <Maximize data-element-name="רכיב_page_6" size={24} color="#3b82f6" />
               תצוגת טבלה מלאה
             </h1>
             <p style={{ margin: '0.5rem 0 0 0', color: '#64748b', fontSize: '0.9rem', maxWidth: '600px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={query}>
@@ -156,13 +156,13 @@ export default function FullViewPage() {
             <span style={{ background: '#eff6ff', color: '#1d4ed8', padding: '0.5rem 1rem', borderRadius: '999px', fontSize: '0.9rem', fontWeight: '600' }}>
               סה"כ רשומות: {data.length}
             </span>
-            <button 
+            <button data-element-name="כפתור_page_7" 
               onClick={downloadExcel}
               style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' }}
               onMouseOver={e => e.currentTarget.style.background = '#059669'}
               onMouseOut={e => e.currentTarget.style.background = '#10b981'}
             >
-              <Download size={18} />
+              <Download data-element-name="רכיב_page_8" size={18} />
               ייצוא
             </button>
           </div>

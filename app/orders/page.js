@@ -16,6 +16,8 @@ import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import PrintWizardModal from '../components/PrintWizardModal';
 
+const ordersCache = new Map();
+
 export default function OrdersPage() {
   const router = useRouter();
   const { getLabel } = useLabels();
@@ -38,7 +40,8 @@ export default function OrdersPage() {
 
   const [advFilters, setAdvFilters] = useState({
     customerName: '', customerPhone: '', customerCity: '', 
-    advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: ''
+    advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '',
+    rentalStatus: ''
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);
   const [showCapacitySearch, setShowCapacitySearch] = useState(false);
@@ -50,11 +53,12 @@ export default function OrdersPage() {
   const [aiQueryUsed, setAiQueryUsed] = useState('');
   const [isAiModeActive, setIsAiModeActive] = useState(false);
 
-  const fetchOrders = useCallback(async () => {
-    setLoading(true);
+  const fetchOrders = useCallback(async (isPrefetch = false, targetPage = page) => {
+    if (!isPrefetch) setLoading(true);
+    
     try {
       const queryParams = new URLSearchParams({
-        page: page.toString(),
+        page: targetPage.toString(),
         limit: limit.toString(),
         search,
         sort,
@@ -62,29 +66,56 @@ export default function OrdersPage() {
         filterStatus
       });
       Object.entries(advFilters).forEach(([k, v]) => {
-        if (v) queryParams.append(k, v);
+        if (v && k !== 'rentalStatus') queryParams.append(k, v);
       });
+      
+      if (advFilters.rentalStatus === 'activeOnly') queryParams.append('activeOnly', 'true');
+      if (advFilters.rentalStatus === 'returnedOnly') queryParams.append('returnedOnly', 'true');
+      if (advFilters.rentalStatus === 'pendingOnly') queryParams.append('pendingOnly', 'true');
+      
+      const cacheKey = queryParams.toString();
+      
+      // SWR: Instant Cache Hit
+      if (!isPrefetch && ordersCache.has(cacheKey)) {
+        const cachedData = ordersCache.get(cacheKey);
+        setOrders(cachedData.data || []);
+        setTotalPages(cachedData.totalPages || 1);
+        setTotalCount(cachedData.total || 0);
+        setLoading(false); // UI becomes interactive instantly
+      }
+
       const timestamp = new Date().getTime();
       queryParams.append('_t', timestamp);
 
       const res = await fetch(`/api/orders?${queryParams.toString()}`, { cache: 'no-store' });
       const data = await res.json();
-      setOrders(data.data || []);
-      setTotalPages(data.totalPages || 1);
-      setTotalCount(data.total || 0);
-      if (data.data && data.data.length > 0 && !selectedOrder) {
-        // Optionally select first order
+      
+      // Update Cache silently
+      ordersCache.set(cacheKey, data);
+
+      if (!isPrefetch && targetPage === page) {
+        setOrders(data.data || []);
+        setTotalPages(data.totalPages || 1);
+        setTotalCount(data.total || 0);
       }
     } catch (e) {
       console.error(e);
     } finally {
-      setLoading(false);
+      if (!isPrefetch) setLoading(false);
     }
-  }, [page, limit, search, sort, order, selectedOrder, advFilters, filterStatus]);
+  }, [page, limit, search, sort, order, advFilters, filterStatus]);
 
   useEffect(() => {
-    fetchOrders();
-  }, [fetchOrders]);
+    fetchOrders(false, page);
+    
+    // Background Prefetching for the next page
+    const timer = setTimeout(() => {
+      if (page < totalPages) {
+        fetchOrders(true, page + 1);
+      }
+    }, 1500); // Wait 1.5s after load to not block UI
+    return () => clearTimeout(timer);
+  }, [fetchOrders, page, totalPages]);
 
   const handleSearch = (e) => {
     if (e) e.preventDefault();
@@ -180,8 +211,11 @@ export default function OrdersPage() {
         filterStatus
       });
       Object.entries(advFilters).forEach(([k, v]) => {
-        if (v) queryParams.append(k, v);
+        if (v && k !== 'rentalStatus') queryParams.append(k, v);
       });
+      if (advFilters.rentalStatus === 'activeOnly') queryParams.append('activeOnly', 'true');
+      if (advFilters.rentalStatus === 'returnedOnly') queryParams.append('returnedOnly', 'true');
+      if (advFilters.rentalStatus === 'pendingOnly') queryParams.append('pendingOnly', 'true');
       const res = await fetch(`/api/orders?${queryParams.toString()}`, { cache: 'no-store' });
       const data = await res.json();
       return (data.data || []).map(o => ({
@@ -204,60 +238,60 @@ export default function OrdersPage() {
           
           {/* Status Filter Banner */}
           <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
-            <button data-agy-id="orders_page_button_2" onClick={() => { setFilterStatus('soon'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'soon' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'soon' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בקרוב (החל מהיום ואילך)">
-              <CalendarDays size={20} />
+            <button data-element-name="כפתור_page_1" data-agy-id="orders_page_button_2" onClick={() => { setFilterStatus('soon'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'soon' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'soon' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בקרוב (החל מהיום ואילך)">
+              <CalendarDays data-element-name="רכיב_page_2" size={20} />
               <span style={{ fontWeight: filterStatus === 'soon' ? 'bold' : 'normal' }}>בקרוב</span>
             </button>
-            <button data-agy-id="orders_page_button_3" onClick={() => { setFilterStatus('archive'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'archive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'archive' ? '#1565c0' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="ארכיון / עבר">
-              <Archive size={20} />
+            <button data-element-name="כפתור_page_3" data-agy-id="orders_page_button_3" onClick={() => { setFilterStatus('archive'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'archive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'archive' ? '#1565c0' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="ארכיון / עבר">
+              <Archive data-element-name="רכיב_page_4" size={20} />
               <span style={{ fontWeight: filterStatus === 'archive' ? 'bold' : 'normal' }}>ארכיון/עבר</span>
             </button>
-            <button data-agy-id="orders_page_button_4" onClick={() => { setFilterStatus('deleted'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוקים">
-              <Trash2 size={20} />
+            <button data-element-name="כפתור_page_5" data-agy-id="orders_page_button_4" onClick={() => { setFilterStatus('deleted'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוקים">
+              <Trash2 data-element-name="רכיב_page_6" size={20} />
               <span style={{ fontWeight: filterStatus === 'deleted' ? 'bold' : 'normal' }}>מחוק</span>
             </button>
-            <button data-agy-id="orders_page_button_5" onClick={() => { setFilterStatus('unpaid'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם (חודשים אחרונים)">
-              <AlertCircle size={20} />
+            <button data-element-name="כפתור_page_7" data-agy-id="orders_page_button_5" onClick={() => { setFilterStatus('unpaid'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם (חודשים אחרונים)">
+              <AlertCircle data-element-name="רכיב_page_8" size={20} />
               <span style={{ fontWeight: filterStatus === 'unpaid' ? 'bold' : 'normal' }}>לא שולם</span>
             </button>
-            <button data-agy-id="orders_page_button_6" onClick={() => { setFilterStatus('unpaid_all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid_all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid_all' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם (כולל ישנים)">
-              <AlertCircle size={20} />
+            <button data-element-name="כפתור_page_9" data-agy-id="orders_page_button_6" onClick={() => { setFilterStatus('unpaid_all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid_all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid_all' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם (כולל ישנים)">
+              <AlertCircle data-element-name="רכיב_page_10" size={20} />
               <span style={{ fontWeight: filterStatus === 'unpaid_all' ? 'bold' : 'normal' }}>לא שולם (הכל)</span>
             </button>
-            <button data-agy-id="orders_page_button_7" onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
-              <List size={20} />
+            <button data-element-name="כפתור_page_11" data-agy-id="orders_page_button_7" onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
+              <List data-element-name="רכיב_page_12" size={20} />
               <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
             </button>
           </div>
 
-          <button data-agy-id="orders_page_button_8" 
+          <button data-element-name="כפתור_page_13" data-agy-id="orders_page_button_8" 
              onClick={() => setShowAdvSearch(true)} 
              className="btn btn-outline" 
              style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--primary-color, #8b5cf6)', backgroundColor: 'var(--element-bg)', cursor: 'pointer' }}
              title="חיפוש מתקדם"
           >
-            <Filter size={22} />
+            <Filter data-element-name="רכיב_page_14" size={22} />
           </button>
 
-          <button data-agy-id="orders_page_button_9" 
+          <button data-element-name="כפתור_page_15" data-agy-id="orders_page_button_9" 
              onClick={() => setShowCapacitySearch(true)} 
              className="btn btn-outline" 
              style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--success-color, #10b981)', backgroundColor: 'var(--element-bg)', cursor: 'pointer' }}
              title="חיפוש תפוסה"
           >
-            <CalendarSearch size={22} />
+            <CalendarSearch data-element-name="רכיב_page_16" size={22} />
           </button>
 
-          <button 
+          <button data-element-name="כפתור_page_17" 
              onClick={() => setShowPrintWizard(true)} 
              className="btn btn-outline" 
              style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--primary-color, #8b5cf6)', backgroundColor: 'var(--element-bg)', cursor: 'pointer' }}
              title="הדפסת דוחות"
           >
-            <Printer size={22} />
+            <Printer data-element-name="רכיב_page_18" size={22} />
           </button>
 
-          <ExportButtons 
+          <ExportButtons data-element-name="רכיב_page_19" 
             data={orders.map(o => ({
               ...o,
               status: calculateOrderStatus(o)
@@ -274,13 +308,13 @@ export default function OrdersPage() {
             onFetchData={fetchOrdersForExport}
           />
 
-          <Link 
+          <Link data-element-name="רכיב_page_20" 
             href="/orders/new" 
             className="btn btn-primary" 
             style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--primary-color, #3b82f6)', color: '#fff' }}
             title="הזמנה חדשה"
           >
-            <Plus size={22} />
+            <Plus data-element-name="רכיב_page_21" size={22} />
           </Link>
         </div>
       </div>
@@ -288,7 +322,7 @@ export default function OrdersPage() {
       {/* Search and Filters */}
       <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '800px', alignItems: 'center' }}>
-          <AISearchBar 
+          <AISearchBar data-element-name="רכיב_page_22" 
             placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -307,25 +341,34 @@ export default function OrdersPage() {
       </div>
 
       {showAdvSearch && typeof document !== 'undefined' && createPortal(
-        <div className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
-          <div className="modal-content animate-slide-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '700px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid var(--border-color)' }}>
+        <div data-element-name="לחיץ_page_23" className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
+          <div data-element-name="לחיץ_page_24" className="modal-content animate-slide-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '700px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid var(--border-color)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--divider)', paddingBottom: '1rem' }}>
               <h2 style={{ color: 'var(--primary-color)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Filter size={24} /> חיפוש מתקדם
+                <Filter data-element-name="רכיב_page_25" size={24} /> חיפוש מתקדם
               </h2>
-              <button data-agy-id="orders_page_button_10" onClick={() => setShowAdvSearch(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X size={24} />
+              <button data-element-name="כפתור_page_26" data-agy-id="orders_page_button_10" onClick={() => setShowAdvSearch(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <X data-element-name="רכיב_page_27" size={24} />
               </button>
             </div>
             
             <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem' }}>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>מתאריך אירוע</label>
-                <HebrewDatePicker value={advFilters.eventDateFrom} onChange={d => setAdvFilters(p => ({...p, eventDateFrom: d}))} placeholder="מתאריך..." />
+                <HebrewDatePicker data-element-name="רכיב_page_28" value={advFilters.eventDateFrom} onChange={d => setAdvFilters(p => ({...p, eventDateFrom: d}))} placeholder="מתאריך..." />
               </div>
               <div style={{ flex: 1 }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>עד תאריך אירוע</label>
-                <HebrewDatePicker value={advFilters.eventDateTo} onChange={d => setAdvFilters(p => ({...p, eventDateTo: d}))} placeholder="עד תאריך..." />
+                <HebrewDatePicker data-element-name="רכיב_page_29" value={advFilters.eventDateTo} onChange={d => setAdvFilters(p => ({...p, eventDateTo: d}))} placeholder="עד תאריך..." />
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>סטטוס פריטים</label>
+                <select data-element-name="שדה_page_status" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.rentalStatus} onChange={e => setAdvFilters(p => ({...p, rentalStatus: e.target.value}))}>
+                  <option value="">הכל</option>
+                  <option value="activeOnly">רק מושכרים (אצל הלקוח)</option>
+                  <option value="returnedOnly">רק מוחזרים</option>
+                  <option value="pendingOnly">רק ממתינים (טרם נלקחו)</option>
+                </select>
               </div>
             </div>
 
@@ -333,54 +376,54 @@ export default function OrdersPage() {
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>{getLabel('order_id', 'מספר הזמנה')}</label>
                 <div style={{ position: 'relative' }}>
-                  <Search size={16} style={{ position: 'absolute', right: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                  <input data-agy-id="orders_page_input_11" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem 2.5rem 0.6rem 0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} placeholder="חפש לפי מספר..." />
+                  <Search data-element-name="רכיב_page_30" size={16} style={{ position: 'absolute', right: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                  <input data-element-name="שדה_page_31" data-agy-id="orders_page_input_11" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem 2.5rem 0.6rem 0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} placeholder="חפש לפי מספר..." />
                 </div>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>ברקוד/פרטי פריט</label>
                 <div style={{ position: 'relative' }}>
-                  <Shirt size={16} style={{ position: 'absolute', right: '12px', top: '12px', color: 'var(--text-muted)' }} />
-                  <input data-agy-id="orders_page_input_12" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem 2.5rem 0.6rem 0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} placeholder="ברקוד או תיאור..." />
+                  <Shirt data-element-name="רכיב_page_32" size={16} style={{ position: 'absolute', right: '12px', top: '12px', color: 'var(--text-muted)' }} />
+                  <input data-element-name="שדה_page_33" data-agy-id="orders_page_input_12" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem 2.5rem 0.6rem 0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} placeholder="ברקוד או תיאור..." />
                 </div>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>דגם</label>
                 <div style={{ position: 'relative' }}>
-                  <OrderModelSelector 
+                  <OrderModelSelector data-element-name="רכיב_page_34" 
                     value={{ name: advFilters.advModelName }} 
                     onChange={m => setAdvFilters(p => ({...p, advModelName: m ? m.name : ''}))} 
                     placeholder="בחר דגם..."
                   />
                   {advFilters.advModelName && (
-                    <button 
+                    <button data-element-name="כפתור_page_35" 
                       onClick={() => setAdvFilters(p => ({...p, advModelName: ''}))}
                       style={{ position: 'absolute', left: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--error-color)' }}
                       title="נקה בחירה"
                     >
-                      <X size={14} />
+                      <X data-element-name="רכיב_page_36" size={14} />
                     </button>
                   )}
                 </div>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>{getLabel('order_customerName', 'שם לקוח')}</label>
-                <input data-agy-id="orders_page_input_13" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} placeholder="שם הלקוח..." />
+                <input data-element-name="שדה_page_37" data-agy-id="orders_page_input_13" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} placeholder="שם הלקוח..." />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>טלפון לקוח</label>
-                <input data-agy-id="orders_page_input_14" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} placeholder="מספר טלפון..." />
+                <input data-element-name="שדה_page_38" data-agy-id="orders_page_input_14" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} placeholder="מספר טלפון..." />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>עיר מגורים</label>
-                <input data-agy-id="orders_page_input_15" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} placeholder="עיר..." />
+                <input data-element-name="שדה_page_39" data-agy-id="orders_page_input_15" type="text" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} placeholder="עיר..." />
               </div>
             </div>
             <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid var(--divider)', paddingTop: '1.5rem', justifyContent: 'flex-end' }}>
-              <button data-agy-id="orders_page_button_16" className="btn btn-outline" style={{ padding: '0.6rem 1.5rem', borderRadius: '8px' }} onClick={() => {
-                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '' });
+              <button data-element-name="כפתור_page_40" data-agy-id="orders_page_button_16" className="btn btn-outline" style={{ padding: '0.6rem 1.5rem', borderRadius: '8px' }} onClick={() => {
+                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '', rentalStatus: '' });
               }}>נקה הכל</button>
-              <button data-agy-id="orders_page_button_17" className="btn btn-primary" style={{ padding: '0.6rem 2.5rem', borderRadius: '8px' }} onClick={() => setShowAdvSearch(false)}>החל סינון</button>
+              <button data-element-name="כפתור_page_41" data-agy-id="orders_page_button_17" className="btn btn-primary" style={{ padding: '0.6rem 2.5rem', borderRadius: '8px' }} onClick={() => setShowAdvSearch(false)}>החל סינון</button>
             </div>
           </div>
         </div>,
@@ -400,13 +443,13 @@ export default function OrdersPage() {
                   <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--element-border)', color: 'var(--text-muted)' }}>
-                      <th style={thStyle} onClick={() => handleSort('orderId')}>{getLabel('order_id', 'קוד הזמנה')} <SortIcon column="orderId" /></th>
-                      <th style={thStyle} onClick={() => handleSort('customerName')}>{getLabel('order_customerName', 'לקוח')} <SortIcon column="customerName" /></th>
+                      <th data-element-name="לחיץ_page_42" style={thStyle} onClick={() => handleSort('orderId')}>{getLabel('order_id', 'קוד הזמנה')} <SortIcon data-element-name="רכיב_page_43" column="orderId" /></th>
+                      <th data-element-name="לחיץ_page_44" style={thStyle} onClick={() => handleSort('customerName')}>{getLabel('order_customerName', 'לקוח')} <SortIcon data-element-name="רכיב_page_45" column="customerName" /></th>
                       <th style={thStyle}>כמות פריטים</th>
-                      <th style={thStyle} onClick={() => handleSort('eventDate')}>תאריך אירוע <SortIcon column="eventDate" /></th>
-                      <th style={thStyle} onClick={() => handleSort('totalAmount')}>{getLabel('order_totalAmount', 'סכום לחיוב')} <SortIcon column="totalAmount" /></th>
-                      <th style={thStyle} onClick={() => handleSort('totalPaid')}>שולם <SortIcon column="totalPaid" /></th>
-                      <th style={thStyle} onClick={() => handleSort('status')}>{getLabel('order_status', 'סטטוס')} <SortIcon column="status" /></th>
+                      <th data-element-name="לחיץ_page_46" style={thStyle} onClick={() => handleSort('eventDate')}>תאריך אירוע <SortIcon data-element-name="רכיב_page_47" column="eventDate" /></th>
+                      <th data-element-name="לחיץ_page_48" style={thStyle} onClick={() => handleSort('totalAmount')}>{getLabel('order_totalAmount', 'סכום לחיוב')} <SortIcon data-element-name="רכיב_page_49" column="totalAmount" /></th>
+                      <th data-element-name="לחיץ_page_50" style={thStyle} onClick={() => handleSort('totalPaid')}>שולם <SortIcon data-element-name="רכיב_page_51" column="totalPaid" /></th>
+                      <th data-element-name="לחיץ_page_52" style={thStyle} onClick={() => handleSort('status')}>{getLabel('order_status', 'סטטוס')} <SortIcon data-element-name="רכיב_page_53" column="status" /></th>
                       <th style={{ padding: '1rem' }}>פעולות</th>
                     </tr>
                   </thead>
@@ -415,7 +458,7 @@ export default function OrdersPage() {
                       const isUnpaid = order.totalPaid < order.totalAmount && order.totalAmount > 0;
                       const hasCustomSpacing = order.customSpacing !== null && order.customSpacing !== undefined;
                       return (
-                      <tr key={order.orderId} style={{ 
+                      <tr data-element-name="לחיץ_page_54" key={order.orderId} style={{ 
                         borderBottom: '1px solid var(--element-border)', 
                         transition: 'background 0.2s', 
                         cursor: 'pointer', 
@@ -436,7 +479,7 @@ export default function OrdersPage() {
                               onMouseLeave={() => setHoveredOrder(null)}
                               onClick={(e) => { e.stopPropagation(); }}
                             >
-                              <Info size={16} strokeWidth={2.5} />
+                              <Info data-element-name="רכיב_page_55" size={16} strokeWidth={2.5} />
                             </div>
                           </div>
                         </td>
@@ -457,16 +500,16 @@ export default function OrdersPage() {
                           </span>
                         </td>
                         <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
-                          <Link 
+                          <Link data-element-name="לחיץ_page_56" 
                             href={`/orders/${order.orderId}`} 
                             className="btn btn-outline" 
                             style={{ padding: '0.5rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px' }}
                             onClick={(e) => e.stopPropagation()}
                             title="כרטיס הזמנה"
                           >
-                            <FileText size={18} />
+                            <FileText data-element-name="רכיב_page_57" size={18} />
                           </Link>
-                          <button data-agy-id="orders_page_button_18" 
+                          <button data-element-name="כפתור_page_58" data-agy-id="orders_page_button_18" 
                             className="btn btn-primary" 
                             style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: 'var(--success-bg, rgba(16, 185, 129, 0.1))', color: 'var(--success-color, #10b981)' }}
                             onClick={(e) => {
@@ -475,15 +518,15 @@ export default function OrdersPage() {
                             }}
                             title="מעבר להשכרה/החזרה"
                           >
-                            <Shirt size={18} />
+                            <Shirt data-element-name="רכיב_page_59" size={18} />
                           </button>
-                          <button data-agy-id="orders_page_button_19" 
+                          <button data-element-name="כפתור_page_60" data-agy-id="orders_page_button_19" 
                             className="btn btn-outline" 
                             style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: '1px solid var(--error-border, #fee2e2)', cursor: 'pointer', backgroundColor: 'var(--error-bg, rgba(239, 68, 68, 0.1))', color: 'var(--error-color, #ef4444)' }}
                             onClick={(e) => handleDeleteOrder(order, e)}
                             title="מחיקת הזמנה"
                           >
-                            <Trash2 size={18} />
+                            <Trash2 data-element-name="רכיב_page_61" size={18} />
                           </button>
                         </td>
                       </tr>
@@ -498,9 +541,9 @@ export default function OrdersPage() {
                   
                   {totalPages > 1 && (
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
-                      <button data-agy-id="orders_page_button_22" className="btn btn-outline" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>הקודם &gt;</button>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input data-agy-id="orders_page_input_21" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} disabled={isAiModeActive} /> מתוך {totalPages}</span>
-                      <button data-agy-id="orders_page_button_20" className="btn btn-outline" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הבא</button>
+                      <button data-element-name="כפתור_page_62" data-agy-id="orders_page_button_22" className="btn btn-outline" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>הקודם &gt;</button>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input data-element-name="שדה_page_63" data-agy-id="orders_page_input_21" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} disabled={isAiModeActive} /> מתוך {totalPages}</span>
+                      <button data-element-name="כפתור_page_64" data-agy-id="orders_page_button_20" className="btn btn-outline" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הבא</button>
                     </div>
                   )}
                 </div>
@@ -511,13 +554,13 @@ export default function OrdersPage() {
       </div>
       
       {/* Modals */}
-      <CapacitySearchModal 
+      <CapacitySearchModal data-element-name="רכיב_page_65" 
         isOpen={showCapacitySearch} 
         onClose={() => setShowCapacitySearch(false)} 
       />
 
       {showPrintWizard && (
-        <PrintWizardModal 
+        <PrintWizardModal data-element-name="רכיב_page_66" 
           onClose={() => setShowPrintWizard(false)}
           defaultReportType="orders_all" 
         />
@@ -525,14 +568,14 @@ export default function OrdersPage() {
 
       {/* Rental Modal */}
       {rentalModalOrderId && (
-        <RentalReturnModal 
+        <RentalReturnModal data-element-name="רכיב_page_67" 
           orderId={rentalModalOrderId} 
           onClose={() => setRentalModalOrderId(null)} 
           onUpdate={fetchOrders}
         />
       )}
 
-      <StatisticsModal 
+      <StatisticsModal data-element-name="רכיב_page_68" 
         isOpen={!!showStatistics} 
         onClose={() => setShowStatistics(false)} 
         pageContext="orders"
@@ -546,7 +589,7 @@ export default function OrdersPage() {
           style={{ top: popoverPos.top, left: popoverPos.left }}
         >
           <div className="global-popoverHeader">
-            <Info size={18} />
+            <Info data-element-name="רכיב_page_69" size={18} />
             הזמנה #{hoveredOrder.orderId}
           </div>
           <div className="global-popoverRow">
@@ -554,28 +597,28 @@ export default function OrdersPage() {
             <span>{hoveredOrder.customerName}</span>
           </div>
           <div className="global-popoverRow">
-            <span><Phone size={14} /> טלפון:</span>
+            <span><Phone data-element-name="רכיב_page_70" size={14} /> טלפון:</span>
             <span dir="ltr">{hoveredOrder.customerPhone || 'לא הוזן'}</span>
           </div>
           <div className="global-popoverRow">
-            <span><CalendarIcon2 size={14} /> תאריך עברי:</span>
+            <span><CalendarIcon2 data-element-name="רכיב_page_71" size={14} /> תאריך עברי:</span>
             <span>{hoveredOrder.eventDateHebrew || 'לא צוין'}</span>
           </div>
 
           <div className="global-popoverRow">
-            <span><Shirt size={14} /> הושכר:</span>
+            <span><Shirt data-element-name="רכיב_page_72" size={14} /> הושכר:</span>
             <span>{hoveredOrder.items ? hoveredOrder.items.filter(i => !i.isDeleted && i.isTaken).length : 0}</span>
           </div>
           <div className="global-popoverRow">
-            <span><Shirt size={14} /> הוחזר:</span>
+            <span><Shirt data-element-name="רכיב_page_73" size={14} /> הוחזר:</span>
             <span>{hoveredOrder.items ? hoveredOrder.items.filter(i => !i.isDeleted && i.isReturned).length : 0}</span>
           </div>
           <div className="global-popoverRow">
-            <span><CreditCard size={14} /> סה"כ לתשלום:</span>
+            <span><CreditCard data-element-name="רכיב_page_74" size={14} /> סה"כ לתשלום:</span>
             <span>₪{hoveredOrder.totalAmount || 0}</span>
           </div>
           <div className="global-popoverRow">
-            <span><CheckCircle2 size={14} /> שולם:</span>
+            <span><CheckCircle2 data-element-name="רכיב_page_75" size={14} /> שולם:</span>
             <span style={{ color: hoveredOrder.totalPaid >= hoveredOrder.totalAmount && hoveredOrder.totalAmount > 0 ? 'var(--success-color, #10b981)' : (hoveredOrder.totalPaid > 0 ? 'var(--warning-color, #f59e0b)' : 'var(--error-color, #ef4444)'), fontWeight: 'bold' }}>
               ₪{hoveredOrder.totalPaid || 0}
             </span>

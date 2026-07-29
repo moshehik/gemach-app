@@ -12,7 +12,7 @@ function StatusSummary({ summary }) {
 
   return (
     <div style={{ position: 'relative', display: 'inline-block', marginRight: '8px' }}>
-      <button 
+      <button data-element-name="כפתור_page_1" 
         onClick={() => setIsOpen(!isOpen)}
         style={{
           background: 'none',
@@ -82,7 +82,7 @@ function AlertOrdersModal({ orders, onClose }) {
       }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
           <h3 style={{ margin: 0, color: '#0f172a' }}>הזמנות מעורבות</h3>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>×</button>
+          <button data-element-name="כפתור_page_2" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>×</button>
         </div>
         
         <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '16px' }}>
@@ -91,7 +91,7 @@ function AlertOrdersModal({ orders, onClose }) {
 
         <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
           {orders.map(oid => (
-            <Link 
+            <Link data-element-name="רכיב_page_3" 
               key={oid} 
               href={`/orders/${oid}`} 
               target="_blank"
@@ -146,7 +146,7 @@ export default function InventoryAlertsPage() {
     <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', direction: 'rtl' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: '#0f172a', margin: 0, fontSize: '2rem' }}>התראות ובדיקות מלאי</h1>
-        <Link 
+        <Link data-element-name="רכיב_page_4" 
           href="/admin" 
           style={{ 
             textDecoration: 'none', color: '#64748b', backgroundColor: '#f1f5f9', 
@@ -190,7 +190,7 @@ export default function InventoryAlertsPage() {
                   <td style={{ padding: '16px', color: '#334155' }}>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       {alert.sizeText}
-                      <StatusSummary summary={alert.statusSummary} />
+                      <StatusSummary data-element-name="רכיב_page_5" summary={alert.statusSummary} />
                     </div>
                   </td>
                   <td style={{ padding: '16px', color: '#b91c1c', fontWeight: '500' }}>
@@ -200,7 +200,7 @@ export default function InventoryAlertsPage() {
                   <td style={{ padding: '16px', textAlign: 'center', color: '#0f172a', fontWeight: '500' }}>{alert.inStock}</td>
                   <td style={{ padding: '16px', textAlign: 'center', color: '#b91c1c', fontWeight: 'bold' }}>{alert.demanded}</td>
                   <td style={{ padding: '16px', textAlign: 'center' }}>
-                    <button
+                    <button data-element-name="כפתור_page_6"
                       onClick={() => setSelectedOrders(alert.orders)}
                       style={{
                         backgroundColor: '#ef4444',
@@ -226,7 +226,7 @@ export default function InventoryAlertsPage() {
       )}
 
       {selectedOrders && (
-        <AlertOrdersModal orders={selectedOrders} onClose={() => setSelectedOrders(null)} />
+        <AlertOrdersModal data-element-name="רכיב_page_7" orders={selectedOrders} onClose={() => setSelectedOrders(null)} />
       )}
     </div>
   );

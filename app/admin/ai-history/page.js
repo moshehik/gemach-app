@@ -55,15 +55,15 @@ export default function AiHistoryPage() {
   return (
     <div className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <Link href="/admin" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px', textDecoration: 'none' }}>
-          <ArrowLeft size={18} /> חזרה
+        <Link data-element-name="רכיב_page_1" href="/admin" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px', textDecoration: 'none' }}>
+          <ArrowLeft data-element-name="רכיב_page_2" size={18} /> חזרה
         </Link>
         <h1 style={{ margin: 0, color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <Bot size={28} /> היסטוריית שיחות AI
+          <Bot data-element-name="רכיב_page_3" size={28} /> היסטוריית שיחות AI
         </h1>
         <div style={{ flex: 1 }}></div>
-        <button onClick={fetchSessions} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px' }}>
-          <RefreshCw size={18} /> רענן
+        <button data-element-name="כפתור_page_4" onClick={fetchSessions} className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px' }}>
+          <RefreshCw data-element-name="רכיב_page_5" size={18} /> רענן
         </button>
       </div>
 
@@ -87,7 +87,7 @@ export default function AiHistoryPage() {
               {loading ? (
                 <tr>
                   <td colSpan="5" style={{ textAlign: 'center', padding: '3rem' }}>
-                    <Loader2 size={32} className="animate-spin" color="var(--primary-color)" style={{ margin: '0 auto' }} />
+                    <Loader2 data-element-name="רכיב_page_6" size={32} className="animate-spin" color="var(--primary-color)" style={{ margin: '0 auto' }} />
                   </td>
                 </tr>
               ) : sessions.length === 0 ? (
@@ -107,7 +107,7 @@ export default function AiHistoryPage() {
                     <tr key={session.id} style={{ borderBottom: '1px solid #f1f5f9' }} className="table-row-hover">
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <Calendar size={16} color="var(--text-muted)" />
+                          <Calendar data-element-name="רכיב_page_7" size={16} color="var(--text-muted)" />
                           {new Date(session.startedAt).toLocaleString('he-IL')}
                         </div>
                       </td>
@@ -125,7 +125,7 @@ export default function AiHistoryPage() {
                       </td>
                       <td style={{ padding: '1rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <User size={16} color="var(--text-muted)" />
+                          <User data-element-name="רכיב_page_8" size={16} color="var(--text-muted)" />
                           {session.employee ? `${session.employee.firstName} ${session.employee.lastName || ''}` : 'לא ידוע'}
                         </div>
                       </td>
@@ -133,7 +133,7 @@ export default function AiHistoryPage() {
                         <div style={{ fontWeight: 'bold' }}>{msgCount} הודעות</div>
                       </td>
                       <td style={{ padding: '1rem' }}>
-                        <button 
+                        <button data-element-name="כפתור_page_9" 
                           onClick={() => viewSession(session)}
                           style={{ 
                             background: '#eff6ff', 
@@ -148,7 +148,7 @@ export default function AiHistoryPage() {
                             fontWeight: '500'
                           }}
                         >
-                          <Eye size={16} /> צפה בשיחה
+                          <Eye data-element-name="רכיב_page_10" size={16} /> צפה בשיחה
                         </button>
                       </td>
                     </tr>
@@ -162,9 +162,9 @@ export default function AiHistoryPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '1.5rem', gap: '0.5rem', background: 'var(--element-bg)' }}>
-            <button disabled={page === 1} onClick={() => setPage(page - 1)} className="btn btn-outline" style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}>הקודם</button>
-            <span style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', fontWeight: 'bold', gap: '0.5rem' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }} /> מתוך {totalPages}</span>
-            <button disabled={page === totalPages} onClick={() => setPage(page + 1)} className="btn btn-outline" style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}>הבא</button>
+            <button data-element-name="כפתור_page_11" disabled={page === 1} onClick={() => setPage(page - 1)} className="btn btn-outline" style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}>הקודם</button>
+            <span style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', fontWeight: 'bold', gap: '0.5rem' }}>עמוד <input data-element-name="שדה_page_12" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }} /> מתוך {totalPages}</span>
+            <button data-element-name="כפתור_page_13" disabled={page === totalPages} onClick={() => setPage(page + 1)} className="btn btn-outline" style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}>הבא</button>
           </div>
         )}
       </div>
@@ -188,7 +188,7 @@ export default function AiHistoryPage() {
             }}>
               <div>
                 <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <Bot size={24} color="#38bdf8" />
+                  <Bot data-element-name="רכיב_page_14" size={24} color="#38bdf8" />
                   תיעוד שיחת AI
                 </h2>
                 <div style={{ fontSize: '0.9rem', color: '#cbd5e1', marginTop: '0.5rem' }}>
@@ -197,8 +197,8 @@ export default function AiHistoryPage() {
                   תאריך: {new Date(selectedSession.startedAt).toLocaleString('he-IL')}
                 </div>
               </div>
-              <button onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0.5rem' }}>
-                <ArrowLeft size={24} />
+              <button data-element-name="כפתור_page_15" onClick={() => setIsModalOpen(false)} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', padding: '0.5rem' }}>
+                <ArrowLeft data-element-name="רכיב_page_16" size={24} />
               </button>
             </div>
             
@@ -217,7 +217,7 @@ export default function AiHistoryPage() {
                   }}>
                     {msg.role !== 'user' && (
                       <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6', flexShrink: 0 }}>
-                        <Bot size={20} />
+                        <Bot data-element-name="רכיב_page_17" size={20} />
                       </div>
                     )}
                     <div style={{ 
@@ -234,7 +234,7 @@ export default function AiHistoryPage() {
                       border: msg.role !== 'user' ? '1px solid #e2e8f0' : 'none',
                       fontSize: '1.05rem'
                     }}>
-                      <FormattedMessage content={msg.content} />
+                      <FormattedMessage data-element-name="רכיב_page_18" content={msg.content} />
                     </div>
                   </div>
                 ));

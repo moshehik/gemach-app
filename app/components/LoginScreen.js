@@ -127,8 +127,8 @@ export default function LoginScreen({ isModal = false, onClose }) {
         boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 40px rgba(59, 130, 246, 0.1)'
       }}>
         {isModal && onClose && (
-          <button onClick={() => onClose(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', transition: 'color 0.2s' }} onMouseOver={e => e.currentTarget.style.color='white'} onMouseOut={e => e.currentTarget.style.color='#94a3b8'}>
-             <X size={24} />
+          <button data-element-name="כפתור_LoginScreen_1" onClick={() => onClose(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', transition: 'color 0.2s' }} onMouseOver={e => e.currentTarget.style.color='white'} onMouseOut={e => e.currentTarget.style.color='#94a3b8'}>
+             <X data-element-name="רכיב_LoginScreen_2" size={24} />
           </button>
         )}
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
@@ -144,7 +144,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
             boxShadow: '0 10px 25px rgba(37, 99, 235, 0.4), inset 0 2px 4px rgba(255,255,255,0.3)',
             transform: 'rotate(-5deg)'
           }}>
-            <Lock size={34} color="white" strokeWidth={2.5} style={{ transform: 'rotate(5deg)' }} />
+            <Lock data-element-name="רכיב_LoginScreen_3" size={34} color="white" strokeWidth={2.5} style={{ transform: 'rotate(5deg)' }} />
           </div>
           <h2 style={{ fontSize: '2.1rem', fontWeight: '800', color: 'white', margin: '0 0 0.5rem 0', letterSpacing: '-0.025em' }}>
             כניסת עובדים
@@ -177,7 +177,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
               שם העובד
             </label>
             <div style={{ position: 'relative' }}>
-              <input
+              <input data-element-name="שדה_LoginScreen_4"
                 type="text"
                 value={searchTerm}
                 onChange={(e) => {
@@ -209,9 +209,9 @@ export default function LoginScreen({ isModal = false, onClose }) {
                 }}
               />
               {isFetchingEmployees ? (
-                <Loader2 size={20} color="#3b82f6" style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', animation: 'spin 1s linear infinite' }} />
+                <Loader2 data-element-name="רכיב_LoginScreen_5" size={20} color="#3b82f6" style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', animation: 'spin 1s linear infinite' }} />
               ) : (
-                <User 
+                <User data-element-name="לחיץ_LoginScreen_6" 
                   size={20} 
                   color={selectedEmployee ? '#3b82f6' : '#64748b'} 
                   style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s', cursor: 'pointer' }} 
@@ -236,7 +236,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
                 }}>
                   {employees.filter(emp => `${emp.firstName} ${emp.lastName}`.includes(searchTerm)).length > 0 ? (
                     employees.filter(emp => `${emp.firstName} ${emp.lastName}`.includes(searchTerm)).map(emp => (
-                      <div
+                      <div data-element-name="לחיץ_LoginScreen_7"
                         key={emp.id}
                         onClick={() => {
                           setSelectedEmployee(emp.id);
@@ -273,7 +273,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
               קוד כניסה
             </label>
             <div style={{ position: 'relative' }}>
-              <input
+              <input data-element-name="שדה_LoginScreen_8"
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -293,11 +293,11 @@ export default function LoginScreen({ isModal = false, onClose }) {
                 onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)'; }}
                 onBlur={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.target.style.boxShadow = 'none'; }}
               />
-              <Lock size={20} color={password ? '#3b82f6' : '#64748b'} style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }} />
+              <Lock data-element-name="רכיב_LoginScreen_9" size={20} color={password ? '#3b82f6' : '#64748b'} style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }} />
             </div>
           </div>
 
-          <button
+          <button data-element-name="כפתור_LoginScreen_10"
             type="submit"
             disabled={loading}
             style={{
@@ -328,7 +328,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
               <span style={{ display: 'inline-block', width: '22px', height: '22px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
             ) : (
               <>
-                <LogIn size={22} />
+                <LogIn data-element-name="רכיב_LoginScreen_11" size={22} />
                 היכנס למערכת
               </>
             )}

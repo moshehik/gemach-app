@@ -117,7 +117,7 @@ export default function PrintDressCard() {
       `}} />
 
       <div className="no-print" style={{ marginBottom: '1rem', textAlign: 'left' }}>
-        <button onClick={() => window.print()} style={{ padding: '0.5rem 1rem', background: '#1976d2', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
+        <button data-element-name="כפתור_page_1" onClick={() => window.print()} style={{ padding: '0.5rem 1rem', background: '#1976d2', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>
           הדפס כרטיס
         </button>
       </div>

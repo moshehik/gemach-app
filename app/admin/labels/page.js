@@ -133,7 +133,7 @@ export default function LabelsAdminPage() {
         </div>
         
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button
+          <button data-element-name="כפתור_page_1"
             onClick={handleResetToDefaults}
             style={{
               padding: '0.5rem 1rem',
@@ -147,11 +147,11 @@ export default function LabelsAdminPage() {
               gap: '0.5rem'
             }}
           >
-            <RefreshCw size={18} />
+            <RefreshCw data-element-name="רכיב_page_2" size={18} />
             שחזר ברירת מחדל
           </button>
           
-          <button
+          <button data-element-name="כפתור_page_3"
             onClick={handleSave}
             disabled={isSaving}
             style={{
@@ -168,9 +168,9 @@ export default function LabelsAdminPage() {
               transition: 'background-color 0.3s'
             }}
           >
-            {isSaving ? <RefreshCw size={18} className="animate-spin" /> : 
-             saveSuccess ? <Check size={18} /> : 
-             <Save size={18} />}
+            {isSaving ? <RefreshCw data-element-name="רכיב_page_4" size={18} className="animate-spin" /> : 
+             saveSuccess ? <Check data-element-name="רכיב_page_5" size={18} /> : 
+             <Save data-element-name="רכיב_page_6" size={18} />}
             {isSaving ? 'שומר...' : saveSuccess ? 'נשמר בהצלחה!' : 'שמור שינויים'}
           </button>
         </div>
@@ -190,7 +190,7 @@ export default function LabelsAdminPage() {
           overflowX: 'auto'
         }}>
           {CATEGORIES.map(category => (
-            <button
+            <button data-element-name="כפתור_page_7"
               key={category.id}
               onClick={() => setActiveTab(category.id)}
               style={{
@@ -225,7 +225,7 @@ export default function LabelsAdminPage() {
                 }}>
                   {DEFAULT_LABELS[key] || key} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 'normal' }}>({key})</span>
                 </label>
-                <input
+                <input data-element-name="שדה_page_8"
                   type="text"
                   value={localLabels[key] || ''}
                   onChange={(e) => handleLabelChange(key, e.target.value)}

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import OrderModelSelector from './OrderModelSelector';
 import OrderSizeSelector from './OrderSizeSelector';
-import { Info, Trash2, RotateCcw, CalendarSearch, ChevronDown, ChevronUp } from 'lucide-react';
+import { Info, Trash2, RotateCcw, CalendarSearch, ChevronDown, ChevronUp, Edit2, X } from 'lucide-react';
 import ItemCapacityModal from './ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
 import { createPortal } from 'react-dom';
@@ -72,8 +72,12 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
         return;
       }
 
-      const res = await fetch(`/api/orders/${orderId}/items`, {
-        method: 'POST',
+      const isEditing = !!item.id && !item.isNew;
+      const url = isEditing ? `/api/orders/${orderId}/items/${item.id}` : `/api/orders/${orderId}/items`;
+      const method = isEditing ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(item)
       });
@@ -108,6 +112,41 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       description: model.name, // temporary for display before save
       sizeText: '' // clear size when model changes
     };
+    onItemsChange(updatedItems);
+  };
+
+  const handleEditItem = (index) => {
+    const item = items[index];
+    if (item.isTaken && !item.isReturned) {
+      alert('לא ניתן לערוך דגם ומידה לפריט שכבר נלקח (מושכר).');
+      return;
+    }
+    const updatedItems = [...items];
+    updatedItems[index] = { 
+      ...item, 
+      isEditing: true,
+      originalState: { ...item },
+      dressModelId: item.dressModelId || item.dressItem?.dressModelId,
+      sizeText: item.sizeText || item.dressItem?.sizeText || item.dressItem?.size || '',
+      description: item.description || item.dressItem?.dress?.name || ''
+    };
+    onItemsChange(updatedItems);
+  };
+
+  const cancelEditItem = (index) => {
+    const updatedItems = [...items];
+    const original = updatedItems[index].originalState;
+    if (original) {
+      updatedItems[index] = { ...original };
+    } else {
+      updatedItems[index] = { ...updatedItems[index], isEditing: false };
+    }
+    onItemsChange(updatedItems);
+  };
+
+  const cancelNewItem = (index) => {
+    const updatedItems = [...items];
+    updatedItems.splice(index, 1);
     onItemsChange(updatedItems);
   };
 
@@ -292,16 +331,19 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                 const isRented = item.isTaken && !item.isReturned;
                 const isReturned = item.isReturned;
                 
+                const isEditingMode = item.isNew || item.isEditing;
+                
                 const rowStyle = {
                   borderBottom: '1px solid #f1f5f9',
                   opacity: isDeletedRow ? 0.6 : 1,
-                  backgroundColor: isDeletedRow ? '#f8fafc' : isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'white',
+                  backgroundColor: isDeletedRow ? '#f8fafc' : isEditingMode ? '#fffbeb' : isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'white',
                   transition: 'all 0.2s',
-                  fontWeight: isRented ? 'bold' : 'normal'
+                  fontWeight: isRented ? 'bold' : 'normal',
+                  boxShadow: isEditingMode ? 'inset -4px 0 0 #f59e0b' : 'none'
                 };
 
                 return (
-                  <tr key={item.id || originalIndex} style={rowStyle} onMouseEnter={(e) => !isDeletedRow && (e.currentTarget.style.backgroundColor = isRented ? '#dbeafe' : isReturned ? '#dcfce7' : '#f8fafc')} onMouseLeave={(e) => !isDeletedRow && (e.currentTarget.style.backgroundColor = isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'white')}>
+                  <tr key={item.id || originalIndex} style={rowStyle} onMouseEnter={(e) => !isDeletedRow && (e.currentTarget.style.backgroundColor = isEditingMode ? '#fef3c7' : isRented ? '#dbeafe' : isReturned ? '#dcfce7' : '#f8fafc')} onMouseLeave={(e) => !isDeletedRow && (e.currentTarget.style.backgroundColor = isEditingMode ? '#fffbeb' : isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'white')}>
                     <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
                       <button data-agy-id="orderitemsmanager_button_2" 
                         onClick={(e) => {
@@ -336,9 +378,9 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                       </button>
                     </td>
                     <td style={{ padding: '1rem', fontWeight: 'bold', color: '#1e293b' }}>
-                      {item.isNew ? (
+                      {item.isNew || item.isEditing ? (
                         <OrderModelSelector 
-                          value={item} 
+                          value={{ name: item.description, id: item.dressModelId }} 
                           onChange={(model) => handleModelChange(originalIndex, model)} 
                         />
                       ) : (
@@ -348,7 +390,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                       )}
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      {item.isNew ? (
+                      {item.isNew || item.isEditing ? (
                         <OrderSizeSelector 
                           modelId={item.dressModelId} 
                           order={order}
@@ -371,8 +413,8 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                             type="checkbox" 
                             checked={item.neckAlteration === 1 || item.neckAlteration === true} 
                             onChange={(e) => handleItemChange(originalIndex, 'neckAlteration', e.target.checked ? 1 : 0)}
-                            disabled={!item.isNew}
-                            style={{ transform: 'scale(1.4)', cursor: !item.isNew ? 'not-allowed' : 'pointer', opacity: !item.isNew ? 0.6 : 1, accentColor: '#3b82f6' }}
+                            disabled={!item.isNew && !item.isEditing}
+                            style={{ transform: 'scale(1.4)', cursor: (!item.isNew && !item.isEditing) ? 'not-allowed' : 'pointer', opacity: (!item.isNew && !item.isEditing) ? 0.6 : 1, accentColor: '#3b82f6' }}
                           />
                         </td>
                         <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
@@ -380,8 +422,8 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                             type="checkbox" 
                             checked={item.sleeveAlteration === 1 || item.sleeveAlteration === true} 
                             onChange={(e) => handleItemChange(originalIndex, 'sleeveAlteration', e.target.checked ? 1 : 0)}
-                            disabled={!item.isNew}
-                            style={{ transform: 'scale(1.4)', cursor: !item.isNew ? 'not-allowed' : 'pointer', opacity: !item.isNew ? 0.6 : 1, accentColor: '#3b82f6' }}
+                            disabled={!item.isNew && !item.isEditing}
+                            style={{ transform: 'scale(1.4)', cursor: (!item.isNew && !item.isEditing) ? 'not-allowed' : 'pointer', opacity: (!item.isNew && !item.isEditing) ? 0.6 : 1, accentColor: '#3b82f6' }}
                           />
                         </td>
                         <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
@@ -389,8 +431,8 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                             type="number" 
                             value={item.lengthAlteration || ''} 
                             onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
-                            disabled={!item.isNew}
-                            style={{ ...inputStyle, width: '60px', padding: '0.5rem', backgroundColor: !item.isNew ? '#f1f5f9' : 'white', cursor: !item.isNew ? 'not-allowed' : 'text' }}
+                            disabled={!item.isNew && !item.isEditing}
+                            style={{ ...inputStyle, width: '60px', padding: '0.5rem', backgroundColor: (!item.isNew && !item.isEditing) ? '#f1f5f9' : 'white', cursor: (!item.isNew && !item.isEditing) ? 'not-allowed' : 'text' }}
                             placeholder="-"
                           />
                         </td>
@@ -399,7 +441,8 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                             type="text" 
                             value={item.alterationDetails || item.repairs || ''} 
                             onChange={(e) => handleItemChange(originalIndex, 'alterationDetails', e.target.value)}
-                            style={{ ...inputStyle, textAlign: 'right' }}
+                            disabled={!item.isNew && !item.isEditing}
+                            style={{ ...inputStyle, textAlign: 'right', backgroundColor: (!item.isNew && !item.isEditing) ? '#f1f5f9' : 'white', cursor: (!item.isNew && !item.isEditing) ? 'not-allowed' : 'text' }}
                             placeholder="הערות לתיקון..."
                           />
                         </td>
@@ -414,39 +457,85 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                       </>
                     )}
                     <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                      {item.isNew ? (
-                        <button data-agy-id="orderitemsmanager_button_9" 
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleConfirmItem(originalIndex);
-                          }}
-                          disabled={savingItemIndex === originalIndex}
-                          style={{ 
-                            background: 'linear-gradient(to right, #10b981, #22c55e)', 
-                            color: 'white', 
-                            border: 'none', 
-                            borderRadius: '8px',
-                            cursor: savingItemIndex === originalIndex ? 'not-allowed' : 'pointer', 
-                            padding: '0.6rem 1rem',
-                            fontWeight: 'bold',
-                            opacity: savingItemIndex === originalIndex ? 0.7 : 1,
-                            width: '100%',
-                            minWidth: '90px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            gap: '0.4rem',
-                            boxShadow: savingItemIndex !== null ? 'none' : '0 4px 6px rgba(16, 185, 129, 0.2)',
-                            transition: 'all 0.2s'
-                          }}
-                          title="אישור ושמירת פריט"
-                        >
-                          {savingItemIndex === originalIndex ? '⏳ שומר...' : '✔️ אישור'}
-                        </button>
+                      {item.isNew || item.isEditing ? (
+                        <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                          <button data-agy-id="orderitemsmanager_button_9" 
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleConfirmItem(originalIndex);
+                            }}
+                            disabled={savingItemIndex === originalIndex}
+                            style={{ 
+                              background: 'linear-gradient(to right, #10b981, #22c55e)', 
+                              color: 'white', 
+                              border: 'none', 
+                              borderRadius: '8px',
+                              cursor: savingItemIndex === originalIndex ? 'not-allowed' : 'pointer', 
+                              padding: '0.6rem 0.8rem',
+                              fontWeight: 'bold',
+                              opacity: savingItemIndex === originalIndex ? 0.7 : 1,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: savingItemIndex !== null ? 'none' : '0 4px 6px rgba(16, 185, 129, 0.2)',
+                              transition: 'all 0.2s'
+                            }}
+                            title="אישור ושמירת פריט"
+                          >
+                            {savingItemIndex === originalIndex ? '⏳...' : '✔️'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              if (item.isNew) cancelNewItem(originalIndex);
+                              else cancelEditItem(originalIndex);
+                            }}
+                            disabled={savingItemIndex === originalIndex}
+                            style={{
+                              background: '#fef2f2', 
+                              color: '#ef4444', 
+                              border: '1px solid #fecaca', 
+                              borderRadius: '8px',
+                              cursor: savingItemIndex === originalIndex ? 'not-allowed' : 'pointer', 
+                              padding: '0.6rem 0.8rem',
+                              fontWeight: 'bold',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              transition: 'all 0.2s'
+                            }}
+                            title="ביטול"
+                          >
+                            <X size={18} strokeWidth={2.5} />
+                          </button>
+                        </div>
                       ) : (
-                        <div style={{ display: 'flex', gap: '0.8rem', justifyContent: 'center' }}>
+                        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                          <button 
+                            type="button"
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditItem(originalIndex); }}
+                            style={{ 
+                              background: '#fffbeb', 
+                              border: '1px solid #fde68a',
+                              cursor: 'pointer', 
+                              color: '#d97706',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              padding: '0.5rem',
+                              borderRadius: '8px',
+                              transition: 'all 0.2s ease',
+                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                            }}
+                            title="ערוך פריט"
+                          >
+                            <Edit2 size={18} strokeWidth={2.5} />
+                          </button>
+
                           <button data-agy-id="orderitemsmanager_button_10" 
                             type="button"
                             onClick={(e) => { e.preventDefault(); e.stopPropagation(); showItemDetails(item); }}

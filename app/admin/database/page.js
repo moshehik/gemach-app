@@ -65,7 +65,7 @@ export default function DatabaseManagement() {
   return (
     <div className="container" style={{ paddingTop: '2rem' }}>
       <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <Link href="/admin" className="btn-secondary" style={{ textDecoration: 'none' }}>
+        <Link data-element-name="רכיב_page_1" href="/admin" className="btn-secondary" style={{ textDecoration: 'none' }}>
           &larr; חזרה לניהול
         </Link>
         <h1 style={{ margin: 0 }}>ניהול מסד נתונים</h1>
@@ -79,7 +79,7 @@ export default function DatabaseManagement() {
         </p>
 
         <div style={{ marginBottom: '1.5rem' }}>
-          <input 
+          <input data-element-name="שדה_page_2" 
             type="file" 
             accept=".accdb" 
             onChange={handleFileChange} 
@@ -88,7 +88,7 @@ export default function DatabaseManagement() {
           />
         </div>
 
-        <button 
+        <button data-element-name="כפתור_page_3" 
           className="btn-primary" 
           onClick={handleUpload} 
           disabled={!file || uploading}

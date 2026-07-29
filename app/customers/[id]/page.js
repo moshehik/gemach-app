@@ -84,7 +84,7 @@ export default function CustomerPage({ params }) {
   return (
     <main data-agy-id="customer_profile_main_container" className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1000px' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <button data-agy-id="customer_back_btn" type="button" onClick={() => router.back()} className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
+        <button data-element-name="כפתור_page_1" data-agy-id="customer_back_btn" type="button" onClick={() => router.back()} className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
           →
         </button>
         <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>
@@ -94,7 +94,7 @@ export default function CustomerPage({ params }) {
 
       {id !== 'new' && (
         <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #eee', marginBottom: '2rem' }}>
-          <button 
+          <button data-element-name="כפתור_page_2" 
             data-agy-id="customer_details_tab_btn"
             className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} 
             onClick={() => setActiveTab('details')}
@@ -102,7 +102,7 @@ export default function CustomerPage({ params }) {
           >
             פרטים אישיים
           </button>
-          <button 
+          <button data-element-name="כפתור_page_3" 
             data-agy-id="customer_orders_tab_btn"
             className={`tab-btn ${activeTab === 'orders' ? 'active' : ''}`} 
             onClick={() => setActiveTab('orders')}
@@ -110,7 +110,7 @@ export default function CustomerPage({ params }) {
           >
             הזמנות
           </button>
-          <button 
+          <button data-element-name="כפתור_page_4" 
             data-agy-id="customer_payments_tab_btn"
             className={`tab-btn ${activeTab === 'payments' ? 'active' : ''}`} 
             onClick={() => setActiveTab('payments')}
@@ -118,7 +118,7 @@ export default function CustomerPage({ params }) {
           >
             תשלומים
           </button>
-          <button 
+          <button data-element-name="כפתור_page_5" 
             data-agy-id="customer_refunds_tab_btn"
             className={`tab-btn ${activeTab === 'refunds' ? 'active' : ''}`} 
             onClick={() => setActiveTab('refunds')}
@@ -126,7 +126,7 @@ export default function CustomerPage({ params }) {
           >
             זיכויים ופרטי בנק
           </button>
-          <button 
+          <button data-element-name="כפתור_page_6" 
             data-agy-id="customer_history_tab_btn"
             className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} 
             onClick={() => setActiveTab('history')}
@@ -142,38 +142,38 @@ export default function CustomerPage({ params }) {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם פרטי *</label>
-              <input data-agy-id="customer_firstname_input" type="text" name="firstName" value={customer.firstName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-element-name="שדה_page_7" data-agy-id="customer_firstname_input" type="text" name="firstName" value={customer.firstName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם משפחה *</label>
-              <input data-agy-id="customer_lastname_input" type="text" name="lastName" value={customer.lastName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-element-name="שדה_page_8" data-agy-id="customer_lastname_input" type="text" name="lastName" value={customer.lastName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>טלפון נייד *</label>
-              <input data-agy-id="customer_phone1_input" type="text" name="phone1" value={customer.phone1 || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-element-name="שדה_page_9" data-agy-id="customer_phone1_input" type="text" name="phone1" value={customer.phone1 || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>טלפון נוסף</label>
-              <input data-agy-id="customer_phone2_input" type="text" name="phone2" value={customer.phone2 || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-element-name="שדה_page_10" data-agy-id="customer_phone2_input" type="text" name="phone2" value={customer.phone2 || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>דוא"ל</label>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input data-agy-id="customer_email_input" type="email" name="email" value={customer.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+                <input data-element-name="שדה_page_11" data-agy-id="customer_email_input" type="email" name="email" value={customer.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
                 {customer.email && (
                   <>
-                    <button data-agy-id="copy_email_btn" type="button" onClick={() => navigator.clipboard.writeText(customer.email)} title="העתק כתובת מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                      <Copy size={20} />
+                    <button data-element-name="כפתור_page_12" data-agy-id="copy_email_btn" type="button" onClick={() => navigator.clipboard.writeText(customer.email)} title="העתק כתובת מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+                      <Copy data-element-name="רכיב_page_13" size={20} />
                     </button>
-                    <button data-agy-id="send_email_btn" type="button" onClick={() => setEmailModalOpen(true)} title="שלח מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)' }}>
-                      <Mail size={20} />
+                    <button data-element-name="כפתור_page_14" data-agy-id="send_email_btn" type="button" onClick={() => setEmailModalOpen(true)} title="שלח מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)' }}>
+                      <Mail data-element-name="רכיב_page_15" size={20} />
                     </button>
                   </>
                 )}
               </div>
               {(!customer.email || !customer.email.includes('@')) && (
                 <div style={{ marginTop: '0.5rem' }}>
-                  <button
+                  <button data-element-name="כפתור_page_16"
                     data-agy-id="autocomplete_gmail_btn"
                     type="button"
                     onClick={() => {
@@ -200,25 +200,25 @@ export default function CustomerPage({ params }) {
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>עיר</label>
-              <input data-agy-id="customer_city_input" type="text" name="city" value={customer.city || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-element-name="שדה_page_17" data-agy-id="customer_city_input" type="text" name="city" value={customer.city || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>רחוב</label>
-              <input data-agy-id="customer_street_input" type="text" name="street" value={customer.street || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-element-name="שדה_page_18" data-agy-id="customer_street_input" type="text" name="street" value={customer.street || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>מספר בית</label>
-              <input data-agy-id="customer_housenum_input" type="number" name="houseNum" value={customer.houseNum || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+              <input data-element-name="שדה_page_19" data-agy-id="customer_housenum_input" type="number" name="houseNum" value={customer.houseNum || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
             </div>
           </div>
           
           <div className="form-group" style={{ marginTop: '1.5rem' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>הערות</label>
-            <textarea data-agy-id="customer_notes_textarea" name="notes" value={customer.notes || ''} onChange={handleChange} rows={4} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', resize: 'vertical' }} />
+            <textarea data-element-name="טקסט_page_20" data-agy-id="customer_notes_textarea" name="notes" value={customer.notes || ''} onChange={handleChange} rows={4} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', resize: 'vertical' }} />
           </div>
 
           <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-            <button data-agy-id="save_customer_btn" type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.75rem 2rem', borderRadius: '24px', fontSize: '1.1rem' }}>
+            <button data-element-name="כפתור_page_21" data-agy-id="save_customer_btn" type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.75rem 2rem', borderRadius: '24px', fontSize: '1.1rem' }}>
               {saving ? 'שומר...' : 'שמור פרטים'}
             </button>
           </div>
@@ -226,7 +226,7 @@ export default function CustomerPage({ params }) {
       )}
 
       {activeTab === 'history' && id !== 'new' && (
-        <HistoryViewer entityType="Customer" entityId={id} />
+        <HistoryViewer data-element-name="רכיב_page_22" entityType="Customer" entityId={id} />
       )}
 
       {activeTab === 'orders' && (
@@ -243,14 +243,14 @@ export default function CustomerPage({ params }) {
               </thead>
               <tbody>
                 {customer.orders.map(order => (
-                  <tr 
+                  <tr data-element-name="לחיץ_page_23" 
                     key={order.id} 
                     onClick={() => router.push(`/orders/${order.orderId}`)}
                     style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background-color 0.2s' }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(212, 175, 55, 0.05)'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <td style={{ padding: '1rem' }}><Link href={`/orders/${order.orderId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }}>{order.orderId}</Link></td>
+                    <td style={{ padding: '1rem' }}><Link data-element-name="לחיץ_page_24" href={`/orders/${order.orderId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }}>{order.orderId}</Link></td>
                     <td style={{ padding: '1rem' }}>{order.paymentDate ? new Date(order.paymentDate).toLocaleDateString('he-IL') : '-'}</td>
                     <td style={{ padding: '1rem' }}>{order.status || 'חדש'}</td>
                     <td style={{ padding: '1rem' }}>₪{order.totalAmount || 0}</td>
@@ -303,23 +303,23 @@ export default function CustomerPage({ params }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
               <div className="form-group">
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם בנק</label>
-                <input data-agy-id="customer_bankName_input" type="text" name="bankName" value={customer.bankName || ''} onChange={handleChange} placeholder="למשל: לאומי" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+                <input data-element-name="שדה_page_25" data-agy-id="customer_bankName_input" type="text" name="bankName" value={customer.bankName || ''} onChange={handleChange} placeholder="למשל: לאומי" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
               </div>
               <div className="form-group">
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>סניף</label>
-                <input data-agy-id="customer_bankBranch_input" type="text" name="bankBranch" value={customer.bankBranch || ''} onChange={handleChange} placeholder="מספר סניף" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+                <input data-element-name="שדה_page_26" data-agy-id="customer_bankBranch_input" type="text" name="bankBranch" value={customer.bankBranch || ''} onChange={handleChange} placeholder="מספר סניף" style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
               </div>
               <div className="form-group">
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>מספר חשבון</label>
-                <input data-agy-id="customer_bankAccount_input" type="text" name="bankAccount" value={customer.bankAccount || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+                <input data-element-name="שדה_page_27" data-agy-id="customer_bankAccount_input" type="text" name="bankAccount" value={customer.bankAccount || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
               </div>
               <div className="form-group">
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם בעל החשבון</label>
-                <input data-agy-id="customer_bankAccountName_input" type="text" name="bankAccountName" value={customer.bankAccountName || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+                <input data-element-name="שדה_page_28" data-agy-id="customer_bankAccountName_input" type="text" name="bankAccountName" value={customer.bankAccountName || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
               </div>
             </div>
             <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'flex-end' }}>
-              <button data-agy-id="save_bank_details_btn" type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.5rem 1.5rem', borderRadius: '12px' }}>
+              <button data-element-name="כפתור_page_29" data-agy-id="save_bank_details_btn" type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.5rem 1.5rem', borderRadius: '12px' }}>
                 {saving ? 'שומר...' : 'שמור פרטי בנק'}
               </button>
             </div>
@@ -345,7 +345,7 @@ export default function CustomerPage({ params }) {
                       <td style={{ padding: '1rem' }}>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</td>
                       <td style={{ padding: '1rem' }}>
                         {refund.orderId ? (
-                          <Link href={`/orders/${refund.orderId}`} style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }}>
+                          <Link data-element-name="רכיב_page_30" href={`/orders/${refund.orderId}`} style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }}>
                             {refund.orderId}
                           </Link>
                         ) : '-'}
@@ -376,7 +376,7 @@ export default function CustomerPage({ params }) {
       )}
 
       {id !== 'new' && (
-        <SendEmailModal 
+        <SendEmailModal data-element-name="רכיב_page_31" 
           isOpen={emailModalOpen} 
           onClose={() => setEmailModalOpen(false)} 
           defaultTo={customer.email} 

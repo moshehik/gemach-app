@@ -11,9 +11,9 @@ export default function DashboardCharts({ revenueByMethod, revenueTrend }) {
       <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }} data-agy-id="revenue_by_method_chart_container">
         <h3 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>התפלגות הכנסות לפי אמצעי תשלום</h3>
         <div style={{ height: '300px' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
+          <ResponsiveContainer data-element-name="רכיב_DashboardCharts_1" width="100%" height="100%">
+            <PieChart data-element-name="רכיב_DashboardCharts_2">
+              <Pie data-element-name="רכיב_DashboardCharts_3"
                 data={revenueByMethod}
                 cx="50%"
                 cy="50%"
@@ -25,10 +25,10 @@ export default function DashboardCharts({ revenueByMethod, revenueTrend }) {
                 label={({ method, percent }) => `${method} (${(percent * 100).toFixed(0)}%)`}
               >
                 {revenueByMethod.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  <Cell data-element-name="רכיב_DashboardCharts_4" key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value) => `₪${value}`} />
+              <Tooltip data-element-name="רכיב_DashboardCharts_5" formatter={(value) => `₪${value}`} />
             </PieChart>
           </ResponsiveContainer>
         </div>
@@ -37,16 +37,16 @@ export default function DashboardCharts({ revenueByMethod, revenueTrend }) {
       <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }} data-agy-id="revenue_trend_chart_container">
         <h3 style={{ marginBottom: '1.5rem', textAlign: 'center' }}>הכנסות לפי תאריך תשלום (תקופה אחרונה)</h3>
         <div style={{ height: '300px' }}>
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart
+          <ResponsiveContainer data-element-name="רכיב_DashboardCharts_6" width="100%" height="100%">
+            <BarChart data-element-name="רכיב_DashboardCharts_7"
               data={revenueTrend}
               margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
             >
-              <XAxis dataKey="date" />
-              <YAxis />
-              <Tooltip formatter={(value) => `₪${value}`} />
-              <Legend />
-              <Bar dataKey="revenue" name="הכנסות (₪)" fill="#c4a661" radius={[4, 4, 0, 0]} />
+              <XAxis data-element-name="רכיב_DashboardCharts_8" dataKey="date" />
+              <YAxis data-element-name="רכיב_DashboardCharts_9" />
+              <Tooltip data-element-name="רכיב_DashboardCharts_10" formatter={(value) => `₪${value}`} />
+              <Legend data-element-name="רכיב_DashboardCharts_11" />
+              <Bar data-element-name="רכיב_DashboardCharts_12" dataKey="revenue" name="הכנסות (₪)" fill="#c4a661" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>

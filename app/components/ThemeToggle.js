@@ -20,7 +20,7 @@ export default function ThemeToggle({ employeeId, initialTheme }) {
   };
 
   return (
-    <button
+    <button data-element-name="כפתור_ThemeToggle_1"
       onClick={toggleTheme}
       title={theme === 'light' ? 'עבור למצב כהה' : 'עבור למצב בהיר'}
       style={{
@@ -39,7 +39,7 @@ export default function ThemeToggle({ employeeId, initialTheme }) {
       onMouseOver={(e) => { e.currentTarget.style.opacity = '1'; e.currentTarget.style.color = 'var(--primary-color)'; e.currentTarget.style.transform = 'translateY(-2px)'; }}
       onMouseOut={(e) => { e.currentTarget.style.opacity = '0.85'; e.currentTarget.style.color = 'var(--text-main)'; e.currentTarget.style.transform = 'translateY(0)'; }}
     >
-      {theme === 'light' ? <Moon size={22} /> : <Sun size={22} />}
+      {theme === 'light' ? <Moon data-element-name="רכיב_ThemeToggle_2" size={22} /> : <Sun data-element-name="רכיב_ThemeToggle_3" size={22} />}
     </button>
   );
 }

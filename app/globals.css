@@ -1083,7 +1083,7 @@ button:disabled {
 .bg\-amber\-100 { background-color: #fef3c7; }
 .text\-amber\-700 { color: #b45309; }
 .text\-slate\-500 { color: #64748b; }
-.p\-1.5 { padding: 0.375rem; }
+.p\-1\.5 { padding: 0.375rem; }
 /* Missing hover: hover:bg-blue-50 */
 .rounded\-lg { border-radius: 0.5rem; }
 .border\-transparent { border-color: transparent; }
@@ -1094,7 +1094,7 @@ button:disabled {
 /* Missing: p-8 */
 .border\-t { border-top-width: 1px; }
 .justify\-end { justify-content: flex-end; }
-.py\-2.5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
+.py\-2\.5 { padding-top: 0.625rem; padding-bottom: 0.625rem; }
 /* Missing hover: hover:bg-slate-100 */
 .px\-8 { padding-left: 2rem; padding-right: 2rem; }
 .bg\-blue\-600 { background-color: #2563eb; }
@@ -1127,7 +1127,7 @@ button:disabled {
 .pb\-2 { padding-bottom: 0.5rem; }
 .space\-y\-3 > :not([hidden]) ~ :not([hidden]) { margin-top: 0.75rem; margin-bottom: 0; }
 .mb\-2 { margin-bottom: 0.5rem; }
-.py\-0.5 { padding-top: 0.125rem; padding-bottom: 0.125rem; }
+.py\-0\.5 { padding-top: 0.125rem; padding-bottom: 0.125rem; }
 .break\-words { overflow-wrap: break-word; }
 .p\-2 { padding: 0.5rem; }
 .bg\-gradient\-to\-r { background-image: linear-gradient(to right, var(--tw-gradient-stops)); }
@@ -1364,4 +1364,7 @@ thead th, th {
 
 /* Hide Gregorian Calendar Setting */
 body.hide-gregorian-calendar .gregorian-calendar-toggle { display: none !important; }
+
+/* Hide AI Features Setting */
+body.hide-ai-features .ai-feature-element { display: none !important; }
 

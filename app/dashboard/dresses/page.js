@@ -7,6 +7,8 @@ import HebrewDatePicker from '../../../components/HebrewDatePicker';
 import { Info, ExternalLink, RefreshCw, Trash2, Printer, CheckCircle, XCircle, List, ArrowUp, ArrowDown, ArrowUpDown, X, Save, Search, Filter, Wrench } from 'lucide-react';
 import { useLabels } from '@/app/components/LabelsContext';
 
+const dressesCache = new Map();
+
 export default function DressesManagement() {
   const { getLabel } = useLabels();
   const [dresses, setDresses] = useState([]);
@@ -49,11 +51,11 @@ export default function DressesManagement() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalDresses, setTotalDresses] = useState(0);
 
-  const fetchDresses = async () => {
-    setLoading(true);
+  const fetchDresses = async (isPrefetch = false, targetPage = page) => {
+    if (!isPrefetch) setLoading(true);
     try {
       const queryParams = new URLSearchParams({
-        page,
+        page: targetPage,
         limit,
         filterStatus,
         search: catalogSearch,
@@ -68,26 +70,49 @@ export default function DressesManagement() {
         advItemDeleted: advancedFilters.itemDeleted
       });
 
+      const cacheKey = queryParams.toString();
+      
+      // SWR: Instant Cache Hit
+      if (!isPrefetch && dressesCache.has(cacheKey)) {
+        const cachedData = dressesCache.get(cacheKey);
+        setDresses(cachedData.data);
+        setTotalPages(cachedData.totalPages);
+        setTotalDresses(cachedData.total);
+        setLoading(false); // UI becomes interactive instantly
+      }
+
       const res = await fetch(`/api/dresses?${queryParams.toString()}`);
       const data = await res.json();
+      
+      let parsedData = [];
+      let parsedTotalPages = 1;
+      let parsedTotal = 0;
+      
       if (data && Array.isArray(data.data)) {
-        setDresses(data.data);
-        setTotalPages(data.totalPages || 1);
-        setTotalDresses(data.total || 0);
+        parsedData = data.data;
+        parsedTotalPages = data.totalPages || 1;
+        parsedTotal = data.total || 0;
       } else if (Array.isArray(data)) {
-        // Fallback if API wasn't updated
-        setDresses(data);
-        setTotalPages(1);
-        setTotalDresses(data.length);
+        parsedData = data;
+        parsedTotalPages = 1;
+        parsedTotal = data.length;
       } else {
         console.error('API returned non-array:', data);
-        setDresses([]);
+      }
+      
+      // Update Cache silently
+      dressesCache.set(cacheKey, { data: parsedData, totalPages: parsedTotalPages, total: parsedTotal });
+
+      if (!isPrefetch && targetPage === page) {
+        setDresses(parsedData);
+        setTotalPages(parsedTotalPages);
+        setTotalDresses(parsedTotal);
       }
     } catch (e) {
       console.error('Failed to fetch dresses:', e);
-      setDresses([]);
+      if (!isPrefetch) setDresses([]);
     } finally {
-      setLoading(false);
+      if (!isPrefetch) setLoading(false);
     }
   };
 
@@ -129,10 +154,18 @@ export default function DressesManagement() {
 
   useEffect(() => {
     const handler = setTimeout(() => {
-      fetchDresses();
+      fetchDresses(false, page);
+      
+      // Background Prefetching for the next page
+      const prefetchTimer = setTimeout(() => {
+        if (page < totalPages) {
+          fetchDresses(true, page + 1);
+        }
+      }, 1500);
+      
     }, 400); // Debounce API calls
     return () => clearTimeout(handler);
-  }, [page, limit, filterStatus, catalogSearch, catalogSort, advancedFilters]);
+  }, [page, limit, filterStatus, catalogSearch, catalogSort, advancedFilters, totalPages]);
 
   // Reset page when filters change
   useEffect(() => {
@@ -685,7 +718,7 @@ export default function DressesManagement() {
           <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
               <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                <input 
+                <input data-element-name="שדה_page_1" 
                   type="text" 
                   placeholder="חיפוש טקסט חופשי..."
                   value={catalogSearch}
@@ -694,7 +727,7 @@ export default function DressesManagement() {
                   style={{ minWidth: '200px', padding: '0.5rem', paddingLeft: '2rem', borderRadius: '8px' }}
                 />
                 {catalogSearch && (
-                  <button
+                  <button data-element-name="כפתור_page_2"
                     onClick={() => setCatalogSearch('')}
                     style={{
                       position: 'absolute',
@@ -715,7 +748,7 @@ export default function DressesManagement() {
                   </button>
                 )}
               </div>
-              <button 
+              <button data-element-name="כפתור_page_3" 
                 onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
                 className="btn btn-outline" 
                 style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', background: showAdvancedFilters ? '#e3f2fd' : 'var(--card-bg)', borderColor: showAdvancedFilters ? '#1976d2' : 'var(--element-border)' }}
@@ -725,12 +758,12 @@ export default function DressesManagement() {
               </button>
             </div>
             <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
-              <button onClick={() => setFilterStatus('active')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'active' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'active' ? '#2e7d32' : 'var(--text-main)' }} title="דגמים פעילים"><CheckCircle size={20} /></button>
-              <button onClick={() => setFilterStatus('inactive')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'inactive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'inactive' ? '#f57c00' : 'var(--text-main)' }} title="לא פעילים"><XCircle size={20} /></button>
-              <button onClick={() => setFilterStatus('deleted')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : 'var(--text-main)' }} title="מחוקים"><Trash2 size={20} /></button>
-              <button onClick={() => setFilterStatus('all')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)' }} title="הצג הכל"><List size={20} /></button>
+              <button data-element-name="כפתור_page_4" onClick={() => setFilterStatus('active')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'active' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'active' ? '#2e7d32' : 'var(--text-main)' }} title="דגמים פעילים"><CheckCircle data-element-name="רכיב_page_5" size={20} /></button>
+              <button data-element-name="כפתור_page_6" onClick={() => setFilterStatus('inactive')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'inactive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'inactive' ? '#f57c00' : 'var(--text-main)' }} title="לא פעילים"><XCircle data-element-name="רכיב_page_7" size={20} /></button>
+              <button data-element-name="כפתור_page_8" onClick={() => setFilterStatus('deleted')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : 'var(--text-main)' }} title="מחוקים"><Trash2 data-element-name="רכיב_page_9" size={20} /></button>
+              <button data-element-name="כפתור_page_10" onClick={() => setFilterStatus('all')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)' }} title="הצג הכל"><List data-element-name="רכיב_page_11" size={20} /></button>
             </div>
-            <button onClick={handleNewModelClick} className="btn btn-primary" style={{ background: '#2e7d32', borderColor: '#2e7d32' }}>
+            <button data-element-name="כפתור_page_12" onClick={handleNewModelClick} className="btn btn-primary" style={{ background: '#2e7d32', borderColor: '#2e7d32' }}>
               + הוסף דגם חדש
             </button>
           </div>
@@ -740,25 +773,25 @@ export default function DressesManagement() {
           <div style={{ background: 'var(--element-bg)', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)', border: '1px solid var(--element-border)', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
             <div style={{ fontWeight: 'bold', color: '#1976d2', width: '100%' }}>סינון מתקדם:</div>
             
-            <input type="text" placeholder="שם דגם / קידומת" value={advancedFilters.name} onChange={e => setAdvancedFilters({...advancedFilters, name: e.target.value})} className="filter-select" style={{ minWidth: '150px' }} />
-            <input type="text" placeholder="מידה" value={advancedFilters.size} onChange={e => setAdvancedFilters({...advancedFilters, size: e.target.value})} className="filter-select" style={{ width: '80px' }} />
-            <input type="number" placeholder="מס' סידורי" value={advancedFilters.serialNumber} onChange={e => setAdvancedFilters({...advancedFilters, serialNumber: e.target.value})} className="filter-select" style={{ width: '100px' }} />
-            <input type="number" placeholder="השכרות מינימום" value={advancedFilters.rentalsCountMin} onChange={e => setAdvancedFilters({...advancedFilters, rentalsCountMin: e.target.value})} className="filter-select" style={{ width: '140px' }} />
+            <input data-element-name="שדה_page_13" type="text" placeholder="שם דגם / קידומת" value={advancedFilters.name} onChange={e => setAdvancedFilters({...advancedFilters, name: e.target.value})} className="filter-select" style={{ minWidth: '150px' }} />
+            <input data-element-name="שדה_page_14" type="text" placeholder="מידה" value={advancedFilters.size} onChange={e => setAdvancedFilters({...advancedFilters, size: e.target.value})} className="filter-select" style={{ width: '80px' }} />
+            <input data-element-name="שדה_page_15" type="number" placeholder="מס' סידורי" value={advancedFilters.serialNumber} onChange={e => setAdvancedFilters({...advancedFilters, serialNumber: e.target.value})} className="filter-select" style={{ width: '100px' }} />
+            <input data-element-name="שדה_page_16" type="number" placeholder="השכרות מינימום" value={advancedFilters.rentalsCountMin} onChange={e => setAdvancedFilters({...advancedFilters, rentalsCountMin: e.target.value})} className="filter-select" style={{ width: '140px' }} />
             
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'var(--card-bg)', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid var(--element-border)' }}>
-              <input type="checkbox" checked={advancedFilters.notInUse} onChange={e => setAdvancedFilters({...advancedFilters, notInUse: e.target.checked})} />
+              <input data-element-name="שדה_page_17" type="checkbox" checked={advancedFilters.notInUse} onChange={e => setAdvancedFilters({...advancedFilters, notInUse: e.target.checked})} />
               לא בשימוש (פריט)
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'var(--card-bg)', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid var(--element-border)' }}>
-              <input type="checkbox" checked={advancedFilters.inRepair} onChange={e => setAdvancedFilters({...advancedFilters, inRepair: e.target.checked})} />
+              <input data-element-name="שדה_page_18" type="checkbox" checked={advancedFilters.inRepair} onChange={e => setAdvancedFilters({...advancedFilters, inRepair: e.target.checked})} />
               בתיקון
             </label>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'var(--card-bg)', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid var(--element-border)' }}>
-              <input type="checkbox" checked={advancedFilters.itemDeleted} onChange={e => setAdvancedFilters({...advancedFilters, itemDeleted: e.target.checked})} />
+              <input data-element-name="שדה_page_19" type="checkbox" checked={advancedFilters.itemDeleted} onChange={e => setAdvancedFilters({...advancedFilters, itemDeleted: e.target.checked})} />
               פריט מחוק
             </label>
             
-            <button onClick={() => setAdvancedFilters({name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false})} className="btn" style={{ background: 'var(--element-bg)', color: 'var(--text-main)', border: 'none', padding: '0.4rem 1rem' }}>
+            <button data-element-name="כפתור_page_20" onClick={() => setAdvancedFilters({name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false})} className="btn" style={{ background: 'var(--element-bg)', color: 'var(--text-main)', border: 'none', padding: '0.4rem 1rem' }}>
               נקה סינונים
             </button>
           </div>
@@ -773,10 +806,10 @@ export default function DressesManagement() {
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--element-border)', background: 'var(--element-bg)' }}>
                   {settings.hide_dress_images !== 'true' && <th style={{ padding: '1rem' }}>תמונה</th>}
-                  <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('barcodePrefix')}>{getLabel('item_barcode', 'קוד')} {catalogSort.key === 'barcodePrefix' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</th>
-                  {useModelNames && <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('name')}>{getLabel('item_modelName', 'שם דגם')} {catalogSort.key === 'name' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</th>}
-                  <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('entryDateToRepo')}>תאריך כניסה {catalogSort.key === 'entryDateToRepo' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</th>
-                  <th style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('itemsCount')}>כמות פריטים {catalogSort.key === 'itemsCount' ? (catalogSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</th>
+                  <th data-element-name="לחיץ_page_21" style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('barcodePrefix')}>{getLabel('item_barcode', 'קוד')} {catalogSort.key === 'barcodePrefix' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_22" size={14}/> : <ArrowDown data-element-name="רכיב_page_23" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_24" size={14} color="var(--text-muted)" />}</th>
+                  {useModelNames && <th data-element-name="לחיץ_page_25" style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('name')}>{getLabel('item_modelName', 'שם דגם')} {catalogSort.key === 'name' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_26" size={14}/> : <ArrowDown data-element-name="רכיב_page_27" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_28" size={14} color="var(--text-muted)" />}</th>}
+                  <th data-element-name="לחיץ_page_29" style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('entryDateToRepo')}>תאריך כניסה {catalogSort.key === 'entryDateToRepo' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_30" size={14}/> : <ArrowDown data-element-name="רכיב_page_31" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_32" size={14} color="var(--text-muted)" />}</th>
+                  <th data-element-name="לחיץ_page_33" style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('itemsCount')}>כמות פריטים {catalogSort.key === 'itemsCount' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_34" size={14}/> : <ArrowDown data-element-name="רכיב_page_35" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_36" size={14} color="var(--text-muted)" />}</th>
                   <th style={{ padding: '1rem', textAlign: 'center' }}>פעולות</th>
                 </tr>
               </thead>
@@ -796,13 +829,13 @@ export default function DressesManagement() {
                     <td style={{ padding: '1rem' }}>{formatHebrewDate(dress.entryDateToRepo)}</td>
                     <td style={{ padding: '1rem' }}>{dress.items?.filter(i => !i.isDeleted).length || 0}</td>
                     <td style={{ padding: '1rem', textAlign: 'center' }}>
-                      <button onClick={() => handleEditClick(dress)} className="btn btn-primary" style={{ padding: '0.3rem 0.8rem', fontSize: '0.9rem', marginLeft: '0.5rem' }}>כרטיס שמלה</button>
+                      <button data-element-name="כפתור_page_37" onClick={() => handleEditClick(dress)} className="btn btn-primary" style={{ padding: '0.3rem 0.8rem', fontSize: '0.9rem', marginLeft: '0.5rem' }}>כרטיס שמלה</button>
                       {dress.isDeleted ? (
-                        <button onClick={() => handleRestoreModel(dress)} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.9rem', borderColor: '#4caf50', color: '#4caf50' }} title="שחזר"><RefreshCw size={18} /></button>
+                        <button data-element-name="כפתור_page_38" onClick={() => handleRestoreModel(dress)} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.9rem', borderColor: '#4caf50', color: '#4caf50' }} title="שחזר"><RefreshCw data-element-name="רכיב_page_39" size={18} /></button>
                       ) : ((!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo) ? (
-                        <button onClick={() => handleReturnToActivity(dress)} className="btn btn-outline" style={{ padding: '0.3rem 0.8rem', fontSize: '0.9rem', borderColor: '#ff9800', color: '#ff9800' }}>החזר לפעילות</button>
+                        <button data-element-name="כפתור_page_40" onClick={() => handleReturnToActivity(dress)} className="btn btn-outline" style={{ padding: '0.3rem 0.8rem', fontSize: '0.9rem', borderColor: '#ff9800', color: '#ff9800' }}>החזר לפעילות</button>
                       ) : (
-                        <button onClick={() => handleDeleteModel(dress.id)} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.9rem', borderColor: '#e53935', color: '#e53935' }} title="מחק"><Trash2 size={18} /></button>
+                        <button data-element-name="כפתור_page_41" onClick={() => handleDeleteModel(dress.id)} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.9rem', borderColor: '#e53935', color: '#e53935' }} title="מחק"><Trash2 data-element-name="רכיב_page_42" size={18} /></button>
                       )}
                     </td>
                   </tr>
@@ -817,9 +850,9 @@ export default function DressesManagement() {
               
               {totalPages > 1 && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
-                  <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הקודם &gt;</button>
-                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>עמוד <input type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages} (סה"כ {totalDresses} תוצאות)</span>
-                  <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>&lt; הבא</button>
+                  <button data-element-name="כפתור_page_43" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הקודם &gt;</button>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>עמוד <input data-element-name="שדה_page_44" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages} (סה"כ {totalDresses} תוצאות)</span>
+                  <button data-element-name="כפתור_page_45" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>&lt; הבא</button>
                 </div>
               )}
             </div>
@@ -828,32 +861,32 @@ export default function DressesManagement() {
       </main>
 
       {editingDress && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => { handleSaveModel().then(() => { fetchDresses(); setEditingDress(null); }); }}>
-          <div style={{ background: 'var(--card-bg)', padding: '0', borderRadius: '12px', width: '95%', maxWidth: '1000px', maxHeight: '95vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
+        <div data-element-name="לחיץ_page_46" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => { handleSaveModel().then(() => { fetchDresses(); setEditingDress(null); }); }}>
+          <div data-element-name="לחיץ_page_47" style={{ background: 'var(--card-bg)', padding: '0', borderRadius: '12px', width: '95%', maxWidth: '1000px', maxHeight: '95vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }} onClick={e => e.stopPropagation()}>
             
             <div style={{ background: headerBgColor, color: 'white', padding: '1.5rem', borderRadius: '12px 12px 0 0', display: 'flex', flexWrap: 'wrap', gap: '1rem', justifyContent: 'space-between', alignItems: 'center', position: 'sticky', top: 0, zIndex: 10 }}>
               <h2 style={{ margin: 0 }}>{isNewModel ? 'הוספת דגם חדש' : `כרטיס שמלה: ${useModelNames ? editingDress.name + ' (קוד: ' + (editingDress.barcodePrefix || 'אין') + ')' : editingDress.barcodePrefix}`}</h2>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
-                <button type="button" onClick={(e) => handleSaveModel(e)} style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
-                  <Save size={18} /> שמור
+                <button data-element-name="כפתור_page_48" type="button" onClick={(e) => handleSaveModel(e)} style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                  <Save data-element-name="רכיב_page_49" size={18} /> שמור
                 </button>
                 {!isNewModel && editingDress && (
                   <>
-                    <button type="button" onClick={() => window.open(`/dashboard/dresses/${editingDress.id}/print`, '_blank')} title="הדפס כרטיס שמלה" style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
-                      <Printer size={18} /> הדפס
+                    <button data-element-name="כפתור_page_50" type="button" onClick={() => window.open(`/dashboard/dresses/${editingDress.id}/print`, '_blank')} title="הדפס כרטיס שמלה" style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                      <Printer data-element-name="רכיב_page_51" size={18} /> הדפס
                     </button>
                     {!editingDress.isDeleted && (
-                      <button type="button" onClick={() => handleDeleteModel(editingDress.id)} title="מחק דגם" style={{ background: 'rgba(229, 57, 53, 0.8)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
-                        <Trash2 size={18} /> מחק
+                      <button data-element-name="כפתור_page_52" type="button" onClick={() => handleDeleteModel(editingDress.id)} title="מחק דגם" style={{ background: 'rgba(229, 57, 53, 0.8)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                        <Trash2 data-element-name="רכיב_page_53" size={18} /> מחק
                       </button>
                     )}
                   </>
                 )}
-                <button type="button" onClick={() => { handleSaveModel().then(() => { fetchDresses(); setEditingDress(null); }); }} style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }} title="סגור ושמור">
+                <button data-element-name="כפתור_page_54" type="button" onClick={() => { handleSaveModel().then(() => { fetchDresses(); setEditingDress(null); }); }} style={{ background: 'rgba(255,255,255,0.2)', border: '1px solid rgba(255,255,255,0.5)', color: 'white', padding: '0.4rem 1rem', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }} title="סגור ושמור">
                    סגור
                 </button>
-                <button type="button" onClick={() => { fetchDresses(); setEditingDress(null); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="ביטול ללא שמירה">
-                  <X size={24} />
+                <button data-element-name="כפתור_page_55" type="button" onClick={() => { fetchDresses(); setEditingDress(null); }} style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center' }} title="ביטול ללא שמירה">
+                  <X data-element-name="רכיב_page_56" size={24} />
                 </button>
               </div>
             </div>
@@ -870,7 +903,7 @@ export default function DressesManagement() {
                       ) : null}
                       <div style={{ display: getImageSource(editingDress) ? 'none' : 'flex', width: '100%', height: '250px', background: 'var(--element-bg)', borderRadius: '8px', border: '1px dashed var(--element-border)', alignItems: 'center', justifyContent: 'center', marginBottom: '1rem' }}>אין תמונה</div>
                       
-                      <input type="file" accept="image/*" onChange={handleImageUpload} disabled={uploading} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--element-border)', borderRadius: '8px' }} />
+                      <input data-element-name="שדה_page_57" type="file" accept="image/*" onChange={handleImageUpload} disabled={uploading} style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--element-border)', borderRadius: '8px' }} />
                       {uploading && <small style={{ color: 'var(--primary-color)', display: 'block', marginTop: '0.5rem' }}>מעלה תמונה...</small>}
                     </div>
                   )}
@@ -879,21 +912,21 @@ export default function DressesManagement() {
                     <div style={{ gridColumn: useModelNames ? '1 / -1' : '1' }}>
                       <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>קוד</label>
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <input type="number" value={editingDress.barcodePrefix || ''} onChange={e => setEditingDress({...editingDress, barcodePrefix: e.target.value})} className="filter-select" style={{ flex: 1 }} required={!useModelNames} disabled={!isNewModel} />
+                        <input data-element-name="שדה_page_58" type="number" value={editingDress.barcodePrefix || ''} onChange={e => setEditingDress({...editingDress, barcodePrefix: e.target.value})} className="filter-select" style={{ flex: 1 }} required={!useModelNames} disabled={!isNewModel} />
                         {isNewModel && (
-                           <button type="button" onClick={handleAutoCode} className="btn btn-outline" style={{ whiteSpace: 'nowrap', padding: '0.5rem', fontSize: '0.9rem' }}>בחר קוד אוטומטי</button>
+                           <button data-element-name="כפתור_page_59" type="button" onClick={handleAutoCode} className="btn btn-outline" style={{ whiteSpace: 'nowrap', padding: '0.5rem', fontSize: '0.9rem' }}>בחר קוד אוטומטי</button>
                         )}
                       </div>
                     </div>
                     {useModelNames && (
                       <div style={{ gridColumn: '1 / -1' }}>
                         <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>שם דגם</label>
-                        <input type="text" value={editingDress.name || ''} onChange={e => setEditingDress({...editingDress, name: e.target.value})} className="filter-select" style={{ width: '100%' }} required />
+                        <input data-element-name="שדה_page_60" type="text" value={editingDress.name || ''} onChange={e => setEditingDress({...editingDress, name: e.target.value})} className="filter-select" style={{ width: '100%' }} required />
                       </div>
                     )}
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>קטגוריית מחיר</label>
-                      <select value={editingDress.priceCategory || ''} onChange={e => setEditingDress({...editingDress, priceCategory: e.target.value})} className="filter-select" style={{ width: '100%' }}>
+                      <select data-element-name="בחירה_page_61" value={editingDress.priceCategory || ''} onChange={e => setEditingDress({...editingDress, priceCategory: e.target.value})} className="filter-select" style={{ width: '100%' }}>
                         <option value="">-- בחר קטגוריית מחיר --</option>
                         {categories.map((cat, idx) => (
                           <option key={idx} value={cat}>{cat}</option>
@@ -902,7 +935,7 @@ export default function DressesManagement() {
                     </div>
                     <div>
                       <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>תאריך כניסה</label>
-                      <HebrewDatePicker 
+                      <HebrewDatePicker data-element-name="רכיב_page_62" 
                         value={editingDress.entryDateToRepo} 
                         onChange={(date) => setEditingDress({...editingDress, entryDateToRepo: date})} 
                       />
@@ -911,7 +944,7 @@ export default function DressesManagement() {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
                         <label style={{ fontWeight: 'bold', margin: 0 }}>תאריך יציאה מהמערכת</label>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
-                          <input 
+                          <input data-element-name="שדה_page_63" 
                             type="checkbox" 
                             id="markInactive"
                             checked={!!editingDress.exitDateFromRepo}
@@ -928,7 +961,7 @@ export default function DressesManagement() {
                           <label htmlFor="markInactive" style={{ fontSize: '0.9rem', cursor: 'pointer' }}>סמן כלא פעיל</label>
                         </div>
                       </div>
-                      <HebrewDatePicker 
+                      <HebrewDatePicker data-element-name="רכיב_page_64" 
                         value={editingDress.exitDateFromRepo} 
                         onChange={(date) => setEditingDress({...editingDress, exitDateFromRepo: date})} 
                       />
@@ -936,33 +969,33 @@ export default function DressesManagement() {
                         <div style={{ marginTop: '0.8rem', background: '#ffebee', padding: '0.8rem', borderRadius: '8px', border: '1px solid #ffcdd2' }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <span style={{ color: '#c62828', fontWeight: 'bold', fontSize: '0.9rem' }}>סיבת לא פעיל: {editingDress.inactiveReason || 'לא צוינה סיבה'}</span>
-                            <button type="button" onClick={() => { setTempInactiveReason(editingDress.inactiveReason || ''); setShowInactiveReasonModal(true); }} style={{ background: 'none', border: 'none', color: '#c62828', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}>ערוך סיבה</button>
+                            <button data-element-name="כפתור_page_65" type="button" onClick={() => { setTempInactiveReason(editingDress.inactiveReason || ''); setShowInactiveReasonModal(true); }} style={{ background: 'none', border: 'none', color: '#c62828', cursor: 'pointer', textDecoration: 'underline', fontSize: '0.9rem' }}>ערוך סיבה</button>
                           </div>
                         </div>
                       )}
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1.5rem' }}>
-                      <input type="checkbox" id="inInspection" checked={editingDress.inInspection || false} onChange={e => setEditingDress({...editingDress, inInspection: e.target.checked})} style={{ width: '18px', height: '18px' }} />
+                      <input data-element-name="שדה_page_66" type="checkbox" id="inInspection" checked={editingDress.inInspection || false} onChange={e => setEditingDress({...editingDress, inInspection: e.target.checked})} style={{ width: '18px', height: '18px' }} />
                       <label htmlFor="inInspection" style={{ fontWeight: 'bold' }}>הצג בבדיקה (התראה)</label>
                     </div>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>הערות לדגם</label>
-                      <textarea value={editingDress.notes || ''} onChange={e => setEditingDress({...editingDress, notes: e.target.value})} className="filter-select" style={{ width: '100%', minHeight: '60px' }} />
+                      <textarea data-element-name="טקסט_page_67" value={editingDress.notes || ''} onChange={e => setEditingDress({...editingDress, notes: e.target.value})} className="filter-select" style={{ width: '100%', minHeight: '60px' }} />
                     </div>
                     <div style={{ gridColumn: '1 / -1', display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
                       {!isNewModel && (
                         editingDress.isDeleted ? (
-                          <button type="button" onClick={() => handleRestoreModel(editingDress)} className="btn btn-outline" style={{ padding: '0.7rem 2rem', borderColor: '#4caf50', color: '#4caf50' }}>
+                          <button data-element-name="כפתור_page_68" type="button" onClick={() => handleRestoreModel(editingDress)} className="btn btn-outline" style={{ padding: '0.7rem 2rem', borderColor: '#4caf50', color: '#4caf50' }}>
                             שחזר דגם מחוק
                           </button>
                         ) : (
-                          <button type="button" onClick={() => handleDeleteModel(editingDress.id)} className="btn btn-outline" style={{ padding: '0.7rem 2rem', borderColor: '#e53935', color: '#e53935' }}>
+                          <button data-element-name="כפתור_page_69" type="button" onClick={() => handleDeleteModel(editingDress.id)} className="btn btn-outline" style={{ padding: '0.7rem 2rem', borderColor: '#e53935', color: '#e53935' }}>
                             מחק דגם
                           </button>
                         )
                       )}
                       {isNewModel && <div></div>}
-                      <button type="submit" disabled={isSaving} className="btn btn-primary" style={{ padding: '0.7rem 2rem' }}>
+                      <button data-element-name="כפתור_page_70" type="submit" disabled={isSaving} className="btn btn-primary" style={{ padding: '0.7rem 2rem' }}>
                         {isSaving ? 'שומר...' : (isNewModel ? 'שמור וצור דגם' : 'שמור פרטי דגם')}
                       </button>
                     </div>
@@ -976,17 +1009,17 @@ export default function DressesManagement() {
                     <h3 style={{ margin: 0 }}>פירוט שמלות (מלאי ומידות)</h3>
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
-                        <button type="button" onClick={() => setItemsFilterStatus('all')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הכל"><List size={16} /> הכל</button>
-                        <button type="button" onClick={() => setItemsFilterStatus('normal')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'normal' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'normal' ? '#2e7d32' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="רגיל"><CheckCircle size={16} /> רגיל</button>
-                        <button type="button" onClick={() => setItemsFilterStatus('notInUse')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'notInUse' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'notInUse' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא בשימוש"><XCircle size={16} /> לא בשימוש</button>
-                        <button type="button" onClick={() => setItemsFilterStatus('inRepair')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'inRepair' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'inRepair' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בתיקון"><Wrench size={16} /> בתיקון</button>
-                        <button type="button" onClick={() => setItemsFilterStatus('deleted')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'deleted' ? '#e53935' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוק"><Trash2 size={16} /> מחוק</button>
+                        <button data-element-name="כפתור_page_71" type="button" onClick={() => setItemsFilterStatus('all')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הכל"><List data-element-name="רכיב_page_72" size={16} /> הכל</button>
+                        <button data-element-name="כפתור_page_73" type="button" onClick={() => setItemsFilterStatus('normal')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'normal' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'normal' ? '#2e7d32' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="רגיל"><CheckCircle data-element-name="רכיב_page_74" size={16} /> רגיל</button>
+                        <button data-element-name="כפתור_page_75" type="button" onClick={() => setItemsFilterStatus('notInUse')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'notInUse' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'notInUse' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא בשימוש"><XCircle data-element-name="רכיב_page_76" size={16} /> לא בשימוש</button>
+                        <button data-element-name="כפתור_page_77" type="button" onClick={() => setItemsFilterStatus('inRepair')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'inRepair' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'inRepair' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בתיקון"><Wrench data-element-name="רכיב_page_78" size={16} /> בתיקון</button>
+                        <button data-element-name="כפתור_page_79" type="button" onClick={() => setItemsFilterStatus('deleted')} style={{ padding: '0.3rem 0.5rem', border: 'none', background: itemsFilterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: itemsFilterStatus === 'deleted' ? '#e53935' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוק"><Trash2 data-element-name="רכיב_page_80" size={16} /> מחוק</button>
                       </div>
-                      <button type="button" onClick={() => setViewMode(viewMode === 'rows' ? 'cubes' : 'rows')} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>
+                      <button data-element-name="כפתור_page_81" type="button" onClick={() => setViewMode(viewMode === 'rows' ? 'cubes' : 'rows')} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>
                         {viewMode === 'rows' ? 'הצג כקוביות' : 'הצג כשורות'}
                       </button>
                       <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                        <input 
+                        <input data-element-name="שדה_page_82" 
                           type="text" 
                           placeholder="חיפוש בפריטים (מידה, מספר סידורי, ברקוד...)" 
                           value={itemsSearch} 
@@ -995,7 +1028,7 @@ export default function DressesManagement() {
                           style={{ width: '300px', padding: '0.4rem 0.8rem', paddingLeft: '2rem', borderRadius: '20px' }}
                         />
                         {itemsSearch && (
-                          <button
+                          <button data-element-name="כפתור_page_83"
                             onClick={() => setItemsSearch('')}
                             style={{
                               position: 'absolute',
@@ -1024,16 +1057,16 @@ export default function DressesManagement() {
                       <thead>
                         <tr style={{ background: 'var(--element-bg)', borderBottom: '2px solid var(--primary-color)' }}>
                           <td style={{ padding: '0.8rem' }}>
-                            <input type="text" placeholder="הזן מידה..." value={newItem.sizeText} onChange={e => handleNewItemChange('sizeText', e.target.value)} className="filter-select" style={{ width: '100%', padding: '0.4rem' }} />
+                            <input data-element-name="שדה_page_84" type="text" placeholder="הזן מידה..." value={newItem.sizeText} onChange={e => handleNewItemChange('sizeText', e.target.value)} className="filter-select" style={{ width: '100%', padding: '0.4rem' }} />
                           </td>
                           <td style={{ padding: '0.8rem' }}>
-                            <input type="number" min="0" max="99" placeholder="מס סידורי" value={newItem.serialNumber} onChange={e => handleNewItemChange('serialNumber', e.target.value)} className="filter-select" style={{ width: '100%', padding: '0.4rem' }} />
+                            <input data-element-name="שדה_page_85" type="number" min="0" max="99" placeholder="מס סידורי" value={newItem.serialNumber} onChange={e => handleNewItemChange('serialNumber', e.target.value)} className="filter-select" style={{ width: '100%', padding: '0.4rem' }} />
                           </td>
                           <td style={{ padding: '0.8rem' }}>
-                            <input type="text" placeholder="ברקוד פריט" value={newItem.dressBarcode} onChange={e => handleNewItemChange('dressBarcode', e.target.value)} className="filter-select" style={{ width: '100%', padding: '0.4rem' }} />
+                            <input data-element-name="שדה_page_86" type="text" placeholder="ברקוד פריט" value={newItem.dressBarcode} onChange={e => handleNewItemChange('dressBarcode', e.target.value)} className="filter-select" style={{ width: '100%', padding: '0.4rem' }} />
                           </td>
                           <td style={{ padding: '0.8rem' }}>
-                            <select value={newItem.location} onChange={e => handleNewItemChange('location', e.target.value)} className="filter-select" style={{ width: '100%', padding: '0.4rem' }}>
+                            <select data-element-name="בחירה_page_87" value={newItem.location} onChange={e => handleNewItemChange('location', e.target.value)} className="filter-select" style={{ width: '100%', padding: '0.4rem' }}>
                               <option value="">-- בחר מיקום --</option>
                               {locations.map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
                             </select>
@@ -1042,7 +1075,7 @@ export default function DressesManagement() {
                             הוספה מהירה (נוצר ב: {formatHebrewDate(newItem.entryDateToRepo)})
                           </td>
                           <td style={{ padding: '0.8rem', textAlign: 'center' }}>
-                            <button type="button" onClick={handleAddItem} disabled={isSaving} className="btn btn-primary" style={{ padding: '0.4rem 1rem', background: '#1976d2' }}>
+                            <button data-element-name="כפתור_page_88" type="button" onClick={handleAddItem} disabled={isSaving} className="btn btn-primary" style={{ padding: '0.4rem 1rem', background: '#1976d2' }}>
                               {isSaving ? 'מוסיף...' : 'הוסף פריט'}
                             </button>
                           </td>
@@ -1050,37 +1083,37 @@ export default function DressesManagement() {
                         <tr style={{ background: 'var(--card-bg)', borderBottom: '2px solid var(--element-border)' }}>
                           <th style={{ padding: '0.8rem', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('sizeText')}>{getLabel('item_size', 'מידה')} {itemsSort.key === 'sizeText' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</span>
-                              <Filter size={14} color={itemsColumnFilters.sizeText ? 'var(--primary-color)' : 'var(--text-muted)'} style={{ cursor: 'pointer', marginLeft: '0.5rem' }} onClick={() => setShowColumnFilters(!showColumnFilters)} title="סנן עמודה זו" />
+                              <span data-element-name="לחיץ_page_89" style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('sizeText')}>{getLabel('item_size', 'מידה')} {itemsSort.key === 'sizeText' ? (itemsSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_90" size={14}/> : <ArrowDown data-element-name="רכיב_page_91" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_92" size={14} color="var(--text-muted)" />}</span>
+                              <Filter data-element-name="לחיץ_page_93" size={14} color={itemsColumnFilters.sizeText ? 'var(--primary-color)' : 'var(--text-muted)'} style={{ cursor: 'pointer', marginLeft: '0.5rem' }} onClick={() => setShowColumnFilters(!showColumnFilters)} title="סנן עמודה זו" />
                             </div>
-                            {showColumnFilters && <input type="text" placeholder="סנן מידה..." value={itemsColumnFilters.sizeText} onChange={e => setItemsColumnFilters({...itemsColumnFilters, sizeText: e.target.value})} style={{ width: '100%', padding: '0.2rem', marginTop: '0.4rem', fontSize: '0.8rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />}
+                            {showColumnFilters && <input data-element-name="שדה_page_94" type="text" placeholder="סנן מידה..." value={itemsColumnFilters.sizeText} onChange={e => setItemsColumnFilters({...itemsColumnFilters, sizeText: e.target.value})} style={{ width: '100%', padding: '0.2rem', marginTop: '0.4rem', fontSize: '0.8rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />}
                           </th>
                           <th style={{ padding: '0.8rem', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('serialNumber')}>{getLabel('item_serialNumber', "מס' סידורי")} {itemsSort.key === 'serialNumber' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</span>
-                              <Filter size={14} color={itemsColumnFilters.serialNumber ? 'var(--primary-color)' : 'var(--text-muted)'} style={{ cursor: 'pointer', marginLeft: '0.5rem' }} onClick={() => setShowColumnFilters(!showColumnFilters)} title="סנן עמודה זו" />
+                              <span data-element-name="לחיץ_page_95" style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('serialNumber')}>{getLabel('item_serialNumber', "מס' סידורי")} {itemsSort.key === 'serialNumber' ? (itemsSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_96" size={14}/> : <ArrowDown data-element-name="רכיב_page_97" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_98" size={14} color="var(--text-muted)" />}</span>
+                              <Filter data-element-name="לחיץ_page_99" size={14} color={itemsColumnFilters.serialNumber ? 'var(--primary-color)' : 'var(--text-muted)'} style={{ cursor: 'pointer', marginLeft: '0.5rem' }} onClick={() => setShowColumnFilters(!showColumnFilters)} title="סנן עמודה זו" />
                             </div>
-                            {showColumnFilters && <input type="text" placeholder="סנן מס'..." value={itemsColumnFilters.serialNumber} onChange={e => setItemsColumnFilters({...itemsColumnFilters, serialNumber: e.target.value})} style={{ width: '100%', padding: '0.2rem', marginTop: '0.4rem', fontSize: '0.8rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />}
+                            {showColumnFilters && <input data-element-name="שדה_page_100" type="text" placeholder="סנן מס'..." value={itemsColumnFilters.serialNumber} onChange={e => setItemsColumnFilters({...itemsColumnFilters, serialNumber: e.target.value})} style={{ width: '100%', padding: '0.2rem', marginTop: '0.4rem', fontSize: '0.8rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />}
                           </th>
                           <th style={{ padding: '0.8rem', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('dressBarcode')}>{getLabel('item_barcode', 'ברקוד פריט')} {itemsSort.key === 'dressBarcode' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</span>
-                              <Filter size={14} color={itemsColumnFilters.dressBarcode ? 'var(--primary-color)' : 'var(--text-muted)'} style={{ cursor: 'pointer', marginLeft: '0.5rem' }} onClick={() => setShowColumnFilters(!showColumnFilters)} title="סנן עמודה זו" />
+                              <span data-element-name="לחיץ_page_101" style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('dressBarcode')}>{getLabel('item_barcode', 'ברקוד פריט')} {itemsSort.key === 'dressBarcode' ? (itemsSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_102" size={14}/> : <ArrowDown data-element-name="רכיב_page_103" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_104" size={14} color="var(--text-muted)" />}</span>
+                              <Filter data-element-name="לחיץ_page_105" size={14} color={itemsColumnFilters.dressBarcode ? 'var(--primary-color)' : 'var(--text-muted)'} style={{ cursor: 'pointer', marginLeft: '0.5rem' }} onClick={() => setShowColumnFilters(!showColumnFilters)} title="סנן עמודה זו" />
                             </div>
-                            {showColumnFilters && <input type="text" placeholder="סנן ברקוד..." value={itemsColumnFilters.dressBarcode} onChange={e => setItemsColumnFilters({...itemsColumnFilters, dressBarcode: e.target.value})} style={{ width: '100%', padding: '0.2rem', marginTop: '0.4rem', fontSize: '0.8rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />}
+                            {showColumnFilters && <input data-element-name="שדה_page_106" type="text" placeholder="סנן ברקוד..." value={itemsColumnFilters.dressBarcode} onChange={e => setItemsColumnFilters({...itemsColumnFilters, dressBarcode: e.target.value})} style={{ width: '100%', padding: '0.2rem', marginTop: '0.4rem', fontSize: '0.8rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />}
                           </th>
                           <th style={{ padding: '0.8rem', whiteSpace: 'nowrap' }}>
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                              <span style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('location')}>מיקום {itemsSort.key === 'location' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</span>
-                              <Filter size={14} color={itemsColumnFilters.location ? 'var(--primary-color)' : 'var(--text-muted)'} style={{ cursor: 'pointer', marginLeft: '0.5rem' }} onClick={() => setShowColumnFilters(!showColumnFilters)} title="סנן עמודה זו" />
+                              <span data-element-name="לחיץ_page_107" style={{ cursor: 'pointer' }} onClick={() => handleItemsSort('location')}>מיקום {itemsSort.key === 'location' ? (itemsSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_108" size={14}/> : <ArrowDown data-element-name="רכיב_page_109" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_110" size={14} color="var(--text-muted)" />}</span>
+                              <Filter data-element-name="לחיץ_page_111" size={14} color={itemsColumnFilters.location ? 'var(--primary-color)' : 'var(--text-muted)'} style={{ cursor: 'pointer', marginLeft: '0.5rem' }} onClick={() => setShowColumnFilters(!showColumnFilters)} title="סנן עמודה זו" />
                             </div>
-                            {showColumnFilters && <input type="text" placeholder="סנן מיקום..." value={itemsColumnFilters.location} onChange={e => setItemsColumnFilters({...itemsColumnFilters, location: e.target.value})} style={{ width: '100%', padding: '0.2rem', marginTop: '0.4rem', fontSize: '0.8rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />}
+                            {showColumnFilters && <input data-element-name="שדה_page_112" type="text" placeholder="סנן מיקום..." value={itemsColumnFilters.location} onChange={e => setItemsColumnFilters({...itemsColumnFilters, location: e.target.value})} style={{ width: '100%', padding: '0.2rem', marginTop: '0.4rem', fontSize: '0.8rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />}
                           </th>
-                          <th style={{ padding: '0.8rem', textAlign: 'center', cursor: 'pointer', whiteSpace: 'nowrap', verticalAlign: 'top' }} onClick={() => handleItemsSort('inRepair')}>
-                            <div style={{ display: 'inline-block' }}>בתיקון? {itemsSort.key === 'inRepair' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</div>
+                          <th data-element-name="לחיץ_page_113" style={{ padding: '0.8rem', textAlign: 'center', cursor: 'pointer', whiteSpace: 'nowrap', verticalAlign: 'top' }} onClick={() => handleItemsSort('inRepair')}>
+                            <div style={{ display: 'inline-block' }}>בתיקון? {itemsSort.key === 'inRepair' ? (itemsSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_114" size={14}/> : <ArrowDown data-element-name="רכיב_page_115" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_116" size={14} color="var(--text-muted)" />}</div>
                           </th>
-                          <th style={{ padding: '0.8rem', textAlign: 'center', cursor: 'pointer', whiteSpace: 'nowrap', verticalAlign: 'top' }} onClick={() => handleItemsSort('notInUse')}>
-                            <div style={{ display: 'inline-block' }}>לא בשימוש? {itemsSort.key === 'notInUse' ? (itemsSort.direction === 'asc' ? <ArrowUp size={14}/> : <ArrowDown size={14}/>) : <ArrowUpDown size={14} color="var(--text-muted)" />}</div>
+                          <th data-element-name="לחיץ_page_117" style={{ padding: '0.8rem', textAlign: 'center', cursor: 'pointer', whiteSpace: 'nowrap', verticalAlign: 'top' }} onClick={() => handleItemsSort('notInUse')}>
+                            <div style={{ display: 'inline-block' }}>לא בשימוש? {itemsSort.key === 'notInUse' ? (itemsSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_118" size={14}/> : <ArrowDown data-element-name="רכיב_page_119" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_120" size={14} color="var(--text-muted)" />}</div>
                           </th>
                           <th style={{ padding: '0.8rem', textAlign: 'center', verticalAlign: 'top' }}>מידע</th>
                           <th style={{ padding: '0.8rem', textAlign: 'center', verticalAlign: 'top' }}>פעולות</th>
@@ -1090,36 +1123,36 @@ export default function DressesManagement() {
                         {filteredAndSortedItems.map(item => (
                           <tr key={item.id} style={{ borderBottom: '1px solid var(--element-border)', background: item.isDeleted ? 'var(--deleted-bg, #ffebee)' : (item.notInUse ? 'var(--inactive-bg, #fff0f0)' : (item.inRepair ? 'var(--warning-bg, #fff8e1)' : 'transparent')) }}>
                             <td style={{ padding: '0.8rem' }}>
-                              <input type="text" value={item.sizeText || ''} className="filter-select" style={{ width: '80px', padding: '0.3rem', background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'not-allowed' }} disabled title="לא ניתן לשנות מידה לפריט קיים" />
+                              <input data-element-name="שדה_page_121" type="text" value={item.sizeText || ''} className="filter-select" style={{ width: '80px', padding: '0.3rem', background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'not-allowed' }} disabled title="לא ניתן לשנות מידה לפריט קיים" />
                             </td>
                             <td style={{ padding: '0.8rem' }}>
-                              <input type="number" value={item.serialNumber || ''} className="filter-select" style={{ width: '80px', padding: '0.3rem', background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'not-allowed' }} disabled title="לא ניתן לשנות מס' סידורי לפריט קיים" />
+                              <input data-element-name="שדה_page_122" type="number" value={item.serialNumber || ''} className="filter-select" style={{ width: '80px', padding: '0.3rem', background: 'transparent', border: 'none', color: 'var(--text-main)', cursor: 'not-allowed' }} disabled title="לא ניתן לשנות מס' סידורי לפריט קיים" />
                             </td>
                             <td style={{ padding: '0.8rem' }}>
-                              <input type="text" value={item.dressBarcode || ''} onChange={e => handleItemFieldChange(item, 'dressBarcode', e.target.value)} onBlur={() => handleItemFieldBlur(item)} className="filter-select" style={{ width: '120px', padding: '0.3rem', background: 'transparent', border: '1px solid transparent' }} onFocus={e => e.target.style.background = 'var(--input-bg)'} />
+                              <input data-element-name="שדה_page_123" type="text" value={item.dressBarcode || ''} onChange={e => handleItemFieldChange(item, 'dressBarcode', e.target.value)} onBlur={() => handleItemFieldBlur(item)} className="filter-select" style={{ width: '120px', padding: '0.3rem', background: 'transparent', border: '1px solid transparent' }} onFocus={e => e.target.style.background = 'var(--input-bg)'} />
                             </td>
                             <td style={{ padding: '0.8rem' }}>
-                              <select value={item.location || ''} onChange={e => { handleItemFieldChange(item, 'location', e.target.value); handleItemFieldBlur({...item, location: e.target.value}); }} className="filter-select" style={{ width: '100px', padding: '0.3rem', background: 'transparent', border: '1px solid transparent' }}>
+                              <select data-element-name="בחירה_page_124" value={item.location || ''} onChange={e => { handleItemFieldChange(item, 'location', e.target.value); handleItemFieldBlur({...item, location: e.target.value}); }} className="filter-select" style={{ width: '100px', padding: '0.3rem', background: 'transparent', border: '1px solid transparent' }}>
                                 <option value="">--</option>
                                 {locations.map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
                               </select>
                             </td>
                             <td style={{ padding: '0.8rem', textAlign: 'center' }}>
-                              <input type="checkbox" checked={item.inRepair || false} onChange={() => toggleItemStatus(item, 'inRepair')} style={{ cursor: 'pointer', width: '16px', height: '16px' }} />
+                              <input data-element-name="שדה_page_125" type="checkbox" checked={item.inRepair || false} onChange={() => toggleItemStatus(item, 'inRepair')} style={{ cursor: 'pointer', width: '16px', height: '16px' }} />
                             </td>
                             <td style={{ padding: '0.8rem', textAlign: 'center' }}>
-                              <input type="checkbox" checked={item.notInUse || false} onChange={() => toggleItemStatus(item, 'notInUse')} style={{ cursor: 'pointer', width: '16px', height: '16px' }} />
+                              <input data-element-name="שדה_page_126" type="checkbox" checked={item.notInUse || false} onChange={() => toggleItemStatus(item, 'notInUse')} style={{ cursor: 'pointer', width: '16px', height: '16px' }} />
                             </td>
                             <td style={{ padding: '0.8rem', textAlign: 'center' }}>
-                              <button onClick={() => handleOpenHistory(item)} className="btn" style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} title="פרטים נוספים">
-                                <Info size={20} color="var(--primary-color)" />
+                              <button data-element-name="כפתור_page_127" onClick={() => handleOpenHistory(item)} className="btn" style={{ background: 'transparent', border: 'none', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }} title="פרטים נוספים">
+                                <Info data-element-name="רכיב_page_128" size={20} color="var(--primary-color)" />
                               </button>
                             </td>
                             <td style={{ padding: '0.8rem', textAlign: 'center' }}>
                               {item.isDeleted ? (
-                                <button onClick={() => handleRestoreItem(item.id)} className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', borderColor: '#4caf50', color: '#4caf50' }}>שחזר</button>
+                                <button data-element-name="כפתור_page_129" onClick={() => handleRestoreItem(item.id)} className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', borderColor: '#4caf50', color: '#4caf50' }}>שחזר</button>
                               ) : (
-                                <button onClick={() => handleDeleteItem(item.id)} className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', borderColor: '#e53935', color: '#e53935' }}>מחק</button>
+                                <button data-element-name="כפתור_page_130" onClick={() => handleDeleteItem(item.id)} className="btn btn-outline" style={{ padding: '0.2rem 0.5rem', fontSize: '0.8rem', borderColor: '#e53935', color: '#e53935' }}>מחק</button>
                               )}
                             </td>
                           </tr>
@@ -1135,14 +1168,14 @@ export default function DressesManagement() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))', gap: '1rem', marginTop: '1rem' }}>
                       <div style={{ background: 'var(--element-bg)', border: '2px dashed var(--element-border)', borderRadius: '8px', padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                         <h4 style={{ margin: 0, textAlign: 'center', color: 'var(--primary-color)' }}>הוסף פריט חדש (נוצר ב: {formatHebrewDate(newItem.entryDateToRepo)})</h4>
-                        <input type="text" placeholder="מידה" value={newItem.sizeText} onChange={e => handleNewItemChange('sizeText', e.target.value)} className="filter-select" />
-                        <input type="number" min="0" max="99" placeholder="מס סידורי" value={newItem.serialNumber} onChange={e => handleNewItemChange('serialNumber', e.target.value)} className="filter-select" />
-                        <input type="text" placeholder="ברקוד" value={newItem.dressBarcode} onChange={e => handleNewItemChange('dressBarcode', e.target.value)} className="filter-select" />
-                        <select value={newItem.location} onChange={e => handleNewItemChange('location', e.target.value)} className="filter-select">
+                        <input data-element-name="שדה_page_131" type="text" placeholder="מידה" value={newItem.sizeText} onChange={e => handleNewItemChange('sizeText', e.target.value)} className="filter-select" />
+                        <input data-element-name="שדה_page_132" type="number" min="0" max="99" placeholder="מס סידורי" value={newItem.serialNumber} onChange={e => handleNewItemChange('serialNumber', e.target.value)} className="filter-select" />
+                        <input data-element-name="שדה_page_133" type="text" placeholder="ברקוד" value={newItem.dressBarcode} onChange={e => handleNewItemChange('dressBarcode', e.target.value)} className="filter-select" />
+                        <select data-element-name="בחירה_page_134" value={newItem.location} onChange={e => handleNewItemChange('location', e.target.value)} className="filter-select">
                           <option value="">-- בחר מיקום --</option>
                           {locations.map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
                         </select>
-                        <button type="button" onClick={handleAddItem} disabled={isSaving} className="btn btn-primary" style={{ marginTop: '0.5rem', background: '#1976d2' }}>
+                        <button data-element-name="כפתור_page_135" type="button" onClick={handleAddItem} disabled={isSaving} className="btn btn-primary" style={{ marginTop: '0.5rem', background: '#1976d2' }}>
                           {isSaving ? 'מוסיף...' : 'הוסף פריט'}
                         </button>
                       </div>
@@ -1188,11 +1221,11 @@ export default function DressesManagement() {
       )}
       
       {itemHistory && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }} onClick={() => setItemHistory(null)}>
-          <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
+        <div data-element-name="לחיץ_page_136" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }} onClick={() => setItemHistory(null)}>
+          <div data-element-name="לחיץ_page_137" style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', width: '90%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} onClick={e => e.stopPropagation()}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid var(--element-border)', paddingBottom: '1rem' }}>
               <h2 style={{ margin: 0 }}>פרטי פריט נוספים (מס' ס: {itemHistory.serialNumber}, ברקוד: {itemHistory.dressBarcode})</h2>
-              <button onClick={() => setItemHistory(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
+              <button data-element-name="כפתור_page_138" onClick={() => setItemHistory(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer' }}>&times;</button>
             </div>
             
             {historyLoading ? (
@@ -1225,7 +1258,7 @@ export default function DressesManagement() {
                           <td style={{ padding: '0.8rem' }}>{rental.isReturned ? '✅' : '❌'}</td>
                           <td style={{ padding: '0.8rem', textAlign: 'center' }}>
                             <a href={`/orders/${rental.orderId}`} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary-color)' }} title="צפה בהזמנה">
-                              <ExternalLink size={18} />
+                              <ExternalLink data-element-name="רכיב_page_139" size={18} />
                             </a>
                           </td>
                         </tr>
@@ -1243,18 +1276,18 @@ export default function DressesManagement() {
       {showInactiveReasonModal && (
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="modal-content" style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', width: '90%', maxWidth: '450px', boxShadow: '0 10px 30px rgba(0,0,0,0.3)', position: 'relative', animation: 'fadeIn 0.3s ease-out' }}>
-            <button onClick={() => setShowInactiveReasonModal(false)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-              <XCircle size={24} />
+            <button data-element-name="כפתור_page_140" onClick={() => setShowInactiveReasonModal(false)} style={{ position: 'absolute', top: '15px', right: '15px', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
+              <XCircle data-element-name="רכיב_page_141" size={24} />
             </button>
             <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
               <div style={{ display: 'inline-flex', padding: '15px', borderRadius: '50%', background: '#ffeeee', color: '#e53935', marginBottom: '1rem' }}>
-                <XCircle size={40} />
+                <XCircle data-element-name="רכיב_page_142" size={40} />
               </div>
               <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.5rem', fontWeight: 'bold' }}>סיבת לא-פעיל</h2>
               <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem', fontSize: '0.95rem' }}>אנא פרט מדוע דגם זה אינו פעיל יותר</p>
             </div>
             
-            <textarea 
+            <textarea data-element-name="טקסט_page_143" 
               value={tempInactiveReason}
               onChange={(e) => setTempInactiveReason(e.target.value)}
               placeholder="לדוגמה: הדגם התיישן, נתרם, הושמד..."
@@ -1263,7 +1296,7 @@ export default function DressesManagement() {
             />
             
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button 
+              <button data-element-name="כפתור_page_144" 
                 type="button" 
                 className="btn btn-outline" 
                 onClick={() => {
@@ -1272,7 +1305,7 @@ export default function DressesManagement() {
                 style={{ padding: '0.8rem 1.5rem', borderRadius: '8px', flex: 1, borderColor: 'var(--border-color)', color: 'var(--text-main)' }}>
                 ביטול
               </button>
-              <button 
+              <button data-element-name="כפתור_page_145" 
                 type="button" 
                 className="btn btn-primary" 
                 onClick={() => {

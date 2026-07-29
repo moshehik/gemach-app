@@ -49,6 +49,40 @@ export async function POST(request) {
       return Promise.resolve();
     });
 
+    // Keep inventory_buffer_days and BUFFER_DAYS always in sync
+    const bufferItem = data.find(i => i.key === 'BUFFER_DAYS' || i.key === 'inventory_buffer_days');
+    if (bufferItem && bufferItem.value !== undefined) {
+      updatePromises.push(
+        prisma.systemSetting.upsert({
+          where: { key: 'inventory_buffer_days' },
+          update: { value: String(bufferItem.value) },
+          create: { key: 'inventory_buffer_days', value: String(bufferItem.value), name: 'ימי מרווח ביטחון בין השכרות', category: 'יומן', type: 'number' }
+        }),
+        prisma.systemSetting.upsert({
+          where: { key: 'BUFFER_DAYS' },
+          update: { value: String(bufferItem.value) },
+          create: { key: 'BUFFER_DAYS', value: String(bufferItem.value), name: 'BUFFER_DAYS', category: 'הזמנות', type: 'number' }
+        })
+      );
+    }
+
+    // Keep nedarim_plus_terminal and NEDARIM_MOSAD always in sync
+    const nedarimMosadItem = data.find(i => i.key === 'NEDARIM_MOSAD' || i.key === 'nedarim_plus_terminal');
+    if (nedarimMosadItem && nedarimMosadItem.value !== undefined) {
+      updatePromises.push(
+        prisma.systemSetting.upsert({
+          where: { key: 'nedarim_plus_terminal' },
+          update: { value: String(nedarimMosadItem.value) },
+          create: { key: 'nedarim_plus_terminal', value: String(nedarimMosadItem.value), name: 'קוד מוסד נדרים פלוס', category: 'תשלומים', type: 'text' }
+        }),
+        prisma.systemSetting.upsert({
+          where: { key: 'NEDARIM_MOSAD' },
+          update: { value: String(nedarimMosadItem.value) },
+          create: { key: 'NEDARIM_MOSAD', value: String(nedarimMosadItem.value), name: 'קוד מוסד נדרים פלוס', category: 'תשלומים', type: 'text' }
+        })
+      );
+    }
+
     await Promise.all(updatePromises);
 
     return NextResponse.json({ success: true, message: 'Settings saved successfully' });

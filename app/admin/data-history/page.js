@@ -22,7 +22,7 @@ export default function DataHistoryPage() {
       </p>
 
       <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }}>
-        <HistoryViewer />
+        <HistoryViewer data-element-name="רכיב_page_1" />
       </div>
     </div>
   );

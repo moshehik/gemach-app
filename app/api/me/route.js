@@ -16,8 +16,14 @@ export async function GET(request) {
       return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 401 });
     }
 
-    const employee = await prisma.employee.findUnique({
-      where: { id: employeeId },
+    const parsedLegacyId = parseInt(employeeId, 10);
+    const employee = await prisma.employee.findFirst({
+      where: {
+        OR: [
+          { id: employeeId },
+          ...(isNaN(parsedLegacyId) ? [] : [{ legacyId: parsedLegacyId }])
+        ]
+      },
       select: {
         id: true,
         firstName: true,
@@ -26,7 +32,8 @@ export async function GET(request) {
         isActive: true,
         roleId: true,
         receiveEmailAlerts: true,
-        email: true
+        email: true,
+        showAi: true
       }
     });
 

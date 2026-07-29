@@ -49,7 +49,17 @@ export async function GET(request) {
         where,
         orderBy: { [sort]: order },
         skip,
-        take: limit
+        take: limit,
+        select: {
+          id: true,
+          legacyId: true,
+          firstName: true,
+          lastName: true,
+          phone1: true,
+          phone2: true,
+          city: true,
+          email: true
+        }
       }),
       prisma.customer.count({ where })
     ]);

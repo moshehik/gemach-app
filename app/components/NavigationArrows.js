@@ -6,7 +6,7 @@ export default function NavigationArrows() {
 
   return (
     <div className="nav-arrows" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: '1rem' }}>
-      <button 
+      <button data-element-name="כפתור_NavigationArrows_1" 
         onClick={() => router.back()} 
         style={{ 
           background: 'transparent', 
@@ -20,7 +20,7 @@ export default function NavigationArrows() {
       >
         &#8594;
       </button>
-      <button 
+      <button data-element-name="כפתור_NavigationArrows_2" 
         onClick={() => router.forward()} 
         style={{ 
           background: 'transparent', 

@@ -60,7 +60,7 @@ export default function PunchClockPage() {
 
         <div className="form-group" style={{ marginBottom: '1.5rem', textAlign: 'right' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-muted)' }}>קוד עובד</label>
-          <input 
+          <input data-element-name="שדה_page_1" 
             data-agy-id="input-employee-id"
             type="number" 
             value={employeeId} 
@@ -74,7 +74,7 @@ export default function PunchClockPage() {
 
         <div className="form-group" style={{ marginBottom: '2rem', textAlign: 'right' }}>
           <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-muted)' }}>סיסמא</label>
-          <input 
+          <input data-element-name="שדה_page_2" 
             data-agy-id="input-password"
             type="password" 
             value={password} 
@@ -87,7 +87,7 @@ export default function PunchClockPage() {
         </div>
 
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button 
+          <button data-element-name="כפתור_page_3" 
             data-agy-id="punch-in-button"
             onClick={() => handlePunch('IN')} 
             disabled={isLoading}
@@ -97,7 +97,7 @@ export default function PunchClockPage() {
           >
             כניסה
           </button>
-          <button 
+          <button data-element-name="כפתור_page_4" 
             data-agy-id="punch-out-button"
             onClick={() => handlePunch('OUT')} 
             disabled={isLoading}

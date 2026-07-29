@@ -197,17 +197,17 @@ export default function PricelistManagement() {
       <div className={styles.header}>
         <h1 className={styles.pageTitle}>ניהול מחירון</h1>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button 
+          <button data-element-name="כפתור_page_1" 
             className={styles.addButton} 
             onClick={() => setShowLockModal(true)}
             style={{ backgroundColor: isLocked ? '#ef4444' : '#22c55e', width: 'auto' }}
             title={isLocked ? 'נעול - לחץ כדי לפתוח' : 'פתוח - לחץ כדי לנעול'}
           >
-            {isLocked ? <LockIcon /> : <UnlockIcon />}
+            {isLocked ? <LockIcon data-element-name="רכיב_page_2" /> : <UnlockIcon data-element-name="רכיב_page_3" />}
             {isLocked ? 'מחיקה נעולה' : 'מחיקה פתוחה'}
           </button>
-          <button className={styles.addButton} onClick={() => handleAddNew('', true)}>
-            <PlusIcon />
+          <button data-element-name="כפתור_page_4" className={styles.addButton} onClick={() => handleAddNew('', true)}>
+            <PlusIcon data-element-name="רכיב_page_5" />
             מחירון חדש
           </button>
         </div>
@@ -223,7 +223,7 @@ export default function PricelistManagement() {
             boxShadow: '0 4px 20px rgba(0,0,0,0.15)', textAlign: 'center'
           }}>
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1rem', color: isLocked ? '#ef4444' : '#22c55e' }}>
-              {isLocked ? <LockIcon /> : <UnlockIcon />}
+              {isLocked ? <LockIcon data-element-name="רכיב_page_6" /> : <UnlockIcon data-element-name="רכיב_page_7" />}
             </div>
             <h3 style={{ marginTop: 0, color: 'var(--primary-color)', marginBottom: '0.5rem' }}>
               {isLocked ? 'פתיחת נעילת מחיקה' : 'נעילת מחיקה'}
@@ -231,7 +231,7 @@ export default function PricelistManagement() {
             <p style={{ fontSize: '0.9rem', color: 'var(--text-main)', marginBottom: '1.5rem' }}>
               יש להזין קוד עובד (מנהל/מתכנת)
             </p>
-            <input 
+            <input data-element-name="שדה_page_8" 
               type="password" 
               value={unlockCode}
               onChange={e => setUnlockCode(e.target.value)}
@@ -241,13 +241,13 @@ export default function PricelistManagement() {
               style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', marginBottom: '1.5rem', textAlign: 'center', fontSize: '1.2rem' }}
             />
             <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center' }}>
-              <button 
+              <button data-element-name="כפתור_page_9" 
                 onClick={handleLockSubmit}
                 style={{ background: 'var(--primary-color)', color: 'white', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 500 }}
               >
                 אישור
               </button>
-              <button 
+              <button data-element-name="כפתור_page_10" 
                 onClick={() => { setShowLockModal(false); setUnlockCode(''); }}
                 style={{ background: '#f1f5f9', color: '#334155', border: 'none', padding: '0.5rem 1.5rem', borderRadius: '8px', cursor: 'pointer', fontWeight: 500 }}
               >
@@ -271,35 +271,35 @@ export default function PricelistManagement() {
               <div className={styles.newEntryGrid}>
                 <div className={styles.inputGroup}>
                   <label className={styles.inputLabel}>קטגוריה</label>
-                  <input type="text" value={editForm.category || ''} onChange={e => setEditForm({...editForm, category: e.target.value})} className={styles.inputField} placeholder="לדוגמה: נשים" />
+                  <input data-element-name="שדה_page_11" type="text" value={editForm.category || ''} onChange={e => setEditForm({...editForm, category: e.target.value})} className={styles.inputField} placeholder="לדוגמה: נשים" />
                 </div>
                 <div className={styles.inputGroup}>
                   <label className={styles.inputLabel}>תיאור</label>
-                  <input type="text" value={editForm.description || ''} onChange={e => setEditForm({...editForm, description: e.target.value})} className={styles.inputField} placeholder="לדוגמה: תחרה" />
+                  <input data-element-name="שדה_page_12" type="text" value={editForm.description || ''} onChange={e => setEditForm({...editForm, description: e.target.value})} className={styles.inputField} placeholder="לדוגמה: תחרה" />
                 </div>
                 <div className={styles.inputGroup}>
                   <label className={styles.inputLabel}>ממידה</label>
-                  <input type="number" value={editForm.fromSize || ''} onChange={e => setEditForm({...editForm, fromSize: e.target.value})} className={styles.inputField} placeholder="36" />
+                  <input data-element-name="שדה_page_13" type="number" value={editForm.fromSize || ''} onChange={e => setEditForm({...editForm, fromSize: e.target.value})} className={styles.inputField} placeholder="36" />
                 </div>
                 <div className={styles.inputGroup}>
                   <label className={styles.inputLabel}>עד מידה</label>
-                  <input type="number" value={editForm.toSize || ''} onChange={e => setEditForm({...editForm, toSize: e.target.value})} className={styles.inputField} placeholder="44" />
+                  <input data-element-name="שדה_page_14" type="number" value={editForm.toSize || ''} onChange={e => setEditForm({...editForm, toSize: e.target.value})} className={styles.inputField} placeholder="44" />
                 </div>
                 <div className={styles.inputGroup}>
                   <label className={styles.inputLabel}>מחיר (₪)</label>
-                  <input type="number" value={editForm.price || ''} onChange={e => setEditForm({...editForm, price: e.target.value})} className={styles.inputField} placeholder="350" />
+                  <input data-element-name="שדה_page_15" type="number" value={editForm.price || ''} onChange={e => setEditForm({...editForm, price: e.target.value})} className={styles.inputField} placeholder="350" />
                 </div>
                 <div className={styles.inputGroup}>
                   <label className={styles.inputLabel}>פיקדון (₪)</label>
-                  <input type="number" value={editForm.deposit || ''} onChange={e => setEditForm({...editForm, deposit: e.target.value})} className={styles.inputField} placeholder="50" />
+                  <input data-element-name="שדה_page_16" type="number" value={editForm.deposit || ''} onChange={e => setEditForm({...editForm, deposit: e.target.value})} className={styles.inputField} placeholder="50" />
                 </div>
               </div>
               <div className={styles.actionButtons} style={{ justifyContent: 'flex-end', marginTop: '1rem' }}>
-                <button className={`${styles.addButton} ${styles.saveBtn}`} onClick={() => handleSave(null)}>
-                  <CheckIcon /> שמור
+                <button data-element-name="כפתור_page_17" className={`${styles.addButton} ${styles.saveBtn}`} onClick={() => handleSave(null)}>
+                  <CheckIcon data-element-name="רכיב_page_18" /> שמור
                 </button>
-                <button className={styles.addCategoryButton} onClick={() => { setEditingId(null); setIsAddingNew(false); }}>
-                  <XIcon /> בטל
+                <button data-element-name="כפתור_page_19" className={styles.addCategoryButton} onClick={() => { setEditingId(null); setIsAddingNew(false); }}>
+                  <XIcon data-element-name="רכיב_page_20" /> בטל
                 </button>
               </div>
             </div>
@@ -309,8 +309,8 @@ export default function PricelistManagement() {
             <div key={categoryName} className={styles.categoryCard}>
               <div className={styles.categoryHeader}>
                 <h2 className={styles.categoryTitle}>{categoryName}</h2>
-                <button className={styles.addCategoryButton} onClick={() => handleAddNew(categoryName !== 'ללא קטגוריה' ? categoryName : '')}>
-                  <PlusIcon /> הוסף שורה לקטגוריה
+                <button data-element-name="כפתור_page_21" className={styles.addCategoryButton} onClick={() => handleAddNew(categoryName !== 'ללא קטגוריה' ? categoryName : '')}>
+                  <PlusIcon data-element-name="רכיב_page_22" /> הוסף שורה לקטגוריה
                 </button>
               </div>
               
@@ -330,18 +330,18 @@ export default function PricelistManagement() {
                       <tr key={item.id}>
                         {editingId === item.id ? (
                           <>
-                            <td><input type="text" value={editForm.description || ''} onChange={e => setEditForm({...editForm, description: e.target.value})} className={styles.inputField} /></td>
+                            <td><input data-element-name="שדה_page_23" type="text" value={editForm.description || ''} onChange={e => setEditForm({...editForm, description: e.target.value})} className={styles.inputField} /></td>
                             <td style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                              <input type="number" value={editForm.fromSize || ''} onChange={e => setEditForm({...editForm, fromSize: e.target.value})} className={styles.inputField} style={{ width: '60px' }} placeholder="מ-" />
+                              <input data-element-name="שדה_page_24" type="number" value={editForm.fromSize || ''} onChange={e => setEditForm({...editForm, fromSize: e.target.value})} className={styles.inputField} style={{ width: '60px' }} placeholder="מ-" />
                               <span>-</span>
-                              <input type="number" value={editForm.toSize || ''} onChange={e => setEditForm({...editForm, toSize: e.target.value})} className={styles.inputField} style={{ width: '60px' }} placeholder="עד" />
+                              <input data-element-name="שדה_page_25" type="number" value={editForm.toSize || ''} onChange={e => setEditForm({...editForm, toSize: e.target.value})} className={styles.inputField} style={{ width: '60px' }} placeholder="עד" />
                             </td>
-                            <td><input type="number" value={editForm.price || ''} onChange={e => setEditForm({...editForm, price: e.target.value})} className={styles.inputField} style={{ width: '90px' }} /></td>
-                            <td><input type="number" value={editForm.deposit || ''} onChange={e => setEditForm({...editForm, deposit: e.target.value})} className={styles.inputField} style={{ width: '90px' }} /></td>
+                            <td><input data-element-name="שדה_page_26" type="number" value={editForm.price || ''} onChange={e => setEditForm({...editForm, price: e.target.value})} className={styles.inputField} style={{ width: '90px' }} /></td>
+                            <td><input data-element-name="שדה_page_27" type="number" value={editForm.deposit || ''} onChange={e => setEditForm({...editForm, deposit: e.target.value})} className={styles.inputField} style={{ width: '90px' }} /></td>
                             <td style={{ textAlign: 'left' }}>
                               <div className={styles.actionButtons} style={{ justifyContent: 'flex-end' }}>
-                                <button className={`${styles.iconButton} ${styles.save}`} onClick={() => handleSave(item.id)} title="שמור"><CheckIcon /></button>
-                                <button className={`${styles.iconButton} ${styles.cancel}`} onClick={() => { setEditingId(null); setIsAddingNew(false); }} title="בטל"><XIcon /></button>
+                                <button data-element-name="כפתור_page_28" className={`${styles.iconButton} ${styles.save}`} onClick={() => handleSave(item.id)} title="שמור"><CheckIcon data-element-name="רכיב_page_29" /></button>
+                                <button data-element-name="כפתור_page_30" className={`${styles.iconButton} ${styles.cancel}`} onClick={() => { setEditingId(null); setIsAddingNew(false); }} title="בטל"><XIcon data-element-name="רכיב_page_31" /></button>
                               </div>
                             </td>
                           </>
@@ -363,15 +363,15 @@ export default function PricelistManagement() {
                             </td>
                             <td style={{ textAlign: 'left' }}>
                               <div className={styles.actionButtons} style={{ justifyContent: 'flex-end' }}>
-                                <button className={`${styles.iconButton} ${styles.edit}`} onClick={() => handleEditClick(item)} title="ערוך"><EditIcon /></button>
-                                <button 
+                                <button data-element-name="כפתור_page_32" className={`${styles.iconButton} ${styles.edit}`} onClick={() => handleEditClick(item)} title="ערוך"><EditIcon data-element-name="רכיב_page_33" /></button>
+                                <button data-element-name="כפתור_page_34" 
                                   className={`${styles.iconButton} ${styles.delete}`} 
                                   onClick={() => handleDelete(item.id)} 
                                   title="מחק"
                                   disabled={isLocked}
                                   style={{ opacity: isLocked ? 0.4 : 1, cursor: isLocked ? 'not-allowed' : 'pointer' }}
                                 >
-                                  {isLocked ? <LockIcon /> : <TrashIcon />}
+                                  {isLocked ? <LockIcon data-element-name="רכיב_page_35" /> : <TrashIcon data-element-name="רכיב_page_36" />}
                                 </button>
                               </div>
                             </td>
@@ -381,18 +381,18 @@ export default function PricelistManagement() {
                     ))}
                     {isAddingNew && editingId === 'new' && addingCategory === (categoryName !== 'ללא קטגוריה' ? categoryName : '') && (
                       <tr style={{ background: '#f8fafc' }}>
-                        <td><input type="text" value={editForm.description || ''} onChange={e => setEditForm({...editForm, description: e.target.value})} className={styles.inputField} placeholder="תיאור" autoFocus /></td>
+                        <td><input data-element-name="שדה_page_37" type="text" value={editForm.description || ''} onChange={e => setEditForm({...editForm, description: e.target.value})} className={styles.inputField} placeholder="תיאור" autoFocus /></td>
                         <td style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                          <input type="number" value={editForm.fromSize || ''} onChange={e => setEditForm({...editForm, fromSize: e.target.value})} className={styles.inputField} style={{ width: '60px' }} placeholder="מ-" />
+                          <input data-element-name="שדה_page_38" type="number" value={editForm.fromSize || ''} onChange={e => setEditForm({...editForm, fromSize: e.target.value})} className={styles.inputField} style={{ width: '60px' }} placeholder="מ-" />
                           <span>-</span>
-                          <input type="number" value={editForm.toSize || ''} onChange={e => setEditForm({...editForm, toSize: e.target.value})} className={styles.inputField} style={{ width: '60px' }} placeholder="עד" />
+                          <input data-element-name="שדה_page_39" type="number" value={editForm.toSize || ''} onChange={e => setEditForm({...editForm, toSize: e.target.value})} className={styles.inputField} style={{ width: '60px' }} placeholder="עד" />
                         </td>
-                        <td><input type="number" value={editForm.price || ''} onChange={e => setEditForm({...editForm, price: e.target.value})} className={styles.inputField} style={{ width: '90px' }} placeholder="מחיר" /></td>
-                        <td><input type="number" value={editForm.deposit || ''} onChange={e => setEditForm({...editForm, deposit: e.target.value})} className={styles.inputField} style={{ width: '90px' }} placeholder="פיקדון" /></td>
+                        <td><input data-element-name="שדה_page_40" type="number" value={editForm.price || ''} onChange={e => setEditForm({...editForm, price: e.target.value})} className={styles.inputField} style={{ width: '90px' }} placeholder="מחיר" /></td>
+                        <td><input data-element-name="שדה_page_41" type="number" value={editForm.deposit || ''} onChange={e => setEditForm({...editForm, deposit: e.target.value})} className={styles.inputField} style={{ width: '90px' }} placeholder="פיקדון" /></td>
                         <td style={{ textAlign: 'left' }}>
                           <div className={styles.actionButtons} style={{ justifyContent: 'flex-end' }}>
-                            <button className={`${styles.iconButton} ${styles.save}`} onClick={() => handleSave(null)} title="שמור"><CheckIcon /></button>
-                            <button className={`${styles.iconButton} ${styles.cancel}`} onClick={() => { setEditingId(null); setIsAddingNew(false); }} title="בטל"><XIcon /></button>
+                            <button data-element-name="כפתור_page_42" className={`${styles.iconButton} ${styles.save}`} onClick={() => handleSave(null)} title="שמור"><CheckIcon data-element-name="רכיב_page_43" /></button>
+                            <button data-element-name="כפתור_page_44" className={`${styles.iconButton} ${styles.cancel}`} onClick={() => { setEditingId(null); setIsAddingNew(false); }} title="בטל"><XIcon data-element-name="רכיב_page_45" /></button>
                           </div>
                         </td>
                       </tr>

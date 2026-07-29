@@ -226,11 +226,11 @@ export default function HomeDashboard() {
 
   const renderStatusIcon = (status) => {
     switch(status) {
-      case 'הוחזר': return <CheckCircle size={16} color="#10b981" title="הוחזר" />;
-      case 'מושכר': return <Shirt size={16} color="#f59e0b" title="מושכר" />;
-      case 'בוטל': return <XCircle size={16} color="#ef4444" title="בוטל" />;
-      case 'שולם': return <Check size={16} color="#3b82f6" title="שולם" />;
-      default: return <Clock size={16} color="#6b7280" title={status || 'פעיל'} />;
+      case 'הוחזר': return <CheckCircle data-element-name="רכיב_page_1" size={16} color="#10b981" title="הוחזר" />;
+      case 'מושכר': return <Shirt data-element-name="רכיב_page_2" size={16} color="#f59e0b" title="מושכר" />;
+      case 'בוטל': return <XCircle data-element-name="רכיב_page_3" size={16} color="#ef4444" title="בוטל" />;
+      case 'שולם': return <Check data-element-name="רכיב_page_4" size={16} color="#3b82f6" title="שולם" />;
+      default: return <Clock data-element-name="רכיב_page_5" size={16} color="#6b7280" title={status || 'פעיל'} />;
     }
   };
 
@@ -243,7 +243,7 @@ export default function HomeDashboard() {
           ברוכים הבאים למערכת ניהול הגמ"ח
         </h1>
         <div style={{ maxWidth: '800px', margin: '0 auto', background: 'var(--card-bg)', padding: '1rem', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
-          <AISearchBar 
+          <AISearchBar data-element-name="רכיב_page_6" 
             placeholder="דוגמא משפחת כהן..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -261,11 +261,11 @@ export default function HomeDashboard() {
         <div className="animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto 3rem auto', background: 'linear-gradient(135deg, #fdf2f8, #f5f3ff)', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 15px rgba(236, 72, 153, 0.1)', border: '1px solid #fbcfe8', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '600px', overflowY: 'auto' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ec4899', fontWeight: 'bold' }}>
-              <Sparkles size={24} />
+              <Sparkles data-element-name="רכיב_page_7" size={24} />
               <span style={{ fontSize: '1.2rem' }}>צ'אט חכם מבוסס AI:</span>
             </div>
-            <button onClick={clearAiChat} title="נקה צ'אט" style={{ background: 'var(--card-bg)', border: '1px solid #fbcfe8', borderRadius: '50%', padding: '0.5rem', cursor: 'pointer', color: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <X size={18} />
+            <button data-element-name="כפתור_page_8" onClick={clearAiChat} title="נקה צ'אט" style={{ background: 'var(--card-bg)', border: '1px solid #fbcfe8', borderRadius: '50%', padding: '0.5rem', cursor: 'pointer', color: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <X data-element-name="רכיב_page_9" size={18} />
             </button>
           </div>
           
@@ -280,8 +280,8 @@ export default function HomeDashboard() {
                 </div>
                 {msg.data && msg.data.length > 0 && (
                   <div style={{ marginTop: '1rem' }}>
-                    <button onClick={() => exportTableToExcel(msg.data, 'AI_Export')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                      <Download size={16} /> הורד Excel
+                    <button data-element-name="כפתור_page_10" onClick={() => exportTableToExcel(msg.data, 'AI_Export')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '1rem' }}>
+                      <Download data-element-name="רכיב_page_11" size={16} /> הורד Excel
                     </button>
                     <div style={{ overflowX: 'auto', background: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
                       <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem' }}>
@@ -302,7 +302,7 @@ export default function HomeDashboard() {
                               {msg.data.some(r => r._actionUrl) && (
                                 <td style={{ padding: '0.5rem' }}>
                                   {row._actionUrl && row._actionLabel ? (
-                                    <Link href={row._actionUrl} target="_blank" style={{ background: '#ec4899', color: 'white', padding: '0.3rem 0.6rem', borderRadius: '8px', textDecoration: 'none', fontSize: '0.8rem', display: 'inline-block' }}>
+                                    <Link data-element-name="רכיב_page_12" href={row._actionUrl} target="_blank" style={{ background: '#ec4899', color: 'white', padding: '0.3rem 0.6rem', borderRadius: '8px', textDecoration: 'none', fontSize: '0.8rem', display: 'inline-block' }}>
                                       {row._actionLabel}
                                     </Link>
                                   ) : null}
@@ -320,7 +320,7 @@ export default function HomeDashboard() {
             ))}
             {aiLoading && (
               <div style={{ alignSelf: 'flex-end', color: '#ec4899', fontStyle: 'italic', padding: '1rem' }}>
-                <Loader2 className="animate-spin" size={20} style={{ display: 'inline', marginRight: '0.5rem' }} />
+                <Loader2 data-element-name="רכיב_page_13" className="animate-spin" size={20} style={{ display: 'inline', marginRight: '0.5rem' }} />
                 ה-AI חושב...
               </div>
             )}
@@ -332,7 +332,7 @@ export default function HomeDashboard() {
       {/* Floating Chat Input */}
       {aiMessages.length > 0 && (
         <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '800px', background: 'var(--card-bg)', padding: '0.75rem', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', border: '1px solid #fbcfe8', zIndex: 1000, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-           <input 
+           <input data-element-name="שדה_page_14" 
              type="text" 
              value={aiReplyInput} 
              onChange={(e) => setAiReplyInput(e.target.value)}
@@ -341,11 +341,11 @@ export default function HomeDashboard() {
              style={{ flex: 1, padding: '0.75rem 1.5rem', border: 'none', background: '#fdf2f8', borderRadius: '20px', fontSize: '1rem', color: '#ec4899', outline: 'none' }} 
              disabled={aiLoading}
            />
-           <button onClick={() => handleAiSearch(aiReplyInput, true)} disabled={aiLoading || !aiReplyInput.trim()} style={{ background: aiLoading || !aiReplyInput.trim() ? '#f9a8d4' : '#ec4899', color: 'white', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: aiLoading || !aiReplyInput.trim() ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}>
-             <Send size={20} />
+           <button data-element-name="כפתור_page_15" onClick={() => handleAiSearch(aiReplyInput, true)} disabled={aiLoading || !aiReplyInput.trim()} style={{ background: aiLoading || !aiReplyInput.trim() ? '#f9a8d4' : '#ec4899', color: 'white', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: aiLoading || !aiReplyInput.trim() ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}>
+             <Send data-element-name="רכיב_page_16" size={20} />
            </button>
-           <button onClick={clearAiChat} title="סגור צ'אט" style={{ background: 'var(--element-bg)', color: '#6b7280', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
-             <X size={20} />
+           <button data-element-name="כפתור_page_17" onClick={clearAiChat} title="סגור צ'אט" style={{ background: 'var(--element-bg)', color: '#6b7280', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
+             <X data-element-name="רכיב_page_18" size={20} />
            </button>
         </div>
       )}
@@ -359,25 +359,25 @@ export default function HomeDashboard() {
             {/* Customers */}
             <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#3b82f6', marginBottom: '1rem' }}>
-                <User size={20} /> לקוחות ({searchResults.customers?.length || 0})
+                <User data-element-name="רכיב_page_19" size={20} /> לקוחות ({searchResults.customers?.length || 0})
               </h3>
               {searchResults.customers?.length > 0 ? (
                 <>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {searchResults.customers.slice(0, showMoreCustomers ? undefined : 5).map(c => (
                       <li key={c.id} style={{ borderBottom: '1px solid #f3f4f6', padding: '0.75rem 0' }}>
-                        <Link href={`/customers/${c.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Link data-element-name="רכיב_page_20" href={`/customers/${c.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontWeight: 'bold' }}>{c.firstName} {c.lastName}</div>
                             <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{c.phone1} • {c.city}</div>
                           </div>
-                          <ArrowLeft size={16} color="#9ca3af" />
+                          <ArrowLeft data-element-name="רכיב_page_21" size={16} color="#9ca3af" />
                         </Link>
                       </li>
                     ))}
                   </ul>
                   {searchResults.customers.length > 5 && (
-                    <button onClick={() => setShowMoreCustomers(!showMoreCustomers)} style={{ width: '100%', background: 'var(--btn-light-blue-bg)', color: '#3b82f6', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
+                    <button data-element-name="כפתור_page_22" onClick={() => setShowMoreCustomers(!showMoreCustomers)} style={{ width: '100%', background: 'var(--btn-light-blue-bg)', color: '#3b82f6', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
                       {showMoreCustomers ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
@@ -388,14 +388,14 @@ export default function HomeDashboard() {
             {/* Orders */}
             <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', marginBottom: '1rem' }}>
-                <ShoppingBag size={20} /> הזמנות ({searchResults.orders?.length || 0})
+                <ShoppingBag data-element-name="רכיב_page_23" size={20} /> הזמנות ({searchResults.orders?.length || 0})
               </h3>
               {searchResults.orders?.length > 0 ? (
                 <>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {searchResults.orders.slice(0, showMoreOrders ? undefined : 5).map(o => (
                       <li key={o.id} style={{ borderBottom: '1px solid #f3f4f6', padding: '0.75rem 0' }}>
-                        <Link href={`/orders/${o.orderId}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Link data-element-name="רכיב_page_24" href={`/orders/${o.orderId}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#047857', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                               {o.firstName} {o.lastName}
@@ -408,13 +408,13 @@ export default function HomeDashboard() {
                               סה"כ: <strong>₪{o.totalAmount || 0}</strong> | פריטים: <strong>{o.itemCount || 0}</strong>
                             </div>
                           </div>
-                          <ArrowLeft size={16} color="#9ca3af" />
+                          <ArrowLeft data-element-name="רכיב_page_25" size={16} color="#9ca3af" />
                         </Link>
                       </li>
                     ))}
                   </ul>
                   {searchResults.orders.length > 5 && (
-                    <button onClick={() => setShowMoreOrders(!showMoreOrders)} style={{ width: '100%', background: 'var(--btn-light-green-bg)', color: '#10b981', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
+                    <button data-element-name="כפתור_page_26" onClick={() => setShowMoreOrders(!showMoreOrders)} style={{ width: '100%', background: 'var(--btn-light-green-bg)', color: '#10b981', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
                       {showMoreOrders ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
@@ -425,25 +425,25 @@ export default function HomeDashboard() {
             {/* Rentals */}
             <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f59e0b', marginBottom: '1rem' }}>
-                <Shirt size={20} /> השכרות ({searchResults.rentals?.length || 0})
+                <Shirt data-element-name="רכיב_page_27" size={20} /> השכרות ({searchResults.rentals?.length || 0})
               </h3>
               {searchResults.rentals?.length > 0 ? (
                 <>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {searchResults.rentals.slice(0, showMoreRentals ? undefined : 5).map(r => (
                       <li key={r.id} style={{ borderBottom: '1px solid #f3f4f6', padding: '0.75rem 0' }}>
-                        <Link href={`/orders/${r.orderId}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Link data-element-name="רכיב_page_28" href={`/orders/${r.orderId}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontWeight: 'bold' }}>{r.catalogName || r.description}</div>
                             <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>ברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}</div>
                           </div>
-                          <ArrowLeft size={16} color="#9ca3af" />
+                          <ArrowLeft data-element-name="רכיב_page_29" size={16} color="#9ca3af" />
                         </Link>
                       </li>
                     ))}
                   </ul>
                   {searchResults.rentals.length > 5 && (
-                    <button onClick={() => setShowMoreRentals(!showMoreRentals)} style={{ width: '100%', background: 'var(--element-bg)', color: '#f59e0b', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
+                    <button data-element-name="כפתור_page_30" onClick={() => setShowMoreRentals(!showMoreRentals)} style={{ width: '100%', background: 'var(--element-bg)', color: '#f59e0b', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
                       {showMoreRentals ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
@@ -463,19 +463,19 @@ export default function HomeDashboard() {
         <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: debtsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
           <div style={{ background: 'var(--banner-debts-bg)', padding: '1.5rem', borderBottom: debtsExpanded ? '1px solid var(--banner-debts-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ background: '#ef4444', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><CreditCard size={20} /></div>
+              <div style={{ background: '#ef4444', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><CreditCard data-element-name="רכיב_page_31" size={20} /></div>
               <h2 style={{ margin: 0, color: '#b91c1c', fontSize: '1.25rem' }}>חובות פתוחים</h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setDebtsExpanded(!debtsExpanded)} title={debtsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
-                {debtsExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+              <button data-element-name="כפתור_page_32" onClick={() => setDebtsExpanded(!debtsExpanded)} title={debtsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+                {debtsExpanded ? <Minimize2 data-element-name="רכיב_page_33" size={20} /> : <Maximize2 data-element-name="רכיב_page_34" size={20} />}
               </button>
             </div>
           </div>
           {debtsExpanded && (
           <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
             {loadingDashboard ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 className="animate-spin" color="#ef4444" /></div>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 data-element-name="רכיב_page_35" className="animate-spin" color="#ef4444" /></div>
             ) : debts.length > 0 ? (
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
                 <thead>
@@ -498,7 +498,7 @@ export default function HomeDashboard() {
                         ₪{debt.remaining || 0}
                       </td>
                       <td style={{ padding: '0.75rem 0.5rem' }}>
-                        <Link href={`/orders/${debt.orderId}`} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '12px' }}>לפרטים</Link>
+                        <Link data-element-name="רכיב_page_36" href={`/orders/${debt.orderId}`} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '12px' }}>לפרטים</Link>
                       </td>
                     </tr>
                   ))}
@@ -506,7 +506,7 @@ export default function HomeDashboard() {
               </table>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
-                <CreditCard size={40} opacity={0.2} />
+                <CreditCard data-element-name="רכיב_page_37" size={40} opacity={0.2} />
                 <span>אין כרגע חובות פתוחים הממתינים לתשלום.</span>
               </div>
             )}
@@ -518,26 +518,26 @@ export default function HomeDashboard() {
         <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: paymentsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
           <div style={{ background: 'var(--banner-payments-bg)', padding: '1.5rem', borderBottom: paymentsExpanded ? '1px solid var(--banner-payments-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ background: '#10b981', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Banknote size={20} /></div>
+              <div style={{ background: '#10b981', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Banknote data-element-name="רכיב_page_38" size={20} /></div>
               <h2 style={{ margin: 0, color: '#047857', fontSize: '1.25rem' }}>תשלומים אחרונים</h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setPaymentsExpanded(!paymentsExpanded)} title={paymentsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#047857', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(16, 185, 129, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
-                {paymentsExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+              <button data-element-name="כפתור_page_39" onClick={() => setPaymentsExpanded(!paymentsExpanded)} title={paymentsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#047857', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(16, 185, 129, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+                {paymentsExpanded ? <Minimize2 data-element-name="רכיב_page_40" size={20} /> : <Maximize2 data-element-name="רכיב_page_41" size={20} />}
               </button>
             </div>
           </div>
           {paymentsExpanded && (
           <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
             {loadingDashboard ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 className="animate-spin" color="#10b981" /></div>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 data-element-name="רכיב_page_42" className="animate-spin" color="#10b981" /></div>
             ) : recentPayments.length > 0 ? (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {recentPayments.map(payment => (
                   <li key={payment.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0.5rem', borderBottom: '1px solid #f3f4f6' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                       <div style={{ background: '#d1fae5', color: '#047857', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                        <CreditCard size={20} />
+                        <CreditCard data-element-name="רכיב_page_43" size={20} />
                       </div>
                       <div>
                         <div style={{ fontWeight: '500' }}>{payment.customer?.firstName} {payment.customer?.lastName}</div>
@@ -554,7 +554,7 @@ export default function HomeDashboard() {
               </ul>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
-                <Banknote size={40} opacity={0.2} />
+                <Banknote data-element-name="רכיב_page_44" size={40} opacity={0.2} />
                 <span>טרם התקבלו תשלומים.</span>
               </div>
             )}
@@ -566,19 +566,19 @@ export default function HomeDashboard() {
         <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: ordersExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
           <div style={{ background: 'var(--banner-orders-bg)', padding: '1.5rem', borderBottom: ordersExpanded ? '1px solid var(--banner-orders-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ background: '#3b82f6', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><ShoppingBag size={20} /></div>
+              <div style={{ background: '#3b82f6', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><ShoppingBag data-element-name="רכיב_page_45" size={20} /></div>
               <h2 style={{ margin: 0, color: '#1d4ed8', fontSize: '1.25rem' }}>הזמנות אחרונות</h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setOrdersExpanded(!ordersExpanded)} title={ordersExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(59, 130, 246, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
-                {ordersExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+              <button data-element-name="כפתור_page_46" onClick={() => setOrdersExpanded(!ordersExpanded)} title={ordersExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(59, 130, 246, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+                {ordersExpanded ? <Minimize2 data-element-name="רכיב_page_47" size={20} /> : <Maximize2 data-element-name="רכיב_page_48" size={20} />}
               </button>
             </div>
           </div>
           {ordersExpanded && (
           <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
             {loadingDashboard ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 className="animate-spin" color="#3b82f6" /></div>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 data-element-name="רכיב_page_49" className="animate-spin" color="#3b82f6" /></div>
             ) : recentOrders.length > 0 ? (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {recentOrders.map(order => (
@@ -588,7 +588,7 @@ export default function HomeDashboard() {
                         #{order.orderId}
                       </div>
                       <div>
-                        <Link href={`/orders/${order.orderId}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', textDecoration: 'none', color: 'inherit' }}>
+                        <Link data-element-name="רכיב_page_50" href={`/orders/${order.orderId}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', textDecoration: 'none', color: 'inherit' }}>
                           {order.customer?.firstName} {order.customer?.lastName}
                         </Link>
                         <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem' }}>
@@ -603,8 +603,8 @@ export default function HomeDashboard() {
                       <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#3b82f6' }}>
                         ₪{order.totalAmount || 0}
                       </div>
-                      <Link href={`/orders/${order.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', background: '#eff6ff', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="לפרטי ההזמנה">
-                        <ExternalLink size={18} />
+                      <Link data-element-name="רכיב_page_51" href={`/orders/${order.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', background: '#eff6ff', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="לפרטי ההזמנה">
+                        <ExternalLink data-element-name="רכיב_page_52" size={18} />
                       </Link>
                     </div>
                   </li>
@@ -612,7 +612,7 @@ export default function HomeDashboard() {
               </ul>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
-                <ShoppingBag size={40} opacity={0.2} />
+                <ShoppingBag data-element-name="רכיב_page_53" size={40} opacity={0.2} />
                 <span>אין הזמנות אחרונות.</span>
               </div>
             )}
@@ -624,29 +624,29 @@ export default function HomeDashboard() {
         <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: rentalsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
           <div style={{ background: 'var(--banner-rentals-bg)', padding: '1.5rem', borderBottom: rentalsExpanded ? '1px solid var(--banner-rentals-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ background: '#f59e0b', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Shirt size={20} /></div>
+              <div style={{ background: '#f59e0b', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Shirt data-element-name="רכיב_page_54" size={20} /></div>
               <h2 style={{ margin: 0, color: '#d97706', fontSize: '1.25rem' }}>השכרות אחרונות</h2>
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <button onClick={() => setRentalsExpanded(!rentalsExpanded)} title={rentalsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d97706', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(245, 158, 11, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
-                {rentalsExpanded ? <Minimize2 size={20} /> : <Maximize2 size={20} />}
+              <button data-element-name="כפתור_page_55" onClick={() => setRentalsExpanded(!rentalsExpanded)} title={rentalsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d97706', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(245, 158, 11, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+                {rentalsExpanded ? <Minimize2 data-element-name="רכיב_page_56" size={20} /> : <Maximize2 data-element-name="רכיב_page_57" size={20} />}
               </button>
             </div>
           </div>
           {rentalsExpanded && (
           <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
             {loadingDashboard ? (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 className="animate-spin" color="#f59e0b" /></div>
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 data-element-name="רכיב_page_58" className="animate-spin" color="#f59e0b" /></div>
             ) : recentRentals.length > 0 ? (
               <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {recentRentals.map(rental => (
                   <li key={rental.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0.5rem', borderBottom: '1px solid #f3f4f6' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                       <div style={{ background: '#fef3c7', color: '#d97706', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>
-                        <Shirt size={20} />
+                        <Shirt data-element-name="רכיב_page_59" size={20} />
                       </div>
                       <div>
-                        <Link href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', textDecoration: 'none', color: 'inherit' }}>
+                        <Link data-element-name="רכיב_page_60" href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', textDecoration: 'none', color: 'inherit' }}>
                           הזמנה #{rental.order?.orderId} • {rental.dressItem?.dress?.name 
                             ? `${rental.dressItem.dress.name} ${rental.dressItem.dress.barcodePrefix || rental.dressItem.barcodePrefix || rental.barcodePrefix ? `(קוד: ${rental.dressItem.dress.barcodePrefix || rental.dressItem.barcodePrefix || rental.barcodePrefix})` : ''}`
                             : (rental.description || rental.dressItem?.dressName || 'שמלה')}
@@ -663,8 +663,8 @@ export default function HomeDashboard() {
                       <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         {renderStatusIcon(rental.status)} {rental.status}
                       </div>
-                      <Link href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d97706', background: 'var(--element-bg)', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="לפרטי ההזמנה">
-                        <ExternalLink size={18} />
+                      <Link data-element-name="רכיב_page_61" href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d97706', background: 'var(--element-bg)', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="לפרטי ההזמנה">
+                        <ExternalLink data-element-name="רכיב_page_62" size={18} />
                       </Link>
                     </div>
                   </li>
@@ -672,7 +672,7 @@ export default function HomeDashboard() {
               </ul>
             ) : (
               <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
-                <Shirt size={40} opacity={0.2} />
+                <Shirt data-element-name="רכיב_page_63" size={40} opacity={0.2} />
                 <span>אין השכרות אחרונות.</span>
               </div>
             )}
@@ -684,7 +684,7 @@ export default function HomeDashboard() {
       )}
 
       {quickPaymentOpen && (
-        <QuickPaymentModal 
+        <QuickPaymentModal data-element-name="רכיב_page_64" 
           isOpen={quickPaymentOpen} 
           onClose={(success) => {
             setQuickPaymentOpen(false);

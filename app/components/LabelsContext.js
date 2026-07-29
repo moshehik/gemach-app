@@ -35,7 +35,7 @@ export function LabelsProvider({ children, initialLabels = {} }) {
   };
 
   return (
-    <LabelsContext.Provider value={{ labels, getLabel, updateLabels, loading }}>
+    <LabelsContext.Provider data-element-name="רכיב_LabelsContext_1" value={{ labels, getLabel, updateLabels, loading }}>
       {children}
     </LabelsContext.Provider>
   );

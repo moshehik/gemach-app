@@ -189,19 +189,19 @@ export default function EmployeesPage() {
       `}} />
 
       <div className="no-print">
-        {showStatistics && <StatisticsModal isOpen={!!showStatistics} onClose={() => setShowStatistics(false)} pageContext="employees" position={typeof showStatistics === 'object' ? showStatistics : null} />}
+        {showStatistics && <StatisticsModal data-element-name="רכיב_page_1" isOpen={!!showStatistics} onClose={() => setShowStatistics(false)} pageContext="employees" position={typeof showStatistics === 'object' ? showStatistics : null} />}
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
           <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול עובדים ונוכחות</h1>
           <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
             {activeTab === 'list' && (
-              <button 
+              <button data-element-name="כפתור_page_2" 
                 data-agy-id="new-employee-button"
                 onClick={() => router.push('/employees/new')} 
                 className="btn btn-primary" 
                 style={{ borderRadius: '24px', padding: '0.75rem 1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
               >
-                <Plus size={20} />
+                <Plus data-element-name="רכיב_page_3" size={20} />
                 עובד חדש
               </button>
             )}
@@ -210,20 +210,20 @@ export default function EmployeesPage() {
 
         {/* Tabs Navigation */}
         <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid var(--element-border)', marginBottom: '2rem' }}>
-          <button 
+          <button data-element-name="כפתור_page_4" 
             data-agy-id="tab-employees-list"
             onClick={() => setActiveTab('list')} 
             style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'list' ? '3px solid var(--primary-color)' : '3px solid transparent', color: activeTab === 'list' ? 'var(--primary-color)' : 'var(--text-muted)', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
           >
-            <Users size={20} />
+            <Users data-element-name="רכיב_page_5" size={20} />
             רשימת עובדים
           </button>
-          <button 
+          <button data-element-name="כפתור_page_6" 
             data-agy-id="tab-attendance"
             onClick={() => setActiveTab('attendance')} 
             style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'attendance' ? '3px solid var(--primary-color)' : '3px solid transparent', color: activeTab === 'attendance' ? 'var(--primary-color)' : 'var(--text-muted)', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
           >
-            <CalendarClock size={20} />
+            <CalendarClock data-element-name="רכיב_page_7" size={20} />
             נוכחות
           </button>
         </div>
@@ -233,7 +233,7 @@ export default function EmployeesPage() {
           <div className="animate-fade-in">
             <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <div style={{ maxWidth: '600px', flex: 1 }}>
-                <AISearchBar 
+                <AISearchBar data-element-name="רכיב_page_8" 
                   placeholder="חיפוש עובד (שם, טלפון, קוד)..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
@@ -245,16 +245,16 @@ export default function EmployeesPage() {
                 />
               </div>
               <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px', marginRight: '1rem' }}>
-                <button data-agy-id="filter-active-employees" onClick={() => { setFilterStatus('active'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'active' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'active' ? '#10b981' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="עובדים פעילים">
-                  <UserCheck size={20} />
+                <button data-element-name="כפתור_page_9" data-agy-id="filter-active-employees" onClick={() => { setFilterStatus('active'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'active' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'active' ? '#10b981' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="עובדים פעילים">
+                  <UserCheck data-element-name="רכיב_page_10" size={20} />
                   <span style={{ fontWeight: filterStatus === 'active' ? 'bold' : 'normal' }}>פעילים</span>
                 </button>
-                <button data-agy-id="filter-inactive-employees" onClick={() => { setFilterStatus('inactive'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'inactive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'inactive' ? '#ef4444' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא פעילים">
-                  <UserMinus size={20} />
+                <button data-element-name="כפתור_page_11" data-agy-id="filter-inactive-employees" onClick={() => { setFilterStatus('inactive'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'inactive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'inactive' ? '#ef4444' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא פעילים">
+                  <UserMinus data-element-name="רכיב_page_12" size={20} />
                   <span style={{ fontWeight: filterStatus === 'inactive' ? 'bold' : 'normal' }}>לא פעילים</span>
                 </button>
-                <button data-agy-id="filter-all-employees" onClick={() => { setFilterStatus('all'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#3b82f6' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
-                  <Users size={20} />
+                <button data-element-name="כפתור_page_13" data-agy-id="filter-all-employees" onClick={() => { setFilterStatus('all'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#3b82f6' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
+                  <Users data-element-name="רכיב_page_14" size={20} />
                   <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
                 </button>
               </div>
@@ -278,7 +278,7 @@ export default function EmployeesPage() {
                   </thead>
                   <tbody>
                     {filteredEmployees.map(employee => (
-                      <tr data-agy-id={`employee-row-${employee.id}`} key={employee.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/employees/${employee.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <tr data-element-name="לחיץ_page_15" data-agy-id={`employee-row-${employee.id}`} key={employee.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/employees/${employee.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         <td style={{ padding: '1rem' }}>{employee.legacyId || employee.id.substring(0, 5)}</td>
                         <td style={{ padding: '1rem', fontWeight: '500' }}>{employee.firstName} {employee.lastName}</td>
                         <td style={{ padding: '1rem' }}>{employee.department ? employee.department.name : (employee.roleId || 'עובד')}</td>
@@ -322,29 +322,29 @@ export default function EmployeesPage() {
           <div className="animate-fade-in">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--card-bg)', padding: '0.5rem 1rem', borderRadius: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                <button onClick={handlePrevMonth} className="btn btn-ghost" style={{ padding: '0.5rem', borderRadius: '50%', color: 'var(--text-main)' }}>
-                  <ChevronRight size={20} />
+                <button data-element-name="כפתור_page_16" onClick={handlePrevMonth} className="btn btn-ghost" style={{ padding: '0.5rem', borderRadius: '50%', color: 'var(--text-main)' }}>
+                  <ChevronRight data-element-name="רכיב_page_17" size={20} />
                 </button>
                 <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--primary-color)', minWidth: '130px', textAlign: 'center' }}>
                   {getMonthName(selectedMonth)} {selectedYear}
                 </span>
-                <button onClick={handleNextMonth} className="btn btn-ghost" style={{ padding: '0.5rem', borderRadius: '50%', color: 'var(--text-main)' }}>
-                  <ChevronLeft size={20} />
+                <button data-element-name="כפתור_page_18" onClick={handleNextMonth} className="btn btn-ghost" style={{ padding: '0.5rem', borderRadius: '50%', color: 'var(--text-main)' }}>
+                  <ChevronLeft data-element-name="רכיב_page_19" size={20} />
                 </button>
               </div>
               
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button 
+                <button data-element-name="כפתור_page_20" 
                   onClick={handlePrintPdfs} 
                   className="btn btn-secondary" 
                   disabled={processedAttendance.length === 0}
                   style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px' }}
                   title="הורדת PDF עם דף נוכחות אישי לכל עובד"
                 >
-                  <Printer size={18} />
+                  <Printer data-element-name="רכיב_page_21" size={18} />
                   דוח אישי לעובדים
                 </button>
-                <ExportButtons 
+                <ExportButtons data-element-name="רכיב_page_22" 
                   data={processedAttendance} 
                   filename={`נוכחות_${selectedMonth}_${selectedYear}`}
                   columns={[
@@ -377,7 +377,7 @@ export default function EmployeesPage() {
                   {loadingAttendance ? (
                     <tr>
                       <td colSpan="6" style={{ padding: '4rem', textAlign: 'center' }}>
-                        <Loader2 className="animate-spin" size={40} style={{ color: 'var(--primary-color)', margin: '0 auto' }} />
+                        <Loader2 data-element-name="רכיב_page_23" className="animate-spin" size={40} style={{ color: 'var(--primary-color)', margin: '0 auto' }} />
                       </td>
                     </tr>
                   ) : processedAttendance.length === 0 ? (
@@ -402,15 +402,15 @@ export default function EmployeesPage() {
                         <td style={{ padding: '1rem' }}>
                           {emp.issues > 0 && (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#b71c1c', fontWeight: 'bold' }}>
-                              {emp.issues} <AlertTriangle size={16} />
+                              {emp.issues} <AlertTriangle data-element-name="רכיב_page_24" size={16} />
                             </span>
                           )}
                         </td>
                         <td style={{ padding: '1rem', fontWeight: '500' }}>{emp.totalCalculated.toFixed(2)}</td>
                         <td style={{ padding: '1rem' }}>{emp.hasTravels}</td>
                         <td className="no-print" style={{ padding: '1rem', textAlign: 'center' }}>
-                          <button onClick={(e) => { e.stopPropagation(); handlePrintPdfs(emp.id); }} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הדפס דוח אישי לעובד זה">
-                            <Printer size={16} />
+                          <button data-element-name="כפתור_page_25" onClick={(e) => { e.stopPropagation(); handlePrintPdfs(emp.id); }} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הדפס דוח אישי לעובד זה">
+                            <Printer data-element-name="רכיב_page_26" size={16} />
                             הדפס
                           </button>
                         </td>
