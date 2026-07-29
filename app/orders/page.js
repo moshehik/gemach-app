@@ -350,12 +350,6 @@ export default function OrdersPage() {
           </Link>
         </div>
       </div>
-          </div>
-        </div>
-        <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <span>סה"כ רשומות: {totalCount}</span>
-        </div>
-      </div>
 
       {showAdvSearch && typeof document !== 'undefined' && createPortal(
         <div data-element-name="לחיץ_page_23" className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>
