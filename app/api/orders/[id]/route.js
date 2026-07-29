@@ -50,6 +50,10 @@ export async function GET(request, { params }) {
       where: { orderId: parsedOrderId }
     });
 
+    const refunds = await prisma.refund.findMany({
+      where: { orderId: parsedOrderId }
+    });
+
     const priceList = await prisma.priceList.findMany();
     let obligations = await prisma.paymentObligation.findMany({
       where: { orderId: parsedOrderId }
@@ -126,7 +130,8 @@ export async function GET(request, { params }) {
       ...order,
       items: itemsWithLogs,
       payments,
-      obligations
+      obligations,
+      refunds
     };
 
     return NextResponse.json(order);
@@ -201,10 +206,12 @@ export async function PUT(request, { params }) {
           }
         }
 
+        const isAbroadVal = data.isAbroad !== undefined ? data.isAbroad : existingOrder.isAbroad;
+        const isWeekdayVal = data.isWeekdayEvent !== undefined ? data.isWeekdayEvent : existingOrder.isWeekdayEvent;
         const validationResult = await validateOrderItemsAvailability(
           activeItems,
           data.eventDate !== undefined ? data.eventDate : existingOrder.eventDate,
-          data.isAbroad !== undefined ? data.isAbroad : existingOrder.isAbroad,
+          isAbroadVal || isWeekdayVal,
           data.fromDate !== undefined ? (data.fromDate ? new Date(data.fromDate) : null) : existingOrder.fromDate,
           data.toDate !== undefined ? (data.toDate ? new Date(data.toDate) : null) : existingOrder.toDate,
           parsedOrderId
@@ -427,6 +434,7 @@ export async function PUT(request, { params }) {
     });
 
     const payments = await prisma.payment.findMany({ where: { orderId: parsedOrderId } });
+    const refunds = await prisma.refund.findMany({ where: { orderId: parsedOrderId } });
     let obligations = await prisma.paymentObligation.findMany({ where: { orderId: parsedOrderId } });
     
     const priceList = await prisma.priceList.findMany();
@@ -458,7 +466,7 @@ export async function PUT(request, { params }) {
       return ob;
     });
     
-    finalOrder = { ...finalOrder, items: itemsWithLogs, payments, obligations };
+    finalOrder = { ...finalOrder, items: itemsWithLogs, payments, obligations, refunds };
 
     return NextResponse.json(finalOrder);
   } catch (error) {

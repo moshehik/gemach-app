@@ -149,11 +149,16 @@ export default function OrderModelSelector({ value, onChange, placeholder = '×‘×
           placeholder={placeholder}
           style={{
             width: '100%',
-            padding: '0.5rem',
-            borderRadius: '6px',
+            height: '42px',
+            padding: '0.5rem 0.8rem',
+            borderRadius: '8px',
             border: '1px solid #cbd5e1',
             textAlign: 'right',
-            backgroundColor: 'white'
+            backgroundColor: 'white',
+            boxSizing: 'border-box',
+            fontSize: '0.95rem',
+            outline: 'none',
+            transition: 'border-color 0.2s'
           }}
         />
         {isLoading && (

@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { FileText, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays, AlertCircle, Info, Phone, Calendar as CalendarIcon2, CreditCard, CheckCircle2, Filter, Search, Printer } from 'lucide-react';
-import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
+import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../lib/orderStatus';
 import CapacitySearchModal from '../../components/CapacitySearchModal';
 import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
@@ -87,8 +87,10 @@ export default function OrdersPage() {
       const timestamp = new Date().getTime();
       queryParams.append('_t', timestamp);
 
+      window.dispatchEvent(new Event('app-data-fetching-start'));
       const res = await fetch(`/api/orders?${queryParams.toString()}`, { cache: 'no-store' });
       const data = await res.json();
+      window.dispatchEvent(new Event('app-data-fetching-end'));
       
       // Update Cache silently
       ordersCache.set(cacheKey, data);
@@ -100,6 +102,7 @@ export default function OrdersPage() {
       }
     } catch (e) {
       console.error(e);
+      window.dispatchEvent(new Event('app-data-fetching-end'));
     } finally {
       if (!isPrefetch) setLoading(false);
     }
@@ -177,7 +180,7 @@ export default function OrdersPage() {
   const handleDeleteOrder = async (order, e) => {
     e.stopPropagation();
     const status = calculateOrderStatus(order);
-    if (status === 'הוחזר' || status === 'מושכר' || status === 'חלקית') {
+    if (status === 'הוחזר' || status === 'הוחזר חלקי' || status === 'הושכר' || status === 'הושכר חלקי') {
       alert('לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר');
       return;
     }
@@ -220,7 +223,8 @@ export default function OrdersPage() {
       const data = await res.json();
       return (data.data || []).map(o => ({
         ...o,
-        status: calculateOrderStatus(o)
+        status: calculateOrderStatus(o),
+        paymentStatus: calculatePaymentStatus(o.totalAmount || 0, o.totalPaid || 0)
       }));
     } catch (e) {
       console.error(e);
@@ -232,10 +236,10 @@ export default function OrdersPage() {
 
   return (
     <main data-agy-id="orders_page_main_1" className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ margin: 0, color: 'var(--primary-color)' }}>ניהול הזמנות</h1>
-        <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-          
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול הזמנות</h1>
+        
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Status Filter Banner */}
           <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
             <button data-element-name="כפתור_page_1" data-agy-id="orders_page_button_2" onClick={() => { setFilterStatus('soon'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'soon' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'soon' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בקרוב (החל מהיום ואילך)">
@@ -263,11 +267,41 @@ export default function OrdersPage() {
               <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
             </button>
           </div>
+          <div style={{ color: 'var(--text-muted)', fontSize: '1rem', fontWeight: '500' }}>סה"כ רשומות: {totalCount}</div>
+        </div>
+      </div>
+      
+      {/* Search and Action Bar */}
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '2rem',
+        background: 'var(--card-bg)', 
+        padding: '0.75rem 1.5rem', 
+        borderRadius: '16px', 
+        boxShadow: 'var(--shadow-sm)',
+        gap: '1rem',
+        flexWrap: 'wrap',
+        border: '1px solid var(--border-color)'
+      }}>
+        <div style={{ flex: '1', minWidth: '300px', maxWidth: '600px' }}>
+          <AISearchBar data-element-name="רכיב_page_22" 
+            placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            onSearch={handleSearch}
+            onClear={handleClearSearch}
+            onAiSearch={handleAiSearch}
+            onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+            loading={aiLoading}
+          />
+        </div>
 
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <button data-element-name="כפתור_page_13" data-agy-id="orders_page_button_8" 
              onClick={() => setShowAdvSearch(true)} 
-             className="btn btn-outline" 
-             style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--primary-color, #8b5cf6)', backgroundColor: 'var(--element-bg)', cursor: 'pointer' }}
+             className="btn-header-icon" 
              title="חיפוש מתקדם"
           >
             <Filter data-element-name="רכיב_page_14" size={22} />
@@ -275,8 +309,7 @@ export default function OrdersPage() {
 
           <button data-element-name="כפתור_page_15" data-agy-id="orders_page_button_9" 
              onClick={() => setShowCapacitySearch(true)} 
-             className="btn btn-outline" 
-             style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--success-color, #10b981)', backgroundColor: 'var(--element-bg)', cursor: 'pointer' }}
+             className="btn-header-icon" 
              title="חיפוש תפוסה"
           >
             <CalendarSearch data-element-name="רכיב_page_16" size={22} />
@@ -284,8 +317,7 @@ export default function OrdersPage() {
 
           <button data-element-name="כפתור_page_17" 
              onClick={() => setShowPrintWizard(true)} 
-             className="btn btn-outline" 
-             style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--primary-color, #8b5cf6)', backgroundColor: 'var(--element-bg)', cursor: 'pointer' }}
+             className="btn-header-icon" 
              title="הדפסת דוחות"
           >
             <Printer data-element-name="רכיב_page_18" size={22} />
@@ -302,6 +334,7 @@ export default function OrdersPage() {
               { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
               { key: 'totalAmount', label: getLabel('order_totalAmount', 'סכום לחיוב') },
               { key: 'totalPaid', label: 'שולם' },
+              { key: 'paymentStatus', label: 'סטטוס תשלום' },
               { key: 'status', label: getLabel('order_status', 'סטטוס') }
             ]}
             iconOnly={true}
@@ -309,30 +342,14 @@ export default function OrdersPage() {
           />
 
           <Link data-element-name="רכיב_page_20" 
-            href="/orders/new" 
-            className="btn btn-primary" 
-            style={{ padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--primary-color, #3b82f6)', color: '#fff' }}
-            title="הזמנה חדשה"
+             href="/orders/new" 
+             className="btn-header-icon" 
+             title="הזמנה חדשה"
           >
             <Plus data-element-name="רכיב_page_21" size={22} />
           </Link>
         </div>
       </div>
-      
-      {/* Search and Filters */}
-      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '800px', alignItems: 'center' }}>
-          <AISearchBar data-element-name="רכיב_page_22" 
-            placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onSearch={handleSearch}
-            onClear={handleClearSearch}
-            onAiSearch={handleAiSearch}
-            onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-            loading={aiLoading}
-          />
-          <div style={{ width: '150px' }}>
           </div>
         </div>
         <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -487,17 +504,34 @@ export default function OrdersPage() {
                         <td style={{ padding: '1rem', textAlign: 'center' }}>{order.items ? order.items.filter(i => !i.isDeleted).length : 0}</td>
                         <td style={{ padding: '1rem' }}>{order.eventDateHebrew || ''}</td>
                         <td style={{ padding: '1rem' }}>₪{order.totalAmount}</td>
-                        <td style={{ padding: '1rem', color: order.totalPaid >= order.totalAmount && order.totalAmount > 0 ? 'var(--success-color, #10b981)' : (isUnpaid ? 'var(--error-color, #dc2626)' : 'inherit'), fontWeight: isUnpaid ? 'bold' : 'normal' }}>₪{order.totalPaid}</td>
+                        <td style={{ padding: '1rem', color: order.totalPaid >= order.totalAmount && order.totalAmount > 0 ? 'var(--success-color, #10b981)' : (isUnpaid ? 'var(--error-color, #dc2626)' : 'inherit'), fontWeight: isUnpaid ? 'bold' : 'normal' }}>
+                          ₪{order.totalPaid}
+                        </td>
                         <td style={{ padding: '1rem' }}>
-                          <span style={{ 
-                            padding: '0.3rem 0.8rem', 
-                            borderRadius: '20px', 
-                            fontSize: '0.85rem',
-                            background: getStatusColor(calculateOrderStatus(order)).bg,
-                            color: getStatusColor(calculateOrderStatus(order)).text
-                          }}>
-                            {calculateOrderStatus(order)}
-                          </span>
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                            <span style={{ 
+                              padding: '0.3rem 0.8rem', 
+                              borderRadius: '20px', 
+                              fontSize: '0.85rem',
+                              fontWeight: '600',
+                              background: getStatusColor(calculateOrderStatus(order)).bg,
+                              color: getStatusColor(calculateOrderStatus(order)).text,
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                            }}>
+                              {calculateOrderStatus(order)}
+                            </span>
+                            <span style={{ 
+                              padding: '0.3rem 0.8rem', 
+                              borderRadius: '20px', 
+                              fontSize: '0.85rem',
+                              fontWeight: '600',
+                              background: getPaymentStatusColor(calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0)).bg,
+                              color: getPaymentStatusColor(calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0)).text,
+                              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+                            }}>
+                              {calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0)}
+                            </span>
+                          </div>
                         </td>
                         <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
                           <Link data-element-name="לחיץ_page_56" 
@@ -624,9 +658,15 @@ export default function OrdersPage() {
             </span>
           </div>
           <div className="global-popoverRow">
-            <span>סטטוס:</span>
+            <span>סטטוס פריטים:</span>
             <span style={{ color: getStatusColor(calculateOrderStatus(hoveredOrder)).text, background: getStatusColor(calculateOrderStatus(hoveredOrder)).bg, padding: '2px 6px', borderRadius: '4px' }}>
               {calculateOrderStatus(hoveredOrder)}
+            </span>
+          </div>
+          <div className="global-popoverRow">
+            <span>סטטוס תשלום:</span>
+            <span style={{ color: getPaymentStatusColor(calculatePaymentStatus(hoveredOrder.totalAmount || 0, hoveredOrder.totalPaid || 0)).text, background: getPaymentStatusColor(calculatePaymentStatus(hoveredOrder.totalAmount || 0, hoveredOrder.totalPaid || 0)).bg, padding: '2px 6px', borderRadius: '4px' }}>
+              {calculatePaymentStatus(hoveredOrder.totalAmount || 0, hoveredOrder.totalPaid || 0)}
             </span>
           </div>
         </div>,

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, use } from 'react';
+import { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Save, CreditCard, ArrowRight, Users, Info, Package, RefreshCcw, CreditCard as PaymentIcon, History, Printer, Mail, FileText, ClipboardList } from 'lucide-react';
@@ -9,7 +9,7 @@ import ActiveEmployeesModal from '../../../components/orders/ActiveEmployeesModa
 import OrderItemsManager from '../../../components/orders/OrderItemsManager';
 import OrderRentalsManager from '../../../components/orders/OrderRentalsManager';
 import OrderPaymentsManager from '../../../components/orders/OrderPaymentsManager';
-import { calculateOrderStatus, getStatusColor } from '../../../lib/orderStatus';
+import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../../lib/orderStatus';
 import HistoryViewer from '../../../components/HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
@@ -22,6 +22,7 @@ export default function OrderDetailsPage({ params }) {
   const [items, setItems] = useState([]);
   const [obligations, setObligations] = useState([]);
   const [payments, setPayments] = useState([]);
+  const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
@@ -38,21 +39,24 @@ export default function OrderDetailsPage({ params }) {
   // Tab State
   const [activeTab, setActiveTab] = useState('details'); // details, items, rentals, payments, history
   const [debtApproved, setDebtApproved] = useState(false); // Track manager approval to skip exit warning
-  const [isManualTabChange, setIsManualTabChange] = useState(false); // prevent observer overriding scroll
+  const isManualRef = useRef(false); // prevent observer overriding scroll
 
   // Scrollspy observer
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
-        if (isManualTabChange) return; // skip if user clicked tab
+        if (isManualRef.current) return; // skip if user clicked tab
         const visibleEntries = entries.filter(e => e.isIntersecting);
         if (visibleEntries.length > 0) {
           // find the one taking up the most space or the first one
           const mostVisible = visibleEntries.reduce((prev, current) => 
             (prev.intersectionRatio > current.intersectionRatio) ? prev : current
           );
-          if (mostVisible.target.id && mostVisible.target.id !== activeTab) {
-            setActiveTab(mostVisible.target.id);
+          if (mostVisible.target.id) {
+            setActiveTab(prev => {
+              if (prev !== mostVisible.target.id) return mostVisible.target.id;
+              return prev;
+            });
           }
         }
       },
@@ -66,7 +70,7 @@ export default function OrderDetailsPage({ params }) {
     });
 
     return () => observer.disconnect();
-  }, [activeTab, isManualTabChange]);
+  }, []);
 
   // Fetch Order
   useEffect(() => {
@@ -81,6 +85,7 @@ export default function OrderDetailsPage({ params }) {
         setItems(data.items || []);
         setObligations(data.obligations || []);
         setPayments(data.payments || []);
+        setRefunds(data.refunds || []);
         setLoading(false);
       })
       .catch(err => {
@@ -133,6 +138,7 @@ export default function OrderDetailsPage({ params }) {
           items: items, 
           eventDate: currentOrder.eventDate,
           isAbroad: currentOrder.isAbroad,
+          isWeekdayEvent: currentOrder.isWeekdayEvent,
           fromDate: currentOrder.fromDate,
           toDate: currentOrder.toDate,
           orderId: currentOrder.orderId 
@@ -213,6 +219,7 @@ export default function OrderDetailsPage({ params }) {
       setItems(updatedOrder.items || []);
       setObligations(updatedOrder.obligations || []);
       setPayments(updatedOrder.payments || []);
+      setRefunds(updatedOrder.refunds || []);
       
       setSaveMessage('השינויים נשמרו בהצלחה!');
       setTimeout(() => setSaveMessage(''), 3000);
@@ -229,6 +236,7 @@ export default function OrderDetailsPage({ params }) {
     setItems(updatedOrder.items || []);
     setObligations(updatedOrder.obligations || []);
     setPayments(updatedOrder.payments || []);
+    setRefunds(updatedOrder.refunds || []);
   };
 
   if (loading) return (
@@ -243,9 +251,8 @@ export default function OrderDetailsPage({ params }) {
 
   const totalPayable = items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
 
-  // Replicate Access DB logic for "שולם"
-  const isPaid = obligations.length > 0 && totalRequired === totalPaid;
-  const statusDisplay = isPaid ? 'שולם' : (totalPaid > 0 ? 'חלקי' : 'פתוח');
+  const paymentStatus = calculatePaymentStatus(totalRequired, totalPaid);
+  const paymentColor = getPaymentStatusColor(paymentStatus);
 
   const createdDate = order.orderDate || order.createdAt;
 
@@ -427,11 +434,11 @@ export default function OrderDetailsPage({ params }) {
                 </span>
                 <span style={{ 
                   fontSize: '0.9rem', padding: '0.3rem 1rem', borderRadius: '20px', fontWeight: '600',
-                  background: isPaid ? '#dcfce7' : statusDisplay === 'חלקי' ? '#fef08a' : '#fee2e2',
-                  color: isPaid ? '#166534' : statusDisplay === 'חלקי' ? '#854d0e' : '#991b1b',
+                  background: paymentColor.bg,
+                  color: paymentColor.text,
                   boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                 }}>
-                  {statusDisplay}
+                  {paymentStatus}
                 </span>
               </div>
             </div>
@@ -467,8 +474,8 @@ export default function OrderDetailsPage({ params }) {
                 </strong>
               </div>
 
-              <div style={{ background: isPaid ? '#dcfce7' : '#fee2e2', padding: '0.4rem 0.8rem', borderRadius: '8px', color: isPaid ? '#166534' : '#991b1b', display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '600' }}>
-                <span>{isPaid ? 'שולם' : (totalPaid > 0 ? 'שולם חלקי' : 'לא שולם')}</span>
+              <div style={{ background: paymentColor.bg, padding: '0.4rem 0.8rem', borderRadius: '8px', color: paymentColor.text, display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '600' }}>
+                <span>{paymentStatus}</span>
               </div>
             </div>
           </div>
@@ -606,14 +613,14 @@ export default function OrderDetailsPage({ params }) {
                 <button data-element-name="כפתור_page_19" data-agy-id="[id]_page_button_6"
                   key={tab.id}
                   onClick={() => {
-                    setIsManualTabChange(true);
+                    isManualRef.current = true;
                     setActiveTab(tab.id);
                     const el = document.getElementById(tab.id);
                     if (el) {
                       const y = el.getBoundingClientRect().top + window.scrollY - 150; // offset for sticky header
                       window.scrollTo({ top: y, behavior: 'smooth' });
                     }
-                    setTimeout(() => setIsManualTabChange(false), 1000); // re-enable observer
+                    setTimeout(() => { isManualRef.current = false; }, 1000); // re-enable observer
                   }}
                   style={{
                     flex: 1,
@@ -699,11 +706,14 @@ export default function OrderDetailsPage({ params }) {
                   orderId={order.orderId}
                   obligations={obligations} 
                   payments={payments} 
+                  refunds={refunds}
                   onObligationsChange={setObligations} 
                   onPaymentsChange={setPayments} 
+                  onRefundsChange={setRefunds}
                   totalRequired={totalRequired} 
                   totalPaid={totalPaid} 
                   customer={order.customer}
+                  onOrderUpdated={handleOrderUpdate}
                 />
               </div>
 

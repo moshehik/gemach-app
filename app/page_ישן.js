@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Search, Sparkles, X, Loader2, ArrowLeft, CreditCard, Banknote, User, ShoppingBag, Shirt, Download, PlusCircle, Maximize2, Minimize2, CheckCircle, Clock, XCircle, Check, Send, Trash2, ExternalLink, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import AISearchBar from './components/AISearchBar';
+import QuickPaymentModal from './components/QuickPaymentModal';
 import * as XLSX from 'xlsx';
 import { HDate } from '@hebcal/core';
 
@@ -28,7 +29,18 @@ export default function HomeDashboard() {
   const [aiReplyInput, setAiReplyInput] = useState('');
 
   // Dashboard state
+  const [debts, setDebts] = useState([]);
+  const [recentPayments, setRecentPayments] = useState([]);
+  const [recentOrders, setRecentOrders] = useState([]);
+  const [recentRentals, setRecentRentals] = useState([]);
   const [recentSearches, setRecentSearches] = useState([]);
+  const [loadingDashboard, setLoadingDashboard] = useState(true);
+  
+  const [debtsExpanded, setDebtsExpanded] = useState(true);
+  const [paymentsExpanded, setPaymentsExpanded] = useState(true);
+  const [ordersExpanded, setOrdersExpanded] = useState(true);
+  const [rentalsExpanded, setRentalsExpanded] = useState(true);
+  const [quickPaymentOpen, setQuickPaymentOpen] = useState(false);
 
   const parseMessageToLinks = (text) => {
     if (!text) return null;
@@ -90,7 +102,25 @@ export default function HomeDashboard() {
     scrollToBottom();
   }, [aiMessages]);
 
-
+  useEffect(() => {
+    async function fetchDashboard() {
+      try {
+        const res = await fetch('/api/dashboard/debts');
+        if (res.ok) {
+          const data = await res.json();
+          setDebts(data.debts || []);
+          setRecentPayments(data.recentPayments || []);
+          setRecentOrders(data.recentOrders || []);
+          setRecentRentals(data.recentRentals || []);
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard', err);
+      } finally {
+        setLoadingDashboard(false);
+      }
+    }
+    fetchDashboard();
+  }, []);
 
   const handleGlobalSearch = async (e) => {
     if (e) e.preventDefault();
@@ -204,18 +234,8 @@ export default function HomeDashboard() {
     }
   };
 
-  const isInitialState = !searchResults && aiMessages.length === 0;
-
   return (
-    <main className="container animate-fade-in" style={{ 
-      paddingTop: isInitialState ? '25vh' : '2rem', 
-      paddingBottom: aiMessages.length > 0 ? '120px' : '4rem', 
-      position: 'relative',
-      minHeight: '80vh',
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-    }}>
+    <main className="container animate-fade-in" style={{ paddingTop: '2rem', paddingBottom: aiMessages.length > 0 ? '120px' : '4rem', position: 'relative' }}>
       
       {/* Header & Search */}
       <div style={{ marginBottom: '3rem', textAlign: 'center' }}>
@@ -435,6 +455,250 @@ export default function HomeDashboard() {
         </div>
       )}
 
+      {/* Main Dashboard Widgets */}
+      {aiMessages.length === 0 && (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '2rem' }}>
+        
+        {/* Debts Widget */}
+        <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: debtsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
+          <div style={{ background: 'var(--banner-debts-bg)', padding: '1.5rem', borderBottom: debtsExpanded ? '1px solid var(--banner-debts-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: '#ef4444', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><CreditCard data-element-name="רכיב_page_31" size={20} /></div>
+              <h2 style={{ margin: 0, color: '#b91c1c', fontSize: '1.25rem' }}>חובות פתוחים</h2>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button data-element-name="כפתור_page_32" onClick={() => setDebtsExpanded(!debtsExpanded)} title={debtsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#b91c1c', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(239, 68, 68, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+                {debtsExpanded ? <Minimize2 data-element-name="רכיב_page_33" size={20} /> : <Maximize2 data-element-name="רכיב_page_34" size={20} />}
+              </button>
+            </div>
+          </div>
+          {debtsExpanded && (
+          <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
+            {loadingDashboard ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 data-element-name="רכיב_page_35" className="animate-spin" color="#ef4444" /></div>
+            ) : debts.length > 0 ? (
+              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
+                <thead>
+                  <tr style={{ color: '#6b7280', fontSize: '0.9rem', borderBottom: '1px solid #e5e7eb' }}>
+                    <th style={{ padding: '0.5rem' }}>הזמנה / לקוח</th>
+                    <th style={{ padding: '0.5rem' }}>סה"כ</th>
+                    <th style={{ padding: '0.5rem', color: '#ef4444' }}>יתרה לתשלום</th>
+                    <th style={{ padding: '0.5rem' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {debts.map(debt => (
+                    <tr key={debt.id} style={{ borderBottom: '1px solid #f3f4f6', background: 'transparent' }}>
+                      <td style={{ padding: '0.75rem 0.5rem' }}>
+                        <div style={{ fontWeight: '500' }}>#{debt.orderId}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{debt.customer?.firstName} {debt.customer?.lastName}</div>
+                      </td>
+                      <td style={{ padding: '0.75rem 0.5rem' }}>₪{debt.totalAmount || 0}</td>
+                      <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold', color: '#ef4444' }}>
+                        ₪{debt.remaining || 0}
+                      </td>
+                      <td style={{ padding: '0.75rem 0.5rem' }}>
+                        <Link data-element-name="רכיב_page_36" href={`/orders/${debt.orderId}`} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.8rem', borderRadius: '12px' }}>לפרטים</Link>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
+                <CreditCard data-element-name="רכיב_page_37" size={40} opacity={0.2} />
+                <span>אין כרגע חובות פתוחים הממתינים לתשלום.</span>
+              </div>
+            )}
+          </div>
+          )}
+        </div>
+
+        {/* Recent Payments Widget */}
+        <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: paymentsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
+          <div style={{ background: 'var(--banner-payments-bg)', padding: '1.5rem', borderBottom: paymentsExpanded ? '1px solid var(--banner-payments-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: '#10b981', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Banknote data-element-name="רכיב_page_38" size={20} /></div>
+              <h2 style={{ margin: 0, color: '#047857', fontSize: '1.25rem' }}>תשלומים אחרונים</h2>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button data-element-name="כפתור_page_39" onClick={() => setPaymentsExpanded(!paymentsExpanded)} title={paymentsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#047857', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(16, 185, 129, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+                {paymentsExpanded ? <Minimize2 data-element-name="רכיב_page_40" size={20} /> : <Maximize2 data-element-name="רכיב_page_41" size={20} />}
+              </button>
+            </div>
+          </div>
+          {paymentsExpanded && (
+          <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
+            {loadingDashboard ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 data-element-name="רכיב_page_42" className="animate-spin" color="#10b981" /></div>
+            ) : recentPayments.length > 0 ? (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {recentPayments.map(payment => (
+                  <li key={payment.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ background: '#d1fae5', color: '#047857', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                        <CreditCard data-element-name="רכיב_page_43" size={20} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: '500' }}>{payment.customer?.firstName} {payment.customer?.lastName}</div>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                          הזמנה #{payment.order?.orderId} • {new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(payment.paymentDate))}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#10b981' }}>
+                      ₪{payment.amount || 0}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
+                <Banknote data-element-name="רכיב_page_44" size={40} opacity={0.2} />
+                <span>טרם התקבלו תשלומים.</span>
+              </div>
+            )}
+          </div>
+          )}
+        </div>
+
+        {/* Recent Orders Widget */}
+        <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: ordersExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
+          <div style={{ background: 'var(--banner-orders-bg)', padding: '1.5rem', borderBottom: ordersExpanded ? '1px solid var(--banner-orders-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: '#3b82f6', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><ShoppingBag data-element-name="רכיב_page_45" size={20} /></div>
+              <h2 style={{ margin: 0, color: '#1d4ed8', fontSize: '1.25rem' }}>הזמנות אחרונות</h2>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button data-element-name="כפתור_page_46" onClick={() => setOrdersExpanded(!ordersExpanded)} title={ordersExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#1d4ed8', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(59, 130, 246, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+                {ordersExpanded ? <Minimize2 data-element-name="רכיב_page_47" size={20} /> : <Maximize2 data-element-name="רכיב_page_48" size={20} />}
+              </button>
+            </div>
+          </div>
+          {ordersExpanded && (
+          <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
+            {loadingDashboard ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 data-element-name="רכיב_page_49" className="animate-spin" color="#3b82f6" /></div>
+            ) : recentOrders.length > 0 ? (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {recentOrders.map(order => (
+                  <li key={order.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ background: '#dbeafe', color: '#1d4ed8', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>
+                        #{order.orderId}
+                      </div>
+                      <div>
+                        <Link data-element-name="רכיב_page_50" href={`/orders/${order.orderId}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', textDecoration: 'none', color: 'inherit' }}>
+                          {order.customer?.firstName} {order.customer?.lastName}
+                        </Link>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem' }}>
+                          הזמנה: {order.orderDate ? new HDate(new Date(order.orderDate)).renderGematriya().replace(/[\u0591-\u05C7]/g, '') : '-'} • אירוע: {order.eventDateHebrew || '-'}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                          פריטים: {order.items?.length || 0} • סטטוס: {order.status || 'פעיל'} • עובד: {order.employee?.firstName ? `${order.employee.firstName} ${order.employee.lastName || ''}` : '-'}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#3b82f6' }}>
+                        ₪{order.totalAmount || 0}
+                      </div>
+                      <Link data-element-name="רכיב_page_51" href={`/orders/${order.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#3b82f6', background: '#eff6ff', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="לפרטי ההזמנה">
+                        <ExternalLink data-element-name="רכיב_page_52" size={18} />
+                      </Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
+                <ShoppingBag data-element-name="רכיב_page_53" size={40} opacity={0.2} />
+                <span>אין הזמנות אחרונות.</span>
+              </div>
+            )}
+          </div>
+          )}
+        </div>
+
+        {/* Recent Rentals Widget */}
+        <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: rentalsExpanded ? '400px' : 'auto', transition: 'height 0.3s ease' }}>
+          <div style={{ background: 'var(--banner-rentals-bg)', padding: '1.5rem', borderBottom: rentalsExpanded ? '1px solid var(--banner-rentals-border)' : 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <div style={{ background: '#f59e0b', color: 'white', padding: '0.5rem', borderRadius: '8px' }}><Shirt data-element-name="רכיב_page_54" size={20} /></div>
+              <h2 style={{ margin: 0, color: '#d97706', fontSize: '1.25rem' }}>השכרות אחרונות</h2>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <button data-element-name="כפתור_page_55" onClick={() => setRentalsExpanded(!rentalsExpanded)} title={rentalsExpanded ? "כווץ" : "הרחב"} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#d97706', display: 'flex', alignItems: 'center', padding: '0.2rem', borderRadius: '6px' }} onMouseOver={e=>e.currentTarget.style.background='rgba(245, 158, 11, 0.1)'} onMouseOut={e=>e.currentTarget.style.background='none'}>
+                {rentalsExpanded ? <Minimize2 data-element-name="רכיב_page_56" size={20} /> : <Maximize2 data-element-name="רכיב_page_57" size={20} />}
+              </button>
+            </div>
+          </div>
+          {rentalsExpanded && (
+          <div style={{ padding: '1rem', overflowY: 'auto', flex: 1 }}>
+            {loadingDashboard ? (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}><Loader2 data-element-name="רכיב_page_58" className="animate-spin" color="#f59e0b" /></div>
+            ) : recentRentals.length > 0 ? (
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {recentRentals.map(rental => (
+                  <li key={rental.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 0.5rem', borderBottom: '1px solid #f3f4f6' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ background: '#fef3c7', color: '#d97706', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', justifyContent: 'center', alignItems: 'center', fontWeight: 'bold' }}>
+                        <Shirt data-element-name="רכיב_page_59" size={20} />
+                      </div>
+                      <div>
+                        <Link data-element-name="רכיב_page_60" href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ fontWeight: '500', textDecoration: 'none', color: 'inherit' }}>
+                          הזמנה #{rental.order?.orderId} • {rental.dressItem?.dress?.name 
+                            ? `${rental.dressItem.dress.name} ${rental.dressItem.dress.barcodePrefix || rental.dressItem.barcodePrefix || rental.barcodePrefix ? `(קוד: ${rental.dressItem.dress.barcodePrefix || rental.dressItem.barcodePrefix || rental.barcodePrefix})` : ''}`
+                            : (rental.description || rental.dressItem?.dressName || 'שמלה')}
+                        </Link>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280', marginTop: '0.2rem' }}>
+                           ברקוד: {rental.barcode || '-'} • מידה: {rental.sizeText || rental.dressItem?.sizeText || '-'}
+                        </div>
+                        <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>
+                           לקוח: {rental.order?.customer?.firstName} {rental.order?.customer?.lastName} • לקיחה: {rental.takenDate ? new Date(rental.takenDate).toLocaleDateString('he-IL') : '-'} • החזרה: {rental.returnDate ? new Date(rental.returnDate).toLocaleDateString('he-IL') : '-'} • עובד: {rental.order?.employee?.firstName ? `${rental.order.employee.firstName} ${rental.order.employee.lastName || ''}` : (rental.employeeName || '-')}
+                        </div>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                      <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#f59e0b', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        {renderStatusIcon(rental.status)} {rental.status}
+                      </div>
+                      <Link data-element-name="רכיב_page_61" href={`/orders/${rental.order?.orderId}`} target="_blank" rel="noopener noreferrer" style={{ color: '#d97706', background: 'var(--element-bg)', padding: '0.4rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }} title="לפרטי ההזמנה">
+                        <ExternalLink data-element-name="רכיב_page_62" size={18} />
+                      </Link>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#9ca3af', flexDirection: 'column', gap: '1rem' }}>
+                <Shirt data-element-name="רכיב_page_63" size={40} opacity={0.2} />
+                <span>אין השכרות אחרונות.</span>
+              </div>
+            )}
+          </div>
+          )}
+        </div>
+        
+      </div>
+      )}
+
+      {quickPaymentOpen && (
+        <QuickPaymentModal data-element-name="רכיב_page_64" 
+          isOpen={quickPaymentOpen} 
+          onClose={(success) => {
+            setQuickPaymentOpen(false);
+            if (success) {
+              fetch('/api/dashboard/debts')
+                .then(r => r.json())
+                .then(data => {
+                  setDebts(data.debts || []);
+                  setRecentPayments(data.recentPayments || []);
+                });
+            }
+          }} 
+        />
+      )}
     </main>
   );
 }

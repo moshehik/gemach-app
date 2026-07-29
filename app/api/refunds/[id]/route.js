@@ -64,6 +64,31 @@ export async function PUT(request, { params }) {
           }
         });
       }
+    } else if (isExecuted === false && existingRefund.isExecuted) {
+      // Revert execution
+      updateData.isExecuted = false;
+      updateData.executionDate = null;
+      updateData.executedBy = null;
+      
+      // Delete the reverse payment if it exists
+      if (existingRefund.paymentId) {
+        await prisma.payment.update({
+          where: { id: existingRefund.paymentId },
+          data: { isDeleted: true }
+        });
+        
+        // Audit log for payment deletion
+        await prisma.auditLog.create({
+          data: {
+            entityType: 'Order',
+            entityId: String(existingRefund.orderId),
+            action: 'REMOVE_PAYMENT',
+            changesJson: JSON.stringify({ paymentId: existingRefund.paymentId, note: 'Reverted Refund Execution' }),
+            employeeId: token || null
+          }
+        });
+        updateData.paymentId = null;
+      }
     }
     
     const updatedRefund = await prisma.refund.update({

@@ -104,14 +104,19 @@ export const FIELD_TRANSLATIONS = {
   employeeId: 'מזהה עובד',
   deletedAt: 'תאריך מחיקה',
   createdAt: 'תאריך יצירה',
-  updatedAt: 'תאריך עדכון'
+  updatedAt: 'תאריך עדכון',
+  note: 'הערה'
 };
 
 export const ACTION_TRANSLATIONS = {
   CREATE: 'יצירה',
   UPDATE: 'עדכון',
   DELETE: 'מחיקה',
-  EMAIL_SENT: 'שליחת מייל'
+  EMAIL_SENT: 'שליחת מייל',
+  ADD_PAYMENT: 'הוספת תשלום',
+  UPDATE_PAYMENT: 'עדכון תשלום',
+  DELETE_PAYMENT: 'מחיקת תשלום',
+  REFUND: 'זיכוי'
 };
 
 export default function HistoryViewer({ entityType, entityId }) {
@@ -127,10 +132,7 @@ export default function HistoryViewer({ entityType, entityId }) {
   const [filterSearch, setFilterSearch] = useState(''); // Actual filter applied to API
   const [searchInput, setSearchInput] = useState(''); // Local state for input field
   
-  // AI Chat Search
-  const [chatQuery, setChatQuery] = useState('');
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiMessage, setAiMessage] = useState(null);
+  // Removed AI Search state
   
   const resetFilters = () => {
     setFilterAction('');
@@ -138,8 +140,6 @@ export default function HistoryViewer({ entityType, entityId }) {
     setFilterEndDate('');
     setFilterSearch('');
     setSearchInput('');
-    setChatQuery('');
-    setAiMessage(null);
     // Let the useEffect handle the refetch
   };
 
@@ -179,40 +179,6 @@ export default function HistoryViewer({ entityType, entityId }) {
     fetchLogs();
   }, [entityType, entityId, filterAction, filterStartDate, filterEndDate, filterSearch]);
 
-  const handleSmartSearch = async (e) => {
-    e.preventDefault();
-    if (!chatQuery.trim()) return;
-
-    setIsAiLoading(true);
-    setAiMessage(null);
-    try {
-      const res = await fetch('/api/audit/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: chatQuery })
-      });
-      
-      if (!res.ok) throw new Error('שגיאה בחיפוש חכם');
-      const filters = await res.json();
-      
-      setFilterAction(filters.action || '');
-      setFilterStartDate(filters.startDate ? filters.startDate.split('T')[0] : '');
-      setFilterEndDate(filters.endDate ? filters.endDate.split('T')[0] : '');
-      setFilterSearch(filters.search || '');
-      setSearchInput(filters.search || '');
-      
-      if (filters.message) {
-         setAiMessage(filters.message);
-      }
-      
-      await fetchLogs(filters);
-
-    } catch (err) {
-      setAiMessage('מצטער, התרחשה שגיאה בהבנת הבקשה. אנא נסה שוב.');
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
 
 
   const formatValue = (val) => {
@@ -356,27 +322,26 @@ export default function HistoryViewer({ entityType, entityId }) {
           {/* Search & Filters - One Line */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
             
-            <form onSubmit={handleSmartSearch} className="ai-feature-element" style={{ display: 'flex', gap: '8px', flex: '2', minWidth: '250px' }}>
+            <form onSubmit={(e) => { e.preventDefault(); setFilterSearch(searchInput); }} style={{ display: 'flex', gap: '8px', flex: '2', minWidth: '250px' }}>
               <div style={{ position: 'relative', flex: 1 }}>
                 <div style={{ position: 'absolute', right: '12px', top: '10px', color: 'var(--primary-color)' }}>
-                  <MessageSquare size={18} />
+                  <Search size={18} />
                 </div>
                 <input 
-                  data-agy-id="history_viewer_ai_search_input"                  type="text" 
-                  placeholder='חיפוש AI חכם (לדוג: "מי מחק?")' 
-                  value={chatQuery}
-                  onChange={e => setChatQuery(e.target.value)}
+                  type="text" 
+                  placeholder="חיפוש חופשי בהיסטוריה..." 
+                  value={searchInput}
+                  onChange={e => setSearchInput(e.target.value)}
                   style={{ width: '100%', padding: '8px 32px 8px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', transition: 'border-color 0.2s', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}
                   onFocus={e => e.target.style.borderColor = 'var(--primary-color)'}
                   onBlur={e => e.target.style.borderColor = '#cbd5e1'}
                 />
               </div>
               <button 
-                data-agy-id="history_viewer_ai_search_btn"                type="submit" 
-                disabled={isAiLoading || !chatQuery.trim()}
-                style={{ background: 'var(--primary-color)', color: '#fff', padding: '0 16px', borderRadius: '6px', fontWeight: 'bold', border: 'none', cursor: isAiLoading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', opacity: isAiLoading || !chatQuery.trim() ? 0.7 : 1, fontSize: '0.9rem' }}
+                type="submit" 
+                style={{ background: 'var(--primary-color)', color: '#fff', padding: '0 16px', borderRadius: '6px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}
               >
-                {isAiLoading ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
+                <Search size={16} />
                 חפש
               </button>
             </form>
@@ -415,27 +380,7 @@ export default function HistoryViewer({ entityType, entityId }) {
               />
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: '1', minWidth: '150px' }}>
-              <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>חיפוש חופשי</label>
-              <div style={{ position: 'relative' }}>
-                <input 
-                  data-agy-id="history_viewer_free_search_input"                  type="text" 
-                  placeholder="הקלד חופשי..."
-                  value={searchInput} 
-                  onChange={e => setSearchInput(e.target.value)}
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      setFilterSearch(searchInput);
-                    }
-                  }}
-                  onBlur={() => setFilterSearch(searchInput)}
-                  style={{ width: '100%', padding: '8px 8px 8px 28px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }}
-                />
-                <Search size={14} style={{ position: 'absolute', left: '8px', top: '10px', color: '#94a3b8' }} />
-              </div>
-            </div>
-
-            {(filterAction || filterStartDate || filterEndDate || filterSearch || chatQuery) && (
+            {(filterAction || filterStartDate || filterEndDate || filterSearch) && (
               <button 
                 data-agy-id="history_viewer_clear_filters_btn"                onClick={resetFilters}
                 style={{ padding: '8px 12px', background: 'transparent', color: '#ef4444', border: '1px solid #fca5a5', borderRadius: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: '500', fontSize: '0.9rem' }}
@@ -445,15 +390,6 @@ export default function HistoryViewer({ entityType, entityId }) {
               </button>
             )}
           </div>
-
-          {aiMessage && (
-            <div style={{ marginTop: '12px', padding: '10px 14px', background: '#e0f2fe', color: '#0369a1', borderRadius: '8px', fontSize: '0.9rem', display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-              <MessageSquare size={16} style={{ marginTop: '2px' }} />
-              <div>
-                <strong>תשובת AI:</strong> {aiMessage}
-              </div>
-            </div>
-          )}
         </div>
       )}
 
@@ -525,10 +461,10 @@ export default function HistoryViewer({ entityType, entityId }) {
                       <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                       </svg>
-                      מערכת
+                      מערכת 
                     </span>
                   )}
-                  <span style={{ color: 'var(--text-main)', marginRight: '8px', fontWeight: 'normal' }}>ביצע/ה {actionLabel}.</span>
+                  <span style={{ color: 'var(--text-main)', marginRight: '8px', fontWeight: 'normal' }}> ביצע/ה {actionLabel}.</span>
                 </div>
                 
                 <div style={{ marginTop: '12px' }}>

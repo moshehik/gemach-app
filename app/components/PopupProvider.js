@@ -1,11 +1,12 @@
-﻿'use client';
+'use client';
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { AlertTriangle, CheckCircle, Info, HelpCircle, X } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, HelpCircle, X, Copy } from 'lucide-react';
 
 const PopupContext = createContext(null);
 
 export function PopupProvider({ children }) {
   const [alerts, setAlerts] = useState([]);
+  const [alertsHistory, setAlertsHistory] = useState([]);
   const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, message: '', resolve: null, title: 'אישור פעולה' });
   const [promptConfig, setPromptConfig] = useState({ isOpen: false, message: '', resolve: null, title: 'הזנת נתונים', defaultValue: '', type: 'text' });
   const [authPromptConfig, setAuthPromptConfig] = useState({ isOpen: false, message: '', resolve: null, title: 'אימות הרשאה', requiredLevel: 'מנהל', employees: [] });
@@ -39,7 +40,9 @@ export function PopupProvider({ children }) {
     }
 
     const id = Date.now() + Math.random();
-    setAlerts(prev => [...prev, { id, message, type }]);
+    const newAlert = { id, message, type, time: new Date() };
+    setAlerts(prev => [...prev, newAlert]);
+    setAlertsHistory(prev => [newAlert, ...prev].slice(0, 100)); // Keep last 100 messages
     
     // Auto remove after 4 seconds
     setTimeout(() => {
@@ -121,7 +124,7 @@ export function PopupProvider({ children }) {
   }, [showAlert, showConfirm, showPrompt, showAuthPrompt]);
 
   return (
-    <PopupContext.Provider data-element-name="רכיב_PopupProvider_1" value={{ showAlert, showConfirm, showPrompt }}>
+    <PopupContext.Provider data-element-name="רכיב_PopupProvider_1" value={{ showAlert, showConfirm, showPrompt, alertsHistory }}>
       {children}
       
       {/* Toast Alerts Container */}
@@ -135,7 +138,10 @@ export function PopupProvider({ children }) {
           }}>
             {alert.type === 'error' ? <AlertTriangle data-element-name="רכיב_PopupProvider_2" size={20} /> : alert.type === 'success' ? <CheckCircle data-element-name="רכיב_PopupProvider_3" size={20} /> : <Info data-element-name="רכיב_PopupProvider_4" size={20} />}
             <div className="popup-toast-message" style={{ flex: 1, fontWeight: '500', fontSize: '0.95rem' }}>{alert.message}</div>
-            <button data-element-name="כפתור_PopupProvider_5" className="popup-toast-close" onClick={() => removeAlert(alert.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', opacity: 0.6 }}>
+            <button data-element-name="כפתור_העתקה_PopupProvider" onClick={() => navigator.clipboard.writeText(alert.message).catch(()=>{})} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', opacity: 0.7, padding: '4px' }} title="העתק הודעה">
+              <Copy data-element-name="רכיב_Copy_PopupProvider" size={16} />
+            </button>
+            <button data-element-name="כפתור_PopupProvider_5" className="popup-toast-close" onClick={() => removeAlert(alert.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'inherit', opacity: 0.6, padding: '4px' }}>
               <X data-element-name="רכיב_PopupProvider_6" size={18} />
             </button>
           </div>

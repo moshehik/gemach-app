@@ -43,13 +43,6 @@ export default function EmployeesPage() {
     }
   }, [activeTab, isAiModeActive]);
 
-  // Fetch Attendance Data
-  useEffect(() => {
-    if (activeTab === 'attendance') {
-      fetchAttendanceData(selectedMonth, selectedYear);
-    }
-  }, [activeTab, selectedMonth, selectedYear]);
-
   const fetchAttendanceData = async (month, year) => {
     setLoadingAttendance(true);
     try {
@@ -64,6 +57,13 @@ export default function EmployeesPage() {
       setLoadingAttendance(false);
     }
   };
+
+  // Fetch Attendance Data
+  useEffect(() => {
+    if (activeTab === 'attendance') {
+      fetchAttendanceData(selectedMonth, selectedYear);
+    }
+  }, [activeTab, selectedMonth, selectedYear]);
 
   const handleAiSearch = async (query) => {
     setAiLoading(true);
@@ -192,20 +192,7 @@ export default function EmployeesPage() {
         {showStatistics && <StatisticsModal data-element-name="רכיב_page_1" isOpen={!!showStatistics} onClose={() => setShowStatistics(false)} pageContext="employees" position={typeof showStatistics === 'object' ? showStatistics : null} />}
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול עובדים ונוכחות</h1>
-          <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center' }}>
-            {activeTab === 'list' && (
-              <button data-element-name="כפתור_page_2" 
-                data-agy-id="new-employee-button"
-                onClick={() => router.push('/employees/new')} 
-                className="btn btn-primary" 
-                style={{ borderRadius: '24px', padding: '0.75rem 1.5rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-              >
-                <Plus data-element-name="רכיב_page_3" size={20} />
-                עובד חדש
-              </button>
-            )}
-          </div>
+          <h1 style={{ color: 'var(--primary-color)', margin: 0, fontSize: '2rem', fontWeight: 'bold' }}>ניהול עובדים ונוכחות</h1>
         </div>
 
         {/* Tabs Navigation */}
@@ -231,31 +218,43 @@ export default function EmployeesPage() {
         {/* Employees List Tab Content */}
         {activeTab === 'list' && (
           <div className="animate-fade-in">
-            <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <div style={{ maxWidth: '600px', flex: 1 }}>
-                <AISearchBar data-element-name="רכיב_page_8" 
-                  placeholder="חיפוש עובד (שם, טלפון, קוד)..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onSearch={(e) => { e.preventDefault(); setSearch(searchInput); setIsAiModeActive(false); }}
-                  onClear={() => { setSearchInput(''); setSearch(''); setIsAiModeActive(false); }}
-                  onAiSearch={handleAiSearch}
-                  onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-                  loading={aiLoading}
-                />
+            <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ maxWidth: '600px', flex: 1, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <AISearchBar data-element-name="רכיב_page_8" 
+                    placeholder="חיפוש עובד (שם, טלפון, קוד)..."
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    onSearch={(e) => { e.preventDefault(); setSearch(searchInput); setIsAiModeActive(false); }}
+                    onClear={() => { setSearchInput(''); setSearch(''); setIsAiModeActive(false); }}
+                    onAiSearch={handleAiSearch}
+                    onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+                    loading={aiLoading}
+                  />
+                </div>
               </div>
-              <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px', marginRight: '1rem' }}>
-                <button data-element-name="כפתור_page_9" data-agy-id="filter-active-employees" onClick={() => { setFilterStatus('active'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'active' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'active' ? '#10b981' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="עובדים פעילים">
-                  <UserCheck data-element-name="רכיב_page_10" size={20} />
-                  <span style={{ fontWeight: filterStatus === 'active' ? 'bold' : 'normal' }}>פעילים</span>
-                </button>
-                <button data-element-name="כפתור_page_11" data-agy-id="filter-inactive-employees" onClick={() => { setFilterStatus('inactive'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'inactive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'inactive' ? '#ef4444' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא פעילים">
-                  <UserMinus data-element-name="רכיב_page_12" size={20} />
-                  <span style={{ fontWeight: filterStatus === 'inactive' ? 'bold' : 'normal' }}>לא פעילים</span>
-                </button>
-                <button data-element-name="כפתור_page_13" data-agy-id="filter-all-employees" onClick={() => { setFilterStatus('all'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#3b82f6' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
-                  <Users data-element-name="רכיב_page_14" size={20} />
-                  <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
+              <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px', marginRight: '1rem' }}>
+                  <button data-element-name="כפתור_page_9" data-agy-id="filter-active-employees" onClick={() => { setFilterStatus('active'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'active' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'active' ? '#10b981' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="עובדים פעילים">
+                    <UserCheck data-element-name="רכיב_page_10" size={20} />
+                    <span style={{ fontWeight: filterStatus === 'active' ? 'bold' : 'normal' }}>פעילים</span>
+                  </button>
+                  <button data-element-name="כפתור_page_11" data-agy-id="filter-inactive-employees" onClick={() => { setFilterStatus('inactive'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'inactive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'inactive' ? '#ef4444' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא פעילים">
+                    <UserMinus data-element-name="רכיב_page_12" size={20} />
+                    <span style={{ fontWeight: filterStatus === 'inactive' ? 'bold' : 'normal' }}>לא פעילים</span>
+                  </button>
+                  <button data-element-name="כפתור_page_13" data-agy-id="filter-all-employees" onClick={() => { setFilterStatus('all'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#3b82f6' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
+                    <Users data-element-name="רכיב_page_14" size={20} />
+                    <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
+                  </button>
+                </div>
+                <button data-element-name="כפתור_page_2" 
+                  data-agy-id="new-employee-button"
+                  onClick={() => router.push('/employees/new')} 
+                  className="btn-header-icon"
+                  title="עובד חדש"
+                >
+                  <Plus data-element-name="רכיב_page_3" size={20} />
                 </button>
               </div>
             </div>
@@ -333,16 +332,14 @@ export default function EmployeesPage() {
                 </button>
               </div>
               
-              <div style={{ display: 'flex', gap: '1rem' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <button data-element-name="כפתור_page_20" 
                   onClick={handlePrintPdfs} 
-                  className="btn btn-secondary" 
+                  className="btn-header-icon" 
                   disabled={processedAttendance.length === 0}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px' }}
                   title="הורדת PDF עם דף נוכחות אישי לכל עובד"
                 >
-                  <Printer data-element-name="רכיב_page_21" size={18} />
-                  דוח אישי לעובדים
+                  <Printer data-element-name="רכיב_page_21" size={20} />
                 </button>
                 <ExportButtons data-element-name="רכיב_page_22" 
                   data={processedAttendance} 
@@ -355,6 +352,7 @@ export default function EmployeesPage() {
                     { key: 'totalCalculated', label: 'ס"ה' },
                     { key: 'hasTravels', label: 'נסיעות' }
                   ]}
+                  iconOnly={true}
                 />
               </div>
             </div>

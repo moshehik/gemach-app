@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, Info, ChevronDown, ChevronUp } from 'lucide-react';
+import { Trash2, Info, ChevronDown, ChevronUp, RefreshCcw } from 'lucide-react';
 
-export default function OrderPaymentsManager({ orderId, obligations = [], payments = [], onObligationsChange, onPaymentsChange, totalRequired, totalPaid, customer = {} }) {
+export default function OrderPaymentsManager({ orderId, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated }) {
   const [newObligation, setNewObligation] = useState({ description: '', amount: '' });
   const [newPayment, setNewPayment] = useState({ paymentMethod: 'אשראי', notes: '', amount: '' });
   
@@ -173,6 +173,40 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
   };
 
   const handleOpenRefundModal = () => {
+    let paymentDetailsString = '';
+    const validPayments = payments.filter(p => !p.isDeleted);
+    if (validPayments.length > 0) {
+      const sortedPayments = [...validPayments].sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
+      const lastPayment = sortedPayments[0];
+      
+      let last4 = '';
+      try {
+        if (typeof lastPayment.notes === 'string') {
+          const parsed = JSON.parse(lastPayment.notes);
+          if (parsed.LastNum) last4 = parsed.LastNum;
+          else if (parsed.CardNumber) last4 = String(parsed.CardNumber).slice(-4);
+          else if (parsed.Card) last4 = String(parsed.Card).slice(-4);
+          else {
+             const match = lastPayment.notes.match(/"(?:LastNum|Card|CardNumber)"\s*:\s*"?\D*(\d{4})"?/i);
+             if (match && match[1]) last4 = match[1];
+          }
+        }
+      } catch(e) {
+         const match = lastPayment.notes?.match(/(?:כרטיס|אשראי).*?(\d{4})/);
+         if (match && match[1]) last4 = match[1];
+      }
+      
+      paymentDetailsString = lastPayment.paymentMethod || '';
+      if (last4) {
+         paymentDetailsString += ` (ספרות: ${last4})`;
+      } else if (lastPayment.paymentMethod && lastPayment.paymentMethod.includes('אשראי') && !last4) {
+         const match4 = lastPayment.notes?.match(/\b(\d{4})\b/);
+         if (match4) {
+             paymentDetailsString += ` (ספרות: ${match4[1]})`;
+         }
+      }
+    }
+
     setRefundData({
       amount: '',
       reason: '',
@@ -180,7 +214,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
       bankBranch: customer?.bankBranch || '',
       bankAccount: customer?.bankAccount || '',
       bankAccountName: customer?.bankAccountName || '',
-      paymentDetails: '',
+      paymentDetails: paymentDetailsString,
       email: customer?.email || ''
     });
     setShowRefundModal(true);
@@ -206,10 +240,50 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to create refund');
       
-      alert('בקשת הזיכוי נוצרה בהצלחה. ניתן לנהל אותה במסמך הזיכויים הראשי.');
+      alert('בקשת הזיכוי נוצרה בהצלחה. ניתן לנהל אותה במסמך הזיכויים הראשי או כאן בטאב תשלומים.');
       setShowRefundModal(false);
+      
+      // Re-fetch order to update refunds list
+      if (onOrderUpdated) {
+        const orderRes = await fetch(`/api/orders/${orderId}`);
+        if (orderRes.ok) {
+          const updatedOrder = await orderRes.json();
+          onOrderUpdated(updatedOrder);
+        }
+      }
     } catch (err) {
       alert(err.message || 'שגיאה ביצירת הזיכוי');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const approveRefund = async (refundId) => {
+    if (!(await window.customConfirm('האם לאשר ביצוע זיכוי זה? הפעולה תיצור תשלום הפכי להזמנה.'))) {
+      return;
+    }
+    setIsProcessing(true);
+    try {
+      const res = await fetch(`/api/refunds/${refundId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isExecuted: true })
+      });
+      if (!res.ok) throw new Error('Failed to approve refund');
+      alert('הזיכוי אושר ובוצע בהצלחה.');
+      
+      // Re-fetch order to update payments and refunds
+      if (onOrderUpdated) {
+        const orderRes = await fetch(`/api/orders/${orderId}`);
+        if (orderRes.ok) {
+          const updatedOrder = await orderRes.json();
+          onOrderUpdated(updatedOrder);
+        }
+      } else if (onRefundsChange) {
+         onRefundsChange(refunds.filter(r => r.id !== refundId));
+      }
+    } catch (err) {
+      alert(err.message || 'שגיאה באישור הזיכוי');
     } finally {
       setIsProcessing(false);
     }
@@ -385,6 +459,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
 
   const activeObligations = obligations.filter(o => !o.isDeleted);
   const activePayments = payments.filter(p => !p.isDeleted);
+  const pendingRefunds = refunds.filter(r => !r.isDeleted && !r.isExecuted);
 
   return (
     <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
@@ -566,11 +641,47 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                 onMouseOver={e => e.currentTarget.style.opacity=0.9} onMouseOut={e => e.currentTarget.style.opacity=1}
                 title="בקשת זיכוי ללקוח"
               >
-                🔄 יצירת זיכוי
+                <RefreshCcw size={18} /> יצירת זיכוי
               </button>
             </div>
           </div>
         </div>
+
+        {/* Pending Refunds */}
+        {pendingRefunds.length > 0 && (
+          <div style={{ background: '#eff6ff', padding: '1.5rem', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+              <h3 style={{ color: '#1e40af', margin: 0, fontSize: '1.2rem', fontWeight: '700' }}>זיכויים ממתינים</h3>
+            </div>
+            
+            <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #93c5fd', marginBottom: '0.5rem' }}>
+              <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
+                <thead>
+                  <tr style={{ borderBottom: '1px solid #93c5fd', background: '#eff6ff', color: '#1e3a8a' }}>
+                    <th style={{ padding: '0.8rem' }}>פרטים / סיבה</th>
+                    <th style={{ padding: '0.8rem' }}>תאריך בקשה</th>
+                    <th style={{ padding: '0.8rem' }}>סכום</th>
+                    <th style={{ padding: '0.8rem', width: '120px' }}>פעולות</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {pendingRefunds.map((r, idx) => (
+                    <tr key={idx} style={{ borderBottom: '1px solid #bfdbfe', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#eff6ff'} onMouseOut={e => e.currentTarget.style.backgroundColor='white'}>
+                      <td style={{ padding: '0.8rem', color: '#1e40af', fontWeight: '500' }}>{r.reason || 'ללא סיבה'}</td>
+                      <td style={{ padding: '0.8rem', color: '#1d4ed8', fontSize: '0.85em' }}>{new Date(r.createdAt).toLocaleDateString('he-IL')}</td>
+                      <td style={{ padding: '0.8rem', fontWeight: 'bold', color: '#2563eb' }}>₪{r.amount}</td>
+                      <td style={{ padding: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                        <button data-agy-id={`approve_refund_${idx}`} onClick={() => approveRefund(r.id)} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#2563eb'} onMouseOut={e => e.currentTarget.style.backgroundColor='#3b82f6'}>
+                          אשר ביצוע
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
       </div>
       )}
 
@@ -889,8 +1000,8 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               </div>
               
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>פרטי אשראי מקורי (אופציונלי - 4 ספרות)</label>
-                <input type="text" value={refundData.paymentDetails} onChange={e => setRefundData({...refundData, paymentDetails: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>אמצעי תשלום לזיכוי (נלקח אוטומטית מתשלום אחרון)</label>
+                <input type="text" readOnly value={refundData.paymentDetails} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b' }} title="שדה זה מתמלא אוטומטית מהתשלום האחרון במערכת" />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>מייל לקוח (לשליחת אישור זיכוי)</label>

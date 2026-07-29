@@ -12,8 +12,20 @@ export default function UserMenu() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [isGlobalFetching, setIsGlobalFetching] = useState(false);
   
   const menuRef = useRef(null);
+
+  useEffect(() => {
+    const handleFetchStart = () => setIsGlobalFetching(true);
+    const handleFetchEnd = () => setIsGlobalFetching(false);
+    window.addEventListener('app-data-fetching-start', handleFetchStart);
+    window.addEventListener('app-data-fetching-end', handleFetchEnd);
+    return () => {
+      window.removeEventListener('app-data-fetching-start', handleFetchStart);
+      window.removeEventListener('app-data-fetching-end', handleFetchEnd);
+    };
+  }, []);
 
   useEffect(() => {
     fetch('/api/me')
@@ -207,8 +219,9 @@ export default function UserMenu() {
           {user.firstName ? user.firstName.charAt(0) : 'U'}
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-color)' }}>
+          <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
             {user.firstName} {user.lastName}
+            {isGlobalFetching && <div style={{width: '14px', height: '14px', border: '2px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite'}} title="טוען נתונים..." />}
           </span>
           <span style={{ fontSize: '0.75rem', color: activeShift ? '#10b981' : '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
             <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeShift ? '#10b981' : '#cbd5e1' }} />

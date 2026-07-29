@@ -52,7 +52,6 @@ export async function GET(request) {
       ...(filterStatus === 'soon' ? { OR: [{ eventDate: null }, { eventDate: { gte: today } }] } : {}),
       ...(filterStatus === 'all' && !forRentals && !search && !advOrderId && !advCustomerName && !advCustomerPhone && !advCustomerCity && !advEventDateFrom && !advEventDateTo ? {
         OR: [
-          { orderDate: { gte: threeMonthsAgo } },
           { eventDate: { gte: threeMonthsAgo } },
           { eventDate: null }
         ]
@@ -362,7 +361,7 @@ export async function POST(request) {
       const validationResult = await validateOrderItemsAvailability(
         data.items,
         data.eventDate,
-        data.isAbroad,
+        data.isAbroad || data.isWeekdayEvent,
         data.fromDate,
         data.toDate,
         null // orderId

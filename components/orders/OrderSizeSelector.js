@@ -75,11 +75,19 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
       disabled={!modelId || loading}
       style={{
         width: '100%',
-        padding: '0.4rem',
-        borderRadius: '4px',
-        border: '1px solid var(--element-border)',
+        height: '42px',
+        padding: '0.5rem 0.8rem',
+        borderRadius: '8px',
+        border: '1px solid #cbd5e1',
         textAlign: 'center',
-        backgroundColor: !modelId || loading ? '#f5f5f5' : 'var(--card-bg)'
+        backgroundColor: (!modelId || loading) ? '#f1f5f9' : 'white',
+        color: (!modelId || loading) ? '#94a3b8' : '#1e293b',
+        cursor: (!modelId || loading) ? 'not-allowed' : 'pointer',
+        appearance: 'none',
+        boxSizing: 'border-box',
+        fontSize: '0.95rem',
+        outline: 'none',
+        transition: 'border-color 0.2s'
       }}
     >
       <option value="">{loading ? 'טוען...' : placeholder}</option>
@@ -90,7 +98,7 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
         let availableInfo = '';
         if (s.availableQuantity !== undefined) {
           if (order && order.customSpacing !== undefined && order.customSpacing !== null) {
-            availableInfo = `זמין ${s.availableQuantity}, ציפוף: ${order.customSpacing} מתוך ${defaultSpacing || 3}`;
+            availableInfo = `פנוי ${s.availableQuantity} מתוך ${s.totalInStock} (רווח: ${order.customSpacing} ימים)`;
           } else {
             availableInfo = `פנוי ${s.availableQuantity} מתוך ${s.totalInStock}`;
           }

@@ -363,6 +363,25 @@ body.hide-global-nav .navbar {
 }
 
 /* Availability Modal / Drawer (Skeleton) */
+.btn-header-icon {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 0.6rem;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 45px;
+  height: 45px;
+}
+.btn-header-icon:hover {
+  background-color: var(--element-bg);
+  color: var(--primary-color);
+}
+
 .sizes-container {
   display: flex;
   flex-wrap: wrap;
@@ -1368,3 +1387,62 @@ body.hide-gregorian-calendar .gregorian-calendar-toggle { display: none !importa
 /* Hide AI Features Setting */
 body.hide-ai-features .ai-feature-element { display: none !important; }
 
+/* Global Sidebar */
+.global-sidebar {
+  position: fixed;
+  top: 50%;
+  right: 1.5rem;
+  transform: translateY(-50%);
+  width: 55px;
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: var(--glass-border);
+  border-radius: 30px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.5rem 0;
+  gap: 1.8rem;
+  z-index: 999;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+[data-theme="dark"] .global-sidebar {
+  background: rgba(30, 30, 30, 0.65);
+}
+
+.global-sidebar-icon {
+  color: var(--text-muted);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  text-decoration: none;
+  background: transparent;
+}
+
+.global-sidebar-icon:hover {
+  color: var(--primary-color);
+  background: rgba(212, 175, 55, 0.12);
+  transform: scale(1.15) translateY(-2px);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.25);
+}
+
+@media (max-width: 768px) {
+  .global-sidebar {
+    right: 0.5rem;
+    width: 45px;
+    padding: 1rem 0;
+    gap: 1.2rem;
+  }
+  .global-sidebar-icon {
+    width: 36px;
+    height: 36px;
+  }
+}

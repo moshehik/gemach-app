@@ -36,7 +36,9 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     
     // Only search if user types or opens dropdown
     if (isOpen || query) {
-        const timeoutId = setTimeout(fetchCustomers, 300);
+        // Load immediately if there's no query (e.g., initial open), otherwise debounce typing
+        const delay = query ? 300 : 0;
+        const timeoutId = setTimeout(fetchCustomers, delay);
         return () => clearTimeout(timeoutId);
     }
   }, [query, isOpen]);

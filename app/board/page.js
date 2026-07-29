@@ -509,17 +509,15 @@ export default function BoardPage() {
                 <button data-element-name="כפתור_page_13" 
                   data-agy-id="global-search-button"
                   onClick={handleGlobalSearch}
-                  className="btn btn-outline"
-                  style={{ borderRadius: '8px', padding: '0 1rem', height: '45px', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}
-                  title="חיפוש בכל החודשים"
+                  className="btn-header-icon"
+                  title="חיפוש בכל החודשים (גלובלי)"
                 >
-                  <Search data-element-name="רכיב_page_14" size={18} /> גלובלי
+                  <Search data-element-name="רכיב_page_14" size={20} />
                 </button>
                 <button data-element-name="כפתור_page_15" 
                   data-agy-id="adv-search-button"
                   onClick={() => setShowAdvSearch(true)}
-                  className="btn btn-outline"
-                  style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}
+                  className="btn-header-icon"
                   title="חיפוש מתקדם"
                 >
                   <Filter data-element-name="רכיב_page_16" size={20} />

@@ -189,8 +189,8 @@ export default function RentalsPage() {
         </form>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-        <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול השכרות והחזרות</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול השכרות והחזרות</h1>
       </div>
 
       {showAdvSearch && (
@@ -250,16 +250,16 @@ export default function RentalsPage() {
 
       <div className="rentals-controls" style={{ 
         display: 'flex', 
+        justifyContent: 'space-between', 
         alignItems: 'center', 
-        justifyContent: 'space-between',
-        background: 'var(--card-bg)',
-        padding: '0.75rem 1.5rem',
-        borderRadius: '16px',
+        marginBottom: '2rem',
+        background: 'var(--card-bg)', 
+        padding: '0.75rem 1.5rem', 
+        borderRadius: '16px', 
         boxShadow: 'var(--shadow-sm)',
-        border: '1px solid var(--border-color)',
-        marginBottom: '1.5rem',
-        gap: '1.5rem',
-        flexWrap: 'wrap'
+        gap: '1rem',
+        flexWrap: 'wrap',
+        border: '1px solid var(--border-color)'
       }}>
         {/* Right side: Filters */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -290,7 +290,7 @@ export default function RentalsPage() {
         </div>
 
         {/* Center/Left side: Search & Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, maxWidth: '400px', minWidth: '250px' }}>
             <AISearchBar data-element-name="רכיב_page_14" 
               placeholder="חיפוש חופשי (הזמנה, לקוח, דגם)..."
@@ -306,8 +306,7 @@ export default function RentalsPage() {
           <button data-element-name="כפתור_page_15" 
             data-agy-id="adv-search-button"
             onClick={() => setShowAdvSearch(true)}
-            className="btn btn-outline"
-            style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center', flexShrink: 0 }}
+            className="btn-header-icon"
             title="חיפוש מתקדם"
           >
             🔍
@@ -331,6 +330,7 @@ export default function RentalsPage() {
                 { key: 'status', label: getLabel('order_status', 'סטטוס') },
                 { key: 'itemsSummary', label: 'פריטים' }
               ]} 
+              iconOnly={true}
             />
           </div>
         </div>

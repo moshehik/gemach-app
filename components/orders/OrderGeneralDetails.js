@@ -15,26 +15,34 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
     onOrderChange({ ...order, [field]: value });
   };
 
-  const validateAndChangeDate = async (field, value) => {
+  const validateAndChangeDate = async (fieldOrUpdates, valueIfField) => {
+    const isMulti = typeof fieldOrUpdates === 'object';
+    const updates = isMulti ? fieldOrUpdates : { [fieldOrUpdates]: valueIfField };
+    
     const currentItems = items && items.length > 0 ? items : (order.items || []);
     const activeItems = currentItems.filter(i => !i.isDeleted);
     
     const proposedOrder = {
       ...order,
-      [field]: value
+      ...updates
     };
 
     if (activeItems.length === 0) {
-      handleChange(field, value);
-      if (['isAbroad', 'eventDate', 'fromDate', 'toDate', 'returnDate'].includes(field)) {
+      for (const [k, v] of Object.entries(updates)) {
+        handleChange(k, v);
+      }
+      const triggerSave = Object.keys(updates).some(k => ['isAbroad', 'isWeekdayEvent', 'eventDate', 'fromDate', 'toDate', 'returnDate'].includes(k));
+      if (triggerSave) {
         if (onSaveRequest) setTimeout(() => onSaveRequest(proposedOrder), 0);
       }
       return;
     }
 
-    // Skip validation if it's an abroad event but dates aren't fully entered yet
-    if (proposedOrder.isAbroad && (!proposedOrder.fromDate || !proposedOrder.toDate)) {
-      handleChange(field, value);
+    // Skip validation if dates aren't fully entered yet for custom durations
+    if ((proposedOrder.isAbroad || proposedOrder.isWeekdayEvent) && (!proposedOrder.fromDate || !proposedOrder.toDate)) {
+      for (const [k, v] of Object.entries(updates)) {
+        handleChange(k, v);
+      }
       return;
     }
 
@@ -45,7 +53,8 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
         body: JSON.stringify({
           items: activeItems,
           eventDate: proposedOrder.eventDate,
-          isAbroad: proposedOrder.isAbroad,
+          isAbroad: proposedOrder.isAbroad || proposedOrder.isWeekdayEvent,
+          isWeekdayEvent: proposedOrder.isWeekdayEvent,
           fromDate: proposedOrder.fromDate,
           toDate: proposedOrder.toDate,
           orderId: proposedOrder.orderId,
@@ -66,8 +75,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
           setSimulationModalData({
             errors: validateData.errors,
             simulation: validateData.simulation,
-            field,
-            value
+            updates
           });
         } else {
           const errorLines = validateData.errors.map(e => 
@@ -78,8 +86,11 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
         return;
       }
       
-      handleChange(field, value);
-      if (['isAbroad', 'eventDate', 'fromDate', 'toDate', 'returnDate', 'customSpacing'].includes(field)) {
+      for (const [k, v] of Object.entries(updates)) {
+        handleChange(k, v);
+      }
+      const triggerSave = Object.keys(updates).some(k => ['isAbroad', 'isWeekdayEvent', 'eventDate', 'fromDate', 'toDate', 'returnDate', 'customSpacing'].includes(k));
+      if (triggerSave) {
         if (onSaveRequest) setTimeout(() => onSaveRequest(proposedOrder), 0);
       }
     } catch (err) {
@@ -105,12 +116,13 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
       
       if (simulationModalData) {
         // We are applying this from the simulation modal
-        const { field, value } = simulationModalData;
+        const { updates } = simulationModalData;
         
-        // Update both the customSpacing and the date field
-        onOrderChange({ ...order, customSpacing: spacing, [field]: value });
+        // Update both the customSpacing and the date fields
+        const newOrder = { ...order, customSpacing: spacing, ...updates };
+        onOrderChange(newOrder);
         setSimulationModalData(null);
-        if (onSaveRequest) setTimeout(() => onSaveRequest({ ...order, customSpacing: spacing, [field]: value }), 0);
+        if (onSaveRequest) setTimeout(() => onSaveRequest(newOrder), 0);
       } else {
         // Just setting custom spacing directly
         validateAndChangeDate('customSpacing', spacing);
@@ -122,7 +134,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
 
   const [isExpanded, setIsExpanded] = useState(true);
   const customerName = order?.customer ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ') : 'לא נבחר לקוח';
-  const eventDateStr = order?.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.eventDate)})` : 'ללא תאריך אירוע';
+  const eventDateStr = order?.isWeekdayEvent ? 'אירוע חול' : (order?.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.eventDate)})` : 'ללא תאריך אירוע');
   const summaryText = `לקוח: ${customerName} | אירוע: ${eventDateStr}`;
 
   const [isEditingCustomer, setIsEditingCustomer] = useState(false);
@@ -225,12 +237,12 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
             
             <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
               {order.customer?.id && (
-                <Link href={`/customers/${order.customer.id}`} target="_blank" style={{ fontSize: '0.9rem', color: '#2563eb', textDecoration: 'none', fontWeight: '600', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#eff6ff', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #bfdbfe', transition: 'all 0.2s' }}>
-                  <ExternalLink size={16} /> מעבר לכרטיס
+                <Link href={`/customers/${order.customer.id}`} target="_blank" title="מעבר לכרטיס" style={{ fontSize: '0.9rem', color: '#2563eb', textDecoration: 'none', fontWeight: '600', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#eff6ff', padding: '0.6rem', borderRadius: '8px', border: '1px solid #bfdbfe', transition: 'all 0.2s' }}>
+                  <ExternalLink size={18} />
                 </Link>
               )}
-              <button data-agy-id="ordergeneraldetails_button_1" type="button" onClick={() => setIsEditingCustomer(!isEditingCustomer)} style={{ fontSize: '0.9rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                <RefreshCw size={16} /> החלף לקוח
+              <button data-agy-id="ordergeneraldetails_button_1" type="button" title="החלף לקוח" onClick={() => setIsEditingCustomer(!isEditingCustomer)} style={{ fontSize: '0.9rem', background: 'white', padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                <RefreshCw size={18} />
               </button>
             </div>
           </div>
@@ -331,29 +343,42 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
             </div>
             
             <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-              <button data-agy-id="ordergeneraldetails_button_9" type="button" onClick={() => setIsEditingOrderDetails(!isEditingOrderDetails)} style={{ fontSize: '0.9rem', background: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-                {isEditingOrderDetails ? <><Check size={16} /> סיים עריכה</> : <><Edit2 size={16} /> ערוך פרטים</>}
+              <button data-agy-id="ordergeneraldetails_button_9" type="button" title={isEditingOrderDetails ? "סיים עריכה" : "ערוך פרטים"} onClick={() => setIsEditingOrderDetails(!isEditingOrderDetails)} style={{ fontSize: '0.9rem', background: 'white', padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                {isEditingOrderDetails ? <Check size={18} /> : <Edit2 size={18} />}
               </button>
             </div>
           </div>
 
           {!isEditingOrderDetails ? (
             <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap' }}>
-              <div>
-                <span style={{...labelStyle, color: '#64748b'}}>תאריך אירוע:</span>
-                <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a' }}>
-                  {order.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.eventDate)})` : 'לא נבחר'}
+              {!order.isWeekdayEvent ? (
+                <div>
+                  <span style={{...labelStyle, color: '#64748b'}}>תאריך אירוע:</span>
+                  <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a' }}>
+                    {order.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.eventDate)})` : 'לא נבחר'}
+                  </div>
                 </div>
-              </div>
+              ) : (
+                <div>
+                  <span style={{...labelStyle, color: '#64748b'}}>סוג אירוע:</span>
+                  <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a' }}>
+                    אירוע חול
+                  </div>
+                </div>
+              )}
               <>
-                <div>
-                  <span style={{...labelStyle, color: '#64748b'}}>לקיחה:</span>
-                  <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{order.fromDate ? new Date(order.fromDate).toLocaleDateString('he-IL') : '-'}</div>
-                </div>
-                <div>
-                  <span style={{...labelStyle, color: '#64748b'}}>החזרה:</span>
-                  <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{order.toDate || order.returnDate ? new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL') : '-'}</div>
-                </div>
+                {order.fromDate && (
+                  <div>
+                    <span style={{...labelStyle, color: '#64748b'}}>לקיחה:</span>
+                    <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{getHebrewDateString(order.fromDate)}</div>
+                  </div>
+                )}
+                {(order.toDate || order.returnDate) && (
+                  <div>
+                    <span style={{...labelStyle, color: '#64748b'}}>החזרה:</span>
+                    <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{getHebrewDateString(order.toDate || order.returnDate)}</div>
+                  </div>
+                )}
               </>
               <div style={{ flex: '1 1 100%', marginTop: '0.5rem' }}>
                 <span style={{...labelStyle, color: '#64748b'}}>הערות להזמנה:</span>
@@ -364,34 +389,67 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-              {/* Dates */}
+              {/* Event Type */}
               <div style={groupStyle}>
-                <label style={labelStyle}>תאריך אירוע:</label>
-                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: '200px' }}>
-                    <HebrewDatePicker 
-                      value={order.eventDate} 
-                      onChange={(date) => validateAndChangeDate('eventDate', date)} 
-                    />
-                  </div>
+                <label style={labelStyle}>סוג אירוע:</label>
+                <div style={{ display: 'flex', gap: '0.8rem', background: '#f1f5f9', padding: '0.4rem', borderRadius: '12px' }}>
+                  {[
+                    { id: 'regular', label: 'אירוע רגיל' },
+                    { id: 'chol', label: 'אירוע חול' },
+                    { id: 'abroad', label: 'אירוע חו"ל' }
+                  ].map(type => {
+                    const isSelected = 
+                      (type.id === 'regular' && !order.isAbroad && !order.isWeekdayEvent) ||
+                      (type.id === 'chol' && order.isWeekdayEvent) ||
+                      (type.id === 'abroad' && order.isAbroad);
+                    return (
+                      <button
+                        key={type.id}
+                        type="button"
+                        onClick={() => {
+                          const isAbroad = type.id === 'abroad';
+                          const isWeekdayEvent = type.id === 'chol';
+                          validateAndChangeDate({ isAbroad, isWeekdayEvent });
+                        }}
+                        style={{
+                          flex: 1,
+                          padding: '0.6rem 1rem',
+                          borderRadius: '8px',
+                          border: 'none',
+                          background: isSelected ? 'white' : 'transparent',
+                          color: isSelected ? '#0f172a' : '#64748b',
+                          fontWeight: '700',
+                          fontSize: '0.95rem',
+                          boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s'
+                        }}
+                      >
+                        {type.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
-              {/* Custom Duration / Abroad */}
-              <div>
-                <div style={{ ...groupStyle, display: 'inline-flex', alignItems: 'center', gap: '0.8rem', background: 'white', padding: '0.8rem 1.2rem', borderRadius: '10px', border: '1px solid #e2e8f0', cursor: 'pointer' }} onClick={() => validateAndChangeDate('isAbroad', !order.isAbroad)}>
-                  <input data-agy-id="ordergeneraldetails_input_10" 
-                    type="checkbox" 
-                    id="isAbroad"
-                    checked={order.isAbroad ?? false} 
-                    onChange={(e) => validateAndChangeDate('isAbroad', e.target.checked)}
-                    onClick={e => e.stopPropagation()}
-                    style={{ transform: 'scale(1.2)', cursor: 'pointer', accentColor: '#2563eb' }}
-                  />
-                  <label htmlFor="isAbroad" style={{ fontWeight: '700', color: '#334155', cursor: 'pointer', margin: 0 }}>אירוע חו"ל (תפוסה מותאמת אישית)</label>
+              {/* Dates */}
+              {!order.isWeekdayEvent && (
+                <div style={groupStyle}>
+                  <label style={labelStyle}>תאריך אירוע:</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '200px' }}>
+                      <HebrewDatePicker 
+                        value={order.eventDate} 
+                        onChange={(date) => validateAndChangeDate('eventDate', date)} 
+                      />
+                    </div>
+                  </div>
                 </div>
-                
-                {order.isAbroad && (
+              )}
+
+              {/* Custom Duration / Abroad or Weekday */}
+              {(order.isAbroad || order.isWeekdayEvent) && (
+                <div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', border: '1px solid #bfdbfe', padding: '1.5rem', borderRadius: '12px', marginTop: '1rem', background: '#eff6ff' }}>
                     <div>
                       <label style={{...labelStyle, color: '#1e3a8a'}}>מתאריך (לקיחה):</label>
@@ -399,7 +457,13 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                         <div style={{ flex: 1 }}>
                           <HebrewDatePicker 
                             value={order.fromDate} 
-                            onChange={(date) => validateAndChangeDate('fromDate', date)} 
+                            onChange={(date) => {
+                              if (order.isWeekdayEvent) {
+                                validateAndChangeDate({ fromDate: date, eventDate: date });
+                              } else {
+                                validateAndChangeDate('fromDate', date);
+                              }
+                            }} 
                           />
                         </div>
                       </div>
@@ -415,15 +479,15 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                         </div>
                       </div>
                     </div>
-                    {order.eventDate && order.fromDate && (order.toDate || order.returnDate) && 
+                    {order.eventDate && order.fromDate && (order.toDate || order.returnDate) && !order.isWeekdayEvent && 
                      (new Date(order.eventDate) < new Date(order.fromDate) || new Date(order.eventDate) > new Date(order.toDate || order.returnDate)) && (
                       <div style={{ gridColumn: '1 / -1', color: '#b91c1c', background: '#fef2f2', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span>⚠️</span> שימו לב: תאריך האירוע חייב להיות בין תאריך הלקיחה לתאריך החזרה!
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Notes */}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>

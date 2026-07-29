@@ -16,6 +16,7 @@ import PageTracker from './components/PageTracker';
 import AIFloatingWidget from './components/AIFloatingWidget';
 import DevEnvBanner from './components/DevEnvBanner';
 import ThemeToggle from './components/ThemeToggle';
+import GlobalSidebar from './components/GlobalSidebar';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import { PopupProvider } from './components/PopupProvider';
@@ -27,6 +28,7 @@ import AppNavLinks from './components/AppNavLinks';
 import OfflineIndicator from './components/OfflineIndicator';
 import ErrorReportButton from './components/ErrorReportButton';
 import ClipboardDebugger from '../components/ClipboardDebugger';
+import MessageHistoryButton from './components/MessageHistoryButton';
 import LandingPage from './components/LandingPage';
 
 export default async function RootLayout({ children }) {
@@ -83,6 +85,7 @@ export default async function RootLayout({ children }) {
   let isManager = false;
   let isMainManager = false;
   let employeeShowAi = false;
+  let isProgrammer = false;
   if (isAuthenticated) {
     try {
       const parsedLegacy = parseInt(authToken.value, 10);
@@ -100,6 +103,9 @@ export default async function RootLayout({ children }) {
       }
       if (emp && emp.roleId === 1) {
         isMainManager = true;
+      }
+      if (emp && emp.roleId === 2) {
+        isProgrammer = true;
       }
       if (emp && emp.showAi) {
         employeeShowAi = true;
@@ -214,7 +220,7 @@ export default async function RootLayout({ children }) {
           <LoginScreen data-element-name="רכיב_layout_7" />
         ) : (
           <LabelsProvider data-element-name="רכיב_layout_8">
-            <>
+            <PopupProvider data-element-name="רכיב_layout_22">
               <nav className="navbar">
                 <div style={{ display: 'flex', alignItems: 'center' }}>
                   <BrandLogo data-element-name="רכיב_layout_9" />
@@ -240,16 +246,16 @@ export default async function RootLayout({ children }) {
                   )}
                   <ThemeToggle data-element-name="רכיב_layout_18" employeeId={authToken?.value} initialTheme={themePreference} />
                   <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 0.25rem' }}></div>
+                  {isProgrammer && <MessageHistoryButton data-element-name="רכיב_layout_msg_hist" />}
                   <ErrorReportButton data-element-name="רכיב_layout_19" />
                   {authToken?.value && !hideInternalMessaging && <NotificationBell data-element-name="רכיב_layout_20" employeeId={authToken.value} />}
                   <UserMenu data-element-name="רכיב_layout_21" />
                 </div>
               </nav>
-              <PopupProvider data-element-name="רכיב_layout_22">
-                {children}
-              </PopupProvider>
+              {children}
+              <GlobalSidebar />
               {!hideAIFeatures && <AIFloatingWidget data-element-name="רכיב_layout_23" />}
-            </>
+            </PopupProvider>
           </LabelsProvider>
         )}
         <LandingPage data-element-name="רכיב_layout_24" />

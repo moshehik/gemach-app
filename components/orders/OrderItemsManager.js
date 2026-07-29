@@ -66,9 +66,20 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
         })
       });
       const validateData = await validateRes.json();
+      
+      if (validateData.error) {
+        setSavingItemIndex(null);
+        alert(`שגיאה בבדיקת המלאי: ${validateData.error}`);
+        return;
+      }
+      
       if (!validateData.valid) {
         setSavingItemIndex(null);
-        alert(`לא ניתן לשמור פריט עקב חוסר במלאי: חסרים ${validateData.errors[0].requested - validateData.errors[0].available} ממידה זו.`);
+        if (validateData.errors && validateData.errors.length > 0) {
+          alert(`לא ניתן לשמור פריט עקב חוסר במלאי: חסרים ${validateData.errors[0].requested - validateData.errors[0].available} ממידה זו.`);
+        } else {
+          alert('לא ניתן לשמור פריט עקב חוסר במלאי.');
+        }
         return;
       }
 
@@ -157,6 +168,11 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
     if (!isCurrentlyDeleted && item.isTaken) {
       alert('לא ניתן למחוק פריט שכבר נלקח (מושכר). יש להחזירו קודם לכן או לבטל את הלקיחה.');
       return;
+    }
+
+    if (!isCurrentlyDeleted) {
+      const confirmDelete = window.confirm('האם אתה בטוח שברצונך למחוק פריט זה?');
+      if (!confirmDelete) return;
     }
 
     if (isCurrentlyDeleted) { // trying to restore
@@ -260,13 +276,16 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
 
   const inputStyle = {
     width: '100%',
-    padding: '0.6rem 0.8rem',
+    height: '42px',
+    padding: '0.5rem 0.8rem',
     borderRadius: '8px',
     border: '1px solid #cbd5e1',
     textAlign: 'center',
     transition: 'all 0.2s',
     outline: 'none',
-    backgroundColor: 'white'
+    backgroundColor: 'white',
+    boxSizing: 'border-box',
+    fontSize: '0.95rem'
   };
 
   return (
@@ -758,35 +777,38 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
         />
       )}
 
-      <div style={{ marginTop: '2rem', textAlign: 'right' }}>
+      <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
         <button data-agy-id="orderitemsmanager_button_14"
           onClick={handleAddItem}
           style={{
-            padding: '0.8rem 1.8rem',
-            background: 'linear-gradient(to right, #2563eb, #3b82f6)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '10px',
+            width: '100%',
+            padding: '1.2rem',
+            background: '#f8fafc',
+            color: '#3b82f6',
+            border: '2px dashed #cbd5e1',
+            borderRadius: '12px',
             cursor: 'pointer',
             fontWeight: '600',
-            fontSize: '1.05rem',
-            boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
+            fontSize: '1.1rem',
             transition: 'all 0.2s ease',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: '0.6rem'
+            justifyContent: 'center',
+            gap: '0.8rem'
           }}
           onMouseOver={(e) => {
-            e.currentTarget.style.transform = 'translateY(-2px)';
-            e.currentTarget.style.boxShadow = '0 6px 16px rgba(37, 99, 235, 0.4)';
+            e.currentTarget.style.backgroundColor = '#eff6ff';
+            e.currentTarget.style.borderColor = '#3b82f6';
           }}
           onMouseOut={(e) => {
-            e.currentTarget.style.transform = 'translateY(0)';
-            e.currentTarget.style.boxShadow = '0 4px 12px rgba(37, 99, 235, 0.3)';
+            e.currentTarget.style.backgroundColor = '#f8fafc';
+            e.currentTarget.style.borderColor = '#cbd5e1';
           }}
           title="הוסף פריט חדש להזמנה"
         >
-          <span style={{ fontSize: '1.2rem', fontWeight: 'bold' }}>+</span> 
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', background: '#dbeafe', borderRadius: '50%', color: '#2563eb' }}>
+            <span style={{ fontSize: '1.4rem', fontWeight: 'bold', lineHeight: 1, marginTop: '-2px' }}>+</span>
+          </div>
           <span>הוסף פריט חדש</span>
         </button>
       </div>

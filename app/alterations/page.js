@@ -42,18 +42,6 @@ export default function AlterationsPage() {
 
   useEffect(() => setMounted(true), []);
 
-  useEffect(() => {
-    fetchAlterations(false, page);
-    
-    // Background Prefetching for the next page
-    const timer = setTimeout(() => {
-      if (page < totalPages) {
-        fetchAlterations(true, page + 1);
-      }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [startDate, endDate, showOnlyPending, page, search, totalPages]);
-
   const fetchAlterations = async (isPrefetch = false, targetPage = page) => {
     try {
       if (!isPrefetch) {
@@ -95,6 +83,18 @@ export default function AlterationsPage() {
       if (!isPrefetch) setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchAlterations(false, page);
+    
+    // Background Prefetching for the next page
+    const timer = setTimeout(() => {
+      if (page < totalPages) {
+        fetchAlterations(true, page + 1);
+      }
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, [startDate, endDate, showOnlyPending, page, search, totalPages]);
 
   const markDone = async (orderItemId) => {
     if (!(await window.customConfirm('האם לאשר ביצוע תיקון?'))) return;
@@ -245,53 +245,6 @@ export default function AlterationsPage() {
               ניהול תפירות ותיקונים
             </h1>
           </div>
-
-          <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <ExportButtons data-element-name="רכיב_page_2" 
-              data={items.map(item => ({
-                ...item,
-                orderId: item.order?.orderId,
-                customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
-                dressName: item.dressItem?.dress?.name 
-                  ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-                  : (item.description || item.dressItem?.dressName),
-                eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
-                alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין'
-              }))}
-              filename="תפירות"
-              columns={[
-                { key: 'orderId', label: 'קוד הזמנה' },
-                { key: 'customerName', label: 'לקוח' },
-                { key: 'dressName', label: 'שמלה' },
-                { key: 'sizeText', label: 'מידה' },
-                { key: 'eventDate', label: 'תאריך אירוע' },
-                { key: 'alterationStatus', label: 'סטטוס' }
-              ]}
-              iconOnly={true}
-              onFetchData={fetchForExport}
-              customStyle={{ padding: '0.6rem 1rem', borderRadius: '10px', background: 'var(--element-bg)', border: '1px solid var(--element-border)', color: 'var(--text-main)', backdropFilter: 'blur(10px)', height: '42px' }}
-            />
-            <button data-element-name="כפתור_page_3" 
-              data-agy-id="print-wizard-button"
-              onClick={() => setIsPrintWizardOpen(true)}
-              style={{ padding: '0.5rem', borderRadius: '10px', width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--text-main)', background: 'var(--element-bg)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
-              onMouseOver={e => e.currentTarget.style.background = 'var(--divider)'}
-              onMouseOut={e => e.currentTarget.style.background = 'var(--element-bg)'}
-              title="אשף הדפסה"
-            >
-              <Printer data-element-name="רכיב_page_4" size={20} />
-            </button>
-            <button data-element-name="כפתור_page_5" 
-              data-agy-id="legend-button"
-              onClick={() => setIsLegendOpen(true)}
-              style={{ padding: '0.5rem', borderRadius: '10px', width: '42px', height: '42px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid var(--element-border)', color: 'var(--text-main)', background: 'var(--element-bg)', cursor: 'pointer', backdropFilter: 'blur(10px)', transition: 'all 0.2s' }}
-              onMouseOver={e => e.currentTarget.style.background = 'var(--divider)'}
-              onMouseOut={e => e.currentTarget.style.background = 'var(--element-bg)'}
-              title="מקרא"
-            >
-              <Info data-element-name="רכיב_page_6" size={20} />
-            </button>
-          </div>
         </div>
 
         {/* Filter Toolbar (Glassmorphism) */}
@@ -375,7 +328,46 @@ export default function AlterationsPage() {
             loading={aiLoading}
           />
         </div>
-        <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center', fontWeight: '500' }}>
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <ExportButtons data-element-name="רכיב_page_2" 
+              data={items.map(item => ({
+                ...item,
+                orderId: item.order?.orderId,
+                customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
+                dressName: item.dressItem?.dress?.name 
+                  ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                  : (item.description || item.dressItem?.dressName),
+                eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
+                alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין'
+              }))}
+              filename="תפירות"
+              columns={[
+                { key: 'orderId', label: 'קוד הזמנה' },
+                { key: 'customerName', label: 'לקוח' },
+                { key: 'dressName', label: 'שמלה' },
+                { key: 'sizeText', label: 'מידה' },
+                { key: 'eventDate', label: 'תאריך אירוע' },
+                { key: 'alterationStatus', label: 'סטטוס' }
+              ]}
+              iconOnly={true}
+              onFetchData={fetchForExport}
+            />
+            <button data-element-name="כפתור_page_3" 
+              data-agy-id="print-wizard-button"
+              onClick={() => setIsPrintWizardOpen(true)}
+              className="btn-header-icon"
+              title="אשף הדפסה"
+            >
+              <Printer data-element-name="רכיב_page_4" size={20} />
+            </button>
+            <button data-element-name="כפתור_page_5" 
+              data-agy-id="legend-button"
+              onClick={() => setIsLegendOpen(true)}
+              className="btn-header-icon"
+              title="מקרא"
+            >
+              <Info data-element-name="רכיב_page_6" size={20} />
+            </button>
         </div>
       </div>
       </div>

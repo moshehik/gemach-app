@@ -248,13 +248,13 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
       <button 
         data-agy-id="export_open_modal_btn"
         onClick={() => setIsModalOpen(true)}
-        className={iconOnly ? "btn btn-outline" : "btn btn-primary"}
+        className={iconOnly ? "btn-header-icon" : "btn btn-primary"}
         title="מערכת הורדה ל-XL ודוחות"
         style={iconOnly 
-          ? { padding: '0.6rem', borderRadius: '8px', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #ddd', color: '#8b5cf6', backgroundColor: '#f3e8ff', cursor: 'pointer' }
+          ? {}
           : { padding: '0.5rem 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', cursor: 'pointer' }}
       >
-        <FileDown size={iconOnly ? 22 : 18} />
+        <FileDown size={iconOnly ? 20 : 18} />
         {!iconOnly && <span>ייצוא ודוחות</span>}
       </button>
 

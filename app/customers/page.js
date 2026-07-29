@@ -177,43 +177,50 @@ export default function CustomersPage() {
   return (
     <>
     <main data-agy-id="customers_main_container" className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול לקוחות</h1>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+        <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול לקוחות</h1>
+        <div style={{ color: 'var(--text-muted)', fontSize: '1rem', fontWeight: '500' }}>סה"כ רשומות: {totalCount}</div>
       </div>
       
       {/* Search and Filters */}
-      <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '600px' }}>
-          <AISearchBar data-element-name="רכיב_page_1" 
-            placeholder="חיפוש לקוח (שם, טלפון, עיר)..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onSearch={handleSearch}
-            onClear={handleClearSearch}
-            onAiSearch={handleAiSearch}
-            onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-            loading={aiLoading}
-          />
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        marginBottom: '2rem',
+        background: 'var(--card-bg)', 
+        padding: '0.75rem 1.5rem', 
+        borderRadius: '16px', 
+        boxShadow: 'var(--shadow-sm)',
+        gap: '1rem',
+        flexWrap: 'wrap',
+        border: '1px solid var(--border-color)'
+      }}>
+        <div style={{ flex: '1', minWidth: '300px', maxWidth: '600px', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div style={{ flex: 1 }}>
+            <AISearchBar data-element-name="רכיב_page_1" 
+              placeholder="חיפוש לקוח (שם, טלפון, עיר)..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              onSearch={handleSearch}
+              onClear={handleClearSearch}
+              onAiSearch={handleAiSearch}
+              onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+              loading={aiLoading}
+            />
+          </div>
+        </div>
+        
+        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <button data-element-name="כפתור_page_2" 
             data-agy-id="advanced_search_btn"
             onClick={() => setShowAdvSearch(true)}
-            className="btn btn-outline"
-            style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+            className="btn-header-icon"
             title="חיפוש מתקדם"
           >
             🔍
           </button>
-        </div>
-        <div style={{ color: 'var(--text-muted)', display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <button data-element-name="כפתור_page_3" 
-            data-agy-id="new_customer_btn"
-            onClick={() => router.push('/customers/new')} 
-            className="btn btn-primary" 
-            style={{ borderRadius: '50%', width: '45px', height: '45px', padding: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
-            title="לקוח חדש"
-          >
-            <UserPlus data-element-name="רכיב_page_4" size={20} />
-          </button>
+          
           <ExportButtons data-element-name="רכיב_page_5" 
             data={customers} 
             filename="לקוחות" 
@@ -226,8 +233,17 @@ export default function CustomersPage() {
               { key: 'email', label: getLabel('customer_email', 'דוא"ל') }
             ]} 
             onFetchData={fetchCustomersForExport}
+            iconOnly={true}
           />
-          <span>סה"כ רשומות: {totalCount}</span>
+
+          <button data-element-name="כפתור_page_3" 
+            data-agy-id="new_customer_btn"
+            onClick={() => router.push('/customers/new')} 
+            className="btn-header-icon"
+            title="לקוח חדש"
+          >
+            <UserPlus data-element-name="רכיב_page_4" size={20} />
+          </button>
         </div>
       </div>
 
