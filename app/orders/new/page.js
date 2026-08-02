@@ -3,9 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { CalendarSearch, Edit2, Trash2, ArrowLeft, ArrowRight, Plus, Check, UserPlus, Sparkles, CreditCard, ShieldCheck } from 'lucide-react';
 import HebrewDatePicker from '../../../components/HebrewDatePicker';
 import CustomerSelector from '../../../components/CustomerSelector';
 import OrderModelSelector from '../../../components/orders/OrderModelSelector';
+import ItemCapacityModal from '../../../components/orders/ItemCapacityModal';
+import { calculateDynamicAvailability } from '../../../lib/clientInventory';
+import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
@@ -18,6 +22,24 @@ export default function NewOrderPage() {
   const router = useRouter();
   
   const [step, setStep] = useState(1);
+
+  const canNavigateToStep = (targetStep) => {
+    if (targetStep === 1) return true;
+    if (targetStep === 2) return !!order.customerId;
+    if (targetStep === 3) {
+      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
+      return !!order.customerId && !!datesFilled;
+    }
+    if (targetStep === 4) {
+      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
+      return !!order.customerId && !!datesFilled && order.items.length > 0;
+    }
+    if (targetStep === 5) {
+      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
+      return !!order.customerId && !!datesFilled && order.items.length > 0;
+    }
+    return false;
+  };
   const [searchMode, setSearchMode] = useState('phone'); // 'phone' | 'name' | 'new'
   const [phoneSearchInput, setPhoneSearchInput] = useState('');
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
@@ -37,9 +59,6 @@ export default function NewOrderPage() {
     items: [],
   });
   
-  // We no longer fetch all customers and dresses up front
-  // state left for legacy reasons if needed but effectively unused
-  
   const [newItem, setNewItem] = useState({
     dressModelId: '',
     sizeText: '',
@@ -53,6 +72,9 @@ export default function NewOrderPage() {
   
   const [availableSizes, setAvailableSizes] = useState([]);
   const [loadingSizes, setLoadingSizes] = useState(false);
+  const [capacityModalItem, setCapacityModalItem] = useState(null);
+  const [inventoryCache, setInventoryCache] = useState(null);
+  const [loadingPreload, setLoadingPreload] = useState(false);
   
   const [calculatedData, setCalculatedData] = useState({ totalAmount: 0, items: [] });
   const [calculating, setCalculating] = useState(false);
@@ -66,16 +88,18 @@ export default function NewOrderPage() {
 
   const [payment, setPayment] = useState({
     amount: '',
-    method: 'אשראי', // default
+    method: 'אשראי',
     notes: ''
   });
 
   const [settings, setSettings] = useState({});
 
   const [showCreditModal, setShowCreditModal] = useState(false);
+  const [showQuickSwipeModal, setShowQuickSwipeModal] = useState(false);
+  const [swipeInput, setSwipeInput] = useState('');
   const [creditCardData, setCreditCardData] = useState({
     cardNumber: '',
-    tokef: '', // MMYY
+    tokef: '',
     installments: 1,
     notes: '',
     amount: ''
@@ -83,6 +107,42 @@ export default function NewOrderPage() {
   const [isProcessingCredit, setIsProcessingCredit] = useState(false);
   const [creditError, setCreditError] = useState('');
   const [creditProcessedConfirmation, setCreditProcessedConfirmation] = useState(null);
+
+  const handleSwipeInputChange = (e) => {
+    const val = e.target.value;
+    setSwipeInput(val);
+    
+    let card = '';
+    let tokef = '';
+    
+    if (val.includes('=')) {
+      const parts = val.split('=');
+      if (parts[1] && parts[1].length >= 4) {
+        card = parts[0].replace(/[^0-9]/g, '');
+        const expYY = parts[1].substring(0, 2);
+        const expMM = parts[1].substring(2, 4);
+        tokef = `${expMM}${expYY}`;
+      }
+    } else if (val.includes('^')) {
+      const parts = val.split('^');
+      if (parts.length > 2 && parts[2] && parts[2].length >= 4) {
+        card = parts[0].replace(/[^0-9]/g, '');
+        const expYY = parts[2].substring(0, 2);
+        const expMM = parts[2].substring(2, 4);
+        tokef = `${expMM}${expYY}`;
+      }
+    }
+    
+    if (card && tokef) {
+      setCreditCardData(prev => ({
+        ...prev,
+        cardNumber: card,
+        tokef: tokef
+      }));
+      setShowQuickSwipeModal(false);
+      setTimeout(() => setShowCreditModal(true), 150);
+    }
+  };
 
   const handleCardNumberChange = (e) => {
     const val = e.target.value;
@@ -153,7 +213,6 @@ export default function NewOrderPage() {
         const conf = data.confirmation || 'בוצע';
         setCreditProcessedConfirmation(conf);
         setShowCreditModal(false);
-        // Directly proceed to save after successful charge
         executeSaveOrder(conf);
       } else {
         setCreditError(data.error || 'שגיאה בחיוב הכרטיס');
@@ -166,7 +225,6 @@ export default function NewOrderPage() {
   };
 
   useEffect(() => {
-    // Fetch settings
     fetch('/api/settings')
       .then(res => res.json())
       .then(data => {
@@ -267,60 +325,67 @@ export default function NewOrderPage() {
     setStep(2);
   };
 
-  // When eventDate or dressModelId changes, fetch available sizes
   useEffect(() => {
-    // Determine if we have enough dates to check
+    const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
+    if (hasDates) {
+      setLoadingPreload(true);
+      const queryParams = new URLSearchParams({
+        isAbroad: order.isAbroad || false
+      });
+      if (order.eventDate) queryParams.append('eventDate', order.eventDate);
+      if (order.fromDate) queryParams.append('fromDate', order.fromDate);
+      if (order.toDate) queryParams.append('toDate', order.toDate);
+
+      fetch(`/api/inventory/preload?${queryParams.toString()}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to load cache');
+          return res.json();
+        })
+        .then(data => {
+          setInventoryCache(data);
+          setLoadingPreload(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setLoadingPreload(false);
+        });
+    } else {
+      setInventoryCache(null);
+    }
+  }, [order.eventDate, order.fromDate, order.toDate, order.isAbroad]);
+
+  useEffect(() => {
     const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
     
-    if (hasDates && newItem.dressModelId) {
+    if (hasDates && newItem.dressModelId && inventoryCache) {
       setLoadingSizes(true);
-      
-      const queryParams = new URLSearchParams({
-        dressModelId: newItem.dressModelId,
-        isAbroad: order.isAbroad || false,
-        isWeekdayEvent: order.isWeekdayEvent || false
-      });
-      
-      if (order.eventDate) queryParams.append('eventDate', order.eventDate);
-      if (order.isAbroad) {
-        if (order.fromDate) queryParams.append('fromDate', order.fromDate);
-        if (order.toDate) queryParams.append('toDate', order.toDate);
+      try {
+        const localAvailability = calculateDynamicAvailability(
+          newItem.dressModelId,
+          order.isAbroad ? order.fromDate : order.eventDate,
+          order.isAbroad ? order.toDate : null,
+          inventoryCache,
+          order.items
+        );
+        setAvailableSizes(localAvailability);
+        
+        setNewItem(prev => {
+          if (prev.preserveSize) {
+            const { preserveSize, ...rest } = prev;
+            return rest;
+          }
+          return { ...prev, sizeText: '', sampleItemId: '', basePrice: 0, finalPrice: 0 };
+        });
+      } catch (err) {
+        console.error('Error calculating local availability:', err);
+      } finally {
+        setLoadingSizes(false);
       }
-
-      fetch(`/api/orders/availability?${queryParams.toString()}`)
-        .then(res => res.json())
-        .then(data => {
-          setOrder(currOrder => {
-            const localCartMap = {};
-            currOrder.items.forEach(item => {
-               if (item.dressModelId === newItem.dressModelId) {
-                  if (!localCartMap[item.sizeText]) localCartMap[item.sizeText] = 0;
-                  localCartMap[item.sizeText]++;
-               }
-            });
-            const adjustedData = (data || []).map(s => {
-               const inCart = localCartMap[s.sizeText] || 0;
-               return { ...s, availableQuantity: Math.max(0, s.availableQuantity - inCart) };
-            });
-            setAvailableSizes(adjustedData);
-            return currOrder;
-          });
-          setNewItem(prev => {
-            if (prev.preserveSize) {
-              const { preserveSize, ...rest } = prev;
-              return rest;
-            }
-            return { ...prev, sizeText: '', sampleItemId: '', basePrice: 0, finalPrice: 0 };
-          });
-          setLoadingSizes(false);
-        })
-        .catch(() => setLoadingSizes(false));
     } else {
       setAvailableSizes([]);
     }
-  }, [order.eventDate, order.fromDate, order.toDate, order.isAbroad, order.isWeekdayEvent, newItem.dressModelId]);
+  }, [order.eventDate, order.fromDate, order.toDate, order.isAbroad, newItem.dressModelId, inventoryCache, order.items]);
 
-  // When size is selected, fetch price
   useEffect(() => {
     if (newItem.dressModelId && newItem.sizeText) {
       fetch(`/api/orders/pricing?dressModelId=${newItem.dressModelId}&sizeText=${newItem.sizeText}&eventDate=${order.eventDate || ''}`)
@@ -329,7 +394,7 @@ export default function NewOrderPage() {
           setNewItem(prev => ({
             ...prev,
             basePrice: data.basePrice,
-            finalPrice: data.basePrice // Init final price with base price
+            finalPrice: data.basePrice
           }));
         });
     }
@@ -344,11 +409,29 @@ export default function NewOrderPage() {
   };
 
   const handleDateChangeWithValidation = async (field, value) => {
-    const proposedOrder = {
+    if (order.isAbroad) {
+      if (field === 'toDate' && order.fromDate && value && new Date(value) < new Date(order.fromDate)) {
+        alert('שגיאה: תאריך החזרה (עד תאריך) אינו יכול להיות לפני תאריך ההתחלה (מתאריך)!');
+        return;
+      }
+      if (field === 'fromDate' && order.toDate && value && new Date(value) > new Date(order.toDate)) {
+        alert('שגיאה: תאריך ההתחלה (מתאריך) אינו יכול להיות אחרי תאריך החזרה (עד תאריך)!');
+        return;
+      }
+    }
+
+    let proposedOrder = {
       ...order,
       [field]: value
     };
     
+    if (proposedOrder.isAbroad && (field === 'fromDate' || field === 'isAbroad')) {
+      const fromDateVal = field === 'fromDate' ? value : proposedOrder.fromDate;
+      if (fromDateVal) {
+        proposedOrder.eventDate = fromDateVal; // Sync eventDate
+      }
+    }
+
     const activeItems = order.items.filter(i => !i.isDeleted);
     
     if (activeItems.length > 0) {
@@ -385,13 +468,12 @@ export default function NewOrderPage() {
       }
     }
     
-    setOrder(prev => ({ ...prev, [field]: value }));
+    setOrder(proposedOrder);
   };
 
   const handleNewItemChange = (e) => {
     const { name, value } = e.target;
     if (name === 'sizeText') {
-      // Find the selected size to get the sampleItemId
       const selectedSize = availableSizes.find(s => s.sizeText === value);
       setNewItem(prev => ({
         ...prev,
@@ -429,7 +511,6 @@ export default function NewOrderPage() {
       items: [...prev.items, { ...newItem }]
     }));
     
-    // Decrement available quantity in the UI
     setAvailableSizes(prev => prev.map(s => {
       if (s.sizeText === newItem.sizeText) {
         return { ...s, availableQuantity: Math.max(0, s.availableQuantity - 1) };
@@ -437,7 +518,6 @@ export default function NewOrderPage() {
       return s;
     }));
     
-    // Reset form
     setNewItem({
       dressModelId: '',
       sizeText: '',
@@ -446,7 +526,10 @@ export default function NewOrderPage() {
       basePrice: 0,
       finalPrice: 0,
       repairs: '',
-      dressName: ''
+      dressName: '',
+      neckAlteration: false,
+      sleeveAlteration: false,
+      lengthAlteration: ''
     });
   };
 
@@ -486,10 +569,7 @@ export default function NewOrderPage() {
       preserveSize: true
     });
     
-    // Remove from the order list so it can be edited and re-added
     removeItem(index);
-    
-    // Scroll to the items form
     window.scrollTo({ top: document.body.scrollHeight / 2, behavior: 'smooth' });
   };
 
@@ -523,7 +603,6 @@ export default function NewOrderPage() {
 
   const totalAmount = calculatedData.totalAmount;
 
-  // Auto-update payment amount to total amount when items change
   useEffect(() => {
     setPayment(prev => ({ ...prev, amount: totalAmount }));
   }, [totalAmount]);
@@ -535,7 +614,6 @@ export default function NewOrderPage() {
 
     if (payment.amount && parseFloat(payment.amount) > 0) {
       if (payment.method.includes('אשראי') && !payment.method.includes('חיצונית') && !creditProcessedConfirmation) {
-        // Open Nedarim modal to process before saving
         setCreditCardData({
           cardNumber: '',
           tokef: '',
@@ -545,7 +623,7 @@ export default function NewOrderPage() {
         });
         setCreditError('');
         setShowCreditModal(true);
-        return; // Stop saving, wait for credit modal
+        return; 
       } else if (!(payment.method.includes('אשראי') && !payment.method.includes('חיצונית'))) {
         const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
         if (level === 'מנהל' || level === 'עובד') {
@@ -580,7 +658,6 @@ export default function NewOrderPage() {
   const executeSaveOrder = async (creditConfirmation = null) => {
     setSaving(true);
     
-    // FULL ORDER INVENTORY VALIDATION
     try {
       const validateRes = await fetch('/api/orders/validate-inventory', {
         method: 'POST',
@@ -611,7 +688,6 @@ export default function NewOrderPage() {
       }
     } catch (err) {
       console.error('Validation fetch error', err);
-      // Proceed on error or halt? Let's halt to be safe.
       setSaving(false);
       alert('שגיאה בבדיקת המלאי מול השרת.');
       return;
@@ -655,157 +731,398 @@ export default function NewOrderPage() {
     }
   };
 
-
   const selectedCustomerName = getCustomerFullName(order.selectedCustomer);
 
   return (
     <>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800;900&display=swap');
+        
+        body {
+          font-family: 'Heebo', sans-serif;
+          background-color: var(--bg-color);
+        }
+
+        h1, h2, h3, h4 {
+          font-family: 'Playfair Display', serif;
+          font-weight: 700;
+          color: var(--text-main);
+        }
+
         @keyframes fadeIn {
           from { opacity: 0; transform: translateY(10px); }
           to { opacity: 1; transform: translateY(0); }
         }
         .fade-in {
-          animation: fadeIn 0.4s ease-out;
+          animation: fadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
+
         .modern-main-container {
-          background-image: radial-gradient(circle at 50% -20%, rgba(25, 118, 210, 0.04), transparent 70%), linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+          background-image: 
+            radial-gradient(at 0% 0%, hsla(43, 65%, 90%, 0.3) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, hsla(0, 0%, 100%, 0.8) 0px, transparent 50%);
+          min-height: 100vh;
         }
+
         .glass-card {
-          background: rgba(255, 255, 255, 0.95);
-          backdrop-filter: blur(10px);
-          box-shadow: 0 10px 40px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0,0,0,0.05);
-          border: 1px solid rgba(255,255,255,0.8);
+          background: var(--card-bg);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          box-shadow: var(--shadow-lg);
+          border: 1px solid var(--border-color);
+          border-radius: 20px;
+          transition: all 0.3s ease;
+        }
+
+        .stepper-container {
+          background: var(--card-bg);
+          backdrop-filter: blur(24px);
+          -webkit-backdrop-filter: blur(24px);
+          border: 1px solid var(--border-color);
+          border-radius: 16px;
+          padding: 0.75rem 1.5rem 1.7rem 1.5rem;
+          box-shadow: var(--shadow-sm);
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          position: relative;
+          max-width: 750px;
+          margin: 0 auto 2.5rem auto;
+        }
+        
+        .step-progress-line {
+          position: absolute;
+          top: 50%;
+          left: 2rem;
+          right: 2rem;
+          height: 4px;
+          background: var(--divider);
+          transform: translateY(-50%);
+          z-index: 1;
+          border-radius: 10px;
+          overflow: hidden;
+        }
+
+        .step-progress-fill {
+          height: 100%;
+          background: var(--primary-color);
+          transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow: 0 0 6px var(--primary-color);
+        }
+
+        .step-node {
+          width: 36px;
+          height: 36px;
+          border-radius: 50%;
+          background: var(--card-bg);
+          border: 1px solid var(--border-color);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-weight: 800;
+          color: var(--text-muted);
+          z-index: 2;
+          position: relative;
+          transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+          box-shadow: var(--shadow-sm);
+          font-size: 0.95rem;
+        }
+
+        .step-node.completed {
+          background: var(--primary-color);
+          border-color: var(--primary-color);
+          color: var(--btn-primary-text);
+        }
+
+        .step-node.active {
+          background: var(--primary-color);
+          border-color: var(--primary-hover);
+          color: var(--btn-primary-text);
+          box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2), var(--shadow-sm);
+          transform: scale(1.06);
+        }
+
+        .step-label {
+          position: absolute;
+          top: 44px;
+          left: 50%;
+          transform: translateX(-50%);
+          font-size: 0.85rem;
+          font-weight: 700;
+          color: var(--text-muted);
+          white-space: nowrap;
+          transition: all 0.3s ease;
+        }
+        .step-node.active .step-label {
+          color: var(--text-main);
+          font-weight: 800;
+        }
+        .step-node.completed .step-label {
+          color: var(--text-main);
+        }
+
+        .toggle-switch {
+          appearance: none;
+          width: 48px;
+          height: 26px;
+          background: var(--element-bg);
+          border-radius: 26px;
+          position: relative;
+          cursor: pointer;
+          transition: background 0.3s ease;
+          outline: none;
+          border: 1px solid var(--element-border);
+        }
+        .toggle-switch:checked {
+          background: var(--primary-color);
+          border-color: var(--primary-hover);
+        }
+        .toggle-switch::after {
+          content: '';
+          position: absolute;
+          top: 2px;
+          right: 2px;
+          width: 20px;
+          height: 20px;
+          background: white;
+          border-radius: 50%;
+          box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .toggle-switch:checked::after {
+          transform: translateX(-22px);
+        }
+
+        .cart-item-card {
+          background: var(--card-bg);
+          border-radius: 16px;
+          padding: 1.2rem;
+          margin-bottom: 1rem;
+          border: 1px solid var(--border-color);
+          box-shadow: var(--shadow-sm);
+          animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+          transition: all 0.3s ease;
+        }
+        .cart-item-card:hover {
+          transform: translateY(-2px);
+          box-shadow: var(--shadow-lg);
+          border-color: var(--primary-color);
+        }
+        @keyframes slideInUp {
+          from { opacity: 0; transform: translateY(15px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        .primary-button {
+          background: var(--primary-color);
+          color: var(--btn-primary-text);
+          border: none;
+          border-radius: 12px;
+          font-size: 1.05rem;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          box-shadow: var(--shadow-sm);
+          outline: none;
+        }
+        .primary-button:hover:not(:disabled) {
+          transform: translateY(-1px);
+          background: var(--primary-hover);
+        }
+        .primary-button:active:not(:disabled) {
+          transform: translateY(0);
+        }
+        .primary-button:disabled {
+          background: var(--element-bg);
+          border: 1px solid var(--element-border);
+          box-shadow: none;
+          cursor: not-allowed;
+          color: var(--text-muted);
+        }
+        
+        .radio-card {
+          border: 1px solid var(--border-color);
+          border-radius: 16px;
+          padding: 1.25rem;
+          cursor: pointer;
+          transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+          display: flex;
+          align-items: center;
+          gap: 1rem;
+          background: var(--card-bg);
+          position: relative;
+          overflow: hidden;
+        }
+        .radio-card:hover {
+          border-color: var(--primary-color);
+          transform: translateY(-1px);
+        }
+        .radio-card.active {
+          border-color: var(--primary-color);
+          background: var(--primary-light);
+        }
+        .radio-card.active::before {
+          content: '';
+          position: absolute;
+          top: 0;
+          right: 0;
+          width: 4px;
+          height: 100%;
+          background: var(--primary-color);
+        }
+
+        .premium-input {
+          width: 100%;
+          padding: 0.8rem 1rem;
+          border-radius: 10px;
+          border: 1px solid var(--border-color);
+          font-size: 1rem;
+          outline: none;
+          transition: all 0.25s ease;
+          background: var(--input-bg);
+          color: var(--text-main);
+          font-family: inherit;
+        }
+        .premium-input:focus {
+          border-color: var(--primary-color);
+          box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+        }
+        .premium-input::placeholder {
+          color: var(--text-muted);
+        }
+
+        /* custom styling for sizes */
+        .size-card-interactive {
+          padding: 0.7rem 1rem;
+          border-radius: 12px;
+          border: 1px solid var(--border-color);
+          background: var(--card-bg);
+          cursor: pointer;
+          transition: all 0.2s ease;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          min-width: 80px;
+          box-shadow: var(--shadow-sm);
+        }
+        .size-card-interactive:hover:not(.disabled) {
+          border-color: var(--primary-color);
+          transform: translateY(-1px);
+        }
+        .size-card-interactive.selected {
+          border-color: var(--primary-color);
+          background: var(--primary-light);
+        }
+        .size-card-interactive.disabled {
+          border-color: var(--element-border);
+          background: var(--element-bg);
+          cursor: not-allowed;
+          opacity: 0.5;
         }
       `}</style>
       
-      <main data-agy-id="new_page_main_1" className="modern-main-container" style={{ padding: '3rem 2rem', maxWidth: '1200px', margin: '0 auto', direction: 'rtl', minHeight: '100vh' }}>
+      <main className="modern-main-container" style={{ padding: '5rem 2rem 3rem 2rem', margin: '0 auto', direction: 'rtl', minHeight: '100vh' }}>
         
-        {/* Modern Progress Bar */}
-        <div style={{ marginBottom: '2.5rem', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', maxWidth: '450px', marginBottom: '0.8rem', color: '#94a3b8', fontSize: '1rem', fontWeight: 'bold' }}>
-            <span style={{ color: step >= 1 ? 'var(--primary-color, #1976d2)' : 'inherit', transition: 'color 0.3s' }}>פרטי לקוח</span>
-            <span style={{ color: step >= 2 ? 'var(--primary-color, #1976d2)' : 'inherit', transition: 'color 0.3s' }}>פרטי הזמנה</span>
-            <span style={{ color: step >= 3 ? 'var(--primary-color, #1976d2)' : 'inherit', transition: 'color 0.3s' }}>תשלום וסיכום</span>
+        {/* Floating Stepper */}
+        <div className="stepper-container">
+          <div className="step-progress-line">
+            <div className="step-progress-fill" style={{ width: `${((step - 1) / 4) * 100}%` }}></div>
           </div>
-          <div style={{ width: '100%', maxWidth: '450px', height: '6px', background: '#e2e8f0', borderRadius: '10px', overflow: 'hidden', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.05)' }}>
-            <div style={{ 
-              height: '100%', 
-              background: 'linear-gradient(90deg, var(--primary-color, #1976d2), #64b5f6)', 
-              width: step === 1 ? '33.33%' : step === 2 ? '66.66%' : '100%', 
-              transition: 'width 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
-              borderRadius: '10px'
-            }}></div>
-          </div>
+          {[1, 2, 3, 4, 5].map((s) => {
+            const isClickable = canNavigateToStep(s);
+            return (
+              <div 
+                key={s} 
+                className={`step-node ${step === s ? 'active' : step > s ? 'completed' : ''}`}
+                onClick={() => {
+                  if (isClickable) {
+                    setStep(s);
+                  } else {
+                    if (s === 2 && !order.customerId) alert('יש לבחור לקוח תחילה');
+                    else if (s === 3 && !(order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate)) alert('יש למלא תאריכים תחילה');
+                    else if ((s === 4 || s === 5) && order.items.length === 0) alert('יש להוסיף לפחות פריט אחד להזמנה');
+                  }
+                }}
+                style={{ cursor: isClickable ? 'pointer' : 'not-allowed' }}
+              >
+                {step > s ? '✓' : s}
+                <span className="step-label">
+                  {s === 1 && 'לקוח'}
+                  {s === 2 && 'תאריכים'}
+                  {s === 3 && 'פריטים'}
+                  {s === 4 && 'סיכום'}
+                  {s === 5 && 'תשלום'}
+                </span>
+              </div>
+            );
+          })}
         </div>
         
+        {/* STEP 1: CUSTOMER */}
         {step === 1 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '650px', margin: '2rem auto', padding: '3.5rem', borderRadius: '24px', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '6px', background: 'linear-gradient(90deg, var(--primary-color), #64b5f6)' }}></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3rem', alignItems: 'center' }}>
-               <h2 style={{ margin: 0, color: 'var(--text-color, #2c3e50)', fontSize: '2.2rem', fontWeight: '800', letterSpacing: '-0.5px' }}>שלב 1: מי הלקוח?</h2>
-               <span style={{ background: 'rgba(25, 118, 210, 0.1)', color: 'var(--primary-color, #1976d2)', padding: '0.6rem 1.2rem', borderRadius: '30px', fontSize: '1rem', fontWeight: 'bold', border: '1px solid rgba(25, 118, 210, 0.2)' }}>1 מתוך 3</span>
+          <div className="fade-in glass-card" style={{ maxWidth: '700px', margin: '2rem auto', padding: '2rem', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center' }}>
+               <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: '800', letterSpacing: '-0.5px' }}>מי הלקוח?</h2>
             </div>
 
             {searchMode === 'phone' && !foundCustomerFromPhone && (
               <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center' }}>
                 <div style={{ width: '100%' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', fontSize: '1.2rem', color: '#444' }}>מה מספר הטלפון שלך?</label>
-                  <input data-element-name="שדה_page_1" data-agy-id="new_page_input_phone_search" 
-                    type="tel" 
+                  <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', fontSize: '1.3rem', color: '#334155' }}>מספר הטלפון של הלקוח</label>
+                  <input type="tel" 
                     value={phoneSearchInput} 
                     onChange={e => setPhoneSearchInput(e.target.value)} 
                     onKeyDown={e => e.key === 'Enter' && handleCheckPhone()}
-                    placeholder="הזן מספר טלפון או שם..."
-                    style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid var(--element-border)', fontSize: '1.5rem', textAlign: 'center', transition: 'border-color 0.3s' }} 
+                    placeholder="הזן מספר טלפון (05...)"
+                    style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid #cbd5e1', fontSize: '1.5rem', textAlign: 'center', transition: 'all 0.3s', outline: 'none' }} 
+                    onFocus={(e) => e.target.style.borderColor = '#2563eb'}
+                    onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                   />
                 </div>
                 
-                <button data-element-name="כפתור_page_2" data-agy-id="new_page_button_check_phone" 
-                  onClick={handleCheckPhone}
-                  disabled={isCheckingPhone}
-                  style={{ width: '100%', padding: '1.2rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: isCheckingPhone ? 'wait' : 'pointer', transition: 'all 0.3s', boxShadow: '0 8px 24px rgba(0,0,0,0.15)', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
-                >
-                  {isCheckingPhone ? (
+                <button onClick={handleCheckPhone} disabled={isCheckingPhone} className="primary-button" style={{ width: '100%', padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                  {isCheckingPhone ? 'מחפש...' : (
                     <>
-                      <span className="spinner" style={{ width: '20px', height: '20px', border: '3px solid rgba(255,255,255,0.3)', borderRadius: '50%', borderTopColor: 'white', animation: 'spin 1s ease-in-out infinite' }}></span>
-                      מחפש...
+                      <span>המשך</span>
+                      <ArrowLeft size={20} />
                     </>
-                  ) : 'המשך ⬅'}
+                  )}
                 </button>
 
-                <div style={{ marginTop: '1.2rem', width: '100%', textAlign: 'center' }}>
-                  <button data-element-name="כפתור_page_3" data-agy-id="new_page_button_search_name"
-                    className="modern-secondary-btn"
-                    onClick={() => setSearchMode('name')}
+                <div style={{ marginTop: '1.5rem', width: '100%', textAlign: 'center' }}>
+                  <button onClick={() => setSearchMode('name')}
+                    style={{ background: 'transparent', border: '2px solid #e2e8f0', padding: '1rem', width: '100%', borderRadius: '12px', fontSize: '1.1rem', fontWeight: '600', color: '#475569', cursor: 'pointer', transition: 'all 0.3s' }}
+                    onMouseOver={(e) => {e.target.style.background = '#f8fafc'; e.target.style.borderColor = '#cbd5e1';}}
+                    onMouseOut={(e) => {e.target.style.background = 'transparent'; e.target.style.borderColor = '#e2e8f0';}}
                   >
-                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-                      <circle cx="9" cy="7" r="4"></circle>
-                      <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-                      <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
-                    </svg>
                     או חפש לקוח קיים מהרשימה
                   </button>
                 </div>
-                <style>{`
-                  @keyframes spin { to { transform: rotate(360deg); } }
-                  .modern-secondary-btn {
-                    width: 100%;
-                    padding: 1rem;
-                    background: white;
-                    color: #555;
-                    border: 1.5px solid #e2e8f0;
-                    border-radius: 12px;
-                    font-size: 1.15rem;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: all 0.3s ease;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    gap: 0.6rem;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-                  }
-                  .modern-secondary-btn:hover {
-                    background: #f8fafc;
-                    border-color: #cbd5e1;
-                    color: #333;
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.06);
-                  }
-                  .modern-secondary-btn:active {
-                    transform: translateY(0);
-                    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.02);
-                  }
-                `}</style>
               </div>
             )}
 
             {searchMode === 'phone' && foundCustomerFromPhone && (
-              <div className="fade-in" style={{ textAlign: 'center', background: 'linear-gradient(135deg, rgba(227, 242, 253, 0.6) 0%, rgba(255, 255, 255, 0.9) 100%)', padding: '3rem 2rem', borderRadius: '16px', border: '1px solid rgba(25, 118, 210, 0.2)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.05)', backdropFilter: 'blur(8px)' }}>
-                <div style={{ width: '70px', height: '70px', background: 'var(--primary-color)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', margin: '0 auto 1.5rem auto' }}>
+              <div className="fade-in" style={{ textAlign: 'center', background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.8) 0%, rgba(255, 255, 255, 0.9) 100%)', padding: '3rem 2rem', borderRadius: '16px', border: '1px solid #bfdbfe' }}>
+                <div style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #2563eb, #4f46e5)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 1.5rem auto', boxShadow: '0 10px 20px rgba(37, 99, 235, 0.2)' }}>
                   👋
                 </div>
-                <h3 style={{ fontSize: '1.8rem', color: '#333', marginBottom: '0.5rem' }}>שלום {getCustomerFullName(foundCustomerFromPhone)}!</h3>
-                <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)', marginBottom: '2.5rem' }}>מצאנו אותך במערכת (טלפון: {foundCustomerFromPhone.phone1}). האם זה אתה?</p>
+                <h3 style={{ fontSize: '2rem', color: '#1e293b', marginBottom: '0.5rem', fontWeight: '800' }}>שלום {getCustomerFullName(foundCustomerFromPhone)}!</h3>
+                <p style={{ fontSize: '1.2rem', color: '#64748b', marginBottom: '2.5rem' }}>מצאנו אותך במערכת (טלפון: {foundCustomerFromPhone.phone1}). האם זה אתה?</p>
                 
                 <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
-                  <button data-element-name="כפתור_page_4" data-agy-id="new_page_button_yes_its_me"
-                    onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)}
-                    style={{ padding: '1.2rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 4px 15px rgba(25, 118, 210, 0.3)' }}
-                  >
-                    כן, המשך להזמנה
+                  <button onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)} className="primary-button" style={{ padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                    <Check size={20} />
+                    <span>כן, המשך להזמנה</span>
                   </button>
-                  <button data-element-name="כפתור_page_5" data-agy-id="new_page_button_not_me"
-                    onClick={() => {
+                  <button onClick={() => {
                       setNewCustomer(prev => ({ ...prev, phone1: phoneSearchInput.trim() }));
                       setFoundCustomerFromPhone(null);
                       setSearchMode('new');
                     }}
-                    style={{ padding: '1.2rem', background: 'white', color: 'var(--text-muted)', border: '2px solid var(--element-border)', borderRadius: '12px', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s' }}
+                    style={{ padding: '1.2rem', background: 'white', color: '#64748b', border: '2px solid #cbd5e1', borderRadius: '12px', fontSize: '1.2rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.3s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
                   >
-                    לא, יצירת לקוח חדש
+                    <span>לא, יצירת לקוח חדש</span>
                   </button>
                 </div>
               </div>
@@ -814,488 +1131,423 @@ export default function NewOrderPage() {
             {searchMode === 'name' && (
               <div className="fade-in">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <label style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#444' }}>חיפוש ובחירת לקוח מהרשימה</label>
-                  <button data-element-name="כפתור_page_6" onClick={() => setSearchMode('phone')} style={{ background: 'none', border: 'none', color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', fontSize: '1rem' }}>חזור להזנת טלפון</button>
+                  <label style={{ fontWeight: '700', fontSize: '1.2rem', color: '#334155' }}>חיפוש ובחירת לקוח מהרשימה</label>
+                  <button onClick={() => setSearchMode('phone')} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '1rem', fontWeight: '600' }}>חזור להזנת טלפון</button>
                 </div>
-                <CustomerSelector data-element-name="רכיב_page_7" 
+                <CustomerSelector 
                   value={order.selectedCustomer}
                   onChange={(c) => setOrder(prev => ({ ...prev, customerId: c.id, selectedCustomer: c }))}
                   placeholder="חפש לקוח לפי שם, טלפון, עיר..."
                 />
                 
-                <button data-element-name="כפתור_page_8" data-agy-id="new_page_button_proceed_name" 
-                  onClick={proceedToStep2}
-                  disabled={!order.customerId}
-                  style={{ width: '100%', marginTop: '3rem', padding: '1.2rem', background: order.customerId ? 'var(--primary-color)' : 'var(--element-bg)', color: order.customerId ? 'white' : 'var(--text-muted)', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: order.customerId ? 'pointer' : 'not-allowed', transition: 'all 0.3s', boxShadow: order.customerId ? '0 8px 24px rgba(0,0,0,0.15)' : 'none' }}
-                >
-                  המשך לשלב הבא ⬅
+                <button onClick={proceedToStep2} disabled={!order.customerId} className="primary-button" style={{ width: '100%', marginTop: '3rem', padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>המשך לשלב הבא</span>
+                  <ArrowLeft size={20} />
                 </button>
               </div>
             )}
 
             {searchMode === 'new' && (
               <div className="fade-in">
-                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '1px solid var(--element-border)' }}>
-                  <h3 style={{ margin: 0, color: '#333' }}>יצירת לקוח חדש</h3>
-                  <button data-element-name="כפתור_page_9" onClick={() => { setFoundCustomerFromPhone(null); setSearchMode('phone'); }} style={{ background: 'none', border: 'none', color: '#1976d2', textDecoration: 'underline', cursor: 'pointer', fontSize: '1rem' }}>חזור</button>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '2px solid #f1f5f9' }}>
+                  <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.8rem', fontWeight: '800' }}>יצירת לקוח חדש</h3>
+                  <button onClick={() => { setFoundCustomerFromPhone(null); setSearchMode('phone'); }} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '1rem', fontWeight: '600' }}>חזור</button>
                  </div>
 
                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>שם פרטי *</label>
-                    <input data-element-name="שדה_page_10" data-agy-id="new_page_input_5" type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({...prev, firstName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>שם פרטי *</label>
+                    <input type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({...prev, firstName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>שם משפחה *</label>
-                    <input data-element-name="שדה_page_11" data-agy-id="new_page_input_6" type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({...prev, lastName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>שם משפחה *</label>
+                    <input type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({...prev, lastName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
                   </div>
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>טלפון נייד *</label>
-                    <input data-element-name="שדה_page_12" data-agy-id="new_page_input_7" type="text" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({...prev, phone1: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>טלפון נייד *</label>
+                    <input type="text" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({...prev, phone1: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>אימייל</label>
-                    <input data-element-name="שדה_page_13" data-agy-id="new_page_input_8" type="email" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({...prev, email: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
-                    {(!newCustomer.email || !newCustomer.email.includes('@')) && (
-                      <div style={{ marginTop: '0.5rem', textAlign: 'left' }}>
-                        <button data-element-name="כפתור_page_14"
-                          data-agy-id="new_page_btn_autocomplete_gmail"
-                          type="button"
-                          onClick={() => {
-                            const currentEmail = newCustomer.email || '';
-                            setNewCustomer(prev => ({ ...prev, email: currentEmail + '@gmail.com' }));
-                          }}
-                          style={{
-                            padding: '0.3rem 0.6rem',
-                            fontSize: '0.85rem',
-                            background: 'rgba(25, 118, 210, 0.1)',
-                            color: 'var(--primary-color, #1976d2)',
-                            border: '1px solid rgba(25, 118, 210, 0.2)',
-                            borderRadius: '8px',
-                            cursor: 'pointer',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseOver={(e) => { e.target.style.background = 'var(--primary-color, #1976d2)'; e.target.style.color = 'white'; }}
-                          onMouseOut={(e) => { e.target.style.background = 'rgba(25, 118, 210, 0.1)'; e.target.style.color = 'var(--primary-color, #1976d2)'; }}
-                        >
-                          השלם ל- @gmail.com
-                        </button>
-                      </div>
-                    )}
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>אימייל</label>
+                    <input type="email" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({...prev, email: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
                   </div>
                 </div>
 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>עיר מגורים</label>
-                    <input data-element-name="שדה_page_15" data-agy-id="new_page_input_9" type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>עיר מגורים</label>
+                    <input type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>רחוב</label>
-                    <input data-element-name="שדה_page_16" data-agy-id="new_page_input_10" type="text" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({...prev, street: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>רחוב</label>
+                    <input type="text" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({...prev, street: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-muted)' }}>בית</label>
-                    <input data-element-name="שדה_page_17" data-agy-id="new_page_input_11" type="text" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({...prev, houseNum: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.05rem', transition: 'border-color 0.2s' }} />
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>בית</label>
+                    <input type="text" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({...prev, houseNum: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} />
                   </div>
                 </div>
                 
-                <button data-element-name="כפתור_page_18" data-agy-id="new_page_button_10" 
-                  onClick={() => handleSaveNewCustomerAndProceed()}
-                  style={{ width: '100%', marginTop: '2rem', padding: '1.2rem', background: 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.3s', boxShadow: '0 8px 24px rgba(0,0,0,0.15)' }}
-                >
-                  שמור לקוח והמשך ⬅
+                <button onClick={() => handleSaveNewCustomerAndProceed()} className="primary-button" style={{ width: '100%', marginTop: '2rem', padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                  <UserPlus size={20} />
+                  <span>שמור לקוח והמשך</span>
+                  <ArrowLeft size={20} />
                 </button>
               </div>
             )}
             
-            <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-               <Link data-element-name="רכיב_page_19" href="/orders" style={{ color: 'var(--text-muted)', textDecoration: 'none', fontSize: '1.05rem' }}>ביטול וחזרה לרשימת ההזמנות</Link>
+            <div style={{ marginTop: '2.5rem', textAlign: 'center' }}>
+               <Link href="/orders" style={{ color: '#64748b', textDecoration: 'none', fontSize: '1.1rem', fontWeight: '600' }}>ביטול וחזרה לרשימת ההזמנות</Link>
             </div>
           </div>
         )}
 
+        {/* STEP 2: DATES */}
         {step === 2 && (
-          <div className="fade-in">
-            <div className="glass-card" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', padding: '1.5rem 2rem', borderRadius: '16px', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'linear-gradient(90deg, var(--primary-color), #64b5f6)' }}></div>
-              <div style={{ zIndex: 1 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <h1 style={{ color: 'var(--primary-color)', fontSize: '2.2rem', margin: 0 }}>פרטי ההזמנה</h1>
-                  <span style={{ background: '#e3f2fd', color: '#1976d2', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.9rem', fontWeight: 'bold' }}>2 מתוך 3</span>
-                </div>
-                <div style={{ color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontSize: '1.1rem' }}>
-                  <span>לקוח נבחר: <strong>{selectedCustomerName}</strong></span>
-                  <span style={{ color: '#ccc' }}>|</span>
-                  <button data-element-name="כפתור_page_20" data-agy-id="new_page_button_11" onClick={() => setStep(1)} style={{ background: 'rgba(25, 118, 210, 0.08)', border: '1px solid rgba(25, 118, 210, 0.2)', color: 'var(--primary-color, #1976d2)', cursor: 'pointer', padding: '0.3rem 0.8rem', borderRadius: '20px', fontSize: '0.9rem', fontWeight: '600', transition: 'all 0.2s ease', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }} onMouseOver={(e) => { e.target.style.background = 'rgba(25, 118, 210, 0.15)'; e.target.style.transform = 'translateY(-1px)'; }} onMouseOut={(e) => { e.target.style.background = 'rgba(25, 118, 210, 0.08)'; e.target.style.transform = 'translateY(0)'; }}>החלף לקוח 🔄</button>
+          <div className="fade-in glass-card" style={{ maxWidth: '800px', margin: '2rem auto', padding: '2rem', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
+            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.6rem', fontWeight: '800' }}>תאריכי ההזמנה</h2>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '3rem' }}>
+              <div className={`radio-card ${!order.isAbroad ? 'active' : ''}`} onClick={() => handleDateChangeWithValidation('isAbroad', false)}>
+                <input type="radio" checked={!order.isAbroad} readOnly style={{ accentColor: '#2563eb', transform: 'scale(1.3)' }} />
+                <div>
+                  <h3 style={{ margin: '0 0 0.3rem 0', color: '#1e293b', fontSize: '1.3rem', fontWeight: '800' }}>אירוע רגיל</h3>
+                  <p style={{ margin: 0, color: '#64748b' }}>תאריך אירוע אחד</p>
                 </div>
               </div>
-              <Link data-element-name="רכיב_page_21" href="/orders" style={{ textDecoration: 'none', color: 'var(--text-muted)', fontWeight: 'bold' }}>ביטול</Link>
+              <div className={`radio-card ${order.isAbroad ? 'active' : ''}`} onClick={() => handleDateChangeWithValidation('isAbroad', true)}>
+                <input type="radio" checked={order.isAbroad} readOnly style={{ accentColor: '#2563eb', transform: 'scale(1.3)' }} />
+                <div>
+                  <h3 style={{ margin: '0 0 0.3rem 0', color: '#1e293b', fontSize: '1.3rem', fontWeight: '800' }}>אירוע חו"ל / תפוסה ארוכה</h3>
+                  <p style={{ margin: 0, color: '#64748b' }}>הזנת טווח תאריכים</p>
+                </div>
+              </div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              
-              {/* Right Side - General Details */}
-              <div className="glass-card" style={{ padding: '2.5rem', borderRadius: '24px', height: 'fit-content', position: 'relative', overflow: 'hidden' }}>
-                <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '5px', background: 'var(--secondary-color, #f48fb1)' }}></div>
-                <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-color, #2c3e50)', borderBottom: '2px solid #f0f0f0', paddingBottom: '1rem', fontSize: '1.8rem', fontWeight: '800', letterSpacing: '-0.5px' }}>תאריכים והערות</h2>
+            <div style={{ background: 'rgba(255, 255, 255, 0.5)', padding: '2.5rem', borderRadius: '24px', border: '1px dashed #cbd5e1', marginBottom: '2.5rem' }}>
+              {!order.isAbroad ? (
+                <div style={{ textAlign: 'center' }}>
+                  <label style={{ display: 'block', marginBottom: '1rem', fontWeight: '800', color: '#1e293b', fontSize: '1.3rem' }}>תאריך אירוע *</label>
+                  <div style={{ maxWidth: '350px', margin: '0 auto' }}>
+                    <HebrewDatePicker value={order.eventDate} onChange={(date) => handleDateChangeWithValidation('eventDate', date)} />
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <div style={{ flex: 1, minWidth: '280px', maxWidth: '380px' }}>
+                    <label style={{ display: 'block', marginBottom: '1rem', fontWeight: '800', color: '#1e293b', fontSize: '1.2rem' }}>מתאריך (יום טיסה / התחלה) *</label>
+                    <HebrewDatePicker value={order.fromDate} onChange={(date) => handleDateChangeWithValidation('fromDate', date)} />
+                  </div>
+                  <div style={{ flex: 1, minWidth: '280px', maxWidth: '380px' }}>
+                    <label style={{ display: 'block', marginBottom: '1rem', fontWeight: '800', color: '#1e293b', fontSize: '1.2rem' }}>עד תאריך (חזרה) *</label>
+                    <HebrewDatePicker value={order.toDate} onChange={(date) => handleDateChangeWithValidation('toDate', date)} />
+                  </div>
+                </div>
+              )}
+            </div>
 
-                <div style={{ marginBottom: '1.5rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 'bold', color: '#444' }}>תאריך אירוע *</label>
-                  <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap' }}>
-                    <div style={{ flex: 1, minWidth: '150px' }}>
-                      <HebrewDatePicker data-element-name="רכיב_page_22" 
-                        value={order.eventDate} 
-                        onChange={(date) => handleDateChangeWithValidation('eventDate', date)} 
-                      />
-                    </div>
+            <div style={{ marginBottom: '3rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.2rem' }}>הערות כלליות להזמנה</label>
+              <textarea 
+                name="notes" 
+                value={order.notes} 
+                onChange={handleOrderChange}
+                placeholder="הערות מיוחדות, בקשות שקשורות לתאריכים..."
+                style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid #e2e8f0', minHeight: '120px', fontSize: '1.1rem', fontFamily: 'inherit', resize: 'vertical', outline: 'none' }}
+                onFocus={(e)=>e.target.style.borderColor='#2563eb'}
+                onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button onClick={() => setStep(1)} style={{ padding: '1.2rem 2.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.2rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ArrowRight size={20} />
+                <span>חזור</span>
+              </button>
+              <button 
+                onClick={() => setStep(3)} 
+                disabled={order.isAbroad ? (!order.fromDate || !order.toDate) : !order.eventDate} 
+                className="primary-button" 
+                style={{ flex: 1, padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+              >
+                <span>המשך לבחירת פריטים</span>
+                <ArrowLeft size={20} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 3: ADD ITEMS (Side by Side) */}
+        {step === 3 && (
+          <div className="fade-in" style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-start', maxWidth: '900px', margin: '2rem auto' }}>
+            
+            {/* Add Item Form (Right Side) */}
+            <div className="glass-card" style={{ flex: '1.2', maxWidth: '520px', minWidth: '350px', padding: '2rem', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
+              <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.6rem', fontWeight: '800' }}>הוספת פריט חדש</h2>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.1rem' }}>בחר דגם</label>
+                  <OrderModelSelector 
+                    value={{ name: newItem.dressName }} 
+                    onChange={(model) => {
+                      setNewItem(prev => ({
+                        ...prev,
+                        dressModelId: model.id,
+                        dressName: model.name,
+                        sizeText: '',
+                        sampleItemId: '',
+                        basePrice: 0,
+                        finalPrice: 0
+                      }));
+                    }}
+                    placeholder="חפש דגם פריט..."
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.1rem' }}>בחר מידה {loadingSizes && <span style={{color: '#2563eb', fontWeight:'normal'}}>(בודק זמינות...)</span>}</label>
+                  <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                    {availableSizes.length === 0 ? (
+                      <div style={{ padding: '1rem', background: '#f8fafc', color: '#94a3b8', borderRadius: '12px', border: '1px solid #e2e8f0', width: '100%' }}>
+                        {newItem.dressModelId ? 'אין מידות זמינות לתאריך זה.' : 'בחר דגם כדי לראות מידות זמינות.'}
+                      </div>
+                    ) : (
+                      availableSizes.map(s => {
+                        const isAvailable = s.availableQuantity > 0;
+                        const isSelected = newItem.sizeText === s.sizeText;
+                        return (
+                          <div key={s.sizeText} 
+                            onClick={() => {
+                              if (isAvailable) {
+                                handleNewItemChange({ target: { name: 'sizeText', value: s.sizeText } });
+                              }
+                            }}
+                            className={`size-card-interactive ${isSelected ? 'selected' : ''} ${!isAvailable ? 'disabled' : ''}`}
+                          >
+                            <span style={{ fontSize: '1.4rem', fontWeight: '800', color: isSelected ? '#3b82f6' : (isAvailable ? '#1e293b' : '#ef4444') }}>{s.sizeText}</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: isSelected ? '#2563eb' : (isAvailable ? '#10b981' : '#ef4444'), marginTop: '0.3rem' }}>
+                              {isAvailable ? `${s.availableQuantity} פנויות` : 'אזל מהמלאי'}
+                            </span>
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
 
-
-
-                <div style={{ marginBottom: '1.5rem', background: '#f8f9fa', padding: '1rem', borderRadius: '10px' }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontWeight: 'bold', color: '#444' }}>
-                    <input data-element-name="שדה_page_23" data-agy-id="new_page_input_12" 
-                      type="checkbox" 
-                      name="isAbroad" 
-                      checked={order.isAbroad} 
-                      onChange={(e) => handleDateChangeWithValidation('isAbroad', e.target.checked)} 
-                      style={{ width: '22px', height: '22px', accentColor: 'var(--primary-color)' }} 
-                    />
-                    אירוע חו"ל (תפוסה מותאמת אישית)
-                  </label>
-                  
-                  {order.isAbroad && (
-                    <div style={{ marginTop: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap' }}>
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>מתאריך</label>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <div style={{ flex: 1 }}>
-                            <HebrewDatePicker data-element-name="רכיב_page_24" 
-                              value={order.fromDate} 
-                              onChange={(date) => handleDateChangeWithValidation('fromDate', date)} 
-                            />
-                          </div>
-                        </div>
-                      </div>
-                      <div style={{ flex: 1, minWidth: '200px' }}>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>עד תאריך</label>
-                        <div style={{ display: 'flex', gap: '0.5rem' }}>
-                          <div style={{ flex: 1 }}>
-                            <HebrewDatePicker data-element-name="רכיב_page_25" 
-                              value={order.toDate} 
-                              onChange={(date) => handleDateChangeWithValidation('toDate', date)} 
-                            />
-                          </div>
-                        </div>
-                      </div>
+                <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 1.2rem 0', fontSize: '1.2rem', color: '#1e293b' }}>תיקונים נדרשים</h4>
+                  <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                      <input type="checkbox" className="toggle-switch" checked={newItem.neckAlteration || false} onChange={(e) => handleNewItemChange({ target: { name: 'neckAlteration', value: e.target.checked }})} />
+                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '1.1rem' }}>צוואר</label>
                     </div>
-                  )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
+                      <input type="checkbox" className="toggle-switch" checked={newItem.sleeveAlteration || false} onChange={(e) => handleNewItemChange({ target: { name: 'sleeveAlteration', value: e.target.checked }})} />
+                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '1.1rem' }}>שרוול</label>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginRight: 'auto' }}>
+                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '1.1rem' }}>אורך:</label>
+                      <input type="number" className="premium-input" value={newItem.lengthAlteration || ''} onChange={handleNewItemChange} name="lengthAlteration" placeholder="ס״מ" style={{ width: '70px', padding: '0.5rem', textAlign: 'center' }} />
+                    </div>
+                  </div>
+                  
+                  <div style={{ marginTop: '1.5rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>הערות לתיקון</label>
+                    <input type="text" className="premium-input" name="repairs" value={newItem.repairs} onChange={handleNewItemChange} placeholder="פרטים נוספים לתופרת..." style={{ padding: '0.75rem 1rem' }} />
+                  </div>
                 </div>
 
-                <div style={{ marginBottom: '1rem' }}>
-                  <label style={{ display: 'block', marginBottom: '0.75rem', fontWeight: 'bold', color: '#444' }}>הערות להזמנה</label>
-                  <textarea data-element-name="טקסט_page_26" data-agy-id="new_page_textarea_13" 
-                    name="notes" 
-                    value={order.notes} 
-                    onChange={handleOrderChange}
-                    placeholder="הערות מיוחדות, בקשות..."
-                    style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', minHeight: '120px', fontSize: '1rem', fontFamily: 'inherit', resize: 'vertical' }}
-                  />
-                </div>
+                <button 
+                  onClick={addItemToOrder}
+                  disabled={!newItem.sampleItemId || !newItem.sizeText}
+                  className="primary-button"
+                  style={{ 
+                    width: '100%', 
+                    padding: '0.8rem 1.5rem', 
+                    fontSize: '1.1rem', 
+                    display: 'flex', 
+                    justifyContent: 'center', 
+                    alignItems: 'center', 
+                    gap: '0.5rem'
+                  }}
+                >
+                  <Plus size={20} />
+                  <span>הוסף להזמנה</span>
+                </button>
               </div>
+            </div>
 
-              {/* Left Side - Items and Subform */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-                
-                <div className="glass-card" style={{ padding: '2.5rem', borderRadius: '24px', position: 'relative', overflow: 'hidden' }}>
-                  <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '5px', background: 'var(--primary-color, #1976d2)' }}></div>
-                  <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-color, #2c3e50)', borderBottom: '2px solid #f0f0f0', paddingBottom: '1rem', fontSize: '1.8rem', fontWeight: '800', letterSpacing: '-0.5px' }}>בחירת פריטים</h2>
+            {/* Live Cart (Left Side) */}
+            <div className="glass-card" style={{ flex: '1', minWidth: '320px', padding: '1.2rem', position: 'sticky', top: '2rem' }}>
+              <h3 style={{ margin: '0 0 0.8rem 0', fontSize: '1.4rem', fontWeight: '800', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.6rem' }}>הסל שלך</h3>
+              
+              {order.items.length === 0 ? (
+                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem 1rem', background: '#f8fafc', borderRadius: '12px', border: '2px dashed #e2e8f0', fontWeight: '600' }}>
+                  טרם הוספת פריטים להזמנה
+                </div>
+              ) : (
+                <div>
+                  {order.items.map((item, idx) => (
+                    <div key={idx} className="cart-item-card" style={{ padding: '0.8rem 1rem', marginBottom: '0.75rem', animationDelay: `${idx * 0.1}00ms` }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.3rem' }}>
+                        <div style={{ fontWeight: '800', fontSize: '1.1rem', color: '#1e293b' }}>{item.dressName || 'דגם לא ידוע'}</div>
+                        <div style={{ background: '#eff6ff', color: '#2563eb', padding: '0.1rem 0.5rem', borderRadius: '6px', fontWeight: '700', fontSize: '0.9rem' }}>מידה {item.sizeText}</div>
+                      </div>
+                      <div style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
+                        {[item.neckAlteration && 'צוואר', item.sleeveAlteration && 'שרוול', item.lengthAlteration && `אורך (${item.lengthAlteration})`].filter(Boolean).join(', ') || 'ללא תיקונים'}
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem' }}>
+                        <div style={{ fontWeight: '800', color: '#059669', fontSize: '1.1rem' }}>
+                          ₪{calculatedData.items[idx] ? calculatedData.items[idx].calculatedPrice : item.finalPrice}
+                        </div>
+                        <div style={{ display: 'flex', gap: '0.4rem' }}>
+                          <button onClick={(e) => { e.preventDefault(); setCapacityModalItem(item); }} style={{ background: '#fdf4ff', border: '1px solid #fbcfe8', cursor: 'pointer', color: '#c026d3', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem', borderRadius: '6px', transition: 'all 0.2s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fae8ff'; e.currentTarget.style.borderColor = '#f9a8d4'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fdf4ff'; e.currentTarget.style.borderColor = '#fbcfe8'; }} title="בדוק תפוסה לתאריך אירוע">
+                            <CalendarSearch size={16} strokeWidth={2.5} />
+                          </button>
+                          <button onClick={() => editItem(idx)} style={{ background: '#fffbeb', border: '1px solid #fde68a', cursor: 'pointer', color: '#d97706', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem', borderRadius: '6px', transition: 'all 0.2s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fef3c7'; e.currentTarget.style.borderColor = '#fcd34d'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fffbeb'; e.currentTarget.style.borderColor = '#fde68a'; }} title="ערוך">
+                            <Edit2 size={16} strokeWidth={2.5} />
+                          </button>
+                          <button onClick={() => removeItem(idx)} style={{ background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', color: '#ef4444', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem', borderRadius: '6px', transition: 'all 0.2s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2'; e.currentTarget.style.borderColor = '#fca5a5'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; e.currentTarget.style.borderColor = '#fecaca'; }} title="מחק">
+                            <Trash2 size={16} strokeWidth={2.5} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                   
-                  {!order.eventDate ? (
-                    <div style={{ padding: '2.5rem', textAlign: 'center', color: '#d32f2f', background: '#ffebee', borderRadius: '12px', fontSize: '1.1rem', fontWeight: 'bold', border: '1px dashed #ef5350' }}>
-                      יש לבחור תחילה תאריך אירוע כדי לוודא מלאי זמין!
-                    </div>
-                  ) : (
-                    <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                      
-                      {/* Row 1: Model & Size */}
-                      <div style={{ display: 'flex', gap: '1.25rem', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-                        <div style={{ flex: 2, minWidth: '250px' }}>
-                          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#444' }}>דגם שמלה</label>
-                          <OrderModelSelector data-element-name="רכיב_page_27" 
-                            value={{ name: newItem.dressName }} 
-                            onChange={(model) => {
-                              setNewItem(prev => ({
-                                ...prev,
-                                dressModelId: model.id,
-                                dressName: model.name,
-                                sizeText: '',
-                                sampleItemId: '',
-                                basePrice: 0,
-                                finalPrice: 0
-                              }));
-                            }}
-                            placeholder="חפש דגם..."
-                          />
-                        </div>
-
-                        <div style={{ flex: 1, minWidth: '150px' }}>
-                          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#444' }}>
-                            מידה {loadingSizes && <span style={{fontSize:'0.85rem', color:'var(--primary-color)', fontWeight: 'normal'}}>(טוען...)</span>}
-                          </label>
-                          <select data-element-name="בחירה_page_28" data-agy-id="new_page_select_14" 
-                            name="sizeText" 
-                            value={newItem.sizeText} 
-                            onChange={handleNewItemChange}
-                            disabled={!newItem.dressModelId || availableSizes.length === 0}
-                            style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1rem', background: (!newItem.dressModelId || availableSizes.length === 0) ? '#f5f5f5' : 'var(--card-bg)', appearance: 'auto' }}
-                          >
-                            <option value="">בחר מידה פנויה...</option>
-                            {availableSizes.map(s => (
-                              <option key={s.sizeText} value={s.sizeText}>
-                                מידה: {s.sizeText} (פנויות: {s.availableQuantity} מתוך {s.totalInStock})
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                      </div>
-
-                      {/* Row 2: Alterations */}
-                      <div style={{ display: 'flex', gap: '2rem', alignItems: 'center', background: '#f8f9fa', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e9ecef', flexWrap: 'wrap' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <input data-element-name="שדה_page_29" data-agy-id="new_page_input_15" 
-                            type="checkbox" 
-                            name="neckAlteration"
-                            checked={newItem.neckAlteration || false} 
-                            onChange={(e) => handleNewItemChange({ target: { name: 'neckAlteration', value: e.target.checked }})}
-                            style={{ width: '22px', height: '22px', accentColor: 'var(--primary-color)', cursor: 'pointer' }}
-                          />
-                          <label data-element-name="לחיץ_page_30" style={{ fontWeight: 'bold', color: '#444', cursor: 'pointer', fontSize: '1.05rem' }} onClick={() => handleNewItemChange({ target: { name: 'neckAlteration', value: !newItem.neckAlteration }})}>תיקון צוואר</label>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <input data-element-name="שדה_page_31" data-agy-id="new_page_input_16" 
-                            type="checkbox" 
-                            name="sleeveAlteration"
-                            checked={newItem.sleeveAlteration || false} 
-                            onChange={(e) => handleNewItemChange({ target: { name: 'sleeveAlteration', value: e.target.checked }})}
-                            style={{ width: '22px', height: '22px', accentColor: 'var(--primary-color)', cursor: 'pointer' }}
-                          />
-                          <label data-element-name="לחיץ_page_32" style={{ fontWeight: 'bold', color: '#444', cursor: 'pointer', fontSize: '1.05rem' }} onClick={() => handleNewItemChange({ target: { name: 'sleeveAlteration', value: !newItem.sleeveAlteration }})}>תיקון שרוול</label>
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '1rem', borderRight: '2px solid #dee2e6', paddingRight: '2rem', marginRight: '1rem', minWidth: '200px' }}>
-                          <label style={{ fontWeight: 'bold', color: '#444', whiteSpace: 'nowrap', fontSize: '1.05rem' }}>תיקון אורך:</label>
-                          <input data-element-name="שדה_page_33" data-agy-id="new_page_input_17" 
-                            type="number" 
-                            name="lengthAlteration"
-                            value={newItem.lengthAlteration || ''} 
-                            onChange={handleNewItemChange}
-                            placeholder="מספר ס״מ..."
-                            style={{ width: '130px', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', fontSize: '1rem', textAlign: 'center' }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Row 3: Repairs */}
-                      <div>
-                        <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#444' }}>פירוט תיקונים נוספים</label>
-                        <input data-element-name="שדה_page_34" data-agy-id="new_page_input_18" 
-                          type="text" 
-                          name="repairs" 
-                          value={newItem.repairs} 
-                          onChange={handleNewItemChange}
-                          placeholder="הערות נוספות לתופרת..."
-                          style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1rem' }}
-                        />
-                      </div>
-
-                      {/* Row 4: Button */}
-                      <div style={{ marginTop: '0.5rem' }}>
-                        <button data-element-name="כפתור_page_35" data-agy-id="new_page_button_19" 
-                          type="button" 
-                          onClick={addItemToOrder}
-                          style={{ width: '100%', padding: '1.2rem', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '12px', cursor: 'pointer', fontSize: '1.2rem', fontWeight: 'bold', transition: 'all 0.2s', boxShadow: '0 4px 15px rgba(46,125,50,0.2)' }}
-                          onMouseOver={(e) => { e.target.style.background = '#1b5e20'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 6px 20px rgba(46,125,50,0.3)'; }}
-                          onMouseOut={(e) => { e.target.style.background = '#2e7d32'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 4px 15px rgba(46,125,50,0.2)'; }}
-                        >
-                          + הוסף להזמנה
-                        </button>
-                      </div>
-
-                    </div>
-                  )}
+                  <div style={{ marginTop: '1.2rem', borderTop: '1px dashed var(--border-color)', paddingTop: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '1.2rem', fontWeight: '800', color: '#1e293b' }}>סה"כ:</span>
+                    <span style={{ fontSize: '1.6rem', fontWeight: '800', color: '#059669' }}>₪{totalAmount}</span>
+                  </div>
                 </div>
+              )}
 
-                <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', flex: 1 }}>
-                  <h2 style={{ marginBottom: '1.5rem', color: 'var(--secondary-color)', borderBottom: '2px solid #f0f0f0', paddingBottom: '1rem', fontSize: '1.5rem' }}>סיכום פריטים</h2>
-                  
-                  {order.items.length === 0 ? (
-                    <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 1rem', background: '#f8f9fa', borderRadius: '12px', border: '1px dashed var(--element-border)' }}>
-                      טרם נבחרו פריטים להזמנה זו.
-                    </div>
-                  ) : (
-                    <div style={{ overflowX: 'auto' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
-                        <thead>
-                          <tr style={{ borderBottom: '2px solid #ddd', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
-                            <th style={{ padding: '1rem 0.5rem' }}>דגם</th>
-                            <th style={{ padding: '1rem 0.5rem' }}>מידה</th>
-                            <th style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>צוואר</th>
-                            <th style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>שרוול</th>
-                            <th style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>אורך</th>
-                            <th style={{ padding: '1rem 0.5rem' }}>פירוט תיקונים</th>
-                            <th style={{ padding: '1rem 0.5rem' }}>מחיר</th>
-                            <th style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>פעולות</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {order.items.map((item, idx) => {
-                            const calcItem = calculatedData.items[idx];
-                            const displayPrice = calcItem ? calcItem.calculatedPrice : item.finalPrice;
-                            const isDiscounted = calcItem ? calcItem.isDiscountedSet : false;
-                            const dressName = item.dressName || 'דגם לא ידוע';
-                            return (
-                              <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = 'var(--element-bg)'} onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}>
-                                <td style={{ padding: '1rem 0.5rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
-                                  {dressName}
-                                  {isDiscounted && <span style={{ color: '#e53935', fontSize: '0.85rem', marginRight: '0.5rem' }}>(חינם בסט)</span>}
-                                </td>
-                                <td style={{ padding: '1rem 0.5rem', fontWeight: 'bold' }}>
-                                  <span style={{ background: 'var(--element-bg)', padding: '0.25rem 0.5rem', borderRadius: '6px' }}>{item.sizeText}</span>
-                                </td>
-                                <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                                  {item.neckAlteration ? '✔️' : '-'}
-                                </td>
-                                <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                                  {item.sleeveAlteration ? '✔️' : '-'}
-                                </td>
-                                <td style={{ padding: '1rem 0.5rem', textAlign: 'center', color: 'var(--text-main)' }}>
-                                  {item.lengthAlteration || '-'}
-                                </td>
-                                <td style={{ padding: '1rem 0.5rem', color: 'var(--text-main)', fontSize: '0.95rem' }}>
-                                  {item.repairs || '-'}
-                                </td>
-                                <td style={{ padding: '1rem 0.5rem', color: '#2e7d32', fontWeight: 'bold', fontSize: '1.1rem' }}>
-                                  ₪{displayPrice}
-                                  {calculating && <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginRight: '0.5rem' }}>...מחשב</span>}
-                                </td>
-                                <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                                  <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                                    <button data-element-name="כפתור_page_36" data-agy-id="new_page_button_edit" onClick={() => editItem(idx)} style={{ background: '#e3f2fd', color: '#1976d2', border: '1px solid #bbdefb', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.background = '#1976d2'; e.currentTarget.style.color = 'white'; }} onMouseOut={(e) => { e.currentTarget.style.background = '#e3f2fd'; e.currentTarget.style.color = '#1976d2'; }} title="ערוך פריט">
-                                      ✏️
-                                    </button>
-                                    <button data-element-name="כפתור_page_37" data-agy-id="new_page_button_20" onClick={() => removeItem(idx)} style={{ background: '#ffebee', color: '#e53935', border: '1px solid #ffcdd2', width: '32px', height: '32px', borderRadius: '50%', cursor: 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s' }} onMouseOver={(e) => { e.currentTarget.style.background = '#e53935'; e.currentTarget.style.color = 'white'; }} onMouseOut={(e) => { e.currentTarget.style.background = '#ffebee'; e.currentTarget.style.color = '#e53935'; }} title="מחק פריט">
-                                      X
-                                    </button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                        <tfoot>
-                          <tr>
-                            <td colSpan="6" style={{ padding: '1.5rem 0.5rem 0 0.5rem', fontSize: '1.3rem', fontWeight: 'bold', color: 'var(--text-main)' }}>סה"כ לתשלום:</td>
-                            <td colSpan="2" style={{ padding: '1.5rem 0.5rem 0 0.5rem', fontSize: '1.8rem', fontWeight: 'bold', color: '#2e7d32' }}>₪{totalAmount}</td>
-                          </tr>
-                        </tfoot>
-                      </table>
-                    </div>
-                  )}
-                </div>
-
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-                  <button data-element-name="כפתור_page_38" data-agy-id="new_page_button_21" 
-                    onClick={() => setStep(1)}
-                    style={{ padding: '1.5rem 2rem', background: 'var(--card-bg)', color: 'var(--text-muted)', border: '2px solid #ddd', borderRadius: '16px', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
-                    onMouseOver={(e) => e.target.style.background = 'var(--element-bg)'}
-                    onMouseOut={(e) => e.target.style.background = 'var(--input-bg)'}
-                  >
-                    חזור לשלב קודם
-                  </button>
-                  <button data-element-name="כפתור_page_39" data-agy-id="new_page_button_22" 
-                    onClick={() => setStep(3)}
-                    disabled={order.items.length === 0}
-                    style={{ flex: 1, padding: '1.5rem', background: (order.items.length === 0) ? 'var(--element-bg)' : 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '16px', fontSize: '1.5rem', fontWeight: 'bold', cursor: (order.items.length === 0) ? 'not-allowed' : 'pointer', boxShadow: (order.items.length === 0) ? 'none' : '0 8px 24px rgba(0,0,0,0.15)', transition: 'background 0.3s' }}
-                  >
-                    המשך לתשלום ⬅
-                  </button>
-                </div>
+              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
+                <button onClick={() => setStep(2)} style={{ padding: '0.8rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                  <ArrowRight size={18} />
+                  <span>חזור</span>
+                </button>
+                <button onClick={() => setStep(4)} disabled={order.items.length === 0} className="primary-button" style={{ padding: '0.8rem', flex: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                  <span>המשך לסיכום</span>
+                  <ArrowLeft size={18} />
+                </button>
               </div>
             </div>
           </div>
         )}
 
-        {step === 3 && (
-          <div className="fade-in" style={{ maxWidth: '650px', margin: '4rem auto', background: 'var(--card-bg)', padding: '3rem', borderRadius: '16px', boxShadow: '0 10px 40px rgba(0,0,0,0.08)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2.5rem', alignItems: 'center' }}>
-               <h2 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem' }}>שלב 3: תשלום</h2>
-               <span style={{ background: '#e3f2fd', color: '#1976d2', padding: '0.4rem 1rem', borderRadius: '20px', fontSize: '1rem', fontWeight: 'bold' }}>3 מתוך 3</span>
-            </div>
-            
-            <div style={{ marginBottom: '2rem', padding: '1.5rem', background: '#f8f9fa', borderRadius: '12px', border: '2px solid var(--element-border)' }}>
-              <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--text-main)', textAlign: 'center', fontSize: '1.3rem' }}>פירוט חיובים עבור ההזמנה</h3>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', marginBottom: '1.5rem' }}>
-                <tbody>
-                  {order.items.map((item, idx) => {
-                    const calcItem = calculatedData.items[idx];
-                    if (!calcItem) return null;
-                    const dressName = item.dressName || 'דגם לא ידוע';
-                    
-                    const repairsCost = calcItem.repairsCost || 0;
-                    const repairList = [];
-                    if (item.neckAlteration) repairList.push('צוואר');
-                    if (item.sleeveAlteration) repairList.push('שרוול');
-                    if (item.lengthAlteration && String(item.lengthAlteration).trim() !== '') repairList.push('אורך');
-                    
-                    const basePrice = calcItem.calculatedPrice - repairsCost;
-                    
-                    return (
-                      <React.Fragment data-element-name="רכיב_page_40" key={idx}>
-                        <tr style={{ borderBottom: repairsCost > 0 ? 'none' : '1px solid #f0f0f0' }}>
-                          <td style={{ padding: '0.75rem 0.5rem', fontWeight: 'bold', color: 'var(--text-main)' }}>{dressName}</td>
-                          <td style={{ padding: '0.75rem 0.5rem', color: calcItem.isDiscountedSet ? '#e53935' : '#444', textAlign: 'left' }}>
-                            {calcItem.isDiscountedSet ? 'חינם בסט' : `₪${basePrice}`}
-                          </td>
-                        </tr>
-                        {repairsCost > 0 && (
-                          <tr style={{ borderBottom: '1px solid #f0f0f0', fontSize: '0.95rem', color: '#666' }}>
-                            <td style={{ padding: '0 0.5rem 0.75rem 0.5rem' }}>↳ תיקונים: {repairList.join(', ')}</td>
-                            <td style={{ padding: '0 0.5rem 0.75rem 0.5rem', textAlign: 'left' }}>₪{repairsCost}</td>
-                          </tr>
-                        )}
-                      </React.Fragment>
-                    );
-                  })}
-                </tbody>
-              </table>
-              <div style={{ borderTop: '2px dashed var(--element-border)', paddingTop: '1.5rem', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.1rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>סה"כ לתשלום</div>
-                <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#2e7d32' }}>₪{totalAmount}</div>
+        {/* STEP 4: SUMMARY */}
+        {step === 4 && (
+          <div className="fade-in glass-card" style={{ maxWidth: '800px', margin: '2rem auto', padding: '2rem', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
+            <h2 style={{ marginBottom: '0.8rem', fontSize: '1.6rem', fontWeight: '800' }}>סיכום ההזמנה</h2>
+            <p style={{ color: '#64748b', fontSize: '1.2rem', marginBottom: '2.5rem' }}>אנא ודא שפרטי ההזמנה נכונים לפני מעבר לתשלום.</p>
+
+            <div style={{ background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', marginBottom: '2.5rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <span style={{ color: '#64748b', fontWeight: '600' }}>לקוח:</span>
+                <span style={{ color: '#1e293b', fontWeight: '800' }}>{selectedCustomerName}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <span style={{ color: '#64748b', fontWeight: '600' }}>סוג אירוע:</span>
+                <span style={{ color: '#1e293b', fontWeight: '800' }}>{order.isAbroad ? 'אירוע חו"ל / תפוסה ארוכה' : 'אירוע רגיל'}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span style={{ color: '#64748b', fontWeight: '600' }}>תאריכים:</span>
+                <span style={{ color: '#1e293b', fontWeight: '800', textAlign: 'left' }}>
+                  {order.isAbroad ? (
+                    <>
+                      {`מ-${getHebrewDateString(order.fromDate)} עד ${getHebrewDateString(order.toDate)} `}
+                      <span style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 'normal' }}>
+                        {`(${order.fromDate} - ${order.toDate})`}
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      {getHebrewDateString(order.eventDate) + ' '}
+                      <span style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 'normal' }}>
+                        {`(${order.eventDate})`}
+                      </span>
+                    </>
+                  )}
+                </span>
               </div>
             </div>
 
-            <div style={{ display: 'grid', gap: '1.5rem', marginBottom: '2.5rem' }}>
+            <div style={{ marginBottom: '3rem' }}>
+              <h3 style={{ color: '#1e293b', fontSize: '1.5rem', marginBottom: '1.5rem' }}>פירוט פריטים ({order.items.length})</h3>
+              {order.items.map((item, idx) => {
+                 const calcItem = calculatedData.items[idx];
+                 const displayPrice = calcItem ? calcItem.calculatedPrice : item.finalPrice;
+                 const repairsCost = calcItem && calcItem.repairsCost ? calcItem.repairsCost : 0;
+                 return (
+                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem', borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
+                     <div>
+                       <div style={{ fontWeight: '800', color: '#1e293b', fontSize: '1.2rem' }}>{item.dressName} <span style={{ background: '#eff6ff', color: '#2563eb', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '1rem', marginRight: '0.5rem' }}>{item.sizeText}</span></div>
+                       <div style={{ color: '#64748b', fontSize: '1rem', marginTop: '0.5rem' }}>
+                          תיקונים: {[item.neckAlteration && 'צוואר', item.sleeveAlteration && 'שרוול', item.lengthAlteration && `אורך (${item.lengthAlteration})`].filter(Boolean).join(', ') || 'ללא'}
+                          {repairsCost > 0 && <span style={{color: '#f59e0b', marginRight: '0.5rem'}}>(+₪{repairsCost})</span>}
+                       </div>
+                     </div>
+                     <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#059669' }}>
+                       ₪{displayPrice}
+                     </div>
+                   </div>
+                 );
+              })}
+              
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2rem 1.5rem 0', marginTop: '1rem', borderTop: '2px solid #cbd5e1' }}>
+                <span style={{ fontSize: '1.8rem', fontWeight: '800', color: '#1e293b' }}>סה"כ לתשלום:</span>
+                <span style={{ fontSize: '2.5rem', fontWeight: '900', color: '#059669' }}>₪{totalAmount}</span>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button onClick={() => setStep(3)} style={{ padding: '1.2rem 2.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.2rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ArrowRight size={20} />
+                <span>חזור לעריכה</span>
+              </button>
+              <button onClick={() => setStep(5)} className="primary-button" style={{ flex: 1, padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                <span>המשך לתשלום אחרון</span>
+                <ArrowLeft size={20} />
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 5: PAYMENT & SAVE */}
+        {step === 5 && (
+          <div className="fade-in glass-card" style={{ maxWidth: '650px', margin: '2rem auto', padding: '2rem', position: 'relative' }}>
+            <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
+            <h2 style={{ marginBottom: '0.8rem', fontSize: '1.6rem', fontWeight: '800' }}>תשלום וסיום הזמנה</h2>
+            <p style={{ color: '#64748b', fontSize: '1.2rem', marginBottom: '2.5rem' }}>בחרו את אמצעי התשלום ובצעו רישום סופי.</p>
+            
+            <div style={{ display: 'grid', gap: '1.5rem', marginBottom: '3rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#444' }}>סכום לתשלום כעת (₪)</label>
-                <input data-element-name="שדה_page_41" data-agy-id="new_page_input_23" 
+                <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.1rem' }}>סכום לתשלום כעת (₪)</label>
+                <input 
                   type="number" 
                   value={payment.amount} 
                   onChange={e => setPayment(prev => ({...prev, amount: e.target.value}))} 
-                  style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid var(--element-border)', fontSize: '1.5rem', fontWeight: 'bold', color: 'var(--text-main)' }} 
+                  style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.5rem', fontWeight: '800', color: '#059669', outline: 'none' }} 
+                  onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#444' }}>אופן תשלום</label>
-                <select data-element-name="בחירה_page_42" data-agy-id="new_page_select_24" 
+                <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.1rem' }}>אופן תשלום</label>
+                <select 
                   value={payment.method} 
                   onChange={e => setPayment(prev => ({...prev, method: e.target.value}))} 
-                  style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '1px solid var(--element-border)', fontSize: '1.1rem' }}
+                  style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', outline: 'none', background: 'white' }}
+                  onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
                 >
                   {paymentMethodOptions.map(opt => (
                     <option key={opt} value={opt}>{opt}</option>
@@ -1304,65 +1556,69 @@ export default function NewOrderPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#444' }}>הערות לתשלום</label>
-                <input data-element-name="שדה_page_43" data-agy-id="new_page_input_25" 
+                <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.1rem' }}>הערות לתשלום</label>
+                <input 
                   type="text" 
                   value={payment.notes} 
                   onChange={e => setPayment(prev => ({...prev, notes: e.target.value}))} 
                   placeholder="מספר אישור, פרטי הבנק, וכדומה..."
-                  style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1rem' }} 
+                  style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} 
+                  onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
                 />
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '1rem' }}>
-              <button data-element-name="כפתור_page_44" data-agy-id="new_page_button_26" 
-                onClick={() => setStep(2)}
-                style={{ padding: '1.2rem 2rem', background: 'var(--card-bg)', color: 'var(--text-muted)', border: '2px solid #ddd', borderRadius: '12px', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer', transition: 'all 0.2s' }}
-              >
-                חזור
+              <button onClick={() => setStep(4)} style={{ padding: '1.2rem 2.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.2rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ArrowRight size={20} />
+                <span>חזור</span>
               </button>
-              <button data-element-name="כפתור_page_45" data-agy-id="new_page_button_27" 
+              <button 
                 onClick={saveOrder}
                 disabled={saving}
-                style={{ flex: 1, padding: '1.2rem', background: saving ? 'var(--element-bg)' : 'var(--primary-color)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: 'bold', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saving ? 'none' : '0 8px 24px rgba(0,0,0,0.15)', transition: 'all 0.3s' }}
+                style={{ flex: 1, padding: '1.2rem', background: saving ? '#cbd5e1' : 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.4rem', fontWeight: '800', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saving ? 'none' : '0 10px 25px rgba(16, 185, 129, 0.3)', transition: 'all 0.3s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
               >
-                {saving ? 'שומר במערכת...' : 'סיום ושמירת כרטיס הזמנה ✔'}
+                {saving ? 'שומר במערכת ומאמת מלאי...' : (
+                  <>
+                    <ShieldCheck size={22} />
+                    <span>סיום ושמירת כרטיס הזמנה</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
         )}
 
+        {/* MODALS */}
+        {capacityModalItem && (
+          <ItemCapacityModal 
+            item={capacityModalItem} 
+            order={order} 
+            isOpen={true} 
+            onClose={() => setCapacityModalItem(null)} 
+          />
+        )}
+
         {duplicateCustomer && (
-          <div className="modal-overlay" style={{ zIndex: 1000, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div className="modal-content fade-in" style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '16px', maxWidth: '500px', width: '100%', direction: 'rtl', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
-              <h3 style={{ color: '#d32f2f', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1.5rem', margin: '0 0 1rem 0' }}>
-                <span>⚠️</span> לקוח קיים במערכת
+          <div style={{ zIndex: 1000, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div className="fade-in" style={{ background: 'white', padding: '2.5rem', borderRadius: '24px', maxWidth: '500px', width: '100%', direction: 'rtl', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+              <h3 style={{ color: '#dc2626', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '1.6rem', fontWeight: '800' }}>
+                <span style={{ fontSize: '2rem' }}>⚠️</span> לקוח קיים במערכת
               </h3>
-              <div style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '12px', marginBottom: '1.5rem', border: '1px solid #eee' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                  <p style={{ margin: 0, fontWeight: 'bold', fontSize: '1.2rem', color: 'var(--text-main)' }}>
-                    {getCustomerFullName(duplicateCustomer)}
-                  </p>
-                  <Link data-element-name="רכיב_page_46" href={`/customers/${duplicateCustomer.id}`} target="_blank" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', background: '#e3f2fd', color: '#1976d2', borderRadius: '50%', textDecoration: 'none', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(25,118,210,0.2)' }} title="פתיחת כרטיס לקוח בטאב חדש">
-                    ↗
-                  </Link>
-                </div>
-                <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-muted)', fontSize: '1.1rem' }}>📞 {duplicateCustomer.phone1} {duplicateCustomer.phone2 ? `| ${duplicateCustomer.phone2}` : ''}</p>
-                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '1.1rem' }}>📍 {duplicateCustomer.city || 'עיר לא צוינה'}</p>
+              <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem', border: '1px solid #e2e8f0' }}>
+                <p style={{ margin: '0 0 0.5rem 0', fontWeight: '800', fontSize: '1.4rem', color: '#1e293b' }}>
+                  {getCustomerFullName(duplicateCustomer)}
+                </p>
+                <p style={{ margin: '0 0 0.5rem 0', color: '#64748b', fontSize: '1.1rem' }}>📞 {duplicateCustomer.phone1} {duplicateCustomer.phone2 ? `| ${duplicateCustomer.phone2}` : ''}</p>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '1.1rem' }}>📍 {duplicateCustomer.city || 'עיר לא צוינה'}</p>
               </div>
-              <p style={{ marginBottom: '1.5rem', fontWeight: 'bold', fontSize: '1.1rem', color: '#444' }}>הלקוח שהזנת זוהה במערכת על פי מספר הטלפון. האם תרצה להשתמש בלקוח הקיים עבור הזמנה זו?</p>
+              <p style={{ marginBottom: '2rem', fontWeight: '600', fontSize: '1.1rem', color: '#334155', lineHeight: '1.6' }}>הלקוח שהזנת זוהה במערכת על פי מספר הטלפון. האם תרצה להשתמש בלקוח הקיים עבור הזמנה זו?</p>
               <div style={{ display: 'flex', gap: '1rem' }}>
-                <button data-element-name="כפתור_page_47" data-agy-id="new_page_button_28" onClick={() => handleUseExistingCustomer(duplicateCustomer)} style={{ flex: 1, padding: '1rem', borderRadius: '10px', background: 'var(--primary-color)', color: 'white', fontWeight: 'bold', fontSize: '1.1rem', border: 'none', cursor: 'pointer', transition: 'all 0.2s', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+                <button onClick={() => handleUseExistingCustomer(duplicateCustomer)} className="primary-button" style={{ flex: 1, padding: '1rem' }}>
                   כן, השתמש בלקוח הקיים
                 </button>
-                <button data-element-name="כפתור_page_48" data-agy-id="new_page_button_29" onClick={() => handleSaveNewCustomerAndProceed(true)} style={{ flex: 1, padding: '1rem', borderRadius: '10px', background: 'var(--card-bg)', color: '#d32f2f', border: '2px solid #d32f2f', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', transition: 'all 0.2s' }}>
-                  לא, צור לקוח חדש בכל זאת
-                </button>
-              </div>
-              <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                <button data-element-name="כפתור_page_49" data-agy-id="new_page_button_30" onClick={() => setDuplicateCustomer(null)} style={{ background: 'none', border: 'none', color: 'var(--text-main)', textDecoration: 'underline', cursor: 'pointer', fontSize: '1rem' }}>
-                  ביטול וחזרה לעריכה
+                <button onClick={() => handleSaveNewCustomerAndProceed(true)} style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: 'white', color: '#dc2626', border: '2px solid #fca5a5', fontWeight: '800', fontSize: '1.1rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+                  לא, צור לקוח חדש כפול
                 </button>
               </div>
             </div>
@@ -1370,98 +1626,116 @@ export default function NewOrderPage() {
         )}
 
         {showCreditModal && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl' }}>
-            <div className="fade-in" style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '8px', width: '400px', maxWidth: '90%', boxShadow: '0 4px 20px rgba(0,0,0,0.2)' }}>
-              <h2 style={{ marginTop: 0, color: '#1976d2', borderBottom: '2px solid #eee', paddingBottom: '0.5rem', marginBottom: '1.5rem' }}>
-                סליקת כרטיס אשראי (נדרים פלוס)
-              </h2>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>שם לקוח:</label>
-                <input data-element-name="שדה_page_50" data-agy-id="new_page_input_31" type="text" readOnly value={getCustomerFullName(order.selectedCustomer || newCustomer)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd', background: 'var(--element-bg)' }} />
-              </div>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>סכום לחיוב (₪):</label>
-                <input data-element-name="שדה_page_51" data-agy-id="new_page_input_32" 
-                  type="number" 
-                  value={creditCardData.amount} 
-                  onChange={e => setCreditCardData({...creditCardData, amount: e.target.value})}
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }} 
-                />
-              </div>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>מספר כרטיס אשראי:</label>
-                <input data-element-name="שדה_page_52" data-agy-id="new_page_input_33" 
-                  type="text" 
-                  value={creditCardData.cardNumber} 
-                  onChange={handleCardNumberChange}
-                  placeholder="הכנס מספר כרטיס ללא רווחים"
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)', direction: 'ltr', textAlign: 'left' }} 
-                />
-              </div>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>תוקף (MMYY):</label>
-                  <input data-element-name="שדה_page_53" data-agy-id="new_page_input_34" 
-                    type="text" 
-                    value={creditCardData.tokef} 
-                    onChange={e => setCreditCardData({...creditCardData, tokef: e.target.value})}
-                    placeholder="למשל 1225"
-                    maxLength="4"
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)', direction: 'ltr', textAlign: 'left' }} 
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>תשלומים:</label>
-                  <input data-element-name="שדה_page_54" data-agy-id="new_page_input_35" 
-                    type="number" 
-                    min="1" max="36"
-                    value={creditCardData.installments} 
-                    onChange={e => setCreditCardData({...creditCardData, installments: e.target.value})}
-                    style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }} 
-                  />
+          <div style={{ zIndex: 1000, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div className="fade-in" style={{ background: 'white', padding: '2.5rem', borderRadius: '24px', maxWidth: '500px', width: '100%', direction: 'rtl', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+                <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.6rem', fontWeight: '800' }}>חיוב באשראי (נדרים פלוס)</h3>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <button 
+                    onClick={(e) => { e.preventDefault(); setShowCreditModal(false); setShowQuickSwipeModal(true); setSwipeInput(''); setCreditError(''); }} 
+                    style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
+                    onMouseOver={e => e.currentTarget.style.opacity=0.9} onMouseOut={e => e.currentTarget.style.opacity=1}
+                    title="העברת כרטיס מהירה בקורא מגנטי"
+                  >
+                    🧲 העברה מהירה
+                  </button>
+                  <button onClick={() => setShowCreditModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
                 </div>
               </div>
               
-              <div style={{ marginBottom: '1.5rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold' }}>הערות:</label>
-                <input data-element-name="שדה_page_55" data-agy-id="new_page_input_36" 
-                  type="text" 
-                  value={creditCardData.notes} 
-                  onChange={e => setCreditCardData({...creditCardData, notes: e.target.value})}
-                  placeholder="הערות לחיוב"
-                  style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }} 
-                />
-              </div>
-
               {creditError && (
-                <div style={{ padding: '0.8rem', background: '#ffebee', color: '#c62828', borderRadius: '4px', marginBottom: '1rem', fontSize: '0.9rem' }}>
+                <div style={{ background: '#fef2f2', color: '#dc2626', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', fontWeight: '600', border: '1px solid #fecaca' }}>
                   {creditError}
                 </div>
               )}
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginBottom: '2rem' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>מספר כרטיס אשראי (או העברת קורא שפתיים)</label>
+                  <input type="text" value={creditCardData.cardNumber} onChange={handleCardNumberChange} placeholder="הקלד או העבר כרטיס קורא שפתיים" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', outline: 'none' }} />
+                </div>
+                
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>תוקף (MMYY)</label>
+                    <input type="text" value={creditCardData.tokef} onChange={e => setCreditCardData(prev => ({...prev, tokef: e.target.value}))} placeholder="לדוגמה 1225" maxLength="4" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', textAlign: 'center', outline: 'none' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>סכום לחיוב (₪)</label>
+                    <input type="number" value={creditCardData.amount} onChange={e => setCreditCardData(prev => ({...prev, amount: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', fontWeight: '800', color: '#059669', textAlign: 'center', outline: 'none' }} />
+                  </div>
+                </div>
 
-              <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end' }}>
-                <button data-element-name="כפתור_page_56" data-agy-id="new_page_button_37" 
-                  onClick={() => setShowCreditModal(false)} 
-                  disabled={isProcessingCredit}
-                  style={{ padding: '0.5rem 1rem', background: 'transparent', color: 'var(--text-main)', border: '1px solid var(--element-border)', borderRadius: '4px', cursor: 'pointer' }}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>תשלומים</label>
+                    <input type="number" value={creditCardData.installments} onChange={e => setCreditCardData(prev => ({...prev, installments: e.target.value}))} min="1" max="12" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.1rem', textAlign: 'center', outline: 'none' }} />
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>הערות לנדרים</label>
+                    <input type="text" value={creditCardData.notes} onChange={e => setCreditCardData(prev => ({...prev, notes: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} />
+                  </div>
+                </div>
+              </div>
+              
+              <button 
+                onClick={handleProcessCreditCard}
+                disabled={isProcessingCredit}
+                style={{ width: '100%', padding: '1.2rem', background: isProcessingCredit ? '#cbd5e1' : '#2563eb', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: '800', cursor: isProcessingCredit ? 'wait' : 'pointer', transition: 'all 0.3s' }}
+              >
+                {isProcessingCredit ? 'מבצע חיוב מול נדרים...' : 'בצע חיוב עכשיו ושמור הזמנה'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {showQuickSwipeModal && (
+          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(8px)' }}>
+            <div style={{ background: 'white', padding: '3rem', borderRadius: '24px', width: '450px', maxWidth: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: 'linear-gradient(to right, #f59e0b, #d97706, #fbbf24)' }}></div>
+              <button onClick={() => setShowQuickSwipeModal(false)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
+              
+              <div style={{ margin: '0 auto 1.5rem', width: '90px', height: '90px', background: '#fef3c7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(245,158,11,0.2)' }}>
+                <span style={{ fontSize: '3.5rem' }}>🧲</span>
+              </div>
+              
+              <h2 style={{ margin: '0 0 0.5rem 0', color: '#1e293b', fontSize: '1.8rem', fontWeight: '800' }}>
+                העברת כרטיס מהירה
+              </h2>
+              <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: '2rem' }}>
+                אנא העבר כעת את כרטיס האשראי בקורא השפתיים...
+              </p>
+              
+              <input 
+                autoFocus 
+                type="text" 
+                value={swipeInput}
+                onChange={handleSwipeInputChange}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') e.preventDefault();
+                }}
+                onBlur={(e) => {
+                   if (showQuickSwipeModal) {
+                      setTimeout(() => e.target?.focus(), 100);
+                   }
+                }}
+                style={{ opacity: 0, position: 'absolute', top: '-1000px' }} 
+              />
+              
+              <div style={{ display: 'flex', justifyContent: 'center' }}>
+                <button 
+                  onClick={() => setShowQuickSwipeModal(false)} 
+                  style={{ padding: '0.8rem 2rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s', fontSize: '1.1rem' }}
+                  onMouseOver={e => e.currentTarget.style.backgroundColor='#e2e8f0'}
+                  onMouseOut={e => e.currentTarget.style.backgroundColor='#f1f5f9'}
                 >
-                  ביטול
-                </button>
-                <button data-element-name="כפתור_page_57" data-agy-id="new_page_button_38" 
-                  onClick={handleProcessCreditCard} 
-                  disabled={isProcessingCredit}
-                  style={{ padding: '0.5rem 1.5rem', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '4px', cursor: isProcessingCredit ? 'not-allowed' : 'pointer', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-                >
-                  {isProcessingCredit ? 'מעבד...' : 'חייב וסגור הזמנה'}
+                  ביטול חלון מהיר
                 </button>
               </div>
             </div>
           </div>
         )}
+
       </main>
     </>
   );

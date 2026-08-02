@@ -1,4 +1,4 @@
-﻿import prisma from '@/app/lib/prisma';
+import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 
 
@@ -21,6 +21,12 @@ export async function GET(request, { params }) {
               include: {
                 dressItem: true
               }
+            },
+            payments: {
+              where: { isDeleted: false }
+            },
+            obligations: {
+              where: { isDeleted: false }
             }
           }
         },

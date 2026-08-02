@@ -15,8 +15,13 @@ export async function POST(request) {
 
     if (!mosadId) {
       // Check database settings
-      const setting = await prisma.systemSetting.findUnique({
-        where: { key: 'nedarimMosadId' }
+      const setting = await prisma.systemSetting.findFirst({
+        where: { 
+          OR: [
+            { key: 'nedarimMosadId' },
+            { key: 'NEDARIM_MOSAD' }
+          ]
+        }
       });
       if (setting && setting.value) {
         mosadId = setting.value;

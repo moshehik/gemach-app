@@ -325,7 +325,7 @@ export default function PrintOrderPage() {
                 <span className="label">שם לקוח</span>
                 <span className="value">{order.customer?.firstName} {order.customer?.lastName}</span>
               </div>
-              {!order.isWeekdayEvent ? (
+              {(!order.isWeekdayEvent && !order.isAbroad) ? (
                 <div className="detail-item">
                   <span className="label">תאריך אירוע עברי</span>
                   <span className="value">{order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}</span>
@@ -333,7 +333,7 @@ export default function PrintOrderPage() {
               ) : (
                 <div className="detail-item">
                   <span className="label">סוג אירוע</span>
-                  <span className="value">אירוע חול</span>
+                  <span className="value">אירוע חו"ל</span>
                 </div>
               )}
               

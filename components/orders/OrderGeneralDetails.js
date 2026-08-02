@@ -28,9 +28,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
     };
 
     if (activeItems.length === 0) {
-      for (const [k, v] of Object.entries(updates)) {
-        handleChange(k, v);
-      }
+      onOrderChange(proposedOrder);
       const triggerSave = Object.keys(updates).some(k => ['isAbroad', 'isWeekdayEvent', 'eventDate', 'fromDate', 'toDate', 'returnDate'].includes(k));
       if (triggerSave) {
         if (onSaveRequest) setTimeout(() => onSaveRequest(proposedOrder), 0);
@@ -40,9 +38,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
 
     // Skip validation if dates aren't fully entered yet for custom durations
     if ((proposedOrder.isAbroad || proposedOrder.isWeekdayEvent) && (!proposedOrder.fromDate || !proposedOrder.toDate)) {
-      for (const [k, v] of Object.entries(updates)) {
-        handleChange(k, v);
-      }
+      onOrderChange(proposedOrder);
       return;
     }
 
@@ -86,9 +82,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
         return;
       }
       
-      for (const [k, v] of Object.entries(updates)) {
-        handleChange(k, v);
-      }
+      onOrderChange(proposedOrder);
       const triggerSave = Object.keys(updates).some(k => ['isAbroad', 'isWeekdayEvent', 'eventDate', 'fromDate', 'toDate', 'returnDate', 'customSpacing'].includes(k));
       if (triggerSave) {
         if (onSaveRequest) setTimeout(() => onSaveRequest(proposedOrder), 0);
@@ -134,7 +128,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
 
   const [isExpanded, setIsExpanded] = useState(true);
   const customerName = order?.customer ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ') : 'לא נבחר לקוח';
-  const eventDateStr = order?.isWeekdayEvent ? 'אירוע חול' : (order?.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.eventDate)})` : 'ללא תאריך אירוע');
+  const eventDateStr = (order?.isWeekdayEvent || order?.isAbroad) ? 'אירוע חו"ל' : (order?.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.eventDate)})` : 'ללא תאריך אירוע');
   const summaryText = `לקוח: ${customerName} | אירוע: ${eventDateStr}`;
 
   const [isEditingCustomer, setIsEditingCustomer] = useState(false);
@@ -351,7 +345,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
 
           {!isEditingOrderDetails ? (
             <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap' }}>
-              {!order.isWeekdayEvent ? (
+              {(!order.isWeekdayEvent && !order.isAbroad) ? (
                 <div>
                   <span style={{...labelStyle, color: '#64748b'}}>תאריך אירוע:</span>
                   <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a' }}>
@@ -362,24 +356,41 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                 <div>
                   <span style={{...labelStyle, color: '#64748b'}}>סוג אירוע:</span>
                   <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a' }}>
-                    אירוע חול
+                    אירוע חו"ל
                   </div>
                 </div>
               )}
-              <>
-                {order.fromDate && (
+              {(order.isWeekdayEvent || order.isAbroad) ? (
+                <>
                   <div>
                     <span style={{...labelStyle, color: '#64748b'}}>לקיחה:</span>
-                    <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{getHebrewDateString(order.fromDate)}</div>
+                    <div style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: '700' }}>
+                      {(order.fromDate || order.eventDate) ? `${new Date(order.fromDate || order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.fromDate || order.eventDate)})` : 'לא נבחר'}
+                    </div>
                   </div>
-                )}
-                {(order.toDate || order.returnDate) && (
                   <div>
                     <span style={{...labelStyle, color: '#64748b'}}>החזרה:</span>
-                    <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{getHebrewDateString(order.toDate || order.returnDate)}</div>
+                    <div style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: '700' }}>
+                      {(order.toDate || order.returnDate) ? `${new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.toDate || order.returnDate)})` : 'לא נבחר'}
+                    </div>
                   </div>
-                )}
-              </>
+                </>
+              ) : (
+                <>
+                  {order.fromDate && (
+                    <div>
+                      <span style={{...labelStyle, color: '#64748b'}}>לקיחה:</span>
+                      <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{getHebrewDateString(order.fromDate)}</div>
+                    </div>
+                  )}
+                  {(order.toDate || order.returnDate) && (
+                    <div>
+                      <span style={{...labelStyle, color: '#64748b'}}>החזרה:</span>
+                      <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{getHebrewDateString(order.toDate || order.returnDate)}</div>
+                    </div>
+                  )}
+                </>
+              )}
               <div style={{ flex: '1 1 100%', marginTop: '0.5rem' }}>
                 <span style={{...labelStyle, color: '#64748b'}}>הערות להזמנה:</span>
                 <div style={{ fontSize: '1rem', color: '#334155', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', minHeight: '60px' }}>
@@ -395,21 +406,23 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                 <div style={{ display: 'flex', gap: '0.8rem', background: '#f1f5f9', padding: '0.4rem', borderRadius: '12px' }}>
                   {[
                     { id: 'regular', label: 'אירוע רגיל' },
-                    { id: 'chol', label: 'אירוע חול' },
                     { id: 'abroad', label: 'אירוע חו"ל' }
                   ].map(type => {
                     const isSelected = 
                       (type.id === 'regular' && !order.isAbroad && !order.isWeekdayEvent) ||
-                      (type.id === 'chol' && order.isWeekdayEvent) ||
-                      (type.id === 'abroad' && order.isAbroad);
+                      (type.id === 'abroad' && (order.isAbroad || order.isWeekdayEvent));
                     return (
                       <button
                         key={type.id}
                         type="button"
                         onClick={() => {
                           const isAbroad = type.id === 'abroad';
-                          const isWeekdayEvent = type.id === 'chol';
-                          validateAndChangeDate({ isAbroad, isWeekdayEvent });
+                          const isWeekdayEvent = false;
+                          if (isAbroad) {
+                            validateAndChangeDate({ isAbroad, isWeekdayEvent });
+                          } else {
+                            validateAndChangeDate({ isAbroad, isWeekdayEvent, fromDate: null, toDate: null });
+                          }
                         }}
                         style={{
                           flex: 1,
@@ -433,7 +446,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
               </div>
 
               {/* Dates */}
-              {!order.isWeekdayEvent && (
+              {(!order.isWeekdayEvent && !order.isAbroad) && (
                 <div style={groupStyle}>
                   <label style={labelStyle}>תאריך אירוע:</label>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
@@ -458,7 +471,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                           <HebrewDatePicker 
                             value={order.fromDate} 
                             onChange={(date) => {
-                              if (order.isWeekdayEvent) {
+                              if (order.isWeekdayEvent || order.isAbroad) {
                                 validateAndChangeDate({ fromDate: date, eventDate: date });
                               } else {
                                 validateAndChangeDate('fromDate', date);
@@ -479,7 +492,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                         </div>
                       </div>
                     </div>
-                    {order.eventDate && order.fromDate && (order.toDate || order.returnDate) && !order.isWeekdayEvent && 
+                    {order.eventDate && order.fromDate && (order.toDate || order.returnDate) && !order.isWeekdayEvent && !order.isAbroad && 
                      (new Date(order.eventDate) < new Date(order.fromDate) || new Date(order.eventDate) > new Date(order.toDate || order.returnDate)) && (
                       <div style={{ gridColumn: '1 / -1', color: '#b91c1c', background: '#fef2f2', padding: '1rem', borderRadius: '8px', fontWeight: 'bold', fontSize: '0.95rem', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                         <span>⚠️</span> שימו לב: תאריך האירוע חייב להיות בין תאריך הלקיחה לתאריך החזרה!

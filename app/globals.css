@@ -1446,3 +1446,109 @@ body.hide-ai-features .ai-feature-element { display: none !important; }
     height: 36px;
   }
 }
+/* Sidebar Popover */
+.sidebar-popover {
+  position: absolute;
+  top: 50%;
+  right: 130%;
+  transform: translateY(-50%) scale(0.95);
+  opacity: 0;
+  width: 250px;
+  background: var(--card-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: var(--glass-border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-lg);
+  padding: 1rem;
+  z-index: 1000;
+  animation: popoverFadeIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+  pointer-events: auto;
+}
+
+[dir="rtl"] .sidebar-popover {
+  right: 130%;
+  left: auto;
+}
+
+@keyframes popoverFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+.popover-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.8rem;
+}
+
+.popover-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  color: var(--text-color);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--text-color);
+}
+
+[data-theme="dark"] .close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.popover-form {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.popover-input {
+  flex: 1;
+  padding: 0.5rem 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+  background: var(--input-bg);
+  color: var(--text-color);
+  outline: none;
+  font-size: 0.9rem;
+  transition: border-color 0.2s ease;
+}
+
+.popover-input:focus {
+  border-color: var(--primary-color);
+}
+
+.popover-submit {
+  background: var(--primary-color);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.popover-submit:hover {
+  transform: scale(1.05);
+  background: var(--primary-color-dark, #b5952f);
+}

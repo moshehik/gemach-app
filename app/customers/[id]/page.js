@@ -6,6 +6,7 @@ import Link from 'next/link';
 import HistoryViewer from '@/components/HistoryViewer';
 import SendEmailModal from '@/components/SendEmailModal';
 import { Copy, Mail } from 'lucide-react';
+import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '@/lib/orderStatus';
 
 export default function CustomerPage({ params }) {
   const router = useRouter();
@@ -236,13 +237,25 @@ export default function CustomerPage({ params }) {
               <thead>
                 <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
                   <th style={{ padding: '1rem' }}>קוד הזמנה</th>
-                  <th style={{ padding: '1rem' }}>תאריך</th>
-                  <th style={{ padding: '1rem' }}>סטטוס</th>
-                  <th style={{ padding: '1rem' }}>סכום</th>
+                  <th style={{ padding: '1rem' }}>תאריך אירוע</th>
+                  <th style={{ padding: '1rem' }}>סטטוס פריטים</th>
+                  <th style={{ padding: '1rem' }}>סכום לחיוב</th>
+                  <th style={{ padding: '1rem' }}>שולם</th>
+                  <th style={{ padding: '1rem' }}>סטטוס תשלום</th>
                 </tr>
               </thead>
               <tbody>
-                {customer.orders.map(order => (
+                {customer.orders.map(order => {
+                  const calculatedTotalAmount = order.obligations?.length > 0
+                    ? order.obligations.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0)
+                    : (order.totalAmount || 0);
+                  const totalPaid = order.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0;
+                  const orderStatus = calculateOrderStatus(order);
+                  const statusColors = getStatusColor(orderStatus);
+                  const paymentStatus = calculatePaymentStatus(calculatedTotalAmount, totalPaid);
+                  const paymentColors = getPaymentStatusColor(paymentStatus);
+
+                  return (
                   <tr data-element-name="לחיץ_page_23" 
                     key={order.id} 
                     onClick={() => router.push(`/orders/${order.orderId}`)}
@@ -251,11 +264,21 @@ export default function CustomerPage({ params }) {
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     <td style={{ padding: '1rem' }}><Link data-element-name="לחיץ_page_24" href={`/orders/${order.orderId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }}>{order.orderId}</Link></td>
-                    <td style={{ padding: '1rem' }}>{order.paymentDate ? new Date(order.paymentDate).toLocaleDateString('he-IL') : '-'}</td>
-                    <td style={{ padding: '1rem' }}>{order.status || 'חדש'}</td>
-                    <td style={{ padding: '1rem' }}>₪{order.totalAmount || 0}</td>
+                    <td style={{ padding: '1rem' }}>{order.eventDateHebrew || (order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : (order.orderDate ? new Date(order.orderDate).toLocaleDateString('he-IL') : '-'))}</td>
+                    <td style={{ padding: '1rem' }}>
+                      <span style={{ background: statusColors.bg, color: statusColors.text, padding: '0.3rem 0.6rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                        {orderStatus}
+                      </span>
+                    </td>
+                    <td style={{ padding: '1rem', fontWeight: 'bold' }}>₪{calculatedTotalAmount}</td>
+                    <td style={{ padding: '1rem', color: totalPaid >= calculatedTotalAmount && calculatedTotalAmount > 0 ? '#166534' : (totalPaid < calculatedTotalAmount ? '#b91c1c' : 'inherit') }}>₪{totalPaid}</td>
+                    <td style={{ padding: '1rem' }}>
+                      <span style={{ background: paymentColors.bg, color: paymentColors.text, padding: '0.3rem 0.6rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                        {paymentStatus}
+                      </span>
+                    </td>
                   </tr>
-                ))}
+                )})}
               </tbody>
             </table>
           ) : (

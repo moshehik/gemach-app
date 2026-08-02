@@ -59,6 +59,17 @@ export async function GET(request, { params }) {
       where: { orderId: parsedOrderId }
     });
 
+    // Add draft obligations for pending items
+    try {
+      const recalc = await recalculateOrderObligations(parsedOrderId, { dryRun: true });
+      if (recalc && recalc.newObligations) {
+        const drafts = recalc.newObligations.filter(o => o.isDraft);
+        obligations = [...obligations, ...drafts];
+      }
+    } catch (e) {
+      console.error("Error generating draft obligations:", e);
+    }
+
     const uniquePrefixes = new Set();
     items.forEach(i => {
       const dressName = i.dressItem?.dress?.name;
@@ -267,7 +278,8 @@ export async function PUT(request, { params }) {
                 isReturned: item.isReturned,
                 takenDate: item.takenDate ? new Date(item.takenDate) : null,
                 returnDate: item.returnDate ? new Date(item.returnDate) : null,
-                barcode: item.barcode || item.dressItem?.barcode || undefined
+                barcode: item.barcode || item.dressItem?.barcode || undefined,
+                cartStatus: 'confirmed'
               }
             });
           } else if (item.isNew && item.dressModelId && item.sizeText) {
@@ -294,6 +306,7 @@ export async function PUT(request, { params }) {
                   alterationDetails: item.alterationDetails,
                   alterationDone: false,
                   isDeleted: false,
+                  cartStatus: 'confirmed',
                   finalPrice: 0 // Will be calculated by pricing engine
                 }
               });

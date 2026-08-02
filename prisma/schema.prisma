@@ -318,6 +318,10 @@ model OrderItem {
   orderDate     DateTime? // תאריך_הזמנה
   isDeleted     Boolean   @default(false) // מחוק - soft delete
   deletedAt     DateTime? // תאריך_מחיקה
+  
+  cartStatus    String    @default("pending") // "pending" or "confirmed"
+  cartStatusDate DateTime @default(now()) // תאריך תחילת סטטוס
+
 
   // Alteration tracking (תיקונים)
   neckAlteration    Int?     @default(0) // תיקון_צוואר

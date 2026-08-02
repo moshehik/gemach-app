@@ -74,7 +74,20 @@ export async function POST(request, { params }) {
           alterationDetails: itemData.alterationDetails || null,
           alterationDone: false,
           isDeleted: false,
+          cartStatus: 'pending',
+          cartStatusDate: new Date(),
           finalPrice: 0 // Will be calculated by pricing engine
+        }
+      });
+
+      // Update cartStatusDate for all existing pending items in this order to reset the timer
+      await tx.orderItem.updateMany({
+        where: {
+          orderId: parsedId,
+          cartStatus: 'pending'
+        },
+        data: {
+          cartStatusDate: new Date()
         }
       });
 

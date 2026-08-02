@@ -8,7 +8,7 @@ import ItemCapacityModal from './ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
 import { createPortal } from 'react-dom';
 
-export default function OrderItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated }) {
+export default function OrderItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated, inventoryCache }) {
   const [showDeleted, setShowDeleted] = useState(false);
   const [detailsModalItem, setDetailsModalItem] = useState(null);
   const [capacityModalItem, setCapacityModalItem] = useState(null);
@@ -415,6 +415,8 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                           order={order}
                           value={item.sizeText} 
                           onChange={(val) => handleItemChange(originalIndex, 'sizeText', val)} 
+                          inventoryCache={inventoryCache}
+                          currentCartItems={items}
                         />
                       ) : (
                         <input data-agy-id="orderitemsmanager_input_3" 

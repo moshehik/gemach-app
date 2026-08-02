@@ -16,6 +16,37 @@ import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import PrintWizardModal from '../components/PrintWizardModal';
 
+const PendingTimer = ({ cartStatusDate, holdMinutes = 15 }) => {
+  const [timeLeft, setTimeLeft] = useState('');
+  
+  useEffect(() => {
+    if (!cartStatusDate) return;
+    
+    const calculateTime = () => {
+      const expiry = new Date(cartStatusDate).getTime() + holdMinutes * 60000;
+      const diff = expiry - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('פג תוקף');
+        return false;
+      }
+      const m = Math.floor(diff / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      setTimeLeft(`${m}:${s.toString().padStart(2, '0')}`);
+      return true;
+    };
+    
+    if (calculateTime()) {
+      const interval = setInterval(() => {
+        if (!calculateTime()) clearInterval(interval);
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [cartStatusDate, holdMinutes]);
+
+  if (!timeLeft) return null;
+  return <span style={{ color: timeLeft === 'פג תוקף' ? 'var(--error-color)' : '#ea580c', fontWeight: 'bold', fontSize: '0.85rem' }}>⏳ {timeLeft}</span>;
+};
+
 const ordersCache = new Map();
 
 export default function OrdersPage() {
@@ -95,8 +126,20 @@ export default function OrdersPage() {
       // Update Cache silently
       ordersCache.set(cacheKey, data);
 
+      // Sort function to put pending items at the top
+      const sortData = (list) => {
+        const now = Date.now();
+        return [...list].sort((a, b) => {
+          const aPending = a.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + 15 * 60000 > now);
+          const bPending = b.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + 15 * 60000 > now);
+          if (aPending && !bPending) return -1;
+          if (!aPending && bPending) return 1;
+          return 0;
+        });
+      };
+
       if (!isPrefetch && targetPage === page) {
-        setOrders(data.data || []);
+        setOrders(sortData(data.data || []));
         setTotalPages(data.totalPages || 1);
         setTotalCount(data.total || 0);
       }
@@ -257,10 +300,6 @@ export default function OrdersPage() {
             <button data-element-name="כפתור_page_7" data-agy-id="orders_page_button_5" onClick={() => { setFilterStatus('unpaid'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם (חודשים אחרונים)">
               <AlertCircle data-element-name="רכיב_page_8" size={20} />
               <span style={{ fontWeight: filterStatus === 'unpaid' ? 'bold' : 'normal' }}>לא שולם</span>
-            </button>
-            <button data-element-name="כפתור_page_9" data-agy-id="orders_page_button_6" onClick={() => { setFilterStatus('unpaid_all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid_all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid_all' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם (כולל ישנים)">
-              <AlertCircle data-element-name="רכיב_page_10" size={20} />
-              <span style={{ fontWeight: filterStatus === 'unpaid_all' ? 'bold' : 'normal' }}>לא שולם (הכל)</span>
             </button>
             <button data-element-name="כפתור_page_11" data-agy-id="orders_page_button_7" onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
               <List data-element-name="רכיב_page_12" size={20} />
@@ -466,19 +505,40 @@ export default function OrdersPage() {
                   </thead>
                   <tbody>
                     {orders.map(order => {
+                      const pendingItem = order.items?.find(i => i.cartStatus === 'pending');
+                      const isPending = pendingItem && new Date(pendingItem.cartStatusDate).getTime() + 15 * 60000 > Date.now();
+                      const isExpiredPending = pendingItem && new Date(pendingItem.cartStatusDate).getTime() + 15 * 60000 <= Date.now();
+                      
                       const isUnpaid = order.totalPaid < order.totalAmount && order.totalAmount > 0;
                       const hasCustomSpacing = order.customSpacing !== null && order.customSpacing !== undefined;
+                      
+                      let rowBg = 'transparent';
+                      let rowBorder = 'none';
+                      if (selectedOrder?.orderId === order.orderId) {
+                        rowBg = 'var(--element-bg)';
+                      } else if (isPending) {
+                        rowBg = '#fff7ed'; // light orange
+                        rowBorder = '4px solid #ea580c';
+                      } else if (isUnpaid) {
+                        rowBg = 'var(--error-bg, rgba(239, 68, 68, 0.1))';
+                        rowBorder = '4px solid var(--error-color, #ef4444)';
+                      } else if (hasCustomSpacing) {
+                        rowBg = '#fef9c3';
+                        rowBorder = '4px solid #facc15';
+                      }
+                      
                       return (
                       <tr data-element-name="לחיץ_page_54" key={order.orderId} style={{ 
                         borderBottom: '1px solid var(--element-border)', 
                         transition: 'background 0.2s', 
                         cursor: 'pointer', 
-                        background: selectedOrder?.orderId === order.orderId ? 'var(--element-bg)' : (isUnpaid ? 'var(--error-bg, rgba(239, 68, 68, 0.1))' : (hasCustomSpacing ? '#fef9c3' : 'transparent')),
-                        borderRight: isUnpaid ? '4px solid var(--error-color, #ef4444)' : (hasCustomSpacing ? '4px solid #facc15' : 'none')
+                        background: rowBg,
+                        borderRight: rowBorder
                       }} onClick={() => router.push(`/orders/${order.orderId}`)}>
-                        <td style={{ padding: '1rem', fontWeight: isUnpaid ? 'bold' : 'normal', color: isUnpaid ? 'var(--error-color, #b91c1c)' : 'inherit' }}>
+                        <td style={{ padding: '1rem', fontWeight: (isUnpaid || isPending) ? 'bold' : 'normal', color: isUnpaid ? 'var(--error-color, #b91c1c)' : (isPending ? '#ea580c' : 'inherit') }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span>#{order.orderId}</span>
+                            {pendingItem && <PendingTimer cartStatusDate={pendingItem.cartStatusDate} />}
                             <div 
                               className="detailsIcon"
                               style={{ marginRight: 'auto' }}

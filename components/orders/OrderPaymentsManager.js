@@ -217,7 +217,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
       bankAccount: customer?.bankAccount || '',
       bankAccountName: customer?.bankAccountName || '',
       paymentDetails: paymentDetailsString,
-      email: customer?.email || ''
+      email: customer?.email ? (customer.emailSuffix && !customer.email.includes('@') ? `${customer.email}${customer.emailSuffix.startsWith('@') ? '' : '@'}${customer.emailSuffix}` : customer.email) : ''
     });
     setShowRefundModal(true);
   };
@@ -651,9 +651,6 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
           )}
 
           <div style={{ display: 'flex', gap: '0.5rem', flex: '1 0 auto', minWidth: '220px', flexWrap: 'wrap' }}>
-              <button data-agy-id="orderpaymentsmanager_button_9" onClick={addPayment} style={{ flex: '1 1 auto', padding: '0.7rem 1rem', background: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#16a34a'} onMouseOut={e => e.currentTarget.style.backgroundColor='#22c55e'}>
-                <span>+</span> הוסף תשלום
-              </button>
               <button data-agy-id="orderpaymentsmanager_button_10" 
                 onClick={handleOpenCreditModal} 
                 style={{ flex: '1 1 auto', padding: '0.7rem 1rem', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
@@ -662,14 +659,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               >
                 💳 סליקת אשראי
               </button>
-              <button data-agy-id="orderpaymentsmanager_button_quick_swipe" 
-                onClick={handleOpenQuickSwipeModal} 
-                style={{ flex: '1 1 auto', padding: '0.7rem 1rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
-                onMouseOver={e => e.currentTarget.style.opacity=0.9} onMouseOut={e => e.currentTarget.style.opacity=1}
-                title="העברת כרטיס מהירה בקורא מגנטי"
-              >
-                🧲 העברה מהירה
-              </button>
+
               <button data-agy-id="orderpaymentsmanager_button_refund" 
                 onClick={handleOpenRefundModal} 
                 style={{ flex: 1, padding: '0.7rem 1rem', background: 'linear-gradient(135deg, #8b5cf6, #7c3aed)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
@@ -772,9 +762,19 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
       {mounted && showCreditModal && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
           <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '450px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ margin: '0 0 1.5rem 0', color: '#1e293b', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
-              סליקת כרטיס אשראי
-            </h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 1.5rem 0', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
+              <h2 style={{ margin: 0, color: '#1e293b' }}>
+                סליקת כרטיס אשראי
+              </h2>
+              <button data-agy-id="orderpaymentsmanager_button_quick_swipe" 
+                onClick={(e) => { e.preventDefault(); setShowCreditModal(false); setShowQuickSwipeModal(true); setSwipeInput(''); setCreditError(''); }} 
+                style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
+                onMouseOver={e => e.currentTarget.style.opacity=0.9} onMouseOut={e => e.currentTarget.style.opacity=1}
+                title="העברת כרטיס מהירה בקורא מגנטי"
+              >
+                🧲 העברה מהירה
+              </button>
+            </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div>

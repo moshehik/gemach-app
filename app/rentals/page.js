@@ -174,6 +174,7 @@ export default function RentalsPage() {
           <input data-element-name="שדה_page_1" 
             data-agy-id="input-barcode"
             type="text" 
+            dir="auto"
             className={`barcode-input ${quickStatus === 'success' ? 'success-flash' : quickStatus === 'error' ? 'error-flash' : ''}`}
             placeholder="סרוק ברקוד כאן..." 
             value={quickBarcode}

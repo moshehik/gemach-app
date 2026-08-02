@@ -19,6 +19,8 @@ export default function OrderDetailsPage({ params }) {
   const id = unwrappedParams.id;
   
   const [order, setOrder] = useState(null);
+  const initialLockChecked = useRef(false);
+  const [isPastEvent, setIsPastEvent] = useState(false);
   const [items, setItems] = useState([]);
   const [obligations, setObligations] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -30,6 +32,7 @@ export default function OrderDetailsPage({ params }) {
   const [showEmployeesModal, setShowEmployeesModal] = useState(false);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
+  const [inventoryCache, setInventoryCache] = useState(null);
   
   // Custom Email Prompt State
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
@@ -82,6 +85,12 @@ export default function OrderDetailsPage({ params }) {
       })
       .then(data => {
         setOrder(data);
+        if (!initialLockChecked.current) {
+          if (data.eventDate && new Date(data.eventDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0)) {
+             setIsPastEvent(true);
+          }
+          initialLockChecked.current = true;
+        }
         setItems(data.items || []);
         setObligations(data.obligations || []);
         setPayments(data.payments || []);
@@ -93,6 +102,30 @@ export default function OrderDetailsPage({ params }) {
         setLoading(false);
       });
   }, [id]);
+
+  useEffect(() => {
+    if (!order) return;
+    const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
+    if (hasDates) {
+      const queryParams = new URLSearchParams({
+        isAbroad: order.isAbroad || false,
+        excludeOrderId: order.orderId
+      });
+      if (order.eventDate) queryParams.append('eventDate', order.eventDate);
+      if (order.fromDate) queryParams.append('fromDate', order.fromDate);
+      if (order.toDate) queryParams.append('toDate', order.toDate);
+
+      fetch(`/api/inventory/preload?${queryParams.toString()}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to load cache');
+          return res.json();
+        })
+        .then(data => {
+          setInventoryCache(data);
+        })
+        .catch(err => console.error('Failed to preload inventory cache', err));
+    }
+  }, [order?.eventDate, order?.fromDate, order?.toDate, order?.isAbroad, order?.orderId]);
 
   const totalRequired = obligations.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0);
   const totalPaid = payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
@@ -282,7 +315,6 @@ export default function OrderDetailsPage({ params }) {
     router.back();
   };
 
-  const isPastEvent = order?.eventDate && new Date(order.eventDate).setHours(0,0,0,0) < new Date().setHours(0,0,0,0);
   const isLocked = isPastEvent && !isUnlocked;
 
   const handleUnlock = async () => {
@@ -685,6 +717,7 @@ export default function OrderDetailsPage({ params }) {
                   items={items} 
                   onItemsChange={setItems} 
                   onOrderUpdated={handleOrderUpdate}
+                  inventoryCache={inventoryCache}
                 />
               </div>
 

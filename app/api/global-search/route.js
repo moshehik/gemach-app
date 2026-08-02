@@ -45,6 +45,8 @@ export async function GET(request) {
         c."lastName" LIKE $1 OR
         c.phone1 LIKE $1 OR
         o."eventDateHebrew" LIKE $1 OR
+        TO_CHAR(o."eventDate", 'DD/MM/YYYY') LIKE $1 OR
+        TO_CHAR(o."eventDate", 'DD-MM-YYYY') LIKE $1 OR
         o."orderId" = $2 OR 
         o.id = $3
       )

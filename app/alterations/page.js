@@ -122,7 +122,9 @@ export default function AlterationsPage() {
       alert('יש לבחור תאריך כדי לסמן את כל התיקונים כבוצעו לאותו יום.');
       return;
     }
-    if (!(await window.customConfirm(`בטוח שבוצעו כל התיקונים לתאריך ${startDate}?`))) return;
+    const hebrewDateStr = startDate ? getHebrewDateString(startDate) : '';
+    const displayDate = hebrewDateStr ? hebrewDateStr : startDate;
+    if (!(await window.customConfirm(`בטוח שבוצעו כל התיקונים לתאריך ${displayDate}?`))) return;
     
     try {
       const res = await fetch('/api/alterations/mark-done', {

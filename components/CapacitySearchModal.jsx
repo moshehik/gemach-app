@@ -150,13 +150,13 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const content = (
-    <div data-agy-id="capacity_search_modal_backdrop" className="modal-overlay" style={{ zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', backgroundColor: 'var(--card-bg)', position: 'fixed', inset: 0, overflowY: 'auto' }}>
-      <div data-agy-id="capacity_search_modal_container" className="modal-content" onClick={e => e.stopPropagation()} style={{ width: '100vw', minHeight: '100vh', backgroundColor: 'var(--card-bg)', padding: '2rem', transition: 'all 0.3s ease', margin: 0, borderRadius: 0 }}>
+    <div data-agy-id="capacity_search_modal_backdrop" className="modal-overlay" onClick={onClose} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', position: 'fixed', inset: 0, overflowY: 'auto' }}>
+      <div data-agy-id="capacity_search_modal_container" className="modal-content animate-slide-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '800px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid var(--border-color)', maxHeight: '90vh', overflowY: 'auto' }}>
         
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid #eee', paddingBottom: '1rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--divider)', paddingBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>חיפוש הזמנות תפוסה</h2>
+            <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>חיפוש תפוסה</h2>
             <button data-agy-id="capacity_search_history_toggle_btn" type="button" onClick={() => setShowHistory(!showHistory)} className="btn btn-outline" style={{ padding: '0.4rem 1rem', borderRadius: '8px', fontSize: '0.9rem' }}>
               {showHistory ? 'הסתר חיפושים קודמים' : 'חיפושים קודמים'}
             </button>
@@ -171,24 +171,14 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
           <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#334155' }}>היסטוריית חיפושים</h3>
-              <input 
-                data-agy-id="capacity_search_history_filter_input"                type="text" 
-                placeholder="סינון לפי קוד עובד..." 
-                value={historyFilter}
-                onChange={e => setHistoryFilter(e.target.value)}
-                style={{ padding: '0.5rem', borderRadius: '6px', border: '1px solid var(--element-border)', minWidth: '200px' }}
-              />
             </div>
             <div style={{ maxHeight: '200px', overflowY: 'auto' }}>
               {searchHistory
-                .filter(h => !historyFilter || (h.employeeCode && h.employeeCode.includes(historyFilter)))
                 .map(h => {
                   const modelName = models.find(m => m.barcodePrefix?.toString() === h.barcodePrefix?.toString())?.name || h.barcodePrefix;
                   return (
                     <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderBottom: '1px solid #e2e8f0', background: 'var(--card-bg)', marginBottom: '0.5rem', borderRadius: '6px' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.9rem', flex: 1 }}>
-                        <span style={{ minWidth: '100px' }}><strong>עובד:</strong> {h.employeeCode || '---'}</span>
-                        <span style={{ minWidth: '120px' }}><strong>לקוח:</strong> {h.customerName || '---'}</span>
                         <span style={{ minWidth: '120px' }}><strong>דגם:</strong> {modelName}</span>
                         <span style={{ minWidth: '80px' }}><strong>מידה:</strong> {h.size}</span>
                         <span style={{ color: '#64748b' }}>{new Date(h.timestamp).toLocaleString('he-IL')}</span>
@@ -220,7 +210,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                     </div>
                   );
                 })}
-              {searchHistory.filter(h => !historyFilter || (h.employeeCode && h.employeeCode.includes(historyFilter))).length === 0 && (
+              {searchHistory.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '1rem', color: '#64748b' }}>לא נמצאו חיפושים</div>
               )}
             </div>
@@ -230,14 +220,10 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
         {/* Form */}
         <form onSubmit={handleSearch} style={{ 
           display: 'grid', 
-          gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+          gridTemplateColumns: '1fr 1fr', 
           gap: '1.5rem', 
           marginBottom: '2rem', 
-          alignItems: 'end',
-          backgroundColor: '#f8fafc',
-          padding: '1.5rem',
-          borderRadius: '12px',
-          border: '1px solid #e2e8f0'
+          alignItems: 'end'
         }}>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>דגם</label>
@@ -289,27 +275,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>עד תאריך</label>
             <HebrewDatePicker value={toDate} onChange={setToDate} />
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>קוד עובד</label>
-            <input 
-              data-agy-id="capacity_search_employee_input"              type="text" 
-              value={employeeCode} 
-              onChange={e => setEmployeeCode(e.target.value)} 
-              placeholder="אופציונלי"
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-            />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>שם לקוח</label>
-            <input 
-              data-agy-id="capacity_search_customer_input"              type="text" 
-              value={customerName} 
-              onChange={e => setCustomerName(e.target.value)} 
-              placeholder="אופציונלי"
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-            />
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
+          <div style={{ display: 'flex', gap: '1rem', gridColumn: '1 / -1', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
             <button data-agy-id="capacity_search_clear_btn" type="button" onClick={() => {
               setBarcodePrefix('');
               setSize('');
@@ -319,11 +285,11 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
               setCustomerName('');
               setResults(null);
               setError('');
-            }} className="btn btn-outline" style={{ padding: '0.75rem', borderRadius: '8px', fontWeight: 'bold', flex: 1 }}>
-              נקה
+            }} className="btn btn-outline" style={{ padding: '0.6rem 1.5rem', borderRadius: '8px' }}>
+              נקה הכל
             </button>
-            <button data-agy-id="capacity_search_submit_btn" type="submit" className="btn btn-primary" style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', fontWeight: 'bold', display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 2 }} disabled={loading}>
-              {loading ? 'מחפש...' : <><Search size={18} style={{ marginLeft: '0.5rem' }} /> חפש</>}
+            <button data-agy-id="capacity_search_submit_btn" type="submit" className="btn btn-primary" style={{ padding: '0.6rem 2.5rem', borderRadius: '8px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }} disabled={loading}>
+              {loading ? 'מחפש...' : <>חפש</>}
             </button>
           </div>
         </form>

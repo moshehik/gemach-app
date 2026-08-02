@@ -1,7 +1,8 @@
 'use client';
 import React, { useState, useEffect } from 'react';
+import { calculateDynamicAvailability } from '../../lib/clientInventory';
 
-export default function OrderSizeSelector({ modelId, order, value, onChange, placeholder = '-' }) {
+export default function OrderSizeSelector({ modelId, order, value, onChange, placeholder = '-', inventoryCache, currentCartItems }) {
   const [sizes, setSizes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [defaultSpacing, setDefaultSpacing] = useState(null);
@@ -24,6 +25,23 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
   useEffect(() => {
     if (!modelId) {
       setSizes([]);
+      return;
+    }
+    
+    // If cache is provided, calculate locally in memory!
+    if (inventoryCache) {
+      try {
+        const localAvailability = calculateDynamicAvailability(
+          modelId,
+          order.isAbroad ? order.fromDate : order.eventDate,
+          order.isAbroad ? order.toDate : null,
+          inventoryCache,
+          currentCartItems || []
+        );
+        setSizes(localAvailability);
+      } catch (err) {
+        console.error('Failed to calculate sizes from cache', err);
+      }
       return;
     }
     
@@ -65,7 +83,7 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
     };
     
     fetchSizes();
-  }, [modelId, order]);
+  }, [modelId, order, inventoryCache, currentCartItems]);
 
   return (
     <select

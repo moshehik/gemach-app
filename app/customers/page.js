@@ -83,6 +83,17 @@ export default function CustomersPage() {
   }, [page, limit, search, sort, order, advFilters]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const searchParam = params.get('search');
+      if (searchParam) {
+        setSearch(searchParam);
+        setSearchInput(searchParam);
+      }
+    }
+  }, []);
+
+  useEffect(() => {
     fetchCustomers(false, page);
     
     // Background Prefetching for the next page

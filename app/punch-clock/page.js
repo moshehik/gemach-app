@@ -63,6 +63,7 @@ export default function PunchClockPage() {
           <input data-element-name="שדה_page_1" 
             data-agy-id="input-employee-id"
             type="number" 
+            dir="auto"
             value={employeeId} 
             onChange={(e) => setEmployeeId(e.target.value)} 
             placeholder="הזן קוד עובד"
@@ -77,6 +78,7 @@ export default function PunchClockPage() {
           <input data-element-name="שדה_page_2" 
             data-agy-id="input-password"
             type="password" 
+            dir="auto"
             value={password} 
             onChange={(e) => setPassword(e.target.value)} 
             placeholder="הזן סיסמא"

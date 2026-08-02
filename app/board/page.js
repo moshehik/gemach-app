@@ -13,6 +13,8 @@ import StatisticsModal from '../components/StatisticsModal';
 import styles from './board.module.css';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 
+const boardCache = new Map();
+
 export default function BoardPage() {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -74,7 +76,6 @@ export default function BoardPage() {
   const fetchOrdersForMonth = useCallback(async () => {
     if (isAiModeActive) return;
     
-    setLoading(true);
     try {
       let hCurrent;
       try {
@@ -107,8 +108,25 @@ export default function BoardPage() {
         if (v) queryParams.append(k, v);
       });
 
+      const cacheKey = queryParams.toString();
+      
+      // Instant cache hit
+      if (boardCache.has(cacheKey)) {
+        const cachedData = boardCache.get(cacheKey);
+        if (cachedData.data) {
+          setOrders(cachedData.data);
+        } else if (cachedData.orders) {
+          setOrders(cachedData.orders);
+        }
+      } else {
+        setLoading(true);
+      }
+
       const res = await fetch(`/api/orders?${queryParams.toString()}`);
       const data = await res.json();
+      
+      // Update cache
+      boardCache.set(cacheKey, data);
       
       if (data.data) {
         setOrders(data.data);
