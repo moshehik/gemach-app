@@ -474,9 +474,6 @@ export default function OrderDetailsPage({ params }) {
                 </strong>
               </div>
 
-              <div style={{ background: paymentColor.bg, padding: '0.4rem 0.8rem', borderRadius: '8px', color: paymentColor.text, display: 'flex', alignItems: 'center', gap: '0.4rem', fontWeight: '600' }}>
-                <span>{paymentStatus}</span>
-              </div>
             </div>
           </div>
 

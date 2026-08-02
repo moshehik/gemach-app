@@ -76,19 +76,44 @@ export async function PUT(request, { params }) {
         dressItemIdToUse = sizeAvail.itemIds[0];
       }
 
+      const updateData = {
+        dressItemId: dressItemIdToUse,
+        sizeText: itemData.sizeText,
+        neckAlteration: itemData.neckAlteration !== undefined && itemData.neckAlteration !== null && itemData.neckAlteration !== '' ? parseInt(itemData.neckAlteration) : null,
+        sleeveAlteration: itemData.sleeveAlteration !== undefined && itemData.sleeveAlteration !== null && itemData.sleeveAlteration !== '' ? parseInt(itemData.sleeveAlteration) : null,
+        lengthAlteration: itemData.lengthAlteration !== undefined && itemData.lengthAlteration !== null && itemData.lengthAlteration !== '' ? String(itemData.lengthAlteration) : null,
+        alterationDetails: itemData.alterationDetails || null,
+        alterationDone: itemData.alterationDone || false
+      };
+
+      const changes = {};
+      const fieldsToCheck = ['dressItemId', 'sizeText', 'neckAlteration', 'sleeveAlteration', 'lengthAlteration', 'alterationDetails', 'alterationDone'];
+      const formatVal = (val) => val === undefined || val === null ? '' : String(val);
+
+      fieldsToCheck.forEach(field => {
+         const oldVal = currentItem[field];
+         const newVal = updateData[field];
+         if (formatVal(oldVal) !== formatVal(newVal)) {
+             changes[field] = { from: oldVal, to: newVal };
+         }
+      });
+
       // Update the item
       const updatedItem = await tx.orderItem.update({
         where: { id: itemId },
-        data: {
-          dressItemId: dressItemIdToUse,
-          sizeText: itemData.sizeText,
-          neckAlteration: itemData.neckAlteration ? parseInt(itemData.neckAlteration) : null,
-          sleeveAlteration: itemData.sleeveAlteration ? parseInt(itemData.sleeveAlteration) : null,
-          lengthAlteration: itemData.lengthAlteration ? String(itemData.lengthAlteration) : null,
-          alterationDetails: itemData.alterationDetails || null,
-          alterationDone: itemData.alterationDone || false
-        }
+        data: updateData
       });
+
+      if (Object.keys(changes).length > 0) {
+          await tx.auditLog.create({
+              data: {
+                  entityType: 'OrderItem',
+                  entityId: itemId,
+                  action: 'UPDATE',
+                  changesJson: JSON.stringify(changes)
+              }
+          });
+      }
 
       return updatedItem;
     });

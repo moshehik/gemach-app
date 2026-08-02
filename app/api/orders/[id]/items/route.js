@@ -68,14 +68,23 @@ export async function POST(request, { params }) {
           dressItemId: dressItemIdToUse,
           sizeText: itemData.sizeText,
           quantity: 1,
-          neckAlteration: itemData.neckAlteration ? parseInt(itemData.neckAlteration) : null,
-          sleeveAlteration: itemData.sleeveAlteration ? parseInt(itemData.sleeveAlteration) : null,
-          lengthAlteration: itemData.lengthAlteration ? String(itemData.lengthAlteration) : null,
+          neckAlteration: itemData.neckAlteration !== undefined && itemData.neckAlteration !== null && itemData.neckAlteration !== '' ? parseInt(itemData.neckAlteration) : null,
+          sleeveAlteration: itemData.sleeveAlteration !== undefined && itemData.sleeveAlteration !== null && itemData.sleeveAlteration !== '' ? parseInt(itemData.sleeveAlteration) : null,
+          lengthAlteration: itemData.lengthAlteration !== undefined && itemData.lengthAlteration !== null && itemData.lengthAlteration !== '' ? String(itemData.lengthAlteration) : null,
           alterationDetails: itemData.alterationDetails || null,
           alterationDone: false,
           isDeleted: false,
           finalPrice: 0 // Will be calculated by pricing engine
         }
+      });
+
+      await tx.auditLog.create({
+          data: {
+              entityType: 'OrderItem',
+              entityId: newItem.id,
+              action: 'CREATE',
+              changesJson: JSON.stringify(newItem)
+          }
       });
 
       return newItem;

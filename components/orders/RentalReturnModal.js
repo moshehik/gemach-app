@@ -270,40 +270,34 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   };
 
   // Rendering
-  if (loading) {
-    const content = (
-      <div className="modal-overlay" style={{ direction: 'rtl', zIndex: 1200 }}>
-        <div className="modal-content" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <div style={{ width: '48px', height: '48px', border: '4px solid #e2e8f0', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '1rem' }}></div>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-main)' }}>טוען נתוני השכרה...</h2>
-        </div>
-      </div>
-    );
-    return typeof document !== 'undefined' ? createPortal(content, document.body) : content;
-  }
-
-  if (!selectedOrder) return null;
-
   const modalContent = (
-    <div className="modal-overlay" style={{ direction: 'rtl', zIndex: 1100 }}>
-      <div className="modal-content" style={{ maxWidth: '1000px', width: '100%', padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="modal-overlay" onClick={onClose} style={{ direction: 'rtl', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0 }}>
+      <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '1000px', width: '95%', maxHeight: '90vh', padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: '16px', background: 'var(--card-bg, #fff)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid var(--element-border, #e2e8f0)' }}>
         
         {/* Header */}
-        <div className="bg-slate-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
+        <div className="border-b px-6 py-4 flex justify-between items-center sticky top-0 z-10" style={{ background: 'var(--card-bg, #f8fafc)', borderColor: 'var(--element-border, #e2e8f0)' }}>
           <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-bold text-slate-800 m-0 flex items-center gap-2">
-              <Box className="text-blue-600" />
-              הזמנה #{selectedOrder.orderId}
+            <h2 className="text-2xl font-bold m-0 flex items-center gap-2" style={{ color: 'var(--primary-color, #2563eb)' }}>
+              <Box style={{ color: 'var(--primary-color, #2563eb)' }} />
+              הזמנה {selectedOrder ? `#${selectedOrder.orderId}` : `#${orderId}`}
             </h2>
-            <div className="bg-blue-100 text-blue-800 px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2">
-              <span>{selectedOrder.customer ? `${selectedOrder.customer.firstName || ''} ${selectedOrder.customer.lastName || ''}` : 'לא צוין לקוח'}</span>
-            </div>
+            {selectedOrder ? (
+              <div className="px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2" style={{ backgroundColor: 'var(--accent-color, #e0e7ff)', color: 'var(--primary-color, #3730a3)' }}>
+                <span>{selectedOrder.customer ? `${selectedOrder.customer.firstName || ''} ${selectedOrder.customer.lastName || ''}` : 'לא צוין לקוח'}</span>
+              </div>
+            ) : (
+              <div className="px-3 py-1 rounded-full text-sm font-semibold flex items-center justify-center gap-2" style={{ backgroundColor: '#e2e8f0', color: '#64748b', width: '100px', height: '28px' }}>
+                טוען...
+              </div>
+            )}
           </div>
           
           <div className="flex gap-3">
             <button data-agy-id="rentalreturnmodal_button_1" 
-              onClick={() => window.open(`/print/order?orderId=${selectedOrder.orderId}`, '_blank')}
-              className="flex items-center gap-2 px-4 py-2 bg-white border border-slate-300 rounded-xl text-slate-700 font-semibold hover:bg-slate-50 hover:border-slate-400 transition-all shadow-sm"
+              onClick={() => selectedOrder && window.open(`/print/order?orderId=${selectedOrder.orderId}`, '_blank')}
+              className="flex items-center gap-2 px-4 py-2 border rounded-xl font-semibold transition-all shadow-sm disabled:opacity-50"
+              style={{ backgroundColor: 'var(--card-bg, #ffffff)', borderColor: 'var(--element-border, #e2e8f0)', color: 'var(--text-main, #334155)' }}
+              disabled={loading || !selectedOrder}
               title="הדפס פרטי השכרה"
             >
               <Printer size={18} />
@@ -311,12 +305,21 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
             </button>
             <button data-agy-id="rentalreturnmodal_button_2" 
               onClick={onClose}
-              className="flex items-center justify-center w-10 h-10 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-full transition-colors"
+              className="flex items-center justify-center w-10 h-10 rounded-full transition-colors hover:opacity-80"
+              style={{ backgroundColor: 'var(--element-bg-hover, #f1f5f9)', color: 'var(--text-main, #64748b)' }}
             >
               <X size={20} />
             </button>
           </div>
         </div>
+
+        {loading || !selectedOrder ? (
+          <div className="p-10 flex flex-col items-center justify-center flex-1" style={{ backgroundColor: 'var(--app-bg, #f8fafc)' }}>
+             <div style={{ width: '48px', height: '48px', border: '4px solid var(--element-border, #e2e8f0)', borderTop: '4px solid var(--primary-color, #2563eb)', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '1.5rem' }}></div>
+             <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-main, #334155)', margin: 0 }}>טוען נתוני השכרה...</h2>
+          </div>
+        ) : (
+          <>
 
         {/* Notes */}
         {(selectedOrder.orderNotes || selectedOrder.notes) && (
@@ -518,6 +521,8 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
 
       <style dangerouslySetInnerHTML={{__html: `

@@ -680,7 +680,6 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
               </button>
             </div>
           </div>
-        </div>
 
         {/* Pending Refunds */}
         {pendingRefunds.length > 0 && (

@@ -129,7 +129,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
   const handleEditItem = (index) => {
     const item = items[index];
     if (item.isTaken && !item.isReturned) {
-      alert('לא ניתן לערוך דגם ומידה לפריט שכבר נלקח (מושכר).');
+      alert('לא ניתן לערוך פריט שכבר נלקח (מושכר).');
       return;
     }
     const updatedItems = [...items];
@@ -397,7 +397,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                       </button>
                     </td>
                     <td style={{ padding: '1rem', fontWeight: 'bold', color: '#1e293b' }}>
-                      {item.isNew || item.isEditing ? (
+                      {item.isNew ? (
                         <OrderModelSelector 
                           value={{ name: item.description, id: item.dressModelId }} 
                           onChange={(model) => handleModelChange(originalIndex, model)} 
@@ -409,7 +409,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                       )}
                     </td>
                     <td style={{ padding: '1rem' }}>
-                      {item.isNew || item.isEditing ? (
+                      {item.isNew ? (
                         <OrderSizeSelector 
                           modelId={item.dressModelId} 
                           order={order}
@@ -534,26 +534,28 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                         </div>
                       ) : (
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                          <button 
-                            type="button"
-                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditItem(originalIndex); }}
-                            style={{ 
-                              background: '#fffbeb', 
-                              border: '1px solid #fde68a',
-                              cursor: 'pointer', 
-                              color: '#d97706',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              padding: '0.5rem',
-                              borderRadius: '8px',
-                              transition: 'all 0.2s ease',
-                              boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
-                            }}
-                            title="ערוך פריט"
-                          >
-                            <Edit2 size={18} strokeWidth={2.5} />
-                          </button>
+                          {!isRented && (
+                            <button 
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEditItem(originalIndex); }}
+                              style={{ 
+                                background: '#fffbeb', 
+                                border: '1px solid #fde68a',
+                                cursor: 'pointer', 
+                                color: '#d97706',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                padding: '0.5rem',
+                                borderRadius: '8px',
+                                transition: 'all 0.2s ease',
+                                boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                              }}
+                              title="ערוך פרטי תיקון"
+                            >
+                              <Edit2 size={18} strokeWidth={2.5} />
+                            </button>
+                          )}
 
                           <button data-agy-id="orderitemsmanager_button_10" 
                             type="button"
