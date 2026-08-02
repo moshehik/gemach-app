@@ -21,6 +21,7 @@ export default function HomeDashboard() {
   const [showMoreCustomers, setShowMoreCustomers] = useState(false);
   const [showMoreOrders, setShowMoreOrders] = useState(false);
   const [showMoreRentals, setShowMoreRentals] = useState(false);
+  const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
   
   // AI Chat state
   const [aiLoading, setAiLoading] = useState(false);
@@ -431,6 +432,39 @@ export default function HomeDashboard() {
               ) : <div style={{ color: '#9ca3af' }}>לא נמצאו השכרות</div>}
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {/* Footer / Privacy Policy Link */}
+      <div style={{ marginTop: 'auto', paddingTop: '3rem', textAlign: 'center', paddingBottom: '1rem' }}>
+        <button data-element-name="כפתור_page_privacy_link" onClick={() => setShowPrivacyPolicy(true)} style={{ background: 'none', border: 'none', color: '#6b7280', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}>
+          מדיניות פרטיות
+        </button>
+      </div>
+
+      {/* Privacy Policy Modal */}
+      {showPrivacyPolicy && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="animate-fade-in" style={{ background: 'var(--card-bg)', width: '90%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', borderRadius: '16px', padding: '2rem', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
+            <button data-element-name="כפתור_page_close_privacy" onClick={() => setShowPrivacyPolicy(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}>
+              <X data-element-name="רכיב_page_x_privacy" size={24} />
+            </button>
+            <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem', textAlign: 'center' }}>מדיניות פרטיות</h2>
+            <div style={{ lineHeight: '1.8', color: 'var(--text-color)' }}>
+              <p>טקסט זמני למדיניות פרטיות.</p>
+              <br/>
+              <p>כאן יפורטו התנאים הנוגעים לאיסוף ושמירת מידע של משתמשים ולקוחות.</p>
+              <p><strong>1. איסוף נתונים:</strong> המערכת שומרת פרטים אישיים בסיסיים כגון שם, טלפון וכתובת לצורך יצירת קשר בלבד ולמען תפעול תקין של הגמ"ח.</p>
+              <p><strong>2. אבטחת מידע:</strong> אנו עושים מאמצים לשמור על בטיחות המידע ולא נעביר אותו לצד שלישי ללא אישור מפורש.</p>
+              <br/>
+              <p style={{ color: '#9ca3af', fontSize: '0.9rem', fontStyle: 'italic' }}>* ניתן לערוך טקסט זה בהמשך בקוד המערכת.</p>
+            </div>
+            <div style={{ textAlign: 'center', marginTop: '2rem' }}>
+              <button data-element-name="כפתור_page_confirm_privacy" onClick={() => setShowPrivacyPolicy(false)} style={{ background: 'var(--primary-color)', color: 'white', border: 'none', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>
+                הבנתי
+              </button>
+            </div>
           </div>
         </div>
       )}

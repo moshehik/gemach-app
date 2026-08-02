@@ -9,6 +9,8 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
   const [newPayment, setNewPayment] = useState({ paymentMethod: 'אשראי', notes: '', amount: '' });
   
   const [showCreditModal, setShowCreditModal] = useState(false);
+  const [showQuickSwipeModal, setShowQuickSwipeModal] = useState(false);
+  const [swipeInput, setSwipeInput] = useState('');
   const [showAddChargeModal, setShowAddChargeModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundData, setRefundData] = useState({
@@ -286,6 +288,55 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
       alert(err.message || 'שגיאה באישור הזיכוי');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const handleOpenQuickSwipeModal = () => {
+    setSwipeInput('');
+    setCreditCardData({
+      cardNumber: '',
+      tokef: '',
+      installments: 1,
+      notes: '',
+      amount: Math.max(0, totalRequired - totalPaid).toString()
+    });
+    setCreditError('');
+    setShowQuickSwipeModal(true);
+  };
+
+  const handleSwipeInputChange = (e) => {
+    const val = e.target.value;
+    setSwipeInput(val);
+    
+    let card = '';
+    let tokef = '';
+    
+    if (val.includes('=')) {
+      const parts = val.split('=');
+      if (parts[1] && parts[1].length >= 4) {
+        card = parts[0].replace(/[^0-9]/g, '');
+        const expYY = parts[1].substring(0, 2);
+        const expMM = parts[1].substring(2, 4);
+        tokef = `${expMM}${expYY}`;
+      }
+    } else if (val.includes('^')) {
+      const parts = val.split('^');
+      if (parts.length > 2 && parts[2] && parts[2].length >= 4) {
+        card = parts[0].replace(/[^0-9]/g, '');
+        const expYY = parts[2].substring(0, 2);
+        const expMM = parts[2].substring(2, 4);
+        tokef = `${expMM}${expYY}`;
+      }
+    }
+    
+    if (card && tokef) {
+      setCreditCardData(prev => ({
+        ...prev,
+        cardNumber: card,
+        tokef: tokef
+      }));
+      setShowQuickSwipeModal(false);
+      setTimeout(() => setShowCreditModal(true), 150);
     }
   };
 
@@ -599,41 +650,25 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
             <div style={{ color: '#166534', padding: '1rem', textAlign: 'center', background: 'white', borderRadius: '8px', border: '1px dashed #86efac', marginBottom: '1.5rem' }}>לא בוצעו תשלומים.</div>
           )}
 
-          <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center', background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #dcfce7' }}>
-              <select data-agy-id="orderpaymentsmanager_select_6" 
-                value={newPayment.paymentMethod} 
-                onChange={e => setNewPayment({...newPayment, paymentMethod: e.target.value})}
-                style={{ flex: '1', minWidth: '130px', padding: '0.7rem', borderRadius: '8px', border: '1px solid #86efac', outline: 'none', background: 'white', cursor: 'pointer' }}
-              >
-                {paymentMethodOptions.map(opt => (
-                  <option key={opt} value={opt}>{opt}</option>
-                ))}
-              </select>
-              <input data-agy-id="orderpaymentsmanager_input_7" 
-                type="number" 
-                placeholder="₪ סכום" 
-                value={newPayment.amount} 
-                onChange={e => setNewPayment({...newPayment, amount: e.target.value})}
-                style={{ flex: '1', minWidth: '100px', padding: '0.7rem', borderRadius: '8px', border: '1px solid #86efac', outline: 'none' }}
-              />
-            <input data-agy-id="orderpaymentsmanager_input_8" 
-              type="text" 
-              placeholder="הערות (אופציונלי)" 
-              value={newPayment.notes} 
-              onChange={e => setNewPayment({...newPayment, notes: e.target.value})}
-              style={{ flex: '2', minWidth: '150px', padding: '0.7rem', borderRadius: '8px', border: '1px solid #86efac', outline: 'none' }}
-            />
-            <div style={{ display: 'flex', gap: '0.5rem', flex: '1 0 auto', minWidth: '220px' }}>
-              <button data-agy-id="orderpaymentsmanager_button_9" onClick={addPayment} style={{ flex: 1, padding: '0.7rem 1rem', background: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#16a34a'} onMouseOut={e => e.currentTarget.style.backgroundColor='#22c55e'}>
+          <div style={{ display: 'flex', gap: '0.5rem', flex: '1 0 auto', minWidth: '220px', flexWrap: 'wrap' }}>
+              <button data-agy-id="orderpaymentsmanager_button_9" onClick={addPayment} style={{ flex: '1 1 auto', padding: '0.7rem 1rem', background: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#16a34a'} onMouseOut={e => e.currentTarget.style.backgroundColor='#22c55e'}>
                 <span>+</span> הוסף תשלום
               </button>
               <button data-agy-id="orderpaymentsmanager_button_10" 
                 onClick={handleOpenCreditModal} 
-                style={{ flex: 1, padding: '0.7rem 1rem', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
+                style={{ flex: '1 1 auto', padding: '0.7rem 1rem', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
                 onMouseOver={e => e.currentTarget.style.opacity=0.9} onMouseOut={e => e.currentTarget.style.opacity=1}
                 title="תשלום בכרטיס אשראי (נדרים פלוס)"
               >
                 💳 סליקת אשראי
+              </button>
+              <button data-agy-id="orderpaymentsmanager_button_quick_swipe" 
+                onClick={handleOpenQuickSwipeModal} 
+                style={{ flex: '1 1 auto', padding: '0.7rem 1rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
+                onMouseOver={e => e.currentTarget.style.opacity=0.9} onMouseOut={e => e.currentTarget.style.opacity=1}
+                title="העברת כרטיס מהירה בקורא מגנטי"
+              >
+                🧲 העברה מהירה
               </button>
               <button data-agy-id="orderpaymentsmanager_button_refund" 
                 onClick={handleOpenRefundModal} 
@@ -683,6 +718,56 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
           </div>
         )}
       </div>
+      )}
+
+      {mounted && showQuickSwipeModal && createPortal(
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(8px)' }}>
+          <div style={{ background: 'white', padding: '3rem', borderRadius: '24px', width: '450px', maxWidth: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+            {/* Animated top border */}
+            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: 'linear-gradient(to right, #f59e0b, #d97706, #fbbf24)' }}></div>
+            
+            <button onClick={() => setShowQuickSwipeModal(false)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
+            
+            <div style={{ margin: '0 auto 1.5rem', width: '90px', height: '90px', background: '#fef3c7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(245,158,11,0.2)' }}>
+              <span style={{ fontSize: '3.5rem' }}>🧲</span>
+            </div>
+            
+            <h2 style={{ margin: '0 0 0.5rem 0', color: '#1e293b', fontSize: '1.8rem', fontWeight: '800' }}>
+              העברת כרטיס מהירה
+            </h2>
+            <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: '2rem' }}>
+              אנא העבר כעת את כרטיס האשראי בקורא השפתיים...
+            </p>
+            
+            <input 
+              autoFocus 
+              type="text" 
+              value={swipeInput}
+              onChange={handleSwipeInputChange}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') e.preventDefault();
+              }}
+              onBlur={(e) => {
+                 if (showQuickSwipeModal) {
+                    setTimeout(() => e.target?.focus(), 100);
+                 }
+              }}
+              style={{ opacity: 0, position: 'absolute', top: '-1000px' }} 
+            />
+            
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <button 
+                onClick={() => setShowQuickSwipeModal(false)} 
+                style={{ padding: '0.8rem 2rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s', fontSize: '1.1rem' }}
+                onMouseOver={e => e.currentTarget.style.backgroundColor='#e2e8f0'}
+                onMouseOut={e => e.currentTarget.style.backgroundColor='#f1f5f9'}
+              >
+                ביטול חלון מהיר
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
       )}
 
       {mounted && showCreditModal && createPortal(

@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { Maximize, ChevronRight, ChevronLeft, Download, AlertCircle } from 'lucide-react';
@@ -65,7 +65,7 @@ export default function FullViewPage() {
           disabled={currentPage === 1}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #cbd5e1', background: currentPage === 1 ? '#f1f5f9' : 'white', color: currentPage === 1 ? '#94a3b8' : '#334155', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
         >
-          <ChevronRight data-element-name="רכיב_page_2" size={18} />
+          <ChevronLeft data-element-name="רכיב_page_2" size={18} />
         </button>
         
         <span style={{ fontWeight: '500', color: '#0f172a', margin: '0 0.5rem' }}>
@@ -77,7 +77,7 @@ export default function FullViewPage() {
           disabled={currentPage === totalPages}
           style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #cbd5e1', background: currentPage === totalPages ? '#f1f5f9' : 'white', color: currentPage === totalPages ? '#94a3b8' : '#334155', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
         >
-          <ChevronLeft data-element-name="רכיב_page_4" size={18} />
+          <ChevronRight data-element-name="רכיב_page_4" size={18} />
         </button>
       </div>
     </div>

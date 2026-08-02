@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { chargeNedarimPlus } from '../../lib/nedarim';
 import prisma from '../../lib/prisma'; // Optional: if you need to fetch mosadId from settings
 import { checkAuth } from '../../../lib/auth';
@@ -15,7 +15,7 @@ export async function POST(request) {
 
     if (!mosadId) {
       // Check database settings
-      const setting = await prisma.setting.findUnique({
+      const setting = await prisma.systemSetting.findUnique({
         where: { key: 'nedarimMosadId' }
       });
       if (setting && setting.value) {

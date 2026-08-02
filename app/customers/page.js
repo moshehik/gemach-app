@@ -293,7 +293,7 @@ export default function CustomersPage() {
                     onClick={() => setPage(p => p - 1)}
                     style={{ padding: '0.5rem 1rem' }}
                   >
-                    הקודם &gt;
+                    &lt; הקודם
                   </button>
                   <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     עמוד 
@@ -319,7 +319,7 @@ export default function CustomersPage() {
                     onClick={() => setPage(p => p + 1)}
                     style={{ padding: '0.5rem 1rem' }}
                   >
-                    &lt; הבא
+                    הבא &gt;
                   </button>
                 </div>
               )}

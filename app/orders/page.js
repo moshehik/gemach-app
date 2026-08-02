@@ -232,7 +232,7 @@ export default function OrdersPage() {
     }
   };
 
-  const thStyle = { padding: '1rem', cursor: 'pointer', userSelect: 'none' };
+  const thStyle = { padding: '1rem', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' };
 
   return (
     <main data-agy-id="orders_page_main_1" className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
@@ -451,7 +451,7 @@ export default function OrdersPage() {
             ) : (
               <>
                 <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
-                  <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
+                  <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', whiteSpace: 'nowrap', fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--element-border)', color: 'var(--text-muted)' }}>
                       <th data-element-name="לחיץ_page_42" style={thStyle} onClick={() => handleSort('orderId')}>{getLabel('order_id', 'קוד הזמנה')} <SortIcon data-element-name="רכיב_page_43" column="orderId" /></th>
@@ -569,9 +569,9 @@ export default function OrdersPage() {
                   
                   {totalPages > 1 && (
                     <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
-                      <button data-element-name="כפתור_page_62" data-agy-id="orders_page_button_22" className="btn btn-outline" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>הקודם &gt;</button>
+                      <button data-element-name="כפתור_page_62" data-agy-id="orders_page_button_22" className="btn btn-outline" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הקודם</button>
                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input data-element-name="שדה_page_63" data-agy-id="orders_page_input_21" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} disabled={isAiModeActive} /> מתוך {totalPages}</span>
-                      <button data-element-name="כפתור_page_64" data-agy-id="orders_page_button_20" className="btn btn-outline" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הבא</button>
+                      <button data-element-name="כפתור_page_64" data-agy-id="orders_page_button_20" className="btn btn-outline" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>הבא &gt;</button>
                     </div>
                   )}
                 </div>
