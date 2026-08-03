@@ -88,6 +88,10 @@ export async function GET(request, { params }) {
     }
     const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
 
+    const eventDate = order.eventDate;
+    const fallbackReturn = order.returnDate || (eventDate ? new Date(new Date(eventDate).getTime() + 2 * 24 * 3600 * 1000) : null);
+    const fallbackTaken = eventDate || order.orderDate || order.createdAt;
+
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -102,10 +106,18 @@ export async function GET(request, { params }) {
       } else if (item.description) {
         finalDescription = item.description;
       }
+
+      const isTaken = item.isTaken || item.barcode !== null;
+      const isReturned = item.isReturned;
+      const takenDate = item.takenDate || (isTaken ? fallbackTaken : null);
+      const returnDate = item.returnDate || (isReturned || isTaken ? fallbackReturn : null);
       
       return {
         ...item,
-        description: finalDescription
+        description: finalDescription,
+        isTaken,
+        takenDate,
+        returnDate
       };
     });
 
@@ -425,6 +437,10 @@ export async function PUT(request, { params }) {
     }
     const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
     
+    const eventDatePUT = finalOrder.eventDate;
+    const fallbackReturnPUT = finalOrder.returnDate || (eventDatePUT ? new Date(new Date(eventDatePUT).getTime() + 2 * 24 * 3600 * 1000) : null);
+    const fallbackTakenPUT = eventDatePUT || finalOrder.orderDate || finalOrder.createdAt;
+
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -439,10 +455,18 @@ export async function PUT(request, { params }) {
       } else if (item.description) {
         finalDescription = item.description;
       }
+
+      const isTaken = item.isTaken || item.barcode !== null;
+      const isReturned = item.isReturned;
+      const takenDate = item.takenDate || (isTaken ? fallbackTakenPUT : null);
+      const returnDate = item.returnDate || (isReturned || isTaken ? fallbackReturnPUT : null);
       
       return {
         ...item,
-        description: finalDescription
+        description: finalDescription,
+        isTaken,
+        takenDate,
+        returnDate
       };
     });
 
