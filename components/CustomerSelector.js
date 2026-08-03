@@ -1,5 +1,6 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
+import useDebounce from '@/hooks/useDebounce';
 
 export default function CustomerSelector({ value, onChange, placeholder = 'חיפוש ובחירת לקוח...', error = false }) {
   const [query, setQuery] = useState('');
@@ -19,12 +20,14 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Fetch customers when query changes
+  const debouncedQuery = useDebounce(query, 300);
+
+  // Fetch customers when debounced query changes
   useEffect(() => {
     const fetchCustomers = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/customers?search=${encodeURIComponent(query)}&limit=50`);
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(debouncedQuery)}&limit=50`);
         const data = await res.json();
         setCustomers(data.data || []);
       } catch (err) {
@@ -35,13 +38,10 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     };
     
     // Only search if user types or opens dropdown
-    if (isOpen || query) {
-        // Load immediately if there's no query (e.g., initial open), otherwise debounce typing
-        const delay = query ? 300 : 0;
-        const timeoutId = setTimeout(fetchCustomers, delay);
-        return () => clearTimeout(timeoutId);
+    if (isOpen || debouncedQuery) {
+        fetchCustomers();
     }
-  }, [query, isOpen]);
+  }, [debouncedQuery, isOpen]);
 
   // Set initial text if value exists
   useEffect(() => {

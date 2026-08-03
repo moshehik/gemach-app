@@ -215,17 +215,12 @@ export default function HebrewDatePicker({
         </button>
 
         {isOpen && typeof document !== 'undefined' && createPortal(
-          <>
-            <div 
-              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 100000 }}
-              onClick={() => setIsOpen(false)}
-            />
+          <div 
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 100000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={() => setIsOpen(false)}
+          >
             <div 
               style={{
-                position: 'fixed',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
                 width: '320px',
                 maxWidth: '92vw',
                 background: "var(--card-bg)", 
@@ -237,6 +232,7 @@ export default function HebrewDatePicker({
                 direction: "rtl", 
                 animation: "fadeIn 0.15s ease-out"
               }}
+              onClick={(e) => e.stopPropagation()}
             >
             {/* Header & Year Selector */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px', gap: '8px' }}>
@@ -355,7 +351,7 @@ export default function HebrewDatePicker({
               </button>
             </div>
             </div>
-          </>,
+          </div>,
           document.body
         )}
       </div>
@@ -400,16 +396,11 @@ export default function HebrewDatePicker({
       </div>
 
       {isOpen && typeof document !== 'undefined' && createPortal(
-          <>
-            <div 
-              style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 100000 }}
-              onClick={() => setIsOpen(false)}
-            />
+          <div 
+            style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', backdropFilter: 'blur(4px)', zIndex: 100000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+            onClick={() => setIsOpen(false)}
+          >
             <div style={{
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
               background: "var(--card-bg)", 
               border: "1px solid var(--border-main)", 
               borderRadius: "16px", 
@@ -422,7 +413,9 @@ export default function HebrewDatePicker({
               direction: "rtl", 
               zIndex: 100001,
               animation: "fadeIn 0.15s ease-out"
-            }}>
+            }}
+            onClick={(e) => e.stopPropagation()}
+            >
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center' }}>
             <button data-agy-id="hebrew_date_picker_next_month_btn" type="button" onClick={() => {
                 const days = HDate.daysInMonth(hMonth, hYear);
@@ -591,7 +584,7 @@ export default function HebrewDatePicker({
             </button>
           </div>
         </div>
-        </>,
+          </div>,
         document.body
       )}
     </div>

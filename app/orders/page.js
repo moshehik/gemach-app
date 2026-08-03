@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FileText, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays, AlertCircle, Info, Phone, Calendar as CalendarIcon2, CreditCard, CheckCircle2, Filter, Search, Printer } from 'lucide-react';
+import { FileText, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays, AlertCircle, Info, Phone, Calendar as CalendarIcon2, CreditCard, CheckCircle2, Filter, Search, Printer, Clock } from 'lucide-react';
 import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../lib/orderStatus';
 import CapacitySearchModal from '../../components/CapacitySearchModal';
 import ExportButtons from '../../components/ExportButtons';
@@ -12,6 +12,7 @@ import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
 import { useLabels } from '@/app/components/LabelsContext';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
+import HebrewDateRangePicker from '../../components/HebrewDateRangePicker';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import PrintWizardModal from '../components/PrintWizardModal';
@@ -47,6 +48,16 @@ const PendingTimer = ({ cartStatusDate, holdMinutes = 15 }) => {
   return <span style={{ color: timeLeft === 'פג תוקף' ? 'var(--error-color)' : '#ea580c', fontWeight: 'bold', fontSize: '0.85rem' }}>⏳ {timeLeft}</span>;
 };
 
+const getThreeMonthsAgoDateString = () => {
+  const d = new Date();
+  d.setMonth(d.getMonth() - 3);
+  return d.toISOString().split('T')[0];
+};
+
+const getTodayDateString = () => {
+  return new Date().toISOString().split('T')[0];
+};
+
 const ordersCache = new Map();
 
 export default function OrdersPage() {
@@ -71,8 +82,10 @@ export default function OrdersPage() {
 
   const [advFilters, setAdvFilters] = useState({
     customerName: '', customerPhone: '', customerCity: '', 
-    advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '',
-    rentalStatus: ''
+    advOrderId: '', itemDetails: '', advModelName: '',
+    eventDateFrom: getThreeMonthsAgoDateString(),
+    eventDateTo: getTodayDateString(),
+    rentalStatus: []
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);
   const [showCapacitySearch, setShowCapacitySearch] = useState(false);
@@ -100,9 +113,11 @@ export default function OrdersPage() {
         if (v && k !== 'rentalStatus') queryParams.append(k, v);
       });
       
-      if (advFilters.rentalStatus === 'activeOnly') queryParams.append('activeOnly', 'true');
-      if (advFilters.rentalStatus === 'returnedOnly') queryParams.append('returnedOnly', 'true');
-      if (advFilters.rentalStatus === 'pendingOnly') queryParams.append('pendingOnly', 'true');
+      if (Array.isArray(advFilters.rentalStatus)) {
+        if (advFilters.rentalStatus.includes('activeOnly')) queryParams.append('activeOnly', 'true');
+        if (advFilters.rentalStatus.includes('returnedOnly')) queryParams.append('returnedOnly', 'true');
+        if (advFilters.rentalStatus.includes('pendingOnly')) queryParams.append('pendingOnly', 'true');
+      }
       
       const cacheKey = queryParams.toString();
       
@@ -262,9 +277,11 @@ export default function OrdersPage() {
       Object.entries(advFilters).forEach(([k, v]) => {
         if (v && k !== 'rentalStatus') queryParams.append(k, v);
       });
-      if (advFilters.rentalStatus === 'activeOnly') queryParams.append('activeOnly', 'true');
-      if (advFilters.rentalStatus === 'returnedOnly') queryParams.append('returnedOnly', 'true');
-      if (advFilters.rentalStatus === 'pendingOnly') queryParams.append('pendingOnly', 'true');
+      if (Array.isArray(advFilters.rentalStatus)) {
+        if (advFilters.rentalStatus.includes('activeOnly')) queryParams.append('activeOnly', 'true');
+        if (advFilters.rentalStatus.includes('returnedOnly')) queryParams.append('returnedOnly', 'true');
+        if (advFilters.rentalStatus.includes('pendingOnly')) queryParams.append('pendingOnly', 'true');
+      }
       const res = await fetch(`/api/orders?${queryParams.toString()}`, { cache: 'no-store' });
       const data = await res.json();
       return (data.data || []).map(o => ({
@@ -398,30 +415,97 @@ export default function OrdersPage() {
           <div data-element-name="לחיץ_page_24" className="modal-content animate-slide-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '700px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid var(--border-color)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--divider)', paddingBottom: '1rem' }}>
               <h2 style={{ color: 'var(--primary-color)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Filter data-element-name="רכיב_page_25" size={24} /> חיפוש מתקדם
-              </h2>
-              <button data-element-name="כפתור_page_26" data-agy-id="orders_page_button_10" onClick={() => setShowAdvSearch(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <X data-element-name="רכיב_page_27" size={24} />
-              </button>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem' }}>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>מתאריך אירוע</label>
-                <HebrewDatePicker data-element-name="רכיב_page_28" value={advFilters.eventDateFrom} onChange={d => setAdvFilters(p => ({...p, eventDateFrom: d}))} placeholder="מתאריך..." />
+                    <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+              <div style={{ flex: 2, minWidth: '300px' }}>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>טווח תאריכי אירוע</label>
+                <HebrewDateRangePicker 
+                  startDate={advFilters.eventDateFrom} 
+                  endDate={advFilters.eventDateTo} 
+                  onChange={(start, end) => setAdvFilters(p => ({...p, eventDateFrom: start, eventDateTo: end}))} 
+                />
               </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>עד תאריך אירוע</label>
-                <HebrewDatePicker data-element-name="רכיב_page_29" value={advFilters.eventDateTo} onChange={d => setAdvFilters(p => ({...p, eventDateTo: d}))} placeholder="עד תאריך..." />
-              </div>
-              <div style={{ flex: 1 }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>סטטוס פריטים</label>
-                <select data-element-name="שדה_page_status" className="form-control" style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} value={advFilters.rentalStatus} onChange={e => setAdvFilters(p => ({...p, rentalStatus: e.target.value}))}>
-                  <option value="">הכל</option>
-                  <option value="activeOnly">רק מושכרים (אצל הלקוח)</option>
-                  <option value="returnedOnly">רק מוחזרים</option>
-                  <option value="pendingOnly">רק ממתינים (טרם נלקחו)</option>
-                </select>
+              <div style={{ flex: 2, minWidth: '320px', display: 'flex', flexDirection: 'column' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                  <label style={{ fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>סטטוס פריטים</label>
+                  <button
+                    data-element-name="כפתור_בחר_הכל_סטטוסים"
+                    type="button"
+                    onClick={() => {
+                      const allSelected = advFilters.rentalStatus.length === 3;
+                      setAdvFilters(p => ({
+                        ...p,
+                        rentalStatus: allSelected ? [] : ['pendingOnly', 'activeOnly', 'returnedOnly']
+                      }));
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--primary-color, #1976d2)',
+                      fontSize: '0.8rem',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: '2px 8px',
+                      borderRadius: '4px',
+                      transition: 'background 0.2s',
+                      userSelect: 'none'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg, #f1f5f9)'}
+                    onMouseLeave={e => e.currentTarget.style.background = 'none'}
+                  >
+                    {advFilters.rentalStatus.length === 3 ? 'בטל בחירת הכל' : 'בחר הכל'}
+                  </button>
+                </div>
+                
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', width: '100%' }}>
+                  {[
+                    { value: 'pendingOnly', label: 'ממתינים', icon: <Clock size={16} />, color: '#ef6c00', bgSelected: 'rgba(239, 108, 0, 0.1)' },
+                    { value: 'activeOnly', label: 'מושכרים', icon: <Shirt size={16} />, color: '#1565c0', bgSelected: 'rgba(21, 101, 192, 0.1)' },
+                    { value: 'returnedOnly', label: 'מוחזרים', icon: <CheckCircle2 size={16} />, color: '#2e7d32', bgSelected: 'rgba(46, 125, 50, 0.1)' }
+                  ].map(opt => {
+                    const isSelected = advFilters.rentalStatus.includes(opt.value);
+                    return (
+                      <button
+                        key={opt.value}
+                        data-element-name={`סטטוס_כפתור_${opt.value}`}
+                        type="button"
+                        onClick={() => {
+                          setAdvFilters(p => {
+                            const current = p.rentalStatus;
+                            const next = current.includes(opt.value)
+                              ? current.filter(x => x !== opt.value)
+                              : [...current, opt.value];
+                            return { ...p, rentalStatus: next };
+                          });
+                        }}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                          padding: '0.55rem 0.9rem',
+                          borderRadius: '10px',
+                          border: isSelected ? `2px solid ${opt.color}` : '1px solid var(--element-border, #cbd5e1)',
+                          background: isSelected ? opt.bgSelected : 'var(--input-bg, white)',
+                          color: isSelected ? opt.color : 'var(--text-main, #334155)',
+                          fontSize: '0.85rem',
+                          fontWeight: isSelected ? '700' : '500',
+                          cursor: 'pointer',
+                          transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                          boxShadow: isSelected ? `0 2px 8px ${opt.bgSelected}` : 'none',
+                          flex: '1',
+                          minWidth: '100px',
+                          justifyContent: 'center',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <span style={{ display: 'flex', color: isSelected ? opt.color : 'var(--text-muted, #64748b)' }}>{opt.icon}</span>
+                        <span>{opt.label}</span>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
@@ -474,7 +558,7 @@ export default function OrdersPage() {
             </div>
             <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid var(--divider)', paddingTop: '1.5rem', justifyContent: 'flex-end' }}>
               <button data-element-name="כפתור_page_40" data-agy-id="orders_page_button_16" className="btn btn-outline" style={{ padding: '0.6rem 1.5rem', borderRadius: '8px' }} onClick={() => {
-                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '', rentalStatus: '' });
+                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '', rentalStatus: [] });
               }}>נקה הכל</button>
               <button data-element-name="כפתור_page_41" data-agy-id="orders_page_button_17" className="btn btn-primary" style={{ padding: '0.6rem 2.5rem', borderRadius: '8px' }} onClick={() => setShowAdvSearch(false)}>החל סינון</button>
             </div>

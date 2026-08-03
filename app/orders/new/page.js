@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CalendarSearch, Edit2, Trash2, ArrowLeft, ArrowRight, Plus, Check, UserPlus, Sparkles, CreditCard, ShieldCheck } from 'lucide-react';
 import HebrewDatePicker from '../../../components/HebrewDatePicker';
+import HebrewDateRangePicker from '../../../components/HebrewDateRangePicker';
 import CustomerSelector from '../../../components/CustomerSelector';
 import OrderModelSelector from '../../../components/orders/OrderModelSelector';
 import ItemCapacityModal from '../../../components/orders/ItemCapacityModal';
@@ -429,25 +430,26 @@ export default function NewOrderPage() {
     }));
   };
 
-  const handleDateChangeWithValidation = async (field, value) => {
+  const handleDateChangeWithValidation = async (fieldOrUpdates, valueIfField) => {
+    const isMulti = typeof fieldOrUpdates === 'object';
+    const updates = isMulti ? fieldOrUpdates : { [fieldOrUpdates]: valueIfField };
+
     if (order.isAbroad) {
-      if (field === 'toDate' && order.fromDate && value && new Date(value) < new Date(order.fromDate)) {
+      const fromDateVal = 'fromDate' in updates ? updates.fromDate : order.fromDate;
+      const toDateVal = 'toDate' in updates ? updates.toDate : order.toDate;
+      if (fromDateVal && toDateVal && new Date(toDateVal) < new Date(fromDateVal)) {
         alert('שגיאה: תאריך החזרה (עד תאריך) אינו יכול להיות לפני תאריך ההתחלה (מתאריך)!');
-        return;
-      }
-      if (field === 'fromDate' && order.toDate && value && new Date(value) > new Date(order.toDate)) {
-        alert('שגיאה: תאריך ההתחלה (מתאריך) אינו יכול להיות אחרי תאריך החזרה (עד תאריך)!');
         return;
       }
     }
 
     let proposedOrder = {
       ...order,
-      [field]: value
+      ...updates
     };
     
-    if (proposedOrder.isAbroad && (field === 'fromDate' || field === 'isAbroad')) {
-      const fromDateVal = field === 'fromDate' ? value : proposedOrder.fromDate;
+    if (proposedOrder.isAbroad && ('fromDate' in updates || 'isAbroad' in updates)) {
+      const fromDateVal = 'fromDate' in updates ? updates.fromDate : proposedOrder.fromDate;
       if (fromDateVal) {
         proposedOrder.eventDate = fromDateVal; // Sync eventDate
       }
@@ -699,7 +701,8 @@ export default function NewOrderPage() {
           isWeekdayEvent: order.isWeekdayEvent,
           fromDate: order.fromDate,
           toDate: order.toDate,
-          customSpacing: order.customSpacing
+          customSpacing: order.customSpacing,
+          orderId: draftOrderId
         })
       });
       
@@ -1268,15 +1271,13 @@ export default function NewOrderPage() {
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <div style={{ flex: 1, minWidth: '240px', maxWidth: '320px' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '800', color: '#1e293b', fontSize: '1.05rem' }}>מתאריך (יום טיסה / התחלה) *</label>
-                    <HebrewDatePicker value={order.fromDate} onChange={(date) => handleDateChangeWithValidation('fromDate', date)} />
-                  </div>
-                  <div style={{ flex: 1, minWidth: '240px', maxWidth: '320px' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '800', color: '#1e293b', fontSize: '1.05rem' }}>עד תאריך (חזרה) *</label>
-                    <HebrewDatePicker value={order.toDate} onChange={(date) => handleDateChangeWithValidation('toDate', date)} />
-                  </div>
+                <div style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '800', color: '#1e293b', fontSize: '1.05rem', textAlign: 'center' }}>טווח תאריכים (מתאריך עד תאריך) *</label>
+                  <HebrewDateRangePicker 
+                    startDate={order.fromDate} 
+                    endDate={order.toDate} 
+                    onChange={(start, end) => handleDateChangeWithValidation({ fromDate: start, toDate: end })} 
+                  />
                 </div>
               )}
             </div>
@@ -1492,7 +1493,37 @@ export default function NewOrderPage() {
                             <button onClick={() => editItem(idx)} style={{ background: '#fffbeb', border: '1px solid #fde68a', cursor: 'pointer', color: '#d97706', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '4px', transition: 'all 0.2s ease' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fef3c7'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fffbeb'; }} title="ערוך">
                               <Edit2 size={14} strokeWidth={2.5} />
                             </button>
-                            <button onClick={() => r        {/* STEP 4: SUMMARY */}
+                            <button onClick={() => removeItem(idx)} style={{ background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', color: '#ef4444', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '4px', transition: 'all 0.2s ease' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; }} title="מחק">
+                              <Trash2 size={14} strokeWidth={2.5} />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <div style={{ marginTop: '0.5rem', borderTop: '1px dashed var(--border-color)', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '1.05rem', fontWeight: '800', color: '#1e293b' }}>סה"כ:</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '800', color: '#059669' }}>₪{totalAmount}</span>
+                  </div>
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.8rem' }}>
+                <button onClick={() => setStep(2)} style={{ padding: '0.6rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '0.95rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                  <ArrowRight size={16} />
+                  <span>חזור</span>
+                </button>
+                <button onClick={() => setStep(4)} disabled={order.items.length === 0} className="primary-button" style={{ padding: '0.6rem', flex: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontSize: '0.95rem' }}>
+                  <span>המשך לסיכום</span>
+                  <ArrowLeft size={16} />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* STEP 4: SUMMARY */}
         {step === 4 && (
           <div className="fade-in glass-card" style={{ maxWidth: '700px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>

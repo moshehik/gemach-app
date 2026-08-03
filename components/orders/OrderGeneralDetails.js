@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ChevronDown, ChevronUp, ExternalLink, RefreshCw, Edit2, Check } from 'lucide-react';
 import HebrewDatePicker from '../HebrewDatePicker';
+import HebrewDateRangePicker from '../HebrewDateRangePicker';
 import CustomerSelector from '../CustomerSelector';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 
@@ -464,33 +465,23 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
               {(order.isAbroad || order.isWeekdayEvent) && (
                 <div>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', border: '1px solid #bfdbfe', padding: '1.5rem', borderRadius: '12px', marginTop: '1rem', background: '#eff6ff' }}>
-                    <div>
-                      <label style={{...labelStyle, color: '#1e3a8a'}}>מתאריך (לקיחה):</label>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <div style={{ flex: 1 }}>
-                          <HebrewDatePicker 
-                            value={order.fromDate} 
-                            onChange={(date) => {
-                              if (order.isWeekdayEvent || order.isAbroad) {
-                                validateAndChangeDate({ fromDate: date, eventDate: date });
-                              } else {
-                                validateAndChangeDate('fromDate', date);
-                              }
-                            }} 
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    <div>
-                      <label style={{...labelStyle, color: '#1e3a8a'}}>עד תאריך (החזרה):</label>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <div style={{ flex: 1 }}>
-                          <HebrewDatePicker 
-                            value={order.toDate || order.returnDate} 
-                            onChange={(date) => validateAndChangeDate('toDate', date)} 
-                          />
-                        </div>
-                      </div>
+                    <div style={{ gridColumn: '1 / -1' }}>
+                      <label style={{...labelStyle, color: '#1e3a8a', marginBottom: '0.5rem'}}>טווח תאריכים (לקיחה והחזרה):</label>
+                      <HebrewDateRangePicker 
+                        startDate={order.fromDate} 
+                        endDate={order.toDate || order.returnDate} 
+                        onChange={(start, end) => {
+                          const updates = { 
+                            fromDate: start, 
+                            toDate: end, 
+                            returnDate: end 
+                          };
+                          if (order.isWeekdayEvent || order.isAbroad) {
+                            updates.eventDate = start;
+                          }
+                          validateAndChangeDate(updates);
+                        }} 
+                      />
                     </div>
                     {order.eventDate && order.fromDate && (order.toDate || order.returnDate) && !order.isWeekdayEvent && !order.isAbroad && 
                      (new Date(order.eventDate) < new Date(order.fromDate) || new Date(order.eventDate) > new Date(order.toDate || order.returnDate)) && (

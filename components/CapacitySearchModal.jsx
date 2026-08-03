@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, List, Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
 import HebrewDatePicker from './HebrewDatePicker';
+import HebrewDateRangePicker from './HebrewDateRangePicker';
 import { HDate, HebrewCalendar } from '@hebcal/core';
 import { getHebrewDateString, HEBREW_DAYS, getHebrewYearString, getHebrewMonthName } from '@/lib/hebrewDate';
 
@@ -267,13 +268,16 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
               ))}
             </select>
           </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>מתאריך</label>
-            <HebrewDatePicker value={fromDate} onChange={setFromDate} />
-          </div>
-          <div>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>עד תאריך</label>
-            <HebrewDatePicker value={toDate} onChange={setToDate} />
+          <div style={{ gridColumn: '1 / -1' }}>
+            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>טווח תאריכים</label>
+            <HebrewDateRangePicker 
+              startDate={fromDate} 
+              endDate={toDate} 
+              onChange={(start, end) => {
+                setFromDate(start);
+                setToDate(end);
+              }} 
+            />
           </div>
           <div style={{ display: 'flex', gap: '1rem', gridColumn: '1 / -1', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
             <button data-agy-id="capacity_search_clear_btn" type="button" onClick={() => {

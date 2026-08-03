@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { PlusCircle, RotateCcw, Search, Barcode, X, ArrowLeft, Loader2, User, FileText } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
+import useDebounce from '@/hooks/useDebounce';
 
 export default function GlobalSidebar() {
   const pathname = usePathname();
@@ -13,6 +14,8 @@ export default function GlobalSidebar() {
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [searchResults, setSearchResults] = useState([]);
+  
+  const debouncedSearchTerm = useDebounce(inputValue, 350);
   
   const sidebarRef = useRef(null);
 
@@ -73,26 +76,33 @@ export default function GlobalSidebar() {
     }
   };
 
-  const handleSearchInput = async (e) => {
-    const val = e.target.value;
-    setInputValue(val);
-    if (val.trim().length < 2) {
-      setSearchResults([]);
-      return;
-    }
+  useEffect(() => {
+    if (activePopover !== 'search') return;
     
-    setIsLoading(true);
-    try {
-      const res = await fetch('/api/global-search?q=' + encodeURIComponent(val.trim()));
-      const data = await res.json();
-      if (data && (data.customers || data.orders)) {
-        setSearchResults([...(data.orders || []), ...(data.customers || [])].slice(0, 7));
+    const search = async () => {
+      if (debouncedSearchTerm.trim().length < 2) {
+        setSearchResults([]);
+        return;
       }
-    } catch (e) {
-      // silent fail
-    } finally {
-      setIsLoading(false);
-    }
+      setIsLoading(true);
+      try {
+        const res = await fetch('/api/global-search?q=' + encodeURIComponent(debouncedSearchTerm.trim()));
+        const data = await res.json();
+        if (data && (data.customers || data.orders)) {
+          setSearchResults([...(data.orders || []), ...(data.customers || [])].slice(0, 7));
+        }
+      } catch (e) {
+        // silent fail
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    search();
+  }, [debouncedSearchTerm, activePopover]);
+
+  const handleSearchInput = (e) => {
+    setInputValue(e.target.value);
   };
 
   return (
