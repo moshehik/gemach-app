@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { calculateDynamicAvailability } from '../../lib/clientInventory';
+import { sortSizeRows } from '../../lib/sizeSort';
 
 export default function OrderSizeSelector({ modelId, order, value, onChange, placeholder = '-', inventoryCache, currentCartItems }) {
   const [sizes, setSizes] = useState([]);
@@ -75,7 +76,9 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
         const res = await fetch(url);
         const data = await res.json();
         // availability endpoint returns array directly, sizes endpoint returns {sizes: []}
-        setSizes(Array.isArray(data) ? data : (data.sizes || []));
+        const rows = Array.isArray(data) ? data : (data.sizes || []);
+        // sizes endpoint מחזיר מחרוזות — עוטפים לאובייקט כדי שהמיון והרינדור יעבדו אחיד
+        setSizes(sortSizeRows(rows.map(r => (typeof r === 'string' ? { sizeText: r } : r))));
       } catch (err) {
         console.error('Failed to fetch sizes', err);
       } finally {

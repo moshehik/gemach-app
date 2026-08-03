@@ -201,7 +201,8 @@ export default function OrderDetailsPage({ params }) {
     setSaving(true);
     setSaveMessage('');
 
-    const currentOrder = overrideOrder || order;
+    // overrideOrder חייב להיות אובייקט הזמנה אמיתי; onClick עלול להעביר לכאן את אירוע הלחיצה
+    const currentOrder = (overrideOrder && overrideOrder.orderId) ? overrideOrder : order;
     if (!currentOrder) {
       setSaving(false);
       alert('שגיאה: נתוני ההזמנה לא טוענו כראוי');
@@ -327,6 +328,7 @@ export default function OrderDetailsPage({ params }) {
           isWeekdayEvent: currentOrder.isWeekdayEvent,
           fromDate: currentOrder.fromDate,
           toDate: currentOrder.toDate,
+          customSpacing: currentOrder.customSpacing !== undefined ? currentOrder.customSpacing : null,
           notes: currentOrder.notes,
           status: currentOrder.status,
           hasSignedRegulations: currentOrder.hasSignedRegulations,
@@ -443,6 +445,7 @@ export default function OrderDetailsPage({ params }) {
           isWeekdayEvent: order.isWeekdayEvent,
           fromDate: order.fromDate,
           toDate: order.toDate,
+          customSpacing: order.customSpacing !== undefined ? order.customSpacing : null,
           notes: order.notes,
           status: order.status,
           hasSignedRegulations: order.hasSignedRegulations,
@@ -596,17 +599,18 @@ export default function OrderDetailsPage({ params }) {
 
   // הנושאים מוגדרים פעם אחת ומשמשים את שתי התצוגות.
   // `span` = רוחב בגריד של 12 עמודות בתצוגת "חלון אחד", `order` = סדר הנושאים שם.
+  // הפריסה היא שתי שורות בלבד (4+8 / 4+5+3) כדי שהכל ייכנס למסך אחד.
   const sections = [
     {
       id: 'details',
-      span: 5,
+      span: 4,
       order: 1,
       node: <OrderGeneralDetails data-element-name="רכיב_page_22" order={order} items={items} onOrderChange={setOrder} onSaveRequest={handleSave} />
     },
     {
       id: 'items',
-      span: 12,
-      order: 3,
+      span: 8,
+      order: 2,
       node: (
         <OrderItemsManager data-element-name="רכיב_page_23"
           orderId={order.orderId}
@@ -620,8 +624,8 @@ export default function OrderDetailsPage({ params }) {
     },
     {
       id: 'rentals',
-      span: 7,
-      order: 4,
+      span: 4,
+      order: 3,
       node: (
         <OrderRentalsManager data-element-name="רכיב_page_24"
           items={items}
@@ -634,8 +638,8 @@ export default function OrderDetailsPage({ params }) {
     },
     {
       id: 'payments',
-      span: 7,
-      order: 2,
+      span: 5,
+      order: 4,
       node: (
         <OrderPaymentsManager data-element-name="רכיב_page_25"
           orderId={order.orderId}
@@ -656,7 +660,7 @@ export default function OrderDetailsPage({ params }) {
     },
     {
       id: 'history',
-      span: 5,
+      span: 3,
       order: 5,
       node: (
         <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
@@ -671,15 +675,30 @@ export default function OrderDetailsPage({ params }) {
   return (
     <main data-agy-id="[id]_page_main_1" style={{ padding: layoutMode === 'workspace' ? '1.25rem' : '2rem', maxWidth: layoutMode === 'workspace' ? '1900px' : '1400px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
       
+      {/* בתצוגת "חלון אחד" גם הכותרת מתכווצת — היא לקחה כרבע מסך לפני התוכן */}
+      {layoutMode === 'workspace' && (
+        <style>{`
+          .oc-header.is-compact { border-radius: 12px !important; margin-bottom: 0.7rem !important; }
+          .oc-header.is-compact > div:first-child { padding: 0.55rem 0.85rem !important; gap: 0.5rem !important; }
+          .oc-header.is-compact h1 { font-size: 1.05rem !important; }
+          .oc-header.is-compact :is(span, strong) { font-size: 0.75rem !important; }
+          .oc-header.is-compact button { padding: 0.35rem 0.6rem !important; font-size: 0.78rem !important; }
+          .oc-header.is-compact svg { width: 15px !important; height: 15px !important; }
+          .oc-header.is-compact [style*="gap: 0.8rem"] { gap: 0.35rem !important; }
+          .oc-header.is-compact [style*="padding: 0.4rem 0.8rem"] { padding: 0.2rem 0.5rem !important; }
+          .oc-header.is-compact [style*="padding: 0.3rem 1rem"] { padding: 0.15rem 0.6rem !important; }
+        `}</style>
+      )}
+
       {/* Header Sticky Bar */}
-      <div style={{ 
-        display: 'flex', 
+      <div className={`oc-header ${layoutMode === 'workspace' ? 'is-compact' : ''}`} style={{
+        display: 'flex',
         flexDirection: 'column',
-        background: (totalRequired - totalPaid > 0) ? 'rgba(254, 226, 226, 0.95)' : 'rgba(255, 255, 255, 0.95)', 
+        background: (totalRequired - totalPaid > 0) ? 'rgba(254, 226, 226, 0.95)' : 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(16px)',
         WebkitBackdropFilter: 'blur(16px)',
-        borderRadius: '16px', 
-        boxShadow: '0 8px 32px rgba(0,0,0,0.08)', 
+        borderRadius: '16px',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
         border: '1px solid rgba(255,255,255,0.4)',
         marginBottom: '2rem',
         position: 'sticky',
@@ -729,20 +748,22 @@ export default function OrderDetailsPage({ params }) {
                 {order.customer?.phone1 && <span style={{ direction: 'ltr', color: '#64748b' }}>({order.customer.phone1})</span>}
               </div>
               
-              <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span style={{ fontWeight: '500' }}>תאריך אירוע:</span> 
-                <strong style={{ color: '#0f172a' }}>
-                  {order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}
-                </strong>
-              </div>
+              {(!order.isWeekdayEvent) && (
+                <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                  <span style={{ fontWeight: '500' }}>תאריך אירוע:</span> 
+                  <strong style={{ color: '#0f172a' }}>
+                    {order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}
+                  </strong>
+                </div>
+              )}
 
               {(order.fromDate || order.toDate || order.returnDate) && (
                 <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <span style={{ fontWeight: '500' }}>לקיחה:</span> 
-                  <strong style={{ color: '#0f172a' }}>{order.fromDate ? new Date(order.fromDate).toLocaleDateString('he-IL') : '-'}</strong>
+                  <strong style={{ color: '#0f172a' }}>{order.fromDate ? (order.isWeekdayEvent ? getHebrewDateString(order.fromDate) : new Date(order.fromDate).toLocaleDateString('he-IL')) : '-'}</strong>
                   <span style={{ margin: '0 0.2rem' }}>|</span>
                   <span style={{ fontWeight: '500' }}>החזרה:</span> 
-                  <strong style={{ color: '#0f172a' }}>{order.toDate || order.returnDate ? new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL') : '-'}</strong>
+                  <strong style={{ color: '#0f172a' }}>{order.toDate || order.returnDate ? (order.isWeekdayEvent ? getHebrewDateString(order.toDate || order.returnDate) : new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL')) : '-'}</strong>
                 </div>
               )}
 
@@ -764,7 +785,7 @@ export default function OrderDetailsPage({ params }) {
             <div style={{ width: '1px', alignSelf: 'stretch', background: '#e2e8f0', margin: '0 0.2rem' }} />
 
             <button data-element-name="כפתור_page_1" data-agy-id="[id]_page_button_2" 
-              onClick={handleSave} 
+              onClick={() => handleSave()}
               disabled={saving || isLocked}
               title={isLocked ? "הזמנה נעולה" : "שמור שינויים"}
               style={{ 

@@ -235,7 +235,7 @@ export async function POST(request, { params }) {
       await prisma.auditLog.create({
         data: {
           entityType: 'Order',
-          entityId: order.orderId,
+          entityId: String(order.orderId),
           action: 'EMAIL_SENT',
           changesJson: JSON.stringify({
             subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,

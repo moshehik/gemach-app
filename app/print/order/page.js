@@ -399,7 +399,7 @@ export default function PrintOrderPage() {
                       <tr key={item.id}>
                         <td style={{ fontWeight: '500' }}>{item.description || '-'}</td>
                         <td>{item.sizeText || '-'}</td>
-                        <td style={{ fontWeight: '600', color: '#495057' }}>{item.barcode || item.dressItem?.barcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : '-')}</td>
+                        <td style={{ fontWeight: '600', color: '#495057' }}>{item.barcode || item.dressItem?.dressBarcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : '-')}</td>
                         {enableAlterations && (
                           <>
                             <td>{item.neckAlteration ? `הצרה ${item.neckAlteration}` : '-'}</td>

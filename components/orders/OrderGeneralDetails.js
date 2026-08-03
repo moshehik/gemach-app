@@ -78,8 +78,8 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
   const [newCustomer, setNewCustomer] = useState({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '' });
 
   const handleSaveNewCustomer = async () => {
-    if (!newCustomer.firstName || !newCustomer.lastName || !newCustomer.phone1) {
-       alert('יש למלא שם פרטי, משפחה וטלפון');
+    if (!newCustomer.firstName || !newCustomer.lastName || !newCustomer.phone1 || !newCustomer.email) {
+       alert('יש למלא שם פרטי, משפחה, טלפון ודוא"ל');
        return;
     }
     try {
@@ -251,9 +251,39 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                 </div>
               ) : (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem' }}>
-                  <div><label style={labelStyle}>שם פרטי</label><input data-agy-id="ordergeneraldetails_input_4" type="text" style={inputStyle} value={newCustomer.firstName} onChange={e => setNewCustomer({...newCustomer, firstName: e.target.value})} /></div>
-                  <div><label style={labelStyle}>שם משפחה</label><input data-agy-id="ordergeneraldetails_input_5" type="text" style={inputStyle} value={newCustomer.lastName} onChange={e => setNewCustomer({...newCustomer, lastName: e.target.value})} /></div>
-                  <div><label style={labelStyle}>טלפון</label><input data-agy-id="ordergeneraldetails_input_6" type="text" style={inputStyle} value={newCustomer.phone1} onChange={e => setNewCustomer({...newCustomer, phone1: e.target.value})} /></div>
+                  <div><label style={labelStyle}>שם פרטי *</label><input data-agy-id="ordergeneraldetails_input_4" type="text" style={inputStyle} value={newCustomer.firstName} onChange={e => setNewCustomer({...newCustomer, firstName: e.target.value})} /></div>
+                  <div><label style={labelStyle}>שם משפחה *</label><input data-agy-id="ordergeneraldetails_input_5" type="text" style={inputStyle} value={newCustomer.lastName} onChange={e => setNewCustomer({...newCustomer, lastName: e.target.value})} /></div>
+                  <div><label style={labelStyle}>טלפון *</label><input data-agy-id="ordergeneraldetails_input_6" type="text" style={inputStyle} value={newCustomer.phone1} onChange={e => setNewCustomer({...newCustomer, phone1: e.target.value})} /></div>
+                  <div>
+                    <label style={labelStyle}>דוא"ל *</label>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <input type="email" style={inputStyle} value={newCustomer.email || ''} onChange={e => setNewCustomer({...newCustomer, email: e.target.value})} />
+                      {(!newCustomer.email || !newCustomer.email.includes('@')) && (
+                        <button 
+                          type="button"
+                          onClick={() => {
+                            const currentEmail = newCustomer.email || '';
+                            setNewCustomer(prev => ({ ...prev, email: currentEmail + '@gmail.com' }));
+                          }}
+                          style={{
+                            padding: '0.3rem 0.6rem',
+                            fontSize: '0.85rem',
+                            background: '#2563eb',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '12px',
+                            cursor: 'pointer',
+                            transition: 'opacity 0.2s',
+                            alignSelf: 'flex-start'
+                          }}
+                          onMouseOver={(e) => e.target.style.opacity = '0.8'}
+                          onMouseOut={(e) => e.target.style.opacity = '1'}
+                        >
+                          השלם ל- @gmail.com
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <div><label style={labelStyle}>עיר</label><input data-agy-id="ordergeneraldetails_input_7" type="text" style={inputStyle} value={newCustomer.city} onChange={e => setNewCustomer({...newCustomer, city: e.target.value})} /></div>
                   <div><label style={labelStyle}>רחוב</label><input data-agy-id="ordergeneraldetails_input_new_1" type="text" style={inputStyle} value={newCustomer.street} onChange={e => setNewCustomer({...newCustomer, street: e.target.value})} /></div>
                   <div><label style={labelStyle}>בית</label><input data-agy-id="ordergeneraldetails_input_new_2" type="text" style={inputStyle} value={newCustomer.houseNum} onChange={e => setNewCustomer({...newCustomer, houseNum: e.target.value})} /></div>

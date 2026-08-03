@@ -377,6 +377,7 @@ export async function PUT(request, { params }) {
           isWeekdayEvent: data.isWeekdayEvent !== undefined ? data.isWeekdayEvent : undefined,
           fromDate: parsedFromDate,
           toDate: parsedToDate,
+          customSpacing: data.customSpacing !== undefined ? (data.customSpacing === null || data.customSpacing === '' ? null : parseInt(data.customSpacing, 10)) : undefined,
           notes: data.notes !== undefined ? data.notes : undefined,
           status: data.status !== undefined ? data.status : undefined,
           hasSignedRegulations: data.hasSignedRegulations !== undefined ? data.hasSignedRegulations : undefined,

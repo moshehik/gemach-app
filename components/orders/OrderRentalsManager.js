@@ -306,7 +306,7 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
                       transition: 'all 0.2s'
                     };
 
-                    const computedBarcode = item.dressItem?.barcode || item.barcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : null);
+                    const computedBarcode = item.barcode || item.dressItem?.dressBarcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : null);
                     const barcode = computedBarcode || 'לא שויך';
                     const takenDate = item.takenDate ? `${getHebrewDateString(item.takenDate)} ${new Date(item.takenDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : '-';
                     const returnDate = item.returnDate ? `${getHebrewDateString(item.returnDate)} ${new Date(item.returnDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : '-';

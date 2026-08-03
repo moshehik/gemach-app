@@ -63,6 +63,7 @@ export async function POST(request) {
           isWeekdayEvent: data.isWeekdayEvent ?? false,
           fromDate: data.fromDate ? new Date(data.fromDate) : null,
           toDate: data.toDate ? new Date(data.toDate) : null,
+          customSpacing: data.customSpacing !== undefined && data.customSpacing !== null && data.customSpacing !== '' ? parseInt(data.customSpacing, 10) : null,
           notes: data.notes || '',
           status: 'טיוטה',
           items: {
@@ -99,6 +100,7 @@ export async function POST(request) {
             isWeekdayEvent: data.isWeekdayEvent ?? false,
             fromDate: data.fromDate ? new Date(data.fromDate) : null,
             toDate: data.toDate ? new Date(data.toDate) : null,
+            customSpacing: data.customSpacing !== undefined && data.customSpacing !== null && data.customSpacing !== '' ? parseInt(data.customSpacing, 10) : null,
             notes: data.notes || '',
             status: 'טיוטה'
           }

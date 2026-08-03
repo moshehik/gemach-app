@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../app/lib/prisma';
+import { compareSizeText } from '../../../../lib/sizeSort';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export async function GET(request) {
       distinct: ['sizeText']
     });
 
-    const sizes = items.map(item => item.sizeText).filter(Boolean).sort();
+    const sizes = items.map(item => item.sizeText).filter(Boolean).sort(compareSizeText);
 
     return NextResponse.json({ sizes });
 
