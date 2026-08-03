@@ -372,7 +372,10 @@ export default function CustomerInventoryViewer() {
       while (currentWeek.length < 7) currentWeek.push(null);
       weeks.push(currentWeek);
     }
-    
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
     return (
       <table className="cal-table">
         <thead>
@@ -385,13 +388,14 @@ export default function CustomerInventoryViewer() {
             <tr key={i}>
               {week.map((day, j) => {
                 if (!day) return <td key={j} className="empty"></td>;
-                
+
                 const cellHDate = new HDate(day, hMonth, hYear);
                 const cellGreg = cellHDate.greg();
-                
+
                 const isSelected = cellGreg.toDateString() === selectedDate.toDateString();
-                const isToday = cellGreg.toDateString() === new Date().toDateString();
-                
+                const isToday = cellGreg.toDateString() === today.toDateString();
+                const isPast = cellGreg < today;
+
                 let hebrewDayStr = day;
                 try {
                   hebrewDayStr = cellHDate.renderGematriya().split(' ')[0];
@@ -421,17 +425,18 @@ export default function CustomerInventoryViewer() {
                 } catch (e) {}
 
                 return (
-                  <td data-element-name="לחיץ_page_1" 
-                    key={j} 
-                    className={`${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''}`}
-                    onClick={() => setSelectedDate(cellGreg)}
+                  <td data-element-name="לחיץ_page_1"
+                    key={j}
+                    className={`${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''} ${isPast ? 'past' : ''}`}
+                    onClick={() => !isPast && setSelectedDate(cellGreg)}
+                    style={{ cursor: isPast ? 'not-allowed' : 'pointer', opacity: isPast ? 0.4 : 1, color: isPast ? '#cbd5e1' : 'inherit' }}
                   >
                     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center', lineHeight: '1.2' }}>
-                      <span style={{ fontSize: '10px', color: '#9ca3af' }}>{cellGreg.getDate()}/{cellGreg.getMonth() + 1}</span>
-                      <span style={{ fontWeight: 'bold' }}>{hebrewDayStr}</span>
-                      {parashaText && <span style={{ fontSize: '10px', color: '#8b5cf6', marginTop: '2px', fontWeight: 'normal' }}>{parashaText}</span>}
+                      <span style={{ fontSize: '10px', color: isPast ? '#cbd5e1' : '#9ca3af' }}>{cellGreg.getDate()}/{cellGreg.getMonth() + 1}</span>
+                      <span style={{ fontWeight: 'bold', color: isPast ? '#cbd5e1' : 'inherit' }}>{hebrewDayStr}</span>
+                      {parashaText && <span style={{ fontSize: '10px', color: isPast ? '#cbd5e1' : '#8b5cf6', marginTop: '2px', fontWeight: 'normal' }}>{parashaText}</span>}
                       {holidays.map((h, idx) => (
-                        <span key={idx} style={{ fontSize: '9px', color: '#ec4899', marginTop: '1px', fontWeight: 'normal' }}>{h}</span>
+                        <span key={idx} style={{ fontSize: '9px', color: isPast ? '#cbd5e1' : '#ec4899', marginTop: '1px', fontWeight: 'normal' }}>{h}</span>
                       ))}
                     </div>
                   </td>
@@ -837,9 +842,11 @@ export default function CustomerInventoryViewer() {
         .cal-table { width: 100%; border-collapse: separate; border-spacing: 0; text-align: center; }
         .cal-table th { color: var(--text-secondary); font-size: 13px; font-weight: 600; padding: 12px 0; }
         .cal-table td { height: 50px; cursor: pointer; border-radius: 12px; transition: all 0.2s; margin: 2px; }
-        .cal-table td:hover { background: var(--element-bg); }
+        .cal-table td:hover:not(.past) { background: var(--element-bg); }
         .cal-table td.selected { background: var(--primary-color); color: white; font-weight: bold; box-shadow: 0 4px 12px var(--border-color); }
         .cal-table td.today { border: 2px solid var(--primary-color); }
+        .cal-table td.past { cursor: not-allowed; opacity: 0.4; }
+        .cal-table td.past:hover { background: transparent; }
         
         .model-card {
           transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -1280,17 +1287,23 @@ export default function CustomerInventoryViewer() {
                       )}
                     </div>
                     <div className="dress-content">
-                      <div className="dress-title">{model.name}</div>
-                      <div className="dress-subtitle">קידומת ברקוד: {model.barcodePrefix || model.id}</div>
-                      
+                      <div className="dress-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '1.3rem', fontWeight: '900', color: 'var(--text-main)' }}>דגם: {model.name}</span>
+                        {model.barcodePrefix && <span style={{ fontSize: '0.85rem', background: 'var(--element-bg)', padding: '4px 10px', borderRadius: '999px', color: 'var(--text-secondary)', fontWeight: '600' }}>#{model.barcodePrefix}</span>}
+                      </div>
+
+                      <div style={{ marginBottom: '12px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                        <strong>מידות זמינות:</strong>
+                      </div>
+
                       <div className="sizes-row">
                         {sizesArray.length === 0 ? (
                           <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>אין מידות רשומות</span>
                         ) : (
                           sizesArray.map(([sName, sData]) => (
-                            <div 
-                              key={sName} 
-                              className={`size-pill ${sData.available > 0 ? 'available' : ''}`} 
+                            <div
+                              key={sName}
+                              className={`size-pill ${sData.available > 0 ? 'available' : ''}`}
                               title={`${sData.available} מתוך ${sData.total}`}
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -1298,8 +1311,8 @@ export default function CustomerInventoryViewer() {
                               }}
                               style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px' }}
                             >
-                              <span style={{ fontSize: '1.2rem', fontWeight: '800', color: sData.available > 0 ? '#14532d' : '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>{sName}</span>
-                              <span style={{ whiteSpace: 'nowrap', fontWeight: 'bold', fontSize: '0.85rem', background: sData.available > 0 ? '#bbf7d0' : 'var(--border-main)', color: sData.available > 0 ? '#166534' : '#64748b', padding: '2px 8px', borderRadius: '12px' }}>{sData.available}</span>
+                              <span style={{ fontSize: '1.2rem', fontWeight: '800', color: sData.available > 0 ? '#14532d' : '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>מידה {sName}</span>
+                              <span style={{ whiteSpace: 'nowrap', fontWeight: 'bold', fontSize: '0.85rem', background: sData.available > 0 ? '#bbf7d0' : 'var(--border-main)', color: sData.available > 0 ? '#166534' : '#64748b', padding: '2px 8px', borderRadius: '12px' }}>{sData.available}/{sData.total}</span>
                             </div>
                           ))
                         )}

@@ -350,7 +350,6 @@ export default function AlterationsPage() {
             </button>
         </div>
       </div>
-      </div>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
