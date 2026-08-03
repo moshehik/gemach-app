@@ -28,15 +28,15 @@ export default function NewOrderPage() {
     if (targetStep === 1) return true;
     if (targetStep === 2) return !!order.customerId;
     if (targetStep === 3) {
-      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
+      const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
       return !!order.customerId && !!datesFilled;
     }
     if (targetStep === 4) {
-      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
+      const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
       return !!order.customerId && !!datesFilled && order.items.length > 0;
     }
     if (targetStep === 5) {
-      const datesFilled = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
+      const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
       return !!order.customerId && !!datesFilled && order.items.length > 0;
     }
     return false;
@@ -330,16 +330,17 @@ export default function NewOrderPage() {
          headers: { 'Content-Type': 'application/json' },
          body: JSON.stringify(newCustomer)
       });
+      const data = await res.json();
       if (res.ok) {
-         const saved = await res.json();
-         setOrder(prev => ({ ...prev, customerId: saved.id, selectedCustomer: saved }));
+         setOrder(prev => ({ ...prev, customerId: data.id, selectedCustomer: data }));
          setStep(2);
          setDuplicateCustomer(null);
       } else {
-         alert('שגיאה בשמירת לקוח');
+         const errorMsg = data.error || 'שגיאה בשמירת לקוח';
+         alert(`שגיאה בשמירת לקוח: ${errorMsg}`);
       }
     } catch (e) {
-      alert('שגיאה בשמירת לקוח');
+      alert(`שגיאה בשמירת לקוח: ${e.message}`);
     }
   };
 
@@ -678,7 +679,7 @@ export default function NewOrderPage() {
   }, [totalAmount, paymentsList]);
 
   const saveOrder = async () => {
-    const hasDates = order.isAbroad || order.isWeekdayEvent ? (order.fromDate && order.toDate) : order.eventDate;
+    const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
     if (!order.customerId) return alert('יש לבחור לקוח');
     if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
@@ -766,7 +767,7 @@ export default function NewOrderPage() {
   const executeSaveOrderForList = async (finalPaymentsList) => {
     setSaving(true);
     const activeItems = (order.items || []).filter(i => !i.isDeleted);
-    const hasDates = order.isAbroad || order.isWeekdayEvent ? (order.fromDate && order.toDate) : order.eventDate;
+    const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
 
     if (activeItems.length > 0 && hasDates) {
       try {
@@ -828,12 +829,16 @@ export default function NewOrderPage() {
         body: JSON.stringify(payload)
       });
 
-      if (!res.ok) throw new Error('Failed to save order');
       const data = await res.json();
+      if (!res.ok) {
+        const errorMessage = data.error || 'Failed to save order';
+        const details = data.details ? ` (${data.details})` : '';
+        throw new Error(errorMessage + details);
+      }
       router.push(`/orders/${data.orderId}`);
     } catch (error) {
       console.error(error);
-      alert('שגיאה בשמירת הזמנה');
+      alert(`שגיאה בשמירת הזמנה: ${error.message}`);
       setSaving(false);
     }
   };

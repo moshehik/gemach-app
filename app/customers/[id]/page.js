@@ -25,26 +25,29 @@ export default function CustomerPage({ params }) {
       setLoading(false);
       return;
     }
-    fetch(`/api/customers/${id}`)
-      .then(res => res.json())
-      .then(data => {
-        if (data.error) router.push('/customers');
-        else {
-          setCustomer(data);
+
+    // Fetch customer and refunds in parallel
+    Promise.all([
+      fetch(`/api/customers/${id}`).then(res => res.json()),
+      fetch(`/api/refunds?customerId=${id}`).then(res => res.json())
+    ])
+      .then(([customerData, refundsData]) => {
+        if (customerData.error) {
+          router.push('/customers');
+        } else {
+          setCustomer(customerData);
           addHistory({
             type: 'customer',
-            id: data.id,
-            name: `לקוח: ${[data.firstName, data.lastName].filter(n => n && String(n).toLowerCase() !== 'null').join(' ')}`,
-            subtext: data.phone1 || ''
+            id: customerData.id,
+            name: `לקוח: ${[customerData.firstName, customerData.lastName].filter(n => n && String(n).toLowerCase() !== 'null').join(' ')}`,
+            subtext: customerData.phone1 || ''
           });
         }
-        
-        // Fetch refunds for customer
-        return fetch(`/api/refunds?customerId=${id}`);
-      })
-      .then(res => res ? res.json() : [])
-      .then(refundsData => {
         if (Array.isArray(refundsData)) setRefunds(refundsData);
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error(err);
         setLoading(false);
       });
   }, [id, router]);

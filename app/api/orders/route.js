@@ -602,8 +602,14 @@ export async function POST(request) {
     return NextResponse.json(updatedOrder);
   } catch (error) {
     console.error('Error creating order:', error);
+    const errorDetails = error.message || 'Unknown error';
+    const stack = error.stack ? error.stack.split('\n').slice(0, 3).join(' | ') : '';
     return NextResponse.json(
-      { error: 'Failed to create order', details: error.message },
+      {
+        error: 'Failed to create order',
+        details: errorDetails,
+        context: stack
+      },
       { status: 500 }
     );
   }

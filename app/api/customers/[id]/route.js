@@ -28,9 +28,6 @@ export async function GET(request, { params }) {
               where: { isDeleted: false }
             }
           }
-        },
-        payments: {
-          orderBy: { paymentDate: 'desc' }
         }
       }
     });

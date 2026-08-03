@@ -114,10 +114,11 @@ export default function OrderDetailsPage({ params }) {
 
   useEffect(() => {
     if (!order) return;
-    const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
+    const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
     if (hasDates) {
       const queryParams = new URLSearchParams({
         isAbroad: order.isAbroad || false,
+        isWeekdayEvent: order.isWeekdayEvent || false,
         excludeOrderId: order.orderId
       });
       if (order.eventDate) queryParams.append('eventDate', order.eventDate);
@@ -134,7 +135,7 @@ export default function OrderDetailsPage({ params }) {
         })
         .catch(err => console.error('Failed to preload inventory cache', err));
     }
-  }, [order?.eventDate, order?.fromDate, order?.toDate, order?.isAbroad, order?.orderId]);
+  }, [order?.eventDate, order?.fromDate, order?.toDate, order?.isAbroad, order?.isWeekdayEvent, order?.orderId]);
 
   const totalRequired = obligations.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0);
   const totalPaid = payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
@@ -173,7 +174,7 @@ export default function OrderDetailsPage({ params }) {
     
     // FULL ORDER INVENTORY VALIDATION
     const activeItems = (items || []).filter(i => !i.isDeleted);
-    const hasDates = currentOrder.isAbroad || currentOrder.isWeekdayEvent ? (currentOrder.fromDate && currentOrder.toDate) : currentOrder.eventDate;
+    const hasDates = (currentOrder.isAbroad || currentOrder.isWeekdayEvent) ? (currentOrder.fromDate && currentOrder.toDate) : currentOrder.eventDate;
 
     if (activeItems.length > 0 && !hasDates) {
       setSaving(false);
