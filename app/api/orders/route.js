@@ -6,6 +6,8 @@ import { checkAuth } from '../../../lib/auth';
 import { cookies } from 'next/headers';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { validateOrderItemsAvailability } from '../../../lib/inventory';
+import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
+import { isReservedOrderPlaceholder } from '../../../lib/orderReservation';
 
 export const dynamic = 'force-dynamic';
 
@@ -461,7 +463,7 @@ export async function POST(request) {
       ? data.paymentsList
       : (data.payment ? [data.payment] : []);
     const totalPaidAmount = submittedPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-    const hasManagerApproval = submittedPayments.some(p => (p.method || p.paymentMethod) === 'יציאה באישור מנהל');
+    const hasManagerApproval = submittedPayments.some(isManagerApprovalPayment);
     const orderTotalAmount = data.totalAmount ? parseFloat(data.totalAmount) : 0;
     const isOrderConfirmed = totalPaidAmount > 0 || hasManagerApproval || orderTotalAmount === 0;
     const derivedCartStatus = isOrderConfirmed ? 'confirmed' : 'pending';
@@ -476,14 +478,14 @@ export async function POST(request) {
         isCustomDuration,
         data.fromDate,
         data.toDate,
-        data.orderId || null,
+        data.orderId || data.reservedOrderId || null,
         data.customSpacing ?? null
       );
 
       if (validationResult.error) {
         return NextResponse.json({ error: validationResult.error }, { status: 400 });
       }
-      
+
       if (!validationResult.valid) {
         return NextResponse.json({
           error: 'אחד או יותר מהפריטים שניסית להזמין כבר נתפסו לאחרונה על ידי הזמנה אחרת בתאריכים אלו.',
@@ -492,85 +494,122 @@ export async function POST(request) {
       }
     }
 
+    const orderData = {
+      customerId: data.customerId || null,
+      totalAmount: data.totalAmount ? parseFloat(data.totalAmount) : null,
+      orderDate: new Date(),
+      eventDate: data.isAbroad && data.fromDate ? new Date(data.fromDate) : (data.eventDate ? new Date(data.eventDate) : null),
+      eventDateHebrew: data.eventDateHebrew || (data.eventDate ? getHebrewDateString(data.eventDate) : null),
+      returnDate: data.returnDate ? new Date(data.returnDate) : null,
+      employeeId: data.employeeId || loggedInEmployeeId || null,
+      isAbroad: data.isAbroad ?? false,
+      isWeekdayEvent: data.isWeekdayEvent ?? false,
+      fromDate: data.fromDate ? new Date(data.fromDate) : null,
+      toDate: data.toDate ? new Date(data.toDate) : null,
+      notes: data.notes || '',
+      status: derivedStatus,
+      items: {
+        create: data.items?.map(item => ({
+          dressItemId: item.sampleItemId,
+          cartStatus: derivedCartStatus,
+          sizeText: item.sizeText,
+          quantity: item.quantity || 1,
+          basePrice: item.basePrice ? parseFloat(item.basePrice) : 0,
+          finalPrice: item.finalPrice ? parseFloat(item.finalPrice) : 0,
+          repairs: item.repairs || '',
+          neckAlteration: item.neckAlteration ? 1 : 0,
+          sleeveAlteration: item.sleeveAlteration ? 1 : 0,
+          lengthAlteration: item.lengthAlteration ? String(item.lengthAlteration) : '',
+          alterationDetails: item.repairs || ''
+        })) || []
+      },
+      ...(data.paymentsList && data.paymentsList.length > 0 ? {
+        payments: {
+          create: data.paymentsList.map(p => ({
+            amount: parseFloat(p.amount),
+            paymentMethod: p.method || p.paymentMethod,
+            notes: p.notes || '',
+            customerId: data.customerId ? data.customerId : null
+          }))
+        }
+      } : (data.payment && (data.payment.amount > 0 || isManagerApprovalPayment(data.payment)) ? {
+        payments: {
+          create: [{
+            amount: parseFloat(data.payment.amount),
+            paymentMethod: data.payment.method,
+            notes: data.payment.notes || '',
+            customerId: data.customerId ? data.customerId : null
+          }]
+        }
+      } : {}))
+    };
+
     const createOrderWithId = (orderIdToUse) =>
-      prisma.order.create({
-        data: {
-          orderId: orderIdToUse,
-          customerId: data.customerId || null,
-          totalAmount: data.totalAmount ? parseFloat(data.totalAmount) : null,
-          orderDate: new Date(),
-          eventDate: data.isAbroad && data.fromDate ? new Date(data.fromDate) : (data.eventDate ? new Date(data.eventDate) : null),
-          eventDateHebrew: data.eventDateHebrew || (data.eventDate ? getHebrewDateString(data.eventDate) : null),
-          returnDate: data.returnDate ? new Date(data.returnDate) : null,
-          employeeId: data.employeeId || loggedInEmployeeId || null,
-          isAbroad: data.isAbroad ?? false,
-          isWeekdayEvent: data.isWeekdayEvent ?? false,
-          fromDate: data.fromDate ? new Date(data.fromDate) : null,
-          toDate: data.toDate ? new Date(data.toDate) : null,
-          notes: data.notes || '',
-          status: derivedStatus,
-          items: {
-            create: data.items?.map(item => ({
-              dressItemId: item.sampleItemId,
-              cartStatus: derivedCartStatus,
-              sizeText: item.sizeText,
-              quantity: item.quantity || 1,
-              basePrice: item.basePrice ? parseFloat(item.basePrice) : 0,
-              finalPrice: item.finalPrice ? parseFloat(item.finalPrice) : 0,
-              repairs: item.repairs || '',
-              neckAlteration: item.neckAlteration ? 1 : 0,
-              sleeveAlteration: item.sleeveAlteration ? 1 : 0,
-              lengthAlteration: item.lengthAlteration ? String(item.lengthAlteration) : '',
-              alterationDetails: item.repairs || ''
-            })) || []
-          },
-          ...(data.paymentsList && data.paymentsList.length > 0 ? {
-            payments: {
-              create: data.paymentsList.map(p => ({
-                amount: parseFloat(p.amount),
-                paymentMethod: p.method || p.paymentMethod,
-                notes: p.notes || '',
-                customerId: data.customerId ? data.customerId : null
-              }))
-            }
-          } : (data.payment && (data.payment.amount > 0 || data.payment.method === 'יציאה באישור מנהל') ? {
-            payments: {
-              create: [{
-                amount: parseFloat(data.payment.amount),
-                paymentMethod: data.payment.method,
-                notes: data.payment.notes || '',
-                customerId: data.customerId ? data.customerId : null
-              }]
-            }
-          } : {}))
+      prisma.order.create({ data: { orderId: orderIdToUse, ...orderData } });
+
+    let order = null;
+
+    // A card charged from the new-order screen goes out to Nedarim Plus before the order is
+    // saved, carrying a number reserved by POST /api/orders/reserve inside its comment. The
+    // order therefore has to land on that same number - filling in the placeholder row
+    // rather than taking a fresh one off the top of the sequence.
+    const reservedOrderId = data.reservedOrderId ? parseInt(data.reservedOrderId, 10) : null;
+    let lostReservationId = null;
+
+    if (reservedOrderId) {
+      const reserved = await prisma.order.findUnique({
+        where: { orderId: reservedOrderId },
+        select: {
+          orderId: true,
+          status: true,
+          isDeleted: true,
+          items: { select: { id: true }, take: 1 },
+          payments: { select: { id: true }, take: 1 }
         }
       });
+
+      if (isReservedOrderPlaceholder(reserved)) {
+        order = await prisma.order.update({
+          where: { orderId: reservedOrderId },
+          data: { ...orderData, isDeleted: false, deletedAt: null }
+        });
+      } else {
+        // Never fail the save over this - the customer's card has already been charged.
+        // Save under a fresh number and tell the user, so the charge can be matched by hand.
+        lostReservationId = reservedOrderId;
+      }
+    }
 
     // `orderId` is a plain unique Int with no database sequence behind it, so the next
     // number has to be read and assigned by hand. Two employees saving at the same moment
     // would both read the same maximum, and the second insert would die on the unique
     // constraint - which reached the user as a generic "failed to save" message. Re-read
     // the number and try again instead.
-    let order;
-    for (let attempt = 0; ; attempt += 1) {
-      const maxOrder = await prisma.order.findFirst({
-        orderBy: { orderId: 'desc' },
-        select: { orderId: true }
-      });
-      const nextOrderId = maxOrder ? maxOrder.orderId + 1 : 1;
+    if (!order) {
+      for (let attempt = 0; ; attempt += 1) {
+        const maxOrder = await prisma.order.findFirst({
+          orderBy: { orderId: 'desc' },
+          select: { orderId: true }
+        });
+        const nextOrderId = maxOrder ? maxOrder.orderId + 1 : 1;
 
-      try {
-        order = await createOrderWithId(nextOrderId);
-        break;
-      } catch (error) {
-        const target = error?.meta?.target;
-        const hitOrderId = Array.isArray(target)
-          ? target.some(t => String(t).includes('orderId'))
-          : String(target || '').includes('orderId');
+        try {
+          order = await createOrderWithId(nextOrderId);
+          break;
+        } catch (error) {
+          const target = error?.meta?.target;
+          const hitOrderId = Array.isArray(target)
+            ? target.some(t => String(t).includes('orderId'))
+            : String(target || '').includes('orderId');
 
-        if (error?.code !== 'P2002' || !hitOrderId || attempt >= 4) throw error;
+          if (error?.code !== 'P2002' || !hitOrderId || attempt >= 4) throw error;
+        }
       }
     }
+
+    const reservationWarning = lostReservationId
+      ? `שים לב: החיוב בכרטיס האשראי נרשם בנדרים פלוס עם מס' הזמנה ${lostReservationId}, אך ההזמנה נשמרה כהזמנה #${order.orderId}. יש לעדכן את ההערה בנדרים פלוס ידנית.`
+      : null;
 
     // The order, its items and its payments are already committed at this point - the pricing
     // engine runs in its own transaction afterwards. Letting a failure here bubble up as a 500
@@ -594,7 +633,9 @@ export async function POST(request) {
       }
     });
 
-    return NextResponse.json(pricingWarning ? { ...updatedOrder, warning: pricingWarning } : updatedOrder);
+    const warning = [reservationWarning, pricingWarning].filter(Boolean).join('\n\n');
+
+    return NextResponse.json(warning ? { ...updatedOrder, warning } : updatedOrder);
   } catch (error) {
     console.error('Error creating order:', error);
     return NextResponse.json(

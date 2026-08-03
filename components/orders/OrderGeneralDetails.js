@@ -19,7 +19,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
   const validateAndChangeDate = async (fieldOrUpdates, valueIfField) => {
     const isMulti = typeof fieldOrUpdates === 'object';
     const updates = isMulti ? fieldOrUpdates : { [fieldOrUpdates]: valueIfField };
-    
+
     if (updates.eventDate !== undefined && !updates.eventDateHebrew) {
       updates.eventDateHebrew = updates.eventDate ? getHebrewDateString(updates.eventDate) : null;
     }
@@ -29,11 +29,16 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
       ...updates
     };
 
+    // Update local state immediately
     onOrderChange(proposedOrder);
 
+    // For dates that trigger auto-save, ensure we pass the complete order with all fields
     const triggerSave = Object.keys(updates).some(k => ['isAbroad', 'isWeekdayEvent', 'eventDate', 'fromDate', 'toDate', 'returnDate', 'customSpacing'].includes(k));
     if (triggerSave && onSaveRequest) {
-      setTimeout(() => onSaveRequest(proposedOrder), 0);
+      // Pass the proposedOrder with all current fields to prevent stale state issues
+      setTimeout(() => {
+        onSaveRequest(proposedOrder);
+      }, 50);
     }
   };
 
@@ -352,7 +357,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                     { id: 'regular', label: 'אירוע רגיל' },
                     { id: 'abroad', label: 'אירוע חו"ל' }
                   ].map(type => {
-                    const isSelected = 
+                    const isSelected =
                       (type.id === 'regular' && !order.isAbroad && !order.isWeekdayEvent) ||
                       (type.id === 'abroad' && (order.isAbroad || order.isWeekdayEvent));
                     return (
@@ -363,9 +368,11 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                           const isAbroad = type.id === 'abroad';
                           const isWeekdayEvent = false;
                           if (isAbroad) {
-                            validateAndChangeDate({ isAbroad, isWeekdayEvent });
+                            // When switching to abroad/weekday, clear eventDate since we'll use date range
+                            validateAndChangeDate({ isAbroad, isWeekdayEvent, eventDate: null, eventDateHebrew: null });
                           } else {
-                            validateAndChangeDate({ isAbroad, isWeekdayEvent, fromDate: null, toDate: null });
+                            // When switching to regular event, clear the date range but keep eventDate
+                            validateAndChangeDate({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null });
                           }
                         }}
                         style={{

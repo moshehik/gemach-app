@@ -12,6 +12,14 @@ import ItemCapacityModal from '../../../components/orders/ItemCapacityModal';
 import { calculateDynamicAvailability } from '../../../lib/clientInventory';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
+const STEP_LABELS = [
+  { id: 1, label: 'לקוח' },
+  { id: 2, label: 'תאריכים' },
+  { id: 3, label: 'פריטים' },
+  { id: 4, label: 'סיכום' },
+  { id: 5, label: 'תשלום' },
+];
+
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
   const f = (c.firstName === 'null' || c.firstName === 'undefined' || !c.firstName) ? '' : c.firstName;
@@ -112,6 +120,11 @@ export default function NewOrderPage() {
   const [creditError, setCreditError] = useState('');
   const [creditProcessedConfirmation, setCreditProcessedConfirmation] = useState(null);
 
+  // The order number Nedarim Plus was told about. It is claimed from the server before the
+  // first charge (the order itself does not exist yet at that point) and handed back on save,
+  // so the saved order carries the same number that appears on the charge.
+  const [reservedOrderId, setReservedOrderId] = useState(null);
+
   const handleSwipeInputChange = (e) => {
     const val = e.target.value;
     setSwipeInput(val);
@@ -207,8 +220,31 @@ export default function NewOrderPage() {
     
     try {
       const cust = order.selectedCustomer || newCustomer;
-      const fullAddress = cust.city || '';
-      
+      // Nedarim Plus gets the whole address, not just the city - same as the payments screen
+      // of an existing order (components/orders/OrderPaymentsManager.js).
+      const fullAddress = [cust.street || '', cust.houseNum || '', cust.city || ''].filter(Boolean).join(' ');
+
+      // Claim the real order number before charging - it is written into the Nedarim Plus
+      // comment and cannot be corrected there afterwards. If the reservation fails we still
+      // charge (the customer is standing at the counter) and fall back to the old wording.
+      let orderNumberForCharge = reservedOrderId;
+      if (!orderNumberForCharge) {
+        try {
+          const reserveRes = await fetch('/api/orders/reserve', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ customerId: order.customerId || null })
+          });
+          const reserveData = await reserveRes.json();
+          if (reserveRes.ok && reserveData.orderId) {
+            orderNumberForCharge = reserveData.orderId;
+            setReservedOrderId(reserveData.orderId);
+          }
+        } catch (reserveErr) {
+          console.error('Failed to reserve order number for Nedarim charge', reserveErr);
+        }
+      }
+
       const response = await fetch('/api/nedarim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -220,7 +256,7 @@ export default function NewOrderPage() {
           tokef: creditCardData.tokef.replace(/\//g, ''),
           amount: paymentAmount,
           installments: parseInt(creditCardData.installments) || 1,
-          notes: [creditCardData.notes, 'באמצעות תכנת הגמח; מס הזמנה: חדשה'].filter(Boolean).join(' - '),
+          notes: [creditCardData.notes, `באמצעות תכנת הגמח; מס הזמנה: ${orderNumberForCharge || 'חדשה'}`].filter(Boolean).join(' - '),
           zeout: cust.idNumber || cust.zeout || '',
           email: cust.email || ''
         })
@@ -446,7 +482,7 @@ export default function NewOrderPage() {
     } else {
       setAvailableSizes([]);
     }
-  }, [order.eventDate, order.fromDate, order.toDate, order.isAbroad, newItem.dressModelId, inventoryCache, order.items]);
+  }, [order.eventDate, order.fromDate, order.toDate, order.isAbroad, order.customSpacing, newItem.dressModelId, inventoryCache, order.items]);
 
   useEffect(() => {
     if (newItem.dressModelId && newItem.sizeText) {
@@ -519,10 +555,14 @@ export default function NewOrderPage() {
           return;
         }
         if (!validateData.valid) {
-          const errorLines = validateData.errors.map(e => 
-            `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
-          ).join('\n');
-          alert(`לא ניתן לשנות את התאריך עקב חוסר במלאי לפריטים הקיימים בהזמנה:\n\n${errorLines}`);
+          const errorLines = validateData.errors.map(e => {
+            const msg = `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`;
+            return e.isCustomSpacingIssue ? `${msg} (בגלל ציפוף)` : msg;
+          }).join('\n');
+          const customSpacingNote = validateData.errors.some(e => e.isCustomSpacingIssue)
+            ? '\n\n💡 הערה: כמה מהבעיות קשורות לציפוף מיוחד. אם אתה בוטל בציפוף, נסה לבחור ציפוף קטן יותר.'
+            : '';
+          alert(`לא ניתן לשנות את התאריך עקב חוסר במלאי לפריטים הקיימים בהזמנה:\n\n${errorLines}${customSpacingNote}`);
           return;
         }
       } catch (err) {
@@ -678,6 +718,19 @@ export default function NewOrderPage() {
     setPayment(prev => ({ ...prev, amount: remainder }));
   }, [totalAmount, paymentsList]);
 
+  // Escape closes whichever modal is on top. Skipped while a charge/save is in
+  // flight so nobody dismisses a modal mid-transaction.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== 'Escape' || isProcessingCredit || saving) return;
+      if (showQuickSwipeModal) setShowQuickSwipeModal(false);
+      else if (showCreditModal) setShowCreditModal(false);
+      else if (capacityModalItem) setCapacityModalItem(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showQuickSwipeModal, showCreditModal, capacityModalItem, isProcessingCredit, saving]);
+
   const saveOrder = async () => {
     const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
     if (!order.customerId) return alert('יש לבחור לקוח');
@@ -793,10 +846,14 @@ export default function NewOrderPage() {
         }
         if (!validateData.valid) {
           setSaving(false);
-          const errorLines = validateData.errors.map(e => 
-            `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
-          ).join('\n');
-          alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}`);
+          const errorLines = validateData.errors.map(e => {
+            const msg = `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`;
+            return e.isCustomSpacingIssue ? `${msg} (בגלל ציפוף)` : msg;
+          }).join('\n');
+          const customSpacingNote = validateData.errors.some(e => e.isCustomSpacingIssue)
+            ? '\n\n💡 הערה: כמה מהבעיות קשורות לציפוף מיוחד. אם אתה בוטל בציפוף, נסה לבחור ציפוף קטן יותר.'
+            : '';
+          alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}${customSpacingNote}`);
           return;
         }
       } catch (err) {
@@ -829,7 +886,10 @@ export default function NewOrderPage() {
         customSpacing: order.customSpacing,
         totalAmount,
         items: itemsToSave,
-        paymentsList: finalPaymentsList
+        paymentsList: finalPaymentsList,
+        // Set once a card was charged: the order must be saved under the number that already
+        // went out with the charge, not under a freshly allocated one.
+        reservedOrderId
       };
 
       const res = await fetch('/api/orders', {
@@ -867,10 +927,31 @@ export default function NewOrderPage() {
           background-color: var(--bg-color);
         }
 
+        /* Playfair Display is only loaded at 400/600 - asking for 700+ made the
+           browser synthesize a smeared faux-bold on every heading. */
         h1, h2, h3, h4 {
           font-family: 'Playfair Display', serif;
-          font-weight: 700;
+          font-weight: 600;
           color: var(--text-main);
+        }
+
+        .link-button {
+          background: none;
+          border: none;
+          color: var(--primary-hover);
+          font-family: inherit;
+          font-size: 0.95rem;
+          font-weight: 700;
+          cursor: pointer;
+          padding: 0.5rem 0.75rem;
+          border-radius: 8px;
+          text-decoration: underline;
+          transition: background 0.2s ease;
+        }
+        .link-button:hover { background: var(--primary-light); }
+        .link-button:focus-visible {
+          outline: 2px solid var(--primary-color);
+          outline-offset: 2px;
         }
 
         @keyframes fadeIn {
@@ -882,10 +963,430 @@ export default function NewOrderPage() {
         }
 
         .modern-main-container {
-          background-image: 
+          background-image:
             radial-gradient(at 0% 0%, hsla(43, 65%, 90%, 0.3) 0px, transparent 50%),
             radial-gradient(at 100% 0%, hsla(0, 0%, 100%, 0.8) 0px, transparent 50%);
           min-height: 100vh;
+
+          /* Single source of truth for the wizard's width, so the stepper and
+             every step card line up on exactly the same edges. */
+          --wizard-width: 980px;
+          --node-size: 36px;
+          --node-half: 18px;
+
+          /* Semantic colours - theme aware, replacing the hardcoded slate/blue
+             hexes that used to be sprinkled inline (they broke dark mode). */
+          --surface-soft: var(--element-bg);
+          --surface-raised: var(--input-bg);
+          --ok: #059669;
+          --ok-soft: rgba(5, 150, 105, 0.12);
+          --danger: #dc2626;
+          --danger-soft: rgba(220, 38, 38, 0.1);
+          --warn: #d97706;
+          --warn-soft: rgba(217, 119, 6, 0.12);
+          --info: #2563eb;
+          --info-soft: rgba(37, 99, 235, 0.1);
+        }
+
+        [data-theme="dark"] .modern-main-container {
+          background-image:
+            radial-gradient(at 0% 0%, hsla(43, 65%, 20%, 0.45) 0px, transparent 50%),
+            radial-gradient(at 100% 0%, hsla(0, 0%, 15%, 1) 0px, transparent 50%);
+          --ok: #34d399;
+          --ok-soft: rgba(52, 211, 153, 0.16);
+          --danger: #fca5a5;
+          --danger-soft: rgba(252, 165, 165, 0.16);
+          --warn: #fcd34d;
+          --warn-soft: rgba(252, 211, 77, 0.16);
+          --info: #93c5fd;
+          --info-soft: rgba(147, 197, 253, 0.16);
+        }
+
+        /* Every step renders inside this wrapper so all five steps are exactly
+           the same width - no jumping when moving between them. */
+        .wizard-step {
+          width: 100%;
+          max-width: var(--wizard-width);
+          margin: 0.5rem auto;
+          box-sizing: border-box;
+        }
+
+        /* Explicit radius so the accent bar matches .glass-card's corners even on
+           cards that can't use overflow:hidden (they contain popup dropdowns). */
+        .card-accent {
+          position: absolute;
+          top: 0;
+          inset-inline: 0;
+          height: 4px;
+          background: var(--primary-color);
+          border-radius: 20px 20px 0 0;
+        }
+
+        /* Keeps forms at a readable measure inside the full-width step cards. */
+        .step-inner {
+          max-width: 680px;
+          margin: 0 auto;
+        }
+
+        .field-label {
+          display: block;
+          margin-bottom: 0.35rem;
+          font-weight: 700;
+          color: var(--text-main);
+          font-size: 0.95rem;
+        }
+
+        .soft-panel {
+          background: var(--surface-soft);
+          padding: 1rem;
+          border-radius: 12px;
+          border: 1px solid var(--border-color);
+        }
+
+        /* ---------- Buttons ---------- */
+        .btn-secondary {
+          background: var(--surface-raised);
+          color: var(--text-muted);
+          border: 1px solid var(--element-border);
+          border-radius: 12px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: inherit;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.4rem;
+        }
+        .btn-secondary:hover:not(:disabled) {
+          border-color: var(--primary-color);
+          color: var(--text-main);
+        }
+
+        .btn-success {
+          background: var(--ok);
+          color: #fff;
+          border: none;
+          border-radius: 12px;
+          font-weight: 800;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: inherit;
+          box-shadow: 0 6px 15px var(--ok-soft);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+        .btn-success:hover:not(:disabled) {
+          transform: translateY(-1px);
+          filter: brightness(1.05);
+        }
+        .btn-success:disabled {
+          background: var(--element-bg);
+          color: var(--text-muted);
+          box-shadow: none;
+          cursor: not-allowed;
+        }
+
+        .btn-soft {
+          background: var(--primary-light);
+          color: var(--primary-hover);
+          border: 1px solid var(--border-color);
+          border-radius: 12px;
+          font-weight: 700;
+          font-size: 1.05rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: inherit;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+        .btn-soft:hover:not(:disabled) {
+          background: rgba(212, 175, 55, 0.28);
+          border-color: var(--primary-color);
+        }
+        .btn-soft:focus-visible {
+          outline: 2px solid var(--primary-color);
+          outline-offset: 2px;
+        }
+
+        .btn-danger-outline {
+          background: transparent;
+          color: var(--danger);
+          border: 1px solid var(--danger);
+          border-radius: 12px;
+          font-weight: 800;
+          font-size: 1.05rem;
+          cursor: pointer;
+          transition: all 0.2s ease;
+          font-family: inherit;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.5rem;
+        }
+        .btn-danger-outline:hover:not(:disabled) { background: var(--danger-soft); }
+        .btn-danger-outline:focus-visible {
+          outline: 2px solid var(--danger);
+          outline-offset: 2px;
+        }
+
+        /* ---------- Spinner / blocking overlay ---------- */
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .spinner {
+          width: 54px;
+          height: 54px;
+          border-radius: 50%;
+          border: 4px solid var(--divider);
+          border-top-color: var(--primary-color);
+          animation: spin 0.8s linear infinite;
+        }
+        /* Inline (in-button) variant - inherits the button's text colour so it
+           reads on the gold primary and the green success button alike. */
+        .spinner.small {
+          width: 18px;
+          height: 18px;
+          border-width: 3px;
+          border-color: currentColor;
+          border-top-color: transparent;
+          opacity: 0.85;
+        }
+
+        .blocking-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 2000;
+          background: rgba(15, 23, 42, 0.55);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          direction: rtl;
+          animation: fadeIn 0.2s ease forwards;
+        }
+        .blocking-overlay__card {
+          background: var(--card-bg);
+          border: 1px solid var(--border-color);
+          border-radius: 20px;
+          box-shadow: var(--shadow-lg);
+          padding: 2.2rem 2.6rem;
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 1rem;
+          max-width: 90vw;
+        }
+
+        /* ---------- Step 3 layout ---------- *
+         * Explicit two-column grid instead of flex ratios: the columns are a
+         * fixed fraction of the wizard width, so neither panel's content can
+         * push the other one narrower (that was the "width jumps" bug).        */
+        .step3-grid {
+          display: grid;
+          grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+          gap: 1rem;
+          align-items: start;
+        }
+        @media (max-width: 860px) {
+          .step3-grid { grid-template-columns: minmax(0, 1fr); }
+        }
+
+        /* Toggles + length always share one row - "אורך" can't drop below. */
+        .alterations-row {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(120px, 1.1fr);
+          gap: 0.6rem;
+          align-items: center;
+        }
+
+        .toggle-chip {
+          padding: 0.45rem 0.6rem;
+          border-radius: 10px;
+          cursor: pointer;
+          background: var(--surface-raised);
+          color: var(--text-muted);
+          border: 1px solid var(--element-border);
+          font-weight: 700;
+          font-size: 0.95rem;
+          font-family: inherit;
+          transition: all 0.2s ease;
+          min-height: 40px;
+        }
+        .toggle-chip:hover { border-color: var(--primary-color); }
+        .toggle-chip.on {
+          background: var(--primary-color);
+          color: var(--btn-primary-text);
+          border-color: var(--primary-hover);
+          box-shadow: var(--shadow-sm);
+        }
+
+        .length-field {
+          display: flex;
+          align-items: center;
+          gap: 0.4rem;
+          min-width: 0;
+        }
+        .length-field label { flex-shrink: 0; }
+
+        .icon-btn {
+          background: var(--surface-soft);
+          border: 1px solid var(--element-border);
+          color: var(--primary-hover);
+          cursor: pointer;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 0.3rem;
+          border-radius: 6px;
+          transition: all 0.2s ease;
+        }
+        .icon-btn:hover { background: var(--primary-light); border-color: var(--primary-color); }
+        .icon-btn.warn { color: var(--warn); }
+        .icon-btn.warn:hover { background: var(--warn-soft); border-color: var(--warn); }
+        .icon-btn.danger { color: var(--danger); }
+        .icon-btn.danger:hover { background: var(--danger-soft); border-color: var(--danger); }
+
+        .size-card-interactive { font-family: inherit; }
+
+        /* ---------- Shared modal shell ---------- */
+        /* globals.css only locks body scroll for .modal-overlay/.popup-overlay,
+           which these don't use - so lock it here too. */
+        body:has(.modal-shell-overlay),
+        body:has(.blocking-overlay) {
+          overflow: hidden;
+        }
+
+        .modal-shell-overlay {
+          position: fixed;
+          inset: 0;
+          z-index: 1000;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 1rem;
+          background: rgba(15, 23, 42, 0.55);
+          backdrop-filter: blur(6px);
+          -webkit-backdrop-filter: blur(6px);
+          animation: fadeIn 0.2s ease forwards;
+        }
+        .modal-shell {
+          position: relative;
+          direction: rtl;
+          width: 100%;
+          max-width: 520px;
+          max-height: 90vh;
+          overflow-y: auto;
+          padding: 1.75rem;
+          background: var(--card-bg);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+          border: 1px solid var(--border-color);
+          border-radius: 20px;
+          box-shadow: var(--shadow-lg);
+          color: var(--text-main);
+        }
+        .modal-shell::before {
+          content: '';
+          position: absolute;
+          inset-inline: 0;
+          top: 0;
+          height: 4px;
+          background: var(--primary-color);
+        }
+        .modal-shell-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 1rem;
+          margin-bottom: 1.25rem;
+        }
+        .modal-shell-header h3 { margin: 0; font-size: 1.35rem; font-weight: 600; }
+        .modal-shell-close {
+          flex: 0 0 auto;
+          width: 40px;
+          height: 40px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: none;
+          border: none;
+          border-radius: 50%;
+          font-size: 1.35rem;
+          line-height: 1;
+          cursor: pointer;
+          color: var(--text-muted);
+          transition: all 0.2s ease;
+        }
+        .modal-shell-close:hover { background: var(--element-bg); color: var(--text-main); }
+        .modal-shell-panel {
+          background: var(--surface-soft);
+          border: 1px solid var(--border-color);
+          border-radius: 12px;
+          padding: 1rem;
+          margin-bottom: 1.25rem;
+        }
+        .modal-shell-footer { display: flex; flex-wrap: wrap; gap: 0.8rem; }
+        .modal-shell-footer > * { flex: 1 1 180px; }
+        @media (max-width: 480px) {
+          .modal-shell { padding: 1.25rem; border-radius: 16px; }
+        }
+
+        /* ---------- Inputs ---------- */
+        .wizard-input,
+        .premium-input {
+          width: 100%;
+          padding: 0.75rem 1rem;
+          border-radius: 10px;
+          border: 1px solid var(--element-border);
+          background: var(--input-bg);
+          color: var(--text-main);
+          font-family: inherit;
+          font-size: 1.05rem;
+          outline: none;
+          transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+        .wizard-input:focus,
+        .premium-input:focus {
+          border-color: var(--primary-color);
+          box-shadow: 0 0 0 3px var(--primary-light);
+        }
+        .wizard-input.compact {
+          padding: 0.6rem 0.75rem;
+          font-size: 1rem;
+        }
+        .wizard-input::placeholder,
+        .premium-input::placeholder { color: var(--text-muted); }
+
+        .field-label.sub {
+          font-size: 0.9rem;
+          font-weight: 600;
+          color: var(--text-muted);
+        }
+
+        /* Auto-fitting form grid - fields never squeeze into unreadable columns. */
+        .form-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+          gap: 0.8rem;
+        }
+
+        /* ---------- Focus visibility (the classes above all clear the outline) ---------- */
+        .primary-button:focus-visible,
+        .btn-secondary:focus-visible,
+        .btn-success:focus-visible,
+        .toggle-chip:focus-visible,
+        .icon-btn:focus-visible,
+        .size-card-interactive:focus-visible,
+        .modal-shell-close:focus-visible,
+        .radio-card:focus-visible {
+          outline: 2px solid var(--primary-color);
+          outline-offset: 2px;
         }
 
         .glass-card {
@@ -898,45 +1399,72 @@ export default function NewOrderPage() {
           transition: all 0.3s ease;
         }
 
+        /* ---------- Stepper ---------- *
+         * Laid out as a 5 equal-column grid so every step occupies exactly the
+         * same width; the label sits in normal flow under its node (not absolute)
+         * so labels can never collide with each other. The connector between two
+         * nodes is drawn per-column, so it always meets the circles' centers no
+         * matter how wide the container gets.                                    */
         .stepper-container {
           background: var(--card-bg);
           backdrop-filter: blur(24px);
           -webkit-backdrop-filter: blur(24px);
           border: 1px solid var(--border-color);
-          border-radius: 16px;
-          padding: 1.2rem 2rem 2.5rem 2rem;
+          border-radius: 18px;
+          padding: 1.1rem 1.25rem;
           box-shadow: var(--shadow-sm);
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          align-items: start;
           position: relative;
-          max-width: 800px;
-          margin: 0 auto 1.5rem auto;
-        }
-        
-        .step-progress-line {
-          position: absolute;
-          top: 50%;
-          left: 2rem;
-          right: 2rem;
-          height: 4px;
-          background: var(--divider);
-          transform: translateY(-50%);
-          z-index: 1;
-          border-radius: 10px;
-          overflow: hidden;
+          width: 100%;
+          max-width: var(--wizard-width);
+          margin: 0 auto 1.25rem auto;
+          box-sizing: border-box;
         }
 
-        .step-progress-fill {
-          height: 100%;
+        .step-item {
+          position: relative;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
+          min-width: 0;
+          background: none;
+          border: none;
+          padding: 0;
+          font-family: inherit;
+          text-align: center;
+        }
+
+        /* Connector segment from this node back to the previous one (RTL: to the right) */
+        .step-item:not(:first-child)::before,
+        .step-item:not(:first-child)::after {
+          content: '';
+          position: absolute;
+          top: var(--node-half);
+          right: calc(50% + var(--node-half) + 6px);
+          width: calc(100% - var(--node-size) - 12px);
+          height: 3px;
+          border-radius: 3px;
+          transform: translateY(-50%);
+        }
+        .step-item:not(:first-child)::before {
+          background: var(--divider);
+        }
+        .step-item:not(:first-child)::after {
           background: var(--primary-color);
-          transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
-          box-shadow: 0 0 6px var(--primary-color);
+          transform: translateY(-50%) scaleX(0);
+          transform-origin: right center;
+          transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .step-item.reached:not(:first-child)::after {
+          transform: translateY(-50%) scaleX(1);
         }
 
         .step-node {
-          width: 36px;
-          height: 36px;
+          width: var(--node-size);
+          height: var(--node-size);
           border-radius: 50%;
           background: var(--card-bg);
           border: 1px solid var(--border-color);
@@ -945,110 +1473,76 @@ export default function NewOrderPage() {
           justify-content: center;
           font-weight: 800;
           color: var(--text-muted);
-          z-index: 2;
           position: relative;
+          z-index: 2;
           transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
           box-shadow: var(--shadow-sm);
           font-size: 0.95rem;
+          flex-shrink: 0;
         }
 
-        .step-node.completed {
+        .step-item.completed .step-node {
           background: var(--primary-color);
           border-color: var(--primary-color);
           color: var(--btn-primary-text);
         }
 
-        .step-node.active {
+        .step-item.active .step-node {
           background: var(--primary-color);
           border-color: var(--primary-hover);
           color: var(--btn-primary-text);
-          box-shadow: 0 0 0 4px rgba(212, 175, 55, 0.2), var(--shadow-sm);
-          transform: scale(1.06);
+          box-shadow: 0 0 0 4px var(--primary-light), var(--shadow-sm);
+          transform: scale(1.08);
+        }
+
+        .step-item.clickable:hover:not(.active) .step-node {
+          border-color: var(--primary-color);
+          transform: translateY(-1px);
+        }
+        .step-item:focus-visible {
+          outline: none;
+        }
+        .step-item:focus-visible .step-node {
+          box-shadow: 0 0 0 3px var(--primary-color);
         }
 
         .step-label {
-          position: absolute;
-          top: 45px;
-          left: 50%;
-          transform: translateX(-50%);
           font-size: 0.85rem;
           font-weight: 700;
           color: var(--text-muted);
+          line-height: 1.2;
+          transition: color 0.3s ease;
+          max-width: 100%;
+          overflow: hidden;
+          text-overflow: ellipsis;
           white-space: nowrap;
-          transition: all 0.3s ease;
         }
-        .step-node.active .step-label {
+        .step-item.active .step-label {
           color: var(--text-main);
           font-weight: 800;
         }
-        .step-node.completed .step-label {
+        .step-item.completed .step-label {
           color: var(--text-main);
         }
 
         @media (max-width: 768px) {
           .stepper-container {
-            padding: 1rem 1rem 2.5rem 1rem;
+            padding: 0.9rem 0.6rem;
+            --node-size: 32px;
+            --node-half: 16px;
           }
-          .step-progress-line {
-            left: 1.5rem;
-            right: 1.5rem;
-          }
-          .step-node {
-            width: 32px;
-            height: 32px;
-            font-size: 0.85rem;
-          }
-          .step-label {
-            font-size: 0.75rem;
-            top: 40px;
-          }
-        }
-        
-        @media (max-width: 480px) {
-          .stepper-container {
-            padding: 1rem 0.5rem 2rem 0.5rem;
-          }
-          .step-node {
-            width: 28px;
-            height: 28px;
-            font-size: 0.8rem;
-          }
-          .step-label {
-            font-size: 0.65rem;
-            top: 36px;
-          }
+          .step-node { font-size: 0.85rem; }
+          .step-label { font-size: 0.72rem; }
         }
 
-        .toggle-switch {
-          appearance: none;
-          width: 48px;
-          height: 26px;
-          background: var(--element-bg);
-          border-radius: 26px;
-          position: relative;
-          cursor: pointer;
-          transition: background 0.3s ease;
-          outline: none;
-          border: 1px solid var(--element-border);
-        }
-        .toggle-switch:checked {
-          background: var(--primary-color);
-          border-color: var(--primary-hover);
-        }
-        .toggle-switch::after {
-          content: '';
-          position: absolute;
-          top: 2px;
-          right: 2px;
-          width: 20px;
-          height: 20px;
-          background: white;
-          border-radius: 50%;
-          box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-          transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-        }
-        .toggle-switch:checked::after {
-          transform: translateX(-22px);
+        @media (max-width: 420px) {
+          .stepper-container {
+            padding: 0.8rem 0.4rem;
+            --node-size: 28px;
+            --node-half: 14px;
+          }
+          .step-node { font-size: 0.8rem; }
+          .step-label { font-size: 0.62rem; }
         }
 
         .cart-item-card {
@@ -1100,8 +1594,8 @@ export default function NewOrderPage() {
         
         .radio-card {
           border: 1px solid var(--border-color);
-          border-radius: 16px;
-          padding: 1.25rem;
+          border-radius: 12px;
+          padding: 0.6rem 1rem;
           cursor: pointer;
           transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
           display: flex;
@@ -1129,25 +1623,8 @@ export default function NewOrderPage() {
           background: var(--primary-color);
         }
 
-        .premium-input {
-          width: 100%;
-          padding: 0.8rem 1rem;
-          border-radius: 10px;
-          border: 1px solid var(--border-color);
-          font-size: 1rem;
-          outline: none;
-          transition: all 0.25s ease;
-          background: var(--input-bg);
-          color: var(--text-main);
-          font-family: inherit;
-        }
-        .premium-input:focus {
-          border-color: var(--primary-color);
-          box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
-        }
-        .premium-input::placeholder {
-          color: var(--text-muted);
-        }
+        /* .premium-input is the older alias of .wizard-input - kept so existing
+           markup keeps working, but defined once so the two can't drift apart. */
 
         /* custom styling for sizes */
         .size-card-interactive {
@@ -1182,64 +1659,56 @@ export default function NewOrderPage() {
       <main className="modern-main-container" style={{ padding: '4.2rem 1.5rem 0.5rem 1.5rem', margin: '0 auto', direction: 'rtl', minHeight: 'calc(100vh - 4.5rem)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         
         {/* Floating Stepper */}
-        <div className="stepper-container">
-          <div className="step-progress-line">
-            <div className="step-progress-fill" style={{ width: `${((step - 1) / 4) * 100}%` }}></div>
-          </div>
-          {[1, 2, 3, 4, 5].map((s) => {
-            const isClickable = canNavigateToStep(s);
+        <nav className="stepper-container" aria-label="שלבי ההזמנה">
+          {STEP_LABELS.map(({ id, label }) => {
+            const isClickable = canNavigateToStep(id);
+            const state = step === id ? 'active' : step > id ? 'completed' : '';
             return (
-              <div 
-                key={s} 
-                className={`step-node ${step === s ? 'active' : step > s ? 'completed' : ''}`}
+              <button
+                type="button"
+                key={id}
+                className={`step-item ${state} ${step >= id ? 'reached' : ''} ${isClickable ? 'clickable' : ''}`}
+                aria-current={step === id ? 'step' : undefined}
                 onClick={() => {
                   if (isClickable) {
-                    setStep(s);
+                    setStep(id);
                   } else {
-                    if (s === 2 && !order.customerId) alert('יש לבחור לקוח תחילה');
-                    else if (s === 3 && !(order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate)) alert('יש למלא תאריכים תחילה');
-                    else if ((s === 4 || s === 5) && order.items.length === 0) alert('יש להוסיף לפחות פריט אחד להזמנה');
+                    if (id === 2 && !order.customerId) alert('יש לבחור לקוח תחילה');
+                    else if (id === 3 && !(order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate)) alert('יש למלא תאריכים תחילה');
+                    else if ((id === 4 || id === 5) && order.items.length === 0) alert('יש להוסיף לפחות פריט אחד להזמנה');
                   }
                 }}
                 style={{ cursor: isClickable ? 'pointer' : 'not-allowed' }}
               >
-                {step > s ? '✓' : s}
-                <span className="step-label">
-                  {s === 1 && 'לקוח'}
-                  {s === 2 && 'תאריכים'}
-                  {s === 3 && 'פריטים'}
-                  {s === 4 && 'סיכום'}
-                  {s === 5 && 'תשלום'}
-                </span>
-              </div>
+                <span className="step-node">{step > id ? <Check size={16} strokeWidth={3} /> : id}</span>
+                <span className="step-label">{label}</span>
+              </button>
             );
           })}
-        </div>
+        </nav>
         
         {/* STEP 1: CUSTOMER */}
         {step === 1 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '700px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative', overflow: 'hidden' }}>
-            <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
-               <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '800', letterSpacing: '-0.5px' }}>מי הלקוח?</h2>
-            </div>
+          <div className="fade-in glass-card wizard-step" style={{ padding: '1.2rem', position: 'relative' }}>
+            <div className="card-accent"></div>
+            <div className="step-inner">
+            <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.4rem', fontWeight: 600 }}>מי הלקוח?</h2>
 
             {searchMode === 'phone' && !foundCustomerFromPhone && (
               <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
                 <div style={{ width: '100%' }}>
-                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: '700', fontSize: '1.1rem', color: '#334155' }}>מספר הטלפון של הלקוח</label>
-                  <input type="tel" 
-                    value={phoneSearchInput} 
-                    onChange={e => setPhoneSearchInput(e.target.value)} 
+                  <label className="field-label" htmlFor="cust-phone" style={{ fontSize: '1.05rem' }}>מספר הטלפון של הלקוח</label>
+                  <input id="cust-phone" type="tel"
+                    className="wizard-input"
+                    value={phoneSearchInput}
+                    onChange={e => setPhoneSearchInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCheckPhone()}
                     placeholder="הזן מספר טלפון (05...)"
-                    style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '2px solid #cbd5e1', fontSize: '1.2rem', textAlign: 'center', transition: 'all 0.3s', outline: 'none' }} 
-                    onFocus={(e) => e.target.style.borderColor = '#2563eb'}
-                    onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
+                    style={{ fontSize: '1.2rem', textAlign: 'center' }}
                   />
                 </div>
-                
-                <button onClick={handleCheckPhone} disabled={isCheckingPhone} className="primary-button" style={{ width: '100%', padding: '0.75rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+
+                <button type="button" onClick={handleCheckPhone} disabled={isCheckingPhone} className="primary-button" style={{ width: '100%', padding: '0.75rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                   {isCheckingPhone ? 'מחפש...' : (
                     <>
                       <span>המשך</span>
@@ -1248,37 +1717,32 @@ export default function NewOrderPage() {
                   )}
                 </button>
 
-                <div style={{ marginTop: '0.5rem', width: '100%', textAlign: 'center' }}>
-                  <button onClick={() => setSearchMode('name')}
-                    style={{ background: 'transparent', border: '2px solid #e2e8f0', padding: '0.7rem', width: '100%', borderRadius: '10px', fontSize: '1rem', fontWeight: '600', color: '#475569', cursor: 'pointer', transition: 'all 0.3s' }}
-                    onMouseOver={(e) => {e.target.style.background = '#f8fafc'; e.target.style.borderColor = '#cbd5e1';}}
-                    onMouseOut={(e) => {e.target.style.background = 'transparent'; e.target.style.borderColor = '#e2e8f0';}}
-                  >
-                    או חפש לקוח קיים מהרשימה
-                  </button>
-                </div>
+                <button type="button" onClick={() => setSearchMode('name')} className="btn-secondary" style={{ width: '100%', padding: '0.7rem', marginTop: '0.25rem' }}>
+                  או חפש לקוח קיים מהרשימה
+                </button>
               </div>
             )}
 
             {searchMode === 'phone' && foundCustomerFromPhone && (
-              <div className="fade-in" style={{ textAlign: 'center', background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.8) 0%, rgba(255, 255, 255, 0.9) 100%)', padding: '1.5rem 1rem', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
-                <div style={{ width: '50px', height: '50px', background: 'linear-gradient(135deg, #2563eb, #4f46e5)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', margin: '0 auto 1rem auto', boxShadow: '0 5px 10px rgba(37, 99, 235, 0.2)' }}>
+              <div className="fade-in" style={{ textAlign: 'center', background: 'var(--primary-light)', padding: '1.5rem 1rem', borderRadius: '12px', border: '1px solid var(--border-color)' }}>
+                <div style={{ width: '50px', height: '50px', background: 'var(--primary-color)', color: 'var(--btn-primary-text)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', margin: '0 auto 1rem auto', boxShadow: '0 5px 10px rgba(212, 175, 55, 0.25)' }}>
                   👋
                 </div>
-                <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '0.3rem', fontWeight: '800' }}>שלום {getCustomerFullName(foundCustomerFromPhone)}!</h3>
-                <p style={{ fontSize: '1rem', color: '#64748b', marginBottom: '1.2rem' }}>מצאנו אותך במערכת (טלפון: {foundCustomerFromPhone.phone1}). האם זה אתה?</p>
-                
+                <h3 style={{ fontSize: '1.35rem', color: 'var(--text-main)', marginBottom: '0.3rem', fontWeight: 600 }}>שלום {getCustomerFullName(foundCustomerFromPhone)}!</h3>
+                <p style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '1.2rem' }}>מצאנו אותך במערכת (טלפון: {foundCustomerFromPhone.phone1}). האם זה אתה?</p>
+
                 <div style={{ display: 'flex', gap: '0.8rem', flexDirection: 'column' }}>
-                  <button onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)} className="primary-button" style={{ padding: '0.75rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                  <button type="button" onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)} className="primary-button" style={{ padding: '0.75rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                     <Check size={18} />
                     <span>כן, המשך להזמנה</span>
                   </button>
-                  <button onClick={() => {
+                  <button type="button" onClick={() => {
                       setNewCustomer(prev => ({ ...prev, phone1: phoneSearchInput.trim() }));
                       setFoundCustomerFromPhone(null);
                       setSearchMode('new');
                     }}
-                    style={{ padding: '0.75rem', background: 'white', color: '#64748b', border: '2px solid #cbd5e1', borderRadius: '10px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.3s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                    className="btn-secondary"
+                    style={{ padding: '0.75rem', fontSize: '1.05rem' }}
                   >
                     <span>לא, יצירת לקוח חדש</span>
                   </button>
@@ -1288,9 +1752,9 @@ export default function NewOrderPage() {
 
             {searchMode === 'name' && (
               <div className="fade-in">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
-                  <label style={{ fontWeight: '700', fontSize: '1.05rem', color: '#334155' }}>חיפוש ובחירת לקוח מהרשימה</label>
-                  <button onClick={() => setSearchMode('phone')} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.95rem', fontWeight: '600' }}>חזור להזנת טלפון</button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.6rem' }}>
+                  <label className="field-label" style={{ marginBottom: 0, fontSize: '1.05rem' }}>חיפוש ובחירת לקוח מהרשימה</label>
+                  <button type="button" onClick={() => setSearchMode('phone')} className="link-button">חזור להזנת טלפון</button>
                 </div>
                 <CustomerSelector 
                   value={order.selectedCustomer}
@@ -1298,7 +1762,7 @@ export default function NewOrderPage() {
                   placeholder="חפש לקוח לפי שם, טלפון, עיר..."
                 />
                 
-                <button onClick={proceedToStep2} disabled={!order.customerId} className="primary-button" style={{ width: '100%', marginTop: '1.5rem', padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                <button type="button" onClick={proceedToStep2} disabled={!order.customerId} className="primary-button" style={{ width: '100%', marginTop: '1.5rem', padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                   <span>המשך לשלב הבא</span>
                   <ArrowLeft size={18} />
                 </button>
@@ -1307,123 +1771,122 @@ export default function NewOrderPage() {
 
             {searchMode === 'new' && (
               <div className="fade-in">
-                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '2px solid #f1f5f9' }}>
-                  <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.3rem', fontWeight: '800' }}>יצירת לקוח חדש</h3>
-                  <button onClick={() => { setFoundCustomerFromPhone(null); setSearchMode('phone'); }} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.95rem', fontWeight: '600' }}>חזור</button>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '1px solid var(--divider)' }}>
+                  <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.3rem', fontWeight: 600 }}>יצירת לקוח חדש</h3>
+                  <button type="button" onClick={() => { setFoundCustomerFromPhone(null); setSearchMode('phone'); }} className="link-button">חזור</button>
                  </div>
 
-                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '0.8rem' }}>
+                 <div className="form-grid">
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>שם פרטי *</label>
-                    <input type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({...prev, firstName: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
+                    <label className="field-label sub" htmlFor="cust-firstName">שם פרטי <span aria-hidden="true">*</span></label>
+                    <input id="cust-firstName" type="text" required aria-required="true" className="wizard-input compact" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({...prev, firstName: e.target.value}))} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>שם משפחה *</label>
-                    <input type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({...prev, lastName: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
-                  </div>
-                </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '0.8rem' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>טלפון נייד *</label>
-                    <input type="text" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({...prev, phone1: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
+                    <label className="field-label sub" htmlFor="cust-lastName">שם משפחה <span aria-hidden="true">*</span></label>
+                    <input id="cust-lastName" type="text" required aria-required="true" className="wizard-input compact" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({...prev, lastName: e.target.value}))} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>אימייל</label>
-                    <input type="email" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({...prev, email: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
+                    <label className="field-label sub" htmlFor="cust-phone1">טלפון נייד <span aria-hidden="true">*</span></label>
+                    <input id="cust-phone1" type="tel" required aria-required="true" className="wizard-input compact" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({...prev, phone1: e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="field-label sub" htmlFor="cust-email">אימייל</label>
+                    <input id="cust-email" type="email" className="wizard-input compact" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({...prev, email: e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="field-label sub" htmlFor="cust-city">עיר מגורים</label>
+                    <input id="cust-city" type="text" className="wizard-input compact" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="field-label sub" htmlFor="cust-street">רחוב</label>
+                    <input id="cust-street" type="text" className="wizard-input compact" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({...prev, street: e.target.value}))} />
+                  </div>
+                  <div>
+                    <label className="field-label sub" htmlFor="cust-house">בית</label>
+                    <input id="cust-house" type="text" className="wizard-input compact" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({...prev, houseNum: e.target.value}))} />
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.8rem', marginBottom: '0.8rem' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>עיר מגורים</label>
-                    <input type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>רחוב</label>
-                    <input type="text" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({...prev, street: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>בית</label>
-                    <input type="text" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({...prev, houseNum: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} />
-                  </div>
-                </div>
-                
-                <button onClick={() => handleSaveNewCustomerAndProceed()} className="primary-button" style={{ width: '100%', marginTop: '1.2rem', padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                <button type="button" onClick={() => handleSaveNewCustomerAndProceed()} className="primary-button" style={{ width: '100%', marginTop: '1.2rem', padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                   <UserPlus size={18} />
                   <span>שמור לקוח והמשך</span>
                   <ArrowLeft size={18} />
                 </button>
               </div>
             )}
-            
+
             <div style={{ marginTop: '1.2rem', textAlign: 'center' }}>
-               <Link href="/orders" style={{ color: '#64748b', textDecoration: 'none', fontSize: '1rem', fontWeight: '600' }}>ביטול וחזרה לרשימת ההזמנות</Link>
+               <Link href="/orders" className="link-button" style={{ color: 'var(--text-muted)', display: 'inline-block' }}>ביטול וחזרה לרשימת ההזמנות</Link>
+            </div>
             </div>
           </div>
         )}
 
         {/* STEP 2: DATES */}
         {step === 2 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '700px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
-            <h2 style={{ marginBottom: '0.8rem', fontSize: '1.4rem', fontWeight: '800' }}>תאריכי ההזמנה</h2>
+          <div className="fade-in glass-card wizard-step" style={{ padding: '1.2rem', position: 'relative' }}>
+            <div className="card-accent"></div>
+            <div className="step-inner">
+            <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.4rem', fontWeight: 600 }}>תאריכי ההזמנה</h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-              <div className={`radio-card ${!order.isAbroad ? 'active' : ''}`} onClick={() => handleDateChangeWithValidation('isAbroad', false)} style={{ padding: '0.6rem 1rem' }}>
-                <input type="radio" checked={!order.isAbroad} readOnly style={{ accentColor: '#2563eb', transform: 'scale(1.1)' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
+              <label className={`radio-card ${!order.isAbroad ? 'active' : ''}`}>
+                <input type="radio" name="orderType" checked={!order.isAbroad} onChange={() => handleDateChangeWithValidation('isAbroad', false)} style={{ accentColor: 'var(--primary-color)', transform: 'scale(1.1)' }} />
                 <div>
-                  <h3 style={{ margin: '0 0 0.1rem 0', color: '#1e293b', fontSize: '1.1rem', fontWeight: '800' }}>אירוע רגיל</h3>
-                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>תאריך אירוע אחד</p>
+                  <h3 style={{ margin: '0 0 0.1rem 0', color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 600 }}>אירוע רגיל</h3>
+                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>תאריך אירוע אחד</p>
                 </div>
-              </div>
-              <div className={`radio-card ${order.isAbroad ? 'active' : ''}`} onClick={() => handleDateChangeWithValidation('isAbroad', true)} style={{ padding: '0.6rem 1rem' }}>
-                <input type="radio" checked={order.isAbroad} readOnly style={{ accentColor: '#2563eb', transform: 'scale(1.1)' }} />
+              </label>
+              <label className={`radio-card ${order.isAbroad ? 'active' : ''}`}>
+                <input type="radio" name="orderType" checked={!!order.isAbroad} onChange={() => handleDateChangeWithValidation('isAbroad', true)} style={{ accentColor: 'var(--primary-color)', transform: 'scale(1.1)' }} />
                 <div>
-                  <h3 style={{ margin: '0 0 0.1rem 0', color: '#1e293b', fontSize: '1.1rem', fontWeight: '800' }}>אירוע חו"ל / תפוסה ארוכה</h3>
-                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>הזנת טווח תאריכים</p>
+                  <h3 style={{ margin: '0 0 0.1rem 0', color: 'var(--text-main)', fontSize: '1.1rem', fontWeight: 600 }}>אירוע חו"ל / תפוסה ארוכה</h3>
+                  <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '0.85rem' }}>הזנת טווח תאריכים</p>
                 </div>
-              </div>
+              </label>
             </div>
 
-            <div style={{ background: 'rgba(255, 255, 255, 0.5)', padding: '1rem 1.5rem', borderRadius: '16px', border: '1px dashed #cbd5e1', marginBottom: '1rem' }}>
+            <div style={{ background: 'var(--surface-soft)', padding: '1rem 1.5rem', borderRadius: '12px', border: '1px dashed var(--border-color)', marginBottom: '1rem' }}>
+              {/* Both branches use the same width so the card doesn't resize when
+                  the event type is toggled. */}
               {!order.isAbroad ? (
                 <div style={{ textAlign: 'center' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '800', color: '#1e293b', fontSize: '1.1rem' }}>תאריך אירוע *</label>
-                  <div style={{ maxWidth: '300px', margin: '0 auto' }}>
+                  <label className="field-label" style={{ fontSize: '1.05rem' }}>תאריך אירוע <span aria-hidden="true">*</span></label>
+                  <div style={{ maxWidth: '420px', margin: '0 auto' }}>
                     <HebrewDatePicker value={order.eventDate} onChange={(date) => handleDateChangeWithValidation('eventDate', date)} />
                   </div>
                 </div>
               ) : (
-                <div style={{ width: '100%', maxWidth: '500px', margin: '0 auto' }}>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '800', color: '#1e293b', fontSize: '1.05rem', textAlign: 'center' }}>טווח תאריכים (מתאריך עד תאריך) *</label>
-                  <HebrewDateRangePicker 
-                    startDate={order.fromDate} 
-                    endDate={order.toDate} 
-                    onChange={(start, end) => handleDateChangeWithValidation({ fromDate: start, toDate: end })} 
+                <div style={{ width: '100%', maxWidth: '420px', margin: '0 auto' }}>
+                  <label className="field-label" style={{ fontSize: '1.05rem', textAlign: 'center' }}>טווח תאריכים (מתאריך עד תאריך) <span aria-hidden="true">*</span></label>
+                  <HebrewDateRangePicker
+                    startDate={order.fromDate}
+                    endDate={order.toDate}
+                    onChange={(start, end) => handleDateChangeWithValidation({ fromDate: start, toDate: end })}
                   />
                 </div>
               )}
             </div>
 
             <div style={{ marginBottom: '1rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: '700', color: '#334155', fontSize: '1.05rem' }}>הערות כלליות להזמנה</label>
-              <textarea 
-                name="notes" 
-                value={order.notes} 
+              <label className="field-label" htmlFor="order-notes" style={{ fontSize: '1.05rem' }}>הערות כלליות להזמנה</label>
+              <textarea
+                id="order-notes"
+                name="notes"
+                className="wizard-input"
+                value={order.notes}
                 onChange={handleOrderChange}
                 placeholder="הערות מיוחדות, בקשות שקשורות לתאריכים..."
-                style={{ width: '100%', padding: '0.8rem', borderRadius: '10px', border: '2px solid #e2e8f0', minHeight: '65px', height: '65px', fontSize: '1rem', fontFamily: 'inherit', resize: 'none', outline: 'none' }}
-                onFocus={(e)=>e.target.style.borderColor='#2563eb'}
-                onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
+                style={{ minHeight: '80px', resize: 'vertical', fontSize: '1rem' }}
               />
             </div>
 
-            <div style={{ marginTop: '0.5rem', background: '#fffbeb', border: '1px solid #fde68a', padding: '0.8rem 1.2rem', borderRadius: '12px', marginBottom: '1rem' }}>
+            <div style={{ marginTop: '0.5rem', background: 'var(--banner-rentals-bg)', border: '1px solid var(--banner-rentals-border)', padding: '0.8rem 1.2rem', borderRadius: '12px', marginBottom: '1rem' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <label style={{ fontWeight: '800', color: '#92400e', fontSize: '1.1rem', margin: 0 }}>ציפוף ימים מיוחד:</label>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                <label htmlFor="custom-spacing" style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '1.05rem', margin: 0 }}>ציפוף ימים מיוחד:</label>
                   <select
+                    id="custom-spacing"
+                    className="wizard-input"
                     value={order.customSpacing !== null && order.customSpacing !== undefined ? order.customSpacing : ''}
                     onChange={async (e) => {
                       const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
@@ -1451,7 +1914,7 @@ export default function NewOrderPage() {
                       
                       handleDateChangeWithValidation('customSpacing', val);
                     }}
-                    style={{ padding: '0.8rem 1rem', borderRadius: '10px', border: '1px solid #fcd34d', fontSize: '1rem', outline: 'none', backgroundColor: 'white', fontWeight: 'bold', width: '200px' }}
+                    style={{ fontWeight: 'bold', width: 'auto', minWidth: '200px' }}
                   >
                     <option value="">רגיל (לפי המערכת)</option>
                     <option value="1">1 יום רווח</option>
@@ -1460,43 +1923,45 @@ export default function NewOrderPage() {
                     <option value="4">4 ימי רווח</option>
                     <option value="0">ללא רווח כלל (0)</option>
                   </select>
-                </div>
               </div>
-              <p style={{ fontSize: '0.85rem', color: '#b45309', margin: '0.4rem 0 0 0', fontWeight: '500' }}>* בחירת ציפוף מיוחד תשפיע על בדיקת המלאי להזמנה זו בלבד ותצבע את כרטיס ההזמנה בצהוב (דורש הרשאת מנהל).</p>
+              <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0.4rem 0 0 0', fontWeight: '500' }}>* בחירת ציפוף מיוחד תשפיע על בדיקת המלאי להזמנה זו בלבד ותצבע את כרטיס ההזמנה בצהוב (דורש הרשאת מנהל).</p>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button onClick={() => setStep(1)} style={{ padding: '0.8rem 1.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => setStep(1)} className="btn-secondary" style={{ padding: '0.8rem 1.5rem', fontSize: '1.05rem', flex: '0 0 auto', minWidth: '120px' }}>
                 <ArrowRight size={18} />
                 <span>חזור</span>
               </button>
-              <button 
-                onClick={() => setStep(3)} 
-                disabled={order.isAbroad ? (!order.fromDate || !order.toDate) : !order.eventDate} 
-                className="primary-button" 
-                style={{ flex: 1, padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+              <button
+                type="button"
+                onClick={() => setStep(3)}
+                disabled={order.isAbroad ? (!order.fromDate || !order.toDate) : !order.eventDate}
+                className="primary-button"
+                style={{ flex: 1, minWidth: '200px', padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
               >
                 <span>המשך לבחירת פריטים</span>
                 <ArrowLeft size={18} />
               </button>
+            </div>
             </div>
           </div>
         )}
 
         {/* STEP 3: ADD ITEMS (Side by Side) */}
         {step === 3 && (
-          <div className="fade-in" style={{ display: 'flex', gap: '1rem', flexWrap: 'nowrap', alignItems: 'stretch', maxWidth: '950px', margin: '0.5rem auto' }}>
-            
+          <div className="fade-in wizard-step step3-grid">
+
             {/* Add Item Form (Right Side) */}
-            <div className="glass-card" style={{ flex: '1.2', maxWidth: '520px', minWidth: '320px', padding: '1.2rem', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
-              <h2 style={{ margin: '0 0 0.8rem 0', fontSize: '1.4rem', fontWeight: '800' }}>הוספת פריט חדש</h2>
-              
+            <div className="glass-card" style={{ padding: '1.2rem', position: 'relative', minWidth: 0 }}>
+              <div className="card-accent"></div>
+              <h2 style={{ margin: '0 0 1rem 0', fontSize: '1.4rem', fontWeight: 600 }}>הוספת פריט חדש</h2>
+
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>בחר דגם</label>
-                  <OrderModelSelector 
-                    value={{ name: newItem.dressName }} 
+                  <label className="field-label" htmlFor="item-model">בחר דגם</label>
+                  <OrderModelSelector
+                    inputId="item-model"
+                    value={{ name: newItem.dressName }}
                     onChange={(model) => {
                       setNewItem(prev => ({
                         ...prev,
@@ -1514,14 +1979,15 @@ export default function NewOrderPage() {
 
                 <div>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
-                    <label style={{ fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>בחר מידה {loadingSizes && <span style={{color: '#2563eb', fontWeight:'normal'}}>(בודק זמינות...)</span>}</label>
-                    <button 
+                    <label className="field-label" style={{ marginBottom: 0 }}>בחר מידה {loadingSizes && <span style={{color: 'var(--text-muted)', fontWeight:'normal'}}>(בודק זמינות...)</span>}</label>
+                    <button
                       onClick={refreshInventory}
                       disabled={loadingPreload || loadingSizes}
                       title="רענן זמינות מלאי"
+                      aria-label="רענן זמינות מלאי"
                       style={{
                         background: 'none', border: 'none', cursor: (loadingPreload || loadingSizes) ? 'not-allowed' : 'pointer',
-                        color: (loadingPreload || loadingSizes) ? '#94a3b8' : '#3b82f6',
+                        color: (loadingPreload || loadingSizes) ? 'var(--text-muted)' : 'var(--primary-color)',
                         display: 'flex', alignItems: 'center', padding: '0.2rem'
                       }}
                     >
@@ -1530,15 +1996,29 @@ export default function NewOrderPage() {
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', minHeight: '44px', alignItems: 'center' }}>
                     {availableSizes.length === 0 ? (
-                      <div style={{ padding: '0.5rem 0.8rem', background: '#f8fafc', color: '#94a3b8', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%', fontSize: '0.9rem' }}>
+                      <div style={{ padding: '0.5rem 0.8rem', background: 'var(--surface-soft)', color: 'var(--text-muted)', borderRadius: '8px', border: '1px solid var(--border-color)', width: '100%', fontSize: '0.9rem' }}>
                         {newItem.dressModelId ? 'אין מידות זמינות לתאריך זה.' : 'בחר דגם כדי לראות מידות זמינות.'}
                       </div>
                     ) : (
                       availableSizes.map(s => {
-                        const isAvailable = s.availableQuantity > 0;
+                        const normalAvail = s.withNormalBuffer?.availableQuantity || 0;
+                        const customAvail = s.withCustomSpacing?.availableQuantity;
+                        const selectedAvail = order.customSpacing !== null && order.customSpacing !== undefined ? customAvail : normalAvail;
+                        const isAvailable = selectedAvail > 0;
                         const isSelected = newItem.sizeText === s.sizeText;
+
+                        // הצג טיפ עם שתי הכמויות
+                        const tooltipText = s.withCustomSpacing
+                          ? `רגיל: ${normalAvail} | ציפוף: ${customAvail}${s.withCustomSpacing.gain > 0 ? ` (+${s.withCustomSpacing.gain})` : ''}`
+                          : `זמין: ${normalAvail}`;
+
                         return (
-                          <div key={s.sizeText} 
+                          <button
+                            type="button"
+                            key={s.sizeText}
+                            disabled={!isAvailable}
+                            aria-pressed={isSelected}
+                            title={tooltipText}
                             onClick={() => {
                               if (isAvailable) {
                                 handleNewItemChange({ target: { name: 'sizeText', value: s.sizeText } });
@@ -1546,69 +2026,70 @@ export default function NewOrderPage() {
                             }}
                             className={`size-card-interactive ${isSelected ? 'selected' : ''} ${!isAvailable ? 'disabled' : ''}`}
                           >
-                            <span style={{ fontSize: '1.1rem', fontWeight: '800', color: isSelected ? '#3b82f6' : (isAvailable ? '#1e293b' : '#ef4444'), lineHeight: '1.2' }}>{s.sizeText}</span>
-                            <span style={{ fontSize: '0.72rem', fontWeight: '700', color: isSelected ? '#2563eb' : (isAvailable ? '#10b981' : '#ef4444'), marginTop: '0.1rem' }}>
-                              {isAvailable ? `${s.availableQuantity} פנויות` : 'אזל'}
+                            <span style={{ fontSize: '1.1rem', fontWeight: '800', color: isAvailable ? 'var(--text-main)' : 'var(--danger)', lineHeight: '1.2' }}>{s.sizeText}</span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: '700', color: isAvailable ? 'var(--ok)' : 'var(--danger)', marginTop: '0.1rem' }}>
+                              {isAvailable ? (
+                                s.withCustomSpacing ? (
+                                  <>
+                                    <span>{normalAvail} רגיל</span>
+                                    {s.withCustomSpacing.gain > 0 && <span style={{ marginLeft: '0.3rem', color: 'var(--success)' }}>+{customAvail} ציפוף</span>}
+                                  </>
+                                ) : (
+                                  `${normalAvail} פנויות`
+                                )
+                              ) : 'אזל'}
                             </span>
-                          </div>
+                          </button>
                         );
                       })
                     )}
                   </div>
                 </div>
 
-                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <h4 style={{ margin: '0 0 0.8rem 0', fontSize: '1.05rem', color: '#1e293b', fontWeight: '800' }}>תיקונים נדרשים</h4>
-                  <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div 
+                <div className="soft-panel">
+                  <h4 style={{ margin: '0 0 0.8rem 0', fontSize: '1.05rem', color: 'var(--text-main)', fontWeight: 600 }}>תיקונים נדרשים</h4>
+                  {/* Fixed 3-column grid: the two toggles and the length field always
+                      share one row, so "אורך" can no longer drop to a line of its own. */}
+                  <div className="alterations-row">
+                    <button
+                      type="button"
+                      aria-pressed={!!newItem.neckAlteration}
                       onClick={() => handleNewItemChange({ target: { name: 'neckAlteration', value: !newItem.neckAlteration }})}
-                      style={{ 
-                        padding: '0.4rem 1.2rem', borderRadius: '8px', cursor: 'pointer', 
-                        background: newItem.neckAlteration ? '#3b82f6' : '#fff', 
-                        color: newItem.neckAlteration ? '#fff' : '#475569',
-                        border: newItem.neckAlteration ? '1px solid #3b82f6' : '1px solid #cbd5e1',
-                        fontWeight: '700', fontSize: '0.95rem', transition: 'all 0.2s',
-                        boxShadow: newItem.neckAlteration ? '0 2px 4px rgba(59,130,246,0.3)' : 'none'
-                      }}
+                      className={`toggle-chip ${newItem.neckAlteration ? 'on' : ''}`}
                     >
                       צוואר
-                    </div>
-                    <div 
+                    </button>
+                    <button
+                      type="button"
+                      aria-pressed={!!newItem.sleeveAlteration}
                       onClick={() => handleNewItemChange({ target: { name: 'sleeveAlteration', value: !newItem.sleeveAlteration }})}
-                      style={{ 
-                        padding: '0.4rem 1.2rem', borderRadius: '8px', cursor: 'pointer', 
-                        background: newItem.sleeveAlteration ? '#3b82f6' : '#fff', 
-                        color: newItem.sleeveAlteration ? '#fff' : '#475569',
-                        border: newItem.sleeveAlteration ? '1px solid #3b82f6' : '1px solid #cbd5e1',
-                        fontWeight: '700', fontSize: '0.95rem', transition: 'all 0.2s',
-                        boxShadow: newItem.sleeveAlteration ? '0 2px 4px rgba(59,130,246,0.3)' : 'none'
-                      }}
+                      className={`toggle-chip ${newItem.sleeveAlteration ? 'on' : ''}`}
                     >
                       שרוול
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '0.5rem' }}>
-                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '0.95rem' }}>אורך:</label>
-                      <input type="number" className="premium-input" value={newItem.lengthAlteration || ''} onChange={handleNewItemChange} name="lengthAlteration" placeholder="ס״מ" style={{ width: '70px', padding: '0.4rem', textAlign: 'center', fontSize: '0.95rem', background: '#fff' }} />
+                    </button>
+                    <div className="length-field">
+                      <label htmlFor="item-length" style={{ fontWeight: '700', color: 'var(--text-muted)', fontSize: '0.95rem' }}>אורך:</label>
+                      <input id="item-length" type="number" className="premium-input" value={newItem.lengthAlteration || ''} onChange={handleNewItemChange} name="lengthAlteration" placeholder="ס״מ" style={{ minWidth: 0, padding: '0.4rem', textAlign: 'center', fontSize: '0.95rem' }} />
                     </div>
                   </div>
-                  
+
                   <div style={{ marginTop: '1rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>
-                      הערות לתיקון {(newItem.neckAlteration || newItem.sleeveAlteration || newItem.lengthAlteration) && <span style={{color: '#ef4444'}}>* (חובה)</span>}
+                    <label className="field-label" htmlFor="item-repairs" style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
+                      הערות לתיקון {(newItem.neckAlteration || newItem.sleeveAlteration || newItem.lengthAlteration) && <span style={{color: 'var(--danger)'}}>* (חובה)</span>}
                     </label>
-                    <input 
-                      type="text" 
-                      className="premium-input" 
-                      name="repairs" 
-                      value={newItem.repairs || ''} 
-                      onChange={handleNewItemChange} 
-                      placeholder="פרטים נוספים לתופרת..." 
-                      style={{ 
-                        padding: '0.6rem 0.8rem', 
-                        fontSize: '0.95rem', 
-                        background: '#fff',
-                        border: ((newItem.neckAlteration || newItem.sleeveAlteration || newItem.lengthAlteration) && (!newItem.repairs || !newItem.repairs.trim())) ? '1px solid #ef4444' : '1px solid #e2e8f0'
-                      }} 
+                    <input
+                      id="item-repairs"
+                      type="text"
+                      className="premium-input"
+                      name="repairs"
+                      value={newItem.repairs || ''}
+                      onChange={handleNewItemChange}
+                      placeholder="פרטים נוספים לתופרת..."
+                      style={{
+                        padding: '0.6rem 0.8rem',
+                        fontSize: '0.95rem',
+                        borderColor: ((newItem.neckAlteration || newItem.sleeveAlteration || newItem.lengthAlteration) && (!newItem.repairs || !newItem.repairs.trim())) ? 'var(--danger)' : undefined
+                      }}
                     />
                   </div>
                 </div>
@@ -1634,37 +2115,37 @@ export default function NewOrderPage() {
             </div>
 
             {/* Live Cart (Left Side) */}
-            <div className="glass-card" style={{ flex: '1', minWidth: '300px', padding: '1.2rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
-              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: '800', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.4rem' }}>הסל שלך</h3>
-              
+            <div className="glass-card" style={{ padding: '1.2rem', display: 'flex', flexDirection: 'column', minWidth: 0 }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: 600, borderBottom: '1px solid var(--border-color)', paddingBottom: '0.4rem' }}>הסל שלך</h3>
+
               {order.items.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem 1rem', background: '#f8fafc', borderRadius: '12px', border: '2px dashed #e2e8f0', fontWeight: '600', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1.5rem 1rem', background: 'var(--surface-soft)', borderRadius: '12px', border: '2px dashed var(--border-color)', fontWeight: '600', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   טרם הוספת פריטים להזמנה
                 </div>
               ) : (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-                  <div style={{ overflowY: 'auto', maxHeight: '190px', paddingRight: '0.2rem', margin: '0.2rem 0' }}>
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', minHeight: 0 }}>
+                  <div tabIndex={0} role="region" aria-label="פריטים בסל" style={{ overflowY: 'auto', maxHeight: 'min(46vh, 340px)', overscrollBehavior: 'contain', paddingInlineEnd: '0.35rem', margin: '0.2rem 0' }}>
                     {order.items.map((item, idx) => (
                       <div key={idx} className="cart-item-card" style={{ animationDelay: `${idx * 0.1}00ms` }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
-                          <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#1e293b' }}>{item.dressName || 'דגם לא ידוע'}</div>
-                          <div style={{ background: '#eff6ff', color: '#2563eb', padding: '0.05rem 0.4rem', borderRadius: '4px', fontWeight: '700', fontSize: '0.78rem' }}>מידה {item.sizeText}</div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem', marginBottom: '0.15rem' }}>
+                          <div style={{ fontWeight: '800', fontSize: '0.95rem', color: 'var(--text-main)', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{item.dressName || 'דגם לא ידוע'}</div>
+                          <div style={{ background: 'var(--primary-light)', color: 'var(--primary-hover)', padding: '0.05rem 0.4rem', borderRadius: '4px', fontWeight: '700', fontSize: '0.78rem', flexShrink: 0, whiteSpace: 'nowrap' }}>מידה {item.sizeText}</div>
                         </div>
-                        <div style={{ color: '#64748b', fontSize: '0.78rem', marginBottom: '0.25rem' }}>
+                        <div style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginBottom: '0.25rem' }}>
                           {[item.neckAlteration && 'צוואר', item.sleeveAlteration && 'שרוול', item.lengthAlteration && `אורך (${item.lengthAlteration})`].filter(Boolean).join(', ') || 'ללא תיקונים'}
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '0.35rem' }}>
-                          <div style={{ fontWeight: '800', color: '#059669', fontSize: '0.95rem' }}>
+                          <div style={{ fontWeight: '800', color: 'var(--ok)', fontSize: '0.95rem' }}>
                             ₪{calculatedData.items[idx] ? calculatedData.items[idx].calculatedPrice : item.finalPrice}
                           </div>
                           <div style={{ display: 'flex', gap: '0.3rem' }}>
-                            <button onClick={(e) => { e.preventDefault(); setCapacityModalItem(item); }} style={{ background: '#fdf4ff', border: '1px solid #fbcfe8', cursor: 'pointer', color: '#c026d3', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '4px', transition: 'all 0.2s ease' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fae8ff'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fdf4ff'; }} title="בדוק תפוסה לתאריך אירוע">
+                            <button type="button" className="icon-btn" onClick={(e) => { e.preventDefault(); setCapacityModalItem(item); }} title="בדוק תפוסה לתאריך אירוע" aria-label="בדוק תפוסה לתאריך אירוע">
                               <CalendarSearch size={14} strokeWidth={2.5} />
                             </button>
-                            <button onClick={() => editItem(idx)} style={{ background: '#fffbeb', border: '1px solid #fde68a', cursor: 'pointer', color: '#d97706', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '4px', transition: 'all 0.2s ease' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fef3c7'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fffbeb'; }} title="ערוך">
+                            <button type="button" className="icon-btn warn" onClick={() => editItem(idx)} title="ערוך" aria-label="ערוך פריט">
                               <Edit2 size={14} strokeWidth={2.5} />
                             </button>
-                            <button onClick={() => removeItem(idx)} style={{ background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', color: '#ef4444', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '4px', transition: 'all 0.2s ease' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; }} title="מחק">
+                            <button type="button" className="icon-btn danger" onClick={() => removeItem(idx)} title="מחק" aria-label="מחק פריט">
                               <Trash2 size={14} strokeWidth={2.5} />
                             </button>
                           </div>
@@ -1674,18 +2155,18 @@ export default function NewOrderPage() {
                   </div>
                   
                   <div style={{ marginTop: '0.5rem', borderTop: '1px dashed var(--border-color)', paddingTop: '0.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '1.05rem', fontWeight: '800', color: '#1e293b' }}>סה"כ:</span>
-                    <span style={{ fontSize: '1.3rem', fontWeight: '800', color: '#059669' }}>₪{totalAmount}</span>
+                    <span style={{ fontSize: '1.05rem', fontWeight: '800', color: 'var(--text-main)' }}>סה"כ:</span>
+                    <span style={{ fontSize: '1.3rem', fontWeight: '800', color: 'var(--ok)' }}>₪{totalAmount}</span>
                   </div>
                 </div>
               )}
 
               <div style={{ display: 'flex', gap: '0.8rem', marginTop: '0.8rem' }}>
-                <button onClick={() => setStep(2)} style={{ padding: '0.6rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '0.95rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                <button type="button" onClick={() => setStep(2)} className="btn-secondary" style={{ padding: '0.6rem', fontSize: '0.95rem', flex: 1 }}>
                   <ArrowRight size={16} />
                   <span>חזור</span>
                 </button>
-                <button onClick={() => setStep(4)} disabled={order.items.length === 0} className="primary-button" style={{ padding: '0.6rem', flex: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontSize: '0.95rem' }}>
+                <button type="button" onClick={() => setStep(4)} disabled={order.items.length === 0} className="primary-button" style={{ padding: '0.6rem', flex: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontSize: '0.95rem' }}>
                   <span>המשך לסיכום</span>
                   <ArrowLeft size={16} />
                 </button>
@@ -1696,34 +2177,34 @@ export default function NewOrderPage() {
 
         {/* STEP 4: SUMMARY */}
         {step === 4 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '700px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
-            <h2 style={{ marginBottom: '0.4rem', fontSize: '1.4rem', fontWeight: '800' }}>סיכום ההזמנה</h2>
-            <p style={{ color: '#64748b', fontSize: '1rem', marginBottom: '1rem' }}>אנא ודא שפרטי ההזמנה נכונים לפני מעבר לתשלום.</p>
+          <div className="fade-in glass-card wizard-step" style={{ padding: '1.2rem', position: 'relative', overflow: 'hidden' }}>
+            <div className="card-accent"></div>
+            <h2 style={{ marginBottom: '0.4rem', fontSize: '1.4rem', fontWeight: 600 }}>סיכום ההזמנה</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginBottom: '1rem' }}>אנא ודא שפרטי ההזמנה נכונים לפני מעבר לתשלום.</p>
 
-            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
-                <span style={{ color: '#64748b', fontWeight: '600' }}>לקוח:</span>
-                <span style={{ color: '#1e293b', fontWeight: '800' }}>{selectedCustomerName}</span>
+            <div className="soft-panel" style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>לקוח:</span>
+                <span style={{ color: 'var(--text-main)', fontWeight: '800' }}>{selectedCustomerName}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
-                <span style={{ color: '#64748b', fontWeight: '600' }}>סוג אירוע:</span>
-                <span style={{ color: '#1e293b', fontWeight: '800' }}>{order.isAbroad ? 'אירוע חו"ל / תפוסה ארוכה' : 'אירוע רגיל'}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>סוג אירוע:</span>
+                <span style={{ color: 'var(--text-main)', fontWeight: '800' }}>{order.isAbroad ? 'אירוע חו"ל / תפוסה ארוכה' : 'אירוע רגיל'}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
-                <span style={{ color: '#64748b', fontWeight: '600' }}>תאריכים:</span>
-                <span style={{ color: '#1e293b', fontWeight: '800', textAlign: 'left' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.5rem', fontSize: '0.95rem' }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: '600' }}>תאריכים:</span>
+                <span style={{ color: 'var(--text-main)', fontWeight: '800', textAlign: 'end' }}>
                   {order.isAbroad ? (
                     <>
                       {`מ-${getHebrewDateString(order.fromDate)} עד ${getHebrewDateString(order.toDate)} `}
-                      <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'normal' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 'normal' }}>
                         {`(${order.fromDate} - ${order.toDate})`}
                       </span>
                     </>
                   ) : (
                     <>
                       {getHebrewDateString(order.eventDate) + ' '}
-                      <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'normal' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem', fontWeight: 'normal' }}>
                         {`(${order.eventDate})`}
                       </span>
                     </>
@@ -1733,42 +2214,42 @@ export default function NewOrderPage() {
             </div>
 
             <div style={{ marginBottom: '1.2rem' }}>
-              <h3 style={{ color: '#1e293b', fontSize: '1.2rem', marginBottom: '0.8rem', fontWeight: '800' }}>פירוט פריטים ({order.items.length})</h3>
-              
-              <div style={{ overflowY: 'auto', maxHeight: '150px', paddingRight: '0.2rem', borderBottom: '1px solid #cbd5e1' }}>
+              <h3 style={{ color: 'var(--text-main)', fontSize: '1.2rem', marginBottom: '0.8rem', fontWeight: 600 }}>פירוט פריטים ({order.items.length})</h3>
+
+              <div tabIndex={0} role="region" aria-label="רשימת פריטים בהזמנה" style={{ overflowY: 'auto', maxHeight: 'min(42vh, 340px)', overscrollBehavior: 'contain', paddingInlineEnd: '0.35rem', borderBottom: '1px solid var(--divider)' }}>
                 {order.items.map((item, idx) => {
                    const calcItem = calculatedData.items[idx];
                    const displayPrice = calcItem ? calcItem.calculatedPrice : item.finalPrice;
                    const repairsCost = calcItem && calcItem.repairsCost ? calcItem.repairsCost : 0;
                    return (
-                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0.5rem', borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
-                       <div>
-                         <div style={{ fontWeight: '800', color: '#1e293b', fontSize: '1.05rem' }}>{item.dressName} <span style={{ background: '#eff6ff', color: '#2563eb', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem', marginRight: '0.5rem' }}>{item.sizeText}</span></div>
-                         <div style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.75rem', padding: '0.6rem 0.5rem', borderBottom: '1px solid var(--divider)', alignItems: 'center' }}>
+                       <div style={{ minWidth: 0 }}>
+                         <div style={{ fontWeight: '800', color: 'var(--text-main)', fontSize: '1.05rem' }}>{item.dressName} <span style={{ background: 'var(--primary-light)', color: 'var(--primary-hover)', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem', marginInlineStart: '0.5rem' }}>{item.sizeText}</span></div>
+                         <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
                             תיקונים: {[item.neckAlteration && 'צוואר', item.sleeveAlteration && 'שרוול', item.lengthAlteration && `אורך (${item.lengthAlteration})`].filter(Boolean).join(', ') || 'ללא'}
-                            {repairsCost > 0 && <span style={{color: '#f59e0b', marginRight: '0.5rem'}}>(+₪{repairsCost})</span>}
+                            {repairsCost > 0 && <span style={{color: 'var(--warn)', marginInlineStart: '0.5rem'}} aria-label={`תוספת תיקונים ${repairsCost} שקלים`}>(+₪{repairsCost})</span>}
                          </div>
                        </div>
-                       <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#059669' }}>
+                       <div style={{ fontSize: '1.15rem', fontWeight: '800', color: 'var(--ok)', flexShrink: 0, whiteSpace: 'nowrap' }}>
                          ₪{displayPrice}
                        </div>
                      </div>
                    );
                 })}
               </div>
-              
+
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.8rem 0.5rem 0', marginTop: '0.5rem' }}>
-                <span style={{ fontSize: '1.3rem', fontWeight: '800', color: '#1e293b' }}>סה"כ לתשלום:</span>
-                <span style={{ fontSize: '1.7rem', fontWeight: '900', color: '#059669' }}>₪{totalAmount}</span>
+                <span style={{ fontSize: '1.3rem', fontWeight: '800', color: 'var(--text-main)' }}>סה"כ לתשלום:</span>
+                <span style={{ fontSize: '1.7rem', fontWeight: '900', color: 'var(--ok)' }}>₪{totalAmount}</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button onClick={() => setStep(3)} style={{ padding: '0.8rem 1.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => setStep(3)} className="btn-secondary" style={{ padding: '0.8rem 1.5rem', fontSize: '1.05rem', flex: '0 0 auto', minWidth: '150px' }}>
                 <ArrowRight size={18} />
                 <span>חזור לעריכה</span>
               </button>
-              <button onClick={() => setStep(5)} className="primary-button" style={{ flex: 1, padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+              <button type="button" onClick={() => setStep(5)} className="primary-button" style={{ flex: 1, minWidth: '200px', padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                 <span>המשך לתשלום אחרון</span>
                 <ArrowLeft size={18} />
               </button>
@@ -1778,82 +2259,92 @@ export default function NewOrderPage() {
 
         {/* STEP 5: PAYMENT & SAVE */}
         {step === 5 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '700px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative' }}>
-            <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
-            <h2 style={{ marginBottom: '0.4rem', fontSize: '1.4rem', fontWeight: '800' }}>תשלום וסיום הזמנה</h2>
-            <p style={{ color: '#64748b', fontSize: '1rem', marginBottom: '1.2rem' }}>בחרו את אמצעי התשלום ובצעו רישום סופי.</p>
-            
+          <div className="fade-in glass-card wizard-step" style={{ padding: '1.2rem', position: 'relative', overflow: 'hidden' }}>
+            <div className="card-accent"></div>
+            <h2 style={{ marginBottom: '0.4rem', fontSize: '1.4rem', fontWeight: 600 }}>תשלום וסיום הזמנה</h2>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginBottom: '1.2rem' }}>בחרו את אמצעי התשלום ובצעו רישום סופי.</p>
+
             {paymentsList.length > 0 && (
-              <div style={{ marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                <h4 style={{ margin: '0 0 0.8rem 0', color: '#334155', fontWeight: '800' }}>תשלומים שנוספו:</h4>
+              <div className="soft-panel" style={{ marginBottom: '1.5rem' }}>
+                <h4 style={{ margin: '0 0 0.8rem 0', color: 'var(--text-main)', fontWeight: 600 }}>תשלומים שנוספו:</h4>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                   {paymentsList.map((p, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
-                      <span style={{ fontWeight: '700', color: '#1e293b' }}>{p.method}</span>
-                      <span style={{ fontWeight: '800', color: '#059669' }}>₪{p.amount} {p.notes ? `(${p.notes})` : ''}</span>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem', padding: '0.5rem', background: 'var(--surface-raised)', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
+                      <span style={{ fontWeight: '700', color: 'var(--text-main)' }}>{p.method}</span>
+                      <span style={{ fontWeight: '800', color: 'var(--ok)' }}>₪{p.amount} {p.notes ? `(${p.notes})` : ''}</span>
                     </div>
                   ))}
                 </div>
               </div>
             )}
-            
-            <div style={{ display: 'grid', gap: '0.8rem', marginBottom: '1.5rem' }}>
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>סכום לתשלום כעת (₪)</label>
-                <input 
-                  type="number" 
-                  value={payment.amount} 
-                  onChange={e => setPayment(prev => ({...prev, amount: e.target.value}))} 
-                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.25rem', fontWeight: '800', color: '#059669', outline: 'none' }} 
-                  onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
-                />
+
+            <form onSubmit={(e) => { e.preventDefault(); handleAddPaymentClick(); }}>
+              <div style={{ display: 'grid', gap: '0.8rem', marginBottom: '1.5rem' }}>
+                <div>
+                  <label className="field-label" htmlFor="pay-amount">סכום לתשלום כעת (₪)</label>
+                  <input
+                    id="pay-amount"
+                    type="number"
+                    className="wizard-input"
+                    value={payment.amount}
+                    onChange={e => setPayment(prev => ({...prev, amount: e.target.value}))}
+                    style={{ fontSize: '1.25rem', fontWeight: '800', color: 'var(--ok)' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="field-label" htmlFor="pay-method">אופן תשלום</label>
+                  <select
+                    id="pay-method"
+                    className="wizard-input"
+                    value={payment.method}
+                    onChange={e => setPayment(prev => ({...prev, method: e.target.value}))}
+                  >
+                    {paymentMethodOptions.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="field-label" htmlFor="pay-notes">הערות לתשלום</label>
+                  <input
+                    id="pay-notes"
+                    type="text"
+                    className="wizard-input"
+                    value={payment.notes}
+                    onChange={e => setPayment(prev => ({...prev, notes: e.target.value}))}
+                    placeholder="מספר אישור, פרטי הבנק, וכדומה..."
+                    style={{ fontSize: '1rem' }}
+                  />
+                </div>
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>אופן תשלום</label>
-                <select 
-                  value={payment.method} 
-                  onChange={e => setPayment(prev => ({...prev, method: e.target.value}))} 
-                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', background: 'white' }}
-                  onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
-                >
-                  {paymentMethodOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>הערות לתשלום</label>
-                <input 
-                  type="text" 
-                  value={payment.notes} 
-                  onChange={e => setPayment(prev => ({...prev, notes: e.target.value}))} 
-                  placeholder="מספר אישור, פרטי הבנק, וכדומה..."
-                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} 
-                  onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', gap: '0.8rem', marginBottom: '1rem' }}>
-              <button onClick={handleAddPaymentClick} style={{ flex: 1, padding: '0.8rem', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: '12px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#c7d2fe'} onMouseOut={e => e.currentTarget.style.backgroundColor='#e0e7ff'}>
+              <button type="submit" className="btn-soft" style={{ width: '100%', padding: '0.8rem', marginBottom: '1rem' }}>
                 <Plus size={18} />
                 <span>פצל / הוסף תשלום זה</span>
               </button>
-            </div>
+            </form>
 
-            <div style={{ display: 'flex', gap: '0.8rem' }}>
-              <button onClick={() => setStep(4)} style={{ padding: '0.8rem 1.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+              <button type="button" onClick={() => setStep(4)} className="btn-secondary" style={{ padding: '0.8rem 1.5rem', fontSize: '1.05rem', flex: '0 0 auto', minWidth: '120px' }}>
                 <ArrowRight size={18} />
                 <span>חזור</span>
               </button>
-              <button 
+              <button
+                type="button"
                 onClick={saveOrder}
                 disabled={saving}
-                style={{ flex: 1, padding: '0.8rem', background: saving ? '#cbd5e1' : 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.15rem', fontWeight: '800', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saving ? 'none' : '0 6px 15px rgba(16, 185, 129, 0.2)', transition: 'all 0.3s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                aria-busy={saving}
+                className="btn-success"
+                style={{ flex: 1, minWidth: '220px', padding: '0.8rem', fontSize: '1.15rem' }}
               >
-                {saving ? 'שומר במערכת ומאמת מלאי...' : (
+                {saving ? (
+                  <>
+                    <span className="spinner small" aria-hidden="true"></span>
+                    <span>שומר...</span>
+                  </>
+                ) : (
                   <>
                     <ShieldCheck size={18} />
                     <span>סיום ושמירת כרטיס הזמנה</span>
@@ -1875,24 +2366,24 @@ export default function NewOrderPage() {
         )}
 
         {duplicateCustomer && (
-          <div style={{ zIndex: 1000, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div className="fade-in" style={{ background: 'white', padding: '2.5rem', borderRadius: '24px', maxWidth: '500px', width: '100%', direction: 'rtl', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-              <h3 style={{ color: '#dc2626', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '1.6rem', fontWeight: '800' }}>
-                <span style={{ fontSize: '2rem' }}>⚠️</span> לקוח קיים במערכת
+          <div className="modal-shell-overlay">
+            <div className="modal-shell fade-in" role="dialog" aria-modal="true" aria-labelledby="dup-title">
+              <h3 id="dup-title" style={{ color: 'var(--danger)', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '1.35rem', fontWeight: 600 }}>
+                <span style={{ fontSize: '1.8rem' }}>⚠️</span> לקוח קיים במערכת
               </h3>
-              <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem', border: '1px solid #e2e8f0' }}>
-                <p style={{ margin: '0 0 0.5rem 0', fontWeight: '800', fontSize: '1.4rem', color: '#1e293b' }}>
+              <div className="modal-shell-panel">
+                <p style={{ margin: '0 0 0.5rem 0', fontWeight: '800', fontSize: '1.25rem', color: 'var(--text-main)' }}>
                   {getCustomerFullName(duplicateCustomer)}
                 </p>
-                <p style={{ margin: '0 0 0.5rem 0', color: '#64748b', fontSize: '1.1rem' }}>📞 {duplicateCustomer.phone1} {duplicateCustomer.phone2 ? `| ${duplicateCustomer.phone2}` : ''}</p>
-                <p style={{ margin: 0, color: '#64748b', fontSize: '1.1rem' }}>📍 {duplicateCustomer.city || 'עיר לא צוינה'}</p>
+                <p style={{ margin: '0 0 0.5rem 0', color: 'var(--text-muted)', fontSize: '1.05rem' }}>📞 {duplicateCustomer.phone1} {duplicateCustomer.phone2 ? `| ${duplicateCustomer.phone2}` : ''}</p>
+                <p style={{ margin: 0, color: 'var(--text-muted)', fontSize: '1.05rem' }}>📍 {duplicateCustomer.city || 'עיר לא צוינה'}</p>
               </div>
-              <p style={{ marginBottom: '2rem', fontWeight: '600', fontSize: '1.1rem', color: '#334155', lineHeight: '1.6' }}>הלקוח שהזנת זוהה במערכת על פי מספר הטלפון. האם תרצה להשתמש בלקוח הקיים עבור הזמנה זו?</p>
-              <div style={{ display: 'flex', gap: '1rem' }}>
-                <button onClick={() => handleUseExistingCustomer(duplicateCustomer)} className="primary-button" style={{ flex: 1, padding: '1rem' }}>
+              <p style={{ marginBottom: '1.5rem', fontWeight: '600', fontSize: '1.05rem', color: 'var(--text-main)', lineHeight: '1.6' }}>הלקוח שהזנת זוהה במערכת על פי מספר הטלפון. האם תרצה להשתמש בלקוח הקיים עבור הזמנה זו?</p>
+              <div className="modal-shell-footer">
+                <button type="button" onClick={() => handleUseExistingCustomer(duplicateCustomer)} className="primary-button" style={{ padding: '0.9rem' }}>
                   כן, השתמש בלקוח הקיים
                 </button>
-                <button onClick={() => handleSaveNewCustomerAndProceed(true)} style={{ flex: 1, padding: '1rem', borderRadius: '12px', background: 'white', color: '#dc2626', border: '2px solid #fca5a5', fontWeight: '800', fontSize: '1.1rem', cursor: 'pointer', transition: 'all 0.2s' }}>
+                <button type="button" onClick={() => handleSaveNewCustomerAndProceed(true)} className="btn-danger-outline" style={{ padding: '0.9rem' }}>
                   לא, צור לקוח חדש כפול
                 </button>
               </div>
@@ -1901,86 +2392,96 @@ export default function NewOrderPage() {
         )}
 
         {showCreditModal && (
-          <div onClick={() => setShowCreditModal(false)} style={{ zIndex: 1000, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div onClick={(e) => e.stopPropagation()} className="fade-in" style={{ background: 'white', padding: '2.5rem', borderRadius: '24px', maxWidth: '500px', width: '100%', direction: 'rtl', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-                <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.6rem', fontWeight: '800' }}>חיוב באשראי (נדרים פלוס)</h3>
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                  <button 
-                    onClick={(e) => { e.preventDefault(); setShowCreditModal(false); setShowQuickSwipeModal(true); setSwipeInput(''); setCreditError(''); }} 
-                    style={{ padding: '0.5rem 1rem', background: 'linear-gradient(135deg, #f59e0b, #d97706)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
-                    onMouseOver={e => e.currentTarget.style.opacity=0.9} onMouseOut={e => e.currentTarget.style.opacity=1}
+          <div className="modal-shell-overlay" onClick={() => setShowCreditModal(false)}>
+            <div onClick={(e) => e.stopPropagation()} className="modal-shell fade-in" role="dialog" aria-modal="true" aria-labelledby="credit-title">
+              <div className="modal-shell-header">
+                <h3 id="credit-title">חיוב באשראי (נדרים פלוס)</h3>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); setShowCreditModal(false); setShowQuickSwipeModal(true); setSwipeInput(''); setCreditError(''); }}
+                    className="btn-soft"
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.95rem', whiteSpace: 'nowrap' }}
                     title="העברת כרטיס מהירה בקורא מגנטי"
+                    aria-label="העברת כרטיס מהירה בקורא מגנטי"
                   >
                     🧲 העברה מהירה
                   </button>
-                  <button onClick={() => setShowCreditModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>✕</button>
+                  <button type="button" className="modal-shell-close" onClick={() => setShowCreditModal(false)} aria-label="סגור חלון">✕</button>
                 </div>
               </div>
-              
+
               {creditError && (
-                <div style={{ background: '#fef2f2', color: '#dc2626', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', fontWeight: '600', border: '1px solid #fecaca' }}>
+                <div style={{ background: 'var(--danger-soft)', color: 'var(--danger)', padding: '1rem', borderRadius: '12px', marginBottom: '1.25rem', fontWeight: '600', border: '1px solid var(--danger)' }}>
                   {creditError}
                 </div>
               )}
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginBottom: '2rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>מספר כרטיס אשראי (או העברת קורא שפתיים)</label>
-                  <input type="text" value={creditCardData.cardNumber} onChange={handleCardNumberChange} placeholder="0000 0000 0000 0000" maxLength="19" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', direction: 'ltr', textAlign: 'left', letterSpacing: '2px', outline: 'none' }} />
-                </div>
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
+
+              <form onSubmit={(e) => { e.preventDefault(); handleProcessCreditCard(); }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginBottom: '1.5rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>תוקף (MM/YY)</label>
-                    <input type="text" value={creditCardData.tokef} onChange={handleTokefChange} placeholder="12/25" maxLength="5" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', direction: 'ltr', textAlign: 'left', letterSpacing: '2px', outline: 'none' }} />
+                    <label className="field-label" htmlFor="cc-number">מספר כרטיס אשראי (או העברת קורא שפתיים)</label>
+                    <input id="cc-number" type="text" className="wizard-input" inputMode="numeric" autoComplete="cc-number" value={creditCardData.cardNumber} onChange={handleCardNumberChange} placeholder="0000 0000 0000 0000" maxLength="19" style={{ fontSize: '1.2rem', direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
                   </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>סכום לחיוב (₪)</label>
-                    <input type="number" value={creditCardData.amount} onChange={e => setCreditCardData(prev => ({...prev, amount: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', fontWeight: '800', color: '#059669', textAlign: 'center', outline: 'none' }} />
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+                    <div>
+                      <label className="field-label" htmlFor="cc-exp">תוקף (MM/YY)</label>
+                      <input id="cc-exp" type="text" className="wizard-input" autoComplete="cc-exp" value={creditCardData.tokef} onChange={handleTokefChange} placeholder="12/25" maxLength="5" style={{ fontSize: '1.2rem', direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="cc-amount">סכום לחיוב (₪)</label>
+                      <input id="cc-amount" type="number" className="wizard-input" value={creditCardData.amount} onChange={e => setCreditCardData(prev => ({...prev, amount: e.target.value}))} style={{ fontSize: '1.2rem', fontWeight: '800', color: 'var(--ok)', textAlign: 'center' }} />
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '1rem' }}>
+                    <div>
+                      <label className="field-label" htmlFor="cc-installments">תשלומים</label>
+                      <input id="cc-installments" type="number" className="wizard-input" value={creditCardData.installments} onChange={e => setCreditCardData(prev => ({...prev, installments: e.target.value}))} min="1" max="12" style={{ textAlign: 'center' }} />
+                    </div>
+                    <div>
+                      <label className="field-label" htmlFor="cc-notes">הערות לנדרים</label>
+                      <input id="cc-notes" type="text" className="wizard-input" value={creditCardData.notes} onChange={e => setCreditCardData(prev => ({...prev, notes: e.target.value}))} />
+                    </div>
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>תשלומים</label>
-                    <input type="number" value={creditCardData.installments} onChange={e => setCreditCardData(prev => ({...prev, installments: e.target.value}))} min="1" max="12" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.1rem', textAlign: 'center', outline: 'none' }} />
-                  </div>
-                  <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>הערות לנדרים</label>
-                    <input type="text" value={creditCardData.notes} onChange={e => setCreditCardData(prev => ({...prev, notes: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} />
-                  </div>
-                </div>
-              </div>
-              
-              <button 
-                onClick={handleProcessCreditCard}
-                disabled={isProcessingCredit}
-                style={{ width: '100%', padding: '1.2rem', background: isProcessingCredit ? '#cbd5e1' : '#2563eb', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.3rem', fontWeight: '800', cursor: isProcessingCredit ? 'wait' : 'pointer', transition: 'all 0.3s' }}
-              >
-                {isProcessingCredit ? 'מבצע חיוב מול נדרים...' : 'בצע חיוב עכשיו ושמור הזמנה'}
-              </button>
+                <button
+                  type="submit"
+                  disabled={isProcessingCredit}
+                  aria-busy={isProcessingCredit}
+                  className="primary-button"
+                  style={{ width: '100%', padding: '1.1rem', fontSize: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.6rem' }}
+                >
+                  {isProcessingCredit ? (
+                    <>
+                      <span className="spinner small" aria-hidden="true"></span>
+                      <span>מבצע חיוב מול נדרים...</span>
+                    </>
+                  ) : 'בצע חיוב עכשיו ושמור הזמנה'}
+                </button>
+              </form>
             </div>
           </div>
         )}
 
         {showQuickSwipeModal && (
-          <div onClick={() => setShowQuickSwipeModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(8px)' }}>
-            <div onClick={(e) => e.stopPropagation()} style={{ background: 'white', padding: '3rem', borderRadius: '24px', width: '450px', maxWidth: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: 'linear-gradient(to right, #f59e0b, #d97706, #fbbf24)' }}></div>
-              <button onClick={() => setShowQuickSwipeModal(false)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
-              
-              <div style={{ margin: '0 auto 1.5rem', width: '90px', height: '90px', background: '#fef3c7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(245,158,11,0.2)' }}>
+          <div className="modal-shell-overlay" onClick={() => setShowQuickSwipeModal(false)}>
+            <div onClick={(e) => e.stopPropagation()} className="modal-shell fade-in" role="dialog" aria-modal="true" aria-labelledby="swipe-title" style={{ maxWidth: '450px', textAlign: 'center' }}>
+              <button type="button" className="modal-shell-close" onClick={() => setShowQuickSwipeModal(false)} aria-label="סגור חלון" style={{ position: 'absolute', top: '10px', insetInlineEnd: '10px' }}>&times;</button>
+
+              <div style={{ margin: '0.5rem auto 1.5rem', width: '90px', height: '90px', background: 'var(--primary-light)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(212,175,55,0.25)' }}>
                 <span style={{ fontSize: '3.5rem' }}>🧲</span>
               </div>
-              
-              <h2 style={{ margin: '0 0 0.5rem 0', color: '#1e293b', fontSize: '1.8rem', fontWeight: '800' }}>
+
+              <h2 id="swipe-title" style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1.6rem', fontWeight: 600 }}>
                 העברת כרטיס מהירה
               </h2>
-              <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: '2rem' }}>
+              <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginBottom: '1.5rem' }}>
                 אנא העבר כעת את כרטיס האשראי בקורא השפתיים...
               </p>
-              
+
               <input 
                 autoFocus 
                 type="text" 
@@ -1998,14 +2499,30 @@ export default function NewOrderPage() {
               />
               
               <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <button 
-                  onClick={() => setShowQuickSwipeModal(false)} 
-                  style={{ padding: '0.8rem 2rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s', fontSize: '1.1rem' }}
-                  onMouseOver={e => e.currentTarget.style.backgroundColor='#e2e8f0'}
-                  onMouseOut={e => e.currentTarget.style.backgroundColor='#f1f5f9'}
+                <button
+                  type="button"
+                  onClick={() => setShowQuickSwipeModal(false)}
+                  className="btn-secondary"
+                  style={{ padding: '0.8rem 2rem', fontSize: '1.05rem' }}
                 >
                   ביטול חלון מהיר
                 </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Blocking overlay while the order is being written / charged, so nobody
+            clicks twice or navigates away mid-save. */}
+        {(saving || isProcessingCredit) && (
+          <div className="blocking-overlay" role="alertdialog" aria-live="assertive" aria-busy="true" aria-label="פעולה מתבצעת">
+            <div className="blocking-overlay__card">
+              <div className="spinner" aria-hidden="true"></div>
+              <div style={{ fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)' }}>
+                {isProcessingCredit ? 'מבצע חיוב מול נדרים פלוס...' : 'שומר את ההזמנה במערכת...'}
+              </div>
+              <div style={{ fontSize: '0.95rem', color: 'var(--text-muted)', maxWidth: '320px', lineHeight: 1.5 }}>
+                {isProcessingCredit ? 'אין לסגור את החלון עד לקבלת אישור מחברת האשראי.' : 'מאמת זמינות מלאי ורושם את הכרטיס. נא לא לסגור את החלון.'}
               </div>
             </div>
           </div>

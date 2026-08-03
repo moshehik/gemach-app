@@ -113,8 +113,8 @@ export default function LabelsAdminPage() {
     }
   };
 
-  const handleResetToDefaults = () => {
-    if (window.confirm('האם אתה בטוח שברצונך לאפס את כל הכיתובים לערכי ברירת המחדל המקוריים? פעולה זו תדרוש שמירה.')) {
+  const handleResetToDefaults = async () => {
+    if (await window.customConfirm('האם אתה בטוח שברצונך לאפס את כל הכיתובים לערכי ברירת המחדל המקוריים? פעולה זו תדרוש שמירה.')) {
       setLocalLabels({ ...DEFAULT_LABELS });
     }
   };

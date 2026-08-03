@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import { recalculateOrderObligations, computeOrderObligations } from '../../../../lib/pricingEngine';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, getAvailableInventory } from '../../../../lib/inventory';
+import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',
@@ -330,6 +331,34 @@ export async function PUT(request, { params }) {
       }
     }
 
+    // Whether the items of this order hold their units permanently or as an expiring cart
+    // follows the payments the order will have once this save lands - the same rule
+    // POST /api/orders and the add-item route apply. Writing 'confirmed' onto every saved
+    // item, as this route used to, pinned the dresses of an unpaid cart forever the moment
+    // someone opened it and pressed save.
+    const [storedPayments, storedItems] = await Promise.all([
+      prisma.payment.findMany({
+        where: { orderId: parsedOrderId },
+        select: { id: true, amount: true, paymentMethod: true, isDeleted: true }
+      }),
+      prisma.orderItem.findMany({
+        where: { orderId: parsedOrderId },
+        select: { cartStatus: true, isDeleted: true }
+      })
+    ]);
+    const paymentsAfterSave = new Map(storedPayments.map(p => [p.id, p]));
+    if (Array.isArray(data.payments)) {
+      data.payments.forEach((p, idx) => {
+        if (p.id) paymentsAfterSave.set(p.id, { ...paymentsAfterSave.get(p.id), ...p });
+        else if (p.isNew) paymentsAfterSave.set(`new-${idx}`, p);
+      });
+    }
+    const holdIsPermanent = orderHasPermanentHold({
+      legacyId: existingOrder.legacyId,
+      payments: Array.from(paymentsAfterSave.values()),
+      items: storedItems
+    });
+
     const updatedOrder = await prisma.$transaction(async (tx) => {
       const parsedEventDate = parseSafeDate(data.eventDate);
       const parsedFromDate = parseSafeDate(data.fromDate);
@@ -355,6 +384,7 @@ export async function PUT(request, { params }) {
       });
 
       // 2. Update order items (alterations, size, deletions) and create new items
+      let addedItem = false;
       if (data.items && Array.isArray(data.items)) {
         for (let idx = 0; idx < data.items.length; idx++) {
           const item = data.items[idx];
@@ -375,8 +405,9 @@ export async function PUT(request, { params }) {
                 // e.g. an item that merely has a barcode would become permanently "taken" and
                 // could no longer be removed from the order. The rental lifecycle is owned by
                 // the rentals/returns scan routes, so this general save leaves it untouched.
-                barcode: item.barcode || item.dressItem?.barcode || undefined,
-                cartStatus: 'confirmed'
+                barcode: item.barcode || item.dressItem?.barcode || undefined
+                // cartStatus is not decided per item - it follows the order's payment
+                // state, applied to the whole order in step 5 below.
               }
             });
           } else if (item.isNew) {
@@ -423,10 +454,11 @@ export async function PUT(request, { params }) {
                   alterationDetails: item.alterationDetails,
                   alterationDone: false,
                   isDeleted: false,
-                  cartStatus: 'confirmed',
+                  cartStatus: holdIsPermanent ? 'confirmed' : 'pending',
                   finalPrice: 0 // Will be calculated by pricing engine
                 }
               });
+              addedItem = true;
             } else {
               throw new Error(`אין פריט פנוי במלאי עבור דגם זה במידה ${item.sizeText}`);
             }
@@ -487,7 +519,24 @@ export async function PUT(request, { params }) {
         }
       }
 
-      // 5. Record debt approval if provided
+      // 5. An order that is paid, or approved by a manager for payment tracked afterwards,
+      // has no 15 minute timer on any of its dresses - including rows that were added while
+      // it was still a cart. Only a cart that is still unpaid keeps its running timer.
+      if (holdIsPermanent) {
+        await tx.orderItem.updateMany({
+          where: { orderId: parsedOrderId, isDeleted: false, cartStatus: 'pending' },
+          data: { cartStatus: 'confirmed', cartStatusDate: new Date() }
+        });
+      } else if (addedItem) {
+        // Still a cart: adding a dress gives the whole order a fresh 15 minutes, so the
+        // rows picked first do not expire while the customer is still choosing.
+        await tx.orderItem.updateMany({
+          where: { orderId: parsedOrderId, cartStatus: 'pending' },
+          data: { cartStatusDate: new Date() }
+        });
+      }
+
+      // 6. Record debt approval if provided
       if (data.debtApprovedBy) {
         const currentTotalPaid = data.payments ? data.payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0) : 0;
         const currentTotalRequired = data.totalAmount || 0;

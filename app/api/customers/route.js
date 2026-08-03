@@ -58,6 +58,10 @@ export async function GET(request) {
           phone1: true,
           phone2: true,
           city: true,
+          // The new-order screen charges the card straight off the customer picked here, and
+          // Nedarim Plus is sent the full address - without these it only ever got the city.
+          street: true,
+          houseNum: true,
           email: true,
           emailSuffix: true
         }

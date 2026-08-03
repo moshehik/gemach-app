@@ -3,6 +3,12 @@ import prisma from '../../../../../lib/prisma';
 import { recalculateOrderObligations } from '../../../../../../lib/pricingEngine';
 import { getAvailableInventory } from '../../../../../../lib/inventory';
 
+// Rules the caller can actually do something about (missing dates, nothing free in stock).
+// Everything else is a fault on our side: reporting those as 400 too made a server crash
+// look like a bad request, which is how "Maximum call stack size exceeded" spent a while
+// disguised as a validation failure.
+const ruleError = (message) => Object.assign(new Error(message), { isRuleViolation: true });
+
 export async function PUT(request, { params }) {
   try {
     const resolvedParams = await params;
@@ -21,13 +27,13 @@ export async function PUT(request, { params }) {
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
       const order = await tx.order.findUnique({ where: { orderId: parsedId } });
-      if (!order) throw new Error('הזמנה לא נמצאה');
+      if (!order) throw ruleError('הזמנה לא נמצאה');
       
       const currentItem = await tx.orderItem.findUnique({ 
         where: { id: itemId },
         include: { dressItem: true }
       });
-      if (!currentItem) throw new Error('פריט בהזמנה לא נמצא');
+      if (!currentItem) throw ruleError('פריט בהזמנה לא נמצא');
 
       const settingsRaw = await tx.systemSetting.findMany();
       let bufferDays = 3;
@@ -40,11 +46,11 @@ export async function PUT(request, { params }) {
       const newOrderIsAbroad = order.isAbroad || order.isWeekdayEvent;
       let targetMinDate, targetMaxDate;
       if (newOrderIsAbroad) {
-         if (!order.fromDate || !order.toDate) throw new Error('חסרים תאריכים להזמנת חו"ל');
+         if (!order.fromDate || !order.toDate) throw ruleError('חסרים תאריכים להזמנת חו"ל');
          targetMinDate = order.fromDate;
          targetMaxDate = order.toDate;
       } else {
-         if (!order.eventDate) throw new Error('חסר תאריך אירוע להזמנה');
+         if (!order.eventDate) throw ruleError('חסר תאריך אירוע להזמנה');
          targetMinDate = order.eventDate;
          targetMaxDate = order.eventDate;
       }
@@ -54,7 +60,7 @@ export async function PUT(request, { params }) {
       // If model or size changed, we need a new inventory check
       if (currentItem.dressItem.dressModelId !== itemData.dressModelId || currentItem.sizeText !== itemData.sizeText) {
         if (currentItem.isTaken) {
-            throw new Error('לא ניתן לשנות דגם/מידה לפריט שכבר נלקח. יש להחזירו תחילה.');
+            throw ruleError('לא ניתן לשנות דגם/מידה לפריט שכבר נלקח. יש להחזירו תחילה.');
         }
 
         const availability = await getAvailableInventory(
@@ -70,7 +76,7 @@ export async function PUT(request, { params }) {
         const sizeAvail = availability.find(a => (a.sizeText || a.size || 'כללי') === itemData.sizeText);
 
         if (!sizeAvail || sizeAvail.availableQuantity <= 0 || !sizeAvail.itemIds || sizeAvail.itemIds.length === 0) {
-            throw new Error(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText} בתאריך המבוקש`);
+            throw ruleError(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText} בתאריך המבוקש`);
         }
         
         dressItemIdToUse = sizeAvail.itemIds[0];
@@ -221,8 +227,8 @@ export async function PUT(request, { params }) {
   } catch (error) {
     console.error('Error updating order item:', error);
     return NextResponse.json(
-      { error: error.message || 'שגיאה בעדכון הפריט' },
-      { status: 400 }
+      { error: error.isRuleViolation ? error.message : `שגיאת מערכת בעדכון הפריט: ${error.message}` },
+      { status: error.isRuleViolation ? 400 : 500 }
     );
   }
 }

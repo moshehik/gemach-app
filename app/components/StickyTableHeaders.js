@@ -12,7 +12,10 @@ import { usePathname } from 'next/navigation';
   הערך נכתב כמשתנה CSS על הטבלה עצמה, ו-globals.css משתמש בו.
 */
 
-const SCROLLABLE = /(auto|scroll|overlay)/;
+/* גם overflow: hidden יוצר "אזור גלילה" לצורך position: sticky —
+   בלעדיו הכותרת נדחפת פנימה בגובה הנאב-בר ונראית באמצע הטבלה.
+   overflow: clip לעומת זאת אינו יוצר אזור כזה. */
+const SCROLLABLE = /(auto|scroll|overlay|hidden)/;
 const NAVBAR_TOP = 'var(--navbar-height, 72px)';
 const INNER_TOP = '0px';
 

@@ -67,7 +67,9 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       }
       
       if (onOrderUpdated) {
-        onOrderUpdated(data);
+        // מוסרים את השורה המקומית שזה עתה נשמרה, אבל משאירים שורות חדשות
+        // שהמשתמש הספיק להוסיף בזמן השמירה — אחרת תשובת השרת הייתה מוחקת אותן.
+        onOrderUpdated(data, { savedLocalId: item._localId });
       }
     } catch (error) {
       alert(error.message);
@@ -167,6 +169,11 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
 
     const newItem = {
       isNew: true,
+      // מזהה מקומי בלבד (השרת מתעלם ממנו) — מאפשר לזהות איזו שורה נשמרה
+      // כשתשובת השרת חוזרת, בלי להסתמך על אינדקס שיכול לזוז.
+      _localId: (typeof crypto !== 'undefined' && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : `local-${Date.now()}-${Math.random().toString(36).slice(2)}`,
       description: '',
       sizeText: '',
       neckAlteration: 0,

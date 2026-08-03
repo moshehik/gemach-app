@@ -9,6 +9,8 @@ import ActiveEmployeesModal from '../../../components/orders/ActiveEmployeesModa
 import OrderItemsManager from '../../../components/orders/OrderItemsManager';
 import OrderRentalsManager from '../../../components/orders/OrderRentalsManager';
 import OrderPaymentsManager from '../../../components/orders/OrderPaymentsManager';
+import OrderCardWorkspace from '../../../components/orders/OrderCardWorkspace';
+import OrderLayoutToggle from '../../../components/orders/OrderLayoutToggle';
 import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../../lib/orderStatus';
 import HistoryViewer from '../../../components/HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
@@ -44,37 +46,78 @@ export default function OrderDetailsPage({ params }) {
   const [activeTab, setActiveTab] = useState('details'); // details, items, rentals, payments, history
   const [debtApproved, setDebtApproved] = useState(false); // Track manager approval to skip exit warning
   const isManualRef = useRef(false); // prevent observer overriding scroll
+  const manualTargetRef = useRef(null); // הנושא שאליו גוללים כרגע מלחיצה על טאב
 
-  // Scrollspy observer
+  // עיצוב הכרטיס: 'classic' = נושא מתחת לנושא, 'workspace' = הכל בחלון אחד זה לצד זה
+  const [layoutMode, setLayoutMode] = useState('classic');
+
+  // נטען אחרי ההרכבה כדי לא לשבור hydration (localStorage לא קיים בשרת)
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (isManualRef.current) return; // skip if user clicked tab
-        const visibleEntries = entries.filter(e => e.isIntersecting);
-        if (visibleEntries.length > 0) {
-          // find the one taking up the most space or the first one
-          const mostVisible = visibleEntries.reduce((prev, current) => 
-            (prev.intersectionRatio > current.intersectionRatio) ? prev : current
-          );
-          if (mostVisible.target.id) {
-            setActiveTab(prev => {
-              if (prev !== mostVisible.target.id) return mostVisible.target.id;
-              return prev;
-            });
-          }
-        }
-      },
-      { rootMargin: '-20% 0px -60% 0px', threshold: [0, 0.2, 0.5, 1] }
-    );
-
-    const tabIds = ['details', 'items', 'rentals', 'payments', 'history'];
-    tabIds.forEach(id => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-
-    return () => observer.disconnect();
+    try {
+      const saved = localStorage.getItem('orderCardLayout');
+      if (saved === 'classic' || saved === 'workspace') setLayoutMode(saved);
+    } catch (e) { /* localStorage חסום — נשארים בברירת המחדל */ }
   }, []);
+
+  const handleLayoutChange = (mode) => {
+    setLayoutMode(mode);
+    try { localStorage.setItem('orderCardLayout', mode); } catch (e) { /* אין מה לעשות */ }
+  };
+
+  /*
+    סימון הטאב הפעיל לפי מיקום הגלילה. חישוב ישיר מהגאומטריה ולא IntersectionObserver:
+    המשקיף דיווח רק על נושא ש"נכנס" לטווח, ולכן הקו לא זז בתחתית העמוד, ברווח שבין
+    שני נושאים, או אחרי קפיצה — כאן פשוט נבחר בכל גלילה הנושא האחרון שהתחיל מעל הקו.
+  */
+  useEffect(() => {
+    if (loading || layoutMode !== 'classic') return;
+
+    const sectionIds = ['details', 'items', 'rentals', 'payments', 'history'];
+
+    const pickActiveSection = () => {
+      const present = sectionIds.filter(id => document.getElementById(id));
+      if (present.length === 0) return null;
+
+      const line = window.innerHeight * 0.3; // קו הזיהוי — שליש עליון של המסך
+      let current = present[0];
+      for (const id of present) {
+        if (document.getElementById(id).getBoundingClientRect().top <= line) current = id;
+      }
+
+      // בתחתית העמוד הנושא האחרון לא תמיד מגיע לקו — מסמנים אותו בכל זאת
+      const reachedBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+      return reachedBottom ? present[present.length - 1] : current;
+    };
+
+    let queued = false;
+    const syncActiveTab = () => {
+      queued = false;
+      const current = pickActiveSection();
+      if (!current) return;
+      // בזמן גלילה יזומה מלחיצה על טאב לא נוגעים בסימון, עד שמגיעים ליעד.
+      if (isManualRef.current) {
+        if (current === manualTargetRef.current) isManualRef.current = false;
+        return;
+      }
+      setActiveTab(prev => (prev === current ? prev : current));
+    };
+
+    const handleScroll = () => {
+      if (queued) return;
+      queued = true;
+      // חישוב אחד לכל פריים, כדי לא לחשב מחדש על כל אירוע גלילה
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(syncActiveTab);
+      else setTimeout(syncActiveTab, 50);
+    };
+
+    syncActiveTab();
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
+    };
+  }, [loading, layoutMode]);
 
   // Fetch Order
   useEffect(() => {
@@ -195,16 +238,17 @@ export default function OrderDetailsPage({ params }) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            items: activeItems, 
+            items: activeItems,
             eventDate: currentOrder.eventDate,
             isAbroad: currentOrder.isAbroad,
             isWeekdayEvent: currentOrder.isWeekdayEvent,
             fromDate: currentOrder.fromDate,
             toDate: currentOrder.toDate,
-            orderId: currentOrder.orderId 
+            orderId: currentOrder.orderId,
+            customSpacing: currentOrder.customSpacing
           })
         });
-        
+
         const validateData = await validateRes.json();
         if (validateData.error) {
           setSaving(false);
@@ -213,10 +257,14 @@ export default function OrderDetailsPage({ params }) {
         }
         if (!validateData.valid) {
           setSaving(false);
-          const errorLines = validateData.errors.map(e => 
-            `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
-          ).join('\n');
-          alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}`);
+          const errorLines = validateData.errors.map(e => {
+            const msg = `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`;
+            return e.isCustomSpacingIssue ? `${msg} (בגלל ציפוף)` : msg;
+          }).join('\n');
+          const customSpacingNote = validateData.errors.some(e => e.isCustomSpacingIssue)
+            ? '\n\n💡 הערה: כמה מהבעיות קשורות לציפוף מיוחד. אם אתה בוטל בציפוף, נסה לבחור ציפוף קטן יותר.'
+            : '';
+          alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}${customSpacingNote}`);
           return;
         }
       } catch (err) {
@@ -259,6 +307,12 @@ export default function OrderDetailsPage({ params }) {
       }
     }
 
+    // items כאן הוא צילום מצב מרגע לחיצת השמירה — בדיוק מה שנשלח לשרת.
+    // שורה חדשה בלי דגם/מידה מדולגת בשרת, ולכן היא נשארת פתוחה גם אחרי השמירה.
+    const submittedLocalIds = items
+      .filter(it => it._localId && it.dressModelId && it.sizeText)
+      .map(it => it._localId);
+
     try {
       const res = await fetch(`/api/orders/${id}`, {
         method: 'PUT',
@@ -296,7 +350,8 @@ export default function OrderDetailsPage({ params }) {
       
       const updatedOrder = await res.json();
       setOrder(updatedOrder);
-      setItems(updatedOrder.items || []);
+      // הפריטים ששלחנו כבר נוצרו בשרת; שורה שנוספה אחרי השליחה עדיין לא — היא נשמרת.
+      setItems(prev => mergePendingItems(updatedOrder.items || [], prev, submittedLocalIds));
       setObligations(updatedOrder.obligations || []);
       setPayments(updatedOrder.payments || []);
       setRefunds(updatedOrder.refunds || []);
@@ -311,9 +366,16 @@ export default function OrderDetailsPage({ params }) {
     }
   };
 
-  const handleOrderUpdate = (updatedOrder) => {
+  // שורות פריט חדשות שטרם נשמרו בשרת. מיזוג במקום החלפה מונע מחיקה של פריט
+  // שהמשתמש הוסיף בזמן שבקשת שמירה אחרת עדיין רצה.
+  const mergePendingItems = (serverItems, prevItems, consumedLocalIds = []) => [
+    ...serverItems,
+    ...prevItems.filter(it => !it.id && it._localId && !consumedLocalIds.includes(it._localId))
+  ];
+
+  const handleOrderUpdate = (updatedOrder, { savedLocalId } = {}) => {
     setOrder(updatedOrder);
-    setItems(updatedOrder.items || []);
+    setItems(prev => mergePendingItems(updatedOrder.items || [], prev, savedLocalId ? [savedLocalId] : []));
     setObligations(updatedOrder.obligations || []);
     setPayments(updatedOrder.payments || []);
     setRefunds(updatedOrder.refunds || []);
@@ -382,6 +444,20 @@ export default function OrderDetailsPage({ params }) {
     } catch (err) {
       alert('שגיאה באימות קוד מנהל.');
     }
+  };
+
+  // גלילה לנושא — עובד בשתי התצוגות (ה-id זהה גם בערימה וגם בגריד)
+  const goToSection = (sectionId) => {
+    isManualRef.current = true;
+    manualTargetRef.current = sectionId;
+    setActiveTab(sectionId);
+    const el = document.getElementById(sectionId);
+    if (el) {
+      const y = el.getBoundingClientRect().top + window.scrollY - 150; // offset for sticky header
+      window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+    // הנעילה משתחררת כשהגלילה מגיעה ליעד; הטיימר הוא רשת ביטחון אם היא נעצרה בדרך.
+    setTimeout(() => { isManualRef.current = false; }, 1500);
   };
 
   const tabs = [
@@ -468,8 +544,82 @@ export default function OrderDetailsPage({ params }) {
   const activeTabIndex = tabs.findIndex(t => t.id === activeTab);
   const activeTabDetails = tabs[activeTabIndex];
 
+  // הנושאים מוגדרים פעם אחת ומשמשים את שתי התצוגות.
+  // `span` = רוחב בגריד של 12 עמודות בתצוגת "חלון אחד", `order` = סדר הנושאים שם.
+  const sections = [
+    {
+      id: 'details',
+      span: 5,
+      order: 1,
+      node: <OrderGeneralDetails data-element-name="רכיב_page_22" order={order} items={items} onOrderChange={setOrder} onSaveRequest={handleSave} />
+    },
+    {
+      id: 'items',
+      span: 12,
+      order: 3,
+      node: (
+        <OrderItemsManager data-element-name="רכיב_page_23"
+          orderId={order.orderId}
+          order={order}
+          items={items}
+          onItemsChange={setItems}
+          onOrderUpdated={handleOrderUpdate}
+          inventoryCache={inventoryCache}
+        />
+      )
+    },
+    {
+      id: 'rentals',
+      span: 7,
+      order: 4,
+      node: (
+        <OrderRentalsManager data-element-name="רכיב_page_24"
+          items={items}
+          onItemsChange={setItems}
+          order={order}
+          totalRequired={totalRequired}
+          totalPaid={totalPaid}
+        />
+      )
+    },
+    {
+      id: 'payments',
+      span: 7,
+      order: 2,
+      node: (
+        <OrderPaymentsManager data-element-name="רכיב_page_25"
+          orderId={order.orderId}
+          items={items}
+          order={order}
+          obligations={obligations}
+          payments={payments}
+          refunds={refunds}
+          onObligationsChange={setObligations}
+          onPaymentsChange={setPayments}
+          onRefundsChange={setRefunds}
+          totalRequired={totalRequired}
+          totalPaid={totalPaid}
+          customer={order.customer}
+          onOrderUpdated={handleOrderUpdate}
+        />
+      )
+    },
+    {
+      id: 'history',
+      span: 5,
+      order: 5,
+      node: (
+        <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+          <HistoryViewer data-element-name="רכיב_page_26" entityType="Order" entityId={order.orderId} />
+        </div>
+      )
+    }
+  ];
+
+  const workspaceSections = [...sections].sort((a, b) => a.order - b.order);
+
   return (
-    <main data-agy-id="[id]_page_main_1" style={{ padding: '2rem', maxWidth: '1400px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
+    <main data-agy-id="[id]_page_main_1" style={{ padding: layoutMode === 'workspace' ? '1.25rem' : '2rem', maxWidth: layoutMode === 'workspace' ? '1900px' : '1400px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
       
       {/* Header Sticky Bar */}
       <div style={{ 
@@ -558,7 +708,11 @@ export default function OrderDetailsPage({ params }) {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginRight: 'auto' }}>
             {saveMessage && <span style={{ color: saveMessage.includes('שגיאה') ? '#ef4444' : '#10b981', fontWeight: 'bold', background: saveMessage.includes('שגיאה') ? '#fee2e2' : '#d1fae5', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>{saveMessage}</span>}
-            
+
+            <OrderLayoutToggle value={layoutMode} onChange={handleLayoutChange} />
+
+            <div style={{ width: '1px', alignSelf: 'stretch', background: '#e2e8f0', margin: '0 0.2rem' }} />
+
             <button data-element-name="כפתור_page_1" data-agy-id="[id]_page_button_2" 
               onClick={handleSave} 
               disabled={saving || isLocked}
@@ -600,7 +754,7 @@ export default function OrderDetailsPage({ params }) {
             </button>
 
             <button data-element-name="כפתור_page_5" data-agy-id="[id]_page_button_4" 
-              onClick={() => setActiveTab('payments')}
+              onClick={() => goToSection('payments')}
               title={`מעבר לתשלום (₪${totalRequired - totalPaid})`}
               style={{ 
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
@@ -685,7 +839,8 @@ export default function OrderDetailsPage({ params }) {
           </div>
         </div>
 
-        {/* Tab Navigation */}
+        {/* Tab Navigation — מוצג רק בתצוגה הקלאסית; בתצוגת "חלון אחד" כל הנושאים גלויים ממילא */}
+        {layoutMode === 'classic' && (
         <div style={{ position: 'relative', background: 'rgba(241, 245, 249, 0.4)', borderTop: '1px solid #e2e8f0', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px', overflow: 'hidden' }}>
           <div style={{ display: 'flex', padding: '0 1rem' }}>
             {tabs.map((tab, idx) => {
@@ -694,16 +849,7 @@ export default function OrderDetailsPage({ params }) {
               return (
                 <button data-element-name="כפתור_page_19" data-agy-id="[id]_page_button_6"
                   key={tab.id}
-                  onClick={() => {
-                    isManualRef.current = true;
-                    setActiveTab(tab.id);
-                    const el = document.getElementById(tab.id);
-                    if (el) {
-                      const y = el.getBoundingClientRect().top + window.scrollY - 150; // offset for sticky header
-                      window.scrollTo({ top: y, behavior: 'smooth' });
-                    }
-                    setTimeout(() => { isManualRef.current = false; }, 1000); // re-enable observer
-                  }}
+                  onClick={() => goToSection(tab.id)}
                   style={{
                     flex: 1,
                     display: 'flex',
@@ -739,6 +885,7 @@ export default function OrderDetailsPage({ params }) {
             borderRadius: '4px 4px 0 0'
           }} />
         </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -758,55 +905,14 @@ export default function OrderDetailsPage({ params }) {
               </div>
             )}
             <div className="animate-fade-in" style={{ opacity: isLocked ? 0.7 : 1, pointerEvents: isLocked ? 'none' : 'auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-              
-              <div id="details">
-                <OrderGeneralDetails data-element-name="רכיב_page_22" order={order} items={items} onOrderChange={setOrder} onSaveRequest={handleSave} />
-              </div>
 
-              <div id="items">
-                <OrderItemsManager data-element-name="רכיב_page_23" 
-                  orderId={order.orderId}
-                  order={order}
-                  items={items} 
-                  onItemsChange={setItems} 
-                  onOrderUpdated={handleOrderUpdate}
-                  inventoryCache={inventoryCache}
-                />
-              </div>
-
-              <div id="rentals">
-                <OrderRentalsManager data-element-name="רכיב_page_24" 
-                  items={items} 
-                  onItemsChange={setItems}
-                  order={order}
-                  totalRequired={totalRequired}
-                  totalPaid={totalPaid}
-                />
-              </div>
-
-              <div id="payments">
-                <OrderPaymentsManager data-element-name="רכיב_page_25" 
-                  orderId={order.orderId}
-                  items={items}
-                  order={order}
-                  obligations={obligations} 
-                  payments={payments} 
-                  refunds={refunds}
-                  onObligationsChange={setObligations} 
-                  onPaymentsChange={setPayments} 
-                  onRefundsChange={setRefunds}
-                  totalRequired={totalRequired} 
-                  totalPaid={totalPaid} 
-                  customer={order.customer}
-                  onOrderUpdated={handleOrderUpdate}
-                />
-              </div>
-
-              <div id="history">
-                <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
-                  <HistoryViewer data-element-name="רכיב_page_26" entityType="Order" entityId={order.orderId} />
-                </div>
-              </div>
+              {layoutMode === 'workspace' ? (
+                <OrderCardWorkspace sections={workspaceSections} />
+              ) : (
+                sections.map(section => (
+                  <div key={section.id} id={section.id}>{section.node}</div>
+                ))
+              )}
 
             </div>
           </div>

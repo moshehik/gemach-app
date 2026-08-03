@@ -16,7 +16,7 @@ export default function RentalsPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [viewMode, setViewMode] = useState('pending'); // 'pending', 'active', 'returned', 'all'
+  const [viewMode, setViewMode] = useState('all'); // 'all', 'rented', 'rented_partial', 'returned', 'returned_partial'
   
   const [advFilters, setAdvFilters] = useState({
     customerName: '', customerPhone: '', customerCity: '', 
@@ -54,24 +54,17 @@ export default function RentalsPage() {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      let activeParam = '';
-      let archiveParam = '';
       const hasAdvFilters = Object.values(advFilters).some(v => v !== '');
-      if (!search && !hasAdvFilters) {
-        if (viewMode === 'pending') activeParam = '&pendingOnly=true&excludeArchiveAndPast=true';
-        else if (viewMode === 'active') activeParam = '&activeOnly=true';
-        else if (viewMode === 'returned') activeParam = '&returnedOnly=true';
-        else if (viewMode === 'archive') activeParam = '&archiveAndPastOnly=true';
-        else if (viewMode === 'all') activeParam = '&excludeArchiveAndPast=true';
-      }
-      
+
       const queryParams = new URLSearchParams({ search, sort: 'orderId', order: 'desc', limit: '200', forRentals: 'true' });
-      if (activeParam.includes('pendingOnly')) queryParams.append('pendingOnly', 'true');
-      if (activeParam.includes('activeOnly')) queryParams.append('activeOnly', 'true');
-      if (activeParam.includes('returnedOnly')) queryParams.append('returnedOnly', 'true');
-      if (activeParam.includes('excludeArchiveAndPast')) queryParams.append('excludeArchiveAndPast', 'true');
-      if (activeParam.includes('archiveAndPastOnly')) queryParams.append('archiveAndPastOnly', 'true');
-      
+
+      if (!search && !hasAdvFilters) {
+        if (viewMode === 'rented') queryParams.append('activeOnly', 'true');
+        else if (viewMode === 'rented_partial') queryParams.append('partiallyRentedOnly', 'true');
+        else if (viewMode === 'returned') queryParams.append('returnedOnly', 'true');
+        else if (viewMode === 'returned_partial') queryParams.append('partiallyReturnedOnly', 'true');
+      }
+
       Object.entries(advFilters).forEach(([k, v]) => {
         if (v) queryParams.append(k, v);
       });
@@ -168,30 +161,26 @@ export default function RentalsPage() {
   return (
     <main data-agy-id="rentals-page-main" className="container rentals-page page-shell">
       <div className="page-scroll">
-        <div className="quick-return-bar">
-        <h2><span style={{ fontSize: '1.2em', marginRight: '5px' }}>⚡</span> החזרה מהירה</h2>
-        <form onSubmit={handleQuickReturn} className="barcode-input-container" style={{ position: 'relative' }}>
-          <input data-element-name="שדה_page_1" 
-            data-agy-id="input-barcode"
-            type="text" 
-            dir="auto"
-            className={`barcode-input ${quickStatus === 'success' ? 'success-flash' : quickStatus === 'error' ? 'error-flash' : ''}`}
-            placeholder="סרוק ברקוד כאן..." 
-            value={quickBarcode}
-            onChange={(e) => setQuickBarcode(e.target.value.replace(/\s+/g, ''))}
-            disabled={isProcessing}
-            autoFocus
-          />
-          {isProcessing && (
-            <div style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)' }}>
-              <div className="spinner" style={{ width: '20px', height: '20px', border: '3px solid #f3f3f3', borderTop: '3px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-            </div>
-          )}
-        </form>
-      </div>
-
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול השכרות והחזרות</h1>
+
+        <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
+          <button data-element-name="כפתור_page_1" data-agy-id="rentals_page_button_1" onClick={() => { setViewMode('all'); }} style={{ padding: '0.4rem', border: 'none', background: viewMode === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: viewMode === 'all' ? 'var(--primary-color)' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
+            <span style={{ fontWeight: viewMode === 'all' ? 'bold' : 'normal' }}>הכל</span>
+          </button>
+          <button data-element-name="כפתור_page_2" data-agy-id="rentals_page_button_2" onClick={() => { setViewMode('rented'); }} style={{ padding: '0.4rem', border: 'none', background: viewMode === 'rented' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: viewMode === 'rented' ? '#1565c0' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הושכר">
+            <span style={{ fontWeight: viewMode === 'rented' ? 'bold' : 'normal' }}>הושכר</span>
+          </button>
+          <button data-element-name="כפתור_page_3" data-agy-id="rentals_page_button_3" onClick={() => { setViewMode('rented_partial'); }} style={{ padding: '0.4rem', border: 'none', background: viewMode === 'rented_partial' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: viewMode === 'rented_partial' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הושכר חלקי">
+            <span style={{ fontWeight: viewMode === 'rented_partial' ? 'bold' : 'normal' }}>הושכר חלקי</span>
+          </button>
+          <button data-element-name="כפתור_page_4" data-agy-id="rentals_page_button_4" onClick={() => { setViewMode('returned'); }} style={{ padding: '0.4rem', border: 'none', background: viewMode === 'returned' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: viewMode === 'returned' ? '#2e7d32' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הוחזר">
+            <span style={{ fontWeight: viewMode === 'returned' ? 'bold' : 'normal' }}>הוחזר</span>
+          </button>
+          <button data-element-name="כפתור_page_5" data-agy-id="rentals_page_button_5" onClick={() => { setViewMode('returned_partial'); }} style={{ padding: '0.4rem', border: 'none', background: viewMode === 'returned_partial' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: viewMode === 'returned_partial' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הוחזר חלקי">
+            <span style={{ fontWeight: viewMode === 'returned_partial' ? 'bold' : 'normal' }}>הוחזר חלקי</span>
+          </button>
+        </div>
       </div>
 
       {showAdvSearch && (
@@ -249,47 +238,19 @@ export default function RentalsPage() {
         </div>
       )}
 
-      <div className="rentals-controls" style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         marginBottom: '2rem',
-        background: 'var(--card-bg)', 
-        padding: '0.75rem 1.5rem', 
-        borderRadius: '16px', 
+        background: 'var(--card-bg)',
+        padding: '0.75rem 1.5rem',
+        borderRadius: '16px',
         boxShadow: 'var(--shadow-sm)',
         gap: '1rem',
         flexWrap: 'wrap',
         border: '1px solid var(--border-color)'
       }}>
-        {/* Right side: Filters */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <span style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>תצוגה:</span>
-          <select data-element-name="בחירה_page_13" 
-            value={viewMode}
-            onChange={(e) => setViewMode(e.target.value)}
-            className="form-control"
-            style={{
-              borderRadius: '20px',
-              padding: '0.4rem 1rem',
-              border: '2px solid var(--primary-color)',
-              background: 'rgba(212,175,55,0.05)',
-              color: 'var(--primary-color)',
-              fontWeight: 'bold',
-              cursor: 'pointer',
-              outline: 'none',
-              minWidth: '220px',
-              fontSize: '1rem'
-            }}
-          >
-            <option value="pending">השכרות (ממתינים)</option>
-            <option value="active">פעילים (אצל לקוח)</option>
-            <option value="returned">הוחזרו (חלקי/מלא)</option>
-            <option value="all">כל ההזמנות הפעילות</option>
-            <option value="archive">ארכיון / עבר</option>
-          </select>
-        </div>
-
         {/* Center/Left side: Search & Actions */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
           <div style={{ flex: 1, maxWidth: '400px', minWidth: '250px' }}>
@@ -362,13 +323,35 @@ export default function RentalsPage() {
             const rentedItems = order.items?.filter(i => i.isTaken && !i.isReturned && !i.isDeleted).length || 0;
             const returnedItems = order.items?.filter(i => i.isReturned && !i.isDeleted).length || 0;
 
+            let rowBg = 'transparent';
+            let rowBorder = 'none';
+            if (totalItems > 0) {
+              if (rentedItems === totalItems) {
+                // כל הפריטים הושכרו
+                rowBg = 'rgba(21, 101, 192, 0.08)';
+                rowBorder = '4px solid #1565c0';
+              } else if (rentedItems > 0) {
+                // חלק מהפריטים הושכרו
+                rowBg = 'rgba(245, 124, 0, 0.08)';
+                rowBorder = '4px solid #f57c00';
+              } else if (returnedItems === totalItems) {
+                // כל הפריטים הוחזרו
+                rowBg = 'rgba(46, 125, 50, 0.08)';
+                rowBorder = '4px solid #2e7d32';
+              } else if (returnedItems > 0) {
+                // חלק מהפריטים הוחזרו
+                rowBg = 'rgba(225, 29, 72, 0.08)';
+                rowBorder = '4px solid #e11d48';
+              }
+            }
+
             return (
               <tbody key={order.orderId}>
-                <tr data-element-name="לחיץ_page_17" 
-                  onClick={() => openOrder(order.orderId)} 
-                  style={{ cursor: 'pointer', transition: 'background 0.2s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.05)'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                <tr data-element-name="לחיץ_page_17"
+                  onClick={() => openOrder(order.orderId)}
+                  style={{ cursor: 'pointer', transition: 'background 0.2s', background: rowBg, borderRight: rowBorder }}
+                  onMouseEnter={(e) => e.currentTarget.style.background = rowBg !== 'transparent' ? rowBg : 'rgba(212, 175, 55, 0.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.background = rowBg}
                 >
                   <td style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>#{order.orderId}</td>
                   <td style={{ fontWeight: '500', fontSize: '1.1rem' }}>{order.customerName}</td>

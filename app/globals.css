@@ -1695,8 +1695,10 @@ table.items-table thead tr th,
 .sticky-table-header thead tr th,
 .sticky-th {
   position: sticky !important;
-  /* --th-sticky-top נקבע ע"י StickyTableHeaders: 0 בתוך אזור גלילה פנימי, אחרת גובה הנאב-בר */
-  top: var(--th-sticky-top, var(--navbar-height, 72px)) !important;
+  /* --th-sticky-top נקבע ע"י StickyTableHeaders: 0 בתוך אזור גלילה פנימי, אחרת גובה הנאב-בר.
+     ברירת המחדל היא 0 — כך שעד שה-JS מודד, הכותרת נשארת בראש הטבלה
+     ולא נדחפת לאמצעה בגובה הנאב-בר. */
+  top: var(--th-sticky-top, 0px) !important;
   z-index: 35 !important;
   background-color: var(--sticky-header-bg, #ffffff) !important;
   background-image: none !important;

@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 
-export default function OrderModelSelector({ value, onChange, placeholder = 'בחר דגם...' }) {
+export default function OrderModelSelector({ value, onChange, placeholder = 'בחר דגם...', inputId }) {
   const [query, setQuery] = useState('');
   const [models, setModels] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
@@ -138,6 +138,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
     <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
       <div style={{ position: 'relative' }}>
         <input
+          id={inputId}
           data-agy-id="order_model_selector_input"
           type="text"
           value={query}

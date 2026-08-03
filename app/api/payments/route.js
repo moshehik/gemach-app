@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { recalculateOrderObligations } from '@/lib/pricingEngine';
+import { paymentsGrantPermanentHold } from '@/lib/inventoryHold';
 
 export async function POST(request) {
   try {
@@ -35,11 +36,16 @@ export async function POST(request) {
       }
     });
 
-    // Update items to confirmed since payment was made
-    await prisma.orderItem.updateMany({
-      where: { orderId: parsedOrderId, cartStatus: 'pending' },
-      data: { cartStatus: 'confirmed' }
-    });
+    // Money changed hands (or a manager approved leaving with the payment tracked
+    // afterwards), so the order stops being a cart and its items hold their units for good.
+    // A zero-amount row that is neither of those - a note, a correction - is not a payment
+    // and must not silently turn an expiring cart into a permanent booking.
+    if (paymentsGrantPermanentHold([payment])) {
+      await prisma.orderItem.updateMany({
+        where: { orderId: parsedOrderId, isDeleted: false, cartStatus: 'pending' },
+        data: { cartStatus: 'confirmed', cartStatusDate: new Date() }
+      });
+    }
 
     // We can also trigger recalculation or update if needed
     // await recalculateOrderObligations(parsedOrderId);

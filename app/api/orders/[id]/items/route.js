@@ -2,6 +2,11 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
 import { recalculateOrderObligations } from '../../../../../lib/pricingEngine';
 import { getAvailableInventory } from '../../../../../lib/inventory';
+import { orderHasPermanentHold } from '../../../../../lib/inventoryHold';
+
+// See the sibling [itemId] route: only caller-fixable rules should surface as 400, so a
+// genuine server fault is not mistaken for a bad request.
+const ruleError = (message) => Object.assign(new Error(message), { isRuleViolation: true });
 
 export async function POST(request, { params }) {
   try {
@@ -20,8 +25,22 @@ export async function POST(request, { params }) {
     }
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
-      const order = await tx.order.findUnique({ where: { orderId: parsedId } });
-      if (!order) throw new Error('הזמנה לא נמצאה');
+      const order = await tx.order.findUnique({
+        where: { orderId: parsedId },
+        include: {
+          payments: { select: { amount: true, paymentMethod: true, isDeleted: true } },
+          items: { select: { cartStatus: true, isDeleted: true } }
+        }
+      });
+      if (!order) throw ruleError('הזמנה לא נמצאה');
+
+      // An order that was already paid - or that a manager approved to leave with the
+      // payment tracked afterwards - is not a shopping cart any more, so a dress added to
+      // it has to be held permanently. Creating every item as 'pending' put a 15 minute
+      // expiry on it (and restarted the clock on its siblings), and the hold window in
+      // lib/inventory.js then handed the unit back to the pool while the customer was
+      // already booked for it.
+      const holdIsPermanent = orderHasPermanentHold(order);
 
       const settingsRaw = await tx.systemSetting.findMany();
       let bufferDays = 3;
@@ -34,11 +53,11 @@ export async function POST(request, { params }) {
       const newOrderIsAbroad = order.isAbroad || order.isWeekdayEvent;
       let targetMinDate, targetMaxDate;
       if (newOrderIsAbroad) {
-         if (!order.fromDate || !order.toDate) throw new Error('חסרים תאריכים להזמנת חו"ל');
+         if (!order.fromDate || !order.toDate) throw ruleError('חסרים תאריכים להזמנת חו"ל');
          targetMinDate = order.fromDate;
          targetMaxDate = order.toDate;
       } else {
-         if (!order.eventDate) throw new Error('חסר תאריך אירוע להזמנה');
+         if (!order.eventDate) throw ruleError('חסר תאריך אירוע להזמנה');
          targetMinDate = order.eventDate;
          targetMaxDate = order.eventDate;
       }
@@ -57,7 +76,7 @@ export async function POST(request, { params }) {
       const sizeAvail = availability.find(a => (a.sizeText || a.size || 'כללי') === itemData.sizeText);
 
       if (!sizeAvail || sizeAvail.availableQuantity <= 0 || !sizeAvail.itemIds || sizeAvail.itemIds.length === 0) {
-        throw new Error(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText} בתאריך המבוקש`);
+        throw ruleError(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText} בתאריך המבוקש`);
       }
 
       const dressItemIdToUse = sizeAvail.itemIds[0];
@@ -75,22 +94,39 @@ export async function POST(request, { params }) {
           alterationDetails: itemData.alterationDetails || null,
           alterationDone: false,
           isDeleted: false,
-          cartStatus: 'pending',
+          cartStatus: holdIsPermanent ? 'confirmed' : 'pending',
           cartStatusDate: new Date(),
           finalPrice: 0 // Will be calculated by pricing engine
         }
       });
 
-      // Update cartStatusDate for all existing pending items in this order to reset the timer
-      await tx.orderItem.updateMany({
-        where: {
-          orderId: parsedId,
-          cartStatus: 'pending'
-        },
-        data: {
-          cartStatusDate: new Date()
-        }
-      });
+      if (holdIsPermanent) {
+        // An order with a permanent hold has no timer at all. Any row still left in cart
+        // state - added before the order was paid for, or before this rule existed - is
+        // cleared here, so no dress of a booked order is waiting to be released.
+        await tx.orderItem.updateMany({
+          where: {
+            orderId: parsedId,
+            isDeleted: false,
+            cartStatus: 'pending'
+          },
+          data: {
+            cartStatus: 'confirmed',
+            cartStatusDate: new Date()
+          }
+        });
+      } else {
+        // Still a cart: adding a dress restarts the 15 minute window for the whole order.
+        await tx.orderItem.updateMany({
+          where: {
+            orderId: parsedId,
+            cartStatus: 'pending'
+          },
+          data: {
+            cartStatusDate: new Date()
+          }
+        });
+      }
 
       await tx.auditLog.create({
           data: {
@@ -207,8 +243,8 @@ export async function POST(request, { params }) {
   } catch (error) {
     console.error('Error adding order item:', error);
     return NextResponse.json(
-      { error: error.message || 'שגיאה בשמירת הפריט' },
-      { status: 400 }
+      { error: error.isRuleViolation ? error.message : `שגיאת מערכת בשמירת הפריט: ${error.message}` },
+      { status: error.isRuleViolation ? 400 : 500 }
     );
   }
 }

@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { Calendar, CalendarPlus, Scissors, Printer, Info, CheckCircle, Search, X, Check, Clock, FileText } from 'lucide-react';
 import PrintWizardModal from '../components/PrintWizardModal';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
+import HebrewDateRangePicker from '../../components/HebrewDateRangePicker';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
@@ -29,7 +30,7 @@ export default function AlterationsPage() {
   // Filters
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [showOnlyPending, setShowOnlyPending] = useState(true);
+  const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'pending', 'done'
 
   // Print Wizard state
   const [isPrintWizardOpen, setIsPrintWizardOpen] = useState(false);
@@ -48,7 +49,8 @@ export default function AlterationsPage() {
         setLoading(true);
         setError('');
       }
-      
+
+      const showOnlyPending = filterStatus === 'pending';
       let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=${targetPage}&limit=${limit}`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
@@ -86,7 +88,7 @@ export default function AlterationsPage() {
 
   useEffect(() => {
     fetchAlterations(false, page);
-    
+
     // Background Prefetching for the next page
     const timer = setTimeout(() => {
       if (page < totalPages) {
@@ -94,7 +96,7 @@ export default function AlterationsPage() {
       }
     }, 1500);
     return () => clearTimeout(timer);
-  }, [startDate, endDate, showOnlyPending, page, search, totalPages]);
+  }, [startDate, endDate, filterStatus, page, search, totalPages]);
 
   const markDone = async (orderItemId) => {
     if (!(await window.customConfirm('האם לאשר ביצוע תיקון?'))) return;
@@ -105,9 +107,9 @@ export default function AlterationsPage() {
         body: JSON.stringify({ orderItemId })
       });
       if (!res.ok) throw new Error('Failed to mark as done');
-      
-      // Remove from list if showOnlyPending is true, else update state
-      if (showOnlyPending) {
+
+      // Remove from list if filterStatus is 'pending', else update state
+      if (filterStatus === 'pending') {
         setItems(items.filter(item => item.id !== orderItemId));
       } else {
         setItems(items.map(item => item.id === orderItemId ? { ...item, alterationDone: true } : item));
@@ -197,6 +199,7 @@ export default function AlterationsPage() {
 
   const fetchForExport = async (exportLimit) => {
     try {
+      const showOnlyPending = filterStatus === 'pending';
       let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=1&limit=${exportLimit}`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
@@ -222,100 +225,74 @@ export default function AlterationsPage() {
   return (
     <main data-agy-id="alterations-page-main" className="container animate-fade-in page-shell">
       <div className="page-scroll">
-      <div style={{
-        position: 'relative',
-        marginBottom: '1rem', padding: '1.5rem', 
-        background: 'var(--card-bg)', 
-        borderRadius: '16px', 
-        boxShadow: 'var(--shadow-sm)',
-        border: '1px solid var(--element-border)',
-        color: 'var(--text-main)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1.2rem'
-      }}>
-        {/* Decorative ambient blobs */}
-        <div style={{ position: 'absolute', inset: 0, overflow: 'hidden', borderRadius: '16px', pointerEvents: 'none' }}>
-          <div style={{ position: 'absolute', top: '-50px', right: '-50px', width: '200px', height: '200px', background: 'linear-gradient(135deg, #a855f7, #ec4899)', borderRadius: '50%', filter: 'blur(60px)', opacity: 0.1 }}></div>
-          <div style={{ position: 'absolute', bottom: '-50px', left: '-50px', width: '250px', height: '250px', background: 'linear-gradient(135deg, #3b82f6, #2dd4bf)', borderRadius: '50%', filter: 'blur(70px)', opacity: 0.08 }}></div>
-        </div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Scissors data-element-name="רכיב_page_1" size={26} />
+          ניהול תפירות ותיקונים
+        </h1>
 
-        {/* Top Header Row */}
-        <div style={{ position: 'relative', zIndex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '1.8rem', display: 'flex', alignItems: 'center', gap: '10px', fontWeight: '800' }}>
-              <Scissors data-element-name="רכיב_page_1" size={26} color="var(--primary-color)" />
-              ניהול תפירות ותיקונים
-            </h1>
-          </div>
-        </div>
-
-        {/* Filter Toolbar (Glassmorphism) */}
-        <div style={{ 
-          position: 'relative', zIndex: 1, 
-          display: 'flex', gap: '1.2rem', alignItems: 'center', flexWrap: 'wrap', 
-          background: 'var(--element-bg)', padding: '0.75rem 1rem', 
-          borderRadius: '12px', border: '1px solid var(--element-border)',
-          backdropFilter: 'blur(12px)'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar data-element-name="רכיב_page_7" size={18} color="var(--text-muted)" />
-            <label style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>מתאריך:</label>
-            <div style={{ width: '200px' }}>
-              <HebrewDatePicker data-element-name="רכיב_page_8" value={startDate} onChange={setStartDate} />
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Calendar data-element-name="רכיב_page_9" size={18} color="var(--text-muted)" />
-            <label style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-main)' }}>עד תאריך:</label>
-            <div style={{ width: '200px' }}>
-              <HebrewDatePicker data-element-name="רכיב_page_10" value={endDate} onChange={setEndDate} />
-            </div>
-          </div>
-          
-          <div style={{ width: '1px', height: '30px', background: 'var(--element-border)', margin: '0 0.5rem' }}></div>
-          
-          <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.95rem', fontWeight: '500', color: 'var(--text-main)' }}>
-            <div style={{ 
-              width: '20px', height: '20px', borderRadius: '6px', 
-              border: '2px solid var(--element-border)', 
-              background: showOnlyPending ? '#ec4899' : 'var(--input-bg)',
-              marginLeft: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              transition: 'all 0.2s'
-            }}>
-              {showOnlyPending && <Check data-element-name="רכיב_page_11" size={14} color="white" strokeWidth={3} />}
-            </div>
-            <input data-element-name="שדה_page_12" 
-              data-agy-id="checkbox-show-only-pending"
-              type="checkbox" 
-              checked={showOnlyPending} 
-              onChange={e => setShowOnlyPending(e.target.checked)} 
-              style={{ display: 'none' }}
-            />
-            רק ממתינים לביצוע
-          </label>
-
-          <div style={{ flex: 1 }}></div>
-
-          <button data-element-name="כפתור_page_13" 
-            data-agy-id="mark-all-done-button"
-            onClick={markAllDone} 
-            disabled={!startDate}
-            style={{ 
-              padding: '0.5rem 1rem', fontSize: '0.9rem', borderRadius: '10px', 
-              display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold',
-              background: !startDate ? 'var(--element-bg)' : 'linear-gradient(135deg, #10b981, #059669)',
-              color: !startDate ? 'var(--text-muted)' : 'white',
-              border: !startDate ? '1px solid var(--element-border)' : 'none',
-              boxShadow: !startDate ? 'none' : '0 4px 10px rgba(16, 185, 129, 0.3)',
-              cursor: !startDate ? 'not-allowed' : 'pointer',
-              transition: 'all 0.2s', height: '40px'
-            }}
-          >
-            <CheckCircle data-element-name="רכיב_page_14" size={16} /> סמן יום כבוצע
+        <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
+          <button data-element-name="כפתור_page_2" data-agy-id="alterations_page_button_1" onClick={() => { setFilterStatus('all'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? 'var(--primary-color)' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
+            <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
+          </button>
+          <button data-element-name="כפתור_page_3" data-agy-id="alterations_page_button_2" onClick={() => { setFilterStatus('pending'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'pending' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'pending' ? '#ef6c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="ממתינים">
+            <span style={{ fontWeight: filterStatus === 'pending' ? 'bold' : 'normal' }}>ממתינים</span>
+          </button>
+          <button data-element-name="כפתור_page_4" data-agy-id="alterations_page_button_3" onClick={() => { setFilterStatus('done'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'done' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'done' ? '#2e7d32' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בוצע">
+            <span style={{ fontWeight: filterStatus === 'done' ? 'bold' : 'normal' }}>בוצע</span>
           </button>
         </div>
+      </div>
+
+      <div style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        marginBottom: '2rem',
+        background: 'var(--card-bg)',
+        padding: '0.75rem 1.5rem',
+        borderRadius: '16px',
+        boxShadow: 'var(--shadow-sm)',
+        gap: '1rem',
+        flexWrap: 'wrap',
+        border: '1px solid var(--border-color)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: '300px' }}>
+          <Calendar data-element-name="רכיב_page_5" size={18} color="var(--text-muted)" />
+          <HebrewDateRangePicker
+            data-element-name="רכיב_page_6"
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
+            }}
+            placeholderStart="בחר תאריך התחלה"
+            placeholderEnd="בחר תאריך סיום"
+          />
+        </div>
+
+        <div style={{ flex: 1 }}></div>
+
+        <button
+          data-element-name="כפתור_page_7"
+          data-agy-id="mark-all-done-button"
+          onClick={markAllDone}
+          disabled={!startDate}
+          style={{
+            padding: '0.5rem 1rem', fontSize: '0.9rem', borderRadius: '10px',
+            display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold',
+            background: !startDate ? 'var(--element-bg)' : 'linear-gradient(135deg, #10b981, #059669)',
+            color: !startDate ? 'var(--text-muted)' : 'white',
+            border: !startDate ? '1px solid var(--element-border)' : 'none',
+            boxShadow: !startDate ? 'none' : '0 4px 10px rgba(16, 185, 129, 0.3)',
+            cursor: !startDate ? 'not-allowed' : 'pointer',
+            transition: 'all 0.2s', height: '40px'
+          }}
+        >
+          <CheckCircle data-element-name="רכיב_page_8" size={16} /> סמן יום כבוצע
+        </button>
+      </div>
 
       {/* Search and Filters */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
@@ -409,16 +386,30 @@ export default function AlterationsPage() {
                     </td>
                   </tr>
                 ) : (
-                  items.map((item, index) => (
-                    <tr 
-                      key={item.id} 
-                      style={{ 
+                  items.map((item, index) => {
+                    let rowBg = 'transparent';
+                    let rowBorder = 'none';
+                    if (item.alterationDone) {
+                      // בוצע - ירוק
+                      rowBg = 'rgba(46, 125, 50, 0.08)';
+                      rowBorder = '4px solid #2e7d32';
+                    } else {
+                      // ממתין - כתום
+                      rowBg = 'rgba(239, 108, 0, 0.08)';
+                      rowBorder = '4px solid #ef6c00';
+                    }
+
+                    return (
+                    <tr
+                      key={item.id}
+                      style={{
                         borderBottom: '1px solid #eee',
-                        background: item.alterationDone ? 'rgba(67, 160, 71, 0.05)' : (index % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)'),
+                        background: rowBg,
+                        borderRight: rowBorder,
                         transition: 'background 0.3s ease'
                       }}
-                      onMouseEnter={e => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.05)'}
-                      onMouseLeave={e => e.currentTarget.style.background = item.alterationDone ? 'rgba(67, 160, 71, 0.05)' : (index % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)')}
+                      onMouseEnter={e => e.currentTarget.style.background = rowBg}
+                      onMouseLeave={e => e.currentTarget.style.background = rowBg}
                     >
                       <td style={{ padding: '0.4rem 0.5rem' }}>
                         <div style={{ fontWeight: 'bold' }}>{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</div>
@@ -482,7 +473,8 @@ export default function AlterationsPage() {
                         )}
                       </td>
                     </tr>
-                  ))
+                    );
+                  })
                 )}
               </tbody>
             </table>
@@ -540,11 +532,11 @@ export default function AlterationsPage() {
             </h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(229, 57, 53, 0.1)', border: '1px solid rgba(229, 57, 53, 0.2)' }}></div>
-                <span><strong>אדום / ממתין:</strong> התיקון טרם בוצע.</span>
+                <div style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(239, 108, 0, 0.1)', border: '4px solid #ef6c00' }}></div>
+                <span><strong>כתום / ממתין:</strong> התיקון טרם בוצע.</span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(67, 160, 71, 0.1)', border: '1px solid rgba(67, 160, 71, 0.2)' }}></div>
+                <div style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(46, 125, 50, 0.1)', border: '4px solid #2e7d32' }}></div>
                 <span><strong>ירוק / בוצע:</strong> התיקון בוצע בהצלחה.</span>
               </div>
             </div>

@@ -111,24 +111,33 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
       <option value="">{loading ? 'טוען...' : placeholder}</option>
       {sizes.map((s) => {
         const sizeVal = s.sizeText || s.size;
-        const isUnavailable = s.availableQuantity !== undefined && s.availableQuantity <= 0;
-        
+
+        // תמיכה בשתי המבנים — המבנה החדש (עם withNormalBuffer) והישן (עם availableQuantity ישירה)
+        const normalAvail = s.withNormalBuffer?.availableQuantity ?? s.availableQuantity;
+        const customAvail = s.withCustomSpacing?.availableQuantity;
+        const selectedAvail = order && order.customSpacing !== undefined && order.customSpacing !== null ? customAvail : normalAvail;
+        const isUnavailable = selectedAvail !== undefined && selectedAvail <= 0;
+
         let availableInfo = '';
-        if (s.availableQuantity !== undefined) {
-          if (order && order.customSpacing !== undefined && order.customSpacing !== null) {
-            availableInfo = `פנוי ${s.availableQuantity} מתוך ${s.totalInStock} (רווח: ${order.customSpacing} ימים)`;
+        if (normalAvail !== undefined) {
+          if (s.withCustomSpacing) {
+            // הצג שתי כמויות בבירור
+            const gain = s.withCustomSpacing.gain || 0;
+            availableInfo = `רגיל: ${normalAvail} | ציפוף: ${customAvail}${gain > 0 ? ` (+${gain})` : ''} מתוך ${s.totalInStock}`;
+          } else if (order && order.customSpacing !== undefined && order.customSpacing !== null) {
+            availableInfo = `פנוי ${selectedAvail} מתוך ${s.totalInStock} (רווח: ${order.customSpacing} ימים)`;
           } else {
-            availableInfo = `פנוי ${s.availableQuantity} מתוך ${s.totalInStock}`;
+            availableInfo = `פנוי ${normalAvail} מתוך ${s.totalInStock}`;
           }
         } else {
-          availableInfo = `במלאי: ${s.totalQuantity}`;
+          availableInfo = `במלאי: ${s.totalQuantity || s.totalInStock}`;
         }
-          
+
         return (
-          <option 
+          <option
             data-agy-id="order_size_selector_option"
-            key={sizeVal} 
-            value={sizeVal} 
+            key={sizeVal}
+            value={sizeVal}
             title={availableInfo}
             disabled={isUnavailable}
           >
