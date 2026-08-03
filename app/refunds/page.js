@@ -298,24 +298,24 @@ export default function RefundsPage() {
             <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
               <thead>
                 <tr style={{ background: '#f8fafc', color: '#475569', borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ padding: '1rem' }}>תאריך</th>
-                  <th style={{ padding: '1rem' }}>לקוח</th>
-                  <th style={{ padding: '1rem' }}>הזמנה</th>
-                  <th style={{ padding: '1rem' }}>סכום</th>
-                  <th style={{ padding: '1rem' }}>פרטי בנק</th>
-                  <th style={{ padding: '1rem' }}>אשראי מקורי</th>
-                  <th style={{ padding: '1rem' }}>סטטוס</th>
-                  <th style={{ padding: '1rem', textAlign: 'center' }}>פעולות</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>תאריך</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>לקוח</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>הזמנה</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>סכום</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>פרטי בנק</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>אשראי מקורי</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>סטטוס</th>
+                  <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>פעולות</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredRefunds.map(refund => (
                   <tr key={refund.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                    <td style={{ padding: '1rem', color: '#64748b' }}>
+                    <td style={{ padding: '0.4rem 0.5rem', color: '#64748b' }}>
                       <div style={{ fontWeight: '500', color: '#334155' }}>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</div>
                       {refund.isExecuted && <div style={{ fontSize: '0.8rem' }}>בוצע: {new Date(refund.executionDate).toLocaleDateString('he-IL')}</div>}
                     </td>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       <div style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
                         <Link data-element-name="רכיב_page_9" href={`/customers/${refund.customerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                           {refund.customer ? `${refund.customer.firstName || ''} ${refund.customer.lastName || ''}`.trim() : 'לקוח לא ידוע'}
@@ -324,7 +324,7 @@ export default function RefundsPage() {
                       <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{refund.customer?.phone1}</div>
                       {refund.email && <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Mail data-element-name="רכיב_page_10" size={12}/> {refund.email}</div>}
                     </td>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       {refund.orderId ? (
                         <Link data-element-name="רכיב_page_11" href={`/orders/${refund.orderId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#0ea5e9', textDecoration: 'none', fontWeight: 'bold', background: '#e0f2fe', padding: '0.4rem 0.8rem', borderRadius: '8px', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = '#bae6fd'} onMouseOut={(e) => e.currentTarget.style.background = '#e0f2fe'}>
                           #{refund.orderId}
@@ -332,11 +332,11 @@ export default function RefundsPage() {
                         </Link>
                       ) : '-'}
                     </td>
-                    <td style={{ padding: '1rem', fontWeight: 'bold', color: '#ef4444', fontSize: '1.1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: '#ef4444', fontSize: '1.1rem' }}>
                       ₪{refund.amount}
                       {refund.reason && <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 'normal' }}>{refund.reason}</div>}
                     </td>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       {refund.bankName || refund.bankAccount ? (
                         <div style={{ fontSize: '0.9rem', color: '#334155' }}>
                           <div>{refund.bankName || 'בנק חסר'} {refund.bankBranch ? `(סניף ${refund.bankBranch})` : ''}</div>
@@ -347,14 +347,14 @@ export default function RefundsPage() {
                         <span style={{ color: '#94a3b8' }}>לא הוזנו</span>
                       )}
                     </td>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       {refund.paymentDetails ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#334155', fontSize: '0.9rem' }}>
                           <CreditCard data-element-name="רכיב_page_12" size={14} /> {refund.paymentDetails}
                         </div>
                       ) : <span style={{ color: '#94a3b8' }}>-</span>}
                     </td>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       <span style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -370,7 +370,7 @@ export default function RefundsPage() {
                         {refund.isExecuted ? 'בוצע' : 'ממתין לביצוע'}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                         {!refund.isExecuted && (
                           <button data-element-name="כפתור_page_15" data-agy-id={`execute_btn_${refund.id}`}
@@ -447,12 +447,12 @@ export default function RefundsPage() {
                 <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
                   <thead>
                     <tr style={{ background: '#fff1f2', color: '#be123c', borderBottom: '2px solid #fecdd3' }}>
-                      <th style={{ padding: '1rem' }}>תאריך אירוע</th>
-                      <th style={{ padding: '1rem' }}>לקוח</th>
-                      <th style={{ padding: '1rem' }}>הזמנה</th>
-                      <th style={{ padding: '1rem' }}>סה"כ להזמנה</th>
-                      <th style={{ padding: '1rem' }}>שולם</th>
-                      <th style={{ padding: '1rem', color: '#e11d48' }}>יתרת חוב</th>
+                      <th style={{ padding: '0.4rem 0.5rem' }}>תאריך אירוע</th>
+                      <th style={{ padding: '0.4rem 0.5rem' }}>לקוח</th>
+                      <th style={{ padding: '0.4rem 0.5rem' }}>הזמנה</th>
+                      <th style={{ padding: '0.4rem 0.5rem' }}>סה"כ להזמנה</th>
+                      <th style={{ padding: '0.4rem 0.5rem' }}>שולם</th>
+                      <th style={{ padding: '0.4rem 0.5rem', color: '#e11d48' }}>יתרת חוב</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -460,10 +460,10 @@ export default function RefundsPage() {
                       const debtAmount = order.totalAmount - order.totalPaid;
                       return (
                       <tr key={order.orderId} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                        <td style={{ padding: '1rem', color: '#64748b' }}>
+                        <td style={{ padding: '0.4rem 0.5rem', color: '#64748b' }}>
                           <div style={{ fontWeight: '500', color: '#334155' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'ללא תאריך'}</div>
                         </td>
-                        <td style={{ padding: '1rem' }}>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>
                           <div style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
                             <Link href={`/customers/${order.customerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                               {order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לקוח לא ידוע'}
@@ -471,19 +471,19 @@ export default function RefundsPage() {
                           </div>
                           <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{order.customer?.phone1}</div>
                         </td>
-                        <td style={{ padding: '1rem' }}>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>
                           <Link href={`/orders/${order.orderId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#0ea5e9', textDecoration: 'none', fontWeight: 'bold', background: '#e0f2fe', padding: '0.4rem 0.8rem', borderRadius: '8px', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = '#bae6fd'} onMouseOut={(e) => e.currentTarget.style.background = '#e0f2fe'}>
                             #{order.orderId}
                             <ArrowUpRight size={14} />
                           </Link>
                         </td>
-                        <td style={{ padding: '1rem', fontWeight: 'bold', color: '#334155' }}>
+                        <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: '#334155' }}>
                           ₪{order.totalAmount}
                         </td>
-                        <td style={{ padding: '1rem', color: '#16a34a' }}>
+                        <td style={{ padding: '0.4rem 0.5rem', color: '#16a34a' }}>
                           ₪{order.totalPaid}
                         </td>
-                        <td style={{ padding: '1rem', fontWeight: 'bold', color: '#ef4444', fontSize: '1.1rem' }}>
+                        <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: '#ef4444', fontSize: '1.1rem' }}>
                           ₪{debtAmount}
                         </td>
                       </tr>

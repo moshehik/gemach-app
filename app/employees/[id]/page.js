@@ -578,14 +578,14 @@ export default function EmployeePage({ params }) {
           <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', marginBottom: '2rem' }}>
             <thead>
               <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '1rem' }}>תאריך לועזי</th>
-                <th style={{ padding: '1rem' }}>תאריך עברי</th>
-                <th style={{ padding: '1rem' }}>שעת כניסה</th>
-                <th style={{ padding: '1rem' }}>שעת יציאה</th>
-                <th style={{ padding: '1rem' }}>סה"כ דקות</th>
-                <th style={{ padding: '1rem' }}>לתשלום (₪)</th>
-                <th style={{ padding: '1rem' }}>הערות</th>
-                <th className="no-print" style={{ padding: '1rem', textAlign: 'center' }}>פעולות</th>
+                <th style={{ padding: '0.4rem 0.5rem' }}>תאריך לועזי</th>
+                <th style={{ padding: '0.4rem 0.5rem' }}>תאריך עברי</th>
+                <th style={{ padding: '0.4rem 0.5rem' }}>שעת כניסה</th>
+                <th style={{ padding: '0.4rem 0.5rem' }}>שעת יציאה</th>
+                <th style={{ padding: '0.4rem 0.5rem' }}>סה"כ דקות</th>
+                <th style={{ padding: '0.4rem 0.5rem' }}>לתשלום (₪)</th>
+                <th style={{ padding: '0.4rem 0.5rem' }}>הערות</th>
+                <th className="no-print" style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>פעולות</th>
               </tr>
             </thead>
             <tbody>
@@ -653,14 +653,14 @@ export default function EmployeePage({ params }) {
                     </>
                   ) : (
                     <>
-                      <td style={{ padding: '1rem' }}>{new Date(shift.date).toLocaleDateString('he-IL')}</td>
-                      <td style={{ padding: '1rem' }}>{shift.hebrewDate || '-'}</td>
-                      <td style={{ padding: '1rem' }}>{shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                      <td style={{ padding: '1rem' }}>{shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                      <td style={{ padding: '1rem' }}>{shift.totalMinutes || '-'}</td>
-                      <td style={{ padding: '1rem', fontWeight: 'bold' }}>{shift.totalCalculated ? `₪${shift.totalCalculated}` : '-'}</td>
-                      <td style={{ padding: '1rem' }}>{shift.notes || '-'}</td>
-                      <td className="no-print" style={{ padding: '1rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{new Date(shift.date).toLocaleDateString('he-IL')}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{shift.hebrewDate || '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{shift.totalMinutes || '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold' }}>{shift.totalCalculated ? `₪${shift.totalCalculated}` : '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{shift.notes || '-'}</td>
+                      <td className="no-print" style={{ padding: '0.4rem 0.5rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                         {!shift.isDeleted ? (
                           <>
                             <button data-element-name="כפתור_page_63" onClick={() => startEditShift(shift)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: '0.2rem' }} title="ערוך רק כניסה ויציאה">✏️</button>

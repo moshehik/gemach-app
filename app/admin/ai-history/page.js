@@ -76,11 +76,11 @@ export default function AiHistoryPage() {
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
             <thead>
               <tr style={{ background: 'var(--element-bg)', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>תאריך התחלה</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>הקשר (עמוד)</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>עובד</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>הודעות</th>
-                <th style={{ padding: '1rem', fontWeight: '600' }}>פעולות</th>
+                <th style={{ padding: '0.4rem 0.5rem', fontWeight: '600' }}>תאריך התחלה</th>
+                <th style={{ padding: '0.4rem 0.5rem', fontWeight: '600' }}>הקשר (עמוד)</th>
+                <th style={{ padding: '0.4rem 0.5rem', fontWeight: '600' }}>עובד</th>
+                <th style={{ padding: '0.4rem 0.5rem', fontWeight: '600' }}>הודעות</th>
+                <th style={{ padding: '0.4rem 0.5rem', fontWeight: '600' }}>פעולות</th>
               </tr>
             </thead>
             <tbody>
@@ -105,13 +105,13 @@ export default function AiHistoryPage() {
                   
                   return (
                     <tr key={session.id} style={{ borderBottom: '1px solid #f1f5f9' }} className="table-row-hover">
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <Calendar data-element-name="רכיב_page_7" size={16} color="var(--text-muted)" />
                           {new Date(session.startedAt).toLocaleString('he-IL')}
                         </div>
                       </td>
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
                         <span style={{ 
                           background: `${getContextColor(session.context)}15`, 
                           color: getContextColor(session.context), 
@@ -123,16 +123,16 @@ export default function AiHistoryPage() {
                           {session.context}
                         </span>
                       </td>
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <User data-element-name="רכיב_page_8" size={16} color="var(--text-muted)" />
                           {session.employee ? `${session.employee.firstName} ${session.employee.lastName || ''}` : 'לא ידוע'}
                         </div>
                       </td>
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
                         <div style={{ fontWeight: 'bold' }}>{msgCount} הודעות</div>
                       </td>
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
                         <button data-element-name="כפתור_page_9" 
                           onClick={() => viewSession(session)}
                           style={{ 

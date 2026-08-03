@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { CalendarSearch, Edit2, Trash2, ArrowLeft, ArrowRight, Plus, Check, UserPlus, Sparkles, CreditCard, ShieldCheck } from 'lucide-react';
+import { CalendarSearch, Edit2, Trash2, ArrowLeft, ArrowRight, Plus, Check, UserPlus, Sparkles, CreditCard, ShieldCheck, RefreshCw } from 'lucide-react';
 import HebrewDatePicker from '../../../components/HebrewDatePicker';
 import HebrewDateRangePicker from '../../../components/HebrewDateRangePicker';
 import CustomerSelector from '../../../components/CustomerSelector';
@@ -87,6 +87,8 @@ export default function NewOrderPage() {
   });
 
   const [duplicateCustomer, setDuplicateCustomer] = useState(null);
+
+  const [paymentsList, setPaymentsList] = useState([]);
 
   const [payment, setPayment] = useState({
     amount: '',
@@ -200,11 +202,6 @@ export default function NewOrderPage() {
     }
 
     const paymentAmount = parseFloat(creditCardData.amount);
-    if (paymentAmount < totalAmount) {
-       setCreditError('לא ניתן לשלם פחות מהסכום המלא במעמד פתיחת ההזמנה. במידה ורוצים לפצל תשלומים יש לצאת באישור מנהל.');
-       return;
-    }
-
     setIsProcessingCredit(true);
     setCreditError('');
     
@@ -233,9 +230,22 @@ export default function NewOrderPage() {
       
       if (data.success) {
         const conf = data.confirmation || 'בוצע';
-        setCreditProcessedConfirmation(conf);
         setShowCreditModal(false);
-        executeSaveOrder(conf, paymentAmount);
+        
+        const newPayment = {
+          amount: paymentAmount,
+          method: payment.method,
+          notes: conf ? `אישור נדרים: ${conf} | ${creditCardData.notes}` : creditCardData.notes
+        };
+        const updatedList = [...paymentsList, newPayment];
+        setPaymentsList(updatedList);
+        
+        const newTotalPaid = updatedList.reduce((acc, p) => acc + parseFloat(p.amount || 0), 0);
+        if (newTotalPaid >= totalAmount) {
+          executeSaveOrderForList(updatedList);
+        } else {
+          alert('תשלום חלקי עבר בהצלחה. יש להשלים את יתרת התשלום (או לצאת באישור מנהל) כדי לסיים את ההזמנה.');
+        }
       } else {
         setCreditError(data.error || 'שגיאה בחיוב הכרטיס');
       }
@@ -375,6 +385,35 @@ export default function NewOrderPage() {
       setInventoryCache(null);
     }
   }, [order.eventDate, order.fromDate, order.toDate, order.isAbroad]);
+
+  const refreshInventory = () => {
+    const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
+    if (hasDates) {
+      setLoadingPreload(true);
+      const queryParams = new URLSearchParams({
+        isAbroad: order.isAbroad || false
+      });
+      if (order.eventDate) queryParams.append('eventDate', order.eventDate);
+      if (order.fromDate) queryParams.append('fromDate', order.fromDate);
+      if (order.toDate) queryParams.append('toDate', order.toDate);
+      
+      queryParams.append('_t', new Date().getTime());
+
+      fetch(`/api/inventory/preload?${queryParams.toString()}`)
+        .then(res => {
+          if (!res.ok) throw new Error('Failed to load cache');
+          return res.json();
+        })
+        .then(data => {
+          setInventoryCache(data);
+          setLoadingPreload(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setLoadingPreload(false);
+        });
+    }
+  };
 
   useEffect(() => {
     const hasDates = order.isAbroad ? (order.fromDate && order.toDate) : order.eventDate;
@@ -518,6 +557,11 @@ export default function NewOrderPage() {
       return;
     }
 
+    if ((newItem.neckAlteration || newItem.sleeveAlteration || newItem.lengthAlteration) && (!newItem.repairs || !newItem.repairs.trim())) {
+      alert('יש להזין פרטי תיקון (בהערות לתיקון) מכיוון שסימנת שנדרש תיקון (צוואר, שרוול, או אורך).');
+      return;
+    }
+
     const selectedSizeInfo = availableSizes.find(s => s.sizeText === newItem.sizeText);
     if (!selectedSizeInfo || selectedSizeInfo.availableQuantity <= 0) {
       alert('המידה שנבחרה אזלה מהמלאי לתאריך זה.');
@@ -628,23 +672,28 @@ export default function NewOrderPage() {
   const totalAmount = calculatedData.totalAmount;
 
   useEffect(() => {
-    setPayment(prev => ({ ...prev, amount: totalAmount }));
-  }, [totalAmount]);
+    const totalPaid = paymentsList.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
+    const remainder = Math.max(0, totalAmount - totalPaid);
+    setPayment(prev => ({ ...prev, amount: remainder }));
+  }, [totalAmount, paymentsList]);
 
   const saveOrder = async () => {
     if (!order.customerId) return alert('יש לבחור לקוח');
     if (!order.eventDate) return alert('יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
 
+    const pAmount = parseFloat(payment.amount) || 0;
+    const totalPaidSoFar = paymentsList.reduce((acc, p) => acc + parseFloat(p.amount || 0), 0);
+    const totalWithCurrent = totalPaidSoFar + pAmount;
+
     if (payment.method !== 'יציאה באישור מנהל') {
-      const pAmount = parseFloat(payment.amount) || 0;
-      if (pAmount < totalAmount) {
-        alert('לא ניתן לסיים הזמנה לפני תשלום מלא. יש לבחור "יציאה באישור מנהל" כדי לצאת ללא תשלום מלא (ידרוש סיסמה).');
+      if (totalWithCurrent < totalAmount) {
+        alert('לא ניתן לסיים הזמנה לפני תשלום מלא. אנא הוסף את התשלום החסר, או בחר "יציאה באישור מנהל". כדי לפצל, השתמש בכפתור "פצל / הוסף תשלום זה".');
         return;
       }
     }
 
-    if (payment.amount && parseFloat(payment.amount) > 0) {
+    if (pAmount > 0) {
       if (payment.method.includes('אשראי') && !payment.method.includes('חיצונית') && !creditProcessedConfirmation) {
         setCreditCardData({
           cardNumber: '',
@@ -684,10 +733,36 @@ export default function NewOrderPage() {
       }
     }
 
-    executeSaveOrder(creditProcessedConfirmation, payment.amount);
+    let finalPayments = [...paymentsList];
+    if (payment.method === 'יציאה באישור מנהל') {
+      finalPayments.push({ ...payment, amount: 0, notes: `יציאה באישור מנהל (סכום מבוקש: ₪${payment.amount}) | ${payment.notes}` });
+    } else if (pAmount > 0) {
+      finalPayments.push({ ...payment, amount: pAmount });
+    }
+    executeSaveOrderForList(finalPayments);
   };
 
-  const executeSaveOrder = async (creditConfirmation = null, actualCreditAmount = null) => {
+  const handleAddPaymentClick = () => {
+    const pAmount = parseFloat(payment.amount) || 0;
+    if (pAmount <= 0) return alert('יש להזין סכום גדול מ-0');
+
+    if (payment.method.includes('אשראי') && !payment.method.includes('חיצונית')) {
+        setCreditCardData({
+          cardNumber: '',
+          tokef: '',
+          installments: 1,
+          notes: payment.notes,
+          amount: payment.amount
+        });
+        setCreditError('');
+        setShowCreditModal(true);
+    } else {
+        setPaymentsList(prev => [...prev, { amount: pAmount, method: payment.method, notes: payment.notes }]);
+        setPayment(prev => ({ ...prev, notes: '' }));
+    }
+  };
+
+  const executeSaveOrderForList = async (finalPaymentsList) => {
     setSaving(true);
     
     try {
@@ -701,8 +776,7 @@ export default function NewOrderPage() {
           isWeekdayEvent: order.isWeekdayEvent,
           fromDate: order.fromDate,
           toDate: order.toDate,
-          customSpacing: order.customSpacing,
-          orderId: draftOrderId
+          customSpacing: order.customSpacing
         })
       });
       
@@ -740,13 +814,7 @@ export default function NewOrderPage() {
         ...order,
         totalAmount,
         items: itemsToSave,
-        payment: {
-          ...payment,
-          amount: payment.method === 'יציאה באישור מנהל' ? 0 : (actualCreditAmount !== null ? parseFloat(actualCreditAmount) : (parseFloat(payment.amount) || 0)),
-          notes: payment.method === 'יציאה באישור מנהל' 
-            ? `יציאה באישור מנהל (סכום מבוקש: ₪${payment.amount}) | ${payment.notes}`
-            : (creditConfirmation ? `אישור נדרים: ${creditConfirmation} | ${payment.notes}` : payment.notes)
-        }
+        paymentsList: finalPaymentsList
       };
 
       const res = await fetch('/api/orders', {
@@ -814,14 +882,14 @@ export default function NewOrderPage() {
           -webkit-backdrop-filter: blur(24px);
           border: 1px solid var(--border-color);
           border-radius: 16px;
-          padding: 0.5rem 1.5rem 1.3rem 1.5rem;
+          padding: 1.2rem 2rem 2.5rem 2rem;
           box-shadow: var(--shadow-sm);
           display: flex;
           justify-content: space-between;
           align-items: center;
           position: relative;
-          max-width: 700px;
-          margin: 0 auto 1rem auto;
+          max-width: 800px;
+          margin: 0 auto 1.5rem auto;
         }
         
         .step-progress-line {
@@ -878,10 +946,10 @@ export default function NewOrderPage() {
 
         .step-label {
           position: absolute;
-          top: 40px;
+          top: 45px;
           left: 50%;
           transform: translateX(-50%);
-          font-size: 0.85rem;
+          font-size: 0.9rem;
           font-weight: 700;
           color: var(--text-muted);
           white-space: nowrap;
@@ -1389,7 +1457,21 @@ export default function NewOrderPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>בחר מידה {loadingSizes && <span style={{color: '#2563eb', fontWeight:'normal'}}>(בודק זמינות...)</span>}</label>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.3rem' }}>
+                    <label style={{ fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>בחר מידה {loadingSizes && <span style={{color: '#2563eb', fontWeight:'normal'}}>(בודק זמינות...)</span>}</label>
+                    <button 
+                      onClick={refreshInventory}
+                      disabled={loadingPreload || loadingSizes}
+                      title="רענן זמינות מלאי"
+                      style={{
+                        background: 'none', border: 'none', cursor: (loadingPreload || loadingSizes) ? 'not-allowed' : 'pointer',
+                        color: (loadingPreload || loadingSizes) ? '#94a3b8' : '#3b82f6',
+                        display: 'flex', alignItems: 'center', padding: '0.2rem'
+                      }}
+                    >
+                      <RefreshCw size={16} />
+                    </button>
+                  </div>
                   <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', minHeight: '44px', alignItems: 'center' }}>
                     {availableSizes.length === 0 ? (
                       <div style={{ padding: '0.5rem 0.8rem', background: '#f8fafc', color: '#94a3b8', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%', fontSize: '0.9rem' }}>
@@ -1419,26 +1501,59 @@ export default function NewOrderPage() {
                   </div>
                 </div>
 
-                <div style={{ background: '#f8fafc', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem', color: '#1e293b', fontWeight: '800' }}>תיקונים נדרשים</h4>
-                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <input type="checkbox" className="toggle-switch" checked={newItem.neckAlteration || false} onChange={(e) => handleNewItemChange({ target: { name: 'neckAlteration', value: e.target.checked }})} style={{ width: '40px', height: '22px' }} />
-                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '0.95rem' }}>צוואר</label>
+                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 0.8rem 0', fontSize: '1.05rem', color: '#1e293b', fontWeight: '800' }}>תיקונים נדרשים</h4>
+                  <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div 
+                      onClick={() => handleNewItemChange({ target: { name: 'neckAlteration', value: !newItem.neckAlteration }})}
+                      style={{ 
+                        padding: '0.4rem 1.2rem', borderRadius: '8px', cursor: 'pointer', 
+                        background: newItem.neckAlteration ? '#3b82f6' : '#fff', 
+                        color: newItem.neckAlteration ? '#fff' : '#475569',
+                        border: newItem.neckAlteration ? '1px solid #3b82f6' : '1px solid #cbd5e1',
+                        fontWeight: '700', fontSize: '0.95rem', transition: 'all 0.2s',
+                        boxShadow: newItem.neckAlteration ? '0 2px 4px rgba(59,130,246,0.3)' : 'none'
+                      }}
+                    >
+                      צוואר
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <input type="checkbox" className="toggle-switch" checked={newItem.sleeveAlteration || false} onChange={(e) => handleNewItemChange({ target: { name: 'sleeveAlteration', value: e.target.checked }})} style={{ width: '40px', height: '22px' }} />
-                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '0.95rem' }}>שרוול</label>
+                    <div 
+                      onClick={() => handleNewItemChange({ target: { name: 'sleeveAlteration', value: !newItem.sleeveAlteration }})}
+                      style={{ 
+                        padding: '0.4rem 1.2rem', borderRadius: '8px', cursor: 'pointer', 
+                        background: newItem.sleeveAlteration ? '#3b82f6' : '#fff', 
+                        color: newItem.sleeveAlteration ? '#fff' : '#475569',
+                        border: newItem.sleeveAlteration ? '1px solid #3b82f6' : '1px solid #cbd5e1',
+                        fontWeight: '700', fontSize: '0.95rem', transition: 'all 0.2s',
+                        boxShadow: newItem.sleeveAlteration ? '0 2px 4px rgba(59,130,246,0.3)' : 'none'
+                      }}
+                    >
+                      שרוול
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: 'auto' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: '0.5rem' }}>
                       <label style={{ fontWeight: '700', color: '#475569', fontSize: '0.95rem' }}>אורך:</label>
-                      <input type="number" className="premium-input" value={newItem.lengthAlteration || ''} onChange={handleNewItemChange} name="lengthAlteration" placeholder="ס״מ" style={{ width: '60px', padding: '0.35rem', textAlign: 'center', fontSize: '0.9rem' }} />
+                      <input type="number" className="premium-input" value={newItem.lengthAlteration || ''} onChange={handleNewItemChange} name="lengthAlteration" placeholder="ס״מ" style={{ width: '70px', padding: '0.4rem', textAlign: 'center', fontSize: '0.95rem', background: '#fff' }} />
                     </div>
                   </div>
                   
-                  <div style={{ marginTop: '0.6rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.2rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>הערות לתיקון</label>
-                    <input type="text" className="premium-input" name="repairs" value={newItem.repairs} onChange={handleNewItemChange} placeholder="פרטים נוספים לתופרת..." style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem' }} />
+                  <div style={{ marginTop: '1rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>
+                      הערות לתיקון {(newItem.neckAlteration || newItem.sleeveAlteration || newItem.lengthAlteration) && <span style={{color: '#ef4444'}}>* (חובה)</span>}
+                    </label>
+                    <input 
+                      type="text" 
+                      className="premium-input" 
+                      name="repairs" 
+                      value={newItem.repairs || ''} 
+                      onChange={handleNewItemChange} 
+                      placeholder="פרטים נוספים לתופרת..." 
+                      style={{ 
+                        padding: '0.6rem 0.8rem', 
+                        fontSize: '0.95rem', 
+                        background: '#fff',
+                        border: ((newItem.neckAlteration || newItem.sleeveAlteration || newItem.lengthAlteration) && (!newItem.repairs || !newItem.repairs.trim())) ? '1px solid #ef4444' : '1px solid #e2e8f0'
+                      }} 
+                    />
                   </div>
                 </div>
 
@@ -1612,6 +1727,20 @@ export default function NewOrderPage() {
             <h2 style={{ marginBottom: '0.4rem', fontSize: '1.4rem', fontWeight: '800' }}>תשלום וסיום הזמנה</h2>
             <p style={{ color: '#64748b', fontSize: '1rem', marginBottom: '1.2rem' }}>בחרו את אמצעי התשלום ובצעו רישום סופי.</p>
             
+            {paymentsList.length > 0 && (
+              <div style={{ marginBottom: '1.5rem', background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                <h4 style={{ margin: '0 0 0.8rem 0', color: '#334155', fontWeight: '800' }}>תשלומים שנוספו:</h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {paymentsList.map((p, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.5rem', background: 'white', borderRadius: '8px', border: '1px solid #cbd5e1' }}>
+                      <span style={{ fontWeight: '700', color: '#1e293b' }}>{p.method}</span>
+                      <span style={{ fontWeight: '800', color: '#059669' }}>₪{p.amount} {p.notes ? `(${p.notes})` : ''}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <div style={{ display: 'grid', gap: '0.8rem', marginBottom: '1.5rem' }}>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>סכום לתשלום כעת (₪)</label>
@@ -1649,6 +1778,13 @@ export default function NewOrderPage() {
                   onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
                 />
               </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.8rem', marginBottom: '1rem' }}>
+              <button onClick={handleAddPaymentClick} style={{ flex: 1, padding: '0.8rem', background: '#e0e7ff', color: '#3730a3', border: 'none', borderRadius: '12px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#c7d2fe'} onMouseOut={e => e.currentTarget.style.backgroundColor='#e0e7ff'}>
+                <Plus size={18} />
+                <span>פצל / הוסף תשלום זה</span>
+              </button>
             </div>
 
             <div style={{ display: 'flex', gap: '0.8rem' }}>
@@ -1709,8 +1845,8 @@ export default function NewOrderPage() {
         )}
 
         {showCreditModal && (
-          <div style={{ zIndex: 1000, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <div className="fade-in" style={{ background: 'white', padding: '2.5rem', borderRadius: '24px', maxWidth: '500px', width: '100%', direction: 'rtl', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
+          <div onClick={() => setShowCreditModal(false)} style={{ zIndex: 1000, position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <div onClick={(e) => e.stopPropagation()} className="fade-in" style={{ background: 'white', padding: '2.5rem', borderRadius: '24px', maxWidth: '500px', width: '100%', direction: 'rtl', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
                 <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.6rem', fontWeight: '800' }}>חיוב באשראי (נדרים פלוס)</h3>
                 <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
@@ -1773,8 +1909,8 @@ export default function NewOrderPage() {
         )}
 
         {showQuickSwipeModal && (
-          <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(8px)' }}>
-            <div style={{ background: 'white', padding: '3rem', borderRadius: '24px', width: '450px', maxWidth: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+          <div onClick={() => setShowQuickSwipeModal(false)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(8px)' }}>
+            <div onClick={(e) => e.stopPropagation()} style={{ background: 'white', padding: '3rem', borderRadius: '24px', width: '450px', maxWidth: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: 'linear-gradient(to right, #f59e0b, #d97706, #fbbf24)' }}></div>
               <button onClick={() => setShowQuickSwipeModal(false)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
               

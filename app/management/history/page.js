@@ -177,7 +177,7 @@ export default function HistoryPage() {
     return url;
   };
 
-  const thStyle = { padding: '1rem', cursor: 'pointer', userSelect: 'none', textAlign: 'right' };
+  const thStyle = { padding: '0.4rem 0.5rem', cursor: 'pointer', userSelect: 'none', textAlign: 'right' };
 
   return (
     <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
@@ -330,7 +330,7 @@ export default function HistoryPage() {
             <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #eee', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '1rem', width: '40px' }}>
+                  <th style={{ padding: '0.4rem 0.5rem', width: '40px' }}>
                     <input data-element-name="שדה_page_6" 
                       type="checkbox" 
                       checked={logs.length > 0 && selectedIds.size === logs.length}
@@ -350,7 +350,7 @@ export default function HistoryPage() {
               <tbody>
                 {logs.map(log => (
                   <tr key={log.id} style={{ borderBottom: '1px solid #eee', transition: 'background 0.2s', background: selectedIds.has(log.id) ? '#f8f9fa' : 'transparent' }}>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       <input data-element-name="שדה_page_15" 
                         type="checkbox" 
                         checked={selectedIds.has(log.id)}
@@ -358,9 +358,9 @@ export default function HistoryPage() {
                         style={{ cursor: 'pointer' }}
                       />
                     </td>
-                    <td style={{ padding: '1rem', whiteSpace: 'nowrap' }} dir="ltr">{formatDate(log.timestamp)}</td>
-                    <td style={{ padding: '1rem', whiteSpace: 'nowrap' }}>{formatDayOfWeek(log.timestamp)}</td>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }} dir="ltr">{formatDate(log.timestamp)}</td>
+                    <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }}>{formatDayOfWeek(log.timestamp)}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       <span style={{ 
                         background: log.isGuest ? 'var(--element-bg)' : '#e7f5ff', 
                         color: log.isGuest ? '#495057' : '#0056b3',
@@ -371,7 +371,7 @@ export default function HistoryPage() {
                         {log.employeeName}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem', maxWidth: '340px' }} dir="rtl">
+                    <td style={{ padding: '0.4rem 0.5rem', maxWidth: '340px' }} dir="rtl">
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
                         <span style={{ fontWeight: '600', color: log.pageUrl.includes('/api/') ? '#4f46e5' : 'inherit' }}>
                           {formatPageName(log.pageUrl)}
@@ -401,7 +401,7 @@ export default function HistoryPage() {
                         )}
                       </div>
                     </td>
-                    <td style={{ padding: '1rem', whiteSpace: 'nowrap' }} dir="ltr">
+                    <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }} dir="ltr">
                       {log.responseSize !== null && log.responseSize !== undefined ? (
                         <span style={{
                           padding: '3px 8px',
@@ -418,10 +418,10 @@ export default function HistoryPage() {
                         <span style={{ color: '#9ca3af' }}>-</span>
                       )}
                     </td>
-                    <td style={{ padding: '1rem', whiteSpace: 'nowrap' }} dir="ltr">
+                    <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }} dir="ltr">
                       {log.executionTime ? `${log.executionTime} ms` : '-'}
                     </td>
-                    <td style={{ padding: '1rem', color: log.loadingError ? '#dc3545' : 'inherit' }}>
+                    <td style={{ padding: '0.4rem 0.5rem', color: log.loadingError ? '#dc3545' : 'inherit' }}>
                       {log.loadingError || 'תקין (200 OK)'}
                     </td>
                   </tr>

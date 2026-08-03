@@ -814,30 +814,30 @@ export default function DressesManagement() {
               <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid var(--element-border)', background: 'var(--element-bg)' }}>
-                  {settings.hide_dress_images !== 'true' && <th style={{ padding: '1rem' }}>תמונה</th>}
-                  <th data-element-name="לחיץ_page_21" style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('barcodePrefix')}>{getLabel('item_barcode', 'קוד')} {catalogSort.key === 'barcodePrefix' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_22" size={14}/> : <ArrowDown data-element-name="רכיב_page_23" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_24" size={14} color="var(--text-muted)" />}</th>
-                  {useModelNames && <th data-element-name="לחיץ_page_25" style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('name')}>{getLabel('item_modelName', 'שם דגם')} {catalogSort.key === 'name' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_26" size={14}/> : <ArrowDown data-element-name="רכיב_page_27" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_28" size={14} color="var(--text-muted)" />}</th>}
-                  <th data-element-name="לחיץ_page_29" style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('entryDateToRepo')}>תאריך כניסה {catalogSort.key === 'entryDateToRepo' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_30" size={14}/> : <ArrowDown data-element-name="רכיב_page_31" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_32" size={14} color="var(--text-muted)" />}</th>
-                  <th data-element-name="לחיץ_page_33" style={{ padding: '1rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('itemsCount')}>כמות פריטים {catalogSort.key === 'itemsCount' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_34" size={14}/> : <ArrowDown data-element-name="רכיב_page_35" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_36" size={14} color="var(--text-muted)" />}</th>
-                  <th style={{ padding: '1rem', textAlign: 'center' }}>פעולות</th>
+                  {settings.hide_dress_images !== 'true' && <th style={{ padding: '0.4rem 0.5rem' }}>תמונה</th>}
+                  <th data-element-name="לחיץ_page_21" style={{ padding: '0.4rem 0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('barcodePrefix')}>{getLabel('item_barcode', 'קוד')} {catalogSort.key === 'barcodePrefix' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_22" size={14}/> : <ArrowDown data-element-name="רכיב_page_23" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_24" size={14} color="var(--text-muted)" />}</th>
+                  {useModelNames && <th data-element-name="לחיץ_page_25" style={{ padding: '0.4rem 0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('name')}>{getLabel('item_modelName', 'שם דגם')} {catalogSort.key === 'name' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_26" size={14}/> : <ArrowDown data-element-name="רכיב_page_27" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_28" size={14} color="var(--text-muted)" />}</th>}
+                  <th data-element-name="לחיץ_page_29" style={{ padding: '0.4rem 0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('entryDateToRepo')}>תאריך כניסה {catalogSort.key === 'entryDateToRepo' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_30" size={14}/> : <ArrowDown data-element-name="רכיב_page_31" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_32" size={14} color="var(--text-muted)" />}</th>
+                  <th data-element-name="לחיץ_page_33" style={{ padding: '0.4rem 0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('itemsCount')}>כמות פריטים {catalogSort.key === 'itemsCount' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_34" size={14}/> : <ArrowDown data-element-name="רכיב_page_35" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_36" size={14} color="var(--text-muted)" />}</th>
+                  <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>פעולות</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredDresses.map(dress => (
                   <tr key={dress.id} style={{ borderBottom: '1px solid var(--element-border)', background: dress.isDeleted ? 'var(--deleted-bg, #ffebee)' : ((!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo ? 'var(--inactive-bg, #fff5f5)' : 'transparent') }}>
                     {settings.hide_dress_images !== 'true' && (
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
                         {getImageSource(dress) ? (
                           <img src={getImageSource(dress)} alt={dress.name} onError={(e) => {e.target.style.display='none'; e.target.nextSibling.style.display='flex';}} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
                         ) : null}
                         <div style={{ display: getImageSource(dress) ? 'none' : 'flex', width: '50px', height: '50px', background: 'var(--element-bg)', borderRadius: '4px', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>אין</div>
                       </td>
                     )}
-                    <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>{dress.barcodePrefix || '-'}</td>
-                    {useModelNames && <td style={{ padding: '1rem', fontWeight: 'bold' }}>{dress.name}</td>}
-                    <td style={{ padding: '1rem' }}>{formatHebrewDate(dress.entryDateToRepo)}</td>
-                    <td style={{ padding: '1rem' }}>{dress.items?.filter(i => !i.isDeleted).length || 0}</td>
-                    <td style={{ padding: '1rem', textAlign: 'center' }}>
+                    <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>{dress.barcodePrefix || '-'}</td>
+                    {useModelNames && <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold' }}>{dress.name}</td>}
+                    <td style={{ padding: '0.4rem 0.5rem' }}>{formatHebrewDate(dress.entryDateToRepo)}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>{dress.items?.filter(i => !i.isDeleted).length || 0}</td>
+                    <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
                       <button data-element-name="כפתור_page_37" onClick={() => handleEditClick(dress)} className="btn btn-primary" style={{ padding: '0.3rem 0.8rem', fontSize: '0.9rem', marginLeft: '0.5rem' }}>כרטיס שמלה</button>
                       {dress.isDeleted ? (
                         <button data-element-name="כפתור_page_38" onClick={() => handleRestoreModel(dress)} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.9rem', borderColor: '#4caf50', color: '#4caf50' }} title="שחזר"><RefreshCw data-element-name="רכיב_page_39" size={18} /></button>
@@ -1080,7 +1080,7 @@ export default function DressesManagement() {
                               {locations.map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
                             </select>
                           </td>
-                          <td colSpan="3" style={{ padding: '0.8rem', textAlign: 'center', fontSize: '0.9rem', color: '#1976d2' }}>
+                          <td colSpan="3" style={{ padding: '0.8rem', textAlign: 'center', fontSize: '0.8rem', color: '#1976d2' }}>
                             הוספה מהירה (נוצר ב: {formatHebrewDate(newItem.entryDateToRepo)})
                           </td>
                           <td style={{ padding: '0.8rem', textAlign: 'center' }}>

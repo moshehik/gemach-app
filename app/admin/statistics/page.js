@@ -334,7 +334,7 @@ function InventoryTable({ data }) {
             <td style={{ fontSize: '1.1rem', fontWeight: 'bold', color: r.hasShortage ? '#dc2626' : '#166534' }}>
               {r.maxRented}
             </td>
-            <td style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+            <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
               {r.peakDates ? r.peakDates.split(', ').map(d => d ? new Date(d).toLocaleDateString('he-IL') : '').join(', ') : ''}
             </td>
             <td>

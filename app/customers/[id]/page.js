@@ -245,12 +245,12 @@ export default function CustomerPage({ params }) {
             <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '1rem' }}>קוד הזמנה</th>
-                  <th style={{ padding: '1rem' }}>תאריך אירוע</th>
-                  <th style={{ padding: '1rem' }}>סטטוס פריטים</th>
-                  <th style={{ padding: '1rem' }}>סכום לחיוב</th>
-                  <th style={{ padding: '1rem' }}>שולם</th>
-                  <th style={{ padding: '1rem' }}>סטטוס תשלום</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>קוד הזמנה</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>תאריך אירוע</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>סטטוס פריטים</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>סכום לחיוב</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>שולם</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>סטטוס תשלום</th>
                 </tr>
               </thead>
               <tbody>
@@ -272,16 +272,16 @@ export default function CustomerPage({ params }) {
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(212, 175, 55, 0.05)'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <td style={{ padding: '1rem' }}><Link data-element-name="לחיץ_page_24" href={`/orders/${order.orderId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }}>{order.orderId}</Link></td>
-                    <td style={{ padding: '1rem' }}>{order.eventDateHebrew || (order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : (order.orderDate ? new Date(order.orderDate).toLocaleDateString('he-IL') : '-'))}</td>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem' }}><Link data-element-name="לחיץ_page_24" href={`/orders/${order.orderId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }}>{order.orderId}</Link></td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>{order.eventDateHebrew || (order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : (order.orderDate ? new Date(order.orderDate).toLocaleDateString('he-IL') : '-'))}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       <span style={{ background: statusColors.bg, color: statusColors.text, padding: '0.3rem 0.6rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}>
                         {orderStatus}
                       </span>
                     </td>
-                    <td style={{ padding: '1rem', fontWeight: 'bold' }}>₪{calculatedTotalAmount}</td>
-                    <td style={{ padding: '1rem', color: totalPaid >= calculatedTotalAmount && calculatedTotalAmount > 0 ? '#166534' : (totalPaid < calculatedTotalAmount ? '#b91c1c' : 'inherit') }}>₪{totalPaid}</td>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold' }}>₪{calculatedTotalAmount}</td>
+                    <td style={{ padding: '0.4rem 0.5rem', color: totalPaid >= calculatedTotalAmount && calculatedTotalAmount > 0 ? '#166534' : (totalPaid < calculatedTotalAmount ? '#b91c1c' : 'inherit') }}>₪{totalPaid}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       <span style={{ background: paymentColors.bg, color: paymentColors.text, padding: '0.3rem 0.6rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}>
                         {paymentStatus}
                       </span>
@@ -302,21 +302,21 @@ export default function CustomerPage({ params }) {
             <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '1rem' }}>תאריך</th>
-                  <th style={{ padding: '1rem' }}>הזמנה מקושרת</th>
-                  <th style={{ padding: '1rem' }}>אופן תשלום</th>
-                  <th style={{ padding: '1rem' }}>סכום</th>
-                  <th style={{ padding: '1rem' }}>הערות</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>תאריך</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>הזמנה מקושרת</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>אופן תשלום</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>סכום</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>הערות</th>
                 </tr>
               </thead>
               <tbody>
                 {customer.payments.map(payment => (
                   <tr key={payment.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '1rem' }}>{new Date(payment.paymentDate).toLocaleDateString('he-IL')}</td>
-                    <td style={{ padding: '1rem' }}>{payment.orderId ? `הזמנה ${payment.orderId}` : '-'}</td>
-                    <td style={{ padding: '1rem' }}>{payment.paymentMethod}</td>
-                    <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>₪{payment.amount}</td>
-                    <td style={{ padding: '1rem' }}>{payment.notes || '-'}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>{new Date(payment.paymentDate).toLocaleDateString('he-IL')}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>{payment.orderId ? `הזמנה ${payment.orderId}` : '-'}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>{payment.paymentMethod}</td>
+                    <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>₪{payment.amount}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>{payment.notes || '-'}</td>
                   </tr>
                 ))}
               </tbody>
@@ -364,27 +364,27 @@ export default function CustomerPage({ params }) {
               <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '1rem' }}>תאריך בקשה</th>
-                    <th style={{ padding: '1rem' }}>מס' הזמנה</th>
-                    <th style={{ padding: '1rem' }}>סכום</th>
-                    <th style={{ padding: '1rem' }}>סיבה</th>
-                    <th style={{ padding: '1rem' }}>סטטוס</th>
+                    <th style={{ padding: '0.4rem 0.5rem' }}>תאריך בקשה</th>
+                    <th style={{ padding: '0.4rem 0.5rem' }}>מס' הזמנה</th>
+                    <th style={{ padding: '0.4rem 0.5rem' }}>סכום</th>
+                    <th style={{ padding: '0.4rem 0.5rem' }}>סיבה</th>
+                    <th style={{ padding: '0.4rem 0.5rem' }}>סטטוס</th>
                   </tr>
                 </thead>
                 <tbody>
                   {refunds.map(refund => (
                     <tr key={refund.id} style={{ borderBottom: '1px solid #eee' }}>
-                      <td style={{ padding: '1rem' }}>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</td>
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
                         {refund.orderId ? (
                           <Link data-element-name="רכיב_page_30" href={`/orders/${refund.orderId}`} style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }}>
                             {refund.orderId}
                           </Link>
                         ) : '-'}
                       </td>
-                      <td style={{ padding: '1rem', fontWeight: 'bold', color: '#ef4444' }}>₪{refund.amount}</td>
-                      <td style={{ padding: '1rem' }}>{refund.reason || '-'}</td>
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: '#ef4444' }}>₪{refund.amount}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{refund.reason || '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
                         <span style={{
                           padding: '0.3rem 0.6rem',
                           borderRadius: '12px',

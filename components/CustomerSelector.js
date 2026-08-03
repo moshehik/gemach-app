@@ -24,16 +24,25 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
 
   // Fetch customers when debounced query changes
   useEffect(() => {
+    const controller = new AbortController();
+    
     const fetchCustomers = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/customers?search=${encodeURIComponent(debouncedQuery)}&limit=50`);
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(debouncedQuery)}&limit=50`, {
+          signal: controller.signal
+        });
         const data = await res.json();
-        setCustomers(data.data || []);
+        if (!controller.signal.aborted) {
+          setCustomers(data.data || []);
+        }
       } catch (err) {
+        if (err.name === 'AbortError') return;
         console.error('Failed to fetch customers', err);
       } finally {
-        setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       }
     };
     
@@ -41,6 +50,8 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     if (isOpen || debouncedQuery) {
         fetchCustomers();
     }
+    
+    return () => controller.abort();
   }, [debouncedQuery, isOpen]);
 
   // Set initial text if value exists

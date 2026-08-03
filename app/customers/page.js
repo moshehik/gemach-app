@@ -183,7 +183,7 @@ export default function CustomersPage() {
     }
   };
 
-  const thStyle = { padding: '1rem', cursor: 'pointer', userSelect: 'none' };
+  const thStyle = { padding: '0.4rem 0.5rem', cursor: 'pointer', userSelect: 'none' };
 
   return (
     <>
@@ -279,12 +279,12 @@ export default function CustomersPage() {
 
                 {customers.map(customer => (
                   <tr data-element-name="לחיץ_page_18" data-agy-id="customer_row_tr" key={customer.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/customers/${customer.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                    <td style={{ padding: '1rem' }}>{customer.legacyId || 'חדש'}</td>
-                    <td style={{ padding: '1rem', fontWeight: '500' }}>{customer.firstName}</td>
-                    <td style={{ padding: '1rem', fontWeight: '500' }}>{customer.lastName}</td>
-                    <td style={{ padding: '1rem' }}>{customer.phone1}</td>
-                    <td style={{ padding: '1rem' }}>{customer.city}</td>
-                    <td style={{ padding: '1rem' }}>{customer.email || '-'}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>{customer.legacyId || 'חדש'}</td>
+                    <td style={{ padding: '0.4rem 0.5rem', fontWeight: '500' }}>{customer.firstName}</td>
+                    <td style={{ padding: '0.4rem 0.5rem', fontWeight: '500' }}>{customer.lastName}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>{customer.phone1}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>{customer.city}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>{customer.email || '-'}</td>
                   </tr>
                 ))}
               </tbody>

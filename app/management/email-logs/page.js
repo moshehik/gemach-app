@@ -95,39 +95,39 @@ export default function EmailLogsPage() {
             <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
               <thead>
                 <tr style={{ borderBottom: '2px solid #eee', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '1rem' }}>זמן נשלח</th>
-                  <th style={{ padding: '1rem' }}>נמען (To)</th>
-                  <th style={{ padding: '1rem' }}>נושא</th>
-                  <th style={{ padding: '1rem' }}>קובץ מצורף</th>
-                  <th style={{ padding: '1rem' }}>סטטוס</th>
-                  <th style={{ padding: '1rem' }}>שגיאות</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>זמן נשלח</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>נמען (To)</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>נושא</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>קובץ מצורף</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>סטטוס</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>שגיאות</th>
                 </tr>
               </thead>
               <tbody>
                 {logs.map(log => (
                   <tr key={log.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '1rem', whiteSpace: 'nowrap' }} dir="ltr">{formatDate(log.sentAt)}</td>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }} dir="ltr">{formatDate(log.sentAt)}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       <span dir="ltr">{log.to}</span>
                       {log.cc && <div style={{ fontSize: '0.85em', color: 'var(--text-muted)' }} dir="ltr">CC: {log.cc}</div>}
                     </td>
-                    <td style={{ padding: '1rem', maxWidth: '300px' }}>
+                    <td style={{ padding: '0.4rem 0.5rem', maxWidth: '300px' }}>
                       <div style={{ fontWeight: '500' }}>{log.subject || '-'}</div>
                       <div style={{ fontSize: '0.85em', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                         {log.body}
                       </div>
                     </td>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       {log.fileName ? <span style={{ background: 'var(--element-bg)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.85em' }}>{log.fileName}</span> : '-'}
                     </td>
-                    <td style={{ padding: '1rem' }}>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
                       {log.status === 'success' ? (
                         <span style={{ color: '#155724', background: '#d4edda', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.85em', fontWeight: 'bold' }}>הצלחה</span>
                       ) : (
                         <span style={{ color: '#721c24', background: '#f8d7da', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.85em', fontWeight: 'bold' }}>שגיאה</span>
                       )}
                     </td>
-                    <td style={{ padding: '1rem', color: log.errorMessage ? '#dc3545' : 'inherit', maxWidth: '200px' }}>
+                    <td style={{ padding: '0.4rem 0.5rem', color: log.errorMessage ? '#dc3545' : 'inherit', maxWidth: '200px' }}>
                       {log.errorMessage || '-'}
                     </td>
                   </tr>

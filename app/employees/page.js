@@ -268,21 +268,21 @@ export default function EmployeesPage() {
                 <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '1rem' }}>קוד עובד</th>
-                      <th style={{ padding: '1rem' }}>שם מלא</th>
-                      <th style={{ padding: '1rem' }}>תפקיד</th>
-                      <th style={{ padding: '1rem' }}>טלפון</th>
-                      <th style={{ padding: '1rem' }}>סטטוס</th>
+                      <th style={{ padding: '0.4rem 0.5rem' }}>קוד עובד</th>
+                      <th style={{ padding: '0.4rem 0.5rem' }}>שם מלא</th>
+                      <th style={{ padding: '0.4rem 0.5rem' }}>תפקיד</th>
+                      <th style={{ padding: '0.4rem 0.5rem' }}>טלפון</th>
+                      <th style={{ padding: '0.4rem 0.5rem' }}>סטטוס</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredEmployees.map(employee => (
                       <tr data-element-name="לחיץ_page_15" data-agy-id={`employee-row-${employee.id}`} key={employee.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/employees/${employee.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <td style={{ padding: '1rem' }}>{employee.legacyId || employee.id.substring(0, 5)}</td>
-                        <td style={{ padding: '1rem', fontWeight: '500' }}>{employee.firstName} {employee.lastName}</td>
-                        <td style={{ padding: '1rem' }}>{employee.department ? employee.department.name : (employee.roleId || 'עובד')}</td>
-                        <td style={{ padding: '1rem' }}>{employee.phone1 || '-'}</td>
-                        <td style={{ padding: '1rem' }}>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>{employee.legacyId || employee.id.substring(0, 5)}</td>
+                        <td style={{ padding: '0.4rem 0.5rem', fontWeight: '500' }}>{employee.firstName} {employee.lastName}</td>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>{employee.department ? employee.department.name : (employee.roleId || 'עובד')}</td>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>{employee.phone1 || '-'}</td>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>
                           <span style={{ 
                             padding: '0.3rem 0.8rem', 
                             borderRadius: '20px', 
@@ -362,13 +362,13 @@ export default function EmployeesPage() {
               <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #ddd', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '1rem' }}>שם</th>
-                    <th style={{ padding: '1rem' }}>ס"ה דקות</th>
-                    <th style={{ padding: '1rem' }}>כמות ימים</th>
-                    <th style={{ padding: '1rem' }}>תקלות</th>
-                    <th style={{ padding: '1rem' }}>ס"ה</th>
-                    <th style={{ padding: '1rem' }}>נסיעות</th>
-                    <th className="no-print" style={{ padding: '1rem', textAlign: 'center' }}>פעולות</th>
+                    <th style={{ padding: '0.4rem 0.5rem' }}>שם</th>
+                    <th style={{ padding: '0.4rem 0.5rem' }}>ס"ה דקות</th>
+                    <th style={{ padding: '0.4rem 0.5rem' }}>כמות ימים</th>
+                    <th style={{ padding: '0.4rem 0.5rem' }}>תקלות</th>
+                    <th style={{ padding: '0.4rem 0.5rem' }}>ס"ה</th>
+                    <th style={{ padding: '0.4rem 0.5rem' }}>נסיעות</th>
+                    <th className="no-print" style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>פעולות</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -394,19 +394,19 @@ export default function EmployeesPage() {
                       onMouseEnter={e => e.currentTarget.style.background = emp.issues > 0 ? '#ffeb3b70' : 'var(--element-bg)'}
                       onMouseLeave={e => e.currentTarget.style.background = emp.issues > 0 ? '#ffeb3b4a' : 'transparent'}
                       >
-                        <td style={{ padding: '1rem', fontWeight: '500' }}>{emp.fullName}</td>
-                        <td style={{ padding: '1rem' }}>{emp.timeStr}</td>
-                        <td style={{ padding: '1rem' }}>{emp.daysCount}</td>
-                        <td style={{ padding: '1rem' }}>
+                        <td style={{ padding: '0.4rem 0.5rem', fontWeight: '500' }}>{emp.fullName}</td>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>{emp.timeStr}</td>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>{emp.daysCount}</td>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>
                           {emp.issues > 0 && (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#b71c1c', fontWeight: 'bold' }}>
                               {emp.issues} <AlertTriangle data-element-name="רכיב_page_24" size={16} />
                             </span>
                           )}
                         </td>
-                        <td style={{ padding: '1rem', fontWeight: '500' }}>{emp.totalCalculated.toFixed(2)}</td>
-                        <td style={{ padding: '1rem' }}>{emp.hasTravels}</td>
-                        <td className="no-print" style={{ padding: '1rem', textAlign: 'center' }}>
+                        <td style={{ padding: '0.4rem 0.5rem', fontWeight: '500' }}>{emp.totalCalculated.toFixed(2)}</td>
+                        <td style={{ padding: '0.4rem 0.5rem' }}>{emp.hasTravels}</td>
+                        <td className="no-print" style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
                           <button data-element-name="כפתור_page_25" onClick={(e) => { e.stopPropagation(); handlePrintPdfs(emp.id); }} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הדפס דוח אישי לעובד זה">
                             <Printer data-element-name="רכיב_page_26" size={16} />
                             הדפס

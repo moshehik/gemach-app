@@ -415,7 +415,17 @@ export async function POST(request) {
           });
         }
 
-        if (data.payment && (data.payment.amount > 0 || data.payment.method === 'יציאה באישור מנהל')) {
+        if (data.paymentsList && data.paymentsList.length > 0) {
+          await tx.payment.createMany({
+            data: data.paymentsList.map(p => ({
+              orderId: orderIdToUse,
+              amount: parseFloat(p.amount),
+              paymentMethod: p.method || p.paymentMethod,
+              notes: p.notes || '',
+              customerId: data.customerId ? data.customerId : null
+            }))
+          });
+        } else if (data.payment && (data.payment.amount > 0 || data.payment.method === 'יציאה באישור מנהל')) {
           await tx.payment.create({
             data: {
               orderId: orderIdToUse,
@@ -461,7 +471,16 @@ export async function POST(request) {
               alterationDetails: item.repairs || ''
             })) || []
           },
-          ...(data.payment && (data.payment.amount > 0 || data.payment.method === 'יציאה באישור מנהל') ? {
+          ...(data.paymentsList && data.paymentsList.length > 0 ? {
+            payments: {
+              create: data.paymentsList.map(p => ({
+                amount: parseFloat(p.amount),
+                paymentMethod: p.method || p.paymentMethod,
+                notes: p.notes || '',
+                customerId: data.customerId ? data.customerId : null
+              }))
+            }
+          } : (data.payment && (data.payment.amount > 0 || data.payment.method === 'יציאה באישור מנהל') ? {
             payments: {
               create: [{
                 amount: parseFloat(data.payment.amount),
@@ -470,7 +489,7 @@ export async function POST(request) {
                 customerId: data.customerId ? data.customerId : null
               }]
             }
-          } : {})
+          } : {}))
         }
       });
     }

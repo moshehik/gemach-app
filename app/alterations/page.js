@@ -419,21 +419,21 @@ export default function AlterationsPage() {
                       onMouseEnter={e => e.currentTarget.style.background = 'rgba(212, 175, 55, 0.05)'}
                       onMouseLeave={e => e.currentTarget.style.background = item.alterationDone ? 'rgba(67, 160, 71, 0.05)' : (index % 2 === 0 ? 'transparent' : 'rgba(0,0,0,0.02)')}
                     >
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
                         <div style={{ fontWeight: 'bold' }}>{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</div>
                       </td>
-                      <td style={{ padding: '1rem', fontWeight: '600' }}>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
-                      <td style={{ padding: '1rem', color: 'var(--primary-color)' }}>
+                      <td style={{ padding: '0.4rem 0.5rem', fontWeight: '600' }}>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--primary-color)' }}>
                         {item.dressItem?.dress?.name 
                           ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
                           : (item.description || item.dressItem?.dressName)}
                       </td>
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
                         <span style={{ background: 'var(--bg-color)', border: '1px solid #ddd', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.9rem', fontWeight: '500' }}>
                           {item.sizeText || item.size}
                         </span>
                       </td>
-                      <td style={{ padding: '1rem', maxWidth: '350px' }}>
+                      <td style={{ padding: '0.4rem 0.5rem', maxWidth: '350px' }}>
                         <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                           {item.neckAlteration > 0 && <span style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--primary-color)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>צוואר: הצרה {item.neckAlteration}</span>}
                           {item.sleeveAlteration > 0 && <span style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--primary-color)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>שרוול: הארכה {item.sleeveAlteration}</span>}
@@ -442,7 +442,7 @@ export default function AlterationsPage() {
                           {!item.neckAlteration && !item.sleeveAlteration && !item.lengthAlteration && !item.alterationDetails && <span style={{ color: 'var(--text-muted)' }}>-</span>}
                         </div>
                       </td>
-                      <td style={{ padding: '1rem' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
                         <span style={{ 
                           display: 'inline-block',
                           padding: '0.4rem 1rem',
@@ -460,7 +460,7 @@ export default function AlterationsPage() {
                           )}
                         </span>
                       </td>
-                      <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
+                      <td style={{ padding: '0.4rem 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
                           <Link data-element-name="רכיב_page_18" 
                             href={`/orders/${item.order?.orderId}`} 
                             className="btn btn-outline" 

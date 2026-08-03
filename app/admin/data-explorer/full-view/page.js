@@ -178,7 +178,7 @@ export default function FullViewPage() {
               <thead style={{ background: '#f1f5f9', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)' }}>
                 <tr>
                   {columns.map(col => (
-                    <th key={col} style={{ padding: '1rem', color: '#475569', fontWeight: '600', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                    <th key={col} style={{ padding: '0.4rem 0.5rem', color: '#475569', fontWeight: '600', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>
                       {col}
                     </th>
                   ))}
