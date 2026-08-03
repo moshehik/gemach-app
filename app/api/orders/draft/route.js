@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../../lib/prisma';
-import { recalculateOrderObligations } from '../../../../../lib/pricingEngine';
-import { validateOrderItemsAvailability } from '../../../../../lib/inventory';
-import { checkAuth } from '../../../../../lib/auth';
-import { getHebrewDateString } from '../../../../../lib/dateUtils';
+import prisma from '@/app/lib/prisma';
+import { recalculateOrderObligations } from '@/lib/pricingEngine';
+import { validateOrderItemsAvailability } from '@/lib/inventory';
+import { checkAuth } from '@/lib/auth';
+import { getHebrewDateString } from '@/lib/hebrewDate';
 import { cookies } from 'next/headers';
 
 export async function POST(request) {
