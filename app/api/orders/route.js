@@ -135,9 +135,9 @@ export async function GET(request) {
       } : {})
     };
 
-    let finalTotalCount = await prisma.order.count({ where });
+    let finalTotalCount = 0;
     let finalOrderIds = [];
-    
+
     // Only use JS memory filtering for 'unpaid' status since it requires complex calculated fields
     // Default sorting (eventDate) and other filters now use native database pagination and indexing
     if (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') {
@@ -174,11 +174,74 @@ export async function GET(request) {
       finalOrderIds = minimalFormatted.slice(skip, skip + limit).map(o => o.orderId);
     }
 
-    const fullOrdersWhere = (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') 
-      ? { orderId: { in: finalOrderIds } } 
+    const fullOrdersWhere = (filterStatus === 'unpaid' || filterStatus === 'unpaid_all')
+      ? { orderId: { in: finalOrderIds } }
       : where;
 
-    const orders = await prisma.order.findMany({
+    // Fetch orders and (for non-unpaid path) count in parallel instead of sequentially
+    let orders, totalCountNonUnpaid;
+    if (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') {
+      orders = await prisma.order.findMany({
+        where: fullOrdersWhere,
+        select: {
+          orderId: true,
+          legacyId: true,
+          customerId: true,
+          totalAmount: true,
+          paymentDate: true,
+          paymentMethod: true,
+          status: true,
+          notes: true,
+          eventDate: true,
+          eventDateHebrew: true,
+          returnDate: true,
+          isAbroad: true,
+          fromDate: true,
+          toDate: true,
+          customSpacing: true,
+          customer: {
+            select: {
+              firstName: true,
+              lastName: true,
+              phone1: true,
+              phone2: true
+            }
+          },
+          items: {
+            select: {
+              id: true,
+              barcodePrefix: true,
+              sizeText: true,
+              description: true,
+              price: true,
+              isTaken: true,
+              isReturned: true,
+              isDeleted: true,
+              barcode: true,
+              cartStatus: true,
+              cartStatusDate: true,
+              neckAlteration: true,
+              sleeveAlteration: true,
+              lengthAlteration: true,
+              alterationDetails: true,
+              dressItemId: true,
+              dressItem: {
+                select: {
+                  barcodePrefix: true,
+                  sizeText: true,
+                  dress: {
+                    select: { id: true, name: true, barcodePrefix: true }
+                  }
+                }
+              }
+            }
+          }
+        },
+        orderBy: undefined
+      });
+    } else {
+      [orders, totalCountNonUnpaid] = await Promise.all([
+        prisma.order.findMany({
       where: fullOrdersWhere,
       select: {
         orderId: true,
@@ -236,11 +299,14 @@ export async function GET(request) {
           }
         }
       },
-      orderBy: (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') ? undefined : 
-        (sort === 'eventDate' ? { eventDate: { sort: order, nulls: 'last' } } : 
-        (sort === 'customerName' ? { customer: { firstName: order } } : { [sort]: order })),
-      ...((filterStatus === 'unpaid' || filterStatus === 'unpaid_all') ? {} : { skip, take: limit })
-    });
+        orderBy: (sort === 'eventDate' ? { eventDate: { sort: order, nulls: 'last' } } :
+          (sort === 'customerName' ? { customer: { firstName: order } } : { [sort]: order })),
+        skip, take: limit
+        }),
+        prisma.order.count({ where: fullOrdersWhere })
+      ]);
+      finalTotalCount = totalCountNonUnpaid;
+    }
 
     // Restore the correct sort order for unpaid since the IN clause doesn't guarantee order
     let sortedOrders = orders;
