@@ -43,7 +43,10 @@ export async function POST(request) {
       tokef,
       amount,
       installments,
-      notes
+      notes,
+      zeout,
+      cvv,
+      email
     } = data;
 
     const result = await chargeNedarimPlus({
@@ -56,6 +59,9 @@ export async function POST(request) {
       amount,
       installments,
       notes,
+      zeout,
+      cvv,
+      email,
     });
 
     return NextResponse.json(result);

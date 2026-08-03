@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom';
 import { useLabels } from '@/app/components/LabelsContext';
 import { X, Info, Printer, Undo2, AlertTriangle, CheckCircle2, RotateCcw, Box, Search, PackageCheck, PackageX } from 'lucide-react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
+import { addHistory } from '../../lib/historyManager';
 
 export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const { getLabel } = useLabels();
@@ -37,6 +38,12 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
       if (res.ok) {
         const data = await res.json();
         setSelectedOrder(data);
+        addHistory({
+          type: 'rental',
+          id: data.orderId,
+          name: `השכרה #${data.orderId}`,
+          subtext: data.customer ? `${data.customer.firstName} ${data.customer.lastName}` : ''
+        });
       } else {
         alert('שגיאה בטעינת פרטי הזמנה');
         onClose();
@@ -555,11 +562,11 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="text-xs text-slate-500 mb-1">תאריך לקיחה</div>
-                  <div className="font-semibold text-slate-700">{itemDetails.item.takenDate ? new Date(itemDetails.item.takenDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</div>
+                  <div className="font-semibold text-slate-700">{itemDetails.item.takenDate ? `${getHebrewDateString(itemDetails.item.takenDate)} ${new Date(itemDetails.item.takenDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : '-'}</div>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="text-xs text-slate-500 mb-1">תאריך החזרה</div>
-                  <div className="font-semibold text-slate-700">{itemDetails.item.returnDate ? new Date(itemDetails.item.returnDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }) : '-'}</div>
+                  <div className="font-semibold text-slate-700">{itemDetails.item.returnDate ? `${getHebrewDateString(itemDetails.item.returnDate)} ${new Date(itemDetails.item.returnDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : '-'}</div>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="text-xs text-slate-500 mb-1">חזר תקין?</div>

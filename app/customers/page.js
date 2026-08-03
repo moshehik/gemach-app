@@ -267,7 +267,7 @@ export default function CustomersPage() {
               <table data-agy-id="customers_table" style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
-                  <th data-element-name="לחיץ_page_6" style={thStyle} onClick={() => handleSort('id')}>קוד לקוח <SortIcon data-element-name="רכיב_page_7" column="id" /></th>
+                  <th data-element-name="לחיץ_page_6" style={thStyle} onClick={() => handleSort('legacyId')}>קוד לקוח <SortIcon data-element-name="רכיב_page_7" column="legacyId" /></th>
                   <th data-element-name="לחיץ_page_8" style={thStyle} onClick={() => handleSort('firstName')}>{getLabel('customer_firstName', 'שם פרטי')} <SortIcon data-element-name="רכיב_page_9" column="firstName" /></th>
                   <th data-element-name="לחיץ_page_10" style={thStyle} onClick={() => handleSort('lastName')}>{getLabel('customer_lastName', 'שם משפחה')} <SortIcon data-element-name="רכיב_page_11" column="lastName" /></th>
                   <th data-element-name="לחיץ_page_12" style={thStyle} onClick={() => handleSort('phone1')}>{getLabel('customer_phone1', 'טלפון')} <SortIcon data-element-name="רכיב_page_13" column="phone1" /></th>

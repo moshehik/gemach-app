@@ -1,6 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { AlertTriangle, CheckCircle, Info, HelpCircle, X, Copy } from 'lucide-react';
+import RentalReturnModal from '../../components/orders/RentalReturnModal';
 
 const PopupContext = createContext(null);
 
@@ -13,6 +14,18 @@ export function PopupProvider({ children }) {
   const promptInputRef = useRef(null);
   const authInputRef = useRef(null);
   const [selectedAuthEmployee, setSelectedAuthEmployee] = useState('');
+  
+  // Global Rental Modal state
+  const [globalRentalModalOrderId, setGlobalRentalModalOrderId] = useState(null);
+
+  const openRentalModal = useCallback((orderId) => {
+    setGlobalRentalModalOrderId(orderId);
+  }, []);
+
+  const closeRentalModal = useCallback(() => {
+    setGlobalRentalModalOrderId(null);
+  }, []);
+
 
   // Background error logger
   const logErrorToSystem = async (errorMessage) => {
@@ -124,8 +137,9 @@ export function PopupProvider({ children }) {
   }, [showAlert, showConfirm, showPrompt, showAuthPrompt]);
 
   return (
-    <PopupContext.Provider data-element-name="רכיב_PopupProvider_1" value={{ showAlert, showConfirm, showPrompt, alertsHistory }}>
+    <PopupContext.Provider data-element-name="רכיב_PopupProvider_1" value={{ showAlert, showConfirm, showPrompt, alertsHistory, openRentalModal, closeRentalModal }}>
       {children}
+
       
       {/* Toast Alerts Container */}
       <div className="popup-toast-container" style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
@@ -254,6 +268,15 @@ export function PopupProvider({ children }) {
                  </div>
              </div>
          </div>
+      )}
+
+      {/* Global Rental Return Modal */}
+      {globalRentalModalOrderId && (
+        <RentalReturnModal 
+          orderId={globalRentalModalOrderId}
+          onClose={closeRentalModal}
+          onUpdate={() => {}}
+        />
       )}
     </PopupContext.Provider>
   );

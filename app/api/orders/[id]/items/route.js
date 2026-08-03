@@ -31,7 +31,7 @@ export async function POST(request, { params }) {
       const weekendSetting = settingsRaw.find(s => s.key === 'inventory_skip_weekends');
       if (weekendSetting) skipWeekends = weekendSetting.value === 'true';
 
-      const newOrderIsAbroad = order.isAbroad;
+      const newOrderIsAbroad = order.isAbroad || order.isWeekdayEvent;
       let targetMinDate, targetMaxDate;
       if (newOrderIsAbroad) {
          if (!order.fromDate || !order.toDate) throw new Error('חסרים תאריכים להזמנת חו"ל');

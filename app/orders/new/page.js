@@ -57,6 +57,7 @@ export default function NewOrderPage() {
     toDate: '',
     notes: '',
     items: [],
+    customSpacing: null,
   });
   
   const [newItem, setNewItem] = useState({
@@ -121,7 +122,8 @@ export default function NewOrderPage() {
         card = parts[0].replace(/[^0-9]/g, '');
         const expYY = parts[1].substring(0, 2);
         const expMM = parts[1].substring(2, 4);
-        tokef = `${expMM}${expYY}`;
+        tokef = `${expMM}/${expYY}`;
+        card = card.match(/.{1,4}/g)?.join(' ') || '';
       }
     } else if (val.includes('^')) {
       const parts = val.split('^');
@@ -129,7 +131,8 @@ export default function NewOrderPage() {
         card = parts[0].replace(/[^0-9]/g, '');
         const expYY = parts[2].substring(0, 2);
         const expMM = parts[2].substring(2, 4);
-        tokef = `${expMM}${expYY}`;
+        tokef = `${expMM}/${expYY}`;
+        card = card.match(/.{1,4}/g)?.join(' ') || '';
       }
     }
     
@@ -155,8 +158,8 @@ export default function NewOrderPage() {
       
       setCreditCardData(prev => ({
         ...prev,
-        cardNumber: card,
-        tokef: (expMM && expYY) ? `${expMM}${expYY}` : prev.tokef
+        cardNumber: card.match(/.{1,4}/g)?.join(' ') || '',
+        tokef: (expMM && expYY) ? `${expMM}/${expYY}` : prev.tokef
       }));
       return;
     }
@@ -169,19 +172,35 @@ export default function NewOrderPage() {
         const expMM = parts[2].substring(2, 4);
         setCreditCardData(prev => ({
           ...prev,
-          cardNumber: card,
-          tokef: (expMM && expYY) ? `${expMM}${expYY}` : prev.tokef
+          cardNumber: card.match(/.{1,4}/g)?.join(' ') || '',
+          tokef: (expMM && expYY) ? `${expMM}/${expYY}` : prev.tokef
         }));
         return;
       }
     }
 
-    setCreditCardData(prev => ({ ...prev, cardNumber: val }));
+    const raw = val.replace(/[^0-9]/g, '');
+    setCreditCardData(prev => ({ ...prev, cardNumber: raw.match(/.{1,4}/g)?.join(' ') || '' }));
+  };
+
+  const handleTokefChange = (e) => {
+    const raw = e.target.value.replace(/[^0-9]/g, '');
+    let formatted = raw;
+    if (raw.length > 2) {
+      formatted = `${raw.substring(0, 2)}/${raw.substring(2, 4)}`;
+    }
+    setCreditCardData(prev => ({ ...prev, tokef: formatted }));
   };
 
   const handleProcessCreditCard = async () => {
     if (!creditCardData.cardNumber || !creditCardData.tokef || !creditCardData.amount) {
        setCreditError('אנא מלא את כל השדות החובה (מספר כרטיס, תוקף, וסכום).');
+       return;
+    }
+
+    const paymentAmount = parseFloat(creditCardData.amount);
+    if (paymentAmount < totalAmount) {
+       setCreditError('לא ניתן לשלם פחות מהסכום המלא במעמד פתיחת ההזמנה. במידה ורוצים לפצל תשלומים יש לצאת באישור מנהל.');
        return;
     }
 
@@ -199,11 +218,13 @@ export default function NewOrderPage() {
           clientName: getCustomerFullName(cust),
           phone: cust.phone1 || '',
           address: fullAddress,
-          cardNumber: creditCardData.cardNumber,
-          tokef: creditCardData.tokef,
-          amount: parseFloat(creditCardData.amount),
+          cardNumber: creditCardData.cardNumber.replace(/\s/g, ''),
+          tokef: creditCardData.tokef.replace(/\//g, ''),
+          amount: paymentAmount,
           installments: parseInt(creditCardData.installments) || 1,
-          notes: creditCardData.notes
+          notes: [creditCardData.notes, 'באמצעות תכנת הגמח; מס הזמנה: חדשה'].filter(Boolean).join(' - '),
+          zeout: cust.idNumber || cust.zeout || '',
+          email: cust.email || ''
         })
       });
       
@@ -213,7 +234,7 @@ export default function NewOrderPage() {
         const conf = data.confirmation || 'בוצע';
         setCreditProcessedConfirmation(conf);
         setShowCreditModal(false);
-        executeSaveOrder(conf);
+        executeSaveOrder(conf, paymentAmount);
       } else {
         setCreditError(data.error || 'שגיאה בחיוב הכרטיס');
       }
@@ -445,7 +466,8 @@ export default function NewOrderPage() {
             isAbroad: proposedOrder.isAbroad,
             isWeekdayEvent: proposedOrder.isWeekdayEvent,
             fromDate: proposedOrder.fromDate,
-            toDate: proposedOrder.toDate
+            toDate: proposedOrder.toDate,
+            customSpacing: proposedOrder.customSpacing
           })
         });
         
@@ -612,6 +634,14 @@ export default function NewOrderPage() {
     if (!order.eventDate) return alert('יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
 
+    if (payment.method !== 'יציאה באישור מנהל') {
+      const pAmount = parseFloat(payment.amount) || 0;
+      if (pAmount < totalAmount) {
+        alert('לא ניתן לסיים הזמנה לפני תשלום מלא. יש לבחור "יציאה באישור מנהל" כדי לצאת ללא תשלום מלא (ידרוש סיסמה).');
+        return;
+      }
+    }
+
     if (payment.amount && parseFloat(payment.amount) > 0) {
       if (payment.method.includes('אשראי') && !payment.method.includes('חיצונית') && !creditProcessedConfirmation) {
         setCreditCardData({
@@ -652,10 +682,10 @@ export default function NewOrderPage() {
       }
     }
 
-    executeSaveOrder(creditProcessedConfirmation);
+    executeSaveOrder(creditProcessedConfirmation, payment.amount);
   };
 
-  const executeSaveOrder = async (creditConfirmation = null) => {
+  const executeSaveOrder = async (creditConfirmation = null, actualCreditAmount = null) => {
     setSaving(true);
     
     try {
@@ -668,7 +698,8 @@ export default function NewOrderPage() {
           isAbroad: order.isAbroad,
           isWeekdayEvent: order.isWeekdayEvent,
           fromDate: order.fromDate,
-          toDate: order.toDate
+          toDate: order.toDate,
+          customSpacing: order.customSpacing
         })
       });
       
@@ -708,7 +739,7 @@ export default function NewOrderPage() {
         items: itemsToSave,
         payment: {
           ...payment,
-          amount: payment.method === 'יציאה באישור מנהל' ? 0 : (parseFloat(payment.amount) || 0),
+          amount: payment.method === 'יציאה באישור מנהל' ? 0 : (actualCreditAmount !== null ? parseFloat(actualCreditAmount) : (parseFloat(payment.amount) || 0)),
           notes: payment.method === 'יציאה באישור מנהל' 
             ? `יציאה באישור מנהל (סכום מבוקש: ₪${payment.amount}) | ${payment.notes}`
             : (creditConfirmation ? `אישור נדרים: ${creditConfirmation} | ${payment.notes}` : payment.notes)
@@ -780,14 +811,14 @@ export default function NewOrderPage() {
           -webkit-backdrop-filter: blur(24px);
           border: 1px solid var(--border-color);
           border-radius: 16px;
-          padding: 0.75rem 1.5rem 1.7rem 1.5rem;
+          padding: 0.5rem 1.5rem 1.3rem 1.5rem;
           box-shadow: var(--shadow-sm);
           display: flex;
           justify-content: space-between;
           align-items: center;
           position: relative;
-          max-width: 750px;
-          margin: 0 auto 2.5rem auto;
+          max-width: 700px;
+          margin: 0 auto 1rem auto;
         }
         
         .step-progress-line {
@@ -844,7 +875,7 @@ export default function NewOrderPage() {
 
         .step-label {
           position: absolute;
-          top: 44px;
+          top: 40px;
           left: 50%;
           transform: translateX(-50%);
           font-size: 0.85rem;
@@ -895,9 +926,9 @@ export default function NewOrderPage() {
 
         .cart-item-card {
           background: var(--card-bg);
-          border-radius: 16px;
-          padding: 1.2rem;
-          margin-bottom: 1rem;
+          border-radius: 10px;
+          padding: 0.5rem 0.8rem;
+          margin-bottom: 0.5rem;
           border: 1px solid var(--border-color);
           box-shadow: var(--shadow-sm);
           animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -993,8 +1024,8 @@ export default function NewOrderPage() {
 
         /* custom styling for sizes */
         .size-card-interactive {
-          padding: 0.7rem 1rem;
-          border-radius: 12px;
+          padding: 0.35rem 0.6rem;
+          border-radius: 8px;
           border: 1px solid var(--border-color);
           background: var(--card-bg);
           cursor: pointer;
@@ -1002,7 +1033,7 @@ export default function NewOrderPage() {
           display: flex;
           flex-direction: column;
           align-items: center;
-          min-width: 80px;
+          min-width: 65px;
           box-shadow: var(--shadow-sm);
         }
         .size-card-interactive:hover:not(.disabled) {
@@ -1021,7 +1052,7 @@ export default function NewOrderPage() {
         }
       `}</style>
       
-      <main className="modern-main-container" style={{ padding: '5rem 2rem 3rem 2rem', margin: '0 auto', direction: 'rtl', minHeight: '100vh' }}>
+      <main className="modern-main-container" style={{ padding: '4.2rem 1.5rem 0.5rem 1.5rem', margin: '0 auto', direction: 'rtl', minHeight: 'calc(100vh - 4.5rem)', display: 'flex', flexDirection: 'column', boxSizing: 'border-box' }}>
         
         {/* Floating Stepper */}
         <div className="stepper-container">
@@ -1060,39 +1091,39 @@ export default function NewOrderPage() {
         
         {/* STEP 1: CUSTOMER */}
         {step === 1 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '700px', margin: '2rem auto', padding: '2rem', position: 'relative', overflow: 'hidden' }}>
+          <div className="fade-in glass-card" style={{ maxWidth: '650px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', alignItems: 'center' }}>
-               <h2 style={{ margin: 0, fontSize: '1.6rem', fontWeight: '800', letterSpacing: '-0.5px' }}>מי הלקוח?</h2>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
+               <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '800', letterSpacing: '-0.5px' }}>מי הלקוח?</h2>
             </div>
 
             {searchMode === 'phone' && !foundCustomerFromPhone && (
-              <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center' }}>
+              <div className="fade-in" style={{ display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center' }}>
                 <div style={{ width: '100%' }}>
-                  <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', fontSize: '1.3rem', color: '#334155' }}>מספר הטלפון של הלקוח</label>
+                  <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: '700', fontSize: '1.1rem', color: '#334155' }}>מספר הטלפון של הלקוח</label>
                   <input type="tel" 
                     value={phoneSearchInput} 
                     onChange={e => setPhoneSearchInput(e.target.value)} 
                     onKeyDown={e => e.key === 'Enter' && handleCheckPhone()}
                     placeholder="הזן מספר טלפון (05...)"
-                    style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid #cbd5e1', fontSize: '1.5rem', textAlign: 'center', transition: 'all 0.3s', outline: 'none' }} 
+                    style={{ width: '100%', padding: '0.75rem', borderRadius: '10px', border: '2px solid #cbd5e1', fontSize: '1.2rem', textAlign: 'center', transition: 'all 0.3s', outline: 'none' }} 
                     onFocus={(e) => e.target.style.borderColor = '#2563eb'}
                     onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
                   />
                 </div>
                 
-                <button onClick={handleCheckPhone} disabled={isCheckingPhone} className="primary-button" style={{ width: '100%', padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                <button onClick={handleCheckPhone} disabled={isCheckingPhone} className="primary-button" style={{ width: '100%', padding: '0.75rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                   {isCheckingPhone ? 'מחפש...' : (
                     <>
                       <span>המשך</span>
-                      <ArrowLeft size={20} />
+                      <ArrowLeft size={18} />
                     </>
                   )}
                 </button>
 
-                <div style={{ marginTop: '1.5rem', width: '100%', textAlign: 'center' }}>
+                <div style={{ marginTop: '0.5rem', width: '100%', textAlign: 'center' }}>
                   <button onClick={() => setSearchMode('name')}
-                    style={{ background: 'transparent', border: '2px solid #e2e8f0', padding: '1rem', width: '100%', borderRadius: '12px', fontSize: '1.1rem', fontWeight: '600', color: '#475569', cursor: 'pointer', transition: 'all 0.3s' }}
+                    style={{ background: 'transparent', border: '2px solid #e2e8f0', padding: '0.7rem', width: '100%', borderRadius: '10px', fontSize: '1rem', fontWeight: '600', color: '#475569', cursor: 'pointer', transition: 'all 0.3s' }}
                     onMouseOver={(e) => {e.target.style.background = '#f8fafc'; e.target.style.borderColor = '#cbd5e1';}}
                     onMouseOut={(e) => {e.target.style.background = 'transparent'; e.target.style.borderColor = '#e2e8f0';}}
                   >
@@ -1103,16 +1134,16 @@ export default function NewOrderPage() {
             )}
 
             {searchMode === 'phone' && foundCustomerFromPhone && (
-              <div className="fade-in" style={{ textAlign: 'center', background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.8) 0%, rgba(255, 255, 255, 0.9) 100%)', padding: '3rem 2rem', borderRadius: '16px', border: '1px solid #bfdbfe' }}>
-                <div style={{ width: '80px', height: '80px', background: 'linear-gradient(135deg, #2563eb, #4f46e5)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', margin: '0 auto 1.5rem auto', boxShadow: '0 10px 20px rgba(37, 99, 235, 0.2)' }}>
+              <div className="fade-in" style={{ textAlign: 'center', background: 'linear-gradient(135deg, rgba(239, 246, 255, 0.8) 0%, rgba(255, 255, 255, 0.9) 100%)', padding: '1.5rem 1rem', borderRadius: '12px', border: '1px solid #bfdbfe' }}>
+                <div style={{ width: '50px', height: '50px', background: 'linear-gradient(135deg, #2563eb, #4f46e5)', color: 'white', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.8rem', margin: '0 auto 1rem auto', boxShadow: '0 5px 10px rgba(37, 99, 235, 0.2)' }}>
                   👋
                 </div>
-                <h3 style={{ fontSize: '2rem', color: '#1e293b', marginBottom: '0.5rem', fontWeight: '800' }}>שלום {getCustomerFullName(foundCustomerFromPhone)}!</h3>
-                <p style={{ fontSize: '1.2rem', color: '#64748b', marginBottom: '2.5rem' }}>מצאנו אותך במערכת (טלפון: {foundCustomerFromPhone.phone1}). האם זה אתה?</p>
+                <h3 style={{ fontSize: '1.4rem', color: '#1e293b', marginBottom: '0.3rem', fontWeight: '800' }}>שלום {getCustomerFullName(foundCustomerFromPhone)}!</h3>
+                <p style={{ fontSize: '1rem', color: '#64748b', marginBottom: '1.2rem' }}>מצאנו אותך במערכת (טלפון: {foundCustomerFromPhone.phone1}). האם זה אתה?</p>
                 
-                <div style={{ display: 'flex', gap: '1rem', flexDirection: 'column' }}>
-                  <button onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)} className="primary-button" style={{ padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
-                    <Check size={20} />
+                <div style={{ display: 'flex', gap: '0.8rem', flexDirection: 'column' }}>
+                  <button onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)} className="primary-button" style={{ padding: '0.75rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                    <Check size={18} />
                     <span>כן, המשך להזמנה</span>
                   </button>
                   <button onClick={() => {
@@ -1120,7 +1151,7 @@ export default function NewOrderPage() {
                       setFoundCustomerFromPhone(null);
                       setSearchMode('new');
                     }}
-                    style={{ padding: '1.2rem', background: 'white', color: '#64748b', border: '2px solid #cbd5e1', borderRadius: '12px', fontSize: '1.2rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.3s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                    style={{ padding: '0.75rem', background: 'white', color: '#64748b', border: '2px solid #cbd5e1', borderRadius: '10px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.3s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
                   >
                     <span>לא, יצירת לקוח חדש</span>
                   </button>
@@ -1130,9 +1161,9 @@ export default function NewOrderPage() {
 
             {searchMode === 'name' && (
               <div className="fade-in">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                  <label style={{ fontWeight: '700', fontSize: '1.2rem', color: '#334155' }}>חיפוש ובחירת לקוח מהרשימה</label>
-                  <button onClick={() => setSearchMode('phone')} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '1rem', fontWeight: '600' }}>חזור להזנת טלפון</button>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.6rem' }}>
+                  <label style={{ fontWeight: '700', fontSize: '1.05rem', color: '#334155' }}>חיפוש ובחירת לקוח מהרשימה</label>
+                  <button onClick={() => setSearchMode('phone')} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.95rem', fontWeight: '600' }}>חזור להזנת טלפון</button>
                 </div>
                 <CustomerSelector 
                   value={order.selectedCustomer}
@@ -1140,142 +1171,188 @@ export default function NewOrderPage() {
                   placeholder="חפש לקוח לפי שם, טלפון, עיר..."
                 />
                 
-                <button onClick={proceedToStep2} disabled={!order.customerId} className="primary-button" style={{ width: '100%', marginTop: '3rem', padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                <button onClick={proceedToStep2} disabled={!order.customerId} className="primary-button" style={{ width: '100%', marginTop: '1.5rem', padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                   <span>המשך לשלב הבא</span>
-                  <ArrowLeft size={20} />
+                  <ArrowLeft size={18} />
                 </button>
               </div>
             )}
 
             {searchMode === 'new' && (
               <div className="fade-in">
-                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', paddingBottom: '1rem', borderBottom: '2px solid #f1f5f9' }}>
-                  <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.8rem', fontWeight: '800' }}>יצירת לקוח חדש</h3>
-                  <button onClick={() => { setFoundCustomerFromPhone(null); setSearchMode('phone'); }} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '1rem', fontWeight: '600' }}>חזור</button>
+                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', paddingBottom: '0.5rem', borderBottom: '2px solid #f1f5f9' }}>
+                  <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.3rem', fontWeight: '800' }}>יצירת לקוח חדש</h3>
+                  <button onClick={() => { setFoundCustomerFromPhone(null); setSearchMode('phone'); }} style={{ background: 'none', border: 'none', color: '#2563eb', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.95rem', fontWeight: '600' }}>חזור</button>
                  </div>
 
-                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '0.8rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>שם פרטי *</label>
-                    <input type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({...prev, firstName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>שם פרטי *</label>
+                    <input type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({...prev, firstName: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>שם משפחה *</label>
-                    <input type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({...prev, lastName: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>שם משפחה *</label>
+                    <input type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({...prev, lastName: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
                   </div>
                 </div>
                 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.8rem', marginBottom: '0.8rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>טלפון נייד *</label>
-                    <input type="text" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({...prev, phone1: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>טלפון נייד *</label>
+                    <input type="text" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({...prev, phone1: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>אימייל</label>
-                    <input type="email" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({...prev, email: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>אימייל</label>
+                    <input type="email" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({...prev, email: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'} />
                   </div>
                 </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.8rem', marginBottom: '0.8rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>עיר מגורים</label>
-                    <input type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} />
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>עיר מגורים</label>
+                    <input type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({...prev, city: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>רחוב</label>
-                    <input type="text" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({...prev, street: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} />
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>רחוב</label>
+                    <input type="text" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({...prev, street: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} />
                   </div>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>בית</label>
-                    <input type="text" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({...prev, houseNum: e.target.value}))} style={{ width: '100%', padding: '1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} />
+                    <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>בית</label>
+                    <input type="text" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({...prev, houseNum: e.target.value}))} style={{ width: '100%', padding: '0.6rem', borderRadius: '8px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} />
                   </div>
                 </div>
                 
-                <button onClick={() => handleSaveNewCustomerAndProceed()} className="primary-button" style={{ width: '100%', marginTop: '2rem', padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
-                  <UserPlus size={20} />
+                <button onClick={() => handleSaveNewCustomerAndProceed()} className="primary-button" style={{ width: '100%', marginTop: '1.2rem', padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+                  <UserPlus size={18} />
                   <span>שמור לקוח והמשך</span>
-                  <ArrowLeft size={20} />
+                  <ArrowLeft size={18} />
                 </button>
               </div>
             )}
             
-            <div style={{ marginTop: '2.5rem', textAlign: 'center' }}>
-               <Link href="/orders" style={{ color: '#64748b', textDecoration: 'none', fontSize: '1.1rem', fontWeight: '600' }}>ביטול וחזרה לרשימת ההזמנות</Link>
+            <div style={{ marginTop: '1.2rem', textAlign: 'center' }}>
+               <Link href="/orders" style={{ color: '#64748b', textDecoration: 'none', fontSize: '1rem', fontWeight: '600' }}>ביטול וחזרה לרשימת ההזמנות</Link>
             </div>
           </div>
         )}
 
         {/* STEP 2: DATES */}
         {step === 2 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '800px', margin: '2rem auto', padding: '2rem', position: 'relative' }}>
+          <div className="fade-in glass-card" style={{ maxWidth: '750px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
-            <h2 style={{ marginBottom: '1.5rem', fontSize: '1.6rem', fontWeight: '800' }}>תאריכי ההזמנה</h2>
+            <h2 style={{ marginBottom: '0.8rem', fontSize: '1.4rem', fontWeight: '800' }}>תאריכי ההזמנה</h2>
 
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '3rem' }}>
-              <div className={`radio-card ${!order.isAbroad ? 'active' : ''}`} onClick={() => handleDateChangeWithValidation('isAbroad', false)}>
-                <input type="radio" checked={!order.isAbroad} readOnly style={{ accentColor: '#2563eb', transform: 'scale(1.3)' }} />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
+              <div className={`radio-card ${!order.isAbroad ? 'active' : ''}`} onClick={() => handleDateChangeWithValidation('isAbroad', false)} style={{ padding: '0.6rem 1rem' }}>
+                <input type="radio" checked={!order.isAbroad} readOnly style={{ accentColor: '#2563eb', transform: 'scale(1.1)' }} />
                 <div>
-                  <h3 style={{ margin: '0 0 0.3rem 0', color: '#1e293b', fontSize: '1.3rem', fontWeight: '800' }}>אירוע רגיל</h3>
-                  <p style={{ margin: 0, color: '#64748b' }}>תאריך אירוע אחד</p>
+                  <h3 style={{ margin: '0 0 0.1rem 0', color: '#1e293b', fontSize: '1.1rem', fontWeight: '800' }}>אירוע רגיל</h3>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>תאריך אירוע אחד</p>
                 </div>
               </div>
-              <div className={`radio-card ${order.isAbroad ? 'active' : ''}`} onClick={() => handleDateChangeWithValidation('isAbroad', true)}>
-                <input type="radio" checked={order.isAbroad} readOnly style={{ accentColor: '#2563eb', transform: 'scale(1.3)' }} />
+              <div className={`radio-card ${order.isAbroad ? 'active' : ''}`} onClick={() => handleDateChangeWithValidation('isAbroad', true)} style={{ padding: '0.6rem 1rem' }}>
+                <input type="radio" checked={order.isAbroad} readOnly style={{ accentColor: '#2563eb', transform: 'scale(1.1)' }} />
                 <div>
-                  <h3 style={{ margin: '0 0 0.3rem 0', color: '#1e293b', fontSize: '1.3rem', fontWeight: '800' }}>אירוע חו"ל / תפוסה ארוכה</h3>
-                  <p style={{ margin: 0, color: '#64748b' }}>הזנת טווח תאריכים</p>
+                  <h3 style={{ margin: '0 0 0.1rem 0', color: '#1e293b', fontSize: '1.1rem', fontWeight: '800' }}>אירוע חו"ל / תפוסה ארוכה</h3>
+                  <p style={{ margin: 0, color: '#64748b', fontSize: '0.85rem' }}>הזנת טווח תאריכים</p>
                 </div>
               </div>
             </div>
 
-            <div style={{ background: 'rgba(255, 255, 255, 0.5)', padding: '2.5rem', borderRadius: '24px', border: '1px dashed #cbd5e1', marginBottom: '2.5rem' }}>
+            <div style={{ background: 'rgba(255, 255, 255, 0.5)', padding: '1rem 1.5rem', borderRadius: '16px', border: '1px dashed #cbd5e1', marginBottom: '1rem' }}>
               {!order.isAbroad ? (
                 <div style={{ textAlign: 'center' }}>
-                  <label style={{ display: 'block', marginBottom: '1rem', fontWeight: '800', color: '#1e293b', fontSize: '1.3rem' }}>תאריך אירוע *</label>
-                  <div style={{ maxWidth: '350px', margin: '0 auto' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '800', color: '#1e293b', fontSize: '1.1rem' }}>תאריך אירוע *</label>
+                  <div style={{ maxWidth: '300px', margin: '0 auto' }}>
                     <HebrewDatePicker value={order.eventDate} onChange={(date) => handleDateChangeWithValidation('eventDate', date)} />
                   </div>
                 </div>
               ) : (
-                <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-                  <div style={{ flex: 1, minWidth: '280px', maxWidth: '380px' }}>
-                    <label style={{ display: 'block', marginBottom: '1rem', fontWeight: '800', color: '#1e293b', fontSize: '1.2rem' }}>מתאריך (יום טיסה / התחלה) *</label>
+                <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'center' }}>
+                  <div style={{ flex: 1, minWidth: '240px', maxWidth: '320px' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '800', color: '#1e293b', fontSize: '1.05rem' }}>מתאריך (יום טיסה / התחלה) *</label>
                     <HebrewDatePicker value={order.fromDate} onChange={(date) => handleDateChangeWithValidation('fromDate', date)} />
                   </div>
-                  <div style={{ flex: 1, minWidth: '280px', maxWidth: '380px' }}>
-                    <label style={{ display: 'block', marginBottom: '1rem', fontWeight: '800', color: '#1e293b', fontSize: '1.2rem' }}>עד תאריך (חזרה) *</label>
+                  <div style={{ flex: 1, minWidth: '240px', maxWidth: '320px' }}>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '800', color: '#1e293b', fontSize: '1.05rem' }}>עד תאריך (חזרה) *</label>
                     <HebrewDatePicker value={order.toDate} onChange={(date) => handleDateChangeWithValidation('toDate', date)} />
                   </div>
                 </div>
               )}
             </div>
 
-            <div style={{ marginBottom: '3rem' }}>
-              <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.2rem' }}>הערות כלליות להזמנה</label>
+            <div style={{ marginBottom: '1rem' }}>
+              <label style={{ display: 'block', marginBottom: '0.4rem', fontWeight: '700', color: '#334155', fontSize: '1.05rem' }}>הערות כלליות להזמנה</label>
               <textarea 
                 name="notes" 
                 value={order.notes} 
                 onChange={handleOrderChange}
                 placeholder="הערות מיוחדות, בקשות שקשורות לתאריכים..."
-                style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid #e2e8f0', minHeight: '120px', fontSize: '1.1rem', fontFamily: 'inherit', resize: 'vertical', outline: 'none' }}
+                style={{ width: '100%', padding: '0.8rem', borderRadius: '10px', border: '2px solid #e2e8f0', minHeight: '65px', height: '65px', fontSize: '1rem', fontFamily: 'inherit', resize: 'none', outline: 'none' }}
                 onFocus={(e)=>e.target.style.borderColor='#2563eb'}
                 onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
               />
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button onClick={() => setStep(1)} style={{ padding: '1.2rem 2.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.2rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <ArrowRight size={20} />
+            <div style={{ marginTop: '0.5rem', background: '#fffbeb', border: '1px solid #fde68a', padding: '0.8rem 1.2rem', borderRadius: '12px', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <label style={{ fontWeight: '800', color: '#92400e', fontSize: '1.1rem', margin: 0 }}>ציפוף ימים מיוחד:</label>
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <select
+                    value={order.customSpacing !== null && order.customSpacing !== undefined ? order.customSpacing : ''}
+                    onChange={async (e) => {
+                      const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
+                      
+                      if (val !== null && val !== '') {
+                        const authResult = await window.customAuthPrompt("שינוי ציפוף ימים מיוחד להזמנה דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
+                        if (!authResult || !authResult.pin) return;
+                        
+                        try {
+                          const res = await fetch('/api/auth/verify-pin', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+                          });
+                          const data = await res.json();
+                          if (!data.success) {
+                            alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
+                            return;
+                          }
+                        } catch (err) {
+                          alert('שגיאה באימות קוד מנהל.');
+                          return;
+                        }
+                      }
+                      
+                      handleDateChangeWithValidation('customSpacing', val);
+                    }}
+                    style={{ padding: '0.8rem 1rem', borderRadius: '10px', border: '1px solid #fcd34d', fontSize: '1rem', outline: 'none', backgroundColor: 'white', fontWeight: 'bold', width: '200px' }}
+                  >
+                    <option value="">רגיל (לפי המערכת)</option>
+                    <option value="1">1 יום רווח</option>
+                    <option value="2">2 ימי רווח</option>
+                    <option value="3">3 ימי רווח</option>
+                    <option value="4">4 ימי רווח</option>
+                    <option value="0">ללא רווח כלל (0)</option>
+                  </select>
+                </div>
+              </div>
+              <p style={{ fontSize: '0.85rem', color: '#b45309', margin: '0.4rem 0 0 0', fontWeight: '500' }}>* בחירת ציפוף מיוחד תשפיע על בדיקת המלאי להזמנה זו בלבד ותצבע את כרטיס ההזמנה בצהוב (דורש הרשאת מנהל).</p>
+            </div>
+
+            <div style={{ display: 'flex', gap: '0.8rem' }}>
+              <button onClick={() => setStep(1)} style={{ padding: '0.8rem 1.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ArrowRight size={18} />
                 <span>חזור</span>
               </button>
               <button 
                 onClick={() => setStep(3)} 
                 disabled={order.isAbroad ? (!order.fromDate || !order.toDate) : !order.eventDate} 
                 className="primary-button" 
-                style={{ flex: 1, padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                style={{ flex: 1, padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
               >
                 <span>המשך לבחירת פריטים</span>
-                <ArrowLeft size={20} />
+                <ArrowLeft size={18} />
               </button>
             </div>
           </div>
@@ -1283,16 +1360,16 @@ export default function NewOrderPage() {
 
         {/* STEP 3: ADD ITEMS (Side by Side) */}
         {step === 3 && (
-          <div className="fade-in" style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', alignItems: 'flex-start', maxWidth: '900px', margin: '2rem auto' }}>
+          <div className="fade-in" style={{ display: 'flex', gap: '1rem', flexWrap: 'nowrap', alignItems: 'stretch', maxWidth: '950px', margin: '0.5rem auto' }}>
             
             {/* Add Item Form (Right Side) */}
-            <div className="glass-card" style={{ flex: '1.2', maxWidth: '520px', minWidth: '350px', padding: '2rem', position: 'relative', overflow: 'hidden' }}>
+            <div className="glass-card" style={{ flex: '1.2', maxWidth: '520px', minWidth: '320px', padding: '1.2rem', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
-              <h2 style={{ margin: '0 0 1.5rem 0', fontSize: '1.6rem', fontWeight: '800' }}>הוספת פריט חדש</h2>
+              <h2 style={{ margin: '0 0 0.8rem 0', fontSize: '1.3rem', fontWeight: '800' }}>הוספת פריט חדש</h2>
               
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.1rem' }}>בחר דגם</label>
+                  <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>בחר דגם</label>
                   <OrderModelSelector 
                     value={{ name: newItem.dressName }} 
                     onChange={(model) => {
@@ -1311,10 +1388,10 @@ export default function NewOrderPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.1rem' }}>בחר מידה {loadingSizes && <span style={{color: '#2563eb', fontWeight:'normal'}}>(בודק זמינות...)</span>}</label>
-                  <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
+                  <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>בחר מידה {loadingSizes && <span style={{color: '#2563eb', fontWeight:'normal'}}>(בודק זמינות...)</span>}</label>
+                  <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', minHeight: '44px', alignItems: 'center' }}>
                     {availableSizes.length === 0 ? (
-                      <div style={{ padding: '1rem', background: '#f8fafc', color: '#94a3b8', borderRadius: '12px', border: '1px solid #e2e8f0', width: '100%' }}>
+                      <div style={{ padding: '0.5rem 0.8rem', background: '#f8fafc', color: '#94a3b8', borderRadius: '8px', border: '1px solid #e2e8f0', width: '100%', fontSize: '0.9rem' }}>
                         {newItem.dressModelId ? 'אין מידות זמינות לתאריך זה.' : 'בחר דגם כדי לראות מידות זמינות.'}
                       </div>
                     ) : (
@@ -1330,9 +1407,9 @@ export default function NewOrderPage() {
                             }}
                             className={`size-card-interactive ${isSelected ? 'selected' : ''} ${!isAvailable ? 'disabled' : ''}`}
                           >
-                            <span style={{ fontSize: '1.4rem', fontWeight: '800', color: isSelected ? '#3b82f6' : (isAvailable ? '#1e293b' : '#ef4444') }}>{s.sizeText}</span>
-                            <span style={{ fontSize: '0.85rem', fontWeight: '700', color: isSelected ? '#2563eb' : (isAvailable ? '#10b981' : '#ef4444'), marginTop: '0.3rem' }}>
-                              {isAvailable ? `${s.availableQuantity} פנויות` : 'אזל מהמלאי'}
+                            <span style={{ fontSize: '1.1rem', fontWeight: '800', color: isSelected ? '#3b82f6' : (isAvailable ? '#1e293b' : '#ef4444'), lineHeight: '1.2' }}>{s.sizeText}</span>
+                            <span style={{ fontSize: '0.72rem', fontWeight: '700', color: isSelected ? '#2563eb' : (isAvailable ? '#10b981' : '#ef4444'), marginTop: '0.1rem' }}>
+                              {isAvailable ? `${s.availableQuantity} פנויות` : 'אזל'}
                             </span>
                           </div>
                         );
@@ -1341,26 +1418,26 @@ export default function NewOrderPage() {
                   </div>
                 </div>
 
-                <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '16px', border: '1px solid #e2e8f0' }}>
-                  <h4 style={{ margin: '0 0 1.2rem 0', fontSize: '1.2rem', color: '#1e293b' }}>תיקונים נדרשים</h4>
-                  <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                      <input type="checkbox" className="toggle-switch" checked={newItem.neckAlteration || false} onChange={(e) => handleNewItemChange({ target: { name: 'neckAlteration', value: e.target.checked }})} />
-                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '1.1rem' }}>צוואר</label>
+                <div style={{ background: '#f8fafc', padding: '0.8rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ margin: '0 0 0.5rem 0', fontSize: '1.05rem', color: '#1e293b', fontWeight: '800' }}>תיקונים נדרשים</h4>
+                  <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input type="checkbox" className="toggle-switch" checked={newItem.neckAlteration || false} onChange={(e) => handleNewItemChange({ target: { name: 'neckAlteration', value: e.target.checked }})} style={{ width: '40px', height: '22px' }} />
+                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '0.95rem' }}>צוואר</label>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
-                      <input type="checkbox" className="toggle-switch" checked={newItem.sleeveAlteration || false} onChange={(e) => handleNewItemChange({ target: { name: 'sleeveAlteration', value: e.target.checked }})} />
-                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '1.1rem' }}>שרוול</label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <input type="checkbox" className="toggle-switch" checked={newItem.sleeveAlteration || false} onChange={(e) => handleNewItemChange({ target: { name: 'sleeveAlteration', value: e.target.checked }})} style={{ width: '40px', height: '22px' }} />
+                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '0.95rem' }}>שרוול</label>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', marginRight: 'auto' }}>
-                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '1.1rem' }}>אורך:</label>
-                      <input type="number" className="premium-input" value={newItem.lengthAlteration || ''} onChange={handleNewItemChange} name="lengthAlteration" placeholder="ס״מ" style={{ width: '70px', padding: '0.5rem', textAlign: 'center' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginRight: 'auto' }}>
+                      <label style={{ fontWeight: '700', color: '#475569', fontSize: '0.95rem' }}>אורך:</label>
+                      <input type="number" className="premium-input" value={newItem.lengthAlteration || ''} onChange={handleNewItemChange} name="lengthAlteration" placeholder="ס״מ" style={{ width: '60px', padding: '0.35rem', textAlign: 'center', fontSize: '0.9rem' }} />
                     </div>
                   </div>
                   
-                  <div style={{ marginTop: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#64748b' }}>הערות לתיקון</label>
-                    <input type="text" className="premium-input" name="repairs" value={newItem.repairs} onChange={handleNewItemChange} placeholder="פרטים נוספים לתופרת..." style={{ padding: '0.75rem 1rem' }} />
+                  <div style={{ marginTop: '0.6rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.2rem', fontWeight: '700', color: '#64748b', fontSize: '0.9rem' }}>הערות לתיקון</label>
+                    <input type="text" className="premium-input" name="repairs" value={newItem.repairs} onChange={handleNewItemChange} placeholder="פרטים נוספים לתופרת..." style={{ padding: '0.5rem 0.8rem', fontSize: '0.9rem' }} />
                   </div>
                 </div>
 
@@ -1370,109 +1447,81 @@ export default function NewOrderPage() {
                   className="primary-button"
                   style={{ 
                     width: '100%', 
-                    padding: '0.8rem 1.5rem', 
-                    fontSize: '1.1rem', 
+                    padding: '0.6rem 1.2rem', 
+                    fontSize: '1rem', 
                     display: 'flex', 
                     justifyContent: 'center', 
                     alignItems: 'center', 
                     gap: '0.5rem'
                   }}
                 >
-                  <Plus size={20} />
+                  <Plus size={18} />
                   <span>הוסף להזמנה</span>
                 </button>
               </div>
             </div>
 
             {/* Live Cart (Left Side) */}
-            <div className="glass-card" style={{ flex: '1', minWidth: '320px', padding: '1.2rem', position: 'sticky', top: '2rem' }}>
-              <h3 style={{ margin: '0 0 0.8rem 0', fontSize: '1.4rem', fontWeight: '800', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.6rem' }}>הסל שלך</h3>
+            <div className="glass-card" style={{ flex: '1', minWidth: '300px', padding: '1.2rem', display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1.2rem', fontWeight: '800', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.4rem' }}>הסל שלך</h3>
               
               {order.items.length === 0 ? (
-                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem 1rem', background: '#f8fafc', borderRadius: '12px', border: '2px dashed #e2e8f0', fontWeight: '600' }}>
+                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '1.5rem 1rem', background: '#f8fafc', borderRadius: '12px', border: '2px dashed #e2e8f0', fontWeight: '600', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   טרם הוספת פריטים להזמנה
                 </div>
               ) : (
-                <div>
-                  {order.items.map((item, idx) => (
-                    <div key={idx} className="cart-item-card" style={{ padding: '0.8rem 1rem', marginBottom: '0.75rem', animationDelay: `${idx * 0.1}00ms` }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.3rem' }}>
-                        <div style={{ fontWeight: '800', fontSize: '1.1rem', color: '#1e293b' }}>{item.dressName || 'דגם לא ידוע'}</div>
-                        <div style={{ background: '#eff6ff', color: '#2563eb', padding: '0.1rem 0.5rem', borderRadius: '6px', fontWeight: '700', fontSize: '0.9rem' }}>מידה {item.sizeText}</div>
-                      </div>
-                      <div style={{ color: '#64748b', fontSize: '0.85rem', marginBottom: '0.5rem' }}>
-                        {[item.neckAlteration && 'צוואר', item.sleeveAlteration && 'שרוול', item.lengthAlteration && `אורך (${item.lengthAlteration})`].filter(Boolean).join(', ') || 'ללא תיקונים'}
-                      </div>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem' }}>
-                        <div style={{ fontWeight: '800', color: '#059669', fontSize: '1.1rem' }}>
-                          ₪{calculatedData.items[idx] ? calculatedData.items[idx].calculatedPrice : item.finalPrice}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+                  <div style={{ overflowY: 'auto', maxHeight: '190px', paddingRight: '0.2rem', margin: '0.2rem 0' }}>
+                    {order.items.map((item, idx) => (
+                      <div key={idx} className="cart-item-card" style={{ animationDelay: `${idx * 0.1}00ms` }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.15rem' }}>
+                          <div style={{ fontWeight: '800', fontSize: '0.95rem', color: '#1e293b' }}>{item.dressName || 'דגם לא ידוע'}</div>
+                          <div style={{ background: '#eff6ff', color: '#2563eb', padding: '0.05rem 0.4rem', borderRadius: '4px', fontWeight: '700', fontSize: '0.78rem' }}>מידה {item.sizeText}</div>
                         </div>
-                        <div style={{ display: 'flex', gap: '0.4rem' }}>
-                          <button onClick={(e) => { e.preventDefault(); setCapacityModalItem(item); }} style={{ background: '#fdf4ff', border: '1px solid #fbcfe8', cursor: 'pointer', color: '#c026d3', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem', borderRadius: '6px', transition: 'all 0.2s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fae8ff'; e.currentTarget.style.borderColor = '#f9a8d4'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fdf4ff'; e.currentTarget.style.borderColor = '#fbcfe8'; }} title="בדוק תפוסה לתאריך אירוע">
-                            <CalendarSearch size={16} strokeWidth={2.5} />
-                          </button>
-                          <button onClick={() => editItem(idx)} style={{ background: '#fffbeb', border: '1px solid #fde68a', cursor: 'pointer', color: '#d97706', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem', borderRadius: '6px', transition: 'all 0.2s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fef3c7'; e.currentTarget.style.borderColor = '#fcd34d'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fffbeb'; e.currentTarget.style.borderColor = '#fde68a'; }} title="ערוך">
-                            <Edit2 size={16} strokeWidth={2.5} />
-                          </button>
-                          <button onClick={() => removeItem(idx)} style={{ background: '#fef2f2', border: '1px solid #fecaca', cursor: 'pointer', color: '#ef4444', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.35rem', borderRadius: '6px', transition: 'all 0.2s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fee2e2'; e.currentTarget.style.borderColor = '#fca5a5'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fef2f2'; e.currentTarget.style.borderColor = '#fecaca'; }} title="מחק">
-                            <Trash2 size={16} strokeWidth={2.5} />
-                          </button>
+                        <div style={{ color: '#64748b', fontSize: '0.78rem', marginBottom: '0.25rem' }}>
+                          {[item.neckAlteration && 'צוואר', item.sleeveAlteration && 'שרוול', item.lengthAlteration && `אורך (${item.lengthAlteration})`].filter(Boolean).join(', ') || 'ללא תיקונים'}
                         </div>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  <div style={{ marginTop: '1.2rem', borderTop: '1px dashed var(--border-color)', paddingTop: '0.8rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '1.2rem', fontWeight: '800', color: '#1e293b' }}>סה"כ:</span>
-                    <span style={{ fontSize: '1.6rem', fontWeight: '800', color: '#059669' }}>₪{totalAmount}</span>
-                  </div>
-                </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '1rem', marginTop: '1.5rem' }}>
-                <button onClick={() => setStep(2)} style={{ padding: '0.8rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                  <ArrowRight size={18} />
-                  <span>חזור</span>
-                </button>
-                <button onClick={() => setStep(4)} disabled={order.items.length === 0} className="primary-button" style={{ padding: '0.8rem', flex: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
-                  <span>המשך לסיכום</span>
-                  <ArrowLeft size={18} />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 4: SUMMARY */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-color)', paddingTop: '0.35rem' }}>
+                          <div style={{ fontWeight: '800', color: '#059669', fontSize: '0.95rem' }}>
+                            ₪{calculatedData.items[idx] ? calculatedData.items[idx].calculatedPrice : item.finalPrice}
+                          </div>
+                          <div style={{ display: 'flex', gap: '0.3rem' }}>
+                            <button onClick={(e) => { e.preventDefault(); setCapacityModalItem(item); }} style={{ background: '#fdf4ff', border: '1px solid #fbcfe8', cursor: 'pointer', color: '#c026d3', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '4px', transition: 'all 0.2s ease' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fae8ff'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fdf4ff'; }} title="בדוק תפוסה לתאריך אירוע">
+                              <CalendarSearch size={14} strokeWidth={2.5} />
+                            </button>
+                            <button onClick={() => editItem(idx)} style={{ background: '#fffbeb', border: '1px solid #fde68a', cursor: 'pointer', color: '#d97706', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.25rem', borderRadius: '4px', transition: 'all 0.2s ease' }} onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#fef3c7'; }} onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#fffbeb'; }} title="ערוך">
+                              <Edit2 size={14} strokeWidth={2.5} />
+                            </button>
+                            <button onClick={() => r        {/* STEP 4: SUMMARY */}
         {step === 4 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '800px', margin: '2rem auto', padding: '2rem', position: 'relative' }}>
+          <div className="fade-in glass-card" style={{ maxWidth: '700px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
-            <h2 style={{ marginBottom: '0.8rem', fontSize: '1.6rem', fontWeight: '800' }}>סיכום ההזמנה</h2>
-            <p style={{ color: '#64748b', fontSize: '1.2rem', marginBottom: '2.5rem' }}>אנא ודא שפרטי ההזמנה נכונים לפני מעבר לתשלום.</p>
+            <h2 style={{ marginBottom: '0.4rem', fontSize: '1.4rem', fontWeight: '800' }}>סיכום ההזמנה</h2>
+            <p style={{ color: '#64748b', fontSize: '1rem', marginBottom: '1rem' }}>אנא ודא שפרטי ההזמנה נכונים לפני מעבר לתשלום.</p>
 
-            <div style={{ background: '#f8fafc', padding: '2rem', borderRadius: '16px', border: '1px solid #e2e8f0', marginBottom: '2.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+            <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
                 <span style={{ color: '#64748b', fontWeight: '600' }}>לקוח:</span>
                 <span style={{ color: '#1e293b', fontWeight: '800' }}>{selectedCustomerName}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.95rem' }}>
                 <span style={{ color: '#64748b', fontWeight: '600' }}>סוג אירוע:</span>
                 <span style={{ color: '#1e293b', fontWeight: '800' }}>{order.isAbroad ? 'אירוע חו"ל / תפוסה ארוכה' : 'אירוע רגיל'}</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.95rem' }}>
                 <span style={{ color: '#64748b', fontWeight: '600' }}>תאריכים:</span>
                 <span style={{ color: '#1e293b', fontWeight: '800', textAlign: 'left' }}>
                   {order.isAbroad ? (
                     <>
                       {`מ-${getHebrewDateString(order.fromDate)} עד ${getHebrewDateString(order.toDate)} `}
-                      <span style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 'normal' }}>
+                      <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'normal' }}>
                         {`(${order.fromDate} - ${order.toDate})`}
                       </span>
                     </>
                   ) : (
                     <>
                       {getHebrewDateString(order.eventDate) + ' '}
-                      <span style={{ color: '#64748b', fontSize: '0.9rem', fontWeight: 'normal' }}>
+                      <span style={{ color: '#64748b', fontSize: '0.85rem', fontWeight: 'normal' }}>
                         {`(${order.eventDate})`}
                       </span>
                     </>
@@ -1481,42 +1530,45 @@ export default function NewOrderPage() {
               </div>
             </div>
 
-            <div style={{ marginBottom: '3rem' }}>
-              <h3 style={{ color: '#1e293b', fontSize: '1.5rem', marginBottom: '1.5rem' }}>פירוט פריטים ({order.items.length})</h3>
-              {order.items.map((item, idx) => {
-                 const calcItem = calculatedData.items[idx];
-                 const displayPrice = calcItem ? calcItem.calculatedPrice : item.finalPrice;
-                 const repairsCost = calcItem && calcItem.repairsCost ? calcItem.repairsCost : 0;
-                 return (
-                   <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '1.5rem', borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
-                     <div>
-                       <div style={{ fontWeight: '800', color: '#1e293b', fontSize: '1.2rem' }}>{item.dressName} <span style={{ background: '#eff6ff', color: '#2563eb', padding: '0.2rem 0.5rem', borderRadius: '6px', fontSize: '1rem', marginRight: '0.5rem' }}>{item.sizeText}</span></div>
-                       <div style={{ color: '#64748b', fontSize: '1rem', marginTop: '0.5rem' }}>
-                          תיקונים: {[item.neckAlteration && 'צוואר', item.sleeveAlteration && 'שרוול', item.lengthAlteration && `אורך (${item.lengthAlteration})`].filter(Boolean).join(', ') || 'ללא'}
-                          {repairsCost > 0 && <span style={{color: '#f59e0b', marginRight: '0.5rem'}}>(+₪{repairsCost})</span>}
+            <div style={{ marginBottom: '1.2rem' }}>
+              <h3 style={{ color: '#1e293b', fontSize: '1.2rem', marginBottom: '0.8rem', fontWeight: '800' }}>פירוט פריטים ({order.items.length})</h3>
+              
+              <div style={{ overflowY: 'auto', maxHeight: '150px', paddingRight: '0.2rem', borderBottom: '1px solid #cbd5e1' }}>
+                {order.items.map((item, idx) => {
+                   const calcItem = calculatedData.items[idx];
+                   const displayPrice = calcItem ? calcItem.calculatedPrice : item.finalPrice;
+                   const repairsCost = calcItem && calcItem.repairsCost ? calcItem.repairsCost : 0;
+                   return (
+                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.6rem 0.5rem', borderBottom: '1px solid #e2e8f0', alignItems: 'center' }}>
+                       <div>
+                         <div style={{ fontWeight: '800', color: '#1e293b', fontSize: '1.05rem' }}>{item.dressName} <span style={{ background: '#eff6ff', color: '#2563eb', padding: '0.1rem 0.4rem', borderRadius: '4px', fontSize: '0.85rem', marginRight: '0.5rem' }}>{item.sizeText}</span></div>
+                         <div style={{ color: '#64748b', fontSize: '0.85rem', marginTop: '0.2rem' }}>
+                            תיקונים: {[item.neckAlteration && 'צוואר', item.sleeveAlteration && 'שרוול', item.lengthAlteration && `אורך (${item.lengthAlteration})`].filter(Boolean).join(', ') || 'ללא'}
+                            {repairsCost > 0 && <span style={{color: '#f59e0b', marginRight: '0.5rem'}}>(+₪{repairsCost})</span>}
+                         </div>
+                       </div>
+                       <div style={{ fontSize: '1.15rem', fontWeight: '800', color: '#059669' }}>
+                         ₪{displayPrice}
                        </div>
                      </div>
-                     <div style={{ fontSize: '1.5rem', fontWeight: '800', color: '#059669' }}>
-                       ₪{displayPrice}
-                     </div>
-                   </div>
-                 );
-              })}
+                   );
+                })}
+              </div>
               
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '2rem 1.5rem 0', marginTop: '1rem', borderTop: '2px solid #cbd5e1' }}>
-                <span style={{ fontSize: '1.8rem', fontWeight: '800', color: '#1e293b' }}>סה"כ לתשלום:</span>
-                <span style={{ fontSize: '2.5rem', fontWeight: '900', color: '#059669' }}>₪{totalAmount}</span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '0.8rem 0.5rem 0', marginTop: '0.5rem' }}>
+                <span style={{ fontSize: '1.3rem', fontWeight: '800', color: '#1e293b' }}>סה"כ לתשלום:</span>
+                <span style={{ fontSize: '1.7rem', fontWeight: '900', color: '#059669' }}>₪{totalAmount}</span>
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button onClick={() => setStep(3)} style={{ padding: '1.2rem 2.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.2rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <ArrowRight size={20} />
+            <div style={{ display: 'flex', gap: '0.8rem' }}>
+              <button onClick={() => setStep(3)} style={{ padding: '0.8rem 1.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ArrowRight size={18} />
                 <span>חזור לעריכה</span>
               </button>
-              <button onClick={() => setStep(5)} className="primary-button" style={{ flex: 1, padding: '1.2rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
+              <button onClick={() => setStep(5)} className="primary-button" style={{ flex: 1, padding: '0.8rem', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}>
                 <span>המשך לתשלום אחרון</span>
-                <ArrowLeft size={20} />
+                <ArrowLeft size={18} />
               </button>
             </div>
           </div>
@@ -1524,29 +1576,29 @@ export default function NewOrderPage() {
 
         {/* STEP 5: PAYMENT & SAVE */}
         {step === 5 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '650px', margin: '2rem auto', padding: '2rem', position: 'relative' }}>
+          <div className="fade-in glass-card" style={{ maxWidth: '600px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
-            <h2 style={{ marginBottom: '0.8rem', fontSize: '1.6rem', fontWeight: '800' }}>תשלום וסיום הזמנה</h2>
-            <p style={{ color: '#64748b', fontSize: '1.2rem', marginBottom: '2.5rem' }}>בחרו את אמצעי התשלום ובצעו רישום סופי.</p>
+            <h2 style={{ marginBottom: '0.4rem', fontSize: '1.4rem', fontWeight: '800' }}>תשלום וסיום הזמנה</h2>
+            <p style={{ color: '#64748b', fontSize: '1rem', marginBottom: '1.2rem' }}>בחרו את אמצעי התשלום ובצעו רישום סופי.</p>
             
-            <div style={{ display: 'grid', gap: '1.5rem', marginBottom: '3rem' }}>
+            <div style={{ display: 'grid', gap: '0.8rem', marginBottom: '1.5rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.1rem' }}>סכום לתשלום כעת (₪)</label>
+                <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>סכום לתשלום כעת (₪)</label>
                 <input 
                   type="number" 
                   value={payment.amount} 
                   onChange={e => setPayment(prev => ({...prev, amount: e.target.value}))} 
-                  style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.5rem', fontWeight: '800', color: '#059669', outline: 'none' }} 
+                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.25rem', fontWeight: '800', color: '#059669', outline: 'none' }} 
                   onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
                 />
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.1rem' }}>אופן תשלום</label>
+                <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>אופן תשלום</label>
                 <select 
                   value={payment.method} 
                   onChange={e => setPayment(prev => ({...prev, method: e.target.value}))} 
-                  style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', outline: 'none', background: 'white' }}
+                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', background: 'white' }}
                   onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
                 >
                   {paymentMethodOptions.map(opt => (
@@ -1556,31 +1608,31 @@ export default function NewOrderPage() {
               </div>
 
               <div>
-                <label style={{ display: 'block', marginBottom: '0.8rem', fontWeight: '700', color: '#334155', fontSize: '1.1rem' }}>הערות לתשלום</label>
+                <label style={{ display: 'block', marginBottom: '0.3rem', fontWeight: '700', color: '#334155', fontSize: '0.95rem' }}>הערות לתשלום</label>
                 <input 
                   type="text" 
                   value={payment.notes} 
                   onChange={e => setPayment(prev => ({...prev, notes: e.target.value}))} 
                   placeholder="מספר אישור, פרטי הבנק, וכדומה..."
-                  style={{ width: '100%', padding: '1.2rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.1rem', outline: 'none' }} 
+                  style={{ width: '100%', padding: '0.75rem 1rem', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1rem', outline: 'none' }} 
                   onFocus={(e)=>e.target.style.borderColor='#2563eb'} onBlur={(e)=>e.target.style.borderColor='#e2e8f0'}
                 />
               </div>
             </div>
 
-            <div style={{ display: 'flex', gap: '1rem' }}>
-              <button onClick={() => setStep(4)} style={{ padding: '1.2rem 2.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.2rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <ArrowRight size={20} />
+            <div style={{ display: 'flex', gap: '0.8rem' }}>
+              <button onClick={() => setStep(4)} style={{ padding: '0.8rem 1.5rem', background: 'white', color: '#64748b', border: '2px solid #e2e8f0', borderRadius: '12px', fontSize: '1.05rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <ArrowRight size={18} />
                 <span>חזור</span>
               </button>
               <button 
                 onClick={saveOrder}
                 disabled={saving}
-                style={{ flex: 1, padding: '1.2rem', background: saving ? '#cbd5e1' : 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.4rem', fontWeight: '800', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saving ? 'none' : '0 10px 25px rgba(16, 185, 129, 0.3)', transition: 'all 0.3s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
+                style={{ flex: 1, padding: '0.8rem', background: saving ? '#cbd5e1' : 'linear-gradient(135deg, #10b981, #059669)', color: 'white', border: 'none', borderRadius: '12px', fontSize: '1.15rem', fontWeight: '800', cursor: saving ? 'not-allowed' : 'pointer', boxShadow: saving ? 'none' : '0 6px 15px rgba(16, 185, 129, 0.2)', transition: 'all 0.3s', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.5rem' }}
               >
                 {saving ? 'שומר במערכת ומאמת מלאי...' : (
                   <>
-                    <ShieldCheck size={22} />
+                    <ShieldCheck size={18} />
                     <span>סיום ושמירת כרטיס הזמנה</span>
                   </>
                 )}
@@ -1652,13 +1704,13 @@ export default function NewOrderPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', marginBottom: '2rem' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>מספר כרטיס אשראי (או העברת קורא שפתיים)</label>
-                  <input type="text" value={creditCardData.cardNumber} onChange={handleCardNumberChange} placeholder="הקלד או העבר כרטיס קורא שפתיים" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', outline: 'none' }} />
+                  <input type="text" value={creditCardData.cardNumber} onChange={handleCardNumberChange} placeholder="0000 0000 0000 0000" maxLength="19" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', direction: 'ltr', textAlign: 'left', letterSpacing: '2px', outline: 'none' }} />
                 </div>
                 
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                   <div>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>תוקף (MMYY)</label>
-                    <input type="text" value={creditCardData.tokef} onChange={e => setCreditCardData(prev => ({...prev, tokef: e.target.value}))} placeholder="לדוגמה 1225" maxLength="4" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', textAlign: 'center', outline: 'none' }} />
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>תוקף (MM/YY)</label>
+                    <input type="text" value={creditCardData.tokef} onChange={handleTokefChange} placeholder="12/25" maxLength="5" style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #e2e8f0', fontSize: '1.2rem', direction: 'ltr', textAlign: 'left', letterSpacing: '2px', outline: 'none' }} />
                   </div>
                   <div>
                     <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '700', color: '#475569' }}>סכום לחיוב (₪)</label>

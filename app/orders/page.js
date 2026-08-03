@@ -130,8 +130,11 @@ export default function OrdersPage() {
       const sortData = (list) => {
         const now = Date.now();
         return [...list].sort((a, b) => {
-          const aPending = a.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + 15 * 60000 > now);
-          const bPending = b.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + 15 * 60000 > now);
+          const aIsPaid = (a.totalPaid >= a.totalAmount && a.totalAmount > 0) || a.totalPaid > 0 || a.status === 'שולם' || a.status === 'שולם חלקי';
+          const aPending = !a.legacyId && !aIsPaid && a.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + 15 * 60000 > now);
+          
+          const bIsPaid = (b.totalPaid >= b.totalAmount && b.totalAmount > 0) || b.totalPaid > 0 || b.status === 'שולם' || b.status === 'שולם חלקי';
+          const bPending = !b.legacyId && !bIsPaid && b.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + 15 * 60000 > now);
           if (aPending && !bPending) return -1;
           if (!aPending && bPending) return 1;
           return 0;
@@ -505,7 +508,8 @@ export default function OrdersPage() {
                   </thead>
                   <tbody>
                     {orders.map(order => {
-                      const pendingItem = order.items?.find(i => i.cartStatus === 'pending');
+                      const isPaid = (order.totalPaid >= order.totalAmount && order.totalAmount > 0) || order.totalPaid > 0 || order.status === 'שולם' || order.status === 'שולם חלקי';
+                      const pendingItem = (!order.legacyId && !isPaid) ? order.items?.find(i => i.cartStatus === 'pending') : null;
                       const isPending = pendingItem && new Date(pendingItem.cartStatusDate).getTime() + 15 * 60000 > Date.now();
                       const isExpiredPending = pendingItem && new Date(pendingItem.cartStatusDate).getTime() + 15 * 60000 <= Date.now();
                       

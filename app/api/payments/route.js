@@ -35,6 +35,12 @@ export async function POST(request) {
       }
     });
 
+    // Update items to confirmed since payment was made
+    await prisma.orderItem.updateMany({
+      where: { orderId: parsedOrderId, cartStatus: 'pending' },
+      data: { cartStatus: 'confirmed' }
+    });
+
     // We can also trigger recalculation or update if needed
     // await recalculateOrderObligations(parsedOrderId);
 

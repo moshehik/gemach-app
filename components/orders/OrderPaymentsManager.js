@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, Info, ChevronDown, ChevronUp, RefreshCcw } from 'lucide-react';
 
-export default function OrderPaymentsManager({ orderId, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated }) {
+export default function OrderPaymentsManager({ orderId, items = [], order = {}, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated }) {
   const [newObligation, setNewObligation] = useState({ description: '', amount: '' });
   const [newPayment, setNewPayment] = useState({ paymentMethod: 'אשראי', notes: '', amount: '' });
   
@@ -77,6 +77,41 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
     ? settings.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean) 
     : ['אשראי (דרך נדרים פלוס)', 'יציאה באישור מנהל'];
 
+  const validateInventoryBeforePayment = async () => {
+    if (!items || items.length === 0) return true;
+    try {
+      const res = await fetch('/api/orders/validate-inventory', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          items: items,
+          eventDate: order?.eventDate,
+          isAbroad: order?.isAbroad,
+          isWeekdayEvent: order?.isWeekdayEvent,
+          fromDate: order?.fromDate,
+          toDate: order?.toDate,
+          orderId: order?.orderId
+        })
+      });
+      const data = await res.json();
+      if (!data.valid) {
+        let msg = 'לא ניתן לבצע תשלום, חלק מהפריטים כבר אינם פנויים במלאי:\n';
+        if (data.errors) {
+          data.errors.forEach(e => {
+            msg += `- ${e.dressName} (מידה: ${e.sizeText}): זמין ${e.available}, נדרש ${e.requested}\n`;
+          });
+        }
+        alert(msg + '\nאנא הסר את הפריטים שתפסו או בחר מידות אחרות.');
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.error(e);
+      alert('שגיאה באימות מלאי מול השרת.');
+      return false;
+    }
+  };
+
   const addObligation = () => {
     if (!newObligation.description || !newObligation.amount) return;
     const added = {
@@ -106,6 +141,9 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
 
   const addPayment = async () => {
     if (!newPayment.amount) return;
+
+    const isValid = await validateInventoryBeforePayment();
+    if (!isValid) return;
 
     const paymentAmount = parseFloat(newPayment.amount);
     const balance = totalRequired - totalPaid;
@@ -317,7 +355,8 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
         card = parts[0].replace(/[^0-9]/g, '');
         const expYY = parts[1].substring(0, 2);
         const expMM = parts[1].substring(2, 4);
-        tokef = `${expMM}${expYY}`;
+        tokef = `${expMM}/${expYY}`;
+        card = card.match(/.{1,4}/g)?.join(' ') || '';
       }
     } else if (val.includes('^')) {
       const parts = val.split('^');
@@ -325,7 +364,8 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
         card = parts[0].replace(/[^0-9]/g, '');
         const expYY = parts[2].substring(0, 2);
         const expMM = parts[2].substring(2, 4);
-        tokef = `${expMM}${expYY}`;
+        tokef = `${expMM}/${expYY}`;
+        card = card.match(/.{1,4}/g)?.join(' ') || '';
       }
     }
     
@@ -363,8 +403,8 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
       
       setCreditCardData(prev => ({
         ...prev,
-        cardNumber: card,
-        tokef: (expMM && expYY) ? `${expMM}${expYY}` : prev.tokef
+        cardNumber: card.match(/.{1,4}/g)?.join(' ') || '',
+        tokef: (expMM && expYY) ? `${expMM}/${expYY}` : prev.tokef
       }));
       return;
     }
@@ -377,14 +417,24 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
         const expMM = parts[2].substring(2, 4);
         setCreditCardData(prev => ({
           ...prev,
-          cardNumber: card,
-          tokef: (expMM && expYY) ? `${expMM}${expYY}` : prev.tokef
+          cardNumber: card.match(/.{1,4}/g)?.join(' ') || '',
+          tokef: (expMM && expYY) ? `${expMM}/${expYY}` : prev.tokef
         }));
         return;
       }
     }
 
-    setCreditCardData(prev => ({ ...prev, cardNumber: val }));
+    const raw = val.replace(/[^0-9]/g, '');
+    setCreditCardData(prev => ({ ...prev, cardNumber: raw.match(/.{1,4}/g)?.join(' ') || '' }));
+  };
+
+  const handleTokefChange = (e) => {
+    const raw = e.target.value.replace(/[^0-9]/g, '');
+    let formatted = raw;
+    if (raw.length > 2) {
+      formatted = `${raw.substring(0, 2)}/${raw.substring(2, 4)}`;
+    }
+    setCreditCardData(prev => ({ ...prev, tokef: formatted }));
   };
 
   const handleProcessCreditCard = async () => {
@@ -392,6 +442,9 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
        setCreditError('אנא מלא את כל השדות החובה (מספר כרטיס, תוקף, וסכום).');
        return;
     }
+
+    const isValid = await validateInventoryBeforePayment();
+    if (!isValid) return;
 
     const paymentAmount = parseFloat(creditCardData.amount);
     const balance = totalRequired - totalPaid;
@@ -414,7 +467,8 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
       const fullItemsDesc = itemsDescription ? `(${itemsDescription})` : '';
 
       const orderNote = orderId ? `הזמנה ${orderId} ${fullItemsDesc}` : '';
-      const finalNotes = [orderNote, creditCardData.notes].filter(Boolean).join(' - ');
+      const automaticNote = `באמצעות תכנת הגמח; מס הזמנה: ${orderId || 'לא ידוע'}`;
+      const finalNotes = [orderNote, creditCardData.notes, automaticNote].filter(Boolean).join(' - ');
 
       const response = await fetch('/api/nedarim', {
         method: 'POST',
@@ -423,11 +477,13 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
           clientName: `${customer.firstName || ''} ${customer.lastName || ''}`.trim(),
           phone: customer.phone1 || '',
           address: fullAddress,
-          cardNumber: creditCardData.cardNumber,
-          tokef: creditCardData.tokef,
+          cardNumber: creditCardData.cardNumber.replace(/\s/g, ''),
+          tokef: creditCardData.tokef.replace(/\//g, ''),
           amount: parseFloat(creditCardData.amount),
           installments: parseInt(creditCardData.installments) || 1,
-          notes: finalNotes
+          notes: finalNotes,
+          zeout: customer.idNumber || customer.zeout || '',
+          email: customer.email || ''
         })
       });
       
@@ -563,7 +619,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                   {activeObligations.map((obs, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #fee2e2', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#fef2f2'} onMouseOut={e => e.currentTarget.style.backgroundColor='white'}>
                       <td style={{ padding: '0.8rem', color: '#450a0a', fontWeight: '500' }}>{obs.isManual === false ? (obs.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב אוטומטי') : (obs.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב ידני')}</td>
-                      <td style={{ padding: '0.8rem', color: '#991b1b', fontSize: '0.85em' }}>{new Date(obs.createdAt).toLocaleDateString('he-IL')}</td>
+                      <td style={{ padding: '0.8rem', color: '#991b1b', fontSize: '0.85em' }}>{obs.createdAt ? new Date(obs.createdAt).toLocaleDateString('he-IL') : new Date().toLocaleDateString('he-IL')}</td>
                       <td style={{ padding: '0.8rem', fontWeight: 'bold', color: '#b91c1c' }}>₪{obs.amount}</td>
                       <td style={{ padding: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                         <button data-agy-id="orderpaymentsmanager_button_1" onClick={() => setSelectedObligationDetails(obs)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="פרטים נוספים">
@@ -631,7 +687,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                   {activePayments.map((p, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #dcfce7', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#f0fdf4'} onMouseOut={e => e.currentTarget.style.backgroundColor='white'}>
                       <td style={{ padding: '0.8rem', color: '#064e3b', fontWeight: '500' }}>{p.paymentMethod || '-'}</td>
-                      <td style={{ padding: '0.8rem', color: '#166534', fontSize: '0.85em' }}>{new Date(p.paymentDate).toLocaleDateString('he-IL')}</td>
+                      <td style={{ padding: '0.8rem', color: '#166534', fontSize: '0.85em' }}>{p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('he-IL') : new Date().toLocaleDateString('he-IL')}</td>
                       <td style={{ padding: '0.8rem', fontWeight: 'bold', color: '#16a34a' }}>₪{p.amount}</td>
                       <td style={{ padding: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                         <button data-agy-id="orderpaymentsmanager_button_4" onClick={() => setSelectedPaymentDetails(p)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="פרטים נוספים">
@@ -692,7 +748,7 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                   {pendingRefunds.map((r, idx) => (
                     <tr key={idx} style={{ borderBottom: '1px solid #bfdbfe', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#eff6ff'} onMouseOut={e => e.currentTarget.style.backgroundColor='white'}>
                       <td style={{ padding: '0.8rem', color: '#1e40af', fontWeight: '500' }}>{r.reason || 'ללא סיבה'}</td>
-                      <td style={{ padding: '0.8rem', color: '#1d4ed8', fontSize: '0.85em' }}>{new Date(r.createdAt).toLocaleDateString('he-IL')}</td>
+                      <td style={{ padding: '0.8rem', color: '#1d4ed8', fontSize: '0.85em' }}>{r.createdAt ? new Date(r.createdAt).toLocaleDateString('he-IL') : new Date().toLocaleDateString('he-IL')}</td>
                       <td style={{ padding: '0.8rem', fontWeight: 'bold', color: '#2563eb' }}>₪{r.amount}</td>
                       <td style={{ padding: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
                         <button data-agy-id={`approve_refund_${idx}`} onClick={() => approveRefund(r.id)} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.9rem', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#2563eb'} onMouseOut={e => e.currentTarget.style.backgroundColor='#3b82f6'}>
@@ -798,20 +854,21 @@ export default function OrderPaymentsManager({ orderId, obligations = [], paymen
                   type="text" 
                   value={creditCardData.cardNumber} 
                   onChange={handleCardNumberChange}
-                  placeholder="הכנס מספר כרטיס ללא רווחים"
+                  placeholder="0000 0000 0000 0000"
+                  maxLength="19"
                   style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} 
                 />
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>תוקף (MMYY):</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>תוקף (MM/YY):</label>
                   <input data-agy-id="orderpaymentsmanager_input_14" 
                     type="text" 
                     value={creditCardData.tokef} 
-                    onChange={e => setCreditCardData({...creditCardData, tokef: e.target.value})}
-                    placeholder="1225"
-                    maxLength="4"
+                    onChange={handleTokefChange}
+                    placeholder="12/25"
+                    maxLength="5"
                     style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} 
                   />
                 </div>

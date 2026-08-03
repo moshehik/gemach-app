@@ -29,6 +29,9 @@ export async function chargeNedarimPlus({
   installments = 1,
   notes = '',
   isKeva = false,
+  zeout = '',
+  cvv = '',
+  email = '',
 }) {
   const endpoint = isKeva ? 'DebitKeva.aspx' : 'DebitCard.aspx';
   const url = `https://www.matara.pro/nedarimplus/V6/Files/WebServices/${endpoint}`;
@@ -45,6 +48,12 @@ export async function chargeNedarimPlus({
     Tashloumim: installments.toString(),
     Groupe: '', // Optional
     Avour: notes,
+    Token: '',
+    CVV: cvv || '',
+    Zeout: zeout || '',
+    Mail: email || '',
+    Currency: '1',
+    MasofId: 'Online',
   });
 
   try {

@@ -673,6 +673,15 @@ export default function DressesManagement() {
           if (!itemsSort.key) return 0;
           const aVal = a[itemsSort.key] || '';
           const bVal = b[itemsSort.key] || '';
+          
+          const aNum = Number(aVal);
+          const bNum = Number(bVal);
+          if (!isNaN(aNum) && !isNaN(bNum) && aVal !== '' && bVal !== '') {
+            if (aNum < bNum) return itemsSort.direction === 'asc' ? -1 : 1;
+            if (aNum > bNum) return itemsSort.direction === 'asc' ? 1 : -1;
+            return 0;
+          }
+          
           if (aVal < bVal) return itemsSort.direction === 'asc' ? -1 : 1;
           if (aVal > bVal) return itemsSort.direction === 'asc' ? 1 : -1;
           return 0;

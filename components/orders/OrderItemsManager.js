@@ -60,6 +60,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
           items: activeItems,
           eventDate: order.eventDate,
           isAbroad: order.isAbroad,
+          isWeekdayEvent: order.isWeekdayEvent,
           fromDate: order.fromDate,
           toDate: order.toDate,
           orderId: order.orderId
@@ -196,6 +197,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
             items: itemsToValidate,
             eventDate: order.eventDate,
             isAbroad: order.isAbroad,
+            isWeekdayEvent: order.isWeekdayEvent,
             fromDate: order.fromDate,
             toDate: order.toDate,
             orderId: order.orderId

@@ -12,6 +12,7 @@ import OrderPaymentsManager from '../../../components/orders/OrderPaymentsManage
 import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../../lib/orderStatus';
 import HistoryViewer from '../../../components/HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { addHistory } from '../../../lib/historyManager';
 
 export default function OrderDetailsPage({ params }) {
   const router = useRouter();
@@ -96,6 +97,14 @@ export default function OrderDetailsPage({ params }) {
         setPayments(data.payments || []);
         setRefunds(data.refunds || []);
         setLoading(false);
+        
+        // Add to history
+        addHistory({ 
+          type: 'order', 
+          id: data.orderId, 
+          name: `הזמנה #${data.orderId}`, 
+          subtext: data.customer ? `${data.customer.firstName} ${data.customer.lastName}` : '' 
+        });
       })
       .catch(err => {
         console.error(err);
@@ -734,6 +743,8 @@ export default function OrderDetailsPage({ params }) {
               <div id="payments">
                 <OrderPaymentsManager data-element-name="רכיב_page_25" 
                   orderId={order.orderId}
+                  items={items}
+                  order={order}
                   obligations={obligations} 
                   payments={payments} 
                   refunds={refunds}

@@ -7,6 +7,7 @@ import HistoryViewer from '@/components/HistoryViewer';
 import SendEmailModal from '@/components/SendEmailModal';
 import { Copy, Mail } from 'lucide-react';
 import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '@/lib/orderStatus';
+import { addHistory } from '@/lib/historyManager';
 
 export default function CustomerPage({ params }) {
   const router = useRouter();
@@ -27,7 +28,15 @@ export default function CustomerPage({ params }) {
       .then(res => res.json())
       .then(data => {
         if (data.error) router.push('/customers');
-        else setCustomer(data);
+        else {
+          setCustomer(data);
+          addHistory({
+            type: 'customer',
+            id: data.id,
+            name: `לקוח: ${[data.firstName, data.lastName].filter(n => n && String(n).toLowerCase() !== 'null').join(' ')}`,
+            subtext: data.phone1 || ''
+          });
+        }
         
         // Fetch refunds for customer
         return fetch(`/api/refunds?customerId=${id}`);

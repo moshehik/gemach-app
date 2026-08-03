@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { ChevronDown, ChevronUp, PackageCheck, PackageOpen, Scan, Undo2, XCircle } from 'lucide-react';
+import { getHebrewDateString } from '../../lib/hebrewDate';
 
 export default function OrderRentalsManager({ items, onItemsChange, order, totalRequired, totalPaid }) {
   const [isExpanded, setIsExpanded] = useState(true);
@@ -246,8 +247,8 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
 
                     const computedBarcode = item.dressItem?.barcode || item.barcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : null);
                     const barcode = computedBarcode || 'לא שויך';
-                    const takenDate = item.takenDate ? new Date(item.takenDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }) : '-';
-                    const returnDate = item.returnDate ? new Date(item.returnDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' }) : '-';
+                    const takenDate = item.takenDate ? `${getHebrewDateString(item.takenDate)} ${new Date(item.takenDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : '-';
+                    const returnDate = item.returnDate ? `${getHebrewDateString(item.returnDate)} ${new Date(item.returnDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : '-';
                     
                     return (
                       <tr key={item.id || index} style={rowStyle} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isRented ? '#dbeafe' : isReturned ? '#dcfce7' : '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'white'}>

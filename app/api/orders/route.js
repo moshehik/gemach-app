@@ -195,6 +195,7 @@ export async function GET(request) {
       where: fullOrdersWhere,
       select: {
         orderId: true,
+        legacyId: true,
         customerId: true,
         totalAmount: true,
         paymentDate: true,
@@ -283,12 +284,11 @@ export async function GET(request) {
     const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
 
     const formattedOrders = sortedOrders.map(order => {
-      const calculatedTotalAmount = order.obligations?.length > 0 
-        ? order.obligations.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0) 
-        : (order.totalAmount || 0);
+      const calculatedTotalAmount = order.totalAmount || 0;
 
       return {
         orderId: order.orderId,
+        legacyId: order.legacyId,
         customerId: order.customerId,
         totalAmount: calculatedTotalAmount,
         totalPaid: order.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0,
@@ -402,6 +402,7 @@ export async function POST(request) {
         items: {
           create: data.items?.map(item => ({
             dressItemId: item.sampleItemId,
+            cartStatus: (data.payment && (data.payment.amount > 0 || data.payment.method === 'יציאה באישור מנהל')) || data.totalAmount === 0 ? 'confirmed' : 'pending',
             sizeText: item.sizeText,
             quantity: item.quantity || 1,
             basePrice: item.basePrice ? parseFloat(item.basePrice) : 0,
