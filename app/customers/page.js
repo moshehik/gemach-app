@@ -188,7 +188,7 @@ export default function CustomersPage() {
     cursor: 'pointer', 
     userSelect: 'none',
     position: 'sticky',
-    top: 'var(--navbar-height, 72px)',
+    top: 0,
     zIndex: 35,
     backgroundColor: 'var(--sticky-header-bg, #ffffff)',
     boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)',
@@ -197,7 +197,8 @@ export default function CustomersPage() {
 
   return (
     <>
-    <main data-agy-id="customers_main_container" className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
+    <main data-agy-id="customers_main_container" className="container animate-fade-in page-shell">
+      <div className="page-scroll">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
         <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול לקוחות</h1>
         <div style={{ color: 'var(--text-muted)', fontSize: '1rem', fontWeight: '500' }}>סה"כ רשומות: {totalCount}</div>
@@ -300,14 +301,26 @@ export default function CustomersPage() {
               </tbody>
               </table>
             </div>
+          </>
+        )}
+      </div>
 
-            {/* Sticky Bottom Bar */}
-            <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 -1rem -1rem -1rem', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
-              <div style={{ fontWeight: 'bold' }}>סה"כ שורות מוצגות: {customers.length}</div>
-              
+      <StatisticsModal data-element-name="רכיב_page_22"
+        isOpen={!!showStatistics}
+        onClose={() => setShowStatistics(false)}
+        pageContext="customers"
+        contextQuery={aiQueryUsed}
+        position={typeof showStatistics === 'object' ? showStatistics : null}
+      />
+      </div>
+
+      {/* סיכום הרשומות ועימוד — מוצמד תמיד לתחתית המסך */}
+      <div className="page-footer-bar">
+        <div className="page-footer-summary">סה"כ שורות מוצגות: {customers.length}</div>
+
               {totalPages > 1 && (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
-                  <button data-element-name="כפתור_page_19" 
+                <div className="page-footer-pager">
+                  <button data-element-name="כפתור_page_19"
                     data-agy-id="prev_page_btn"
                     className="btn btn-outline"
                     disabled={page <= 1 || isAiModeActive} 
@@ -344,18 +357,7 @@ export default function CustomersPage() {
                   </button>
                 </div>
               )}
-            </div>
-          </>
-        )}
       </div>
-
-      <StatisticsModal data-element-name="רכיב_page_22" 
-        isOpen={!!showStatistics} 
-        onClose={() => setShowStatistics(false)} 
-        pageContext="customers"
-        contextQuery={aiQueryUsed}
-        position={typeof showStatistics === 'object' ? showStatistics : null}
-      />
     </main>
       {showAdvSearch && (
         <div data-element-name="לחיץ_page_23" data-agy-id="adv_search_modal_overlay" className="modal-overlay" onClick={() => setShowAdvSearch(false)} style={{ zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }}>

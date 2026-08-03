@@ -76,6 +76,11 @@ export default function OrdersPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [filterStatus, setFilterStatus] = useState('all');
 
+  // How long a pending cart holds its items. The server releases them back to the pool
+  // based on the `inventory_hold_minutes` setting, so hardcoding 15 here made the countdown
+  // and the pending/expired badges disagree with reality whenever that setting was changed.
+  const [holdMinutes, setHoldMinutes] = useState(15);
+
   const [advFilters, setAdvFilters] = useState({
     customerName: '', customerPhone: '', customerCity: '', 
     advOrderId: '', itemDetails: '', advModelName: '',
@@ -92,6 +97,19 @@ export default function OrdersPage() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiQueryUsed, setAiQueryUsed] = useState('');
   const [isAiModeActive, setIsAiModeActive] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        const setting = Array.isArray(data) ? data.find(s => s.key === 'inventory_hold_minutes') : null;
+        const parsed = parseInt(setting?.value, 10);
+        if (!cancelled && !isNaN(parsed) && parsed > 0) setHoldMinutes(parsed);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   const fetchOrders = useCallback(async (isPrefetch = false, targetPage = page) => {
     if (!isPrefetch) setLoading(true);
@@ -142,10 +160,10 @@ export default function OrdersPage() {
         const now = Date.now();
         return [...list].sort((a, b) => {
           const aIsPaid = (a.totalPaid >= a.totalAmount && a.totalAmount > 0) || a.totalPaid > 0 || a.status === 'שולם' || a.status === 'שולם חלקי';
-          const aPending = !a.legacyId && !aIsPaid && a.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + 15 * 60000 > now);
+          const aPending = !a.legacyId && !aIsPaid && a.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + holdMinutes * 60000 > now);
           
           const bIsPaid = (b.totalPaid >= b.totalAmount && b.totalAmount > 0) || b.totalPaid > 0 || b.status === 'שולם' || b.status === 'שולם חלקי';
-          const bPending = !b.legacyId && !bIsPaid && b.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + 15 * 60000 > now);
+          const bPending = !b.legacyId && !bIsPaid && b.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + holdMinutes * 60000 > now);
           if (aPending && !bPending) return -1;
           if (!aPending && bPending) return 1;
           return 0;
@@ -163,7 +181,7 @@ export default function OrdersPage() {
     } finally {
       if (!isPrefetch) setLoading(false);
     }
-  }, [page, limit, search, sort, order, advFilters, filterStatus]);
+  }, [page, limit, search, sort, order, advFilters, filterStatus, holdMinutes]);
 
   useEffect(() => {
     fetchOrders(false, page);
@@ -298,7 +316,7 @@ export default function OrdersPage() {
     whiteSpace: 'nowrap', 
     fontSize: 'clamp(0.75rem, 1.5vw, 1rem)',
     position: 'sticky',
-    top: 'var(--navbar-height, 72px)',
+    top: 0,
     zIndex: 35,
     backgroundColor: 'var(--sticky-header-bg, #ffffff)',
     boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)',
@@ -306,7 +324,8 @@ export default function OrdersPage() {
   };
 
   return (
-    <main data-agy-id="orders_page_main_1" className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
+    <main data-agy-id="orders_page_main_1" className="container animate-fade-in page-shell">
+      <div className="page-scroll">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול הזמנות</h1>
         
@@ -609,8 +628,8 @@ export default function OrdersPage() {
                     {orders.map(order => {
                       const isPaid = (order.totalPaid >= order.totalAmount && order.totalAmount > 0) || order.totalPaid > 0 || order.status === 'שולם' || order.status === 'שולם חלקי';
                       const pendingItem = (!order.legacyId && !isPaid) ? order.items?.find(i => i.cartStatus === 'pending') : null;
-                      const isPending = pendingItem && new Date(pendingItem.cartStatusDate).getTime() + 15 * 60000 > Date.now();
-                      const isExpiredPending = pendingItem && new Date(pendingItem.cartStatusDate).getTime() + 15 * 60000 <= Date.now();
+                      const isPending = pendingItem && new Date(pendingItem.cartStatusDate).getTime() + holdMinutes * 60000 > Date.now();
+                      const isExpiredPending = pendingItem && new Date(pendingItem.cartStatusDate).getTime() + holdMinutes * 60000 <= Date.now();
                       
                       const isUnpaid = order.totalPaid < order.totalAmount && order.totalAmount > 0;
                       const hasCustomSpacing = order.customSpacing !== null && order.customSpacing !== undefined;
@@ -641,7 +660,7 @@ export default function OrdersPage() {
                         <td style={{ padding: '1rem', fontWeight: (isUnpaid || isPending) ? 'bold' : 'normal', color: isUnpaid ? 'var(--error-color, #b91c1c)' : (isPending ? '#ea580c' : 'inherit') }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                             <span>#{order.orderId}</span>
-                            {pendingItem && <PendingTimer cartStatusDate={pendingItem.cartStatusDate} />}
+                            {pendingItem && <PendingTimer cartStatusDate={pendingItem.cartStatusDate} holdMinutes={holdMinutes} />}
                             <div 
                               className="detailsIcon"
                               style={{ marginRight: 'auto' }}
@@ -725,25 +744,26 @@ export default function OrdersPage() {
                   </tbody>
                   </table>
                 </div>
-                
-                {/* Sticky Bottom Bar */}
-                <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 -1rem -1rem -1rem', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
-                  <div style={{ fontWeight: 'bold' }}>סה"כ שורות מוצגות: {orders.length}</div>
-                  
-                  {totalPages > 1 && (
-                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
-                      <button data-element-name="כפתור_page_62" data-agy-id="orders_page_button_22" className="btn btn-outline" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הקודם</button>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input data-element-name="שדה_page_63" data-agy-id="orders_page_input_21" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} disabled={isAiModeActive} /> מתוך {totalPages}</span>
-                      <button data-element-name="כפתור_page_64" data-agy-id="orders_page_button_20" className="btn btn-outline" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>הבא &gt;</button>
-                    </div>
-                  )}
-                </div>
               </>
             )}
           </div>
         </div>
       </div>
-      
+      </div>
+
+      {/* סיכום הרשומות ועימוד — מוצמד תמיד לתחתית המסך */}
+      <div className="page-footer-bar">
+        <div className="page-footer-summary">סה"כ שורות מוצגות: {orders.length}</div>
+
+        {totalPages > 1 && (
+          <div className="page-footer-pager">
+            <button data-element-name="כפתור_page_62" data-agy-id="orders_page_button_22" className="btn btn-outline" disabled={page <= 1 || isAiModeActive} onClick={() => setPage(p => p - 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הקודם</button>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>עמוד <input data-element-name="שדה_page_63" data-agy-id="orders_page_input_21" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} disabled={isAiModeActive} /> מתוך {totalPages}</span>
+            <button data-element-name="כפתור_page_64" data-agy-id="orders_page_button_20" className="btn btn-outline" disabled={page >= totalPages || isAiModeActive} onClick={() => setPage(p => p + 1)} style={{ padding: '0.5rem 1rem' }}>הבא &gt;</button>
+          </div>
+        )}
+      </div>
+
       {/* Modals */}
       <CapacitySearchModal data-element-name="רכיב_page_65" 
         isOpen={showCapacitySearch} 

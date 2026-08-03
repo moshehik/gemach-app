@@ -204,7 +204,8 @@ export default function RefundsPage() {
   });
 
   return (
-    <main data-agy-id="refunds_page_main" className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1400px' }}>
+    <main data-agy-id="refunds_page_main" className="container animate-fade-in page-shell" style={{ maxWidth: '1400px' }}>
+      <div className="page-scroll">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: activeTab === 'debts' ? '#e11d48' : 'var(--primary-color)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '2rem', fontWeight: 'bold' }}>
           {activeTab === 'refunds' ? <Coins data-element-name="רכיב_page_1" size={32} /> : <AlertCircle size={32} />}
@@ -298,14 +299,14 @@ export default function RefundsPage() {
             <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
               <thead>
                 <tr style={{ background: 'var(--sticky-header-bg, #ffffff)', color: 'var(--text-main)', borderBottom: '2px solid var(--border-color)' }}>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>הזמנה</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סכום</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פרטי בנק</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>אשראי מקורי</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סטטוס</th>
-                  <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פעולות</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>הזמנה</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סכום</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פרטי בנק</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>אשראי מקורי</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סטטוס</th>
+                  <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פעולות</th>
                 </tr>
               </thead>
               <tbody>
@@ -447,12 +448,12 @@ export default function RefundsPage() {
                 <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
                   <thead>
                     <tr style={{ background: 'var(--sticky-header-bg, #ffffff)', color: '#be123c', borderBottom: '2px solid #fecdd3' }}>
-                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך אירוע</th>
-                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
-                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>הזמנה</th>
-                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סה"כ להזמנה</th>
-                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>שולם</th>
-                      <th style={{ padding: '0.6rem 0.75rem', color: '#e11d48', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>יתרת חוב</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך אירוע</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>הזמנה</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סה"כ להזמנה</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>שולם</th>
+                      <th style={{ padding: '0.6rem 0.75rem', color: '#e11d48', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>יתרת חוב</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -495,6 +496,16 @@ export default function RefundsPage() {
           </div>
         </>
       )}
+      </div>
+
+      {/* סיכום הרשומות — מוצמד תמיד לתחתית המסך */}
+      <div className="page-footer-bar">
+        <div className="page-footer-summary">
+          {activeTab === 'refunds'
+            ? `סה"כ שורות מוצגות: ${loading ? '...' : filteredRefunds.length}`
+            : `סה"כ שורות מוצגות: ${debtsLoading ? '...' : filteredDebts.length}`}
+        </div>
+      </div>
 
       <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
     </main>

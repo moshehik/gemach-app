@@ -167,7 +167,7 @@ export default function EmployeesPage() {
   }).filter(e => e.daysCount > 0);
 
   return (
-    <main data-agy-id="employees-page-main" className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
+    <main data-agy-id="employees-page-main" className="container animate-fade-in page-shell">
       
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
@@ -188,6 +188,7 @@ export default function EmployeesPage() {
         }
       `}} />
 
+      <div className="page-scroll">
       <div className="no-print">
         {showStatistics && <StatisticsModal data-element-name="רכיב_page_1" isOpen={!!showStatistics} onClose={() => setShowStatistics(false)} pageContext="employees" position={typeof showStatistics === 'object' ? showStatistics : null} />}
         
@@ -303,13 +304,6 @@ export default function EmployeesPage() {
                   </tbody>
                 </table>
                 </div>
-                
-                {/* Sticky Bottom Bar */}
-                {filteredEmployees.length > 0 && (
-                  <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 -1rem -1rem -1rem', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
-                    <div style={{ fontWeight: 'bold', width: '100%', textAlign: 'center' }}>סה"כ שורות מוצגות: {filteredEmployees.length}</div>
-                  </div>
-                )}
                 </>
               )}
             </div>
@@ -418,13 +412,6 @@ export default function EmployeesPage() {
                 </tbody>
               </table>
               </div>
-              
-              {/* Sticky Bottom Bar */}
-              {!loadingAttendance && processedAttendance.length > 0 && (
-                <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 -1rem -1rem -1rem', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
-                  <div style={{ fontWeight: 'bold', width: '100%', textAlign: 'center' }}>סה"כ שורות מוצגות: {processedAttendance.length}</div>
-                </div>
-              )}
             </div>
           </div>
         )}
@@ -502,6 +489,16 @@ export default function EmployeesPage() {
           })}
         </div>
       )}
+      </div>
+
+      {/* סיכום הרשומות — מוצמד תמיד לתחתית המסך */}
+      <div className="page-footer-bar no-print">
+        <div className="page-footer-summary" style={{ width: '100%', textAlign: 'center' }}>
+          {activeTab === 'list'
+            ? `סה"כ שורות מוצגות: ${loading ? '...' : filteredEmployees.length}`
+            : `סה"כ שורות מוצגות: ${loadingAttendance ? '...' : processedAttendance.length}`}
+        </div>
+      </div>
     </main>
   );
 }

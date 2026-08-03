@@ -93,7 +93,8 @@ export default function RecalculationsPage() {
   };
 
   return (
-    <div className="container" style={{ padding: '20px' }}>
+    <div className="container page-shell" style={{ padding: '0 20px' }}>
+      <div className="page-scroll">
       <h1 style={{ marginBottom: '20px' }}>חישובים והתראות</h1>
       <div className="card" style={{ padding: '20px', marginBottom: '20px' }}>
         <h2 style={{ fontSize: '1.2rem', marginBottom: '15px' }}>סריקת פערים לפי טווח תאריכים</h2>
@@ -122,7 +123,7 @@ export default function RecalculationsPage() {
           
           {results.length > 0 ? (
             <>
-              <div style={{ overflowX: 'auto', marginBottom: '20px' }}>
+              <div style={{ overflow: 'visible', marginBottom: '20px' }}>
                 <table className="table" style={{ width: '100%', textAlign: 'right' }}>
                   <thead>
                     <tr style={{ background: 'var(--element-bg)' }}>
@@ -213,6 +214,7 @@ export default function RecalculationsPage() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

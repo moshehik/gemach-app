@@ -157,9 +157,14 @@ export default function OrderDetailsPage({ params }) {
   const handleSave = async (overrideOrder = null) => {
     setSaving(true);
     setSaveMessage('');
-    
+
     const currentOrder = overrideOrder || order;
-    
+    if (!currentOrder) {
+      setSaving(false);
+      alert('שגיאה: נתוני ההזמנה לא טוענו כראוי');
+      return;
+    }
+
     // VALIDATE REPAIRS
     for (const item of items) {
       if (!item.isDeleted) {
@@ -256,7 +261,19 @@ export default function OrderDetailsPage({ params }) {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...currentOrder,
+          orderId: currentOrder.orderId,
+          customerId: currentOrder.customerId,
+          eventDate: currentOrder.eventDate,
+          eventDateHebrew: currentOrder.eventDateHebrew,
+          returnDate: currentOrder.returnDate,
+          isAbroad: currentOrder.isAbroad,
+          isWeekdayEvent: currentOrder.isWeekdayEvent,
+          fromDate: currentOrder.fromDate,
+          toDate: currentOrder.toDate,
+          notes: currentOrder.notes,
+          status: currentOrder.status,
+          hasSignedRegulations: currentOrder.hasSignedRegulations,
+          updatedAt: currentOrder.updatedAt,
           items: items,
           obligations: obligations,
           payments: payments,

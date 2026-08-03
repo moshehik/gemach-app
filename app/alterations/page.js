@@ -220,8 +220,9 @@ export default function AlterationsPage() {
   };
 
   return (
-    <main data-agy-id="alterations-page-main" className="container animate-fade-in" style={{ padding: '2rem 1rem', minHeight: '80vh' }}>
-      <div style={{ 
+    <main data-agy-id="alterations-page-main" className="container animate-fade-in page-shell" style={{ padding: '0 1rem' }}>
+      <div className="page-scroll">
+      <div style={{
         position: 'relative',
         marginBottom: '1rem', padding: '1.5rem', 
         background: 'var(--card-bg)', 
@@ -390,13 +391,13 @@ export default function AlterationsPage() {
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
               <thead>
                 <tr style={{ background: 'var(--sticky-header-bg, #ffffff)', borderBottom: '2px solid var(--border-color)' }}>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך אירוע</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>דגם שמלה</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>מידה</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פירוט תיקונים</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סטטוס</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פעולות</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך אירוע</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>דגם שמלה</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>מידה</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פירוט תיקונים</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סטטוס</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פעולות</th>
                 </tr>
               </thead>
               <tbody>
@@ -486,21 +487,22 @@ export default function AlterationsPage() {
               </tbody>
             </table>
           </div>
-          
-          {/* Bottom Bar - Floating/Sticky */}
-          <div style={{ position: 'sticky', bottom: '0', background: 'var(--card-bg)', padding: '0.75rem 1.5rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderRadius: '0 0 12px 12px', flexWrap: 'wrap', gap: '1rem', boxShadow: '0 -4px 12px rgba(0,0,0,0.06)', zIndex: 10, margin: '0' }}>
-            <div style={{ fontWeight: 'bold' }}>סה"כ מוצג בעמוד: {items.length} | סה"כ תיקונים תואמים: {totalCount}</div>
-            
-            {totalPages > 1 && (
-              <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem' }}>
-                <button data-element-name="כפתור_page_22" className="btn btn-outline" disabled={page <= 1 } onClick={() => setPage(p => p - 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>&lt; הקודם</button>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>עמוד <input data-element-name="שדה_page_23" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '50px', padding: '0.2rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages}</span>
-                <button data-element-name="כפתור_page_24" className="btn btn-outline" disabled={page >= totalPages } onClick={() => setPage(p => p + 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>הבא &gt;</button>
-              </div>
-            )}
-          </div>
         </div>
       )}
+      </div>
+
+      {/* סיכום הרשומות ועימוד — מוצמד תמיד לתחתית המסך */}
+      <div className="page-footer-bar">
+        <div className="page-footer-summary">סה"כ מוצג בעמוד: {items.length} | סה"כ תיקונים תואמים: {totalCount}</div>
+
+        {totalPages > 1 && (
+          <div className="page-footer-pager">
+            <button data-element-name="כפתור_page_22" className="btn btn-outline" disabled={page <= 1 } onClick={() => setPage(p => p - 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>&lt; הקודם</button>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>עמוד <input data-element-name="שדה_page_23" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '50px', padding: '0.2rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages}</span>
+            <button data-element-name="כפתור_page_24" className="btn btn-outline" disabled={page >= totalPages } onClick={() => setPage(p => p + 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>הבא &gt;</button>
+          </div>
+        )}
+      </div>
 
       {isPrintWizardOpen && (
         <PrintWizardModal data-element-name="רכיב_page_25" 

@@ -21,6 +21,22 @@ export async function GET(request) {
     if (entityType) where.entityType = entityType;
     if (entityId) where.entityId = entityId;
     if (action) where.action = action;
+
+    // An Order is identified two different ways in this table: the automatic audit hook in
+    // app/lib/prisma.js stores `result.id` (the UUID), while rows written by hand - such as
+    // DEBT_APPROVED in PUT /api/orders/[id] - store the human-readable orderId. The order
+    // screen asks by orderId, so it used to match none of the automatic rows. Accept either
+    // form and look up its counterpart so a single request returns the whole history.
+    if (entityType === 'Order' && entityId) {
+      const isNumericId = /^\d+$/.test(entityId);
+      const order = await prisma.order.findUnique({
+        where: isNumericId ? { orderId: parseInt(entityId, 10) } : { id: entityId },
+        select: { id: true, orderId: true }
+      });
+      if (order) {
+        where.entityId = { in: [order.id, String(order.orderId)] };
+      }
+    }
     
     if (startDate || endDate) {
       where.createdAt = {};

@@ -50,7 +50,8 @@ export async function POST(request, { params }) {
         skipWeekends,
         newOrderIsAbroad,
         targetMaxDate,
-        parsedId
+        parsedId,
+        order.customSpacing ?? null
       );
 
       const sizeAvail = availability.find(a => (a.sizeText || a.size || 'כללי') === itemData.sizeText);

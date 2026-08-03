@@ -183,7 +183,7 @@ export default function HistoryPage() {
     userSelect: 'none', 
     textAlign: 'right',
     position: 'sticky',
-    top: 'var(--navbar-height, 72px)',
+    top: 0,
     zIndex: 35,
     backgroundColor: 'var(--sticky-header-bg, #ffffff)',
     boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)',
@@ -191,7 +191,8 @@ export default function HistoryPage() {
   };
 
   return (
-    <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
+    <main className="container animate-fade-in page-shell">
+      <div className="page-scroll">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
         <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול היסטוריית שאילתות ו-API</h1>
       </div>
@@ -439,31 +440,36 @@ export default function HistoryPage() {
                 ))}
               </tbody>
             </table>
-
-            {/* Pagination Controls */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
-              <button data-element-name="כפתור_page_16" 
-                className="btn btn-outline"
-                disabled={page >= totalPages} 
-                onClick={() => setPage(p => p + 1)}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                הבא
-              </button>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                עמוד <input data-element-name="שדה_page_17" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }}  /> מתוך {totalPages}
-              </span>
-              <button data-element-name="כפתור_page_18" 
-                className="btn btn-outline"
-                disabled={page <= 1} 
-                onClick={() => setPage(p => p - 1)}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                הקודם
-              </button>
-            </div>
           </>
         )}
+      </div>
+      </div>
+
+      {/* סיכום הרשומות ועימוד — מוצמד תמיד לתחתית המסך */}
+      <div className="page-footer-bar">
+        <div className="page-footer-summary">סה"כ שורות מוצגות: {logs.length}</div>
+
+        <div className="page-footer-pager">
+          <button data-element-name="כפתור_page_16"
+            className="btn btn-outline"
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => p + 1)}
+            style={{ padding: '0.5rem 1rem' }}
+          >
+            הבא
+          </button>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            עמוד <input data-element-name="שדה_page_17" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }}  /> מתוך {totalPages}
+          </span>
+          <button data-element-name="כפתור_page_18"
+            className="btn btn-outline"
+            disabled={page <= 1}
+            onClick={() => setPage(p => p - 1)}
+            style={{ padding: '0.5rem 1rem' }}
+          >
+            הקודם
+          </button>
+        </div>
       </div>
 
       {/* Delete Confirmation Modal */}

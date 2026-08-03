@@ -431,15 +431,43 @@ export async function POST(request) {
     const token = cookieStore.get('auth_token');
     const loggedInEmployeeId = token?.value || null;
 
-    // Generate next orderId
-    const maxOrder = await prisma.order.findFirst({
-      orderBy: { orderId: 'desc' }
-    });
-    const nextOrderId = maxOrder ? maxOrder.orderId + 1 : 1;
+    // This route creates orders; editing one goes through PUT /api/orders/[id], which
+    // updates items in place. Letting a caller aim a create at an existing order meant
+    // wiping and re-inserting its items, which threw away their rental history. The order
+    // number is always allocated here too - honouring a client-supplied one is how orders
+    // ended up numbered far outside the real sequence, dragging every later number with them.
+    if (data.orderId) {
+      const alreadyExists = await prisma.order.findUnique({
+        where: { orderId: parseInt(data.orderId, 10) },
+        select: { orderId: true }
+      });
+      if (alreadyExists) {
+        return NextResponse.json(
+          { error: `הזמנה #${alreadyExists.orderId} כבר קיימת. לעדכון הזמנה קיימת יש להשתמש במסך עריכת ההזמנה.` },
+          { status: 409 }
+        );
+      }
+    }
 
     const activeItems = data.items && Array.isArray(data.items) ? data.items.filter(i => !i.isDeleted) : [];
     const isCustomDuration = data.isAbroad || data.isWeekdayEvent;
     const hasDates = isCustomDuration ? (data.fromDate && data.toDate) : !!data.eventDate;
+
+    // The client sends the collected payments as `paymentsList`; older callers sent a single
+    // `payment` object. Derive status/cartStatus from whichever arrived - reading only
+    // `data.payment` left every fully-paid order as 'חדש' with 'pending' items, which the
+    // inventory hold window (inventory_hold_minutes) then released back to the pool.
+    const submittedPayments = (data.paymentsList && data.paymentsList.length > 0)
+      ? data.paymentsList
+      : (data.payment ? [data.payment] : []);
+    const totalPaidAmount = submittedPayments.reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+    const hasManagerApproval = submittedPayments.some(p => (p.method || p.paymentMethod) === 'יציאה באישור מנהל');
+    const orderTotalAmount = data.totalAmount ? parseFloat(data.totalAmount) : 0;
+    const isOrderConfirmed = totalPaidAmount > 0 || hasManagerApproval || orderTotalAmount === 0;
+    const derivedCartStatus = isOrderConfirmed ? 'confirmed' : 'pending';
+    const derivedStatus = (orderTotalAmount > 0 && totalPaidAmount >= orderTotalAmount)
+      ? 'שולם'
+      : (totalPaidAmount > 0 ? 'שולם חלקי' : (data.status || 'חדש'));
 
     if (activeItems.length > 0 && hasDates) {
       const validationResult = await validateOrderItemsAvailability(
@@ -448,7 +476,8 @@ export async function POST(request) {
         isCustomDuration,
         data.fromDate,
         data.toDate,
-        data.orderId || null
+        data.orderId || null,
+        data.customSpacing ?? null
       );
 
       if (validationResult.error) {
@@ -463,77 +492,8 @@ export async function POST(request) {
       }
     }
 
-    const orderIdToUse = data.orderId || nextOrderId;
-    const existingOrder = data.orderId ? await prisma.order.findUnique({ where: { orderId: data.orderId } }) : null;
-
-    let order;
-    if (existingOrder) {
-      order = await prisma.$transaction(async (tx) => {
-        const updated = await tx.order.update({
-          where: { orderId: orderIdToUse },
-          data: {
-            customerId: data.customerId || null,
-            totalAmount: data.totalAmount ? parseFloat(data.totalAmount) : null,
-            eventDate: data.isAbroad && data.fromDate ? new Date(data.fromDate) : (data.eventDate ? new Date(data.eventDate) : null),
-            eventDateHebrew: data.eventDateHebrew || (data.eventDate ? getHebrewDateString(data.eventDate) : null),
-            returnDate: data.returnDate ? new Date(data.returnDate) : null,
-            employeeId: data.employeeId || loggedInEmployeeId || null,
-            isAbroad: data.isAbroad ?? false,
-            isWeekdayEvent: data.isWeekdayEvent ?? false,
-            fromDate: data.fromDate ? new Date(data.fromDate) : null,
-            toDate: data.toDate ? new Date(data.toDate) : null,
-            notes: data.notes || '',
-            status: data.payment?.amount >= data.totalAmount ? 'שולם' : (data.payment?.amount > 0 ? 'שולם חלקי' : (data.status || 'חדש'))
-          }
-        });
-
-        await tx.orderItem.deleteMany({ where: { orderId: orderIdToUse } });
-        
-        if (data.items && data.items.length > 0) {
-          await tx.orderItem.createMany({
-            data: data.items.map(item => ({
-              orderId: orderIdToUse,
-              dressItemId: item.sampleItemId,
-              cartStatus: (data.payment && (data.payment.amount > 0 || data.payment.method === 'יציאה באישור מנהל')) || data.totalAmount === 0 ? 'confirmed' : 'pending',
-              sizeText: item.sizeText,
-              quantity: item.quantity || 1,
-              basePrice: item.basePrice ? parseFloat(item.basePrice) : 0,
-              finalPrice: item.finalPrice ? parseFloat(item.finalPrice) : 0,
-              repairs: item.repairs || '',
-              neckAlteration: item.neckAlteration ? 1 : 0,
-              sleeveAlteration: item.sleeveAlteration ? 1 : 0,
-              lengthAlteration: item.lengthAlteration ? String(item.lengthAlteration) : '',
-              alterationDetails: item.repairs || ''
-            }))
-          });
-        }
-
-        if (data.paymentsList && data.paymentsList.length > 0) {
-          await tx.payment.createMany({
-            data: data.paymentsList.map(p => ({
-              orderId: orderIdToUse,
-              amount: parseFloat(p.amount),
-              paymentMethod: p.method || p.paymentMethod,
-              notes: p.notes || '',
-              customerId: data.customerId ? data.customerId : null
-            }))
-          });
-        } else if (data.payment && (data.payment.amount > 0 || data.payment.method === 'יציאה באישור מנהל')) {
-          await tx.payment.create({
-            data: {
-              orderId: orderIdToUse,
-              amount: parseFloat(data.payment.amount),
-              paymentMethod: data.payment.method,
-              notes: data.payment.notes || '',
-              customerId: data.customerId ? data.customerId : null
-            }
-          });
-        }
-
-        return updated;
-      });
-    } else {
-      order = await prisma.order.create({
+    const createOrderWithId = (orderIdToUse) =>
+      prisma.order.create({
         data: {
           orderId: orderIdToUse,
           customerId: data.customerId || null,
@@ -548,11 +508,11 @@ export async function POST(request) {
           fromDate: data.fromDate ? new Date(data.fromDate) : null,
           toDate: data.toDate ? new Date(data.toDate) : null,
           notes: data.notes || '',
-          status: data.payment?.amount >= data.totalAmount ? 'שולם' : (data.payment?.amount > 0 ? 'שולם חלקי' : (data.status || 'חדש')),
+          status: derivedStatus,
           items: {
             create: data.items?.map(item => ({
               dressItemId: item.sampleItemId,
-              cartStatus: (data.payment && (data.payment.amount > 0 || data.payment.method === 'יציאה באישור מנהל')) || data.totalAmount === 0 ? 'confirmed' : 'pending',
+              cartStatus: derivedCartStatus,
               sizeText: item.sizeText,
               quantity: item.quantity || 1,
               basePrice: item.basePrice ? parseFloat(item.basePrice) : 0,
@@ -585,6 +545,31 @@ export async function POST(request) {
           } : {}))
         }
       });
+
+    // `orderId` is a plain unique Int with no database sequence behind it, so the next
+    // number has to be read and assigned by hand. Two employees saving at the same moment
+    // would both read the same maximum, and the second insert would die on the unique
+    // constraint - which reached the user as a generic "failed to save" message. Re-read
+    // the number and try again instead.
+    let order;
+    for (let attempt = 0; ; attempt += 1) {
+      const maxOrder = await prisma.order.findFirst({
+        orderBy: { orderId: 'desc' },
+        select: { orderId: true }
+      });
+      const nextOrderId = maxOrder ? maxOrder.orderId + 1 : 1;
+
+      try {
+        order = await createOrderWithId(nextOrderId);
+        break;
+      } catch (error) {
+        const target = error?.meta?.target;
+        const hitOrderId = Array.isArray(target)
+          ? target.some(t => String(t).includes('orderId'))
+          : String(target || '').includes('orderId');
+
+        if (error?.code !== 'P2002' || !hitOrderId || attempt >= 4) throw error;
+      }
     }
 
     // Run pricing engine to generate obligations
@@ -602,14 +587,8 @@ export async function POST(request) {
     return NextResponse.json(updatedOrder);
   } catch (error) {
     console.error('Error creating order:', error);
-    const errorDetails = error.message || 'Unknown error';
-    const stack = error.stack ? error.stack.split('\n').slice(0, 3).join(' | ') : '';
     return NextResponse.json(
-      {
-        error: 'Failed to create order',
-        details: errorDetails,
-        context: stack
-      },
+      { error: 'Failed to create order', details: error.message || 'Unknown error' },
       { status: 500 }
     );
   }

@@ -53,7 +53,8 @@ export default function AiHistoryPage() {
   };
 
   return (
-    <div className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
+    <div className="container animate-fade-in page-shell">
+      <div className="page-scroll">
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
         <Link data-element-name="רכיב_page_1" href="/admin" className="btn btn-outline" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderRadius: '8px', textDecoration: 'none' }}>
           <ArrowLeft data-element-name="רכיב_page_2" size={18} /> חזרה
@@ -67,12 +68,12 @@ export default function AiHistoryPage() {
         </button>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', boxShadow: '0 4px 15px rgba(0,0,0,0.05)', overflow: 'visible' }}>
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <h3 style={{ margin: 0, color: 'var(--text-main)' }}>סה"כ שיחות: {total}</h3>
         </div>
 
-        <div style={{ overflowX: 'auto' }}>
+        <div style={{ overflow: 'visible' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
             <thead>
               <tr style={{ background: 'var(--element-bg)', color: 'var(--text-muted)' }}>
@@ -159,9 +160,15 @@ export default function AiHistoryPage() {
           </table>
         </div>
 
-        {/* Pagination */}
+      </div>
+      </div>
+
+      {/* סיכום הרשומות ועימוד — מוצמד תמיד לתחתית המסך */}
+      <div className="page-footer-bar">
+        <div className="page-footer-summary">סה"כ שורות מוצגות: {loading ? '...' : sessions.length} מתוך {total}</div>
+
         {totalPages > 1 && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '1.5rem', gap: '0.5rem', background: 'var(--element-bg)' }}>
+          <div className="page-footer-pager">
             <button data-element-name="כפתור_page_11" disabled={page === 1} onClick={() => setPage(page - 1)} className="btn btn-outline" style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}>הקודם</button>
             <span style={{ display: 'flex', alignItems: 'center', padding: '0 1rem', fontWeight: 'bold', gap: '0.5rem' }}>עמוד <input data-element-name="שדה_page_12" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }} /> מתוך {totalPages}</span>
             <button data-element-name="כפתור_page_13" disabled={page === totalPages} onClick={() => setPage(page + 1)} className="btn btn-outline" style={{ padding: '0.5rem 1rem', borderRadius: '8px' }}>הבא</button>

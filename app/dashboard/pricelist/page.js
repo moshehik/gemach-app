@@ -193,7 +193,8 @@ export default function PricelistManagement() {
   }, {});
 
   return (
-    <div className={styles.pageContainer}>
+    <div className={`${styles.pageContainer} page-shell`}>
+      <div className="page-scroll">
       <div className={styles.header}>
         <h1 className={styles.pageTitle}>ניהול מחירון</h1>
         <div style={{ display: 'flex', gap: '1rem' }}>
@@ -404,6 +405,7 @@ export default function PricelistManagement() {
           ))}
         </>
       )}
+      </div>
     </div>
   );
 }

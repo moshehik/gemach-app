@@ -1554,7 +1554,12 @@ body.hide-ai-features .ai-feature-element { display: none !important; }
 }
 
 /* ==========================================================
-   SMART STICKY TABLE HEADERS FOR MAIN TABS & TABLES
+   שלד עמוד קבוע (APP SHELL)
+   ----------------------------------------------------------
+   כותרת המערכת (נאב-בר) נשארת קבועה למעלה.
+   כותרות הטאב (כותרת, חיפוש, פילטרים) נגללות יחד עם התוכן.
+   כותרת הטבלה צפה תמיד בראש אזור הגלילה (לא יכולות להופיע שורות מעליה).
+   סיכום הרשומות + כפתורי קדימה/אחורה מוצמדים תמיד לתחתית המסך.
    ========================================================== */
 :root {
   --navbar-height: 72px;
@@ -1567,6 +1572,104 @@ body.hide-ai-features .ai-feature-element { display: none !important; }
 
 body.hide-global-nav {
   --navbar-height: 0px;
+}
+
+/* גוף העמוד הופך לעמודת פלקס: נאב-בר קבוע + אזור תוכן שגולל בעצמו */
+body:has(> .page-shell) {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
+}
+
+body:has(> .page-shell) > .navbar {
+  flex: 0 0 auto;
+  position: static;
+}
+
+body > .page-shell {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  width: 100%;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  /*
+    אנימציית הכניסה (translateY) על מיכל השלד הזיזה את כל העמוד ויצרה
+    containing block ל-position:fixed — לכן היא מבוטלת כאן, והאנימציה
+    נשארת על התוכן שבפנים.
+  */
+  animation: none !important;
+  transform: none !important;
+  opacity: 1 !important;
+}
+
+@keyframes pageShellFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* פייד עדין בלבד (ללא transform) כדי לא לשבור אלמנטים position:fixed בתוך העמוד */
+body > .page-shell .page-scroll {
+  animation: pageShellFadeIn 0.15s ease forwards;
+}
+
+/* אזור הגלילה של הטאב — כאן נמצאים הכותרת, החיפוש והטבלה */
+.page-shell .page-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: auto;
+  /*
+    בלי padding-top! כותרת טבלה דביקה נצמדת לתחתית ה-padding של אזור הגלילה,
+    ואז נראה רווח שבו שורות חולפות מעל הכותרת. הרווח העליון ניתן ע"י ספייסר
+    שנגלל יחד עם התוכן.
+  */
+  padding-top: 0;
+  padding-bottom: 0.75rem;
+  scrollbar-gutter: stable;
+}
+
+.page-shell .page-scroll::before {
+  content: '';
+  display: block;
+  height: 1.5rem;
+  flex: 0 0 auto;
+}
+
+/* שורת הסיכום והעימוד — תמיד צמודה לתחתית, מחוץ לאזור הגלילה */
+.page-shell .page-footer-bar {
+  flex: 0 0 auto;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 1rem;
+  padding: 0.75rem 1.25rem;
+  background: var(--card-bg);
+  border-top: 1px solid var(--element-border, var(--border-color));
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
+  z-index: 45;
+}
+
+.page-shell .page-footer-bar .page-footer-summary {
+  font-weight: bold;
+}
+
+.page-shell .page-footer-bar .page-footer-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+[data-theme="dark"] .page-shell .page-footer-bar {
+  box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.35);
 }
 
 /* Ensure table container boxes allow vertical sticky headers without clipping */
@@ -1583,7 +1686,8 @@ table.items-table thead tr th,
 .sticky-table-header thead tr th,
 .sticky-th {
   position: sticky !important;
-  top: var(--navbar-height, 72px) !important;
+  /* --th-sticky-top נקבע ע"י StickyTableHeaders: 0 בתוך אזור גלילה פנימי, אחרת גובה הנאב-בר */
+  top: var(--th-sticky-top, var(--navbar-height, 72px)) !important;
   z-index: 35 !important;
   background-color: var(--sticky-header-bg, #ffffff) !important;
   background-image: none !important;
@@ -1593,6 +1697,17 @@ table.items-table thead tr th,
   transition: background-color 0.2s ease, border-color 0.2s ease;
 }
 
+/*
+  בתוך אזור גלילה פנימי (שלד העמוד, מודאלים, קופסאות עם גלילה משלהן)
+  הכותרת נצמדת לראש אזור הגלילה עצמו — כך לעולם לא נראות שורות מעליה.
+*/
+.page-scroll table thead tr th,
+.page-scroll .sticky-th,
+.scroll-box table thead tr th,
+.modal-content table thead tr th {
+  top: 0 !important;
+}
+
 [data-theme="dark"] table thead tr th,
 [data-theme="dark"] table.items-table thead tr th,
 [data-theme="dark"] .sticky-table-header thead tr th,
@@ -1600,5 +1715,10 @@ table.items-table thead tr th,
   background-color: #1e1e1e !important;
   box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.4) !important;
   border-bottom: 2px solid var(--border-color, rgba(212, 175, 55, 0.35)) !important;
+}
+
+/* בתוך שלד העמוד אין צורך בגובה מינימלי מלאכותי לטבלה */
+.page-shell .page-scroll > * {
+  min-height: 0;
 }
 

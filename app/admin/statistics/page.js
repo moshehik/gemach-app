@@ -82,7 +82,8 @@ export default function StatisticsPage() {
   ];
 
   return (
-    <div className="container animate-fade-in" style={{ paddingTop: '2rem', paddingBottom: '5rem' }}>
+    <div className="container animate-fade-in page-shell">
+      <div className="page-scroll">
       <style>{`
         .stats-table { width: 100%; border-collapse: collapse; }
         .stats-table th { background-color: var(--primary-color, #1e40af); color: white; padding: 1rem; text-align: right; }
@@ -158,7 +159,7 @@ export default function StatisticsPage() {
         {loading ? (
           <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>טוען נתונים...</div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflow: 'visible' }}>
             {activeTab === 'daily' && <DailyTable data-element-name="רכיב_page_6" data={data} />}
             {activeTab === 'model' && <ModelSizeTable data-element-name="רכיב_page_7" data={data} type="דגם" showAlterations={enableAlterations} />}
             {activeTab === 'size' && <ModelSizeTable data-element-name="רכיב_page_8" data={data} type="מידה" showAlterations={enableAlterations} />}
@@ -183,6 +184,7 @@ export default function StatisticsPage() {
             </div>
          </div>
       )}
+      </div>
     </div>
   );
 }

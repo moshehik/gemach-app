@@ -25,7 +25,8 @@ export async function POST(request) {
         data.isAbroad || data.isWeekdayEvent,
         data.fromDate,
         data.toDate,
-        orderId || null
+        orderId || null,
+        data.customSpacing ?? null
       );
 
       if (validationResult.error) {
@@ -137,14 +138,8 @@ export async function POST(request) {
     return NextResponse.json(updatedOrder);
   } catch (error) {
     console.error('Error saving draft:', error);
-    const errorDetails = error.message || 'Unknown error';
-    const stack = error.stack ? error.stack.split('\n').slice(0, 3).join(' | ') : '';
     return NextResponse.json(
-      {
-        error: 'Failed to save draft',
-        details: errorDetails,
-        context: stack
-      },
+      { error: 'Failed to save draft', details: error.message || 'Unknown error' },
       { status: 500 }
     );
   }

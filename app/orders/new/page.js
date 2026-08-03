@@ -817,7 +817,16 @@ export default function NewOrderPage() {
       });
 
       const payload = {
-        ...order,
+        customerId: order.customerId,
+        eventDate: order.eventDate,
+        eventDateHebrew: order.eventDateHebrew,
+        returnDate: order.returnDate,
+        isAbroad: order.isAbroad,
+        isWeekdayEvent: order.isWeekdayEvent,
+        fromDate: order.fromDate,
+        toDate: order.toDate,
+        notes: order.notes,
+        customSpacing: order.customSpacing,
         totalAmount,
         items: itemsToSave,
         paymentsList: finalPaymentsList

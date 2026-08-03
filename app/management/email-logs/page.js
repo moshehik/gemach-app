@@ -50,7 +50,8 @@ export default function EmailLogsPage() {
   };
 
   return (
-    <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
+    <main className="container animate-fade-in page-shell">
+      <div className="page-scroll">
       <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
         <Link data-element-name="רכיב_page_1" href="/management" className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
           →
@@ -85,7 +86,7 @@ export default function EmailLogsPage() {
       </div>
 
       {/* Data Table */}
-      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflow: 'visible' }}>
         {loading && logs.length === 0 ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
         ) : logs.length === 0 ? (
@@ -135,30 +136,36 @@ export default function EmailLogsPage() {
               </tbody>
             </table>
 
-            {/* Pagination Controls */}
-            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '1rem', marginTop: '1.5rem', padding: '1rem 0' }}>
-              <button data-element-name="כפתור_page_4" 
-                className="btn btn-outline"
-                disabled={page >= totalPages} 
-                onClick={() => setPage(p => p + 1)}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                הבא
-              </button>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                עמוד <input data-element-name="שדה_page_5" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }}  /> מתוך {totalPages}
-              </span>
-              <button data-element-name="כפתור_page_6" 
-                className="btn btn-outline"
-                disabled={page <= 1} 
-                onClick={() => setPage(p => p - 1)}
-                style={{ padding: '0.5rem 1rem' }}
-              >
-                הקודם
-              </button>
-            </div>
           </>
         )}
+      </div>
+      </div>
+
+      {/* סיכום הרשומות ועימוד — מוצמד תמיד לתחתית המסך */}
+      <div className="page-footer-bar">
+        <div className="page-footer-summary">סה"כ שורות מוצגות: {logs.length} מתוך {totalCount}</div>
+
+        <div className="page-footer-pager">
+          <button data-element-name="כפתור_page_4"
+            className="btn btn-outline"
+            disabled={page >= totalPages}
+            onClick={() => setPage(p => p + 1)}
+            style={{ padding: '0.5rem 1rem' }}
+          >
+            הבא
+          </button>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            עמוד <input data-element-name="שדה_page_5" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }}  /> מתוך {totalPages}
+          </span>
+          <button data-element-name="כפתור_page_6"
+            className="btn btn-outline"
+            disabled={page <= 1}
+            onClick={() => setPage(p => p - 1)}
+            style={{ padding: '0.5rem 1rem' }}
+          >
+            הקודם
+          </button>
+        </div>
       </div>
     </main>
   );

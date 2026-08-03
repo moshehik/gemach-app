@@ -4,7 +4,7 @@ import prisma from '../../../lib/prisma';
 export const dynamic = 'force-dynamic';
 import { recalculateOrderObligations, computeOrderObligations } from '../../../../lib/pricingEngine';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
-import { validateOrderItemsAvailability } from '../../../../lib/inventory';
+import { validateOrderItemsAvailability, getAvailableInventory } from '../../../../lib/inventory';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',
@@ -250,6 +250,35 @@ export async function PUT(request, { params }) {
       }
     }
 
+    // Effective order dates once this update lands. Both the availability check below and
+    // the dress-item picker inside the transaction have to reason about the same window,
+    // otherwise the save can pass validation and still book an already-taken unit.
+    const isAbroadVal = data.isAbroad !== undefined ? data.isAbroad : existingOrder.isAbroad;
+    const isWeekdayVal = data.isWeekdayEvent !== undefined ? data.isWeekdayEvent : existingOrder.isWeekdayEvent;
+    const isCustomDuration = isAbroadVal || isWeekdayVal;
+    const eventDateVal = data.eventDate !== undefined ? parseSafeDate(data.eventDate) : existingOrder.eventDate;
+    const fromDateVal = data.fromDate !== undefined ? parseSafeDate(data.fromDate) : existingOrder.fromDate;
+    const toDateVal = data.toDate !== undefined ? parseSafeDate(data.toDate) : existingOrder.toDate;
+    const customSpacingVal = data.customSpacing !== undefined ? data.customSpacing : existingOrder.customSpacing;
+    const hasDatesVal = isCustomDuration ? (fromDateVal && toDateVal) : !!eventDateVal;
+
+    // Spacing settings, read only when a brand-new item actually has to be matched to a unit.
+    const hasNewItems = Array.isArray(data.items)
+      && data.items.some(i => i.isNew && i.dressModelId && i.sizeText);
+    let inventoryBufferDays = 3;
+    let inventorySkipWeekends = true;
+    if (hasNewItems) {
+      const inventorySettings = await prisma.systemSetting.findMany({
+        where: { key: { in: ['inventory_buffer_days', 'inventory_skip_weekends'] } }
+      });
+      const bufferSetting = inventorySettings.find(s => s.key === 'inventory_buffer_days');
+      if (bufferSetting && !isNaN(parseInt(bufferSetting.value, 10))) {
+        inventoryBufferDays = parseInt(bufferSetting.value, 10);
+      }
+      const weekendSetting = inventorySettings.find(s => s.key === 'inventory_skip_weekends');
+      if (weekendSetting) inventorySkipWeekends = weekendSetting.value === 'true';
+    }
+
     // Validate inventory availability
     if (data.items && Array.isArray(data.items)) {
       const activeItems = data.items.filter(i => !i.isDeleted);
@@ -276,15 +305,6 @@ export async function PUT(request, { params }) {
           }
         }
 
-        const isAbroadVal = data.isAbroad !== undefined ? data.isAbroad : existingOrder.isAbroad;
-        const isWeekdayVal = data.isWeekdayEvent !== undefined ? data.isWeekdayEvent : existingOrder.isWeekdayEvent;
-        const isCustomDuration = isAbroadVal || isWeekdayVal;
-        const eventDateVal = data.eventDate !== undefined ? parseSafeDate(data.eventDate) : existingOrder.eventDate;
-        const fromDateVal = data.fromDate !== undefined ? parseSafeDate(data.fromDate) : existingOrder.fromDate;
-        const toDateVal = data.toDate !== undefined ? parseSafeDate(data.toDate) : existingOrder.toDate;
-
-        const hasDatesVal = isCustomDuration ? (fromDateVal && toDateVal) : !!eventDateVal;
-
         if (hasDatesVal) {
           const validationResult = await validateOrderItemsAvailability(
             activeItems,
@@ -292,7 +312,8 @@ export async function PUT(request, { params }) {
             isCustomDuration,
             fromDateVal,
             toDateVal,
-            parsedOrderId
+            parsedOrderId,
+            customSpacingVal
           );
 
           if (validationResult.error) {
@@ -335,7 +356,8 @@ export async function PUT(request, { params }) {
 
       // 2. Update order items (alterations, size, deletions) and create new items
       if (data.items && Array.isArray(data.items)) {
-        for (const item of data.items) {
+        for (let idx = 0; idx < data.items.length; idx++) {
+          const item = data.items[idx];
           if (item.id) {
             await tx.orderItem.update({
               where: { id: item.id },
@@ -347,25 +369,47 @@ export async function PUT(request, { params }) {
                 alterationDetails: item.alterationDetails,
                 alterationDone: item.alterationDone,
                 isDeleted: item.isDeleted,
-                isTaken: item.isTaken,
-                isReturned: item.isReturned,
-                takenDate: item.takenDate ? new Date(item.takenDate) : null,
-                returnDate: item.returnDate ? new Date(item.returnDate) : null,
+                // GET synthesizes isTaken/isReturned/takenDate/returnDate for display when the
+                // stored columns are empty (falling back to barcode presence and eventDate).
+                // Writing those inferred values back would turn a guess into a stored fact -
+                // e.g. an item that merely has a barcode would become permanently "taken" and
+                // could no longer be removed from the order. The rental lifecycle is owned by
+                // the rentals/returns scan routes, so this general save leaves it untouched.
                 barcode: item.barcode || item.dressItem?.barcode || undefined,
                 cartStatus: 'confirmed'
               }
             });
-          } else if (item.isNew && item.dressModelId && item.sizeText) {
-            // Need to find an available dressItem for this model and size
-            const availableItem = await tx.dressItem.findFirst({
-              where: {
-                dressModelId: item.dressModelId,
-                sizeText: item.sizeText,
-                notInUse: false,
-                inRepair: false
-              }
-            });
-            
+          } else if (item.isNew) {
+            // A row the user added but never filled in (no model/size picked) is skipped
+            // rather than aborting the whole save.
+            if (!item.dressModelId || !item.sizeText) {
+              continue;
+            }
+
+            // Pick the physical unit the same way POST /api/orders/[id]/items does. Matching
+            // on notInUse/inRepair alone ignores the booking calendar, so this could hand out
+            // a unit already rented for these dates while an actually free one sat unused.
+            if (!hasDatesVal) {
+              throw new Error('לא ניתן להוסיף פריט להזמנה ללא תאריכים');
+            }
+
+            const availability = await getAvailableInventory(
+              item.dressModelId,
+              isCustomDuration ? fromDateVal : eventDateVal,
+              inventoryBufferDays,
+              inventorySkipWeekends,
+              isCustomDuration,
+              isCustomDuration ? toDateVal : eventDateVal,
+              parsedOrderId,
+              customSpacingVal
+            );
+            const sizeAvailability = availability.find(
+              a => (a.sizeText || a.size || 'כללי') === item.sizeText
+            );
+            const availableItem = (sizeAvailability?.availableQuantity > 0 && sizeAvailability.itemIds?.length)
+              ? { id: sizeAvailability.itemIds[0] }
+              : null;
+
             if (availableItem) {
               await tx.orderItem.create({
                 data: {

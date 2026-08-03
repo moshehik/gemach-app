@@ -30,6 +30,7 @@ import ErrorReportButton from './components/ErrorReportButton';
 import ClipboardDebugger from '../components/ClipboardDebugger';
 import MessageHistoryButton from './components/MessageHistoryButton';
 import LandingPage from './components/LandingPage';
+import StickyTableHeaders from './components/StickyTableHeaders';
 
 export default async function RootLayout({ children }) {
   // Check settings
@@ -215,6 +216,9 @@ export default async function RootLayout({ children }) {
         {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator data-element-name="רכיב_layout_4" />}
         <Suspense data-element-name="רכיב_layout_5" fallback={null}>
           <PageTracker data-element-name="רכיב_layout_6" />
+        </Suspense>
+        <Suspense fallback={null}>
+          <StickyTableHeaders />
         </Suspense>
         {showLogin ? (
           <LoginScreen data-element-name="רכיב_layout_7" />

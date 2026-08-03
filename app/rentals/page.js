@@ -166,8 +166,8 @@ export default function RentalsPage() {
   // Removed old inline modal functions
 
   return (
-    <main data-agy-id="rentals-page-main" className="container rentals-page">
-      <div>
+    <main data-agy-id="rentals-page-main" className="container rentals-page page-shell">
+      <div className="page-scroll">
         <div className="quick-return-bar">
         <h2><span style={{ fontSize: '1.2em', marginRight: '5px' }}>⚡</span> החזרה מהירה</h2>
         <form onSubmit={handleQuickReturn} className="barcode-input-container" style={{ position: 'relative' }}>
@@ -438,13 +438,13 @@ export default function RentalsPage() {
           })}
           </table>
         </div>
-        
-        {/* Sticky Bottom Bar */}
-        {orders && orders.length > 0 && !loading && (
-          <div style={{ position: 'sticky', bottom: '-1rem', background: 'var(--card-bg)', padding: '1rem', borderTop: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10, margin: '0 -1rem -1rem -1rem', borderRadius: '0 0 12px 12px', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)', flexWrap: 'wrap', gap: '1rem' }}>
-            <div style={{ fontWeight: 'bold', width: '100%', textAlign: 'center' }}>סה"כ שורות מוצגות: {orders.length}</div>
-          </div>
-        )}
+      </div>
+
+      {/* סיכום הרשומות — מוצמד תמיד לתחתית המסך */}
+      <div className="page-footer-bar">
+        <div className="page-footer-summary" style={{ width: '100%', textAlign: 'center' }}>
+          סה"כ שורות מוצגות: {loading ? '...' : orders.length}
+        </div>
       </div>
 
       {selectedOrderId && (

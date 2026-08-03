@@ -149,7 +149,9 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       if (!isNaN(maxItems) && maxItems > 0 && activeCount >= maxItems) {
         alert(`הגבלת מערכת: לא ניתן לשחזר פריט. המקסימום המותר הוא ${maxItems} פריטים בהזמנה.`);
         return;
+      }
     }
+
     handleItemChange(index, 'isDeleted', !isCurrentlyDeleted);
   };
 
@@ -752,5 +754,4 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       )}
     </div>
   );
-}
 }

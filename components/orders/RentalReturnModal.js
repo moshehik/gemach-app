@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLabels } from '@/app/components/LabelsContext';
-import { X, Info, Printer, Undo2, AlertTriangle, CheckCircle2, RotateCcw, Box, Search, PackageCheck, PackageX } from 'lucide-react';
+import { X, Info, Printer, Undo2, AlertTriangle, CheckCircle2, RotateCcw, Box, Search, PackageCheck, PackageX, Clock, Shirt } from 'lucide-react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { addHistory } from '../../lib/historyManager';
 
@@ -194,6 +194,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         body: JSON.stringify({ orderId: selectedOrder.orderId })
       });
       if (res.ok) {
+        await refreshOrder();
         alert('השכרה אושרה בהצלחה!');
         onClose();
         if (onUpdate) onUpdate();
@@ -203,6 +204,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
       }
     } catch (err) {
       console.error(err);
+      alert('שגיאה בעת אישור ההשכרה');
     } finally {
       setIsConfirming(false);
     }
@@ -339,35 +341,37 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
           </div>
         )}
 
-        {/* Tabs */}
-        <div className="flex px-6 pt-4 gap-2 bg-white">
-          <button data-agy-id="rentalreturnmodal_button_3" 
-            className={`flex-1 py-3 text-lg font-bold rounded-t-xl transition-all border-b-4 ${activeTab === 'rental' ? 'text-blue-600 border-blue-600 bg-blue-50/50' : 'text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-700'}`}
+        {/* Tabs - Modern Design */}
+        <div className="flex px-6 pt-4 gap-2 bg-gradient-to-b from-slate-50 to-white border-b border-slate-200">
+          <button data-agy-id="rentalreturnmodal_button_3"
+            className={`flex items-center gap-2 px-6 py-3.5 text-base font-bold rounded-t-2xl transition-all ${activeTab === 'rental' ? 'text-white bg-gradient-to-b from-blue-500 to-blue-600 shadow-lg shadow-blue-500/20' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'}`}
             onClick={() => setActiveTab('rental')}
           >
-            השכרה (ניפוק)
+            <Shirt size={20} />
+            <span>ניפוק (השכרה)</span>
           </button>
-          <button data-agy-id="rentalreturnmodal_button_4" 
-            className={`flex-1 py-3 text-lg font-bold rounded-t-xl transition-all border-b-4 ${activeTab === 'return' ? 'text-blue-600 border-blue-600 bg-blue-50/50' : 'text-slate-500 border-transparent hover:bg-slate-50 hover:text-slate-700'}`}
+          <button data-agy-id="rentalreturnmodal_button_4"
+            className={`flex items-center gap-2 px-6 py-3.5 text-base font-bold rounded-t-2xl transition-all ${activeTab === 'return' ? 'text-white bg-gradient-to-b from-emerald-500 to-emerald-600 shadow-lg shadow-emerald-500/20' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'}`}
             onClick={() => setActiveTab('return')}
           >
-            החזרה
+            <PackageCheck size={20} />
+            <span>החזרות</span>
           </button>
         </div>
 
         <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
           
-          {/* Scan Bar */}
+          {/* Scan Bar - Modern Design */}
           <div className="max-w-2xl mx-auto mb-8 relative">
-            <form data-agy-id="rentalreturnmodal_form_5" onSubmit={handleModalScan} className="relative shadow-sm rounded-xl overflow-hidden group border border-blue-200 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-200 transition-all bg-white">
-              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-blue-500 group-focus-within:text-blue-600">
-                <Search size={22} />
+            <form data-agy-id="rentalreturnmodal_form_5" onSubmit={handleModalScan} className={`relative shadow-lg rounded-2xl overflow-hidden group border-2 transition-all bg-gradient-to-r ${activeTab === 'rental' ? 'border-blue-300 focus-within:border-blue-500 focus-within:ring-4 focus-within:ring-blue-200 from-blue-50 to-white' : 'border-emerald-300 focus-within:border-emerald-500 focus-within:ring-4 focus-within:ring-emerald-200 from-emerald-50 to-white'}`}>
+              <div className={`absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none group-focus-within:text-${activeTab === 'rental' ? 'blue' : 'emerald'}-600 transition-all`}>
+                <Search size={24} className={activeTab === 'rental' ? 'text-blue-500' : 'text-emerald-500'} />
               </div>
-              <input data-agy-id="rentalreturnmodal_input_6" 
+              <input data-agy-id="rentalreturnmodal_input_6"
                 ref={modalBarcodeRef}
-                type="text" 
-                className="w-full pl-4 pr-12 py-4 text-xl bg-transparent border-none focus:outline-none placeholder-slate-400 text-slate-800"
-                placeholder={`סרוק ברקוד ל${activeTab === 'rental' ? 'השכרה' : 'החזרה'} כאן...`}
+                type="text"
+                className="w-full pl-4 pr-14 py-5 text-xl font-semibold bg-transparent border-none focus:outline-none placeholder-slate-400 text-slate-900"
+                placeholder={`📱 סרוק ברקוד ל${activeTab === 'rental' ? 'השכרה' : 'החזרה'}...`}
                 value={modalBarcode}
                 onChange={(e) => setModalBarcode(e.target.value.replace(/\s+/g, ''))}
                 disabled={isProcessing}
@@ -381,25 +385,25 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
             </form>
           </div>
 
-          {/* Tables */}
+          {/* Tables - Modern Design */}
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
             {activeTab === 'rental' && (
               <>
                 <div className="overflow-x-auto">
                   <table className="w-full text-right text-sm">
                     <thead>
-                      <tr className="bg-slate-100 text-slate-600 uppercase tracking-wide">
-                        <th className="p-4 font-bold border-b border-slate-200">{getLabel('item_modelName', 'דגם')}</th>
-                        <th className="p-4 font-bold border-b border-slate-200 w-24 text-center">{getLabel('item_size', 'מידה')}</th>
-                        {enableAlterations && <th className="p-4 font-bold border-b border-slate-200">תיקונים</th>}
-                        <th className="p-4 font-bold border-b border-slate-200">{getLabel('item_barcode', 'ברקוד')}</th>
-                        <th className="p-4 font-bold border-b border-slate-200 text-center">סטטוס</th>
-                        <th className="p-4 font-bold border-b border-slate-200 text-center w-32">פעולות</th>
+                      <tr className="bg-gradient-to-r from-blue-50 to-blue-100/50 text-slate-700 border-b-2 border-blue-200">
+                        <th className="p-4 font-bold text-blue-900">{getLabel('item_modelName', 'דגם')}</th>
+                        <th className="p-4 font-bold text-blue-900 w-24 text-center">{getLabel('item_size', 'מידה')}</th>
+                        {enableAlterations && <th className="p-4 font-bold text-blue-900">תיקונים</th>}
+                        <th className="p-4 font-bold text-blue-900">{getLabel('item_barcode', 'ברקוד')}</th>
+                        <th className="p-4 font-bold text-blue-900 text-center">סטטוס</th>
+                        <th className="p-4 font-bold text-blue-900 text-center w-32">פעולות</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {selectedOrder.items.filter(i => !i.isDeleted).map(item => (
-                        <tr key={item.id} className={`transition-colors hover:bg-slate-50 ${item.isTaken ? 'bg-green-50/30' : (item.barcode ? 'bg-amber-50/30' : '')}`}>
+                        <tr key={item.id} className={`transition-all hover:shadow-md hover:scale-y-105 ${item.isTaken ? 'bg-gradient-to-r from-green-50/40 to-green-50/20 border-l-4 border-green-500' : (item.barcode ? 'bg-gradient-to-r from-amber-50/40 to-amber-50/20 border-l-4 border-amber-500' : 'hover:bg-slate-50')}`}>
                           <td className="p-4 font-medium text-slate-800">{item.description}</td>
                           <td className="p-4 text-center">
                             <span className="inline-block px-2.5 py-1 bg-slate-100 rounded-md font-semibold text-slate-700 border border-slate-200">{item.sizeText}</span>
@@ -414,24 +418,24 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                           </td>
                           <td className="p-4 text-center">
                             {item.isTaken ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full font-bold text-xs">
-                                <CheckCircle2 size={14} /> נלקח
+                              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full font-bold text-xs shadow-md">
+                                <CheckCircle2 size={15} /> נלקח ✓
                               </span>
                             ) : (item.barcode ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-700 rounded-full font-bold text-xs">
-                                ממתין
+                              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 text-white rounded-full font-bold text-xs shadow-md">
+                                <Clock size={15} /> ממתין
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-500 rounded-full font-bold text-xs">
-                                טרם
+                              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-slate-400 to-slate-500 text-white rounded-full font-bold text-xs shadow-md">
+                                <Box size={15} /> טרם
                               </span>
                             ))}
                           </td>
                           <td className="p-4">
                             <div className="flex justify-center gap-2">
-                              <button data-agy-id="rentalreturnmodal_button_8" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); showItemDetails(item); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200" title="פרטים נוספים"><Info size={18} /></button>
+                              <button data-agy-id="rentalreturnmodal_button_8" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); showItemDetails(item); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all border border-blue-200 hover:border-blue-400 hover:shadow-md" title="פרטים נוספים"><Info size={18} /></button>
                               {item.isTaken && (
-                                <button data-agy-id="rentalreturnmodal_button_9" onClick={() => undoRental(item.id)} className="p-1.5 text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200" title="בטל לקיחה"><Undo2 size={18} /></button>
+                                <button data-agy-id="rentalreturnmodal_button_9" onClick={() => undoRental(item.id)} className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all border border-red-200 hover:border-red-400 hover:shadow-md" title="בטל לקיחה"><Undo2 size={18} /></button>
                               )}
                             </div>
                           </td>
@@ -446,17 +450,17 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                   </table>
                 </div>
                 
-                <div className="p-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
-                  <button data-agy-id="rentalreturnmodal_button_10" onClick={onClose} className="px-6 py-2.5 rounded-xl text-slate-700 font-semibold border border-slate-300 hover:bg-slate-100 transition-colors">
-                    סגור
+                <div className="p-4 bg-gradient-to-r from-blue-50 to-slate-50 border-t border-slate-200 flex justify-end gap-3">
+                  <button data-agy-id="rentalreturnmodal_button_10" onClick={onClose} className="px-6 py-2.5 rounded-xl text-slate-700 font-bold border-2 border-slate-300 hover:bg-slate-200 hover:border-slate-400 transition-all">
+                    ✕ סגור
                   </button>
-                  <button data-agy-id="rentalreturnmodal_button_11" onClick={confirmRental} disabled={isConfirming} className={`px-8 py-2.5 rounded-xl bg-blue-600 text-white font-bold hover:bg-blue-700 shadow-md hover:shadow-lg transition-all flex items-center gap-2 ${isConfirming ? 'opacity-70 cursor-not-allowed' : ''}`}>
+                  <button data-agy-id="rentalreturnmodal_button_11" onClick={confirmRental} disabled={isConfirming} className={`px-8 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-blue-600 text-white font-bold shadow-lg shadow-blue-500/30 hover:shadow-xl hover:scale-105 transition-all flex items-center gap-2 ${isConfirming ? 'opacity-70 cursor-not-allowed scale-100' : 'hover:from-blue-600 hover:to-blue-700'}`}>
                     {isConfirming ? (
                       <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
                     ) : (
                       <CheckCircle2 size={20} />
                     )}
-                    {isConfirming ? 'מאשר...' : 'אישור השכרה'}
+                    {isConfirming ? 'מאשר...' : '✓ אישור השכרה'}
                   </button>
                 </div>
               </>
@@ -467,17 +471,17 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                 <div className="overflow-x-auto">
                   <table className="w-full text-right text-sm">
                     <thead>
-                      <tr className="bg-slate-100 text-slate-600 uppercase tracking-wide">
-                        <th className="p-4 font-bold border-b border-slate-200">{getLabel('item_modelName', 'דגם')}</th>
-                        <th className="p-4 font-bold border-b border-slate-200 w-24 text-center">{getLabel('item_size', 'מידה')}</th>
-                        <th className="p-4 font-bold border-b border-slate-200">{getLabel('item_barcode', 'ברקוד')}</th>
-                        <th className="p-4 font-bold border-b border-slate-200 text-center">סטטוס</th>
-                        <th className="p-4 font-bold border-b border-slate-200 text-center">פעולות</th>
+                      <tr className="bg-gradient-to-r from-emerald-50 to-emerald-100/50 text-slate-700 border-b-2 border-emerald-200">
+                        <th className="p-4 font-bold text-emerald-900">{getLabel('item_modelName', 'דגם')}</th>
+                        <th className="p-4 font-bold text-emerald-900 w-24 text-center">{getLabel('item_size', 'מידה')}</th>
+                        <th className="p-4 font-bold text-emerald-900">{getLabel('item_barcode', 'ברקוד')}</th>
+                        <th className="p-4 font-bold text-emerald-900 text-center">סטטוס</th>
+                        <th className="p-4 font-bold text-emerald-900 text-center">פעולות</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {selectedOrder.items.filter(i => i.isTaken && !i.isDeleted).map(item => (
-                        <tr key={item.id} className={`transition-colors hover:bg-slate-50 ${item.isReturned ? 'bg-green-50/30' : ''}`}>
+                        <tr key={item.id} className={`transition-all hover:shadow-md ${item.isReturned ? 'bg-gradient-to-r from-green-50/50 to-emerald-50/30 border-l-4 border-green-600' : 'bg-gradient-to-r from-orange-50/40 to-orange-50/20 border-l-4 border-orange-500 hover:bg-orange-50/50'}`}>
                           <td className="p-4 font-medium text-slate-800">{item.description}</td>
                           <td className="p-4 text-center">
                             <span className="inline-block px-2.5 py-1 bg-slate-100 rounded-md font-semibold text-slate-700 border border-slate-200">{item.sizeText}</span>
@@ -487,26 +491,26 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                           </td>
                           <td className="p-4 text-center">
                             {item.isReturned ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-green-100 text-green-700 rounded-full font-bold text-xs">
-                                <CheckCircle2 size={14} /> הוחזר
+                              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-green-500 to-emerald-600 text-white rounded-full font-bold text-xs shadow-md">
+                                <PackageCheck size={15} /> הוחזר ✓
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-100 text-orange-700 rounded-full font-bold text-xs">
-                                אצל לקוח
+                              <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-gradient-to-r from-orange-500 to-red-600 text-white rounded-full font-bold text-xs shadow-md animate-pulse">
+                                <Shirt size={15} /> אצל לקוח
                               </span>
                             )}
                           </td>
                           <td className="p-4">
                             <div className="flex justify-center gap-2 flex-wrap">
-                              <button data-agy-id="rentalreturnmodal_button_12" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); showItemDetails(item); }} className="p-1.5 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-transparent hover:border-blue-200" title="פרטים נוספים"><Info size={18} /></button>
+                              <button data-agy-id="rentalreturnmodal_button_12" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); showItemDetails(item); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-all border border-blue-200 hover:border-blue-400 hover:shadow-md" title="פרטים נוספים"><Info size={18} /></button>
                               {item.isReturned ? (
                                 <>
-                                  <button data-agy-id="rentalreturnmodal_button_13" onClick={() => undoReturn(item.id)} className="p-1.5 text-amber-600 hover:bg-amber-50 rounded-lg transition-colors border border-transparent hover:border-amber-200" title="בטל החזרה"><Undo2 size={18} /></button>
-                                  <button data-agy-id="rentalreturnmodal_button_14" onClick={() => reportIssue(item.id, 'returned-bad')} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200" title="חזר לא תקין"><PackageX size={18} /></button>
+                                  <button data-agy-id="rentalreturnmodal_button_13" onClick={() => undoReturn(item.id)} className="p-2 text-amber-600 hover:bg-amber-100 rounded-lg transition-all border border-amber-200 hover:border-amber-400 hover:shadow-md" title="בטל החזרה"><Undo2 size={18} /></button>
+                                  <button data-agy-id="rentalreturnmodal_button_14" onClick={() => reportIssue(item.id, 'returned-bad')} className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-all border border-red-200 hover:border-red-400 hover:shadow-md" title="חזר לא תקין"><PackageX size={18} /></button>
                                 </>
                               ) : (
-                                <button data-agy-id="rentalreturnmodal_button_15" onClick={() => reportIssue(item.id, 'not-returned')} className="p-1.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200 flex items-center gap-1 text-xs px-2" title="דווח כחסר">
-                                  דווח כחסר
+                                <button data-agy-id="rentalreturnmodal_button_15" onClick={() => reportIssue(item.id, 'not-returned')} className="px-3 py-2 text-red-600 hover:bg-red-100 rounded-lg transition-all border border-red-200 hover:border-red-400 hover:shadow-md flex items-center gap-1 text-xs font-bold" title="דווח כחסר">
+                                  ⚠️ דווח כחסר
                                 </button>
                               )}
                             </div>

@@ -105,7 +105,8 @@ export default function AttendanceReportPage() {
   };
 
   return (
-    <div className="container animate-fade-in" style={{ paddingTop: '2rem', minHeight: '100vh', paddingBottom: '3rem' }}>
+    <div className="container animate-fade-in page-shell">
+      <div className="page-scroll">
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * {
@@ -277,6 +278,7 @@ export default function AttendanceReportPage() {
             })}
           </div>
         )}
+      </div>
       </div>
     </div>
   );
