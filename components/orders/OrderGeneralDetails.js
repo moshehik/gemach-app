@@ -29,17 +29,9 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
       ...updates
     };
 
-    // Update local state immediately
+    // Update local state immediately - don't auto-save to prevent race conditions
+    // where the parent component's order state may be stale
     onOrderChange(proposedOrder);
-
-    // For dates that trigger auto-save, ensure we pass the complete order with all fields
-    const triggerSave = Object.keys(updates).some(k => ['isAbroad', 'isWeekdayEvent', 'eventDate', 'fromDate', 'toDate', 'returnDate', 'customSpacing'].includes(k));
-    if (triggerSave && onSaveRequest) {
-      // Pass the proposedOrder with all current fields to prevent stale state issues
-      setTimeout(() => {
-        onSaveRequest(proposedOrder);
-      }, 50);
-    }
   };
 
   const applyCustomSpacing = async (spacing) => {
