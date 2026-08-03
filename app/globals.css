@@ -1365,6 +1365,16 @@ div:has(> table) {
   overflow-y: auto;
 }
 
+/*
+  בתוך שלד העמוד הגלילה שייכת ל-.page-scroll עצמו, והעטיפות של הטבלאות מוגדרות
+  overflow: visible. מגבלת ה-75vh הגלובלית שלמעלה גרמה לכך שהקופסה (הרקע הלבן)
+  נחתכה אחרי כמה שורות בעוד הטבלה ממשיכה לזלוג החוצה ממנה.
+*/
+.page-shell .page-scroll div:has(> table) {
+  max-height: none;
+  overflow-y: visible;
+}
+
 thead th, th {
   position: sticky;
   top: -1px;

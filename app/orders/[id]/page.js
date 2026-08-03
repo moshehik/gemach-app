@@ -16,6 +16,10 @@ import HistoryViewer from '../../../components/HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { addHistory } from '../../../lib/historyManager';
 
+// בתצוגת "חלון אחד" התוכן כמעט ברוחב מלא, ולכן צריך לפנות מקום לסרגל המהיר
+// הצף בצד ימין (‎.global-sidebar: רוחב 55px במרחק 24px מקצה החלון).
+const WORKSPACE_MAIN_PADDING = '1.25rem 5.75rem 1.25rem 1.25rem';
+
 export default function OrderDetailsPage({ params }) {
   const router = useRouter();
   const unwrappedParams = use(params);
@@ -673,7 +677,7 @@ export default function OrderDetailsPage({ params }) {
   const workspaceSections = [...sections].sort((a, b) => a.order - b.order);
 
   return (
-    <main data-agy-id="[id]_page_main_1" style={{ padding: layoutMode === 'workspace' ? '1.25rem' : '2rem', maxWidth: layoutMode === 'workspace' ? '1900px' : '1400px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
+    <main data-agy-id="[id]_page_main_1" style={{ padding: layoutMode === 'workspace' ? WORKSPACE_MAIN_PADDING : '2rem', maxWidth: layoutMode === 'workspace' ? '1900px' : '1400px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
       
       {/* בתצוגת "חלון אחד" גם הכותרת מתכווצת — היא לקחה כרבע מסך לפני התוכן */}
       {layoutMode === 'workspace' && (

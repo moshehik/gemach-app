@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { FileText, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays, AlertCircle, Info, Phone, Calendar as CalendarIcon2, CreditCard, CheckCircle2, Filter, Search, Printer, Clock } from 'lucide-react';
+import { Pencil, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays, AlertCircle, Info, Phone, Calendar as CalendarIcon2, CreditCard, CheckCircle2, Filter, Search, Printer, Clock } from 'lucide-react';
 import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../lib/orderStatus';
 import CapacitySearchModal from '../../components/CapacitySearchModal';
 import ExportButtons from '../../components/ExportButtons';
@@ -684,23 +684,25 @@ export default function OrdersPage() {
                           ₪{order.totalPaid}
                         </td>
                         <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-                            <span style={{ 
-                              padding: '0.3rem 0.8rem', 
-                              borderRadius: '20px', 
+                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', alignItems: 'center' }}>
+                            <span style={{
+                              padding: '0.3rem 0.8rem',
+                              borderRadius: '20px',
                               fontSize: '0.85rem',
                               fontWeight: '600',
+                              whiteSpace: 'nowrap',
                               background: getStatusColor(calculateOrderStatus(order)).bg,
                               color: getStatusColor(calculateOrderStatus(order)).text,
                               boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
                             }}>
                               {calculateOrderStatus(order)}
                             </span>
-                            <span style={{ 
-                              padding: '0.3rem 0.8rem', 
-                              borderRadius: '20px', 
+                            <span style={{
+                              padding: '0.3rem 0.8rem',
+                              borderRadius: '20px',
                               fontSize: '0.85rem',
                               fontWeight: '600',
+                              whiteSpace: 'nowrap',
                               background: getPaymentStatusColor(calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0)).bg,
                               color: getPaymentStatusColor(calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0)).text,
                               boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
@@ -710,18 +712,18 @@ export default function OrdersPage() {
                           </div>
                         </td>
                         <td style={{ padding: '1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
-                          <Link data-element-name="לחיץ_page_56" 
-                            href={`/orders/${order.orderId}`} 
-                            className="btn btn-outline" 
-                            style={{ padding: '0.5rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px' }}
+                          <Link data-element-name="לחיץ_page_56"
+                            href={`/orders/${order.orderId}`}
+                            className="btn btn-outline"
+                            style={{ padding: '0.5rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', backgroundColor: 'transparent', color: 'var(--primary-color, #1976d2)' }}
                             onClick={(e) => e.stopPropagation()}
                             title="כרטיס הזמנה"
                           >
-                            <FileText data-element-name="רכיב_page_57" size={18} />
+                            <Pencil data-element-name="רכיב_page_57" size={18} />
                           </Link>
                           <button data-element-name="כפתור_page_58" data-agy-id="orders_page_button_18" 
                             className="btn btn-primary" 
-                            style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: 'var(--success-bg, rgba(16, 185, 129, 0.1))', color: 'var(--success-color, #10b981)' }}
+                            style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: 'var(--success-color, #10b981)' }}
                             onClick={(e) => {
                               e.stopPropagation();
                               setRentalModalOrderId(order.orderId);
@@ -732,7 +734,7 @@ export default function OrdersPage() {
                           </button>
                           <button data-element-name="כפתור_page_60" data-agy-id="orders_page_button_19" 
                             className="btn btn-outline" 
-                            style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: '1px solid var(--error-border, #fee2e2)', cursor: 'pointer', backgroundColor: 'var(--error-bg, rgba(239, 68, 68, 0.1))', color: 'var(--error-color, #ef4444)' }}
+                            style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: 'var(--error-color, #ef4444)' }}
                             onClick={(e) => handleDeleteOrder(order, e)}
                             title="מחיקת הזמנה"
                           >

@@ -11,9 +11,12 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'נדרש שם משתמש וסיסמה لاישור השליחה' }, { status: 401 });
     }
 
+    // The admin select in SendEmailModal sends the employee UUID as username,
+    // but free-text name login is also supported
     const employee = await prisma.employee.findFirst({
       where: {
         OR: [
+          { id: username },
           { firstName: username },
           { lastName: username },
           { fullName: username }
@@ -27,7 +30,7 @@ export async function POST(request) {
     if (!validEmployee && !isNaN(parseInt(username, 10))) {
       validEmployee = await prisma.employee.findFirst({
         where: {
-          id: parseInt(username, 10),
+          legacyId: parseInt(username, 10),
           password: password,
           isActive: true
         }
@@ -88,8 +91,8 @@ export async function POST(request) {
         fileName: fileName ? fileName : null,
         status: isSuccess ? 'success' : 'error',
         errorMessage: isSuccess ? null : (result.message || 'Unknown error'),
-        customerId: customerId ? parseInt(customerId, 10) : null,
-        employeeId: employeeId ? parseInt(employeeId, 10) : null,
+        customerId: customerId || null,
+        employeeId: employeeId || null,
         sentAt: new Date()
       }
     });

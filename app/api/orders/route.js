@@ -7,7 +7,7 @@ import { cookies } from 'next/headers';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { validateOrderItemsAvailability } from '../../../lib/inventory';
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
-import { isReservedOrderPlaceholder } from '../../../lib/orderReservation';
+import { isReservedOrderPlaceholder, isFillableDraftOrder } from '../../../lib/orderReservation';
 
 export const dynamic = 'force-dynamic';
 
@@ -478,7 +478,9 @@ export async function POST(request) {
         isCustomDuration,
         data.fromDate,
         data.toDate,
-        data.orderId || data.reservedOrderId || null,
+        // The draft is this same order already on disk - its own pending items must not be
+        // counted against it, or an order could fail to save over stock it is itself holding.
+        data.orderId || data.draftOrderId || data.reservedOrderId || null,
         data.customSpacing ?? null
       );
 
@@ -554,12 +556,18 @@ export async function POST(request) {
     // saved, carrying a number reserved by POST /api/orders/reserve inside its comment. The
     // order therefore has to land on that same number - filling in the placeholder row
     // rather than taking a fresh one off the top of the sequence.
+    //
+    // The screen also autosaves itself as a 'טיוטה' order (POST /api/orders/draft) once the
+    // cart has items, so by the time the save runs the row usually already exists. Filling it
+    // in is what keeps the finished order and its abandoned draft from being two rows.
     const reservedOrderId = data.reservedOrderId ? parseInt(data.reservedOrderId, 10) : null;
+    const draftOrderId = data.draftOrderId ? parseInt(data.draftOrderId, 10) : null;
+    const shellOrderId = draftOrderId || reservedOrderId;
     let lostReservationId = null;
 
-    if (reservedOrderId) {
-      const reserved = await prisma.order.findUnique({
-        where: { orderId: reservedOrderId },
+    if (shellOrderId) {
+      const shell = await prisma.order.findUnique({
+        where: { orderId: shellOrderId },
         select: {
           orderId: true,
           status: true,
@@ -569,12 +577,17 @@ export async function POST(request) {
         }
       });
 
-      if (isReservedOrderPlaceholder(reserved)) {
-        order = await prisma.order.update({
-          where: { orderId: reservedOrderId },
-          data: { ...orderData, isDeleted: false, deletedAt: null }
+      if (isReservedOrderPlaceholder(shell) || isFillableDraftOrder(shell)) {
+        order = await prisma.$transaction(async (tx) => {
+          // The draft's own items are replaced, not added to - `orderData.items` is a `create`.
+          // Their obligations are rebuilt by the pricing engine further down.
+          await tx.orderItem.deleteMany({ where: { orderId: shellOrderId } });
+          return tx.order.update({
+            where: { orderId: shellOrderId },
+            data: { ...orderData, isDeleted: false, deletedAt: null }
+          });
         });
-      } else {
+      } else if (reservedOrderId) {
         // Never fail the save over this - the customer's card has already been charged.
         // Save under a fresh number and tell the user, so the charge can be matched by hand.
         lostReservationId = reservedOrderId;
