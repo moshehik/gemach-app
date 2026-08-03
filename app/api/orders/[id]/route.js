@@ -2,15 +2,23 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 
 export const dynamic = 'force-dynamic';
-import { recalculateOrderObligations } from '../../../../lib/pricingEngine';
+import { recalculateOrderObligations, computeOrderObligations } from '../../../../lib/pricingEngine';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { validateOrderItemsAvailability } from '../../../../lib/inventory';
+
+const RECALC_SETTING_KEYS = [
+  'REFUND_DAYS_FROM_ORDER',
+  'NO_REFUND_DAYS_BEFORE_EVENT',
+  'REFUND_PERCENTAGE',
+  'REFUND_REPAIRS',
+  'ENABLE_SET_DISCOUNTS'
+];
 
 export async function GET(request, { params }) {
   try {
     const resolvedParams = await params;
     const { id } = resolvedParams;
-    
+
     let parsedOrderId;
     let order;
 
@@ -35,37 +43,39 @@ export async function GET(request, { params }) {
     }
 
     // Workaround for schema relation pointing to Order.id instead of Order.orderId
-    const items = await prisma.orderItem.findMany({
-      where: { orderId: parsedOrderId },
-      include: {
-        dressItem: {
-          include: {
-            dress: true
+    // These queries are independent of each other - fetch them concurrently instead of one at a time.
+    const [items, payments, refunds, priceList, obligationsRaw, settings] = await Promise.all([
+      prisma.orderItem.findMany({
+        where: { orderId: parsedOrderId },
+        include: {
+          dressItem: {
+            include: {
+              dress: true
+            }
           }
         }
-      }
-    });
+      }),
+      prisma.payment.findMany({ where: { orderId: parsedOrderId } }),
+      prisma.refund.findMany({ where: { orderId: parsedOrderId } }),
+      prisma.priceList.findMany(),
+      prisma.paymentObligation.findMany({ where: { orderId: parsedOrderId } }),
+      prisma.systemSetting.findMany({ where: { key: { in: RECALC_SETTING_KEYS } } })
+    ]);
 
-    const payments = await prisma.payment.findMany({
-      where: { orderId: parsedOrderId }
-    });
+    let obligations = obligationsRaw;
 
-    const refunds = await prisma.refund.findMany({
-      where: { orderId: parsedOrderId }
-    });
-
-    const priceList = await prisma.priceList.findMany();
-    let obligations = await prisma.paymentObligation.findMany({
-      where: { orderId: parsedOrderId }
-    });
-
-    // Add draft obligations for pending items
+    // Add draft obligations for pending items - computed in-memory from data already
+    // fetched above, instead of triggering a second full order+items+priceList fetch.
     try {
-      const recalc = await recalculateOrderObligations(parsedOrderId, { dryRun: true });
-      if (recalc && recalc.newObligations) {
-        const drafts = recalc.newObligations.filter(o => o.isDraft);
-        obligations = [...obligations, ...drafts];
-      }
+      const { newObligations } = computeOrderObligations({
+        order,
+        items: items.filter(i => !i.isDeleted),
+        deletedItems: items.filter(i => i.isDeleted),
+        priceList,
+        settings
+      });
+      const drafts = newObligations.filter(o => o.isDraft);
+      obligations = [...obligations, ...drafts];
     } catch (e) {
       console.error("Error generating draft obligations:", e);
     }
@@ -244,15 +254,24 @@ export async function PUT(request, { params }) {
     if (data.items && Array.isArray(data.items)) {
       const activeItems = data.items.filter(i => !i.isDeleted);
       if (activeItems.length > 0) {
-        for (const item of activeItems) {
-          if (!item.dressModelId && !item.isNew && item.id) {
-            const currentItem = await prisma.orderItem.findUnique({
-              where: { id: item.id },
-              include: { dressItem: true }
-            });
-            if (currentItem && currentItem.dressItem) {
-              item.dressModelId = currentItem.dressItem.dressModelId;
-              item.sizeText = item.sizeText || currentItem.sizeText || currentItem.dressItem.sizeText;
+        const idsNeedingLookup = activeItems
+          .filter(item => !item.dressModelId && !item.isNew && item.id)
+          .map(item => item.id);
+
+        if (idsNeedingLookup.length > 0) {
+          const currentItems = await prisma.orderItem.findMany({
+            where: { id: { in: idsNeedingLookup } },
+            include: { dressItem: true }
+          });
+          const currentItemById = new Map(currentItems.map(ci => [ci.id, ci]));
+
+          for (const item of activeItems) {
+            if (!item.dressModelId && !item.isNew && item.id) {
+              const currentItem = currentItemById.get(item.id);
+              if (currentItem && currentItem.dressItem) {
+                item.dressModelId = currentItem.dressItem.dressModelId;
+                item.sizeText = item.sizeText || currentItem.sizeText || currentItem.dressItem.sizeText;
+              }
             }
           }
         }
@@ -446,21 +465,30 @@ export async function PUT(request, { params }) {
 
     // Recalculate obligations asynchronously after updating order details
     await recalculateOrderObligations(parsedOrderId);
-    
-    // Fetch the fully updated order to return to the client
-    let finalOrder = await prisma.order.findUnique({
-      where: { orderId: parsedOrderId },
-      include: {
-        customer: true,
-        employee: true
-      }
-    });
-    
-    const items = await prisma.orderItem.findMany({
-      where: { orderId: parsedOrderId },
-      include: { dressItem: { include: { dress: true } } }
-    });
-    
+
+    // Fetch the fully updated order to return to the client.
+    // These queries are independent of each other - fetch them concurrently.
+    const [finalOrderRaw, items, payments, refunds, obligationsRaw, priceList] = await Promise.all([
+      prisma.order.findUnique({
+        where: { orderId: parsedOrderId },
+        include: {
+          customer: true,
+          employee: true
+        }
+      }),
+      prisma.orderItem.findMany({
+        where: { orderId: parsedOrderId },
+        include: { dressItem: { include: { dress: true } } }
+      }),
+      prisma.payment.findMany({ where: { orderId: parsedOrderId } }),
+      prisma.refund.findMany({ where: { orderId: parsedOrderId } }),
+      prisma.paymentObligation.findMany({ where: { orderId: parsedOrderId } }),
+      prisma.priceList.findMany()
+    ]);
+
+    let finalOrder = finalOrderRaw;
+    let obligations = obligationsRaw;
+
     const uniquePrefixes = new Set();
     items.forEach(i => {
       const dressName = i.dressItem?.dress?.name;

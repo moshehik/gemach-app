@@ -1,0 +1,1234 @@
+﻿[
+    {
+        "type":  "stdout",
+        "created":  1785748877901,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Running build in Washington, D.C., USA (East) â iad1",
+                        "id":  "1785748877901528713465700000",
+                        "date":  1785748877901,
+                        "serial":  "1785748877901528713465700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748877901,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Build machine configuration: 2 cores, 8 GB",
+                        "id":  "1785748877901528713465700001",
+                        "date":  1785748877901,
+                        "serial":  "1785748877901528713465700001"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748878059,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Cloning github.com/moshehik/gemach-app (Branch: main, Commit: d331241)",
+                        "id":  "1785748878059528713465700000",
+                        "date":  1785748878059,
+                        "serial":  "1785748878059528713465700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748883667,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Cloning completed: 5.608s",
+                        "id":  "1785748883667528713465700000",
+                        "date":  1785748883667,
+                        "serial":  "1785748883667528713465700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748883841,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Restored build cache from previous deployment (FdNZD2wHZinEDffVKbUDmPimZtKo)",
+                        "id":  "1785748883841528713465700000",
+                        "date":  1785748883841,
+                        "serial":  "1785748883841528713465700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748884097,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Running \"vercel build\"",
+                        "id":  "1785748884097679732412700000",
+                        "date":  1785748884097,
+                        "serial":  "1785748884097679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748884121,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Vercel CLI 58.1.0",
+                        "id":  "1785748884121679732412700000",
+                        "date":  1785748884121,
+                        "serial":  "1785748884121679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748884434,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Installing dependencies...",
+                        "id":  "1785748884434679732412700000",
+                        "date":  1785748884434,
+                        "serial":  "1785748884434679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748885687,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748885687679732412700000",
+                        "date":  1785748885687,
+                        "serial":  "1785748885687679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748885688,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "\u003e gemach-app@0.1.45 postinstall",
+                        "id":  "1785748885688679732412700000",
+                        "date":  1785748885688,
+                        "serial":  "1785748885688679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748885688,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "\u003e prisma generate",
+                        "id":  "1785748885688679732412700001",
+                        "date":  1785748885688,
+                        "serial":  "1785748885688679732412700001"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748885688,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748885688679732412700002",
+                        "date":  1785748885688,
+                        "serial":  "1785748885688679732412700002"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748886107,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Prisma schema loaded from prisma/schema.prisma",
+                        "id":  "1785748886107679732412700000",
+                        "date":  1785748886107,
+                        "serial":  "1785748886107679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748886808,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748886808679732412700000",
+                        "date":  1785748886808,
+                        "serial":  "1785748886808679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748886809,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â Generated Prisma Client (v5.22.0) to ./node_modules/@prisma/client in 325ms",
+                        "id":  "1785748886809679732412700000",
+                        "date":  1785748886809,
+                        "serial":  "1785748886809679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748886809,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748886809679732412700001",
+                        "date":  1785748886809,
+                        "serial":  "1785748886809679732412700001"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748886811,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)",
+                        "id":  "1785748886811679732412700000",
+                        "date":  1785748886811,
+                        "serial":  "1785748886811679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748886811,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748886811679732412700001",
+                        "date":  1785748886811,
+                        "serial":  "1785748886811679732412700001"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748886811,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Tip: Want to react to database changes in your app as they happen? Discover how with Pulse: https://pris.ly/tip-1-pulse",
+                        "id":  "1785748886811679732412700002",
+                        "date":  1785748886811,
+                        "serial":  "1785748886811679732412700002"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748886811,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748886811679732412700003",
+                        "date":  1785748886811,
+                        "serial":  "1785748886811679732412700003"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887006,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748887006679732412700000",
+                        "date":  1785748887006,
+                        "serial":  "1785748887006679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887007,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "up to date in 2s",
+                        "id":  "1785748887007679732412700000",
+                        "date":  1785748887007,
+                        "serial":  "1785748887007679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887007,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748887007679732412700001",
+                        "date":  1785748887007,
+                        "serial":  "1785748887007679732412700001"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887007,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "143 packages are looking for funding",
+                        "id":  "1785748887007679732412700002",
+                        "date":  1785748887007,
+                        "serial":  "1785748887007679732412700002"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887007,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "  run `npm fund` for details",
+                        "id":  "1785748887007679732412700003",
+                        "date":  1785748887007,
+                        "serial":  "1785748887007679732412700003"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887037,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Detected Next.js version: 16.2.10",
+                        "id":  "1785748887037679732412700000",
+                        "date":  1785748887037,
+                        "serial":  "1785748887037679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887042,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Running \"npm run build\"",
+                        "id":  "1785748887042679732412700000",
+                        "date":  1785748887042,
+                        "serial":  "1785748887042679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887148,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748887148679732412700000",
+                        "date":  1785748887148,
+                        "serial":  "1785748887148679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887149,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "\u003e gemach-app@0.1.45 build",
+                        "id":  "1785748887149679732412700000",
+                        "date":  1785748887149,
+                        "serial":  "1785748887149679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887149,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "\u003e prisma generate \u0026\u0026 next build --webpack",
+                        "id":  "1785748887149679732412700001",
+                        "date":  1785748887149,
+                        "serial":  "1785748887149679732412700001"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887149,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748887149679732412700002",
+                        "date":  1785748887149,
+                        "serial":  "1785748887149679732412700002"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748887492,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Prisma schema loaded from prisma/schema.prisma",
+                        "id":  "1785748887492679732412700000",
+                        "date":  1785748887492,
+                        "serial":  "1785748887492679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748888149,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748888149679732412700000",
+                        "date":  1785748888149,
+                        "serial":  "1785748888149679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748888150,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â Generated Prisma Client (v5.22.0) to ./node_modules/@prisma/client in 294ms",
+                        "id":  "1785748888150679732412700000",
+                        "date":  1785748888150,
+                        "serial":  "1785748888150679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748888150,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748888150679732412700001",
+                        "date":  1785748888150,
+                        "serial":  "1785748888150679732412700001"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748888150,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)",
+                        "id":  "1785748888150679732412700002",
+                        "date":  1785748888150,
+                        "serial":  "1785748888150679732412700002"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748888151,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748888151679732412700000",
+                        "date":  1785748888151,
+                        "serial":  "1785748888151679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748888151,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Tip: Easily identify and fix slow SQL queries in your app. Optimize helps you enhance your visibility: https://pris.ly/--optimize",
+                        "id":  "1785748888151679732412700001",
+                        "date":  1785748888151,
+                        "serial":  "1785748888151679732412700001"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748888151,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748888151679732412700002",
+                        "date":  1785748888151,
+                        "serial":  "1785748888151679732412700002"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888192,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ",
+                        "id":  "1785748888192679732412700000",
+                        "date":  1785748888192,
+                        "serial":  "1785748888192679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888193,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â  Update available 5.22.0 -\u003e 7.9.1                       â",
+                        "id":  "1785748888193679732412700000",
+                        "date":  1785748888193,
+                        "serial":  "1785748888193679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888193,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â                                                         â",
+                        "id":  "1785748888193679732412700001",
+                        "date":  1785748888193,
+                        "serial":  "1785748888193679732412700001"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888193,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â  This is a major update - please follow the guide at    â",
+                        "id":  "1785748888193679732412700002",
+                        "date":  1785748888193,
+                        "serial":  "1785748888193679732412700002"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888193,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â  https://pris.ly/d/major-version-upgrade                â",
+                        "id":  "1785748888193679732412700003",
+                        "date":  1785748888193,
+                        "serial":  "1785748888193679732412700003"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888193,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â                                                         â",
+                        "id":  "1785748888193679732412700004",
+                        "date":  1785748888193,
+                        "serial":  "1785748888193679732412700004"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888194,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â  Run the following to update                            â",
+                        "id":  "1785748888194679732412700000",
+                        "date":  1785748888194,
+                        "serial":  "1785748888194679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888194,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â    npm i --save-dev prisma@latest                       â",
+                        "id":  "1785748888194679732412700001",
+                        "date":  1785748888194,
+                        "serial":  "1785748888194679732412700001"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888194,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â    npm i @prisma/client@latest                          â",
+                        "id":  "1785748888194679732412700002",
+                        "date":  1785748888194,
+                        "serial":  "1785748888194679732412700002"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888194,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "âââââââââââââââââââââââââââââââââââââââââââââââââââââââââââ",
+                        "id":  "1785748888194679732412700003",
+                        "date":  1785748888194,
+                        "serial":  "1785748888194679732412700003"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888836,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â  `eslint` configuration in next.config.mjs is no longer supported. See more info here: https://nextjs.org/docs/app/api-reference/cli/next#next-lint-options",
+                        "id":  "1785748888836679732412700000",
+                        "date":  1785748888836,
+                        "serial":  "1785748888836679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888842,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â  Invalid next.config.mjs options detected: ",
+                        "id":  "1785748888842679732412700000",
+                        "date":  1785748888842,
+                        "serial":  "1785748888842679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888843,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â      Unrecognized key(s) in object: \u0027eslint\u0027",
+                        "id":  "1785748888843679732412700000",
+                        "date":  1785748888843,
+                        "serial":  "1785748888843679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748888843,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â  See more info here: https://nextjs.org/docs/messages/invalid-next-config",
+                        "id":  "1785748888843679732412700001",
+                        "date":  1785748888843,
+                        "serial":  "1785748888843679732412700001"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748888976,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "  Applying modifyConfig from Vercel",
+                        "id":  "1785748888976679732412700000",
+                        "date":  1785748888976,
+                        "serial":  "1785748888976679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748889048,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "â² Next.js 16.2.10 (webpack)",
+                        "id":  "1785748889048679732412700000",
+                        "date":  1785748889048,
+                        "serial":  "1785748889048679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748889049,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748889049679732412700000",
+                        "date":  1785748889049,
+                        "serial":  "1785748889049679732412700000"
+                    }
+    },
+    {
+        "type":  "stdout",
+        "created":  1785748889103,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "  Creating an optimized production build ...",
+                        "id":  "1785748889103679732412700000",
+                        "date":  1785748889103,
+                        "serial":  "1785748889103679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901945,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Failed to compile.",
+                        "id":  "1785748901945679732412700000",
+                        "date":  1785748901945,
+                        "serial":  "1785748901945679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901946,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748901946679732412700000",
+                        "date":  1785748901946,
+                        "serial":  "1785748901946679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901946,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "./components/orders/OrderItemsManager.js",
+                        "id":  "1785748901946679732412700001",
+                        "date":  1785748901946,
+                        "serial":  "1785748901946679732412700001"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901946,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Error:   x Expected \u0027}\u0027, got \u0027\u003ceof\u003e\u0027",
+                        "id":  "1785748901946679732412700002",
+                        "date":  1785748901946,
+                        "serial":  "1785748901946679732412700002"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901946,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "     ,-[/vercel/path0/components/orders/OrderItemsManager.js:755:3]",
+                        "id":  "1785748901946679732412700003",
+                        "date":  1785748901946,
+                        "serial":  "1785748901946679732412700003"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901946,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  " 753 |     \u003c/div\u003e",
+                        "id":  "1785748901946679732412700004",
+                        "date":  1785748901946,
+                        "serial":  "1785748901946679732412700004"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901946,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  " 754 |   );",
+                        "id":  "1785748901946679732412700005",
+                        "date":  1785748901946,
+                        "serial":  "1785748901946679732412700005"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901946,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  " 755 | }",
+                        "id":  "1785748901946679732412700006",
+                        "date":  1785748901946,
+                        "serial":  "1785748901946679732412700006"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901946,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "     `----",
+                        "id":  "1785748901946679732412700007",
+                        "date":  1785748901946,
+                        "serial":  "1785748901946679732412700007"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901946,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748901946679732412700008",
+                        "date":  1785748901946,
+                        "serial":  "1785748901946679732412700008"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901946,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Caused by:",
+                        "id":  "1785748901946679732412700009",
+                        "date":  1785748901946,
+                        "serial":  "1785748901946679732412700009"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901946,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "    Syntax Error",
+                        "id":  "1785748901946679732412700010",
+                        "date":  1785748901946,
+                        "serial":  "1785748901946679732412700010"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901947,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748901947679732412700000",
+                        "date":  1785748901947,
+                        "serial":  "1785748901947679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901947,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Import trace for requested module:",
+                        "id":  "1785748901947679732412700001",
+                        "date":  1785748901947,
+                        "serial":  "1785748901947679732412700001"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901947,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "./components/orders/OrderItemsManager.js",
+                        "id":  "1785748901947679732412700002",
+                        "date":  1785748901947,
+                        "serial":  "1785748901947679732412700002"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901947,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "./app/orders/[id]/page.js",
+                        "id":  "1785748901947679732412700003",
+                        "date":  1785748901947,
+                        "serial":  "1785748901947679732412700003"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748901947,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748901947679732412700004",
+                        "date":  1785748901947,
+                        "serial":  "1785748901947679732412700004"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748902445,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "",
+                        "id":  "1785748902445679732412700000",
+                        "date":  1785748902445,
+                        "serial":  "1785748902445679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748902446,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "\u003e Build failed because of webpack errors",
+                        "id":  "1785748902446679732412700000",
+                        "date":  1785748902446,
+                        "serial":  "1785748902446679732412700000"
+                    }
+    },
+    {
+        "type":  "stderr",
+        "created":  1785748902529,
+        "payload":  {
+                        "deploymentId":  "dpl_9BK1zYCY4wHD4mLDp5Ue2k6vttid",
+                        "info":  {
+                                     "type":  "build",
+                                     "name":  "bld_llm2fxl63",
+                                     "entrypoint":  "."
+                                 },
+                        "text":  "Error: Command \"npm run build\" exited with 1",
+                        "id":  "1785748902529679732412700000",
+                        "date":  1785748902529,
+                        "serial":  "1785748902529679732412700000"
+                    }
+    }
+]
