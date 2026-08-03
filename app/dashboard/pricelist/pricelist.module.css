@@ -107,7 +107,9 @@
 }
 
 .tableWrapper {
-  overflow-x: auto;
+  /* לא overflow-x: auto — זה יוצר קופסת גלילה שמבטלת את ההיצמדות של כותרת הטבלה.
+     הגלילה האופקית מתבצעת באזור הגלילה של העמוד (.page-scroll). */
+  overflow: visible;
   border-radius: 8px;
 }
 

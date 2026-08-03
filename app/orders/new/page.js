@@ -844,6 +844,9 @@ export default function NewOrderPage() {
         const details = data.details ? ` (${data.details})` : '';
         throw new Error(errorMessage + details);
       }
+      // The order is saved even when the pricing engine failed afterwards - show what went
+      // wrong but still open it, so nobody saves a second copy thinking the first was lost.
+      if (data.warning) alert(data.warning);
       router.push(`/orders/${data.orderId}`);
     } catch (error) {
       console.error(error);

@@ -233,6 +233,9 @@ export default function OrderDetailsPage({ params }) {
       const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. שמירת השינויים דורשת הרשאת עובד או מנהל. אנא בחר משתמש והזן סיסמה:", 'עובד');
       if (!authResult || !authResult.pin) {
         setSaving(false);
+        // Returning quietly here made the Save button look broken - nothing happened and
+        // nothing explained why.
+        setSaveMessage('השמירה בוטלה: נדרש אישור עובד או מנהל בגלל יתרת חוב.');
         return;
       }
       try {

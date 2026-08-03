@@ -1,4 +1,4 @@
-import { PrismaClient as CloudClient, Prisma } from '@prisma/client';
+import { PrismaClient as CloudClient } from '@prisma/client';
 
 let PrismaClient = CloudClient;
 if (process.env.IS_OFFLINE_MODE === 'true') {
@@ -26,19 +26,12 @@ const createPrismaClient = (url) => {
     ? new PrismaClient({ datasources: { db: { url } } })
     : new PrismaClient();
 
+  // NOTE: `$transaction` is intentionally NOT overridden here. A `client` extension cannot
+  // call the method it overrides - `Prisma.getExtensionContext(this).$transaction` resolves
+  // back to the override itself, so every interactive transaction in the app recursed until
+  // it died with "Maximum call stack size exceeded". The AsyncLocalStorage wrapping now
+  // happens in the proxy below, which can reach the real implementation.
   return baseClient.$extends({
-    client: {
-      // Wrap interactive transactions to stash the `tx` client in AsyncLocalStorage
-      // for the duration of the callback. Array-form `$transaction([...])` calls are
-      // passed through unchanged (there's no callback to run inside the ALS context).
-      $transaction(arg, options) {
-        const ctx = Prisma.getExtensionContext(this);
-        if (typeof arg === 'function') {
-          return ctx.$transaction((tx) => txStorage.run(tx, () => arg(tx)), options);
-        }
-        return ctx.$transaction(arg, options);
-      }
-    },
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
@@ -106,6 +99,23 @@ const createPrismaClient = (url) => {
 
 const globalForPrisma = globalThis;
 
+// The clients are cached on globalThis so dev hot-reloads don't open a new connection pool
+// on every edit. That cache also survives edits to THIS file, so a client built by an older
+// version of `createPrismaClient` keeps being handed out until the process itself restarts -
+// which is why a fix to the extension setup above can look like it did nothing. Bump this
+// whenever `createPrismaClient` changes, and the cached clients are rebuilt on next load.
+const CLIENT_SETUP_VERSION = 2;
+
+if (globalForPrisma.prismaSetupVersion !== CLIENT_SETUP_VERSION) {
+  for (const stale of [globalForPrisma.prismaProd, globalForPrisma.prismaTest]) {
+    // Let the superseded pool go away instead of leaking it for the life of the process.
+    if (stale?.$disconnect) Promise.resolve(stale.$disconnect()).catch(() => {});
+  }
+  globalForPrisma.prismaProd = undefined;
+  globalForPrisma.prismaTest = undefined;
+  globalForPrisma.prismaSetupVersion = CLIENT_SETUP_VERSION;
+}
+
 if (!globalForPrisma.prismaProd) {
   globalForPrisma.prismaProd = createPrismaClient(process.env.PROD_DATABASE_URL || process.env.DATABASE_URL);
 }
@@ -128,7 +138,20 @@ const prismaProxy = new Proxy({}, {
   get(target, prop) {
     const isTest = globalForPrisma.activeDbMode === 'test' && globalForPrisma.prismaTest;
     const activeClient = isTest ? globalForPrisma.prismaTest : globalForPrisma.prismaProd;
-    
+
+    // Interactive transactions stash their `tx` client in AsyncLocalStorage for the duration
+    // of the callback, so the audit-log extension can write through the same transaction
+    // instead of racing it on a separate connection. Doing this here rather than in a client
+    // extension keeps `activeClient.$transaction` pointing at Prisma's real implementation
+    // (an extension override has no way to call the method it replaces), and the `tx` handed
+    // to the callback is still the extended one, so writes inside a transaction stay audited.
+    // Array-form `$transaction([...])` has no callback and is passed through untouched.
+    if (prop === '$transaction') {
+      return (arg, options) => (typeof arg === 'function'
+        ? activeClient.$transaction((tx) => txStorage.run(tx, () => arg(tx)), options)
+        : activeClient.$transaction(arg, options));
+    }
+
     const value = activeClient[prop];
     if (typeof value === 'function') {
       return value.bind(activeClient);

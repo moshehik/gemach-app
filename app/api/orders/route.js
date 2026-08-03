@@ -572,8 +572,18 @@ export async function POST(request) {
       }
     }
 
-    // Run pricing engine to generate obligations
-    await recalculateOrderObligations(order.orderId);
+    // The order, its items and its payments are already committed at this point - the pricing
+    // engine runs in its own transaction afterwards. Letting a failure here bubble up as a 500
+    // told the user the save had failed while the order was in fact sitting in the database,
+    // so they saved again, and again; that is how a single order turned into eleven duplicates.
+    // Report the order as saved and surface the pricing problem as a warning instead.
+    let pricingWarning = null;
+    try {
+      await recalculateOrderObligations(order.orderId);
+    } catch (pricingError) {
+      console.error(`Order ${order.orderId} saved, but obligations could not be calculated:`, pricingError);
+      pricingWarning = `ההזמנה נשמרה (#${order.orderId}), אך חישוב החיובים נכשל: ${pricingError.message}. יש לפתוח את ההזמנה ולחשב מחדש.`;
+    }
 
     const updatedOrder = await prisma.order.findUnique({
       where: { orderId: order.orderId },
@@ -584,7 +594,7 @@ export async function POST(request) {
       }
     });
 
-    return NextResponse.json(updatedOrder);
+    return NextResponse.json(pricingWarning ? { ...updatedOrder, warning: pricingWarning } : updatedOrder);
   } catch (error) {
     console.error('Error creating order:', error);
     return NextResponse.json(

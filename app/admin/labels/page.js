@@ -122,7 +122,7 @@ export default function LabelsAdminPage() {
   const currentCategory = CATEGORIES.find(c => c.id === activeTab);
 
   return (
-    <div className="container animate-fade-in page-shell" style={{ padding: '0 1rem' }}>
+    <div className="container animate-fade-in page-shell">
       <div className="page-scroll">
       
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>

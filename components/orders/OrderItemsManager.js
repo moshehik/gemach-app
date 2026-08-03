@@ -138,11 +138,8 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       return;
     }
 
-    if (!isCurrentlyDeleted) {
-      const confirmDelete = window.confirm('האם אתה בטוח שברצונך למחוק פריט זה?');
-      if (!confirmDelete) return;
-    }
-
+    // The system limit is checked before asking, so the user isn't prompted for a
+    // restore that would be refused anyway.
     if (isCurrentlyDeleted) { // trying to restore
       const maxItems = parseInt(settings.max_items_per_order);
       const activeCount = items.filter(i => !i.isDeleted).length;
@@ -151,6 +148,11 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
         return;
       }
     }
+
+    const confirmed = await window.customConfirm(isCurrentlyDeleted
+      ? 'האם אתה בטוח שברצונך לשחזר פריט זה להזמנה?'
+      : 'האם אתה בטוח שברצונך למחוק פריט זה?');
+    if (!confirmed) return;
 
     handleItemChange(index, 'isDeleted', !isCurrentlyDeleted);
   };

@@ -204,7 +204,7 @@ export default function RefundsPage() {
   });
 
   return (
-    <main data-agy-id="refunds_page_main" className="container animate-fade-in page-shell" style={{ maxWidth: '1400px' }}>
+    <main data-agy-id="refunds_page_main" className="container animate-fade-in page-shell" style={{ '--page-content-max': '1400px' }}>
       <div className="page-scroll">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: activeTab === 'debts' ? '#e11d48' : 'var(--primary-color)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '2rem', fontWeight: 'bold' }}>

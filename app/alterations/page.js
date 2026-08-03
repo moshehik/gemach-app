@@ -220,7 +220,7 @@ export default function AlterationsPage() {
   };
 
   return (
-    <main data-agy-id="alterations-page-main" className="container animate-fade-in page-shell" style={{ padding: '0 1rem' }}>
+    <main data-agy-id="alterations-page-main" className="container animate-fade-in page-shell">
       <div className="page-scroll">
       <div style={{
         position: 'relative',

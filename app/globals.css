@@ -1595,9 +1595,16 @@ body > .page-shell {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /*
+    השלד תופס את כל רוחב החלון כדי שפס הגלילה יישב על קצה החלון ולא צמוד לטבלה.
+    רוחב התוכן נשמר ע"י ריפוד מחושב על אזור הגלילה ועל שורת התחתית.
+  */
   width: 100%;
+  max-width: none !important;
+  margin: 0 !important;
   padding-top: 0 !important;
   padding-bottom: 0 !important;
+  padding-inline: 0 !important;
   /*
     אנימציית הכניסה (translateY) על מיכל השלד הזיזה את כל העמוד ויצרה
     containing block ל-position:fixed — לכן היא מבוטלת כאן, והאנימציה
@@ -1631,7 +1638,8 @@ body > .page-shell .page-scroll {
   */
   padding-top: 0;
   padding-bottom: 0.75rem;
-  scrollbar-gutter: stable;
+  /* עמודת התוכן ממורכזת, ופס הגלילה נשאר על קצה החלון */
+  padding-inline: max(2rem, (100% - var(--page-content-max, 1200px)) / 2);
 }
 
 .page-shell .page-scroll::before {
@@ -1649,10 +1657,11 @@ body > .page-shell .page-scroll {
   align-items: center;
   flex-wrap: wrap;
   gap: 1rem;
-  padding: 0.75rem 1.25rem;
+  /* אותה עמודת תוכן כמו אזור הגלילה, אבל הרקע נמתח לכל רוחב החלון */
+  padding-block: 0.75rem;
+  padding-inline: max(2rem, (100% - var(--page-content-max, 1200px)) / 2);
   background: var(--card-bg);
   border-top: 1px solid var(--element-border, var(--border-color));
-  border-radius: 12px 12px 0 0;
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.06);
   z-index: 45;
 }
@@ -1720,5 +1729,34 @@ table.items-table thead tr th,
 /* בתוך שלד העמוד אין צורך בגובה מינימלי מלאכותי לטבלה */
 .page-shell .page-scroll > * {
   min-height: 0;
+}
+
+/* בהדפסה — בלי שלד ובלי כותרות דביקות, שהכל יזרום על פני העמודים */
+@media print {
+  body:has(> .page-shell) {
+    display: block;
+    height: auto;
+    overflow: visible;
+  }
+
+  body > .page-shell,
+  .page-shell .page-scroll {
+    display: block;
+    height: auto;
+    max-height: none;
+    overflow: visible;
+  }
+
+  .page-shell .page-footer-bar {
+    display: none !important;
+  }
+
+  table thead tr th,
+  table.items-table thead tr th,
+  .sticky-table-header thead tr th,
+  .sticky-th {
+    position: static !important;
+    box-shadow: none !important;
+  }
 }
 

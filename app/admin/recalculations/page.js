@@ -93,7 +93,7 @@ export default function RecalculationsPage() {
   };
 
   return (
-    <div className="container page-shell" style={{ padding: '0 20px' }}>
+    <div className="container page-shell">
       <div className="page-scroll">
       <h1 style={{ marginBottom: '20px' }}>חישובים והתראות</h1>
       <div className="card" style={{ padding: '20px', marginBottom: '20px' }}>
