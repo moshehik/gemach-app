@@ -90,7 +90,7 @@ export async function GET(request, { params }) {
 
     const eventDate = order.eventDate;
     const fallbackReturn = order.returnDate || (eventDate ? new Date(new Date(eventDate).getTime() + 2 * 24 * 3600 * 1000) : null);
-    const fallbackTaken = eventDate || order.orderDate || order.createdAt;
+    const fallbackTaken = eventDate || order.orderDate;
 
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
@@ -451,7 +451,7 @@ export async function PUT(request, { params }) {
     
     const eventDatePUT = finalOrder.eventDate;
     const fallbackReturnPUT = finalOrder.returnDate || (eventDatePUT ? new Date(new Date(eventDatePUT).getTime() + 2 * 24 * 3600 * 1000) : null);
-    const fallbackTakenPUT = eventDatePUT || finalOrder.orderDate || finalOrder.createdAt;
+    const fallbackTakenPUT = eventDatePUT || finalOrder.orderDate;
 
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
