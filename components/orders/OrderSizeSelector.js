@@ -36,7 +36,8 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
           order.isAbroad ? order.fromDate : order.eventDate,
           order.isAbroad ? order.toDate : null,
           inventoryCache,
-          currentCartItems || []
+          currentCartItems || [],
+          order.customSpacing
         );
         setSizes(localAvailability);
       } catch (err) {
@@ -121,12 +122,11 @@ export default function OrderSizeSelector({ modelId, order, value, onChange, pla
         let availableInfo = '';
         if (normalAvail !== undefined) {
           if (s.withCustomSpacing) {
-            // הצג שתי כמויות בבירור
+            // הזמנה עם ציפוף — הצג שתי כמויות בבירור
             const gain = s.withCustomSpacing.gain || 0;
             availableInfo = `רגיל: ${normalAvail} | ציפוף: ${customAvail}${gain > 0 ? ` (+${gain})` : ''} מתוך ${s.totalInStock}`;
-          } else if (order && order.customSpacing !== undefined && order.customSpacing !== null) {
-            availableInfo = `פנוי ${selectedAvail} מתוך ${s.totalInStock} (רווח: ${order.customSpacing} ימים)`;
           } else {
+            // הזמנה רגילה — הצג כמות אחת בלבד
             availableInfo = `פנוי ${normalAvail} מתוך ${s.totalInStock}`;
           }
         } else {

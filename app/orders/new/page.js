@@ -463,7 +463,8 @@ export default function NewOrderPage() {
           order.isAbroad ? order.fromDate : order.eventDate,
           order.isAbroad ? order.toDate : null,
           inventoryCache,
-          order.items
+          order.items,
+          order.customSpacing
         );
         setAvailableSizes(localAvailability);
         
@@ -2001,9 +2002,9 @@ export default function NewOrderPage() {
                       </div>
                     ) : (
                       availableSizes.map(s => {
-                        const normalAvail = s.withNormalBuffer?.availableQuantity || 0;
+                        const normalAvail = s.withNormalBuffer?.availableQuantity ?? s.availableQuantity ?? 0;
                         const customAvail = s.withCustomSpacing?.availableQuantity;
-                        const selectedAvail = order.customSpacing !== null && order.customSpacing !== undefined ? customAvail : normalAvail;
+                        const selectedAvail = s.withCustomSpacing ? customAvail : normalAvail;
                         const isAvailable = selectedAvail > 0;
                         const isSelected = newItem.sizeText === s.sizeText;
 
@@ -2032,7 +2033,7 @@ export default function NewOrderPage() {
                                 s.withCustomSpacing ? (
                                   <>
                                     <span>{normalAvail} רגיל</span>
-                                    {s.withCustomSpacing.gain > 0 && <span style={{ marginLeft: '0.3rem', color: 'var(--success)' }}>+{customAvail} ציפוף</span>}
+                                    {s.withCustomSpacing.gain > 0 && <span style={{ marginLeft: '0.3rem', color: 'var(--success)' }}>+{s.withCustomSpacing.gain} ציפוף</span>}
                                   </>
                                 ) : (
                                   `${normalAvail} פנויות`

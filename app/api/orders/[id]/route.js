@@ -58,7 +58,7 @@ export async function GET(request, { params }) {
       }),
       prisma.payment.findMany({ where: { orderId: parsedOrderId } }),
       prisma.refund.findMany({ where: { orderId: parsedOrderId } }),
-      prisma.priceList.findMany(),
+      prisma.priceList.findMany({ select: { id: true, legacyId: true, category: true, description: true, fromSize: true, toSize: true, price: true } }),
       prisma.paymentObligation.findMany({ where: { orderId: parsedOrderId } }),
       prisma.systemSetting.findMany({ where: { key: { in: RECALC_SETTING_KEYS } } })
     ]);
@@ -576,7 +576,7 @@ export async function PUT(request, { params }) {
       prisma.payment.findMany({ where: { orderId: parsedOrderId } }),
       prisma.refund.findMany({ where: { orderId: parsedOrderId } }),
       prisma.paymentObligation.findMany({ where: { orderId: parsedOrderId } }),
-      prisma.priceList.findMany()
+      prisma.priceList.findMany({ select: { id: true, legacyId: true, category: true, description: true, fromSize: true, toSize: true, price: true } })
     ]);
 
     let finalOrder = finalOrderRaw;

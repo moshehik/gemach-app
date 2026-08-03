@@ -18,7 +18,11 @@ export default function CustomerInventoryViewer() {
   const [showZeroSizes, setShowZeroSizes] = useState(false);
   const [viewMode, setViewMode] = useState('rows');
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return today;
+  });
   const [selectedModel, setSelectedModel] = useState(null);
   const [sortAsc, setSortAsc] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
@@ -326,18 +330,31 @@ export default function CustomerInventoryViewer() {
       const current15 = new HDate(15, hCurrent.getMonth(), hCurrent.getFullYear());
       const nextMonthHDate = new HDate(current15.abs() + (30 * delta));
       const newMonthFirstDay = new HDate(1, nextMonthHDate.getMonth(), nextMonthHDate.getFullYear());
-      setSelectedDate(newMonthFirstDay.greg());
+      const newDate = newMonthFirstDay.greg();
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (newDate >= today) {
+        setSelectedDate(newDate);
+      }
     } catch(e) {
       const d = new Date(selectedDate);
       d.setMonth(d.getMonth() + delta);
-      setSelectedDate(d);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      if (d >= today) {
+        setSelectedDate(d);
+      }
     }
   };
-  
+
   const changeDay = (delta) => {
     const d = new Date(selectedDate);
     d.setDate(d.getDate() + delta);
-    setSelectedDate(d);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (d >= today) {
+      setSelectedDate(d);
+    }
   };
 
   const renderCalendar = () => {
