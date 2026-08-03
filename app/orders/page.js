@@ -295,7 +295,20 @@ export default function OrdersPage() {
     }
   };
 
-  const thStyle = { padding: '1rem', cursor: 'pointer', userSelect: 'none', whiteSpace: 'nowrap', fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' };
+  const thStyle = { 
+    padding: '1rem', 
+    cursor: 'pointer', 
+    userSelect: 'none', 
+    whiteSpace: 'nowrap', 
+    fontSize: 'clamp(0.75rem, 1.5vw, 1rem)',
+    position: 'sticky',
+    top: 'var(--navbar-height, 72px)',
+    zIndex: 25,
+    backgroundColor: 'var(--card-bg)',
+    backdropFilter: 'blur(12px)',
+    boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)',
+    borderBottom: '2px solid var(--border-color)'
+  };
 
   return (
     <main data-agy-id="orders_page_main_1" className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
@@ -594,7 +607,7 @@ export default function OrdersPage() {
                       <th data-element-name="לחיץ_page_48" style={thStyle} onClick={() => handleSort('totalAmount')}>{getLabel('order_totalAmount', 'סכום לחיוב')} <SortIcon data-element-name="רכיב_page_49" column="totalAmount" /></th>
                       <th data-element-name="לחיץ_page_50" style={thStyle} onClick={() => handleSort('totalPaid')}>שולם <SortIcon data-element-name="רכיב_page_51" column="totalPaid" /></th>
                       <th data-element-name="לחיץ_page_52" style={thStyle} onClick={() => handleSort('status')}>{getLabel('order_status', 'סטטוס')} <SortIcon data-element-name="רכיב_page_53" column="status" /></th>
-                      <th style={{ padding: '1rem' }}>פעולות</th>
+                      <th style={thStyle}>פעולות</th>
                     </tr>
                   </thead>
                   <tbody>

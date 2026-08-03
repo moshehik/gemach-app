@@ -183,7 +183,18 @@ export default function CustomersPage() {
     }
   };
 
-  const thStyle = { padding: '0.4rem 0.5rem', cursor: 'pointer', userSelect: 'none' };
+  const thStyle = { 
+    padding: '0.6rem 0.75rem', 
+    cursor: 'pointer', 
+    userSelect: 'none',
+    position: 'sticky',
+    top: 'var(--navbar-height, 72px)',
+    zIndex: 25,
+    backgroundColor: 'var(--card-bg)',
+    backdropFilter: 'blur(12px)',
+    boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)',
+    borderBottom: '2px solid var(--border-color)'
+  };
 
   return (
     <>

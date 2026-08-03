@@ -385,18 +385,18 @@ export default function AlterationsPage() {
           <p>{error}</p>
         </div>
       ) : (
-        <div className="dress-card" style={{ padding: 0 }}>
+        <div style={{ padding: 0, overflow: 'visible', background: 'var(--card-bg)', borderRadius: '16px', border: 'var(--glass-border)', boxShadow: 'var(--shadow-sm)' }}>
           <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
               <thead>
-                <tr style={{ background: 'rgba(212, 175, 55, 0.1)', borderBottom: '2px solid var(--border-color)' }}>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>תאריך אירוע</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>לקוח</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>דגם שמלה</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>מידה</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>פירוט תיקונים</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>סטטוס</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>פעולות</th>
+                <tr style={{ background: 'var(--card-bg)', borderBottom: '2px solid var(--border-color)' }}>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>תאריך אירוע</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>לקוח</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>דגם שמלה</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>מידה</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>פירוט תיקונים</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>סטטוס</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>פעולות</th>
                 </tr>
               </thead>
               <tbody>

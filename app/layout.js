@@ -30,7 +30,6 @@ import ErrorReportButton from './components/ErrorReportButton';
 import ClipboardDebugger from '../components/ClipboardDebugger';
 import MessageHistoryButton from './components/MessageHistoryButton';
 import LandingPage from './components/LandingPage';
-import HistoryQuickBar from './components/HistoryQuickBar';
 
 export default async function RootLayout({ children }) {
   // Check settings
@@ -249,7 +248,6 @@ export default async function RootLayout({ children }) {
                   <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 0.25rem' }}></div>
                   {isProgrammer && <MessageHistoryButton data-element-name="רכיב_layout_msg_hist" />}
                   <ErrorReportButton data-element-name="רכיב_layout_19" />
-                  {authToken?.value && <HistoryQuickBar />}
                   {authToken?.value && !hideInternalMessaging && <NotificationBell data-element-name="רכיב_layout_20" employeeId={authToken.value} />}
                   <UserMenu data-element-name="רכיב_layout_21" />
                 </div>

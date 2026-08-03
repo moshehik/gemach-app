@@ -1552,3 +1552,41 @@ body.hide-ai-features .ai-feature-element { display: none !important; }
   transform: scale(1.05);
   background: var(--primary-color-dark, #b5952f);
 }
+
+/* ==========================================================
+   SMART STICKY TABLE HEADERS FOR MAIN TABS & TABLES
+   ========================================================== */
+:root {
+  --navbar-height: 72px;
+}
+
+body.hide-global-nav {
+  --navbar-height: 0px;
+}
+
+/* Sticky table headers across all main tabs and table views */
+table thead tr th,
+table.items-table thead tr th,
+.sticky-table-header thead tr th,
+.sticky-th {
+  position: sticky;
+  top: var(--navbar-height, 72px);
+  z-index: 25;
+  background-color: var(--card-bg, #ffffff);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  background-clip: padding-box;
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04);
+  border-bottom: 2px solid var(--border-color, rgba(212, 175, 55, 0.25)) !important;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+[data-theme="dark"] table thead tr th,
+[data-theme="dark"] table.items-table thead tr th,
+[data-theme="dark"] .sticky-table-header thead tr th,
+[data-theme="dark"] .sticky-th {
+  background-color: var(--card-bg, #1e1e1e);
+  box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.4);
+  border-bottom: 2px solid var(--border-color, rgba(212, 175, 55, 0.35)) !important;
+}
+
