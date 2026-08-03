@@ -1,4 +1,4 @@
-import { PrismaClient as CloudClient } from '@prisma/client';
+import { PrismaClient as CloudClient, Prisma } from '@prisma/client';
 
 let PrismaClient = CloudClient;
 if (process.env.IS_OFFLINE_MODE === 'true') {
@@ -12,20 +12,40 @@ if (process.env.IS_OFFLINE_MODE === 'true') {
 import { cookies } from 'next/headers';
 import fs from 'fs';
 import path from 'path';
+import { AsyncLocalStorage } from 'node:async_hooks';
+
+// Tracks the active interactive-transaction client (if any) for the current
+// async execution context, so writes made inside `prisma.$transaction(async tx => ...)`
+// can route their audit-log insert through the SAME transaction/connection instead of
+// a separate one racing against it (which previously extended lock hold time and could
+// leave orphaned audit rows if the transaction rolled back).
+const txStorage = new AsyncLocalStorage();
 
 const createPrismaClient = (url) => {
-  const baseClient = (url && process.env.IS_OFFLINE_MODE !== 'true') 
-    ? new PrismaClient({ datasources: { db: { url } } }) 
+  const baseClient = (url && process.env.IS_OFFLINE_MODE !== 'true')
+    ? new PrismaClient({ datasources: { db: { url } } })
     : new PrismaClient();
-  
+
   return baseClient.$extends({
+    client: {
+      // Wrap interactive transactions to stash the `tx` client in AsyncLocalStorage
+      // for the duration of the callback. Array-form `$transaction([...])` calls are
+      // passed through unchanged (there's no callback to run inside the ALS context).
+      $transaction(arg, options) {
+        const ctx = Prisma.getExtensionContext(this);
+        if (typeof arg === 'function') {
+          return ctx.$transaction((tx) => txStorage.run(tx, () => arg(tx)), options);
+        }
+        return ctx.$transaction(arg, options);
+      }
+    },
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
           if (model === 'AuditLog' || model === 'PageVisitLog' || model === 'Shift') {
             return query(args);
           }
-          
+
           if (['create', 'update', 'delete'].includes(operation)) {
              let employeeId = null;
              try {
@@ -42,10 +62,10 @@ const createPrismaClient = (url) => {
                  }
                }
              } catch (e) {}
-             
+
              const result = await query(args);
              if (!result) return result;
-             
+
              const entityId = String(result.id || result.orderId || "");
              let changesJson = '{}';
              if (operation === 'update') {
@@ -55,9 +75,14 @@ const createPrismaClient = (url) => {
              } else if (operation === 'delete') {
                changesJson = JSON.stringify({ deleted: true });
              }
-             
+
              try {
-               await baseClient.auditLog.create({
+               // If we're inside an interactive transaction, write the audit row through
+               // that same tx client so it lands on the same connection and is rolled
+               // back along with everything else if the transaction fails.
+               const txClient = txStorage.getStore();
+               const auditClient = txClient || baseClient;
+               await auditClient.auditLog.create({
                  data: {
                    entityType: model,
                    entityId: entityId,
@@ -71,7 +96,7 @@ const createPrismaClient = (url) => {
              }
              return result;
           }
-          
+
           return query(args);
         }
       }

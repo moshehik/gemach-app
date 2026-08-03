@@ -19,12 +19,14 @@ export default function PrintOrderPage() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/orders/${orderId}`);
+      const [res, settingsRes] = await Promise.all([
+        fetch(`/api/orders/${orderId}`),
+        fetch('/api/settings')
+      ]);
       if (!res.ok) throw new Error('Failed to fetch order data');
       const data = await res.json();
       setOrder(data);
 
-      const settingsRes = await fetch('/api/settings');
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json();
         const altSetting = settingsData.find(s => s.key === 'enable_alterations');

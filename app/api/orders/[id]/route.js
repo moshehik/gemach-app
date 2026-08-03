@@ -554,11 +554,6 @@ export async function PUT(request, { params }) {
       };
     });
 
-    const payments = await prisma.payment.findMany({ where: { orderId: parsedOrderId } });
-    const refunds = await prisma.refund.findMany({ where: { orderId: parsedOrderId } });
-    let obligations = await prisma.paymentObligation.findMany({ where: { orderId: parsedOrderId } });
-    
-    const priceList = await prisma.priceList.findMany();
     obligations = obligations.map(ob => {
       if (ob.isManual === false || ob.productId) {
          ob.isManual = false;

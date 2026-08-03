@@ -54,10 +54,6 @@ const getThreeMonthsAgoDateString = () => {
   return d.toISOString().split('T')[0];
 };
 
-const getTodayDateString = () => {
-  return new Date().toISOString().split('T')[0];
-};
-
 const ordersCache = new Map();
 
 export default function OrdersPage() {
@@ -84,7 +80,7 @@ export default function OrdersPage() {
     customerName: '', customerPhone: '', customerCity: '', 
     advOrderId: '', itemDetails: '', advModelName: '',
     eventDateFrom: getThreeMonthsAgoDateString(),
-    eventDateTo: getTodayDateString(),
+    eventDateTo: '',
     rentalStatus: []
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);

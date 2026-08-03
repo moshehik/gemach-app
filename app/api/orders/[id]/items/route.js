@@ -106,17 +106,21 @@ export async function POST(request, { params }) {
     // Recalculate obligations asynchronously after adding item
     await recalculateOrderObligations(parsedId);
 
-    // Fetch the fully updated order data to return
-    let finalOrder = await prisma.order.findUnique({
-      where: { orderId: parsedId },
-      include: { customer: true }
-    });
-    
-    const items = await prisma.orderItem.findMany({
-      where: { orderId: parsedId },
-      include: { dressItem: { include: { dress: true } } }
-    });
-    
+    // Fetch the fully updated order data to return.
+    // finalOrder/items/payments/obligations/priceList are independent - fetch concurrently.
+    const [finalOrderRaw, items, payments, obligationsRaw, priceList] = await Promise.all([
+      prisma.order.findUnique({ where: { orderId: parsedId }, include: { customer: true } }),
+      prisma.orderItem.findMany({
+        where: { orderId: parsedId },
+        include: { dressItem: { include: { dress: true } } }
+      }),
+      prisma.payment.findMany({ where: { orderId: parsedId } }),
+      prisma.paymentObligation.findMany({ where: { orderId: parsedId } }),
+      prisma.priceList.findMany()
+    ]);
+
+    let finalOrder = finalOrderRaw;
+
     const itemIds = items.map(i => i.id);
     const uniquePrefixes = new Set();
     items.forEach(i => {
@@ -127,21 +131,22 @@ export async function POST(request, { params }) {
       }
     });
 
-    const auditLogs = await prisma.auditLog.findMany({
-      where: {
-        entityType: 'OrderItem',
-        entityId: { in: itemIds }
-      },
-      orderBy: { createdAt: 'desc' }
-    });
-    
-    let dressModels = [];
-    if (uniquePrefixes.size > 0) {
-      dressModels = await prisma.dressModel.findMany({
-        where: { barcodePrefix: { in: Array.from(uniquePrefixes) } },
-        select: { barcodePrefix: true, name: true }
-      });
-    }
+    // auditLogs and dressModels both depend on the items fetched above - fetch concurrently.
+    const [auditLogs, dressModels] = await Promise.all([
+      prisma.auditLog.findMany({
+        where: {
+          entityType: 'OrderItem',
+          entityId: { in: itemIds }
+        },
+        orderBy: { createdAt: 'desc' }
+      }),
+      uniquePrefixes.size > 0
+        ? prisma.dressModel.findMany({
+            where: { barcodePrefix: { in: Array.from(uniquePrefixes) } },
+            select: { barcodePrefix: true, name: true }
+          })
+        : Promise.resolve([])
+    ]);
     const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
 
     const itemsWithLogs = items.map(item => {
@@ -166,11 +171,7 @@ export async function POST(request, { params }) {
       };
     });
 
-    const payments = await prisma.payment.findMany({ where: { orderId: parsedId } });
-    let obligations = await prisma.paymentObligation.findMany({ where: { orderId: parsedId } });
-    const priceList = await prisma.priceList.findMany();
-    
-    obligations = obligations.map(ob => {
+    let obligations = obligationsRaw.map(ob => {
       if (ob.isManual === false || ob.productId) {
          ob.isManual = false;
          if (ob.productId) {
