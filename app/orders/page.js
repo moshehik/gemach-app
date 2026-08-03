@@ -415,7 +415,14 @@ export default function OrdersPage() {
           <div data-element-name="לחיץ_page_24" className="modal-content animate-slide-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '700px', width: '100%', background: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid var(--border-color)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '1px solid var(--divider)', paddingBottom: '1rem' }}>
               <h2 style={{ color: 'var(--primary-color)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                <Filter data-element-name="רכיב_page_25" size={20} />
+                סינון מתקדם
+              </h2>
+              <button data-element-name="כפתור_page_26" data-agy-id="orders_page_button_15" onClick={() => setShowAdvSearch(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', padding: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', borderRadius: '50%', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                <X data-element-name="רכיב_page_27" size={20} />
+              </button>
+            </div>
+            <div style={{ display: 'flex', gap: '1.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
               <div style={{ flex: 2, minWidth: '300px' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-main)', fontSize: '0.9rem' }}>טווח תאריכי אירוע</label>
                 <HebrewDateRangePicker 
