@@ -421,7 +421,57 @@ export default function OrderDetailsPage({ params }) {
         return;
       }
     }
-    router.back();
+
+    // Save changes before exiting
+    setSaving(true);
+    try {
+      // Perform the same save operation as the manual save button
+      const submittedLocalIds = items
+        .filter(it => it._localId && it.dressModelId && it.sizeText)
+        .map(it => it._localId);
+
+      const res = await fetch(`/api/orders/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId: order.orderId,
+          customerId: order.customerId,
+          eventDate: order.eventDate,
+          eventDateHebrew: order.eventDateHebrew,
+          returnDate: order.returnDate,
+          isAbroad: order.isAbroad,
+          isWeekdayEvent: order.isWeekdayEvent,
+          fromDate: order.fromDate,
+          toDate: order.toDate,
+          notes: order.notes,
+          status: order.status,
+          hasSignedRegulations: order.hasSignedRegulations,
+          updatedAt: order.updatedAt,
+          items: items,
+          obligations: obligations,
+          payments: payments,
+          debtApprovedBy: debtApproved ? true : null,
+          totalAmount: (() => {
+            const itemsSum = items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
+            const obligationsSum = obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+            return itemsSum > 0 ? itemsSum : (obligationsSum > 0 ? obligationsSum : (order.totalAmount || 0));
+          })()
+        })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null);
+        setSaving(false);
+        alert((errorData && errorData.message) ? errorData.message : 'שגיאה בשמירה');
+        return;
+      }
+
+      setSaving(false);
+      router.back();
+    } catch (err) {
+      setSaving(false);
+      alert('שגיאה בשמירה: ' + (err.message || 'נסה שוב'));
+    }
   };
 
   const isLocked = isPastEvent && !isUnlocked;
