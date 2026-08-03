@@ -3,9 +3,11 @@ import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Send } from 'lucide-react';
 
+import { normalizeEmail } from '@/lib/emailUtils';
+
 export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId, employeeId }) {
   const [formData, setFormData] = useState({
-    to: defaultTo || '',
+    to: normalizeEmail(defaultTo) || defaultTo || '',
     cc: '',
     subject: '',
     body: '',
@@ -19,7 +21,7 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
 
   useEffect(() => {
     if (defaultTo) {
-      setFormData(prev => ({ ...prev, to: defaultTo }));
+      setFormData(prev => ({ ...prev, to: normalizeEmail(defaultTo) || defaultTo }));
     }
   }, [defaultTo]);
 

@@ -1,7 +1,6 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
-
-
+import { normalizeEmail } from '@/lib/emailUtils';
 
 export async function GET(request, { params }) {
   try {
@@ -40,6 +39,8 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
     }
 
+    customer.email = normalizeEmail(customer.email, customer.emailSuffix);
+
     return NextResponse.json(customer);
   } catch (error) {
     console.error('Error fetching customer:', error);
@@ -76,6 +77,8 @@ export async function PUT(request, { params }) {
       }
     }
 
+    const normalizedEmail = normalizeEmail(body.email, body.emailSuffix);
+
     // 2. Perform the update
     const updatedCustomer = await prisma.customer.update({
       where: { id },
@@ -84,7 +87,7 @@ export async function PUT(request, { params }) {
         lastName: body.lastName,
         phone1: body.phone1,
         phone2: body.phone2,
-        email: body.email,
+        email: normalizedEmail,
         city: body.city,
         street: body.street,
         houseNum: body.houseNum !== "" && body.houseNum !== null ? parseInt(body.houseNum, 10) : null,

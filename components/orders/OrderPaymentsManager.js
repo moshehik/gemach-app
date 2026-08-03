@@ -78,13 +78,19 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
     : ['אשראי (דרך נדרים פלוס)', 'יציאה באישור מנהל'];
 
   const validateInventoryBeforePayment = async () => {
-    if (!items || items.length === 0) return true;
+    const activeItems = (items || []).filter(i => !i.isDeleted);
+    if (activeItems.length === 0) return true;
+    const hasDates = order?.isAbroad || order?.isWeekdayEvent ? (order?.fromDate && order?.toDate) : order?.eventDate;
+    if (!hasDates) {
+      alert(order?.isAbroad || order?.isWeekdayEvent ? 'חובה לבחור תאריכים עבור אירוע חו"ל/מיוחד לפני ביצוע תשלום.' : 'חובה לבחור תאריך אירוע להזמנה לפני ביצוע תשלום עבור פריטים.');
+      return false;
+    }
     try {
       const res = await fetch('/api/orders/validate-inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: items,
+          items: activeItems,
           eventDate: order?.eventDate,
           isAbroad: order?.isAbroad,
           isWeekdayEvent: order?.isWeekdayEvent,

@@ -231,12 +231,24 @@ export async function PUT(request, { params }) {
 
         const isAbroadVal = data.isAbroad !== undefined ? data.isAbroad : existingOrder.isAbroad;
         const isWeekdayVal = data.isWeekdayEvent !== undefined ? data.isWeekdayEvent : existingOrder.isWeekdayEvent;
+        const isCustomDuration = isAbroadVal || isWeekdayVal;
+        const eventDateVal = data.eventDate !== undefined ? data.eventDate : existingOrder.eventDate;
+        const fromDateVal = data.fromDate !== undefined ? (data.fromDate ? new Date(data.fromDate) : null) : existingOrder.fromDate;
+        const toDateVal = data.toDate !== undefined ? (data.toDate ? new Date(data.toDate) : null) : existingOrder.toDate;
+
+        if (!isCustomDuration && !eventDateVal) {
+          return NextResponse.json({ error: 'חובה להגדיר תאריך אירוע עבור הזמנה הכוללת פריטים' }, { status: 400 });
+        }
+        if (isCustomDuration && (!fromDateVal || !toDateVal)) {
+          return NextResponse.json({ error: 'חובה להגדיר תאריכים עבור אירוע חו"ל/מיוחד' }, { status: 400 });
+        }
+
         const validationResult = await validateOrderItemsAvailability(
           activeItems,
-          data.eventDate !== undefined ? data.eventDate : existingOrder.eventDate,
-          isAbroadVal || isWeekdayVal,
-          data.fromDate !== undefined ? (data.fromDate ? new Date(data.fromDate) : null) : existingOrder.fromDate,
-          data.toDate !== undefined ? (data.toDate ? new Date(data.toDate) : null) : existingOrder.toDate,
+          eventDateVal,
+          isCustomDuration,
+          fromDateVal,
+          toDateVal,
           parsedOrderId
         );
 

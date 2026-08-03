@@ -678,8 +678,9 @@ export default function NewOrderPage() {
   }, [totalAmount, paymentsList]);
 
   const saveOrder = async () => {
+    const hasDates = order.isAbroad || order.isWeekdayEvent ? (order.fromDate && order.toDate) : order.eventDate;
     if (!order.customerId) return alert('יש לבחור לקוח');
-    if (!order.eventDate) return alert('יש לבחור תאריך אירוע');
+    if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
 
     const pAmount = parseFloat(payment.amount) || 0;
@@ -764,41 +765,51 @@ export default function NewOrderPage() {
 
   const executeSaveOrderForList = async (finalPaymentsList) => {
     setSaving(true);
-    
-    try {
-      const validateRes = await fetch('/api/orders/validate-inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: order.items,
-          eventDate: order.eventDate,
-          isAbroad: order.isAbroad,
-          isWeekdayEvent: order.isWeekdayEvent,
-          fromDate: order.fromDate,
-          toDate: order.toDate,
-          customSpacing: order.customSpacing
-        })
-      });
-      
-      const validateData = await validateRes.json();
-      if (validateData.error) {
-        setSaving(false);
-        alert(`שגיאה: ${validateData.error}`);
-        return;
-      }
-      if (!validateData.valid) {
-        setSaving(false);
-        const errorLines = validateData.errors.map(e => 
-          `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
-        ).join('\n');
-        alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}`);
-        return;
-      }
-    } catch (err) {
-      console.error('Validation fetch error', err);
+    const activeItems = (order.items || []).filter(i => !i.isDeleted);
+    const hasDates = order.isAbroad || order.isWeekdayEvent ? (order.fromDate && order.toDate) : order.eventDate;
+
+    if (activeItems.length > 0 && !hasDates) {
       setSaving(false);
-      alert('שגיאה בבדיקת המלאי מול השרת.');
+      alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
       return;
+    }
+    
+    if (activeItems.length > 0) {
+      try {
+        const validateRes = await fetch('/api/orders/validate-inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: activeItems,
+            eventDate: order.eventDate,
+            isAbroad: order.isAbroad,
+            isWeekdayEvent: order.isWeekdayEvent,
+            fromDate: order.fromDate,
+            toDate: order.toDate,
+            customSpacing: order.customSpacing
+          })
+        });
+        
+        const validateData = await validateRes.json();
+        if (validateData.error) {
+          setSaving(false);
+          alert(`שגיאה: ${validateData.error}`);
+          return;
+        }
+        if (!validateData.valid) {
+          setSaving(false);
+          const errorLines = validateData.errors.map(e => 
+            `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
+          ).join('\n');
+          alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}`);
+          return;
+        }
+      } catch (err) {
+        console.error('Validation fetch error', err);
+        setSaving(false);
+        alert('שגיאה בבדיקת המלאי מול השרת.');
+        return;
+      }
     }
 
     try {
@@ -949,7 +960,7 @@ export default function NewOrderPage() {
           top: 45px;
           left: 50%;
           transform: translateX(-50%);
-          font-size: 0.9rem;
+          font-size: 0.85rem;
           font-weight: 700;
           color: var(--text-muted);
           white-space: nowrap;
@@ -961,6 +972,40 @@ export default function NewOrderPage() {
         }
         .step-node.completed .step-label {
           color: var(--text-main);
+        }
+
+        @media (max-width: 768px) {
+          .stepper-container {
+            padding: 1rem 1rem 2.5rem 1rem;
+          }
+          .step-progress-line {
+            left: 1.5rem;
+            right: 1.5rem;
+          }
+          .step-node {
+            width: 32px;
+            height: 32px;
+            font-size: 0.85rem;
+          }
+          .step-label {
+            font-size: 0.75rem;
+            top: 40px;
+          }
+        }
+        
+        @media (max-width: 480px) {
+          .stepper-container {
+            padding: 1rem 0.5rem 2rem 0.5rem;
+          }
+          .step-node {
+            width: 28px;
+            height: 28px;
+            font-size: 0.8rem;
+          }
+          .step-label {
+            font-size: 0.65rem;
+            top: 36px;
+          }
         }
 
         .toggle-switch {

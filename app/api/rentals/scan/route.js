@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 
 export async function POST(request) {
@@ -33,11 +33,32 @@ export async function POST(request) {
       return NextResponse.json({ error: 'ברקוד לא קיים במאגר השמלות' }, { status: 404 });
     }
 
+    if (dressItem.isDeleted || dressItem.notInUse) {
+      return NextResponse.json({ error: `הפריט עם ברקוד ${barcode} אינו בשימוש או שבוטל במאגר` }, { status: 400 });
+    }
+
+    if (dressItem.inRepair) {
+      return NextResponse.json({ error: `הפריט עם ברקוד ${barcode} נמצא בתיקון ולא ניתן להשכרה` }, { status: 400 });
+    }
+
+    const warehouseSetting = await prisma.systemSetting.findUnique({
+      where: { key: 'inventory_include_warehouse' }
+    });
+    const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
+
+    if (!includeWarehouse && dressItem.location) {
+      const locLower = dressItem.location.toLowerCase();
+      if (
+        locLower.includes('מחסן') ||
+        locLower.includes('רזרבה') ||
+        locLower.includes('warehouse') ||
+        locLower.includes('reserve')
+      ) {
+        return NextResponse.json({ error: `הפריט עם ברקוד ${barcode} נמצא ב"${dressItem.location}" (רזרבה/מחסן) ולא ניתן להשכרה` }, { status: 400 });
+      }
+    }
+
     // Extract size and prefix from barcode as per Access logic
-    // barcode = prefix + size(2 digits) + serial(1 or more digits) -> wait, Access logic:
-    // Mid(Me.בר_קוד, 1, Len(Me.בר_קוד) - 4) = Prefix
-    // Mid(Me.בר_קוד, Len(Me.בר_קוד) - 3, 2) = Size
-    // In JS:
     const prefixStr = barcode.substring(0, barcode.length - 4);
     const sizeStr = barcode.substring(barcode.length - 4, barcode.length - 2);
     

@@ -172,40 +172,53 @@ export default function OrderDetailsPage({ params }) {
     }
     
     // FULL ORDER INVENTORY VALIDATION
-    try {
-      const validateRes = await fetch('/api/orders/validate-inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: items, 
-          eventDate: currentOrder.eventDate,
-          isAbroad: currentOrder.isAbroad,
-          isWeekdayEvent: currentOrder.isWeekdayEvent,
-          fromDate: currentOrder.fromDate,
-          toDate: currentOrder.toDate,
-          orderId: currentOrder.orderId 
-        })
-      });
-      
-      const validateData = await validateRes.json();
-      if (validateData.error) {
-        setSaving(false);
-        alert(`שגיאה: ${validateData.error}`);
-        return;
-      }
-      if (!validateData.valid) {
-        setSaving(false);
-        const errorLines = validateData.errors.map(e => 
-          `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
-        ).join('\n');
-        alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}`);
-        return;
-      }
-    } catch (err) {
-      console.error('Validation fetch error', err);
+    const activeItems = (items || []).filter(i => !i.isDeleted);
+    const hasDates = currentOrder.isAbroad || currentOrder.isWeekdayEvent ? (currentOrder.fromDate && currentOrder.toDate) : currentOrder.eventDate;
+
+    if (activeItems.length > 0 && !hasDates) {
       setSaving(false);
-      alert('שגיאה בבדיקת המלאי מול השרת.');
+      alert(currentOrder.isAbroad || currentOrder.isWeekdayEvent 
+        ? 'חובה להזין תאריכי התחלה וסיום (אירוע חו"ל/מיוחד) עבור הזמנה הכוללת פריטים.' 
+        : 'חובה לבחור תאריך אירוע עבור הזמנה הכוללת פריטים.');
       return;
+    }
+
+    if (activeItems.length > 0) {
+      try {
+        const validateRes = await fetch('/api/orders/validate-inventory', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items: activeItems, 
+            eventDate: currentOrder.eventDate,
+            isAbroad: currentOrder.isAbroad,
+            isWeekdayEvent: currentOrder.isWeekdayEvent,
+            fromDate: currentOrder.fromDate,
+            toDate: currentOrder.toDate,
+            orderId: currentOrder.orderId 
+          })
+        });
+        
+        const validateData = await validateRes.json();
+        if (validateData.error) {
+          setSaving(false);
+          alert(`שגיאה: ${validateData.error}`);
+          return;
+        }
+        if (!validateData.valid) {
+          setSaving(false);
+          const errorLines = validateData.errors.map(e => 
+            `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
+          ).join('\n');
+          alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}`);
+          return;
+        }
+      } catch (err) {
+        console.error('Validation fetch error', err);
+        setSaving(false);
+        alert('שגיאה בבדיקת המלאי מול השרת.');
+        return;
+      }
     }
 
     let debtApprovedBy = null;

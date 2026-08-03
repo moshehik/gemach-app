@@ -52,7 +52,26 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
 
     setBarcodeInput('');
 
-    // Find the item with this barcode or use the selected item
+    // 1. Verify item stock & location in database
+    let dressInfo = null;
+    try {
+      const vRes = await fetch('/api/rentals/verify-item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barcode })
+      });
+      const vData = await vRes.json();
+      if (!vRes.ok || !vData.valid) {
+        alert(vData.error || `ברקוד ${barcode} אינו תקף להשכרה.`);
+        setSelectedItemForScan(null);
+        return;
+      }
+      dressInfo = vData.dressItem;
+    } catch (err) {
+      console.error('Error calling verify-item API:', err);
+    }
+
+    // 2. Find matching order item in activeItems
     let itemIndex = -1;
     
     if (selectedItemForScan) {
@@ -60,18 +79,37 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
       setSelectedItemForScan(null);
     } else {
       itemIndex = activeItems.findIndex(i => {
-        const b = i.dressItem?.barcode || i.barcode;
-        if (b === barcode) return true;
-        // Fallback for unlinked legacy items (e.g. prefix 555, size 06 -> 5550601)
-        if (!i.dressItem && !i.barcode && i.barcodePrefix && i.sizeText) {
-          return barcode.startsWith(String(i.barcodePrefix) + String(i.sizeText));
+        // Priority 1: Already assigned barcode match
+        const b = i.barcode || i.dressItem?.barcode || i.dressItem?.dressBarcode;
+        if (b && b === barcode) return true;
+
+        // Only search unrented items if barcode wasn't already assigned
+        if (i.isTaken) return false;
+
+        const iPfx = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+        const iSize = i.dressItem?.sizeText || i.sizeText;
+
+        // Priority 2: Match via verified dressInfo from API
+        if (dressInfo) {
+          const matchPfx = dressInfo.barcodePrefix ? (iPfx === dressInfo.barcodePrefix || String(barcode).startsWith(String(iPfx))) : true;
+          const matchSize = dressInfo.sizeText ? (iSize === dressInfo.sizeText || (parseInt(iSize) === parseInt(dressInfo.sizeText))) : true;
+          if (matchPfx && matchSize) return true;
         }
+
+        // Priority 3: Fallback prefix & size extraction from barcode
+        if (iPfx && iSize) {
+          const pfxStr = String(iPfx);
+          const sizeStr = String(iSize);
+          if (barcode.startsWith(pfxStr) && barcode.includes(sizeStr)) return true;
+        }
+
         return false;
       });
     }
 
     if (itemIndex === -1) {
-      alert(`ברקוד ${barcode} לא נמצא בהזמנה זו.`);
+      const detailsStr = dressInfo ? ` (דגם ${dressInfo.dressName || dressInfo.barcodePrefix || ''}, מידה ${dressInfo.sizeText || ''})` : '';
+      alert(`ברקוד ${barcode}${detailsStr} לא נמצא בין הפריטים שטרם הושכרו בהזמנה זו.`);
       return;
     }
 

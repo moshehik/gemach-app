@@ -51,6 +51,13 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
 
     setSavingItemIndex(index);
     try {
+      const hasDates = order.isAbroad || order.isWeekdayEvent ? (order.fromDate && order.toDate) : order.eventDate;
+      if (!hasDates) {
+        setSavingItemIndex(null);
+        alert(order.isAbroad || order.isWeekdayEvent ? 'חובה לבחור תאריכים עבור אירוע חו"ל/מיוחד לפני שמירת פריט.' : 'חובה לבחור תאריך אירוע להזמנה לפני שמירת פריט.');
+        return;
+      }
+
       // Validate inventory before saving single item
       const activeItems = items.filter(i => !i.isDeleted);
       const validateRes = await fetch('/api/orders/validate-inventory', {
@@ -186,6 +193,12 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
 
       // Check stock before restoring
       try {
+        const hasDates = order.isAbroad || order.isWeekdayEvent ? (order.fromDate && order.toDate) : order.eventDate;
+        if (!hasDates) {
+          alert(order.isAbroad || order.isWeekdayEvent ? 'חובה לבחור תאריכים עבור אירוע חו"ל/מיוחד לפני שחזור פריט.' : 'חובה לבחור תאריך אירוע להזמנה לפני שחזור פריט.');
+          return;
+        }
+
         const restoredItem = { ...items[index], isDeleted: false };
         const activeItems = items.filter((i, idx) => !i.isDeleted && idx !== index);
         const itemsToValidate = [...activeItems, restoredItem];

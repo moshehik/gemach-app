@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
-
+import { normalizeEmail } from '@/lib/emailUtils';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -58,14 +58,20 @@ export async function GET(request) {
           phone1: true,
           phone2: true,
           city: true,
-          email: true
+          email: true,
+          emailSuffix: true
         }
       }),
       prisma.customer.count({ where })
     ]);
 
+    const formattedCustomers = customers.map(c => ({
+      ...c,
+      email: normalizeEmail(c.email, c.emailSuffix)
+    }));
+
     return NextResponse.json({
-      data: customers,
+      data: formattedCustomers,
       total: totalCount,
       page,
       limit,
@@ -89,6 +95,8 @@ export async function POST(request) {
     });
     const nextLegacyId = (maxCustomer?.legacyId || 0) + 1;
 
+    const normalizedEmail = normalizeEmail(body.email, body.emailSuffix);
+
     const newCustomer = await prisma.customer.create({
       data: {
         legacyId: nextLegacyId,
@@ -96,13 +104,14 @@ export async function POST(request) {
         lastName: body.lastName,
         phone1: body.phone1,
         phone2: body.phone2,
-        email: body.email,
+        email: normalizedEmail,
         city: body.city,
         street: body.street,
         houseNum: body.houseNum !== "" && body.houseNum !== null ? parseInt(body.houseNum, 10) : null,
         notes: body.notes
       }
     });
+    return NextResponse.json(newCustomer);
     return NextResponse.json(newCustomer);
   } catch (error) {
     console.error('Error creating customer:', error);

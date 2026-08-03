@@ -6,8 +6,9 @@ import {
   Palette, ShoppingBag, Database, Settings2, Type, 
   CreditCard, Calendar, Printer, LayoutGrid,
   MonitorSmartphone, Upload, Image as ImageIcon, Sparkles,
-  ChevronDown, ChevronUp, ShieldCheck, CheckSquare
+  ChevronDown, ChevronUp, ShieldCheck, CheckSquare, Mail
 } from 'lucide-react';
+import FullEmailListModal from '@/components/FullEmailListModal';
 
 const categoryConfig = {
   'תצוגה': { icon: Palette },
@@ -513,6 +514,7 @@ export default function SettingsClient() {
   const [saveMessage, setSaveMessage] = useState(null);
   const [error, setError] = useState(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
   
   const [modified, setModified] = useState({});
 
@@ -695,23 +697,44 @@ export default function SettingsClient() {
             </div>
           </div>
           
-          <button 
-            data-element-name="כפתור_SettingsClient_6"
-            onClick={handleSave}
-            disabled={saving || !hasChanges}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '0.5rem', 
-              background: hasChanges ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#cbd5e1', 
-              color: hasChanges ? 'white' : '#94a3b8', border: 'none', padding: '0.75rem 1.5rem', 
-              borderRadius: '12px', fontWeight: '600', fontSize: '1rem',
-              cursor: hasChanges ? 'pointer' : 'not-allowed', 
-              boxShadow: hasChanges ? '0 4px 6px -1px rgba(37, 99, 235, 0.3)' : 'none',
-              transition: 'transform 0.2s, box-shadow 0.2s'
-            }}
-          >
-            {saving ? <Loader2 size={18} data-element-name="רכיב_SettingsClient_7" className="animate-spin" /> : <Save size={18} data-element-name="רכיב_SettingsClient_8" />}
-            {saving ? 'שומר...' : hasChanges ? 'שמור שינויים' : 'אין שינויים'}
-          </button>
+          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+            <button
+              data-element-name="כפתור_רשימת_מיילים_מלאה"
+              type="button"
+              onClick={() => setIsEmailModalOpen(true)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                background: 'white', color: '#1e3a8a', border: '1px solid #cbd5e1', padding: '0.75rem 1.25rem',
+                borderRadius: '12px', fontWeight: '700', fontSize: '0.95rem',
+                cursor: 'pointer',
+                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
+                transition: 'all 0.2s'
+              }}
+              onMouseOver={(e) => { e.currentTarget.style.borderColor = '#2563eb'; e.currentTarget.style.color = '#2563eb'; }}
+              onMouseOut={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#1e3a8a'; }}
+            >
+              <Mail size={18} color="#2563eb" />
+              רשימת מיילים מלאה
+            </button>
+
+            <button 
+              data-element-name="כפתור_SettingsClient_6"
+              onClick={handleSave}
+              disabled={saving || !hasChanges}
+              style={{ 
+                display: 'flex', alignItems: 'center', gap: '0.5rem', 
+                background: hasChanges ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#cbd5e1', 
+                color: hasChanges ? 'white' : '#94a3b8', border: 'none', padding: '0.75rem 1.5rem', 
+                borderRadius: '12px', fontWeight: '600', fontSize: '1rem',
+                cursor: hasChanges ? 'pointer' : 'not-allowed', 
+                boxShadow: hasChanges ? '0 4px 6px -1px rgba(37, 99, 235, 0.3)' : 'none',
+                transition: 'transform 0.2s, box-shadow 0.2s'
+              }}
+            >
+              {saving ? <Loader2 size={18} data-element-name="רכיב_SettingsClient_7" className="animate-spin" /> : <Save size={18} data-element-name="רכיב_SettingsClient_8" />}
+              {saving ? 'שומר...' : hasChanges ? 'שמור שינויים' : 'אין שינויים'}
+            </button>
+          </div>
         </div>
 
         {/* Alerts */}
@@ -1005,6 +1028,8 @@ export default function SettingsClient() {
 
         </div>
       </div>
+
+      <FullEmailListModal isOpen={isEmailModalOpen} onClose={() => setIsEmailModalOpen(false)} />
     </div>
   );
 }

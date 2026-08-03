@@ -283,7 +283,7 @@ export default function RefundsPage() {
         </div>
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: 'var(--shadow-md)', overflow: 'hidden' }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: 'var(--shadow-md)', overflow: 'visible' }}>
         {loading ? (
           <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
              <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem auto' }} />
@@ -297,15 +297,15 @@ export default function RefundsPage() {
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
               <thead>
-                <tr style={{ background: '#f8fafc', color: '#475569', borderBottom: '2px solid #e2e8f0' }}>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>תאריך</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>לקוח</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>הזמנה</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>סכום</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>פרטי בנק</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>אשראי מקורי</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>סטטוס</th>
-                  <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>פעולות</th>
+                <tr style={{ background: 'var(--card-bg)', color: 'var(--text-main)', borderBottom: '2px solid var(--border-color)' }}>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>תאריך</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>לקוח</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>הזמנה</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>סכום</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>פרטי בנק</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>אשראי מקורי</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>סטטוס</th>
+                  <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>פעולות</th>
                 </tr>
               </thead>
               <tbody>
@@ -432,7 +432,7 @@ export default function RefundsPage() {
             </div>
           </div>
           
-          <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: 'var(--shadow-md)', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: 'var(--shadow-md)', overflow: 'visible' }}>
             {debtsLoading ? (
               <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                  <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid #e11d48', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem auto' }} />
@@ -446,13 +446,13 @@ export default function RefundsPage() {
               <div style={{ overflowX: 'auto' }}>
                 <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
                   <thead>
-                    <tr style={{ background: '#fff1f2', color: '#be123c', borderBottom: '2px solid #fecdd3' }}>
-                      <th style={{ padding: '0.4rem 0.5rem' }}>תאריך אירוע</th>
-                      <th style={{ padding: '0.4rem 0.5rem' }}>לקוח</th>
-                      <th style={{ padding: '0.4rem 0.5rem' }}>הזמנה</th>
-                      <th style={{ padding: '0.4rem 0.5rem' }}>סה"כ להזמנה</th>
-                      <th style={{ padding: '0.4rem 0.5rem' }}>שולם</th>
-                      <th style={{ padding: '0.4rem 0.5rem', color: '#e11d48' }}>יתרת חוב</th>
+                    <tr style={{ background: 'var(--card-bg)', color: '#be123c', borderBottom: '2px solid #fecdd3' }}>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>תאריך אירוע</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>לקוח</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>הזמנה</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>סה"כ להזמנה</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>שולם</th>
+                      <th style={{ padding: '0.6rem 0.75rem', color: '#e11d48', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>יתרת חוב</th>
                     </tr>
                   </thead>
                   <tbody>

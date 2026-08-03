@@ -8,6 +8,7 @@ import SendEmailModal from '@/components/SendEmailModal';
 import { Copy, Mail } from 'lucide-react';
 import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '@/lib/orderStatus';
 import { addHistory } from '@/lib/historyManager';
+import { normalizeEmail } from '@/lib/emailUtils';
 
 export default function CustomerPage({ params }) {
   const router = useRouter();
@@ -53,6 +54,15 @@ export default function CustomerPage({ params }) {
     setCustomer(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleEmailBlur = () => {
+    if (customer?.email) {
+      const normalized = normalizeEmail(customer.email, customer.emailSuffix);
+      if (normalized !== customer.email) {
+        setCustomer(prev => ({ ...prev, email: normalized }));
+      }
+    }
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
@@ -60,11 +70,16 @@ export default function CustomerPage({ params }) {
     const url = id === 'new' ? '/api/customers' : `/api/customers/${id}`;
     const method = id === 'new' ? 'POST' : 'PUT';
 
+    const normalizedCustomer = {
+      ...customer,
+      email: normalizeEmail(customer.email, customer.emailSuffix)
+    };
+
     try {
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(customer)
+        body: JSON.stringify(normalizedCustomer)
       });
       const data = await res.json();
       
@@ -169,7 +184,7 @@ export default function CustomerPage({ params }) {
             <div className="form-group">
               <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>דוא"ל</label>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input data-element-name="שדה_page_11" data-agy-id="customer_email_input" type="email" name="email" value={customer.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+                <input data-element-name="שדה_page_11" data-agy-id="customer_email_input" type="email" name="email" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
                 {customer.email && (
                   <>
                     <button data-element-name="כפתור_page_12" data-agy-id="copy_email_btn" type="button" onClick={() => navigator.clipboard.writeText(customer.email)} title="העתק כתובת מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
