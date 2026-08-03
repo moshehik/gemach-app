@@ -386,17 +386,17 @@ export default function AlterationsPage() {
         </div>
       ) : (
         <div style={{ padding: 0, overflow: 'visible', background: 'var(--card-bg)', borderRadius: '16px', border: 'var(--glass-border)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
+          <div style={{ overflow: 'visible', minHeight: '50vh' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
               <thead>
-                <tr style={{ background: 'var(--card-bg)', borderBottom: '2px solid var(--border-color)' }}>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>תאריך אירוע</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>לקוח</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>דגם שמלה</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>מידה</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>פירוט תיקונים</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>סטטוס</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>פעולות</th>
+                <tr style={{ background: 'var(--sticky-header-bg, #ffffff)', borderBottom: '2px solid var(--border-color)' }}>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך אירוע</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>דגם שמלה</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>מידה</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פירוט תיקונים</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סטטוס</th>
+                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פעולות</th>
                 </tr>
               </thead>
               <tbody>

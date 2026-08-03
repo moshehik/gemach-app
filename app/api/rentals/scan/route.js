@@ -183,8 +183,9 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'חסר קוד פריט' }, { status: 400 });
     }
 
+    const idStr = String(unreturnedItemId);
     const item = await prisma.orderItem.update({
-      where: { id: parseInt(unreturnedItemId) },
+      where: { id: idStr },
       data: {
         isReturned: true,
         returnedOk: true,

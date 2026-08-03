@@ -3,7 +3,7 @@ import prisma from '../../../lib/prisma';
 
 export async function POST(request) {
   try {
-    const { barcode } = await request.json();
+    const { barcode, orderId } = await request.json();
 
     if (!barcode) {
       return NextResponse.json({ valid: false, error: 'לא הוזן ברקוד' }, { status: 400 });
@@ -96,8 +96,27 @@ export async function POST(request) {
       }
     }
 
+    // 3. Check if currently taken and not returned in another order
+    const targetOrderId = orderId ? parseInt(orderId) : null;
+    const unreturnedItem = await prisma.orderItem.findFirst({
+      where: {
+        barcode: cleanBarcode,
+        isTaken: true,
+        isReturned: false,
+        isDeleted: false,
+        ...(targetOrderId ? { orderId: { not: targetOrderId } } : {})
+      },
+      include: { order: true }
+    });
+
     return NextResponse.json({
       valid: true,
+      unreturned: !!unreturnedItem,
+      ...(unreturnedItem && {
+        unreturnedItemId: unreturnedItem.id,
+        unreturnedOrderId: unreturnedItem.orderId,
+        warning: `השמלה שסרקת (ברקוד ${cleanBarcode}) עוד לא הוחזרה מהשכרה קודמת בהזמנה #${unreturnedItem.orderId}.`
+      }),
       dressItem: {
         id: dressItem?.id || null,
         barcode: cleanBarcode,

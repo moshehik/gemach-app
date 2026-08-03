@@ -294,18 +294,18 @@ export default function RefundsPage() {
             לא נמצאו זיכויים תואמים.
           </div>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
+          <div style={{ overflow: 'visible' }}>
             <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
               <thead>
-                <tr style={{ background: 'var(--card-bg)', color: 'var(--text-main)', borderBottom: '2px solid var(--border-color)' }}>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>תאריך</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>לקוח</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>הזמנה</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>סכום</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>פרטי בנק</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>אשראי מקורי</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>סטטוס</th>
-                  <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>פעולות</th>
+                <tr style={{ background: 'var(--sticky-header-bg, #ffffff)', color: 'var(--text-main)', borderBottom: '2px solid var(--border-color)' }}>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>הזמנה</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סכום</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פרטי בנק</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>אשראי מקורי</th>
+                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סטטוס</th>
+                  <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פעולות</th>
                 </tr>
               </thead>
               <tbody>
@@ -443,16 +443,16 @@ export default function RefundsPage() {
                 לא נמצאו חובות תואמים.
               </div>
             ) : (
-              <div style={{ overflowX: 'auto' }}>
+              <div style={{ overflow: 'visible' }}>
                 <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
                   <thead>
-                    <tr style={{ background: 'var(--card-bg)', color: '#be123c', borderBottom: '2px solid #fecdd3' }}>
-                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>תאריך אירוע</th>
-                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>לקוח</th>
-                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>הזמנה</th>
-                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>סה"כ להזמנה</th>
-                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>שולם</th>
-                      <th style={{ padding: '0.6rem 0.75rem', color: '#e11d48', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 25, background: 'var(--card-bg)', backdropFilter: 'blur(12px)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)' }}>יתרת חוב</th>
+                    <tr style={{ background: 'var(--sticky-header-bg, #ffffff)', color: '#be123c', borderBottom: '2px solid #fecdd3' }}>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך אירוע</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>הזמנה</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סה"כ להזמנה</th>
+                      <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>שולם</th>
+                      <th style={{ padding: '0.6rem 0.75rem', color: '#e11d48', position: 'sticky', top: 'var(--navbar-height, 72px)', zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>יתרת חוב</th>
                     </tr>
                   </thead>
                   <tbody>

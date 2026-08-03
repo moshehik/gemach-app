@@ -177,7 +177,18 @@ export default function HistoryPage() {
     return url;
   };
 
-  const thStyle = { padding: '0.4rem 0.5rem', cursor: 'pointer', userSelect: 'none', textAlign: 'right' };
+  const thStyle = { 
+    padding: '0.6rem 0.75rem', 
+    cursor: 'pointer', 
+    userSelect: 'none', 
+    textAlign: 'right',
+    position: 'sticky',
+    top: 'var(--navbar-height, 72px)',
+    zIndex: 35,
+    backgroundColor: 'var(--sticky-header-bg, #ffffff)',
+    boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)',
+    borderBottom: '2px solid var(--border-color)'
+  };
 
   return (
     <main className="container animate-fade-in" style={{ paddingTop: '2rem' }}>
@@ -320,7 +331,7 @@ export default function HistoryPage() {
       </div>
 
       {/* Data Table */}
-      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflowX: 'auto' }}>
+      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflow: 'visible' }}>
         {loading && logs.length === 0 ? (
           <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
         ) : logs.length === 0 ? (

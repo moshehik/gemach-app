@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { calculatePaymentStatus } from '../../../lib/orderStatus';
 
 export default function PrintOrderPage() {
   const searchParams = useSearchParams();
@@ -433,6 +434,15 @@ export default function PrintOrderPage() {
                   ₪{Math.max(0, (order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0) - (order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0))}
                 </span>
               </div>
+              <div className="detail-item full-width" style={{ marginTop: '10px', paddingTop: '10px', borderTop: '1px dashed #ccc' }}>
+                <span className="label">סטטוס תשלום</span>
+                <span className="value" style={{ fontWeight: 'bold', fontSize: '16px' }}>
+                  {calculatePaymentStatus(
+                    order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0,
+                    order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0
+                  )}
+                </span>
+              </div>
             </div>
 
             {order.payments && order.payments.filter(p => !p.isDeleted).length > 0 && (
@@ -450,19 +460,37 @@ export default function PrintOrderPage() {
                   <tbody>
                     {order.payments.filter(p => !p.isDeleted).map((p, idx) => {
                       let notes = p.notes || '-';
+                      let extraInfo = '';
                       try {
                         if (typeof notes === 'string' && notes.trim().startsWith('{')) {
                           const parsed = JSON.parse(notes);
-                          notes = parsed.Confirmation || parsed.TransactionId || parsed['אישור'] ? `אישור: ${parsed.Confirmation || parsed.TransactionId || parsed['אישור']}` : 'סליקת אשראי';
+                          const approval = parsed.Confirmation || parsed.TransactionId || parsed['אישור'];
+                          notes = approval ? `אישור: ${approval}` : 'סליקת אשראי';
+                          if (parsed.Tashloumim || parsed['תשלומים']) {
+                             extraInfo = ` | תשלומים: ${parsed.Tashloumim || parsed['תשלומים']}`;
+                          }
+                          if (parsed['הערות משתמש']) {
+                             extraInfo += ` | ${parsed['הערות משתמש']}`;
+                          }
+                          notes += extraInfo;
                         } else if (typeof notes === 'string') {
                            const match = notes.match(/אישור:\s*([a-zA-Z0-9]+)/);
-                           if (match && match[1]) notes = `אישור: ${match[1]}`;
-                           else notes = notes.split(' | ')[0];
+                           const tashMatch = notes.match(/"Tashloumim"\s*:\s*"(\d+)"/);
+                           let approvalStr = notes;
+                           if (match && match[1]) {
+                             approvalStr = `אישור: ${match[1]}`;
+                             if (tashMatch && tashMatch[1]) {
+                               approvalStr += ` | תשלומים: ${tashMatch[1]}`;
+                             }
+                           } else if (notes.length > 50) {
+                             approvalStr = notes.substring(0, 50) + '...';
+                           }
+                           notes = approvalStr;
                         }
                       } catch (e) {}
                       return (
                         <tr key={idx}>
-                          <td>{new Date(p.paymentDate).toLocaleDateString('he-IL')}</td>
+                          <td>{p.paymentDate ? `${new Date(p.paymentDate).toLocaleDateString('he-IL')} (${getHebrewDateString(p.paymentDate)})` : `${new Date().toLocaleDateString('he-IL')} (${getHebrewDateString(new Date())})`}</td>
                           <td>{p.paymentMethod || '-'}</td>
                           <td style={{ fontWeight: 'bold' }}>₪{p.amount}</td>
                           <td>{notes}</td>

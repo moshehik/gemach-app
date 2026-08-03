@@ -20,77 +20,20 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
     const isMulti = typeof fieldOrUpdates === 'object';
     const updates = isMulti ? fieldOrUpdates : { [fieldOrUpdates]: valueIfField };
     
-    const currentItems = items && items.length > 0 ? items : (order.items || []);
-    const activeItems = currentItems.filter(i => !i.isDeleted);
-    
+    if (updates.eventDate !== undefined && !updates.eventDateHebrew) {
+      updates.eventDateHebrew = updates.eventDate ? getHebrewDateString(updates.eventDate) : null;
+    }
+
     const proposedOrder = {
       ...order,
       ...updates
     };
 
-    if (activeItems.length === 0) {
-      onOrderChange(proposedOrder);
-      const triggerSave = Object.keys(updates).some(k => ['isAbroad', 'isWeekdayEvent', 'eventDate', 'fromDate', 'toDate', 'returnDate'].includes(k));
-      if (triggerSave) {
-        if (onSaveRequest) setTimeout(() => onSaveRequest(proposedOrder), 0);
-      }
-      return;
-    }
+    onOrderChange(proposedOrder);
 
-    // Skip validation if dates aren't fully entered yet for custom durations
-    if ((proposedOrder.isAbroad || proposedOrder.isWeekdayEvent) && (!proposedOrder.fromDate || !proposedOrder.toDate)) {
-      onOrderChange(proposedOrder);
-      return;
-    }
-
-    try {
-      const validateRes = await fetch('/api/orders/validate-inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: activeItems,
-          eventDate: proposedOrder.eventDate,
-          isAbroad: proposedOrder.isAbroad || proposedOrder.isWeekdayEvent,
-          isWeekdayEvent: proposedOrder.isWeekdayEvent,
-          fromDate: proposedOrder.fromDate,
-          toDate: proposedOrder.toDate,
-          orderId: proposedOrder.orderId,
-          customSpacing: proposedOrder.customSpacing,
-          simulateIfError: true
-        })
-      });
-      
-      const validateData = await validateRes.json();
-      if (validateData.error) {
-        alert(`שגיאה בבדיקת מלאי: ${validateData.error}`);
-        return;
-      }
-      
-      if (!validateData.valid) {
-        if (validateData.simulation) {
-          // Open simulation modal
-          setSimulationModalData({
-            errors: validateData.errors,
-            simulation: validateData.simulation,
-            updates
-          });
-        } else {
-          const errorLines = validateData.errors.map(e => 
-            `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`
-          ).join('\n');
-          alert(`לא ניתן לשנות את התאריך עקב חוסר במלאי לפריטים הקיימים בהזמנה:\n\n${errorLines}`);
-        }
-        return;
-      }
-      
-      onOrderChange(proposedOrder);
-      const triggerSave = Object.keys(updates).some(k => ['isAbroad', 'isWeekdayEvent', 'eventDate', 'fromDate', 'toDate', 'returnDate', 'customSpacing'].includes(k));
-      if (triggerSave) {
-        if (onSaveRequest) setTimeout(() => onSaveRequest(proposedOrder), 0);
-      }
-    } catch (err) {
-      console.error('Validation fetch error', err);
-      alert('שגיאה בבדיקת המלאי מול השרת.');
+    const triggerSave = Object.keys(updates).some(k => ['isAbroad', 'isWeekdayEvent', 'eventDate', 'fromDate', 'toDate', 'returnDate', 'customSpacing'].includes(k));
+    if (triggerSave && onSaveRequest) {
+      setTimeout(() => onSaveRequest(proposedOrder), 0);
     }
   };
 

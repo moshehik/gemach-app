@@ -337,7 +337,7 @@ export default function RentalsPage() {
         </div>
       </div>
 
-      <div style={{ overflowX: 'auto', background: 'var(--card-bg)', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
+      <div style={{ overflow: 'visible', background: 'var(--card-bg)', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
         <table className="items-table" style={{ margin: 0, minWidth: '800px' }}>
           <thead>
             <tr>

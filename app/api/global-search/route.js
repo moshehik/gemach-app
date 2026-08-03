@@ -30,7 +30,7 @@ export async function GET(request) {
         city LIKE $1 OR 
         id = $3
       )
-      ORDER BY id DESC
+      ORDER BY "updatedAt" DESC
       LIMIT 50
     `, likeQ, isNum ? numQ : -1, q);
 
@@ -50,7 +50,7 @@ export async function GET(request) {
         o."orderId" = $2 OR 
         o.id = $3
       )
-      ORDER BY o.id DESC
+      ORDER BY o."orderId" DESC
       LIMIT 50
     `, likeQ, isNum ? numQ : -1, q);
 
@@ -70,7 +70,7 @@ export async function GET(request) {
         oi."orderId" = $2 OR
         oi.id = $3
       )
-      ORDER BY oi.id DESC
+      ORDER BY oi."createdAt" DESC
       LIMIT 50
     `, likeQ, isNum ? numQ : -1, q);
 

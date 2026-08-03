@@ -264,7 +264,7 @@ export default function EmployeesPage() {
                 <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
               ) : (
                 <>
-                <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
+                <div style={{ overflow: 'visible', minHeight: '50vh' }}>
                 <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
@@ -358,7 +358,7 @@ export default function EmployeesPage() {
             </div>
 
             <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)' }}>
-              <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
+              <div style={{ overflow: 'visible', minHeight: '50vh' }}>
               <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ borderBottom: '2px solid #ddd', color: 'var(--text-muted)' }}>

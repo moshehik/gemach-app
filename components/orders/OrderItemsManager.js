@@ -51,46 +51,6 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
 
     setSavingItemIndex(index);
     try {
-      const hasDates = order.isAbroad || order.isWeekdayEvent ? (order.fromDate && order.toDate) : order.eventDate;
-      if (!hasDates) {
-        setSavingItemIndex(null);
-        alert(order.isAbroad || order.isWeekdayEvent ? 'חובה לבחור תאריכים עבור אירוע חו"ל/מיוחד לפני שמירת פריט.' : 'חובה לבחור תאריך אירוע להזמנה לפני שמירת פריט.');
-        return;
-      }
-
-      // Validate inventory before saving single item
-      const activeItems = items.filter(i => !i.isDeleted);
-      const validateRes = await fetch('/api/orders/validate-inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: activeItems,
-          eventDate: order.eventDate,
-          isAbroad: order.isAbroad,
-          isWeekdayEvent: order.isWeekdayEvent,
-          fromDate: order.fromDate,
-          toDate: order.toDate,
-          orderId: order.orderId
-        })
-      });
-      const validateData = await validateRes.json();
-      
-      if (validateData.error) {
-        setSavingItemIndex(null);
-        alert(`שגיאה בבדיקת המלאי: ${validateData.error}`);
-        return;
-      }
-      
-      if (!validateData.valid) {
-        setSavingItemIndex(null);
-        if (validateData.errors && validateData.errors.length > 0) {
-          alert(`לא ניתן לשמור פריט עקב חוסר במלאי: חסרים ${validateData.errors[0].requested - validateData.errors[0].available} ממידה זו.`);
-        } else {
-          alert('לא ניתן לשמור פריט עקב חוסר במלאי.');
-        }
-        return;
-      }
-
       const isEditing = !!item.id && !item.isNew;
       const url = isEditing ? `/api/orders/${orderId}/items/${item.id}` : `/api/orders/${orderId}/items`;
       const method = isEditing ? 'PUT' : 'POST';
@@ -189,49 +149,6 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       if (!isNaN(maxItems) && maxItems > 0 && activeCount >= maxItems) {
         alert(`הגבלת מערכת: לא ניתן לשחזר פריט. המקסימום המותר הוא ${maxItems} פריטים בהזמנה.`);
         return;
-      }
-
-      // Check stock before restoring
-      try {
-        const hasDates = order.isAbroad || order.isWeekdayEvent ? (order.fromDate && order.toDate) : order.eventDate;
-        if (!hasDates) {
-          alert(order.isAbroad || order.isWeekdayEvent ? 'חובה לבחור תאריכים עבור אירוע חו"ל/מיוחד לפני שחזור פריט.' : 'חובה לבחור תאריך אירוע להזמנה לפני שחזור פריט.');
-          return;
-        }
-
-        const restoredItem = { ...items[index], isDeleted: false };
-        const activeItems = items.filter((i, idx) => !i.isDeleted && idx !== index);
-        const itemsToValidate = [...activeItems, restoredItem];
-        
-        const validateRes = await fetch('/api/orders/validate-inventory', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            items: itemsToValidate,
-            eventDate: order.eventDate,
-            isAbroad: order.isAbroad,
-            isWeekdayEvent: order.isWeekdayEvent,
-            fromDate: order.fromDate,
-            toDate: order.toDate,
-            orderId: order.orderId
-          })
-        });
-        const validateData = await validateRes.json();
-        
-        if (validateData.error) {
-          alert(`שגיאה בבדיקת המלאי: ${validateData.error}`);
-          return;
-        }
-        
-        if (!validateData.valid && validateData.errors && validateData.errors.length > 0) {
-          alert(`לא ניתן לשחזר את הפריט עקב חוסר במלאי: חסרים ${validateData.errors[0].requested - validateData.errors[0].available} ממידה זו.`);
-          return;
-        }
-      } catch (err) {
-        console.error('Validation fetch error', err);
-        alert('שגיאה בבדיקת המלאי מול השרת.');
-        return;
-      }
     }
     handleItemChange(index, 'isDeleted', !isCurrentlyDeleted);
   };

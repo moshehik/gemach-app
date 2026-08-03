@@ -768,13 +768,7 @@ export default function NewOrderPage() {
     const activeItems = (order.items || []).filter(i => !i.isDeleted);
     const hasDates = order.isAbroad || order.isWeekdayEvent ? (order.fromDate && order.toDate) : order.eventDate;
 
-    if (activeItems.length > 0 && !hasDates) {
-      setSaving(false);
-      alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
-      return;
-    }
-    
-    if (activeItems.length > 0) {
+    if (activeItems.length > 0 && hasDates) {
       try {
         const validateRes = await fetch('/api/orders/validate-inventory', {
           method: 'POST',
@@ -1207,7 +1201,7 @@ export default function NewOrderPage() {
         
         {/* STEP 1: CUSTOMER */}
         {step === 1 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '650px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative', overflow: 'hidden' }}>
+          <div className="fade-in glass-card" style={{ maxWidth: '700px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1rem', alignItems: 'center' }}>
                <h2 style={{ margin: 0, fontSize: '1.4rem', fontWeight: '800', letterSpacing: '-0.5px' }}>מי הלקוח?</h2>
@@ -1354,7 +1348,7 @@ export default function NewOrderPage() {
 
         {/* STEP 2: DATES */}
         {step === 2 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '750px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative' }}>
+          <div className="fade-in glass-card" style={{ maxWidth: '700px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
             <h2 style={{ marginBottom: '0.8rem', fontSize: '1.4rem', fontWeight: '800' }}>תאריכי ההזמנה</h2>
 
@@ -1479,7 +1473,7 @@ export default function NewOrderPage() {
             {/* Add Item Form (Right Side) */}
             <div className="glass-card" style={{ flex: '1.2', maxWidth: '520px', minWidth: '320px', padding: '1.2rem', position: 'relative', overflow: 'hidden' }}>
               <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
-              <h2 style={{ margin: '0 0 0.8rem 0', fontSize: '1.3rem', fontWeight: '800' }}>הוספת פריט חדש</h2>
+              <h2 style={{ margin: '0 0 0.8rem 0', fontSize: '1.4rem', fontWeight: '800' }}>הוספת פריט חדש</h2>
               
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                 <div>
@@ -1767,7 +1761,7 @@ export default function NewOrderPage() {
 
         {/* STEP 5: PAYMENT & SAVE */}
         {step === 5 && (
-          <div className="fade-in glass-card" style={{ maxWidth: '600px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative' }}>
+          <div className="fade-in glass-card" style={{ maxWidth: '700px', margin: '0.5rem auto', padding: '1.2rem', position: 'relative' }}>
             <div style={{ position: 'absolute', top: 0, right: 0, width: '100%', height: '4px', background: 'var(--primary-color)' }}></div>
             <h2 style={{ marginBottom: '0.4rem', fontSize: '1.4rem', fontWeight: '800' }}>תשלום וסיום הזמנה</h2>
             <p style={{ color: '#64748b', fontSize: '1rem', marginBottom: '1.2rem' }}>בחרו את אמצעי התשלום ובצעו רישום סופי.</p>

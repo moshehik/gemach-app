@@ -303,10 +303,9 @@ export default function OrdersPage() {
     fontSize: 'clamp(0.75rem, 1.5vw, 1rem)',
     position: 'sticky',
     top: 'var(--navbar-height, 72px)',
-    zIndex: 25,
-    backgroundColor: 'var(--card-bg)',
-    backdropFilter: 'blur(12px)',
-    boxShadow: '0 4px 10px -2px rgba(0,0,0,0.06)',
+    zIndex: 35,
+    backgroundColor: 'var(--sticky-header-bg, #ffffff)',
+    boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)',
     borderBottom: '2px solid var(--border-color)'
   };
 
@@ -596,7 +595,7 @@ export default function OrdersPage() {
               <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
             ) : (
               <>
-                <div style={{ overflowX: 'auto', minHeight: '50vh' }}>
+                <div style={{ overflow: 'visible', minHeight: '50vh' }}>
                   <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', whiteSpace: 'nowrap', fontSize: 'clamp(0.75rem, 1.5vw, 1rem)' }}>
                   <thead>
                     <tr style={{ borderBottom: '1px solid var(--element-border)', color: 'var(--text-muted)' }}>

@@ -183,7 +183,7 @@ export default function OrderDetailsPage({ params }) {
       return;
     }
 
-    if (activeItems.length > 0) {
+    if (activeItems.length > 0 && hasDates) {
       try {
         const validateRes = await fetch('/api/orders/validate-inventory', {
           method: 'POST',
@@ -260,7 +260,11 @@ export default function OrderDetailsPage({ params }) {
           obligations: obligations,
           payments: payments,
           debtApprovedBy: debtApprovedBy,
-          totalAmount: items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0)
+          totalAmount: (() => {
+            const itemsSum = items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
+            const obligationsSum = obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+            return itemsSum > 0 ? itemsSum : (obligationsSum > 0 ? obligationsSum : (currentOrder.totalAmount || 0));
+          })()
         })
       });
 
@@ -531,7 +535,7 @@ export default function OrderDetailsPage({ params }) {
             </div>
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', flexWrap: 'wrap' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginRight: 'auto' }}>
             {saveMessage && <span style={{ color: saveMessage.includes('שגיאה') ? '#ef4444' : '#10b981', fontWeight: 'bold', background: saveMessage.includes('שגיאה') ? '#fee2e2' : '#d1fae5', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>{saveMessage}</span>}
             
             <button data-element-name="כפתור_page_1" data-agy-id="[id]_page_button_2" 
@@ -540,20 +544,22 @@ export default function OrderDetailsPage({ params }) {
               title={isLocked ? "הזמנה נעולה" : "שמור שינויים"}
               style={{ 
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                padding: '0.7rem 1.2rem', 
-                background: 'linear-gradient(135deg, #2563eb, #3b82f6)', 
+                padding: '0.65rem 1.2rem', 
+                background: '#2563eb', 
                 color: 'white', 
                 border: 'none', 
                 borderRadius: '10px', 
                 cursor: (saving || isLocked) ? 'not-allowed' : 'pointer',
                 opacity: (saving || isLocked) ? 0.7 : 1,
                 fontWeight: '600',
-                boxShadow: '0 4px 12px rgba(37, 99, 235, 0.3)',
-                transition: 'all 0.2s',
+                fontSize: '0.95rem',
+                transition: 'all 0.2s ease',
                 transform: saving ? 'scale(0.98)' : 'scale(1)'
               }}
+              onMouseOver={(e) => { if (!saving && !isLocked) e.currentTarget.style.backgroundColor = '#1d4ed8'; }}
+              onMouseOut={(e) => { if (!saving && !isLocked) e.currentTarget.style.backgroundColor = '#2563eb'; }}
             >
-              {saving ? <div className="spinner" style={{ width: '20px', height: '20px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Save data-element-name="רכיב_page_2" size={20} />}
+              {saving ? <div className="spinner" style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Save data-element-name="רכיב_page_2" size={18} />}
               שמור
             </button>
             
@@ -562,13 +568,14 @@ export default function OrderDetailsPage({ params }) {
               title="עובדים פעילים"
               style={{ 
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                padding: '0.7rem 1rem', background: '#fff7ed', color: '#ea580c', border: '1px solid #fed7aa', 
-                borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600'
+                padding: '0.65rem 1rem', background: '#fff7ed', color: '#ea580c', border: 'none', 
+                borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
+                fontSize: '0.95rem'
               }}
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#ffedd5'}
               onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fff7ed'}
             >
-              <Users data-element-name="רכיב_page_4" size={20} />
+              <Users data-element-name="רכיב_page_4" size={18} />
             </button>
 
             <button data-element-name="כפתור_page_5" data-agy-id="[id]_page_button_4" 
@@ -576,13 +583,14 @@ export default function OrderDetailsPage({ params }) {
               title={`מעבר לתשלום (₪${totalRequired - totalPaid})`}
               style={{ 
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                padding: '0.7rem 1rem', background: '#f0fdf4', color: '#16a34a', border: '1px solid #bbf7d0', 
-                borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600'
+                padding: '0.65rem 1rem', background: '#f0fdf4', color: '#16a34a', border: 'none', 
+                borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
+                fontSize: '0.95rem'
               }}
               onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
               onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}
             >
-              <CreditCard data-element-name="רכיב_page_6" size={20} />
+              <CreditCard data-element-name="רכיב_page_6" size={18} />
             </button>
 
             <div style={{ position: 'relative' }}>
@@ -591,47 +599,48 @@ export default function OrderDetailsPage({ params }) {
                 title="הדפסת הזמנה"
                 style={{ 
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                  padding: '0.7rem 1rem', background: '#f3e8ff', color: '#7e22ce', border: '1px solid #e9d5ff', 
-                  borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600'
+                  padding: '0.65rem 1rem', background: '#f3e8ff', color: '#7e22ce', border: 'none', 
+                  borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
+                  fontSize: '0.95rem'
                 }}
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e9d5ff'}
                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f3e8ff'}
               >
-                <Printer data-element-name="רכיב_page_8" size={20} />
+                <Printer data-element-name="רכיב_page_8" size={18} />
               </button>
               {showPrintMenu && (
-                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', background: 'white', border: '1px solid #e2e8f0', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', zIndex: 1050, minWidth: '150px', overflow: 'hidden' }}>
+                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', background: 'white', border: 'none', borderRadius: '10px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05)', zIndex: 1050, minWidth: '160px', overflow: 'hidden', padding: '0.3rem 0' }}>
                   <div data-element-name="לחיץ_page_9" 
                     onClick={() => { setShowPrintMenu(false); window.open(`/print/order?orderId=${order.orderId}&type=order`, '_blank'); }}
-                    style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
+                    style={{ padding: '0.7rem 1rem', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem' }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <FileText data-element-name="רכיב_page_10" size={18} /> הזמנה
+                    <FileText data-element-name="רכיב_page_10" size={16} /> הזמנה
                   </div>
                   <div data-element-name="לחיץ_page_11" 
                     onClick={() => { setShowPrintMenu(false); window.open(`/print/order?orderId=${order.orderId}&type=rental`, '_blank'); }}
-                    style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
+                    style={{ padding: '0.7rem 1rem', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem' }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <ClipboardList data-element-name="רכיב_page_12" size={18} /> השכרה
+                    <ClipboardList data-element-name="רכיב_page_12" size={16} /> השכרה
                   </div>
                   <div data-element-name="לחיץ_page_13" 
                     onClick={() => handleSendEmail('order')}
-                    style={{ padding: '0.8rem 1rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
+                    style={{ padding: '0.7rem 1rem', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem' }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <Mail data-element-name="רכיב_page_14" size={18} /> מייל הזמנה
+                    <Mail data-element-name="רכיב_page_14" size={16} /> מייל הזמנה
                   </div>
                   <div data-element-name="לחיץ_page_15" 
                     onClick={() => handleSendEmail('rental')}
-                    style={{ padding: '0.8rem 1rem', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s', display: 'flex', alignItems: 'center', gap: '0.6rem' }}
+                    style={{ padding: '0.7rem 1rem', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem' }}
                     onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    <Mail data-element-name="רכיב_page_16" size={18} /> מייל השכרה
+                    <Mail data-element-name="רכיב_page_16" size={16} /> מייל השכרה
                   </div>
                 </div>
               )}
@@ -642,13 +651,14 @@ export default function OrderDetailsPage({ params }) {
               title="חזרה"
               style={{ 
                 display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                padding: '0.7rem 1rem', background: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0', 
-                borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s', fontWeight: '600'
+                padding: '0.65rem 1rem', background: '#f1f5f9', color: '#475569', border: 'none', 
+                borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
+                fontSize: '0.95rem'
               }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
             >
-              <ArrowRight data-element-name="רכיב_page_18" size={20} />
+              <ArrowRight data-element-name="רכיב_page_18" size={18} />
               חזור
             </button>
           </div>

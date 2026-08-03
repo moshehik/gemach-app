@@ -58,7 +58,7 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
       const vRes = await fetch('/api/rentals/verify-item', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ barcode })
+        body: JSON.stringify({ barcode, orderId: order?.orderId })
       });
       const vData = await vRes.json();
       if (!vRes.ok || !vData.valid) {
@@ -66,6 +66,29 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
         setSelectedItemForScan(null);
         return;
       }
+
+      // Check if unreturned from previous rental in another order
+      if (vData.unreturned) {
+        const confirmMsg = `${vData.warning}\nהאם ברצונך לסמן אותה כהוחזרה מההשכרה הקודמת (הזמנה #${vData.unreturnedOrderId}) ולהמשיך בהשכרה זו?`;
+        const promptFunc = window.customConfirm || window.confirm;
+        if (await promptFunc(confirmMsg)) {
+          const putRes = await fetch('/api/rentals/scan', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ unreturnedItemId: vData.unreturnedItemId })
+          });
+          if (!putRes.ok) {
+            const errData = await putRes.json();
+            alert(errData.error || 'שגיאה בעדכון החזרה מהשכרה קודמת');
+            setSelectedItemForScan(null);
+            return;
+          }
+        } else {
+          setSelectedItemForScan(null);
+          return;
+        }
+      }
+
       dressInfo = vData.dressItem;
     } catch (err) {
       console.error('Error calling verify-item API:', err);

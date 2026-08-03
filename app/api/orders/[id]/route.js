@@ -74,8 +74,9 @@ export async function GET(request, { params }) {
     items.forEach(i => {
       const dressName = i.dressItem?.dress?.name;
       const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
-      if (!dressName && prefix) {
-        uniquePrefixes.add(prefix);
+      if (!dressName && prefix !== null && prefix !== undefined) {
+        const numPfx = parseInt(prefix, 10);
+        if (!isNaN(numPfx)) uniquePrefixes.add(numPfx);
       }
     });
 
@@ -86,7 +87,13 @@ export async function GET(request, { params }) {
         select: { barcodePrefix: true, name: true }
       });
     }
-    const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
+    const dressModelMap = new Map();
+    dressModels.forEach(m => {
+      if (m.barcodePrefix !== null && m.barcodePrefix !== undefined) {
+        dressModelMap.set(Number(m.barcodePrefix), m.name);
+        dressModelMap.set(String(m.barcodePrefix), m.name);
+      }
+    });
 
     const eventDate = order.eventDate;
     const fallbackReturn = order.returnDate || (eventDate ? new Date(new Date(eventDate).getTime() + 2 * 24 * 3600 * 1000) : null);
@@ -96,26 +103,33 @@ export async function GET(request, { params }) {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
       
-      if (!dressName && prefix) {
-        dressName = dressModelMap.get(prefix);
+      if (!dressName && prefix !== null && prefix !== undefined) {
+        dressName = dressModelMap.get(Number(prefix)) || dressModelMap.get(String(prefix));
       }
       
-      let finalDescription = item.description || 'פריט כללי';
-      if (dressName) {
-        finalDescription = `${dressName} (קוד: ${prefix || ''})`;
-      } else if (item.description) {
-        finalDescription = item.description;
+      let finalDescription = item.description;
+      if (!finalDescription || finalDescription === 'פריט כללי') {
+        if (dressName) {
+          finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''}`;
+        } else if (item.dressItem?.dressName) {
+          finalDescription = item.dressItem.dressName;
+        } else {
+          finalDescription = 'פריט כללי';
+        }
+      } else if (dressName && !finalDescription.includes(dressName)) {
+        finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${item.description}`;
       }
 
-      const isTaken = item.isTaken || item.barcode !== null;
-      const isReturned = item.isReturned;
+      const isTaken = item.isTaken || item.barcode !== null || item.takenDate !== null;
+      const isReturned = item.isReturned || item.returnDate !== null;
       const takenDate = item.takenDate || (isTaken ? fallbackTaken : null);
-      const returnDate = item.returnDate || (isReturned || isTaken ? fallbackReturn : null);
+      const returnDate = item.returnDate || (isReturned ? fallbackReturn : null);
       
       return {
         ...item,
         description: finalDescription,
         isTaken,
+        isReturned,
         takenDate,
         returnDate
       };
@@ -125,13 +139,13 @@ export async function GET(request, { params }) {
       if (ob.isManual === false || ob.productId) {
          ob.isManual = false;
          if (ob.productId) {
-             const prod = priceList.find(p => p.id === ob.productId || String(p.legacyId) === String(ob.productId));
+             const prod = priceList.find(p => String(p.id) === String(ob.productId) || String(p.legacyId) === String(ob.productId));
              if (!ob.description) {
                  const matchedItem = itemsWithLogs.find(i => {
                      const cat = i.dressItem?.dress?.priceCategory || '';
                      return prod && (cat === prod.category || cat.replace('כלול ב', '').trim() === prod.category);
                  });
-                 ob.description = matchedItem ? `${matchedItem.dressItem?.dress?.name || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? prod.description : 'חיוב מחירון');
+                 ob.description = matchedItem ? `${matchedItem.dressItem?.dress?.name || matchedItem.description || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? (prod.description || prod.category || 'חיוב מחירון') : `חיוב מוצר #${ob.productId}`);
              }
              ob.productName = ob.description;
              if (prod) {
@@ -165,6 +179,23 @@ export async function GET(request, { params }) {
       { status: 500 }
     );
   }
+}
+
+function parseSafeDate(val) {
+  if (val === undefined) return undefined;
+  if (!val || val === 'null' || val === 'undefined') return null;
+  if (val instanceof Date) return isNaN(val.getTime()) ? null : val;
+  if (typeof val === 'string') {
+    const trimmed = val.trim();
+    if (!trimmed) return null;
+    // Keep this in sync with app/api/orders/route.js and app/api/orders/draft/route.js,
+    // which parse date-only strings ("YYYY-MM-DD") as UTC midnight via `new Date(str)`.
+    // Appending a local "T00:00:00" here previously shifted saved dates back by the
+    // server's UTC offset (Asia/Jerusalem), storing the wrong calendar day for edited orders.
+    const d = new Date(trimmed);
+    if (!isNaN(d.getTime())) return d;
+  }
+  return null;
 }
 
 export async function PUT(request, { params }) {
@@ -210,12 +241,9 @@ export async function PUT(request, { params }) {
     }
 
     // Validate inventory availability
-    // Note: We need to reconstruct the items payload because the client might send partial items
     if (data.items && Array.isArray(data.items)) {
-      // Find items that will remain or be added (not deleted)
       const activeItems = data.items.filter(i => !i.isDeleted);
       if (activeItems.length > 0) {
-        // Fetch current items if they are missing model/size info from client
         for (const item of activeItems) {
           if (!item.dressModelId && !item.isNew && item.id) {
             const currentItem = await prisma.orderItem.findUnique({
@@ -232,54 +260,56 @@ export async function PUT(request, { params }) {
         const isAbroadVal = data.isAbroad !== undefined ? data.isAbroad : existingOrder.isAbroad;
         const isWeekdayVal = data.isWeekdayEvent !== undefined ? data.isWeekdayEvent : existingOrder.isWeekdayEvent;
         const isCustomDuration = isAbroadVal || isWeekdayVal;
-        const eventDateVal = data.eventDate !== undefined ? data.eventDate : existingOrder.eventDate;
-        const fromDateVal = data.fromDate !== undefined ? (data.fromDate ? new Date(data.fromDate) : null) : existingOrder.fromDate;
-        const toDateVal = data.toDate !== undefined ? (data.toDate ? new Date(data.toDate) : null) : existingOrder.toDate;
+        const eventDateVal = data.eventDate !== undefined ? parseSafeDate(data.eventDate) : existingOrder.eventDate;
+        const fromDateVal = data.fromDate !== undefined ? parseSafeDate(data.fromDate) : existingOrder.fromDate;
+        const toDateVal = data.toDate !== undefined ? parseSafeDate(data.toDate) : existingOrder.toDate;
 
-        if (!isCustomDuration && !eventDateVal) {
-          return NextResponse.json({ error: 'חובה להגדיר תאריך אירוע עבור הזמנה הכוללת פריטים' }, { status: 400 });
-        }
-        if (isCustomDuration && (!fromDateVal || !toDateVal)) {
-          return NextResponse.json({ error: 'חובה להגדיר תאריכים עבור אירוע חו"ל/מיוחד' }, { status: 400 });
-        }
+        const hasDatesVal = isCustomDuration ? (fromDateVal && toDateVal) : !!eventDateVal;
 
-        const validationResult = await validateOrderItemsAvailability(
-          activeItems,
-          eventDateVal,
-          isCustomDuration,
-          fromDateVal,
-          toDateVal,
-          parsedOrderId
-        );
+        if (hasDatesVal) {
+          const validationResult = await validateOrderItemsAvailability(
+            activeItems,
+            eventDateVal,
+            isCustomDuration,
+            fromDateVal,
+            toDateVal,
+            parsedOrderId
+          );
 
-        if (validationResult.error) {
-          return NextResponse.json({ error: validationResult.error }, { status: 400 });
-        }
-        
-        if (!validationResult.valid) {
-          return NextResponse.json({
-            error: 'אחד או יותר מהפריטים שניסית לעדכן אינם זמינים במלאי בתאריכים החדשים.',
-            validationErrors: validationResult.errors
-          }, { status: 409 });
+          if (validationResult.error) {
+            return NextResponse.json({ error: validationResult.error }, { status: 400 });
+          }
+          
+          if (!validationResult.valid) {
+            return NextResponse.json({
+              error: 'אחד או יותר מהפריטים שניסית לעדכן אינם זמינים במלאי בתאריכים החדשים.',
+              validationErrors: validationResult.errors
+            }, { status: 409 });
+          }
         }
       }
     }
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
+      const parsedEventDate = parseSafeDate(data.eventDate);
+      const parsedFromDate = parseSafeDate(data.fromDate);
+      const parsedToDate = parseSafeDate(data.toDate);
+      const parsedReturnDate = parseSafeDate(data.returnDate);
+
       // 1. Update general order details
       const order = await tx.order.update({
         where: { orderId: parsedOrderId },
         data: {
           totalAmount: data.totalAmount !== undefined && data.totalAmount !== null ? (parseFloat(data.totalAmount) || 0) : undefined,
-          eventDate: data.eventDate ? new Date(data.eventDate) : null,
-          eventDateHebrew: data.eventDateHebrew !== undefined ? data.eventDateHebrew : (data.eventDate ? getHebrewDateString(data.eventDate) : null),
-          returnDate: data.returnDate ? new Date(data.returnDate) : null,
-          isAbroad: data.isAbroad,
-          isWeekdayEvent: data.isWeekdayEvent,
-          fromDate: data.fromDate ? new Date(data.fromDate) : null,
-          toDate: data.toDate ? new Date(data.toDate) : null,
-          notes: data.notes,
-          status: data.status,
+          eventDate: parsedEventDate,
+          eventDateHebrew: data.eventDateHebrew !== undefined ? data.eventDateHebrew : (parsedEventDate ? getHebrewDateString(parsedEventDate) : undefined),
+          returnDate: parsedReturnDate,
+          isAbroad: data.isAbroad !== undefined ? data.isAbroad : undefined,
+          isWeekdayEvent: data.isWeekdayEvent !== undefined ? data.isWeekdayEvent : undefined,
+          fromDate: parsedFromDate,
+          toDate: parsedToDate,
+          notes: data.notes !== undefined ? data.notes : undefined,
+          status: data.status !== undefined ? data.status : undefined,
           hasSignedRegulations: data.hasSignedRegulations !== undefined ? data.hasSignedRegulations : undefined,
         }
       });
@@ -435,8 +465,9 @@ export async function PUT(request, { params }) {
     items.forEach(i => {
       const dressName = i.dressItem?.dress?.name;
       const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
-      if (!dressName && prefix) {
-        uniquePrefixes.add(prefix);
+      if (!dressName && prefix !== null && prefix !== undefined) {
+        const numPfx = parseInt(prefix, 10);
+        if (!isNaN(numPfx)) uniquePrefixes.add(numPfx);
       }
     });
 
@@ -447,7 +478,13 @@ export async function PUT(request, { params }) {
         select: { barcodePrefix: true, name: true }
       });
     }
-    const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
+    const dressModelMap = new Map();
+    dressModels.forEach(m => {
+      if (m.barcodePrefix !== null && m.barcodePrefix !== undefined) {
+        dressModelMap.set(Number(m.barcodePrefix), m.name);
+        dressModelMap.set(String(m.barcodePrefix), m.name);
+      }
+    });
     
     const eventDatePUT = finalOrder.eventDate;
     const fallbackReturnPUT = finalOrder.returnDate || (eventDatePUT ? new Date(new Date(eventDatePUT).getTime() + 2 * 24 * 3600 * 1000) : null);
@@ -457,26 +494,33 @@ export async function PUT(request, { params }) {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
       
-      if (!dressName && prefix) {
-        dressName = dressModelMap.get(prefix);
+      if (!dressName && prefix !== null && prefix !== undefined) {
+        dressName = dressModelMap.get(Number(prefix)) || dressModelMap.get(String(prefix));
       }
       
-      let finalDescription = item.description || 'פריט כללי';
-      if (dressName) {
-        finalDescription = `${dressName} (קוד: ${prefix || ''})`;
-      } else if (item.description) {
-        finalDescription = item.description;
+      let finalDescription = item.description;
+      if (!finalDescription || finalDescription === 'פריט כללי') {
+        if (dressName) {
+          finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''}`;
+        } else if (item.dressItem?.dressName) {
+          finalDescription = item.dressItem.dressName;
+        } else {
+          finalDescription = 'פריט כללי';
+        }
+      } else if (dressName && !finalDescription.includes(dressName)) {
+        finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${item.description}`;
       }
 
-      const isTaken = item.isTaken || item.barcode !== null;
-      const isReturned = item.isReturned;
+      const isTaken = item.isTaken || item.barcode !== null || item.takenDate !== null;
+      const isReturned = item.isReturned || item.returnDate !== null;
       const takenDate = item.takenDate || (isTaken ? fallbackTakenPUT : null);
-      const returnDate = item.returnDate || (isReturned || isTaken ? fallbackReturnPUT : null);
+      const returnDate = item.returnDate || (isReturned ? fallbackReturnPUT : null);
       
       return {
         ...item,
         description: finalDescription,
         isTaken,
+        isReturned,
         takenDate,
         returnDate
       };
@@ -491,13 +535,13 @@ export async function PUT(request, { params }) {
       if (ob.isManual === false || ob.productId) {
          ob.isManual = false;
          if (ob.productId) {
-             const prod = priceList.find(p => p.id === ob.productId);
+             const prod = priceList.find(p => String(p.id) === String(ob.productId) || String(p.legacyId) === String(ob.productId));
              if (!ob.description) {
                  const matchedItem = itemsWithLogs.find(i => {
                      const cat = i.dressItem?.dress?.priceCategory || '';
                      return prod && (cat === prod.category || cat.replace('כלול ב', '').trim() === prod.category);
                  });
-                 ob.description = matchedItem ? matchedItem.description : (prod ? prod.description : 'חיוב מחירון');
+                 ob.description = matchedItem ? `${matchedItem.dressItem?.dress?.name || matchedItem.description || 'פריט'} ${matchedItem.sizeText ? `מידה ${matchedItem.sizeText}` : ''} (פריט #${matchedItem.id})` : (prod ? (prod.description || prod.category || 'חיוב מחירון') : `חיוב מוצר #${ob.productId}`);
              }
              ob.productName = ob.description;
              if (prod) {

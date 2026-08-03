@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, Info, ChevronDown, ChevronUp, RefreshCcw } from 'lucide-react';
 
+import { getHebrewDateString } from '../../lib/hebrewDate';
+
 export default function OrderPaymentsManager({ orderId, items = [], order = {}, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated }) {
   const [newObligation, setNewObligation] = useState({ description: '', amount: '' });
   const [newPayment, setNewPayment] = useState({ paymentMethod: 'אשראי', notes: '', amount: '' });
@@ -77,46 +79,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
     ? settings.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean) 
     : ['אשראי (דרך נדרים פלוס)', 'יציאה באישור מנהל'];
 
-  const validateInventoryBeforePayment = async () => {
-    const activeItems = (items || []).filter(i => !i.isDeleted);
-    if (activeItems.length === 0) return true;
-    const hasDates = order?.isAbroad || order?.isWeekdayEvent ? (order?.fromDate && order?.toDate) : order?.eventDate;
-    if (!hasDates) {
-      alert(order?.isAbroad || order?.isWeekdayEvent ? 'חובה לבחור תאריכים עבור אירוע חו"ל/מיוחד לפני ביצוע תשלום.' : 'חובה לבחור תאריך אירוע להזמנה לפני ביצוע תשלום עבור פריטים.');
-      return false;
-    }
-    try {
-      const res = await fetch('/api/orders/validate-inventory', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          items: activeItems,
-          eventDate: order?.eventDate,
-          isAbroad: order?.isAbroad,
-          isWeekdayEvent: order?.isWeekdayEvent,
-          fromDate: order?.fromDate,
-          toDate: order?.toDate,
-          orderId: order?.orderId
-        })
-      });
-      const data = await res.json();
-      if (!data.valid) {
-        let msg = 'לא ניתן לבצע תשלום, חלק מהפריטים כבר אינם פנויים במלאי:\n';
-        if (data.errors) {
-          data.errors.forEach(e => {
-            msg += `- ${e.dressName} (מידה: ${e.sizeText}): זמין ${e.available}, נדרש ${e.requested}\n`;
-          });
-        }
-        alert(msg + '\nאנא הסר את הפריטים שתפסו או בחר מידות אחרות.');
-        return false;
-      }
-      return true;
-    } catch (e) {
-      console.error(e);
-      alert('שגיאה באימות מלאי מול השרת.');
-      return false;
-    }
-  };
+
 
   const addObligation = () => {
     if (!newObligation.description || !newObligation.amount) return;
@@ -148,8 +111,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
   const addPayment = async () => {
     if (!newPayment.amount) return;
 
-    const isValid = await validateInventoryBeforePayment();
-    if (!isValid) return;
+
 
     const paymentAmount = parseFloat(newPayment.amount);
     const balance = totalRequired - totalPaid;
@@ -449,8 +411,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
        return;
     }
 
-    const isValid = await validateInventoryBeforePayment();
-    if (!isValid) return;
+
 
     const paymentAmount = parseFloat(creditCardData.amount);
     const balance = totalRequired - totalPaid;
@@ -530,23 +491,39 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
   const formatShortNotes = (notes) => {
     if (!notes) return '-';
     
+    let extraInfo = '';
+    
     try {
       if (typeof notes === 'string' && notes.trim().startsWith('{')) {
         const parsed = JSON.parse(notes);
-        if (parsed.Confirmation || parsed.TransactionId) {
-          return `אישור: ${parsed.Confirmation || parsed.TransactionId}`;
+        const approval = parsed.Confirmation || parsed.TransactionId || parsed['אישור'];
+        let result = approval ? `אישור: ${approval}` : 'סליקת אשראי';
+        if (parsed.Tashloumim || parsed['תשלומים']) {
+          result += ` | תשלומים: ${parsed.Tashloumim || parsed['תשלומים']}`;
         }
-        return 'נתוני סליקה מורחבים (ראה פרטים)';
+        if (parsed['הערות משתמש']) {
+          result += ` | ${parsed['הערות משתמש']}`;
+        }
+        return result;
       }
     } catch (e) {}
 
     if (typeof notes === 'string') {
       const match = notes.match(/אישור:\s*([a-zA-Z0-9]+)/);
+      const tashMatch = notes.match(/"Tashloumim"\s*:\s*"(\d+)"/);
+      let result = notes;
+      
       if (match && match[1]) {
-        return `אישור: ${match[1]}`;
+        result = `אישור: ${match[1]}`;
+        if (tashMatch && tashMatch[1]) {
+          result += ` | תשלומים: ${tashMatch[1]}`;
+        }
+        return result;
       }
-      if (notes.length > 35) {
-        return notes.substring(0, 35) + '...';
+      
+      // If it doesn't match standard Nedarim Plus approval, just return the notes (don't truncate "שולם")
+      if (notes.length > 50) {
+        return notes.substring(0, 50) + '...';
       }
     }
 
@@ -622,23 +599,30 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
                   </tr>
                 </thead>
                 <tbody>
-                  {activeObligations.map((obs, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #fee2e2', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#fef2f2'} onMouseOut={e => e.currentTarget.style.backgroundColor='white'}>
-                      <td style={{ padding: '0.8rem', color: '#450a0a', fontWeight: '500' }}>{obs.isManual === false ? (obs.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב אוטומטי') : (obs.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב ידני')}</td>
-                      <td style={{ padding: '0.8rem', color: '#991b1b', fontSize: '0.85em' }}>{obs.createdAt ? new Date(obs.createdAt).toLocaleDateString('he-IL') : new Date().toLocaleDateString('he-IL')}</td>
-                      <td style={{ padding: '0.8rem', fontWeight: 'bold', color: '#b91c1c' }}>₪{obs.amount}</td>
-                      <td style={{ padding: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                        <button data-agy-id="orderpaymentsmanager_button_1" onClick={() => setSelectedObligationDetails(obs)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="פרטים נוספים">
-                          <Info size={16} />
-                        </button>
-                        {obs.isManual !== false && (
-                          <button data-agy-id="orderpaymentsmanager_button_2" onClick={() => removeObligation(obligations.indexOf(obs))} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.3rem', borderRadius: '6px' }} title="מחק">
-                            <Trash2 size={16} />
+                  {activeObligations.map((obs, idx) => {
+                    const descText = (obs.productName || obs.description || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim() || (obs.isManual ? 'חיוב ידני' : 'חיוב מחירון');
+                    const d = obs.createdAt ? new Date(obs.createdAt) : new Date();
+                    const hebStr = getHebrewDateString(d);
+                    const dateText = !isNaN(d.getTime()) ? `${d.toLocaleDateString('he-IL')}${hebStr ? ` (${hebStr})` : ''}` : '-';
+                    
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #fee2e2', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#fef2f2'} onMouseOut={e => e.currentTarget.style.backgroundColor='white'}>
+                        <td style={{ padding: '0.8rem', color: '#450a0a', fontWeight: '500' }}>{descText}</td>
+                        <td style={{ padding: '0.8rem', color: '#991b1b', fontSize: '0.85em' }}>{dateText}</td>
+                        <td style={{ padding: '0.8rem', fontWeight: 'bold', color: '#b91c1c' }}>₪{obs.amount}</td>
+                        <td style={{ padding: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                          <button data-agy-id="orderpaymentsmanager_button_1" onClick={() => setSelectedObligationDetails(obs)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="פרטים נוספים">
+                            <Info size={16} />
                           </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                          {obs.isManual !== false && (
+                            <button data-agy-id="orderpaymentsmanager_button_2" onClick={() => removeObligation(obligations.indexOf(obs))} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.3rem', borderRadius: '6px' }} title="מחק">
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -690,21 +674,27 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
                   </tr>
                 </thead>
                 <tbody>
-                  {activePayments.map((p, idx) => (
-                    <tr key={idx} style={{ borderBottom: '1px solid #dcfce7', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#f0fdf4'} onMouseOut={e => e.currentTarget.style.backgroundColor='white'}>
-                      <td style={{ padding: '0.8rem', color: '#064e3b', fontWeight: '500' }}>{p.paymentMethod || '-'}</td>
-                      <td style={{ padding: '0.8rem', color: '#166534', fontSize: '0.85em' }}>{p.paymentDate ? new Date(p.paymentDate).toLocaleDateString('he-IL') : new Date().toLocaleDateString('he-IL')}</td>
-                      <td style={{ padding: '0.8rem', fontWeight: 'bold', color: '#16a34a' }}>₪{p.amount}</td>
-                      <td style={{ padding: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
-                        <button data-agy-id="orderpaymentsmanager_button_4" onClick={() => setSelectedPaymentDetails(p)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="פרטים נוספים">
-                          <Info size={16} />
-                        </button>
-                        <button data-agy-id="orderpaymentsmanager_button_5" onClick={() => removePayment(payments.indexOf(p))} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="מחק">
-                          <Trash2 size={16} />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
+                  {activePayments.map((p, idx) => {
+                    const d = p.paymentDate ? new Date(p.paymentDate) : new Date();
+                    const hebStr = getHebrewDateString(d);
+                    const dateText = !isNaN(d.getTime()) ? `${d.toLocaleDateString('he-IL')}${hebStr ? ` (${hebStr})` : ''}` : '-';
+
+                    return (
+                      <tr key={idx} style={{ borderBottom: '1px solid #dcfce7', transition: 'background 0.2s' }} onMouseOver={e => e.currentTarget.style.backgroundColor='#f0fdf4'} onMouseOut={e => e.currentTarget.style.backgroundColor='white'}>
+                        <td style={{ padding: '0.8rem', color: '#064e3b', fontWeight: '500' }}>{p.paymentMethod || '-'}</td>
+                        <td style={{ padding: '0.8rem', color: '#166534', fontSize: '0.85em' }}>{dateText}</td>
+                        <td style={{ padding: '0.8rem', fontWeight: 'bold', color: '#16a34a' }}>₪{p.amount}</td>
+                        <td style={{ padding: '0.8rem', display: 'flex', gap: '0.4rem', alignItems: 'center' }}>
+                          <button data-agy-id="orderpaymentsmanager_button_4" onClick={() => setSelectedPaymentDetails(p)} style={{ background: '#eff6ff', border: '1px solid #bfdbfe', color: '#2563eb', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="פרטים נוספים">
+                            <Info size={16} />
+                          </button>
+                          <button data-agy-id="orderpaymentsmanager_button_5" onClick={() => removePayment(payments.indexOf(p))} style={{ background: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', padding: '0.3rem', borderRadius: '6px' }} title="מחק">
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>

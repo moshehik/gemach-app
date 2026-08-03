@@ -216,6 +216,7 @@ export async function GET(request) {
             isTaken: true,
             isReturned: true,
             isDeleted: true,
+            barcode: true,
             cartStatus: true,
             cartStatusDate: true,
             neckAlteration: true,
@@ -254,8 +255,9 @@ export async function GET(request) {
       order.items.forEach(i => {
         const dressName = i.dressItem?.dress?.name;
         const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
-        if (!dressName && prefix) {
-          uniquePrefixes.add(parseInt(prefix, 10));
+        if (!dressName && prefix !== null && prefix !== undefined) {
+          const numPfx = parseInt(prefix, 10);
+          if (!isNaN(numPfx)) uniquePrefixes.add(numPfx);
         }
       });
     });
@@ -268,17 +270,27 @@ export async function GET(request) {
       });
     }
     
-    const dressModelMap = new Map(dressModels.filter(m => m.barcodePrefix).map(m => [m.barcodePrefix, m.name]));
+    const dressModelMap = new Map();
+    dressModels.forEach(m => {
+      if (m.barcodePrefix !== null && m.barcodePrefix !== undefined) {
+        dressModelMap.set(Number(m.barcodePrefix), m.name);
+        dressModelMap.set(String(m.barcodePrefix), m.name);
+      }
+    });
 
     const formattedOrders = sortedOrders.map(order => {
-      const calculatedTotalAmount = order.totalAmount || 0;
+      const obligationsSum = order.obligations?.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0) || 0;
+      const paymentsSum = order.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0;
+      const calculatedTotalAmount = (order.totalAmount && order.totalAmount > 0) 
+        ? order.totalAmount 
+        : (obligationsSum > 0 ? obligationsSum : paymentsSum);
 
       return {
         orderId: order.orderId,
         legacyId: order.legacyId,
         customerId: order.customerId,
         totalAmount: calculatedTotalAmount,
-        totalPaid: order.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0,
+        totalPaid: paymentsSum,
         paymentDate: order.paymentDate,
         paymentMethod: order.paymentMethod,
         status: order.status || (order.paymentDate ? 'שולם' : 'ממתין לתשלום'),
@@ -292,19 +304,31 @@ export async function GET(request) {
         items: order.items.map(i => {
           let dressName = i.dressItem?.dress?.name;
           const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
-          if (!dressName && prefix) {
-            dressName = dressModelMap.get(parseInt(prefix, 10));
+          if (!dressName && prefix !== null && prefix !== undefined) {
+            dressName = dressModelMap.get(Number(prefix)) || dressModelMap.get(String(prefix));
           }
           
+          let itemDesc = i.description;
+          if (!itemDesc || itemDesc === 'פריט כללי') {
+            if (dressName) {
+              itemDesc = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''}${i.sizeText ? `, מידה: ${i.sizeText}` : ''}`;
+            } else {
+              itemDesc = 'פריט כללי';
+            }
+          } else if (dressName && !itemDesc.includes(dressName)) {
+            itemDesc = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${itemDesc}`;
+          }
+
           return {
             id: i.id,
             dressId: i.dressItem?.dress?.id,
             itemId: i.dressItemId,
-            description: dressName ? `${dressName} (קוד: ${prefix || ''}, מידה: ${i.sizeText || i.dressItem?.sizeText || ''})` : (i.description || 'פריט כללי'),
+            description: itemDesc,
             price: i.price,
             isTaken: i.isTaken,
             isReturned: i.isReturned,
             isDeleted: i.isDeleted,
+            barcode: i.barcode,
             cartStatus: i.cartStatus,
             cartStatusDate: i.cartStatusDate,
             neckAlteration: i.neckAlteration,
@@ -347,15 +371,18 @@ export async function POST(request) {
     });
     const nextOrderId = maxOrder ? maxOrder.orderId + 1 : 1;
 
-    // Validate inventory availability
-    if (data.items && data.items.length > 0) {
+    const activeItems = data.items && Array.isArray(data.items) ? data.items.filter(i => !i.isDeleted) : [];
+    const isCustomDuration = data.isAbroad || data.isWeekdayEvent;
+    const hasDates = isCustomDuration ? (data.fromDate && data.toDate) : !!data.eventDate;
+
+    if (activeItems.length > 0 && hasDates) {
       const validationResult = await validateOrderItemsAvailability(
-        data.items,
+        activeItems,
         data.eventDate,
-        data.isAbroad || data.isWeekdayEvent,
+        isCustomDuration,
         data.fromDate,
         data.toDate,
-        data.orderId || null // orderId to ignore
+        data.orderId || null
       );
 
       if (validationResult.error) {
