@@ -368,6 +368,9 @@ export async function GET(request) {
         isAbroad: order.isAbroad,
         fromDate: order.fromDate,
         toDate: order.toDate,
+        // נשלף מה-DB ומשמש לצביעת השורה בצהוב בטבלאות ההזמנות וההשכרות —
+        // בלי השדה הזה בתשובה הצביעה לעולם לא מופיעה בצד הלקוח
+        customSpacing: order.customSpacing,
         items: order.items.map(i => {
           let dressName = i.dressItem?.dress?.name;
           const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;

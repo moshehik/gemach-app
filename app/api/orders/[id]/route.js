@@ -230,16 +230,19 @@ export async function PUT(request, { params }) {
 
     const data = await request.json();
 
-    // Offline data collision check
-    if (data.updatedAt && existingOrder.updatedAt) {
+    // Offline data collision check.
+    // data.overwriteConflict נשלח רק אחרי שהמשתמש אישר במפורש בכרטיס ההזמנה שהוא רוצה
+    // לדרוס את הגרסה שבשרת — בלי זה הוא נתקע על אותה שגיאה בכל ניסיון שמירה חוזר.
+    if (data.updatedAt && existingOrder.updatedAt && !data.overwriteConflict) {
       const clientUpdate = new Date(data.updatedAt).getTime();
       const serverUpdate = new Date(existingOrder.updatedAt).getTime();
-      
+
       // If server is strictly newer by more than 1 second
       if (serverUpdate > clientUpdate + 1000) {
-        return NextResponse.json({ 
-          error: 'Data Collision', 
+        return NextResponse.json({
+          error: 'Data Collision',
           message: 'הזמנה זו עודכנה בשרת לאחר הסנכרון האחרון שלך. כדי למנוע דריסת נתונים, אנא רענן את העמוד ושלב את השינויים שלך.',
+          serverUpdatedAt: existingOrder.updatedAt,
         }, { status: 409 });
       }
     }

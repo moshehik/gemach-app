@@ -247,6 +247,53 @@ export default function OrderDetailsPage({ params }) {
     return () => document.removeEventListener('click', handleDocumentClick, true);
   }, [hasUnsavedChanges]);
 
+  // טוען מחדש את ההזמנה מהשרת ומאפס את מצב "שינויים שלא נשמרו".
+  const reloadOrderFromServer = async () => {
+    try {
+      const res = await fetch(`/api/orders/${id}`);
+      if (!res.ok) return false;
+      const data = await res.json();
+      const loadedItems = data.items || [];
+      const loadedObligations = data.obligations || [];
+      const loadedPayments = data.payments || [];
+      const loadedRefunds = data.refunds || [];
+      setOrder(data);
+      setItems(loadedItems);
+      setObligations(loadedObligations);
+      setPayments(loadedPayments);
+      setRefunds(loadedRefunds);
+      savedSnapshotRef.current = { order: data, items: loadedItems, obligations: loadedObligations, payments: loadedPayments, refunds: loadedRefunds };
+      setHasUnsavedChanges(false);
+      return true;
+    } catch (err) {
+      console.error('Failed to reload order', err);
+      return false;
+    }
+  };
+
+  // שולח את ההזמנה לשרת ומטפל בהתנגשות נתונים (409). בלי הטיפול הזה המשתמש נתקע:
+  // הכרטיס ממשיך להחזיק updatedAt ישן, ולכן כל ניסיון שמירה נוסף נכשל שוב באותה הודעה.
+  // מחזיר null כשהמשתמש בחר לטעון מחדש מהשרת במקום לשמור.
+  const putOrder = async (payload) => {
+    const send = (body) => fetch(`/api/orders/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    const res = await send(payload);
+    if (res.status !== 409) return res;
+
+    const conflict = await res.json().catch(() => null);
+    const baseMsg = (conflict && conflict.message) || 'ההזמנה עודכנה בשרת מאז הטעינה האחרונה של הכרטיס.';
+    const overwrite = confirm(`${baseMsg}\n\nאישור = לשמור בכל זאת ולדרוס את הגרסה שבשרת.\nביטול = לטעון מחדש את הנתונים מהשרת (השינויים שלא נשמרו יאבדו).`);
+    if (!overwrite) {
+      await reloadOrderFromServer();
+      return null;
+    }
+    return send({ ...payload, overwriteConflict: true });
+  };
+
   // Save changes
   const handleSave = async (overrideOrder = null) => {
     setSaving(true);
@@ -366,10 +413,7 @@ export default function OrderDetailsPage({ params }) {
       .map(it => it._localId);
 
     try {
-      const res = await fetch(`/api/orders/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const res = await putOrder({
           orderId: currentOrder.orderId,
           customerId: currentOrder.customerId,
           orderDate: currentOrder.orderDate,
@@ -394,8 +438,13 @@ export default function OrderDetailsPage({ params }) {
             const obligationsSum = obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
             return itemsSum > 0 ? itemsSum : (obligationsSum > 0 ? obligationsSum : (currentOrder.totalAmount || 0));
           })()
-        })
       });
+
+      // המשתמש בחר לטעון מחדש מהשרת במקום לדרוס — הנתונים כבר רועננו.
+      if (!res) {
+        setSaveMessage('הנתונים נטענו מחדש מהשרת. בדוק את הפרטים ושמור שוב.');
+        return;
+      }
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
@@ -489,10 +538,7 @@ export default function OrderDetailsPage({ params }) {
         .filter(it => it._localId && it.dressModelId && it.sizeText)
         .map(it => it._localId);
 
-      const res = await fetch(`/api/orders/${id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
+      const res = await putOrder({
           orderId: order.orderId,
           customerId: order.customerId,
           eventDate: order.eventDate,
@@ -516,8 +562,14 @@ export default function OrderDetailsPage({ params }) {
             const obligationsSum = obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
             return itemsSum > 0 ? itemsSum : (obligationsSum > 0 ? obligationsSum : (order.totalAmount || 0));
           })()
-        })
       });
+
+      // המשתמש בחר לטעון מחדש מהשרת במקום לדרוס — נשארים בכרטיס כדי שיבדוק ויחליט.
+      if (!res) {
+        setSaving(false);
+        alert('הנתונים נטענו מחדש מהשרת. בדוק את ההזמנה ושמור שוב לפני היציאה.');
+        return;
+      }
 
       if (!res.ok) {
         const errorData = await res.json().catch(() => null);
