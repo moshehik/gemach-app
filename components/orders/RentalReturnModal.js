@@ -3,10 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLabels } from '@/app/components/LabelsContext';
-import { X, Info, Printer, Save, Ban, Undo2, AlertTriangle, CheckCircle2, PackageX, PackageCheck, MoreVertical, Calendar, ScanLine, Loader2, Scissors } from 'lucide-react';
+import { X, Info, Save, Ban, Undo2, AlertTriangle, CheckCircle2, PackageX, PackageCheck, MoreVertical, Calendar, ScanLine, Loader2, Scissors } from 'lucide-react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { addHistory } from '../../lib/historyManager';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
+import OrderPrintMenu from './OrderPrintMenu';
 
 export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const { getLabel } = useLabels();
@@ -406,6 +407,14 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     }
   };
 
+  const handlePrintPreConfirm = async () => {
+    if (pendingCount === 0) return true;
+    return window.customConfirm(
+      `יש ${pendingCount} פריטים שנסרקו וטרם אושרו - הם לא יופיעו במסמך. להמשיך בכל זאת?`,
+      'פריטים לא מאושרים'
+    );
+  };
+
   const getItemStatus = (item) => {
     if (item.isReturned) {
       return item.returnedOk
@@ -486,11 +495,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                   {(isProcessing || isConfirming || isBusy) && (
                     <Loader2 size={18} className="rrm-header-spinner" aria-label="מעבד..." />
                   )}
-                  <button data-agy-id="rentalreturnmodal_button_5" className="rrm-icon-btn info"
-                    onClick={() => window.open(`/print/order?orderId=${selectedOrder.orderId}`, '_blank')}
-                    title="הדפס פרטי השכרה">
-                    <Printer size={18} />
-                  </button>
+                  <OrderPrintMenu
+                    order={selectedOrder}
+                    onOrderUpdate={(patch) => setSelectedOrder(prev => prev ? { ...prev, ...patch } : prev)}
+                    triggerClassName="rrm-icon-btn info"
+                    triggerTitle="הדפסה ומייל"
+                    preConfirm={handlePrintPreConfirm}
+                  />
                   <button data-agy-id="rentalreturnmodal_button_6" className="rrm-icon-btn primary" onClick={handleHeaderSave} title="שמור וסגור" disabled={isConfirming}>
                     <Save size={18} />
                   </button>

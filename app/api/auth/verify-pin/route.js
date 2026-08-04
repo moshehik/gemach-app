@@ -27,12 +27,19 @@ export async function POST(request) {
     }
 
     // Role check
-    // Assuming roleId = 1 is Manager (מנהל), roleId = 2 is Programmer (מתכנת). 
+    // Assuming roleId = 1 is Manager (מנהל), roleId = 2 is Programmer (מתכנת).
     // Modify this based on actual database schema logic if needed.
     const isManager = employee.roleId === 1 || employee.roleId === 2;
 
     if (requiredLevel === 'מנהל' && !isManager) {
       return NextResponse.json({ success: false, error: 'אין הרשאת מנהל/מתכנת למשתמש זה' }, { status: 403 });
+    }
+
+    // Stricter than the 'מנהל' tier above (which treats roleId 1 and 2 as equivalent) -
+    // some actions (e.g. editing Order.orderDate, which shifts the refund-window calculation
+    // in lib/pricingEngine.js) are restricted to roleId 2 specifically, excluding managers.
+    if (requiredLevel === 'מתכנת' && employee.roleId !== 2) {
+      return NextResponse.json({ success: false, error: 'פעולה זו מוגבלת למתכנת בלבד' }, { status: 403 });
     }
 
     return NextResponse.json({ success: true, employeeId: employee.id, employeeName: employee.firstName + ' ' + employee.lastName });

@@ -401,6 +401,7 @@ export default function OrderDetailsPage({ params }) {
         body: JSON.stringify({
           orderId: currentOrder.orderId,
           customerId: currentOrder.customerId,
+          orderDate: currentOrder.orderDate,
           eventDate: currentOrder.eventDate,
           eventDateHebrew: currentOrder.eventDateHebrew,
           returnDate: currentOrder.returnDate,
@@ -1143,6 +1144,7 @@ export default function OrderDetailsPage({ params }) {
             </button>
           </div>
         </div>
+      </div>
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         

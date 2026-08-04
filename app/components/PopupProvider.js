@@ -114,6 +114,8 @@ export function PopupProvider({ children }) {
           employees = await resEmp.json();
           if (requiredLevel === 'מנהל') {
             employees = employees.filter(e => e.roleId === 1 || e.roleId === 2);
+          } else if (requiredLevel === 'מתכנת') {
+            employees = employees.filter(e => e.roleId === 2);
           }
         }
         if (resMe.ok) {

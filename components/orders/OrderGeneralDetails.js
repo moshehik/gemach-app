@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { ChevronDown, ChevronUp, ExternalLink, RefreshCw, Edit2, Check } from 'lucide-react';
+import { ChevronDown, ChevronUp, ExternalLink, RefreshCw, Edit2, Check, CalendarClock } from 'lucide-react';
 import HebrewDatePicker from '../HebrewDatePicker';
 import HebrewDateRangePicker from '../HebrewDateRangePicker';
 import CustomerSelector from '../CustomerSelector';
@@ -75,6 +75,40 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
     }
   };
 
+  // Editing orderDate shifts the REFUND_DAYS_FROM_ORDER window in computeOrderObligations
+  // (lib/pricingEngine.js), so - unlike every other 'מנהל' PIN-gate in this file - it's
+  // restricted to roleId 2 ("מתכנת") specifically, excluding managers.
+  const requestOrderDateEdit = async () => {
+    const authResult = await window.customAuthPrompt(
+      'עריכת תאריך ההזמנה משפיעה על חישובי זיכוי בביטול ומוגבלת למתכנת. אנא בחר משתמש והזן סיסמה:',
+      'מתכנת'
+    );
+    if (!authResult || !authResult.pin) return;
+    try {
+      const res = await fetch('/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מתכנת' })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
+        return;
+      }
+    } catch (err) {
+      alert('שגיאה באימות קוד מתכנת.');
+      return;
+    }
+    setIsEditingOrderDate(true);
+  };
+
+  const handleOrderDateChange = (date) => {
+    setIsEditingOrderDate(false);
+    const newOrder = { ...order, orderDate: date };
+    onOrderChange(newOrder);
+    if (onSaveRequest) onSaveRequest(newOrder);
+  };
+
   const [isExpanded, setIsExpanded] = useState(true);
   const customerName = order?.customer ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ') : 'לא נבחר לקוח';
   const eventDateStr = (order?.isWeekdayEvent || order?.isAbroad) ? 'אירוע חו"ל' : (order?.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.eventDate)})` : 'ללא תאריך אירוע');
@@ -84,6 +118,8 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
   const [isEditingOrderDetails, setIsEditingOrderDetails] = useState(!order?.eventDate);
   const [customerMode, setCustomerMode] = useState('existing');
   const [newCustomer, setNewCustomer] = useState({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '' });
+  const [isEditingOrderDate, setIsEditingOrderDate] = useState(false);
+  const orderDateStr = order?.orderDate ? `${new Date(order.orderDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.orderDate)})` : 'לא ידוע';
 
   const handleSaveNewCustomer = async () => {
     if (!newCustomer.firstName || !newCustomer.lastName || !newCustomer.phone1 || !newCustomer.email) {
@@ -231,7 +267,26 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                     </div>
                     <span style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a' }}>{eventDateStr}</span>
                   </div>
-                  
+
+                  <div style={{ color: '#475569', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
+                    <strong style={{ color: '#64748b' }}>תאריך הזמנה:</strong>
+                    {isEditingOrderDate ? (
+                      <div style={{ minWidth: '180px' }}>
+                        <HebrewDatePicker value={order.orderDate} onChange={handleOrderDateChange} />
+                      </div>
+                    ) : (
+                      <span>{orderDateStr}</span>
+                    )}
+                    <button
+                      type="button"
+                      title="ערוך תאריך הזמנה (מתכנת בלבד)"
+                      onClick={requestOrderDateEdit}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '0.3rem', cursor: 'pointer', color: '#475569' }}
+                    >
+                      <CalendarClock size={15} />
+                    </button>
+                  </div>
+
                   {(order.isWeekdayEvent || order.isAbroad) && (
                     <div style={{ color: '#475569', fontSize: '1.05rem', display: 'flex', gap: '1.5rem', alignItems: 'center', background: '#f1f5f9', padding: '0.4rem 1rem', borderRadius: '8px' }}>
                       <span><strong style={{ color: '#64748b' }}>לקיחה:</strong> {order.fromDate ? `${new Date(order.fromDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.fromDate)})` : 'לא נבחר'}</span>

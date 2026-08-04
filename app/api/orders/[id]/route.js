@@ -366,12 +366,17 @@ export async function PUT(request, { params }) {
       const parsedFromDate = parseSafeDate(data.fromDate);
       const parsedToDate = parseSafeDate(data.toDate);
       const parsedReturnDate = parseSafeDate(data.returnDate);
+      // Developer-only edit (see requiredLevel: 'מתכנת' gate in the client) - shifts the
+      // REFUND_DAYS_FROM_ORDER window in lib/pricingEngine.js, so it's normally immutable
+      // after creation (app/api/orders/route.js only sets it once, at order creation).
+      const parsedOrderDate = parseSafeDate(data.orderDate);
 
       // 1. Update general order details
       const order = await tx.order.update({
         where: { orderId: parsedOrderId },
         data: {
           totalAmount: data.totalAmount !== undefined && data.totalAmount !== null ? (parseFloat(data.totalAmount) || 0) : undefined,
+          orderDate: parsedOrderDate,
           eventDate: parsedEventDate,
           eventDateHebrew: data.eventDateHebrew !== undefined ? data.eventDateHebrew : (parsedEventDate ? getHebrewDateString(parsedEventDate) : undefined),
           returnDate: parsedReturnDate,

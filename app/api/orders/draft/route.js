@@ -5,7 +5,7 @@ import { validateOrderItemsAvailability } from '@/lib/inventory';
 import { checkAuth } from '@/lib/auth';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { cookies } from 'next/headers';
-import { DRAFT_ORDER_STATUS, isOrderShell } from '@/lib/orderReservation';
+import { DRAFT_ORDER_STATUS, isOrderShell, cleanupSiblingDraftOrders } from '@/lib/orderReservation';
 
 // The items a draft holds. 'pending' is what makes `inventory_hold_minutes` release them back
 // into the pool once the hold expires, so an abandoned cart does not sit on a dress forever.
@@ -95,6 +95,8 @@ export async function POST(request) {
       status: DRAFT_ORDER_STATUS
     };
 
+    const isNewDraft = !orderId;
+
     if (!orderId) {
       // `orderId` is a plain unique Int with no sequence behind it, so the next number has to
       // be read and claimed by hand - and two screens drafting at the same moment would both
@@ -147,6 +149,21 @@ export async function POST(request) {
             data: data.items.map(item => ({ orderId: orderId, ...draftItemFields(item) }))
           });
         }
+      });
+    }
+
+    // A stale second screen instance (leftover tab, or a reload that lost the in-memory draft
+    // id) autosaving in parallel would otherwise pile up one draft per instance for the same
+    // customer/date, with nothing collapsing them until - if ever - one gets finally saved. Since
+    // this call just created a fresh draft row rather than updating one that already existed,
+    // any sibling draft for the same customer/date is superseded by it now.
+    if (isNewDraft) {
+      await cleanupSiblingDraftOrders(prisma, {
+        keepOrderId: orderId,
+        customerId: orderFields.customerId,
+        eventDate: orderFields.eventDate,
+        fromDate: orderFields.fromDate,
+        toDate: orderFields.toDate
       });
     }
 
