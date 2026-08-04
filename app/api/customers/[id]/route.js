@@ -1,4 +1,4 @@
-import prisma from '@/app/lib/prisma';
+import prisma, { auditAs } from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { normalizeEmail } from '@/lib/emailUtils';
 
@@ -76,43 +76,35 @@ export async function PUT(request, { params }) {
 
     const normalizedEmail = normalizeEmail(body.email, body.emailSuffix);
 
-    // 2. Perform the update
-    const updatedCustomer = await prisma.customer.update({
-      where: { id },
-      data: {
-        firstName: body.firstName,
-        lastName: body.lastName,
-        phone1: body.phone1,
-        phone2: body.phone2,
-        email: normalizedEmail,
-        city: body.city,
-        street: body.street,
-        houseNum: body.houseNum !== "" && body.houseNum !== null ? parseInt(body.houseNum, 10) : null,
-        notes: body.notes
-      }
-    });
+    const data = {
+      firstName: body.firstName,
+      lastName: body.lastName,
+      phone1: body.phone1,
+      phone2: body.phone2,
+      email: normalizedEmail,
+      city: body.city,
+      street: body.street,
+      houseNum: body.houseNum !== "" && body.houseNum !== null ? parseInt(body.houseNum, 10) : null,
+      notes: body.notes
+    };
 
-    // 3. Compute changes
+    // 2. Compute changes (before the write, so they can be handed to the audit extension)
     const changes = {};
-    const keysToCheck = ['firstName', 'lastName', 'phone1', 'phone2', 'email', 'city', 'street', 'houseNum', 'notes'];
-    keysToCheck.forEach(key => {
-      if (oldCustomer[key] !== updatedCustomer[key]) {
-        changes[key] = { from: oldCustomer[key], to: updatedCustomer[key] };
+    Object.keys(data).forEach(key => {
+      // undefined = השדה לא נשלח כלל; Prisma מתעלם ממנו, ולכן זה לא שינוי
+      if (data[key] !== undefined && oldCustomer[key] !== data[key]) {
+        changes[key] = { from: oldCustomer[key], to: data[key] };
       }
     });
 
-    // 4. Save AuditLog if there are changes
-    if (Object.keys(changes).length > 0) {
-      await prisma.auditLog.create({
-        data: {
-          entityType: 'Customer',
-          entityId: id,
-          action: 'UPDATE',
-          changesJson: JSON.stringify(changes),
-          employeeId: body.employeeId || null
-        }
-      });
-    }
+    // 3. Perform the update. הפירוט "לפני ← אחרי" עובר לתוסף היומן דרך auditAs, כך שנרשמת
+    // שורת היסטוריה אחת בלבד (וכלום, כששמרו בלי לשנות) — במקום שורה גנרית עם צילום כל
+    // השדות מהתוסף ועוד שורה ידנית עם הפירוט.
+    const updatedCustomer = await prisma.customer.update(auditAs(
+      'UPDATE',
+      { where: { id }, data },
+      changes
+    ));
 
     return NextResponse.json(updatedCustomer);
   } catch (error) {

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../../../lib/prisma';
+import prisma, { auditAs } from '../../../../../lib/prisma';
 import { recalculateOrderObligations } from '../../../../../../lib/pricingEngine';
-import { getAvailableInventory } from '../../../../../../lib/inventory';
+import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../../lib/inventory';
 import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES } from '../../../../../../lib/orderItemEditWindow';
 
 // Rules the caller can actually do something about (missing dates, nothing free in stock).
@@ -9,6 +9,46 @@ import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES } from '../../../../..
 // look like a bad request, which is how "Maximum call stack size exceeded" spent a while
 // disguised as a validation failure.
 const ruleError = (message) => Object.assign(new Error(message), { isRuleViolation: true });
+
+// רשת ביטחון על גבי הקיצור של הטרנזקציה עצמה: גם טרנזקציה של כתיבה אחת יכולה לחרוג
+// מ-5 השניות שהן ברירת המחדל של Prisma כשה-DB מרוחק ומגיב לאט לרגע. במיוחד ב-dev,
+// שבו הידור ראשון של המודולים יכול ליפול בדיוק באמצע הטרנזקציה ולהוסיף לה עשרות שניות.
+const TX_OPTIONS = { timeout: 30000, maxWait: 15000 };
+
+const formatVal = (val) => val === undefined || val === null ? '' : String(val);
+
+// שדות שעריכתם משפיעה על ההזמנה ועל הסכומים, ולכן כפופים לחלון העריכה
+const LOCKED_FIELDS = ['dressItemId', 'sizeText', 'neckAlteration', 'sleeveAlteration', 'lengthAlteration'];
+const AUDITED_FIELDS = [...LOCKED_FIELDS, 'alterationDetails', 'alterationDone'];
+
+const findSizeAvailability = (availability, sizeText) =>
+  availability.find(a => (a.sizeText || a.size || 'כללי') === sizeText);
+
+const hasFreeUnit = (sizeAvail) =>
+  !!sizeAvail && sizeAvail.availableQuantity > 0 && !!sizeAvail.itemIds && sizeAvail.itemIds.length > 0;
+
+const parseAlteration = (val) =>
+  val !== undefined && val !== null && val !== '' ? parseInt(val) : null;
+
+const buildUpdateData = (itemData, dressItemId) => ({
+  dressItemId,
+  sizeText: itemData.sizeText,
+  neckAlteration: parseAlteration(itemData.neckAlteration),
+  sleeveAlteration: parseAlteration(itemData.sleeveAlteration),
+  lengthAlteration: itemData.lengthAlteration !== undefined && itemData.lengthAlteration !== null && itemData.lengthAlteration !== '' ? String(itemData.lengthAlteration) : null,
+  alterationDetails: itemData.alterationDetails || null,
+  alterationDone: itemData.alterationDone || false
+});
+
+const diffFields = (item, updateData) => {
+  const changes = {};
+  AUDITED_FIELDS.forEach(field => {
+    if (formatVal(item[field]) !== formatVal(updateData[field])) {
+      changes[field] = { from: item[field], to: updateData[field] };
+    }
+  });
+  return changes;
+};
 
 export async function PUT(request, { params }) {
   try {
@@ -29,123 +69,125 @@ export async function PUT(request, { params }) {
       return NextResponse.json({ error: 'יש להזין מידה' }, { status: 400 });
     }
 
-    const updatedOrder = await prisma.$transaction(async (tx) => {
-      const order = await tx.order.findUnique({ where: { orderId: parsedId } });
-      if (!order) throw ruleError('הזמנה לא נמצאה');
-      
-      const currentItem = await tx.orderItem.findUnique({ 
+    // כל העבודה שהיא קריאה בלבד רצה מחוץ לטרנזקציה. כשההגדרות וחישוב הזמינות (שאילתות
+    // מלאי כבדות) רצו בתוכה, מול DB מרוחק הן חרגו מ-5 השניות שהן ברירת המחדל של Prisma
+    // לטרנזקציה אינטראקטיבית, והכתיבה שבסוף נפלה על
+    // "Transaction already closed: A query cannot be executed on an expired transaction".
+    // אף כלל עסקי לא ויתר: כל הבדיקות מאומתות שוב בתוך הטרנזקציה הקצרה למטה, על נתונים
+    // טריים שנשלפו דרך ה-tx עצמו.
+    const [order, currentItem, settingsRaw] = await Promise.all([
+      prisma.order.findUnique({ where: { orderId: parsedId } }),
+      prisma.orderItem.findUnique({
         where: { id: itemId },
         include: { dressItem: true }
-      });
-      if (!currentItem) throw ruleError('פריט בהזמנה לא נמצא');
+      }),
+      prisma.systemSetting.findMany()
+    ]);
 
-      const settingsRaw = await tx.systemSetting.findMany();
-      let bufferDays = 3;
-      let skipWeekends = true;
-      const bufferSetting = settingsRaw.find(s => s.key === 'inventory_buffer_days');
-      if (bufferSetting) bufferDays = parseInt(bufferSetting.value, 10);
-      const weekendSetting = settingsRaw.find(s => s.key === 'inventory_skip_weekends');
-      if (weekendSetting) skipWeekends = weekendSetting.value === 'true';
+    if (!order) throw ruleError('הזמנה לא נמצאה');
+    if (!currentItem) throw ruleError('פריט בהזמנה לא נמצא');
 
-      const newOrderIsAbroad = order.isAbroad || order.isWeekdayEvent;
-      let targetMinDate, targetMaxDate;
-      if (newOrderIsAbroad) {
-         if (!order.fromDate || !order.toDate) throw ruleError('חסרים תאריכים להזמנת חו"ל');
-         targetMinDate = order.fromDate;
-         targetMaxDate = order.toDate;
-      } else {
-         if (!order.eventDate) throw ruleError('חסר תאריך אירוע להזמנה');
-         targetMinDate = order.eventDate;
-         targetMaxDate = order.eventDate;
+    let bufferDays = 3;
+    let skipWeekends = true;
+    const bufferSetting = settingsRaw.find(s => s.key === 'inventory_buffer_days');
+    if (bufferSetting) bufferDays = parseInt(bufferSetting.value, 10);
+    const weekendSetting = settingsRaw.find(s => s.key === 'inventory_skip_weekends');
+    if (weekendSetting) skipWeekends = weekendSetting.value === 'true';
+
+    const newOrderIsAbroad = order.isAbroad || order.isWeekdayEvent;
+    let targetMinDate, targetMaxDate;
+    if (newOrderIsAbroad) {
+       if (!order.fromDate || !order.toDate) throw ruleError('חסרים תאריכים להזמנת חו"ל');
+       targetMinDate = order.fromDate;
+       targetMaxDate = order.toDate;
+    } else {
+       if (!order.eventDate) throw ruleError('חסר תאריך אירוע להזמנה');
+       targetMinDate = order.eventDate;
+       targetMaxDate = order.eventDate;
+    }
+
+    // dressModelId הנוכחי של הפריט (אם יש לו DressItem מקושר בכלל — פריטי Access ישנים לא)
+    const currentDressModelId = currentItem.dressItem?.dressModelId ?? null;
+    const incomingDressModelId = itemData.dressModelId ?? null;
+    const sizeChanged = currentItem.sizeText !== itemData.sizeText;
+    const modelChanged = currentDressModelId !== null && incomingDressModelId !== null && currentDressModelId !== incomingDressModelId;
+
+    // בודקים זמינות מלאי מחדש רק כשיש בכלל דגם לבדוק מולו (הרכיב לא מציג בורר דגם/מידה
+    // לפריטים ישנים בלי dressModelId, כך שאין להם ממה "לשנות" בפועל).
+    const needsAvailabilityCheck = (modelChanged || sizeChanged) && !!(incomingDressModelId || currentDressModelId);
+
+    let inventoryContext = null;
+    if (needsAvailabilityCheck) {
+      if (currentItem.isTaken) {
+        throw ruleError('לא ניתן לשנות דגם/מידה לפריט שכבר נלקח. יש להחזירו תחילה.');
       }
 
-      let dressItemIdToUse = currentItem.dressItemId;
+      inventoryContext = await loadInventoryContext(prisma, {
+        dressModelId: incomingDressModelId || currentDressModelId,
+        targetMinDate,
+        bufferDays,
+        skipWeekends,
+        targetMaxDate,
+        ignoreOrderId: parsedId,
+        customSpacing: order.customSpacing ?? null
+      });
 
-      // dressModelId הנוכחי של הפריט (אם יש לו DressItem מקושר בכלל — פריטי Access ישנים לא)
-      const currentDressModelId = currentItem.dressItem?.dressModelId ?? null;
-      const incomingDressModelId = itemData.dressModelId ?? null;
-      const sizeChanged = currentItem.sizeText !== itemData.sizeText;
-      const modelChanged = currentDressModelId !== null && incomingDressModelId !== null && currentDressModelId !== incomingDressModelId;
+      // כשל מוקדם על נתוני הרגע הזה, כדי שהמשתמש יקבל את השגיאה העסקית בלי לפתוח
+      // טרנזקציה לחינם. האימות הקובע הוא זה שבתוך הטרנזקציה.
+      const sizeAvail = findSizeAvailability(computeInventoryAvailability(inventoryContext), itemData.sizeText);
+      if (!hasFreeUnit(sizeAvail)) {
+        throw ruleError(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText} בתאריך המבוקש`);
+      }
+    }
 
-      // בודקים זמינות מלאי מחדש רק כשיש בכלל דגם לבדוק מולו (הרכיב לא מציג בורר דגם/מידה
-      // לפריטים ישנים בלי dressModelId, כך שאין להם ממה "לשנות" בפועל).
-      if ((modelChanged || sizeChanged) && (incomingDressModelId || currentDressModelId)) {
-        if (currentItem.isTaken) {
-            throw ruleError('לא ניתן לשנות דגם/מידה לפריט שכבר נלקח. יש להחזירו תחילה.');
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      // קריאה חוזרת של הפריט דרך ה-tx: חלון העריכה, סימון "נלקח" ותוכן ה-changes
+      // נקבעים לפי המצב ברגע הכתיבה ולא לפי מה שנקרא לפני חישוב הזמינות.
+      const freshItem = await tx.orderItem.findUnique({ where: { id: itemId } });
+      if (!freshItem) throw ruleError('פריט בהזמנה לא נמצא');
+
+      let dressItemIdToUse = freshItem.dressItemId;
+
+      if (needsAvailabilityCheck) {
+        if (freshItem.isTaken) {
+          throw ruleError('לא ניתן לשנות דגם/מידה לפריט שכבר נלקח. יש להחזירו תחילה.');
         }
 
-        const availability = await getAvailableInventory(
-            incomingDressModelId || currentDressModelId,
-            targetMinDate,
-            bufferDays,
-            skipWeekends,
-            newOrderIsAbroad,
-            targetMaxDate,
-            parsedId,
-            order.customSpacing ?? null
-        );
+        // הזמינות מחושבת מחדש בתוך הטרנזקציה. מרעננים רק את שאילתת ההזמנות — הנתון
+        // היחיד שהזמנה מקבילה יכולה לשנות — ולא את כל טעינת המלאי, כדי שהחלון שבו
+        // הכתיבה מסתמכת על חישוב ישן ייסגר בלי להאריך שוב את הטרנזקציה.
+        const freshContext = await refreshInventoryBookings(tx, inventoryContext);
+        const sizeAvail = findSizeAvailability(computeInventoryAvailability(freshContext), itemData.sizeText);
 
-        const sizeAvail = availability.find(a => (a.sizeText || a.size || 'כללי') === itemData.sizeText);
-
-        if (!sizeAvail || sizeAvail.availableQuantity <= 0 || !sizeAvail.itemIds || sizeAvail.itemIds.length === 0) {
-            throw ruleError(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText} בתאריך המבוקש`);
+        if (!hasFreeUnit(sizeAvail)) {
+          throw ruleError(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText} בתאריך המבוקש`);
         }
 
         dressItemIdToUse = sizeAvail.itemIds[0];
       }
 
-      const updateData = {
-        dressItemId: dressItemIdToUse,
-        sizeText: itemData.sizeText,
-        neckAlteration: itemData.neckAlteration !== undefined && itemData.neckAlteration !== null && itemData.neckAlteration !== '' ? parseInt(itemData.neckAlteration) : null,
-        sleeveAlteration: itemData.sleeveAlteration !== undefined && itemData.sleeveAlteration !== null && itemData.sleeveAlteration !== '' ? parseInt(itemData.sleeveAlteration) : null,
-        lengthAlteration: itemData.lengthAlteration !== undefined && itemData.lengthAlteration !== null && itemData.lengthAlteration !== '' ? String(itemData.lengthAlteration) : null,
-        alterationDetails: itemData.alterationDetails || null,
-        alterationDone: itemData.alterationDone || false
-      };
-
-      const formatVal = (val) => val === undefined || val === null ? '' : String(val);
+      const updateData = buildUpdateData(itemData, dressItemIdToUse);
 
       // עריכה מלאה (דגם/מידה/תיקונים המשפיעים על הסכומים) מותרת רק בתוך 15 דקות מהעדכון
       // האחרון של הפריט. סימון "תיקון בוצע" ופירוט התיקון נשארים פתוחים תמיד — לא כפופים לחלון.
-      if (!isWithinItemEditWindow(currentItem)) {
-        const lockedFields = ['dressItemId', 'sizeText', 'neckAlteration', 'sleeveAlteration', 'lengthAlteration'];
-        const lockedFieldChanged = lockedFields.some(field => formatVal(currentItem[field]) !== formatVal(updateData[field]));
+      if (!isWithinItemEditWindow(freshItem)) {
+        const lockedFieldChanged = LOCKED_FIELDS.some(field => formatVal(freshItem[field]) !== formatVal(updateData[field]));
         if (lockedFieldChanged) {
           throw ruleError(`חלון העריכה של הפריט (${ITEM_EDIT_WINDOW_MINUTES} דקות מהעדכון האחרון) נסגר. ניתן לערוך כעת רק את תיאור התיקון.`);
         }
       }
 
-      const changes = {};
-      const fieldsToCheck = ['dressItemId', 'sizeText', 'neckAlteration', 'sleeveAlteration', 'lengthAlteration', 'alterationDetails', 'alterationDone'];
-
-      fieldsToCheck.forEach(field => {
-         const oldVal = currentItem[field];
-         const newVal = updateData[field];
-         if (formatVal(oldVal) !== formatVal(newVal)) {
-             changes[field] = { from: oldVal, to: newVal };
-         }
-      });
-
-      // Update the item
-      const updatedItem = await tx.orderItem.update({
+      // Update the item.
+      // ה-changes המחושב כאן מועבר לתוסף ה-audit כדי שתיווצר שורת היסטוריה אחת בלבד,
+      // עם פירוט "לפני ← אחרי". בלי זה נרשמה שורה גנרית עם צילום מלא של כל השדות
+      // (גם כשלא השתנה דבר) ועוד שורה ידנית עם הפירוט — שתי שורות כמעט זהות לכל שמירה.
+      const updatedItem = await tx.orderItem.update(auditAs('UPDATE', {
         where: { id: itemId },
         data: updateData
-      });
-
-      if (Object.keys(changes).length > 0) {
-          await tx.auditLog.create({
-              data: {
-                  entityType: 'OrderItem',
-                  entityId: itemId,
-                  action: 'UPDATE',
-                  changesJson: JSON.stringify(changes)
-              }
-          });
-      }
+      }, diffFields(freshItem, updateData)));
 
       return updatedItem;
-    });
+    }, TX_OPTIONS);
 
     // Recalculate obligations asynchronously after updating item
     await recalculateOrderObligations(parsedId);

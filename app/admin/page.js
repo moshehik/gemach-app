@@ -1,16 +1,17 @@
 import Link from 'next/link';
-import { 
-  Bot, 
-  BarChart3, 
-  LayoutDashboard, 
-  FileText, 
-  AlertTriangle, 
-  Calculator, 
-  Settings, 
-  DatabaseBackup, 
-  History, 
-  Search, 
-  Activity 
+import {
+  Bot,
+  BarChart3,
+  LayoutDashboard,
+  FileText,
+  AlertTriangle,
+  Calculator,
+  Settings,
+  DatabaseBackup,
+  History,
+  Search,
+  Activity,
+  ScrollText
 } from 'lucide-react';
 
 const categories = [
@@ -36,6 +37,7 @@ const categories = [
       { href: '/admin/inventory-alerts', icon: AlertTriangle, label: 'התראות מלאי', subLabel: 'בדיקת Overbooking' },
       { href: '/admin/recalculations', icon: Calculator, label: 'חישובים', subLabel: 'פערי תשלומים' },
       { href: '/admin/settings', icon: Settings, label: 'הגדרות', subLabel: 'תצורה ולוגו' },
+      { href: '/admin/refund-policy', icon: ScrollText, label: 'מדיניות זיכויים', subLabel: 'תיעוד חוקי ביטול' },
       { href: '/admin/labels', icon: Settings, label: 'שינוי שמות', subLabel: 'כיתובים וטקסטים' },
     ]
   },

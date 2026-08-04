@@ -61,6 +61,7 @@ export async function GET(request) {
 
     const where = {
       ...(filterStatus === 'deleted' ? { isDeleted: true } : { isDeleted: false }),
+      ...(filterStatus === 'drafts' ? { status: DRAFT_ORDER_STATUS } : {}),
       ...(filterStatus === 'archive' ? { eventDate: { lt: today } } : {}),
       ...(filterStatus === 'soon' ? { OR: [{ eventDate: null }, { eventDate: { gte: today } }] } : {}),
       ...(filterStatus === 'all' && !forRentals && !search && !advOrderId && !advCustomerName && !advCustomerPhone && !advCustomerCity && !advEventDateFrom && !advEventDateTo ? {

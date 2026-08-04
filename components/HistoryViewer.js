@@ -105,7 +105,8 @@ export const FIELD_TRANSLATIONS = {
   deletedAt: 'תאריך מחיקה',
   createdAt: 'תאריך יצירה',
   updatedAt: 'תאריך עדכון',
-  note: 'הערה'
+  note: 'הערה',
+  discarded: 'שינויים שבוטלו'
 };
 
 export const ACTION_TRANSLATIONS = {
@@ -116,7 +117,26 @@ export const ACTION_TRANSLATIONS = {
   ADD_PAYMENT: 'הוספת תשלום',
   UPDATE_PAYMENT: 'עדכון תשלום',
   DELETE_PAYMENT: 'מחיקת תשלום',
-  REFUND: 'זיכוי'
+  REMOVE_PAYMENT: 'הסרת תשלום מזיכוי',
+  REFUND: 'זיכוי',
+  // מחזור החיים של השכרה/החזרה
+  CONFIRM_RENTAL: 'אישור השכרה',
+  RETURN_RENTAL: 'החזרת פריט',
+  RETURN_CONDITION: 'עדכון מצב בהחזרה',
+  ADD_AUTO_NOTE: 'הערה אוטומטית',
+  DEBT_APPROVED: 'אישור יתרת חוב',
+  // פעולות ביטול
+  CANCEL_RENTAL: 'ביטול השכרה',
+  CANCEL_RETURN: 'ביטול החזרה',
+  CANCEL_SCAN: 'ביטול סריקה',
+  CANCEL_ITEM: 'ביטול פריט מההזמנה',
+  RESTORE_ITEM: 'שחזור פריט להזמנה',
+  CANCEL_OBLIGATION: 'ביטול התחייבות תשלום',
+  RESTORE_OBLIGATION: 'שחזור התחייבות תשלום',
+  CANCEL_PAYMENT: 'ביטול תשלום',
+  RESTORE_PAYMENT: 'שחזור תשלום',
+  CANCEL_ORDER: 'ביטול הזמנה',
+  CANCEL_CHANGES: 'ביטול שינויים שלא נשמרו'
 };
 
 export default function HistoryViewer({ entityType, entityId }) {

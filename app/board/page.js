@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { HDate, Sedra, Locale, HebrewCalendar } from '@hebcal/core';
 import { getHebrewMonthYear } from '@/lib/hebrewDate';
-import { ChevronRight, ChevronLeft, Calendar as CalendarIcon, FileText, MapPin, Search, AlertCircle, RefreshCw, Smartphone, List, CheckCircle2, Phone, Calendar as CalendarIcon2, Shirt, CreditCard, Info, Maximize2, User, X, Filter } from 'lucide-react';
+import { ChevronRight, ChevronLeft, Calendar as CalendarIcon, FileText, MapPin, Search, AlertCircle, AlertTriangle, RefreshCw, Smartphone, List, CheckCircle2, Phone, Calendar as CalendarIcon2, Shirt, CreditCard, Info, Maximize2, User, X, Filter } from 'lucide-react';
 import AISearchBar from '../components/AISearchBar';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import StatisticsModal from '../components/StatisticsModal';
@@ -587,6 +587,16 @@ export default function BoardPage() {
             <span><CalendarIcon2 data-element-name="רכיב_page_20" size={14} /> תאריך לועזי:</span>
             <span>{hoveredOrder.order.eventDate ? new Date(hoveredOrder.order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</span>
           </div>
+
+          {/* ציפוף ימים מיוחד — מוצג רק כשהוגדר ערך מותאם להזמנה */}
+          {hoveredOrder.order.customSpacing !== null && hoveredOrder.order.customSpacing !== undefined && (
+            <div className={styles.popoverRow}>
+              <span><AlertTriangle data-element-name="רכיב_page_67" size={14} /> ציפוף ימים:</span>
+              <span style={{ color: '#854d0e', background: '#fef9c3', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                {hoveredOrder.order.customSpacing} {hoveredOrder.order.customSpacing === 1 ? 'יום' : 'ימים'}
+              </span>
+            </div>
+          )}
           <div className={styles.popoverRow}>
             <span><Shirt data-element-name="רכיב_page_21" size={14} /> פריטים בהזמנה:</span>
             <span>{hoveredOrder.order.items?.filter(i => !i.isDeleted).length || 0}</span>

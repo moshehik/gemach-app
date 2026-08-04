@@ -4,10 +4,27 @@ import React from 'react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { FIELD_TRANSLATIONS } from '../HistoryViewer';
 
+const DANGER_TONE = { bg: 'var(--moc-danger-bg)', color: 'var(--moc-danger-text)' };
+const SUCCESS_TONE = { bg: 'var(--moc-success-bg)', color: '#166534' };
+
 export const ACTION_TONES = {
-  CREATE: { bg: 'var(--moc-success-bg)', color: '#166534' },
-  DELETE: { bg: 'var(--moc-danger-bg)', color: 'var(--moc-danger-text)' },
-  UPDATE: { bg: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)' }
+  CREATE: SUCCESS_TONE,
+  DELETE: DANGER_TONE,
+  UPDATE: { bg: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)' },
+  // כל פעולות הביטול נצבעות באדום כדי שיבלטו בציר ההיסטוריה
+  CANCEL_RENTAL: DANGER_TONE,
+  CANCEL_RETURN: DANGER_TONE,
+  CANCEL_SCAN: DANGER_TONE,
+  CANCEL_ITEM: DANGER_TONE,
+  CANCEL_OBLIGATION: DANGER_TONE,
+  CANCEL_PAYMENT: DANGER_TONE,
+  CANCEL_ORDER: DANGER_TONE,
+  CANCEL_CHANGES: DANGER_TONE,
+  RESTORE_ITEM: SUCCESS_TONE,
+  RESTORE_OBLIGATION: SUCCESS_TONE,
+  RESTORE_PAYMENT: SUCCESS_TONE,
+  CONFIRM_RENTAL: SUCCESS_TONE,
+  RETURN_RENTAL: SUCCESS_TONE
 };
 
 export const formatValue = (val) => {

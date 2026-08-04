@@ -1,5 +1,5 @@
 ﻿import { NextResponse } from 'next/server';
-import prisma from '../../../lib/prisma';
+import prisma, { auditAs } from '../../../lib/prisma';
 
 export async function PUT(request) {
   try {
@@ -18,25 +18,25 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'פריט לא נמצא' }, { status: 404 });
     }
 
-    const updatedItem = await prisma.orderItem.update({
-      where: { id: orderItemId },
-      data: {
-        isTaken: false,
-        takenDate: null,
-        barcode: null
+    // רישום היחיד של הביטול נעשה דרך auditAs: שורה אחת בשם 'ביטול השכרה',
+    // עם מזהה העובד המבצע (הרישום הידני שהיה כאן קודם נשמר תמיד עם employeeId ריק,
+    // ובנוסף נוצרה לצידו שורת "עדכון" גנרית כפולה על אותה פעולה).
+    await prisma.orderItem.update(auditAs(
+      'CANCEL_RENTAL',
+      {
+        where: { id: orderItemId },
+        data: {
+          isTaken: false,
+          takenDate: null,
+          barcode: null
+        }
+      },
+      {
+        isTaken: { from: item.isTaken, to: false },
+        takenDate: { from: item.takenDate, to: null },
+        barcode: { from: item.barcode, to: null }
       }
-    });
-
-    // Log the cancellation
-    await prisma.auditLog.create({
-      data: {
-        entityType: 'OrderItem',
-        entityId: item.id,
-        action: 'CANCEL_RENTAL',
-        changesJson: JSON.stringify({ isTaken: { from: true, to: false }, barcode: { from: item.barcode, to: null } }),
-        employeeId: null
-      }
-    });
+    ));
 
     return NextResponse.json({ success: true });
   } catch (error) {

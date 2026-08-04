@@ -311,15 +311,14 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 .moc-spinner.light { border-color: rgba(255,255,255,0.35); border-top-color: #fff; }
 .moc-spinner.lg { width: 34px; height: 34px; border-width: 3px; }
 
-/* תגית "ניתן לזכות פריט חדש" — נספרת לאחור על שורת דמי ביטול בזמן שהזיכוי עדיין בר-מימוש */
+/* תגית "ניתן לזכות פריט חדש" — נספרת לאחור על שורת דמי ביטול בזמן שהזיכוי עדיין בר-מימוש.
+   נקייה במכוון (בלי מסגרת/רקע) כדי לא להתחרות עם עיצוב טבלת החיובים. */
 .moc-credit-badge {
-  display: inline-flex; align-items: center; gap: 5px; margin-top: 5px;
-  padding: 3px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
-  background: var(--moc-warning-bg); color: #92400e; border: 1px solid rgba(245,158,11,0.35);
-  width: fit-content;
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 4px;
+  font-size: 0.72rem; font-weight: 700; color: #92400e; width: fit-content;
 }
 .moc-credit-badge .moc-credit-time { direction: ltr; font-variant-numeric: tabular-nums; }
-.moc-credit-badge.urgent { background: var(--moc-danger-bg); color: var(--moc-danger-text); border-color: rgba(239,68,68,0.35); animation: mocCreditPulse 1s ease-in-out infinite; }
+.moc-credit-badge.urgent { color: var(--moc-danger-text); animation: mocCreditPulse 1s ease-in-out infinite; }
 @keyframes mocCreditPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 table.moc-data-table { width: 100%; border-collapse: collapse; }
 .moc-data-table th, .moc-data-table td { padding: 12px 10px; text-align: right; border-bottom: 1px solid var(--moc-divider); font-size: 0.92rem; vertical-align: middle; }
@@ -376,11 +375,18 @@ table.moc-data-table { width: 100%; border-collapse: collapse; }
 .moc-rental-item .moc-sub-line { font-size: 0.85rem; color: var(--moc-text-muted); margin-top: 4px; }
 .moc-rental-item .moc-dates-line { font-size: 0.8rem; color: var(--moc-text-muted); display: flex; gap: 14px; margin-top: 8px; background: var(--moc-neutral-bg); padding: 6px 10px; border-radius: 6px; width: fit-content; flex-wrap: wrap; }
 .moc-return-toggle { display: inline-flex; background: var(--moc-neutral-bg); border-radius: 50px; padding: 4px; border: 1px solid #e5e5e5; align-items: stretch; }
-.moc-return-toggle button { border: none; background: transparent; padding: 7px 14px; border-radius: 50px; font-weight: 700; font-size: 0.84rem; cursor: pointer; display: flex; align-items: center; gap: 5px; color: var(--moc-text-muted); font-family: inherit; }
-.moc-return-toggle button:hover { color: var(--moc-text-main); }
-.moc-return-toggle button.good.active, .moc-return-toggle button.good:hover { background: var(--moc-success-bg); color: #16a34a; }
-.moc-return-toggle button.bad.active, .moc-return-toggle button.bad:hover { background: var(--moc-danger-bg); color: var(--moc-danger-text); }
+.moc-return-toggle button { border: none; background: transparent; padding: 7px 14px; border-radius: 50px; font-weight: 700; font-size: 0.84rem; cursor: pointer; display: flex; align-items: center; gap: 5px; color: var(--moc-text-muted); font-family: inherit; transition: background 0.16s, color 0.16s, box-shadow 0.16s; }
+.moc-return-toggle button:hover:not(:disabled) { color: var(--moc-text-main); }
+.moc-return-toggle button.good.active, .moc-return-toggle button.good:hover:not(:disabled) { background: var(--moc-success-bg); color: #16a34a; }
+.moc-return-toggle button.bad.active, .moc-return-toggle button.bad:hover:not(:disabled) { background: var(--moc-danger-bg); color: var(--moc-danger-text); }
+.moc-return-toggle button.active { box-shadow: 0 1px 3px rgba(0,0,0,0.09); }
+.moc-return-toggle button:disabled { opacity: 0.5; cursor: progress; }
 .moc-return-toggle .moc-rt-sep { width: 1px; background: #ddd; margin: 6px 2px; }
+
+/* גרסה מוקטנת לשימוש בתוך טבלת הפריטים (לצד כפתורי moc-btn-sm) */
+.moc-return-toggle.compact { padding: 3px; background: #fff; border-color: var(--moc-divider); }
+.moc-return-toggle.compact button { padding: 5px 11px; font-size: 0.78rem; gap: 4px; }
+.moc-return-toggle.compact .moc-rt-sep { margin: 5px 1px; }
 
 .moc-notes-banner { background: var(--moc-warning-bg); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; display: flex; gap: 10px; font-size: 0.9rem; color: var(--moc-text-main); align-items: flex-start; }
 .moc-pending-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--moc-danger-bg); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-weight: 700; font-size: 0.92rem; color: #991b1b; flex-wrap: wrap; }
@@ -394,9 +400,31 @@ table.moc-data-table { width: 100%; border-collapse: collapse; }
 .moc-pay-tile.paid { background: var(--moc-success-bg); color: #16a34a; }
 .moc-pay-tile.debt { background: var(--moc-danger-bg); color: var(--moc-danger-text); }
 .moc-pay-tile.credit { background: var(--moc-info-bg); color: var(--moc-info-text); }
+.moc-pay-tile.credit-window { background: var(--moc-warning-bg); color: #92400e; }
+.moc-pay-tile.credit-window .moc-credit-badge { margin-top: 6px; font-size: 0.78rem; }
 
 .moc-section-block { margin-bottom: 26px; }
 .moc-section-block h3 { margin: 0 0 12px 0; font-size: 1.1rem; }
+
+/* גוני רקע עדינים לפי סוג שורה בטבלת החיובים/תשלומים, כדי לזהות במבט חטוף
+   חיוב רגיל, זיכוי, דמי ביטול, מימוש זיכוי, תיקון וכו'. עדינים בכוונה כדי
+   שלא יתחרו עם ה-hover ועם צבע הסכום עצמו. */
+.moc-row-icon { flex-shrink: 0; color: var(--moc-text-muted); }
+.moc-row-item td:first-child .moc-row-icon { color: var(--moc-primary-dark); }
+.moc-row-repair { background: rgba(245, 158, 11, 0.06); }
+.moc-row-repair .moc-row-icon { color: #b45309; }
+.moc-row-original { background: rgba(100, 116, 139, 0.06); }
+.moc-row-cancel-credit { background: rgba(16, 185, 129, 0.08); }
+.moc-row-cancel-credit .moc-row-icon { color: #059669; }
+.moc-row-fee { background: rgba(239, 68, 68, 0.06); }
+.moc-row-fee .moc-row-icon { color: #dc2626; }
+.moc-row-redeem { background: rgba(37, 99, 235, 0.07); }
+.moc-row-redeem .moc-row-icon { color: #2563eb; }
+.moc-row-manual { background: rgba(139, 92, 246, 0.06); }
+.moc-row-manual .moc-row-icon { color: #7c3aed; }
+.moc-row-payment .moc-row-icon { color: #16a34a; }
+.moc-row-payment-credit { background: rgba(37, 99, 235, 0.06); }
+.moc-row-payment-credit .moc-row-icon { color: #2563eb; }
 
 /* ===== היסטוריה ===== */
 /* כל שורת היסטוריה מכווצת לשורה אחת כברירת מחדל — לחיצה עליה חושפת את פירוט השינויים מתחת */

@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import prisma from '../../../lib/prisma';
+import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 
 export const dynamic = 'force-dynamic';
 import { recalculateOrderObligations, computeOrderObligations } from '../../../../lib/pricingEngine';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
-import { validateOrderItemsAvailability, getAvailableInventory } from '../../../../lib/inventory';
+import { validateOrderItemsAvailability, loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
 
 const RECALC_SETTING_KEYS = [
@@ -276,6 +276,27 @@ export async function PUT(request, { params }) {
       if (weekendSetting) inventorySkipWeekends = weekendSetting.value === 'true';
     }
 
+    // הקשר המלאי לכל דגם שנוסף בשמירה הזו נטען כאן, מחוץ לטרנזקציה. הטעינה היא החלק
+    // הכבד (שאילתות מלאי מול DB מרוחק), ומשהורצה בתוך הטרנזקציה היא דחפה אותה אל מעבר
+    // ל-timeout שלה - עד "Transaction already closed" על הכתיבה שאחריה. בתוך הטרנזקציה
+    // נשאר רק רענון שאילתת ההזמנות (השדה היחיד שהזמנה מקבילה יכולה לשנות) והחישוב עצמו.
+    const inventoryContextByModel = new Map();
+    if (hasNewItems && hasDatesVal) {
+      const newItemModelIds = [...new Set(
+        data.items.filter(i => i.isNew && i.dressModelId && i.sizeText).map(i => i.dressModelId)
+      )];
+      const contexts = await Promise.all(newItemModelIds.map(modelId => loadInventoryContext(prisma, {
+        dressModelId: modelId,
+        targetMinDate: isCustomDuration ? fromDateVal : eventDateVal,
+        bufferDays: inventoryBufferDays,
+        skipWeekends: inventorySkipWeekends,
+        targetMaxDate: isCustomDuration ? toDateVal : eventDateVal,
+        ignoreOrderId: parsedOrderId,
+        customSpacing: customSpacingVal
+      })));
+      newItemModelIds.forEach((modelId, i) => inventoryContextByModel.set(modelId, contexts[i]));
+    }
+
     // Validate inventory availability
     if (data.items && Array.isArray(data.items)) {
       const activeItems = data.items.filter(i => !i.isDeleted);
@@ -332,7 +353,7 @@ export async function PUT(request, { params }) {
     // POST /api/orders and the add-item route apply. Writing 'confirmed' onto every saved
     // item, as this route used to, pinned the dresses of an unpaid cart forever the moment
     // someone opened it and pressed save.
-    const [storedPayments, storedItems] = await Promise.all([
+    const [storedPayments, storedItems, storedObligations] = await Promise.all([
       prisma.payment.findMany({
         where: { orderId: parsedOrderId },
         select: { id: true, amount: true, paymentMethod: true, isDeleted: true }
@@ -340,9 +361,24 @@ export async function PUT(request, { params }) {
       prisma.orderItem.findMany({
         where: { orderId: parsedOrderId },
         select: { id: true, cartStatus: true, isDeleted: true }
+      }),
+      // המצב הקודם של ההתחייבויות — כדי לזהות ביטול/שחזור ולרשום אותו ביומן בשם מפורש
+      prisma.paymentObligation.findMany({
+        where: { orderId: parsedOrderId },
+        select: { id: true, isDeleted: true }
       })
     ]);
     const storedItemById = new Map(storedItems.map(i => [i.id, i]));
+    const storedPaymentById = new Map(storedPayments.map(p => [p.id, p]));
+    const storedObligationById = new Map(storedObligations.map(o => [o.id, o]));
+
+    // מחזיר את שם פעולת היומן לרשומה שמבוטלת/משוחזרת בשמירה הזו (או null לעדכון רגיל)
+    const cancelActionFor = (storedMap, id, nowDeleted, cancelAction, restoreAction) => {
+      const wasDeleted = !!storedMap.get(id)?.isDeleted;
+      if (!!nowDeleted && !wasDeleted) return cancelAction;
+      if (!nowDeleted && wasDeleted) return restoreAction;
+      return null;
+    };
     const paymentsAfterSave = new Map(storedPayments.map(p => [p.id, p]));
     if (Array.isArray(data.payments)) {
       data.payments.forEach((p, idx) => {
@@ -399,7 +435,11 @@ export async function PUT(request, { params }) {
             // computeOrderObligations' cancellation-fee credit window in lib/pricingEngine.js.
             const deletedAtVal = nowDeleted && !wasDeleted ? new Date()
               : (!nowDeleted && wasDeleted ? null : undefined);
-            await tx.orderItem.update({
+            // מחיקה/שחזור של פריט נרשמים בשם מפורש, כדי שבהיסטוריית הפריט יהיה ברור
+            // שמדובר בביטול הפריט מההזמנה ולא ב"עדכון" שגרתי של מידה או תיקון.
+            const itemAuditAction = (nowDeleted && !wasDeleted) ? 'CANCEL_ITEM'
+              : ((!nowDeleted && wasDeleted) ? 'RESTORE_ITEM' : null);
+            await tx.orderItem.update(auditAs(itemAuditAction, {
               where: { id: item.id },
               data: {
                 sizeText: item.sizeText,
@@ -420,7 +460,7 @@ export async function PUT(request, { params }) {
                 // cartStatus is not decided per item - it follows the order's payment
                 // state, applied to the whole order in step 5 below.
               }
-            });
+            }));
           } else if (item.isNew) {
             // A row the user added but never filled in (no model/size picked) is skipped
             // rather than aborting the whole save.
@@ -435,16 +475,10 @@ export async function PUT(request, { params }) {
               throw new Error('לא ניתן להוסיף פריט להזמנה ללא תאריכים');
             }
 
-            const availability = await getAvailableInventory(
-              item.dressModelId,
-              isCustomDuration ? fromDateVal : eventDateVal,
-              inventoryBufferDays,
-              inventorySkipWeekends,
-              isCustomDuration,
-              isCustomDuration ? toDateVal : eventDateVal,
-              parsedOrderId,
-              customSpacingVal
-            );
+            // מרעננים את ההזמנות דרך ה-tx ומחשבים מחדש, כדי שהיחידה שתיבחר תיבדק מול
+            // מצב המלאי ברגע הכתיבה ולא מול מה שנטען לפני פתיחת הטרנזקציה.
+            const freshContext = await refreshInventoryBookings(tx, inventoryContextByModel.get(item.dressModelId));
+            const availability = computeInventoryAvailability(freshContext);
             const sizeAvailability = availability.find(
               a => (a.sizeText || a.size || 'כללי') === item.sizeText
             );
@@ -481,14 +515,15 @@ export async function PUT(request, { params }) {
       if (data.obligations && Array.isArray(data.obligations)) {
         for (const obs of data.obligations) {
           if (obs.id) {
-            await tx.paymentObligation.update({
+            const obsAuditAction = cancelActionFor(storedObligationById, obs.id, obs.isDeleted, 'CANCEL_OBLIGATION', 'RESTORE_OBLIGATION');
+            await tx.paymentObligation.update(auditAs(obsAuditAction, {
               where: { id: obs.id },
               data: {
                 isDeleted: obs.isDeleted,
                 description: obs.description,
                 amount: parseFloat(obs.amount) || 0
               }
-            });
+            }));
           } else if (obs.isNew) {
             await tx.paymentObligation.create({
               data: {
@@ -507,7 +542,8 @@ export async function PUT(request, { params }) {
       if (data.payments && Array.isArray(data.payments)) {
         for (const p of data.payments) {
           if (p.id) {
-            await tx.payment.update({
+            const paymentAuditAction = cancelActionFor(storedPaymentById, p.id, p.isDeleted, 'CANCEL_PAYMENT', 'RESTORE_PAYMENT');
+            await tx.payment.update(auditAs(paymentAuditAction, {
               where: { id: p.id },
               data: {
                 isDeleted: p.isDeleted,
@@ -515,7 +551,7 @@ export async function PUT(request, { params }) {
                 notes: p.notes,
                 amount: parseFloat(p.amount) || 0
               }
-            });
+            }));
           } else if (p.isNew) {
             await tx.payment.create({
               data: {
@@ -553,6 +589,8 @@ export async function PUT(request, { params }) {
         const currentTotalRequired = data.totalAmount || 0;
         const currentDebt = currentTotalRequired - currentTotalPaid;
         
+        // אישור החוב אינו כתיבה למודל כלשהו אלא רישום עצמאי של אישור העובד/מנהל.
+        // eslint-disable-next-line no-restricted-syntax -- אין כתיבה מקבילה שתייצר שורה אוטומטית
         await tx.auditLog.create({
           data: {
             entityType: 'Order',
@@ -565,7 +603,7 @@ export async function PUT(request, { params }) {
       }
 
       return order;
-    }, { timeout: 15000 });
+    }, { timeout: 30000, maxWait: 15000 });
 
     // Recalculate obligations asynchronously after updating order details
     await recalculateOrderObligations(parsedOrderId);
@@ -726,11 +764,27 @@ export async function DELETE(request, { params }) {
       return NextResponse.json({ error: 'Cannot delete order with rental history' }, { status: 400 });
     }
 
+    // הפריטים וההתחייבויות שמבוטלים בפועל — נאספים לפני העדכון כדי לרשום לכל אחד מהם
+    // שורת היסטוריה משלו. updateMany לא עובר דרך תוסף היומן, ולכן עד כה ביטול הזמנה
+    // לא הותיר שום רישום בהיסטוריה של הפריט או של ההתחייבות — רק בהזמנה עצמה.
+    const [itemsToCancel, obligationsToCancel, cancelledBy] = await Promise.all([
+      prisma.orderItem.findMany({
+        where: { orderId: parsedOrderId, isDeleted: false },
+        select: { id: true, description: true }
+      }),
+      prisma.paymentObligation.findMany({
+        where: { orderId: parsedOrderId, isDeleted: false },
+        select: { id: true, amount: true, description: true }
+      }),
+      getActingEmployeeId()
+    ]);
+
     await prisma.$transaction(async (tx) => {
-      await tx.order.update({
-        where: { orderId: parsedOrderId },
-        data: { isDeleted: true }
-      });
+      await tx.order.update(auditAs(
+        'CANCEL_ORDER',
+        { where: { orderId: parsedOrderId }, data: { isDeleted: true } },
+        { isDeleted: { from: false, to: true } }
+      ));
       await tx.orderItem.updateMany({
         where: { orderId: parsedOrderId },
         data: { isDeleted: true }
@@ -738,6 +792,36 @@ export async function DELETE(request, { params }) {
       await tx.paymentObligation.updateMany({
         where: { orderId: parsedOrderId },
         data: { isDeleted: true }
+      });
+
+      // שורות היומן האוטומטיות של Order נשמרות תחת ה-UUID (result.id), בעוד טאב ההיסטוריה
+      // בכרטיס מחפש לפי מספר ההזמנה — ולכן ביטול ההזמנה לא היה מופיע שם. הרישום המפורש
+      // הזה נשמר תחת מספר ההזמנה, בדיוק כמו רישום אישור החוב בשמירה.
+      const cancelLog = (entityType, entityId, extra) => ({
+        entityType,
+        entityId: String(entityId),
+        action: 'CANCEL_ORDER',
+        changesJson: JSON.stringify({
+          isDeleted: { from: false, to: true },
+          orderId: parsedOrderId,
+          note: `בוטל עקב ביטול הזמנה #${parsedOrderId}`,
+          ...extra
+        }),
+        employeeId: cancelledBy
+      });
+
+      // הפריטים וההתחייבויות מבוטלים ב-updateMany (שאינו עובר דרך תוסף היומן), ולכן זהו הרישום
+      // היחיד שלהם ולא כפילות. שורת ההזמנה נרשמת כאן תחת מספר ההזמנה, כי השורה האוטומטית
+      // של order.update נשמרת תחת ה-UUID ולא נראית בטאב ההיסטוריה של הכרטיס.
+      // eslint-disable-next-line no-restricted-syntax -- updateMany אינו מייצר שורות יומן
+      await tx.auditLog.createMany({
+        data: [
+          cancelLog('Order', parsedOrderId, {
+            note: `ההזמנה בוטלה (${itemsToCancel.length} פריטים, ${obligationsToCancel.length} התחייבויות תשלום)`
+          }),
+          ...itemsToCancel.map(item => cancelLog('OrderItem', item.id, { description: item.description })),
+          ...obligationsToCancel.map(obs => cancelLog('PaymentObligation', obs.id, { amount: obs.amount, description: obs.description }))
+        ]
       });
     });
 

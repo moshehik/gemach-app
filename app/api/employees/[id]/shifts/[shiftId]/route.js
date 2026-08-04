@@ -58,6 +58,7 @@ export async function PUT(request, { params }) {
       }
     });
 
+    // eslint-disable-next-line no-restricted-syntax -- Shift מוחרג מתוסף היומן, ולכן אין שורה אוטומטית
     await prisma.auditLog.create({
       data: {
         entityType: 'Shift',
@@ -93,6 +94,7 @@ export async function DELETE(request, { params }) {
       data: { isDeleted: true }
     });
 
+    // eslint-disable-next-line no-restricted-syntax -- Shift מוחרג מתוסף היומן, ולכן אין שורה אוטומטית
     await prisma.auditLog.create({
       data: {
         entityType: 'Shift',

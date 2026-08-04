@@ -1,5 +1,5 @@
 ﻿import { NextResponse } from 'next/server';
-import prisma from '../../../lib/prisma';
+import prisma, { auditAs } from '../../../lib/prisma';
 
 export async function POST(request) {
   try {
@@ -27,30 +27,24 @@ export async function POST(request) {
     } else if (issueType === 'returned-bad') {
       notePrefix = `[${dateStr}] אוטומטי: שמלה ${item.description || item.barcode} (הזמנה ${item.order?.orderId}) חזרה לא תקינה.`;
       
-      await prisma.orderItem.update({
-        where: { id: orderItemId },
-        data: { returnedOk: false }
-      });
+      await prisma.orderItem.update(auditAs(
+        'RETURN_CONDITION',
+        { where: { id: orderItemId }, data: { returnedOk: false } },
+        { returnedOk: { from: item.returnedOk, to: false }, note: 'דווח כחזר לא תקין' }
+      ));
     }
 
     if (item.order?.customerId) {
       const customer = item.order.customer;
       const currentNotes = customer.notes ? customer.notes + '\n' : '';
-      await prisma.customer.update({
-        where: { id: customer.id },
-        data: { notes: currentNotes + notePrefix }
-      });
 
-      // Log the note addition
-      await prisma.auditLog.create({
-        data: {
-          entityType: 'Customer',
-          entityId: customer.id,
-          action: 'ADD_AUTO_NOTE',
-          changesJson: JSON.stringify({ issueType, orderItemId }),
-          employeeId: null
-        }
-      });
+      // הוספת ההערה נרשמת ביומן דרך auditAs — בלי זה נוצרו שתי שורות בהיסטוריית הלקוח:
+      // שורת UPDATE גנרית מהתוסף עם כל טקסט ההערות, ועוד שורה ידנית של ADD_AUTO_NOTE.
+      await prisma.customer.update(auditAs(
+        'ADD_AUTO_NOTE',
+        { where: { id: customer.id }, data: { notes: currentNotes + notePrefix } },
+        { note: notePrefix, issueType, orderItemId }
+      ));
     }
 
     return NextResponse.json({ success: true });

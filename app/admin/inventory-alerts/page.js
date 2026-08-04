@@ -186,7 +186,13 @@ export default function InventoryAlertsPage() {
             <tbody>
               {alerts.map((alert, idx) => (
                 <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--input-bg)'}>
-                  <td style={{ padding: '16px', fontWeight: '500', color: '#0f172a' }}>{alert.dressName}</td>
+                  <td style={{ padding: '16px', fontWeight: '500', color: '#0f172a' }}>
+                    {alert.modelId ? (
+                      <a href={`/dashboard/dresses/${alert.modelId}`} title="פתח כרטיס דגם" style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: '600' }}>
+                        {alert.dressName}
+                      </a>
+                    ) : alert.dressName}
+                  </td>
                   <td style={{ padding: '16px', color: '#334155' }}>
                     <div style={{ display: 'flex', alignItems: 'center' }}>
                       {alert.sizeText}

@@ -1,5 +1,5 @@
 ﻿import { NextResponse } from 'next/server';
-import prisma from '../../../lib/prisma';
+import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 
 export async function POST(request) {
   try {
@@ -43,14 +43,22 @@ export async function POST(request) {
     }
 
     // Mark as returned
-    const updatedItem = await prisma.orderItem.update({
-      where: { id: itemToReturn.id },
-      data: {
-        isReturned: true,
-        returnedOk: true,
-        returnDate: new Date()
+    const updatedItem = await prisma.orderItem.update(auditAs(
+      'RETURN_RENTAL',
+      {
+        where: { id: itemToReturn.id },
+        data: {
+          isReturned: true,
+          returnedOk: true,
+          returnDate: new Date()
+        }
+      },
+      {
+        isReturned: { from: itemToReturn.isReturned, to: true },
+        returnedOk: { from: itemToReturn.returnedOk, to: true },
+        returnDate: { from: itemToReturn.returnDate, to: new Date() }
       }
-    });
+    ));
 
     // Update dress item location
     if (updatedItem.dressItemId) {
@@ -60,16 +68,7 @@ export async function POST(request) {
       });
     }
 
-    await prisma.auditLog.create({
-      data: {
-        entityType: 'OrderItem',
-        entityId: updatedItem.id,
-        action: 'RETURN_RENTAL',
-        changesJson: JSON.stringify({ isReturned: { from: false, to: true }, returnDate: { from: null, to: updatedItem.returnDate } })
-      }
-    });
-
-    return NextResponse.json({ 
+    return NextResponse.json({
       success: true, 
       orderId: updatedItem.orderId,
       item: updatedItem 
@@ -88,14 +87,30 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'חסר קוד פריט' }, { status: 400 });
     }
 
-    const item = await prisma.orderItem.update({
+    const before = await prisma.orderItem.findUnique({
       where: { id: orderItemId },
-      data: {
-        isReturned: false,
-        returnedOk: false,
-        returnDate: null
-      }
+      select: { isReturned: true, returnedOk: true, returnDate: true }
     });
+    if (!before) {
+      return NextResponse.json({ error: 'פריט לא נמצא' }, { status: 404 });
+    }
+
+    const item = await prisma.orderItem.update(auditAs(
+      'CANCEL_RETURN',
+      {
+        where: { id: orderItemId },
+        data: {
+          isReturned: false,
+          returnedOk: false,
+          returnDate: null
+        }
+      },
+      {
+        isReturned: { from: before.isReturned, to: false },
+        returnedOk: { from: before.returnedOk, to: false },
+        returnDate: { from: before.returnDate, to: null }
+      }
+    ));
 
     if (item.dressItemId) {
       await prisma.dressItem.update({
@@ -103,17 +118,6 @@ export async function PUT(request) {
         data: { location: 'מושכר' }
       });
     }
-
-    // Log the cancellation
-    await prisma.auditLog.create({
-      data: {
-        entityType: 'OrderItem',
-        entityId: item.id,
-        action: 'CANCEL_RETURN',
-        changesJson: JSON.stringify({ isReturned: { from: true, to: false } }),
-        employeeId: null
-      }
-    });
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -153,6 +157,26 @@ export async function DELETE(request) {
         returnedOk: false,
         returnDate: null
       }
+    });
+
+    // updateMany לא עובר דרך תוסף היומן (הוא מעדכן שורות רבות בשאילתה אחת ואין לו תוצאה
+    // לכל שורה), ולכן ביטול גורף של החזרות לא הותיר שום עקבות בהיסטוריית הפריטים.
+    // הרישום נעשה כאן במפורש — שורה לכל פריט שבוטלה עבורו ההחזרה.
+    const cancelledBy = await getActingEmployeeId();
+    // eslint-disable-next-line no-restricted-syntax -- ראה ההסבר למעלה: אין שורה אוטומטית ל-updateMany
+    await prisma.auditLog.createMany({
+      data: returnedItems.map(item => ({
+        entityType: 'OrderItem',
+        entityId: item.id,
+        action: 'CANCEL_RETURN',
+        changesJson: JSON.stringify({
+          isReturned: { from: true, to: false },
+          returnedOk: { from: item.returnedOk, to: false },
+          returnDate: { from: item.returnDate, to: null },
+          note: 'ביטול כל ההחזרות בהזמנה'
+        }),
+        employeeId: cancelledBy
+      }))
     });
 
     // Update locations

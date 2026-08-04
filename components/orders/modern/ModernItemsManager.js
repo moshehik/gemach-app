@@ -4,7 +4,8 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import { createPortal } from 'react-dom';
 import {
   Plus, Trash2, RotateCcw, Edit2, X, Check, Info, CalendarSearch, Scan,
-  PackageCheck, PackageOpen, Undo2, XCircle, Shirt, Scissors, Ruler, ChevronDown, AlertTriangle
+  PackageCheck, PackageOpen, Undo2, XCircle, Shirt, Scissors, Ruler, ChevronDown, AlertTriangle,
+  CheckCircle2
 } from 'lucide-react';
 import OrderModelSelector from '../OrderModelSelector';
 import OrderSizeSelector from '../OrderSizeSelector';
@@ -12,6 +13,38 @@ import ItemCapacityModal from '../ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../../HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { isWithinItemEditWindow } from '../../../lib/orderItemEditWindow';
+
+// שדות פנימיים של עגלת הקניות (טיימר ההחזקה) — לא מידע שמעניין את המשתמש ביומן השינויים
+const HIDDEN_HISTORY_FIELDS = ['id', 'orderId', 'dressItemId', 'deletedAt', 'barcode', 'barcodePrefix', 'cartStatus', 'cartStatusDate'];
+
+// עד לתיקון בראוטים, הוספת פריט נרשמה פעמיים ביומן (תוסף ה-audit + רישום ידני בראוט),
+// ועריכה יצרה שורה גנרית עם צילום כל השדות לצד שורת הפירוט "לפני ← אחרי". בנתונים הישנים
+// השורות האלה עדיין קיימות, ולכן מקפלים אותן כאן:
+//   1. שורות זהות לחלוטין וצמודות בזמן (ה-CREATE הכפול).
+//   2. שורת UPDATE גנרית שהיא צילום מצב, כשצמודה לה שורה עם פירוט לפני/אחרי של אותה פעולה.
+const AUDIT_DUP_WINDOW_MS = 5000;
+const rawChanges = (l) => (typeof l.changesJson === 'string' ? l.changesJson : JSON.stringify(l.changesJson));
+const isDiffShaped = (l) => {
+  try {
+    const parsed = JSON.parse(rawChanges(l));
+    return Object.values(parsed).some(v => v && typeof v === 'object' && ('from' in v || 'to' in v));
+  } catch (e) {
+    return false;
+  }
+};
+const dedupeAuditLogs = (logs) => {
+  const arr = logs || [];
+  const near = (a, b) => Math.abs(new Date(a.createdAt) - new Date(b.createdAt)) <= AUDIT_DUP_WINDOW_MS;
+  return arr.filter((log, i) => {
+    const prev = arr[i - 1];
+    const next = arr[i + 1];
+    if (prev && prev.action === log.action && rawChanges(prev) === rawChanges(log) && near(prev, log)) return false;
+    if (log.action === 'UPDATE' && !isDiffShaped(log)) {
+      if ((prev && near(prev, log) && isDiffShaped(prev)) || (next && near(next, log) && isDiffShaped(next))) return false;
+    }
+    return true;
+  });
+};
 
 /**
  * טאב "פריטים" בעיצוב המודרני — פורט מלא של OrderItemsManager, כולל ההשכרות:
@@ -33,6 +66,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   const [manualBarcode, setManualBarcode] = useState('');
   const [selectedItemForScan, setSelectedItemForScan] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null, actionType: null });
+  const [savingConditionId, setSavingConditionId] = useState(null);
   const [expandedHistory, setExpandedHistory] = useState({});
   const isFullyPaid = totalPaid >= totalRequired;
 
@@ -438,6 +472,41 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     }
   };
 
+  // סימון מצב הפריט אחרי שהוחזר: תקין / לא תקין.
+  // "לא תקין" עובר דרך report-issue כדי שתתווסף גם ההערה האוטומטית בכרטיס הלקוח,
+  // בדיוק כמו "דווח על בעיה" בחלון "השכרה והחזרה".
+  const handleSetReturnCondition = async (item, ok) => {
+    if (!item?.id || item.isNew || !item.isReturned) return;
+    const current = item.returnedOk !== false;
+    if (current === ok) return;
+
+    if (!ok) {
+      const promptFunc = window.customConfirm || window.confirm;
+      const confirmed = await promptFunc('לסמן את הפריט כ"הוחזר - לא תקין"? תתווסף הערה אוטומטית בכרטיס הלקוח.', 'דיווח על פריט פגום');
+      if (!confirmed) return;
+    }
+
+    setSavingConditionId(item.id);
+    onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, returnedOk: ok } : i));
+    try {
+      const res = ok
+        ? await fetch('/api/rentals/toggle', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemId: item.id, action: 'setReturnCondition', returnedOk: true })
+          })
+        : await fetch('/api/returns/report-issue', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderItemId: item.id, issueType: 'returned-bad' })
+          });
+      if (!res.ok) throw new Error('API failed');
+    } catch (err) {
+      alert('שגיאה בעדכון מצב הפריט');
+      onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, returnedOk: item.returnedOk } : i));
+    } finally {
+      setSavingConditionId(null);
+    }
+  };
+
   const showItemDetails = async (item) => {
     setExpandedHistory({});
     setDetailsModalItem({ ...item, auditLogs: null, loadingLogs: true });
@@ -459,6 +528,10 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   };
 
   const itemCode = (item) => item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix || null;
+
+  // מזהה הדגם, כשקיים — מאפשר קפיצה מהפריט בהזמנה אל כרטיס הדגם.
+  // פריטים שהוגרו מ-Access בלי DressItem מקושר לא יקבלו קישור.
+  const itemModelId = (item) => item.dressModelId || item.dressItem?.dressModelId || null;
 
   const renderRepairChips = (item, index) => {
     const neck = item.neckAlteration === 1 || item.neckAlteration === true;
@@ -497,6 +570,25 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     }
     if (item.isTaken) return <span className="moc-badge on-white info"><PackageOpen size={13} /> בהשכרה</span>;
     return <span className="moc-badge on-white neutral">ממתין</span>;
+  };
+
+  // בורר מצב לפריט שהוחזר — זמין גם בהזמנה נעולה, כי פריט מוחזר הוא כמעט תמיד של אירוע שעבר
+  const renderConditionToggle = (item) => {
+    const isGood = item.returnedOk !== false;
+    const busy = savingConditionId === item.id;
+    return (
+      <div className="moc-return-toggle compact" title="מצב הפריט בהחזרה">
+        <button type="button" className={`good ${isGood ? 'active' : ''}`} disabled={busy}
+          onClick={(e) => { e.stopPropagation(); handleSetReturnCondition(item, true); }}>
+          <CheckCircle2 size={13} /> תקין
+        </button>
+        <div className="moc-rt-sep" />
+        <button type="button" className={`bad ${!isGood ? 'active' : ''}`} disabled={busy}
+          onClick={(e) => { e.stopPropagation(); handleSetReturnCondition(item, false); }}>
+          <AlertTriangle size={13} /> לא תקין
+        </button>
+      </div>
+    );
   };
 
   return (
@@ -580,7 +672,21 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                         </div>
                       ) : (
                         <>
-                          <strong>{itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}</strong>
+                          {itemModelId(item) ? (
+                            <a
+                              href={`/dashboard/dresses/${itemModelId(item)}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              title="פתח כרטיס דגם"
+                              style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}
+                              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--moc-primary-dark)'; e.currentTarget.style.textDecoration = 'underline'; }}
+                              onMouseLeave={(e) => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}
+                            >
+                              {itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}
+                            </a>
+                          ) : (
+                            <strong>{itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}</strong>
+                          )}
                           {code && <div className="moc-mono" style={{ fontSize: '0.78rem', color: 'var(--moc-text-muted)' }}>קוד: {code}{item.barcode ? ` · ברקוד: ${item.barcode}` : ''}</div>}
                         </>
                       )}
@@ -630,12 +736,14 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
                         {locked ? (
-                          // הזמנה נעולה — מותרת החזרה בלבד; עריכה, השכרה וביטולים חסומים
+                          // הזמנה נעולה — מותרות החזרה וסימון מצב הפריט בלבד; עריכה, השכרה וביטולים חסומים
                           isRented ? (
                             <button className="moc-btn moc-btn-gold moc-btn-sm"
                               onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
                               <PackageCheck size={13} /> החזרה
                             </button>
+                          ) : item.isReturned && !isDeletedRow ? (
+                            renderConditionToggle(item)
                           ) : (
                             <span className="moc-hint" style={{ fontStyle: 'italic' }}>נעול</span>
                           )
@@ -680,10 +788,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                               </>
                             )}
                             {item.isReturned && (
-                              <button className="moc-btn moc-btn-danger-soft moc-btn-sm" title="בטל החזרה"
-                                onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' }); }}>
-                                <Undo2 size={13} /> ביטול החזרה
-                              </button>
+                              <>
+                                {renderConditionToggle(item)}
+                                <button className="moc-btn moc-btn-danger-soft moc-btn-sm" title="בטל החזרה"
+                                  onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' }); }}>
+                                  <Undo2 size={13} /> ביטול החזרה
+                                </button>
+                              </>
                             )}
                           </>
                         )}
@@ -831,13 +942,16 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                           const isCredit = obs.amount < 0;
                           const label = cleanTxt(obs.productName)
                             || (isCredit ? 'זיכוי / ביטול' : (obs.description.includes('תיקון') ? 'תיקון' : 'חיוב'));
+                          const desc = cleanTxt(obs.description);
+                          // ברוב החיובים ה-productName וה-description זהים — לא להציג את אותו טקסט פעמיים
+                          const showDesc = desc && desc !== label;
                           return (
                             <tr key={idx}>
-                              <td style={{ fontWeight: 600 }}>
+                              <td style={{ fontWeight: 600 }} colSpan={showDesc ? 1 : 2}>
                                 {label}
                                 {isCredit && <span className="moc-badge on-white danger" style={{ marginRight: '6px' }}>זיכוי</span>}
                               </td>
-                              <td className="moc-hint">{cleanTxt(obs.description)}</td>
+                              {showDesc && <td className="moc-hint">{desc}</td>}
                               <td style={{ fontWeight: 700, color: isCredit ? 'var(--moc-danger-text)' : '#16a34a', direction: 'ltr', textAlign: 'left' }}>
                                 {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
                               </td>
@@ -892,7 +1006,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                 {detailsModalItem.loadingLogs ? (
                   <div className="moc-empty-state" style={{ padding: '14px 0' }}>טוען היסטוריה...</div>
                 ) : detailsModalItem.auditLogs && detailsModalItem.auditLogs.length > 0 ? (
-                  detailsModalItem.auditLogs.map((log, idx) => {
+                  dedupeAuditLogs(detailsModalItem.auditLogs).map((log, idx) => {
                     const actionLabel = ACTION_TRANSLATIONS[log.action] || log.action;
                     let changesNode = null;
                     try {
@@ -900,7 +1014,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                       const rows = [];
                       for (const [key, value] of Object.entries(changes)) {
                         if (value === null || value === undefined || value === '') continue;
-                        if (['id', 'orderId', 'dressItemId', 'deletedAt', 'barcode', 'barcodePrefix'].includes(key)) continue;
+                        if (HIDDEN_HISTORY_FIELDS.includes(key)) continue;
                         if (typeof value === 'boolean' && value === false && log.action === 'CREATE') continue;
                         const label = FIELD_TRANSLATIONS[key] || key;
                         if (value && typeof value === 'object' && ('from' in value || 'to' in value)) {

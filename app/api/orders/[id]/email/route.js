@@ -264,6 +264,7 @@ export async function POST(request, { params }) {
     });
 
     if (isSuccess) {
+      // eslint-disable-next-line no-restricted-syntax -- הכתיבה שקדמה היא ל-EmailLog; זו שורת ההיסטוריה של ההזמנה עצמה
       await prisma.auditLog.create({
         data: {
           entityType: 'Order',

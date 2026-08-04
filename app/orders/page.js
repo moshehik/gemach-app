@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Pencil, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays, AlertCircle, Info, Phone, Calendar as CalendarIcon2, CreditCard, CheckCircle2, Filter, Search, Printer, Clock } from 'lucide-react';
+import { Pencil, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays, AlertCircle, AlertTriangle, Info, Phone, Calendar as CalendarIcon2, CreditCard, CheckCircle2, Filter, Search, Printer, Clock } from 'lucide-react';
 import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../lib/orderStatus';
 import CapacitySearchModal from '../../components/CapacitySearchModal';
 import ExportButtons from '../../components/ExportButtons';
@@ -383,6 +383,19 @@ export default function OrdersPage() {
             }} title="לא שולם (חודשים אחרונים)">
               <AlertCircle data-element-name="רכיב_page_8" size={16} />
               <span>לא שולם</span>
+            </button>
+            <button data-element-name="כפתור_page_drafts" data-agy-id="orders_page_button_drafts" onClick={() => { setFilterStatus('drafts'); setPage(1); }} style={{ 
+              padding: '0.6rem 1rem', border: 'none', 
+              background: filterStatus === 'drafts' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent', 
+              borderRadius: '8px', cursor: 'pointer', 
+              color: filterStatus === 'drafts' ? '#fff' : '#64748b', 
+              display: 'flex', alignItems: 'center', gap: '0.5rem', 
+              fontSize: '0.9rem', fontWeight: filterStatus === 'drafts' ? '600' : '500',
+              boxShadow: filterStatus === 'drafts' ? '0 4px 10px rgba(16, 185, 129, 0.3)' : 'none',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+            }} title="טיוטות">
+              <Pencil data-element-name="רכיב_page_drafts_icon" size={16} />
+              <span>טיוטות</span>
             </button>
             <button data-element-name="כפתור_page_11" data-agy-id="orders_page_button_7" onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ 
               padding: '0.6rem 1rem', border: 'none', 
@@ -862,6 +875,16 @@ export default function OrdersPage() {
             <span><CalendarIcon2 data-element-name="רכיב_page_71" size={14} /> תאריך עברי:</span>
             <span>{hoveredOrder.eventDateHebrew || 'לא צוין'}</span>
           </div>
+
+          {/* ציפוף ימים מיוחד — מוצג רק כשהוגדר ערך מותאם להזמנה (אותו תנאי שצובע את השורה בצהוב) */}
+          {hoveredOrder.customSpacing !== null && hoveredOrder.customSpacing !== undefined && (
+            <div className="global-popoverRow">
+              <span><AlertTriangle data-element-name="רכיב_page_76" size={14} /> ציפוף ימים:</span>
+              <span style={{ color: '#854d0e', background: '#fef9c3', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                {hoveredOrder.customSpacing} {hoveredOrder.customSpacing === 1 ? 'יום' : 'ימים'}
+              </span>
+            </div>
+          )}
 
           <div className="global-popoverRow">
             <span><Shirt data-element-name="רכיב_page_72" size={14} /> הושכר:</span>

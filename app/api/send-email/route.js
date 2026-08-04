@@ -103,6 +103,7 @@ export async function POST(request) {
       const entityType = customerId ? 'Customer' : (employeeId ? 'Employee' : 'System');
       
       if (entityId) {
+        // eslint-disable-next-line no-restricted-syntax -- הכתיבה שקדמה היא ל-EmailLog; זו שורת ההיסטוריה של הלקוח/העובד
         await prisma.auditLog.create({
           data: {
             entityType,

@@ -572,6 +572,11 @@ export default function ClipboardDebugger() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        @media print {
+          #debug-toggle-btn, #debug-floating-panel {
+            display: none !important;
+          }
+        }
       `}} />
     </>
   );

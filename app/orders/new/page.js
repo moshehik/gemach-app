@@ -1918,7 +1918,7 @@ export default function NewOrderPage() {
                   </div>
                   <div>
                     <label className="field-label sub" htmlFor="cust-phone1">טלפון נייד <span aria-hidden="true">*</span></label>
-                    <input id="cust-phone1" type="tel" required aria-required="true" className="wizard-input compact" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({...prev, phone1: e.target.value}))} />
+                    <input id="cust-phone1" type="tel" required aria-required="true" className="wizard-input compact" readOnly disabled style={{ backgroundColor: '#f1f5f9', cursor: 'not-allowed', color: '#64748b' }} value={newCustomer.phone1} />
                   </div>
                   <div>
                     <label className="field-label sub" htmlFor="cust-email">אימייל</label>

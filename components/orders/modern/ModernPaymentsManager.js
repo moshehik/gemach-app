@@ -2,39 +2,74 @@
 
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, Info, RefreshCcw, CreditCard, Plus, X, Zap, Clock } from 'lucide-react';
+import {
+  Trash2, Info, RefreshCcw, CreditCard, Plus, X, Zap, Clock,
+  Shirt, Wrench, FileText, Undo2, Ban, Gift, Pencil, Banknote
+} from 'lucide-react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
-/**
- * תגית נספרת לאחור על שורת "דמי ביטול" - מציגה עד מתי עדיין ניתן לנצל את הסכום
- * כזיכוי אוטומטי על פריט חלופי שנוסף לאותה הזמנה (ר' CANCELLATION_CREDIT_MINUTES
- * ולוגיקת הקרדיט ב-lib/pricingEngine.js). נעלמת מעצמה כשהזמן פג.
- */
-function CancellationCreditBadge({ deadline }) {
+/** מחשב את הזמן שנותר עד ל-deadline, מתעדכן כל שנייה. null כשהזמן פג. */
+function useCountdown(deadline) {
   const [now, setNow] = useState(Date.now());
-
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
   }, []);
-
   const remainingMs = deadline - now;
   if (remainingMs <= 0) return null;
-
   const totalSec = Math.floor(remainingMs / 1000);
-  const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
-  const ss = String(totalSec % 60).padStart(2, '0');
-  const urgent = remainingMs <= 60000;
+  return {
+    text: `${String(Math.floor(totalSec / 60)).padStart(2, '0')}:${String(totalSec % 60).padStart(2, '0')}`,
+    urgent: remainingMs <= 60000
+  };
+}
 
+/**
+ * תגית נספרת לאחור על שורת "דמי ביטול" - מציגה עד מתי ועל איזה סכום עדיין ניתן
+ * לנצל זיכוי אוטומטי על פריט חלופי שנוסף לאותה הזמנה (ר' CANCELLATION_CREDIT_MINUTES
+ * ולוגיקת הקרדיט ב-lib/pricingEngine.js). נעלמת מעצמה כשהזמן פג. נקייה במכוון
+ * (בלי מסגרת/רקע) כדי לא להתחרות עם עיצוב הטבלה.
+ */
+function CancellationCreditBadge({ deadline, amount }) {
+  const countdown = useCountdown(deadline);
+  if (!countdown) return null;
   return (
     <span
-      className={`moc-credit-badge${urgent ? ' urgent' : ''}`}
+      className={`moc-credit-badge${countdown.urgent ? ' urgent' : ''}`}
       title="ניתן לנצל סכום זה כזיכוי אוטומטי אם יתווסף פריט חלופי לאותה הזמנה, עד לתום הזמן שנקבע בהגדרות"
     >
       <Clock size={11} />
-      ניתן לזכות פריט חדש עוד <span className="moc-credit-time">{mm}:{ss}</span>
+      ניתן לזכות ₪{amount} על פריט חדש עוד <span className="moc-credit-time">{countdown.text}</span>
     </span>
   );
+}
+
+/** קובייה בטאב תשלומים שמסכמת זיכוי ביטול זמין לניצול, אם יש כזה כרגע בהזמנה. */
+function CreditWindowTile({ deadline, amount }) {
+  const countdown = useCountdown(deadline);
+  if (!countdown) return null;
+  return (
+    <div className="moc-pay-tile credit-window">
+      <div className="moc-pt-lbl">זיכוי ביטול זמין לניצול</div>
+      <div className="moc-pt-amt">₪{amount}</div>
+      <span className={`moc-credit-badge${countdown.urgent ? ' urgent' : ''}`}>
+        <Clock size={11} /> <span className="moc-credit-time">{countdown.text}</span>
+      </span>
+    </div>
+  );
+}
+
+/** אייקון וגוון רקע לפי סוג שורת החיוב, כדי שאפשר יהיה לזהות במבט חטוף
+ * חיוב רגיל, זיכוי, דמי ביטול, מימוש זיכוי, תיקון, חיוב ידני וכו'. */
+function getObligationVisual(obs) {
+  const desc = obs.description || '';
+  if (desc.startsWith('דמי ביטול')) return { Icon: Ban, rowClass: 'moc-row-fee' };
+  if (desc.startsWith('זיכוי דמי ביטול')) return { Icon: Gift, rowClass: 'moc-row-redeem' };
+  if (desc.startsWith('זיכוי בגין ביטול')) return { Icon: Undo2, rowClass: 'moc-row-cancel-credit' };
+  if (desc.startsWith('חיוב מקורי')) return { Icon: FileText, rowClass: 'moc-row-original' };
+  if (desc.startsWith('תיקון')) return { Icon: Wrench, rowClass: 'moc-row-repair' };
+  if (obs.isManual !== false) return { Icon: Pencil, rowClass: 'moc-row-manual' };
+  return { Icon: Shirt, rowClass: 'moc-row-item' };
 }
 
 /**
@@ -378,7 +413,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     const d = d0 ? new Date(d0) : new Date();
     if (isNaN(d.getTime())) return '-';
     const hebStr = getHebrewDateString(d);
-    return `${d.toLocaleDateString('he-IL')}${hebStr ? ` (${hebStr})` : ''}`;
+    const timeStr = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+    return hebStr ? `${hebStr} · ${timeStr}` : timeStr;
   };
 
   const activeObligations = obligations.filter(o => !o.isDeleted);
@@ -386,20 +422,36 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   const pendingRefunds = refunds.filter(r => !r.isDeleted && !r.isExecuted);
   const balance = totalRequired - totalPaid;
 
-  // מועד הפקיעה של הזכאות לניצול "דמי ביטול" כזיכוי על פריט חלופי - null אם השורה
-  // אינה שורת דמי ביטול, כבר נוצל זיכוי בגינה, או שאין deletedAt לפריט שמקורו בו.
-  const getCancellationCreditDeadline = (obs) => {
+  // חדש קודם, ישן אחר-כך — נוח יותר לראות מה קרה עכשיו בלי לגלול.
+  const sortedObligations = [...activeObligations].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+  const sortedPayments = [...activePayments].sort((a, b) => new Date(b.paymentDate || 0) - new Date(a.paymentDate || 0));
+
+  // הסכום שעדיין ניתן לנצל כזיכוי על פריט חלופי, ועד מתי - null אם השורה אינה שורת
+  // דמי ביטול, כל הסכום כבר נוצל, שהזמן פג, או שאין deletedAt לפריט שמקורו בו.
+  // הזיכוי עשוי להיות ממומש חלקית (למשל פריט חלופי ששווה פחות מדמי הביטול המלאים) -
+  // במקרה כזה עדיין נשארת יתרה בת-מימוש כל עוד הטיימר לא פג.
+  const getCancellationCreditInfo = (obs) => {
     if (!obs.orderItemId || !obs.description?.startsWith('דמי ביטול')) return null;
-    const alreadyRedeemed = activeObligations.some(
-      o => o.orderItemId === obs.orderItemId && o.description?.startsWith('זיכוי דמי ביטול')
-    );
-    if (alreadyRedeemed) return null;
+    const consumed = activeObligations
+      .filter(o => o.orderItemId === obs.orderItemId && o.description?.startsWith('זיכוי דמי ביטול'))
+      .reduce((sum, o) => sum + Math.abs(o.amount || 0), 0);
+    const remaining = obs.amount - consumed;
+    if (remaining <= 0) return null;
     const sourceItem = items.find(i => i.id === obs.orderItemId);
     if (!sourceItem?.deletedAt) return null;
     const minutes = parseFloat(settings.CANCELLATION_CREDIT_MINUTES);
     if (isNaN(minutes)) return null;
-    return new Date(sourceItem.deletedAt).getTime() + minutes * 60000;
+    const deadline = new Date(sourceItem.deletedAt).getTime() + minutes * 60000;
+    return { deadline, remaining };
   };
+
+  const activeCreditWindows = activeObligations.map(getCancellationCreditInfo).filter(Boolean);
+  const nearestCreditWindow = activeCreditWindows.length
+    ? {
+        deadline: Math.min(...activeCreditWindows.map(c => c.deadline)),
+        amount: activeCreditWindows.reduce((sum, c) => sum + c.remaining, 0)
+      }
+    : null;
 
   return (
     <>
@@ -412,6 +464,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         ) : (
           <div className="moc-pay-tile credit"><div className="moc-pt-lbl">יתרת זכות</div><div className="moc-pt-amt">₪{Math.abs(balance).toLocaleString('he-IL')}</div></div>
         )}
+        {nearestCreditWindow && <CreditWindowTile deadline={nearestCreditWindow.deadline} amount={nearestCreditWindow.amount} />}
       </div>
 
       {/* ===== חיובים ===== */}
@@ -429,17 +482,21 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 <tr><th>תיאור</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}>פעולות</th></tr>
               </thead>
               <tbody>
-                {activeObligations.map((obs, idx) => {
+                {sortedObligations.map((obs, idx) => {
                   const descText = (obs.productName || obs.description || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim() || (obs.isManual ? 'חיוב ידני' : 'חיוב מחירון');
                   // חיוב שלילי הוא זיכוי/ביטול — הסימן וכיוון ה-LTR נדרשים במפורש, אחרת אלגוריתם
                   // הכיווניות של הדפדפן מציג "₪-45" הפוך בתוך הקשר RTL
                   const isCredit = obs.amount < 0;
-                  const creditDeadline = getCancellationCreditDeadline(obs);
+                  const creditInfo = getCancellationCreditInfo(obs);
+                  const { Icon, rowClass } = getObligationVisual(obs);
                   return (
-                    <tr key={idx}>
+                    <tr key={idx} className={rowClass}>
                       <td style={{ fontWeight: 600 }}>
-                        <div>{descText}</div>
-                        {creditDeadline && <CancellationCreditBadge deadline={creditDeadline} />}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                          <Icon size={15} className="moc-row-icon" />
+                          {descText}
+                        </div>
+                        {creditInfo && <CancellationCreditBadge deadline={creditInfo.deadline} amount={creditInfo.remaining} />}
                       </td>
                       <td className="moc-hint">{fmtDate(obs.createdAt)}</td>
                       <td style={{ fontWeight: 700, color: isCredit ? '#16a34a' : '#b91c1c', direction: 'ltr', textAlign: 'left' }}>
@@ -488,13 +545,19 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 <tr><th>אופן</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}>פעולות</th></tr>
               </thead>
               <tbody>
-                {activePayments.map((p, idx) => {
+                {sortedPayments.map((p, idx) => {
                   // תשלום שלילי הוא זיכוי/החזר שנרשם כתנועה שלילית — אותו טיפול סימן/כיווניות
                   // כמו בטבלת החיובים, כדי שלא יוצג "₪-45" (סימן במקום הלא נכון) בהקשר RTL
                   const isCreditPayment = p.amount < 0;
+                  const PaymentIcon = isCreditPayment ? RefreshCcw : Banknote;
                   return (
-                  <tr key={idx}>
-                    <td style={{ fontWeight: 600 }}>{p.paymentMethod || '-'}</td>
+                  <tr key={idx} className={isCreditPayment ? 'moc-row-payment-credit' : 'moc-row-payment'}>
+                    <td style={{ fontWeight: 600 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                        <PaymentIcon size={15} className="moc-row-icon" />
+                        {p.paymentMethod || '-'}
+                      </div>
+                    </td>
                     <td className="moc-hint">{fmtDate(p.paymentDate)}</td>
                     <td style={{ fontWeight: 700, color: isCreditPayment ? '#2563eb' : '#16a34a', direction: 'ltr', textAlign: 'left' }}>
                       {isCreditPayment ? `-₪${Math.abs(p.amount)}` : `₪${p.amount}`}
@@ -686,7 +749,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 </div>
                 <div>
                   <span className="moc-field-label">סכום</span>
-                  <div className="moc-field-value" style={{ color: selectedPaymentDetails.amount < 0 ? '#2563eb' : '#16a34a', direction: 'ltr', textAlign: 'left' }}>
+                  <div className="moc-field-value" style={{ color: selectedPaymentDetails.amount < 0 ? '#2563eb' : '#16a34a', direction: 'ltr', textAlign: 'right' }}>
                     {selectedPaymentDetails.amount < 0 ? `-₪${Math.abs(selectedPaymentDetails.amount)}` : `₪${selectedPaymentDetails.amount}`}
                   </div>
                 </div>
@@ -748,7 +811,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 </div>
                 <div>
                   <span className="moc-field-label">סכום</span>
-                  <div className="moc-field-value" style={{ color: selectedObligationDetails.amount < 0 ? '#16a34a' : 'var(--moc-danger-text)', direction: 'ltr', textAlign: 'left' }}>
+                  <div className="moc-field-value" style={{ color: selectedObligationDetails.amount < 0 ? '#16a34a' : 'var(--moc-danger-text)', direction: 'ltr', textAlign: 'right' }}>
                     {selectedObligationDetails.amount < 0 ? `-₪${Math.abs(selectedObligationDetails.amount)}` : `₪${selectedObligationDetails.amount}`}
                   </div>
                 </div>

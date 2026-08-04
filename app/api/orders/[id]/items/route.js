@@ -1,12 +1,21 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
 import { recalculateOrderObligations } from '../../../../../lib/pricingEngine';
-import { getAvailableInventory } from '../../../../../lib/inventory';
+import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../../lib/inventoryHold';
 
 // See the sibling [itemId] route: only caller-fixable rules should surface as 400, so a
 // genuine server fault is not mistaken for a bad request.
 const ruleError = (message) => Object.assign(new Error(message), { isRuleViolation: true });
+
+// כמו בראוט האחות: timeout מפורש כרשת ביטחון, על גבי הטרנזקציה הקצרה עצמה.
+const TX_OPTIONS = { timeout: 30000, maxWait: 15000 };
+
+const findSizeAvailability = (availability, sizeText) =>
+  availability.find(a => (a.sizeText || a.size || 'כללי') === sizeText);
+
+const hasFreeUnit = (sizeAvail) =>
+  !!sizeAvail && sizeAvail.availableQuantity > 0 && !!sizeAvail.itemIds && sizeAvail.itemIds.length > 0;
 
 export async function POST(request, { params }) {
   try {
@@ -24,58 +33,69 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'יש לבחור דגם ומידה' }, { status: 400 });
     }
 
-    const updatedOrder = await prisma.$transaction(async (tx) => {
-      const order = await tx.order.findUnique({
+    // הקריאות (הגדרות + חישוב הזמינות) רצות מחוץ לטרנזקציה: מול DB מרוחק הן מספיקות
+    // כדי לחרוג מ-5 השניות של ברירת המחדל לטרנזקציה אינטראקטיבית, ואז ה-create שאחריהן
+    // נופל על "Transaction already closed". הזמינות מאומתת שוב בתוך הטרנזקציה.
+    const [order, settingsRaw] = await Promise.all([
+      prisma.order.findUnique({
         where: { orderId: parsedId },
         include: {
           payments: { select: { amount: true, paymentMethod: true, isDeleted: true } },
           items: { select: { cartStatus: true, isDeleted: true } }
         }
-      });
-      if (!order) throw ruleError('הזמנה לא נמצאה');
+      }),
+      prisma.systemSetting.findMany()
+    ]);
+    if (!order) throw ruleError('הזמנה לא נמצאה');
 
-      // An order that was already paid - or that a manager approved to leave with the
-      // payment tracked afterwards - is not a shopping cart any more, so a dress added to
-      // it has to be held permanently. Creating every item as 'pending' put a 15 minute
-      // expiry on it (and restarted the clock on its siblings), and the hold window in
-      // lib/inventory.js then handed the unit back to the pool while the customer was
-      // already booked for it.
-      const holdIsPermanent = orderHasPermanentHold(order);
+    // An order that was already paid - or that a manager approved to leave with the
+    // payment tracked afterwards - is not a shopping cart any more, so a dress added to
+    // it has to be held permanently. Creating every item as 'pending' put a 15 minute
+    // expiry on it (and restarted the clock on its siblings), and the hold window in
+    // lib/inventory.js then handed the unit back to the pool while the customer was
+    // already booked for it.
+    const holdIsPermanent = orderHasPermanentHold(order);
 
-      const settingsRaw = await tx.systemSetting.findMany();
-      let bufferDays = 3;
-      let skipWeekends = true;
-      const bufferSetting = settingsRaw.find(s => s.key === 'inventory_buffer_days');
-      if (bufferSetting) bufferDays = parseInt(bufferSetting.value, 10);
-      const weekendSetting = settingsRaw.find(s => s.key === 'inventory_skip_weekends');
-      if (weekendSetting) skipWeekends = weekendSetting.value === 'true';
+    let bufferDays = 3;
+    let skipWeekends = true;
+    const bufferSetting = settingsRaw.find(s => s.key === 'inventory_buffer_days');
+    if (bufferSetting) bufferDays = parseInt(bufferSetting.value, 10);
+    const weekendSetting = settingsRaw.find(s => s.key === 'inventory_skip_weekends');
+    if (weekendSetting) skipWeekends = weekendSetting.value === 'true';
 
-      const newOrderIsAbroad = order.isAbroad || order.isWeekdayEvent;
-      let targetMinDate, targetMaxDate;
-      if (newOrderIsAbroad) {
-         if (!order.fromDate || !order.toDate) throw ruleError('חסרים תאריכים להזמנת חו"ל');
-         targetMinDate = order.fromDate;
-         targetMaxDate = order.toDate;
-      } else {
-         if (!order.eventDate) throw ruleError('חסר תאריך אירוע להזמנה');
-         targetMinDate = order.eventDate;
-         targetMaxDate = order.eventDate;
-      }
+    const newOrderIsAbroad = order.isAbroad || order.isWeekdayEvent;
+    let targetMinDate, targetMaxDate;
+    if (newOrderIsAbroad) {
+       if (!order.fromDate || !order.toDate) throw ruleError('חסרים תאריכים להזמנת חו"ל');
+       targetMinDate = order.fromDate;
+       targetMaxDate = order.toDate;
+    } else {
+       if (!order.eventDate) throw ruleError('חסר תאריך אירוע להזמנה');
+       targetMinDate = order.eventDate;
+       targetMaxDate = order.eventDate;
+    }
 
-      const availability = await getAvailableInventory(
-        itemData.dressModelId,
-        targetMinDate,
-        bufferDays,
-        skipWeekends,
-        newOrderIsAbroad,
-        targetMaxDate,
-        parsedId,
-        order.customSpacing ?? null
-      );
+    const inventoryContext = await loadInventoryContext(prisma, {
+      dressModelId: itemData.dressModelId,
+      targetMinDate,
+      bufferDays,
+      skipWeekends,
+      targetMaxDate,
+      ignoreOrderId: parsedId,
+      customSpacing: order.customSpacing ?? null
+    });
 
-      const sizeAvail = availability.find(a => (a.sizeText || a.size || 'כללי') === itemData.sizeText);
+    // כשל מוקדם על מצב המלאי הנוכחי, בלי לפתוח טרנזקציה לחינם. האימות הקובע הוא זה
+    // שבתוך הטרנזקציה, על הזמנות שנשלפו מחדש דרך ה-tx.
+    if (!hasFreeUnit(findSizeAvailability(computeInventoryAvailability(inventoryContext), itemData.sizeText))) {
+      throw ruleError(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText} בתאריך המבוקש`);
+    }
 
-      if (!sizeAvail || sizeAvail.availableQuantity <= 0 || !sizeAvail.itemIds || sizeAvail.itemIds.length === 0) {
+    const updatedOrder = await prisma.$transaction(async (tx) => {
+      const freshContext = await refreshInventoryBookings(tx, inventoryContext);
+      const sizeAvail = findSizeAvailability(computeInventoryAvailability(freshContext), itemData.sizeText);
+
+      if (!hasFreeUnit(sizeAvail)) {
         throw ruleError(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText} בתאריך המבוקש`);
       }
 
@@ -128,17 +148,11 @@ export async function POST(request, { params }) {
         });
       }
 
-      await tx.auditLog.create({
-          data: {
-              entityType: 'OrderItem',
-              entityId: newItem.id,
-              action: 'CREATE',
-              changesJson: JSON.stringify(newItem)
-          }
-      });
+      // אין רישום ידני ליומן: תוסף ה-audit ב-app/lib/prisma.js כבר רושם שורת CREATE
+      // עם אותו תוכן (ובנוסף עם מזהה העובד המבצע). רישום נוסף כאן יצר שורה כפולה בהיסטוריה.
 
       return newItem;
-    });
+    }, TX_OPTIONS);
 
     // Recalculate obligations asynchronously after adding item
     await recalculateOrderObligations(parsedId);

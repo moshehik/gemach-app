@@ -49,6 +49,7 @@ export async function POST(request, { params }) {
     });
 
     // Create Audit Log
+    // eslint-disable-next-line no-restricted-syntax -- Shift מוחרג מתוסף היומן, ולכן אין שורה אוטומטית
     await prisma.auditLog.create({
       data: {
         entityType: 'Shift',

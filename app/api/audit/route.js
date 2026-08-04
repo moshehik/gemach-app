@@ -9,6 +9,9 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const entityType = searchParams.get('entityType');
     const entityId = searchParams.get('entityId');
+    // רשימת מזהים מופרדת בפסיקים — משמשת כשצריך את ההיסטוריה של קבוצת ישויות
+    // בבקשה אחת (למשל כל הפריטים של דגם בכרטיס הדגם).
+    const entityIds = searchParams.get('entityIds');
     const action = searchParams.get('action');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
@@ -20,6 +23,11 @@ export async function GET(request) {
     let where = {};
     if (entityType) where.entityType = entityType;
     if (entityId) where.entityId = entityId;
+    if (entityIds) {
+      const ids = entityIds.split(',').map(s => s.trim()).filter(Boolean);
+      // רשימה ריקה הייתה מתורגמת ל-`in: []` ומחזירה כלום בשקט; עדיף לא לסנן בכלל
+      if (ids.length) where.entityId = { in: ids };
+    }
     if (action) where.action = action;
 
     // An Order is identified two different ways in this table: the automatic audit hook in

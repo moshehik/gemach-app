@@ -8,7 +8,8 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   try {
     // 1. Fetch settings for buffer and weekends
-    const settingsRaw = await prisma.setting.findMany();
+    // המודל בסכימה הוא SystemSetting; prisma.setting לא קיים והפיל את כל הראוט ב-500
+    const settingsRaw = await prisma.systemSetting.findMany();
     let bufferDays = 3;
     let skipWeekends = true;
     
@@ -161,7 +162,9 @@ export async function GET() {
           // We have a shortage!
           if (!currentAlert) {
              currentAlert = {
-                modelId: parseInt(key.split('_')[0]),
+                // המפתח הוא `${dressModelId}_${size}` ו-dressModelId הוא UUID, לכן parseInt
+                // החזיר כאן NaN. המידה היא החלק האחרון בלבד, וכל השאר הוא המזהה.
+                modelId: key.split('_').slice(0, -1).join('_'),
                 dressName: invInfo.dressName,
                 sizeText: invInfo.sizeText,
                 fromDate: new Date(d).toISOString(),

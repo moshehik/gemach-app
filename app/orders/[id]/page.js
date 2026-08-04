@@ -205,27 +205,20 @@ export default function OrderDetailsPage({ params }) {
   const totalRequired = obligations.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0);
   const totalPaid = payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
 
-  // Prevent closing window if there is a debt
+  // חוסם סגירה/רענון של החלון רק כשבאמת יש שינויים שלא נשמרו.
+  // יתרת חוב לא נחסמת כאן: הדפדפן מתעלם מהודעה מותאמת ומציג תמיד טקסט גנרי ("ייתכן שהשינויים
+  // שביצעת לא יישמרו"), ולכן הזמנה עם חוב הציגה אזהרת "שינויים שלא נשמרו" גם מיד אחרי שמירה
+  // או אחרי "ביטול שינויים" — בלי שום דרך להבין או לאשר. הבקרה על חוב נשארת ביציאה מתוך
+  // הכרטיס (handleExit), שם אפשר להסביר את הסיבה ולבקש אישור עובד/מנהל.
   useEffect(() => {
+    if (!hasUnsavedChanges) return;
     const handleBeforeUnload = (e) => {
-      let block = false;
-      let msg = '';
-      if (totalRequired - totalPaid > 0 && !debtApproved) {
-        block = true;
-        msg = 'קיימת יתרת חוב בהזמנה! אנא דאג לתשלום או אישור מנהל.';
-      } else if (hasUnsavedChanges) {
-        block = true;
-        msg = 'ישנם שינויים שלא נשמרו בהזמנה! האם אתה בטוח שברצונך לעזוב?';
-      }
-      if (block) {
-        e.preventDefault();
-        e.returnValue = msg;
-        return msg;
-      }
+      e.preventDefault();
+      e.returnValue = '';
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [totalRequired, totalPaid, debtApproved, hasUnsavedChanges]);
+  }, [hasUnsavedChanges]);
 
   // עוצר ניווט לעמוד אחר (תפריט עליון/סיידבר) עד שהשמירה של ההזמנה מסתיימת —
   // לא רק לחיצה על "חזור", כדי שלא ייגרם מרוץ בין שמירה לניווט.
@@ -660,6 +653,14 @@ export default function OrderDetailsPage({ params }) {
     setPayments(snap.payments);
     setRefunds(snap.refunds);
     setHasUnsavedChanges(false);
+
+    // הביטול עצמו הוא מקומי בלבד, ולכן בלי הרישום הזה הפעולה לא מופיעה בשום היסטוריה.
+    // נשלח אחרי השחזור ובלי await — כישלון ברישום לא אמור לעכב או לבטל את השחזור עצמו.
+    fetch(`/api/orders/${id}/cancel-changes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ changes })
+    }).catch(err => console.error('Failed to log cancelled changes', err));
     setSaveMessage(changes.length > 0 ? `בוטלו השינויים: ${changes.join(', ')}` : 'השינויים בוטלו.');
     setTimeout(() => setSaveMessage(''), 5000);
   };

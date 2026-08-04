@@ -19,7 +19,57 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 // can route their audit-log insert through the SAME transaction/connection instead of
 // a separate one racing against it (which previously extended lock hold time and could
 // leave orphaned audit rows if the transaction rolled back).
-const txStorage = new AsyncLocalStorage();
+//
+// ה-storage מוחזק על globalThis ולא כמשתנה מודול: Next מרכיב כל ראוט כבאנדל נפרד, ולכן
+// ייתכנו כמה עותקים של הקובץ הזה בזיכרון, בעוד הלקוח עצמו משותף (נשמר על globalThis למטה).
+const txStorage = globalThis.__prismaTxStorage || (globalThis.__prismaTxStorage = new AsyncLocalStorage());
+
+/**
+ * מוסיף לקריאת Prisma רגילה תיאור מפורש לרישום ההיסטוריה, למשל:
+ *
+ *   prisma.orderItem.update(auditAs('CANCEL_RENTAL', { where, data }, changes))
+ *
+ * בלי זה כל כתיבה נרשמת כ-CREATE/UPDATE/DELETE גנרי, ופעולות משמעותיות (ביטול השכרה,
+ * ביטול החזרה, ביטול פריט) נראות בהיסטוריה כ"עדכון" סתמי. המפתח __audit מוסר מהארגומנטים
+ * בתוך התוסף לפני שהם מגיעים למנוע, ולכן Prisma עצמו לעולם לא רואה אותו.
+ *
+ * העברת הנתון דרך הארגומנטים (ולא דרך AsyncLocalStorage) היא מכוונת: הקשר ה-async
+ * לא שורד את שרשרת הקריאות הפנימית של Prisma, כך שהתוסף פשוט לא היה רואה אותו.
+ *
+ * action ריק מחזיר את הארגומנטים כמו שהם (רישום גנרי), כדי שקורא שמתייג רק חלק
+ * מהמקרים — למשל רק מחיקה או שחזור של פריט — לא יצטרך להתפצל לשני מסלולי קוד.
+ *
+ * @param {string|null} action שם הפעולה ביומן (למשל 'CANCEL_RENTAL')
+ * @param {object} args ארגומנטים רגילים של Prisma
+ * @param {object} [changes] פירוט השינוי (from/to) במקום ערכי ה-data בלבד
+ */
+export function auditAs(action, args, changes) {
+  if (!action) return args;
+  return { ...args, __audit: { action, changes } };
+}
+
+/**
+ * מזהה העובד המבצע, מתוך עוגיית auth_token. מיוצא כדי שראוטים שכותבים שורות יומן
+ * בעצמם (updateMany, שאינו עובר דרך התוסף) ירשמו גם הם מי ביצע את הפעולה.
+ */
+export async function getActingEmployeeId() {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token')?.value;
+    if (!token) return null;
+    if (token.includes('.')) {
+      try {
+        const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
+        return decoded.id || decoded.employeeId || null;
+      } catch (e) {
+        return null;
+      }
+    }
+    return token;
+  } catch (e) {
+    return null;
+  }
+}
 
 const createPrismaClient = (url) => {
   const baseClient = (url && process.env.IS_OFFLINE_MODE !== 'true')
@@ -35,33 +85,33 @@ const createPrismaClient = (url) => {
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {
+          // התיאור המפורש לרישום (מ-auditAs) מוסר מהארגומנטים תמיד — גם עבור מודלים
+          // שאינם מתועדים ועבור פעולות קריאה — כדי ש-Prisma לא יקבל מפתח שאינו מכיר.
+          let named = null;
+          if (args && args.__audit) {
+            named = args.__audit;
+            args = { ...args };
+            delete args.__audit;
+          }
+
           if (model === 'AuditLog' || model === 'PageVisitLog' || model === 'Shift') {
             return query(args);
           }
 
           if (['create', 'update', 'delete'].includes(operation)) {
-             let employeeId = null;
-             try {
-               const cookieStore = await cookies();
-               const token = cookieStore.get('auth_token')?.value;
-               if (token) {
-                 if (token.includes('.')) {
-                   try {
-                     const decoded = JSON.parse(Buffer.from(token.split('.')[1], 'base64').toString());
-                     employeeId = decoded.id || decoded.employeeId || null;
-                   } catch (e) {}
-                 } else {
-                   employeeId = token;
-                 }
-               }
-             } catch (e) {}
+             const employeeId = await getActingEmployeeId();
 
              const result = await query(args);
              if (!result) return result;
 
+             // changes ריק = הכתיבה לא שינתה כלום בפועל; אין טעם בשורת היסטוריה
+             if (named && named.changes && Object.keys(named.changes).length === 0) return result;
+
              const entityId = String(result.id || result.orderId || "");
              let changesJson = '{}';
-             if (operation === 'update') {
+             if (named && named.changes) {
+               changesJson = JSON.stringify(named.changes);
+             } else if (operation === 'update') {
                changesJson = JSON.stringify(args.data || {});
              } else if (operation === 'create') {
                changesJson = JSON.stringify(result || {});
@@ -79,7 +129,7 @@ const createPrismaClient = (url) => {
                  data: {
                    entityType: model,
                    entityId: entityId,
-                   action: operation.toUpperCase(),
+                   action: named ? named.action : operation.toUpperCase(),
                    changesJson: changesJson,
                    employeeId: employeeId || null,
                  }
@@ -104,7 +154,7 @@ const globalForPrisma = globalThis;
 // version of `createPrismaClient` keeps being handed out until the process itself restarts -
 // which is why a fix to the extension setup above can look like it did nothing. Bump this
 // whenever `createPrismaClient` changes, and the cached clients are rebuilt on next load.
-const CLIENT_SETUP_VERSION = 2;
+const CLIENT_SETUP_VERSION = 5;
 
 if (globalForPrisma.prismaSetupVersion !== CLIENT_SETUP_VERSION) {
   for (const stale of [globalForPrisma.prismaProd, globalForPrisma.prismaTest]) {

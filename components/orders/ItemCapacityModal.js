@@ -1,15 +1,18 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
+import { X, Calendar as CalendarIcon, ExternalLink, List } from 'lucide-react';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { createPortal } from 'react-dom';
+import { CapacityCalendar } from '@/components/CapacityCalendar';
 
 export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState(null);
   const [error, setError] = useState('');
   const [mounted, setMounted] = useState(false);
+  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
+  const [dateRange, setDateRange] = useState({ fromDate: null, toDate: null });
 
   useEffect(() => {
     setMounted(true);
@@ -42,6 +45,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
       fromDate.setMonth(fromDate.getMonth() - 1);
       const toDate = new Date(eventDate);
       toDate.setMonth(toDate.getMonth() + 1);
+      setDateRange({ fromDate: fromDate.toISOString().split('T')[0], toDate: toDate.toISOString().split('T')[0] });
 
       let prefix = item.barcodePrefix || item.dressItem?.barcodePrefix || item.dressItem?.dress?.barcodePrefix;
       const actualModelId = item.dressModelId || item.dressItem?.dressModelId;
@@ -130,7 +134,54 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
                 </div>
                 </div>
 
-                {results.occupiedCount > 0 ? (
+                {results.occupiedCount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
+                  <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+                    <button
+                      data-agy-id="itemcapacitymodal_view_list_btn"
+                      type="button"
+                      onClick={() => setViewMode('list')}
+                      style={{
+                        padding: '0.5rem 1.5rem',
+                        border: 'none',
+                        borderRadius: '6px',
+                        background: viewMode === 'list' ? 'var(--card-bg)' : 'transparent',
+                        boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        cursor: 'pointer', fontWeight: viewMode === 'list' ? 'bold' : 'normal'
+                      }}
+                    >
+                      <List size={18} /> תצוגת רשימה
+                    </button>
+                    <button
+                      data-agy-id="itemcapacitymodal_view_calendar_btn"
+                      type="button"
+                      onClick={() => setViewMode('calendar')}
+                      style={{
+                        padding: '0.5rem 1.5rem',
+                        border: 'none',
+                        borderRadius: '6px',
+                        background: viewMode === 'calendar' ? 'var(--card-bg)' : 'transparent',
+                        boxShadow: viewMode === 'calendar' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                        display: 'flex', alignItems: 'center', gap: '0.5rem',
+                        cursor: 'pointer', fontWeight: viewMode === 'calendar' ? 'bold' : 'normal'
+                      }}
+                    >
+                      <CalendarIcon size={18} /> תצוגת לוח
+                    </button>
+                  </div>
+                </div>
+                )}
+
+                {viewMode === 'calendar' && results.occupiedCount > 0 && dateRange.fromDate && (
+                  <CapacityCalendar
+                    fromDate={dateRange.fromDate}
+                    toDate={dateRange.toDate}
+                    occupiedOrders={results.occupiedOrders}
+                  />
+                )}
+
+                {viewMode === 'list' && (results.occupiedCount > 0 ? (
                 <div style={{ background: 'var(--card-bg)', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
                     <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                     <thead>
@@ -175,7 +226,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
                     <h3 style={{ margin: '0 0 0.5rem 0', color: '#334155' }}>אין הזמנות תפוסות בטווח התאריכים</h3>
                     <p style={{ margin: 0 }}>הפריט פנוי לחלוטין בתאריכים אלו.</p>
                 </div>
-                )}
+                ))}
             </div>
             )}
         </div>

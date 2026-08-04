@@ -5,16 +5,20 @@ export async function GET(request, { params }) {
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
-    
+
     if (!id) {
       return NextResponse.json({ error: 'קוד שמלה חסר' }, { status: 400 });
     }
+
+    // כרטיס הדגם צריך גם את הפריטים המחוקים (סינון "מחוק" ואפשרות שחזור),
+    // ולכן הוא מבקש במפורש includeDeleted. שאר הצרכנים ממשיכים לקבל פעילים בלבד.
+    const includeDeleted = new URL(request.url).searchParams.get('includeDeleted') === 'true';
 
     const dress = await prisma.dressModel.findUnique({
       where: { id },
       include: {
         items: {
-          where: { isDeleted: false },
+          where: includeDeleted ? undefined : { isDeleted: false },
           orderBy: { serialNumber: 'asc' }
         }
       }

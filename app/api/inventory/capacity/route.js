@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '../../../../app/lib/prisma';
 
 export const dynamic = 'force-dynamic';
@@ -111,17 +111,29 @@ export async function GET(request) {
 
     const occupiedCount = validOccupiedOrders.reduce((acc, item) => acc + (item.quantity || 1), 0);
 
-    // Prepare data for UI
-    const occupiedOrders = validOccupiedOrders.map(item => ({
-      id: item.id,
-      orderId: item.order.orderId,
-      internalOrderId: item.order.id,
-      customerName: item.order.customer ? `${item.order.customer.firstName || ''} ${item.order.customer.lastName || ''}`.trim() : 'לא ידוע',
-      eventDate: item.order.eventDate,
-      returnDate: item.order.returnDate,
-      eventDateHebrew: item.order.eventDateHebrew,
-      quantity: item.quantity || 1
-    }));
+    // Prepare data for UI (grouped by orderId to sum quantity of identical items in same order)
+    const groupedOrdersMap = new Map();
+    validOccupiedOrders.forEach(item => {
+      const orderId = item.order.orderId;
+      const quantity = item.quantity || 1;
+      
+      if (groupedOrdersMap.has(orderId)) {
+        groupedOrdersMap.get(orderId).quantity += quantity;
+      } else {
+        groupedOrdersMap.set(orderId, {
+          id: orderId,
+          orderId: orderId,
+          internalOrderId: item.order.id,
+          customerName: item.order.customer ? `${item.order.customer.firstName || ''} ${item.order.customer.lastName || ''}`.trim() : 'לא ידוע',
+          eventDate: item.order.eventDate,
+          returnDate: item.order.returnDate,
+          eventDateHebrew: item.order.eventDateHebrew,
+          quantity: quantity
+        });
+      }
+    });
+    
+    const occupiedOrders = Array.from(groupedOrdersMap.values());
 
     return NextResponse.json({
       inStock,

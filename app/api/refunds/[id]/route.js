@@ -54,6 +54,7 @@ export async function PUT(request, { params }) {
         updateData.paymentId = reversePayment.id;
         
         // Audit log for payment
+        // eslint-disable-next-line no-restricted-syntax -- הכתיבה היא ל-Payment; זו שורת ההיסטוריה של ההזמנה
         await prisma.auditLog.create({
           data: {
             entityType: 'Order',
@@ -78,6 +79,7 @@ export async function PUT(request, { params }) {
         });
         
         // Audit log for payment deletion
+        // eslint-disable-next-line no-restricted-syntax -- הכתיבה היא ל-Payment; זו שורת ההיסטוריה של ההזמנה
         await prisma.auditLog.create({
           data: {
             entityType: 'Order',

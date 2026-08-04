@@ -73,6 +73,8 @@ export default function GlobalSidebar() {
       }
     } else if (item.type === 'customer') {
       router.push(`/customers/${item.id}`);
+    } else if (item.type === 'dress') {
+      router.push(`/dashboard/dresses/${item.id}`);
     } else {
       router.push(`/orders/${item.id}`);
     }
