@@ -30,18 +30,29 @@ export default function NewOrderShell({
   useEffect(() => {
     const el = pageRef.current;
     if (!el) return;
+    let last = null;
     const apply = () => {
       const top = Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY));
+      // ההשמה משנה את גובה העמוד ולכן מעירה שוב את ה-observer; בלי ההשוואה הזו
+      // זו לולאה אינסופית של מדידה-והשמה.
+      if (top === last) return;
+      last = top;
       el.style.setProperty('--noc-nav', `${top}px`);
     };
     apply();
-    const raf = requestAnimationFrame(apply);
-    const nav = document.querySelector('.navbar');
-    const observer = nav && typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
-    if (observer && nav) observer.observe(nav);
+    // הנאב-בר ממשיך לגדול אחרי ההרכבה (טעינת פונטים, שבירת הקישורים לשתי שורות),
+    // ולא כל שינוי כזה מגיע כאירוע — לכן נמדד שוב כמה פעמים בשתי השניות הראשונות.
+    const ticks = [50, 200, 500, 1000, 2000].map(ms => setTimeout(apply, ms));
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(apply).catch(() => {});
+    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
+    if (observer) {
+      observer.observe(document.documentElement);
+      const nav = document.querySelector('.navbar');
+      if (nav) observer.observe(nav);
+    }
     window.addEventListener('resize', apply);
     return () => {
-      cancelAnimationFrame(raf);
+      ticks.forEach(clearTimeout);
       window.removeEventListener('resize', apply);
       if (observer) observer.disconnect();
     };

@@ -18,7 +18,13 @@ export async function POST(request, { params }) {
       where: { orderId: id },
       include: {
         customer: true,
-        items: true,
+        items: {
+          include: {
+            dressItem: {
+              include: { dress: true }
+            }
+          }
+        },
         obligations: { where: { isDeleted: false } },
         payments: { where: { isDeleted: false } }
       }
@@ -67,10 +73,14 @@ export async function POST(request, { params }) {
             <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef;">${item.sleeveAlteration ? `הארכה ${item.sleeveAlteration}` : '-'}</td>
             <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef;">${item.lengthAlteration || '-'}</td>
           ` : '';
+
+          const modelName = item.dressItem?.dress?.name || item.dressItem?.dressName || item.description || '-';
+          const sizeText = item.sizeText || item.dressItem?.sizeText || '-';
+
           return `
             <tr>
-              <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef; font-weight: 500;">${item.description || '-'}</td>
-              <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef;">${item.sizeText || '-'}</td>
+              <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef; font-weight: 500;">${modelName}</td>
+              <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef;">${sizeText}</td>
               <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057;">${item.barcode || '-'}</td>
               ${alts}
               <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef;">
@@ -81,35 +91,34 @@ export async function POST(request, { params }) {
         }).join('');
 
     const htmlBody = `
-      <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; padding: 20px;">
-        <div style="background: white; max-width: 800px; margin: 0 auto; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
+      <div dir="rtl" style="font-family: Arial, sans-serif; padding: 10px;">
+        <div style="max-width: 800px; margin: 0 auto;">
           
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px; border-bottom: 2px solid #e9ecef; padding-bottom: 20px;">
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
             <tr>
               <td valign="top">
-                <h1 style="margin: 0; font-size: 28px; color: #2c3e50;">גמ"ח שמלות</h1>
-                <h2 style="margin: 5px 0 0 0; font-size: 16px; color: #6c757d; font-weight: normal;">${printType === 'rental' ? 'הערות להשכרה' : 'דוח השכרות פירוט'}</h2>
+                <h1 style="margin: 0; font-size: 24px; color: #000;">גמ"ח שמלות</h1>
+                <h2 style="margin: 5px 0 0 0; font-size: 16px; color: #333; font-weight: normal;">${printType === 'rental' ? 'הערות להשכרה' : 'דוח השכרות פירוט'}</h2>
               </td>
               <td valign="top" style="text-align: left;">
-                <div style="display: inline-block; background: #e3f2fd; color: #1976d2; padding: 8px 20px; border-radius: 30px; font-size: 20px; font-weight: bold;">
+                <div style="font-size: 18px; font-weight: bold; border: 1px solid #000; padding: 5px 10px; display: inline-block;">
                   הזמנה #${order.orderId}
                 </div>
               </td>
             </tr>
           </table>
 
-          ${printType === 'rental' && printSettings.box1 ? `<div style="border: 1px solid #495057; padding: 15px; margin-bottom: 15px; white-space: pre-wrap; text-align: center; font-size: 15px; font-weight: 500; color: #212529;">${printSettings.box1}</div>` : ''}
-          ${printType === 'rental' && printSettings.box2 ? `<div style="border: 1px solid #495057; padding: 10px; margin-bottom: 15px; white-space: pre-wrap; text-align: center; font-size: 15px; font-weight: bold; color: #212529; background-color: #f8f9fa;">${printSettings.box2}</div>` : ''}
+          ${printType === 'rental' && printSettings.box1 ? `<div style="border: 1px solid #000; padding: 10px; margin-bottom: 15px; text-align: center; font-size: 14px; font-weight: bold;">${printSettings.box1}</div>` : ''}
+          ${printType === 'rental' && printSettings.box2 ? `<div style="border: 1px solid #000; padding: 10px; margin-bottom: 15px; text-align: center; font-size: 14px; font-weight: bold; background-color: #eee;">${printSettings.box2}</div>` : ''}
           ${printType === 'rental' && printSettings.footer ? `
             <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 20px; margin-bottom: 20px;">
               <tr>
                 <td align="center">
-                  <h3 style="font-size: 22px; font-weight: bold; margin: 0 0 10px 0;">${printSettings.footer}</h3>
-                  <div style="font-size: 18px; font-weight: bold;">
-                    <span>על החתום:</span>
-                    <span style="display: inline-block; width: 250px; border-bottom: 2px solid black; margin: 0 10px;">&nbsp;</span>
+                  <h3 style="font-size: 18px; font-weight: bold; margin: 0 0 10px 0;">${printSettings.footer}</h3>
+                  <div style="font-size: 16px; font-weight: bold;">
+                    <span>על החתום: _____________________</span>
                   </div>
-                  <div style="margin-top: 15px; font-size: 16px; font-weight: bold;">
+                  <div style="margin-top: 10px; font-size: 14px; font-weight: bold;">
                     נא להחזיר טופס זה חתום בעת החזרת השמלות
                   </div>
                 </td>
@@ -117,90 +126,78 @@ export async function POST(request, { params }) {
             </table>
           ` : ''}
 
-          <table width="100%" cellpadding="10" cellspacing="0" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; margin-bottom: 35px;">
+          <table width="100%" cellpadding="5" cellspacing="0" style="border: 1px solid #000; margin-bottom: 20px;">
             <tr>
-              <td width="50%" valign="top">
-                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">שם לקוח</span>
-                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500;">${order.customer?.firstName || ''} ${order.customer?.lastName || ''}</span>
+              <td width="50%" valign="top" style="border-bottom: 1px solid #ccc; border-left: 1px solid #ccc;">
+                <strong>שם לקוח:</strong> ${order.customer?.firstName || ''} ${order.customer?.lastName || ''}
               </td>
-              <td width="50%" valign="top">
-                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">תאריך אירוע עברי</span>
-                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500;">${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : '-')}</span>
+              <td width="50%" valign="top" style="border-bottom: 1px solid #ccc;">
+                <strong>תאריך אירוע עברי:</strong> ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : '-')}
               </td>
             </tr>
             <tr>
-              <td width="50%" valign="top">
-                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">טלפון</span>
-                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500; direction: ltr; text-align: right;">${order.customer?.phone1 || order.customer?.phone || '-'}</span>
+              <td width="50%" valign="top" style="border-bottom: 1px solid #ccc; border-left: 1px solid #ccc;">
+                <strong>טלפון:</strong> <span dir="ltr">${order.customer?.phone1 || order.customer?.phone || '-'}</span>
               </td>
-              <td width="50%" valign="top">
-                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">תאריך אירוע לועזי</span>
-                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500;">${order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : '-'}</span>
+              <td width="50%" valign="top" style="border-bottom: 1px solid #ccc;">
+                <strong>תאריך אירוע לועזי:</strong> ${order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : '-'}
               </td>
             </tr>
             <tr>
-              <td width="50%" valign="top">
-                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">כתובת מגורים</span>
-                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500;">${order.customer?.city ? `${order.customer.city}${order.customer?.address ? `, ${order.customer.address}` : ''}` : '-'}</span>
+              <td width="50%" valign="top" style="border-left: 1px solid #ccc;">
+                <strong>כתובת מגורים:</strong> ${order.customer?.city ? `${order.customer.city}${order.customer?.address ? `, ${order.customer.address}` : ''}` : '-'}
               </td>
               <td width="50%" valign="top">
-                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">סטטוס השכרה</span>
-                <span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; ${getStatusStyle(getOrderStatus(order))}">${getOrderStatus(order)}</span>
+                <strong>סטטוס השכרה:</strong> ${getOrderStatus(order)}
               </td>
             </tr>
             ${printType === 'order' && order.notes ? `
             <tr>
-              <td colspan="2" valign="top">
-                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">הערות הזמנה</span>
-                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500;">${order.notes}</span>
+              <td colspan="2" valign="top" style="border-top: 1px solid #ccc;">
+                <strong>הערות הזמנה:</strong> ${order.notes}
               </td>
             </tr>
             ` : ''}
           </table>
 
-          <h3 style="font-size: 20px; color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #e9ecef; padding-bottom: 8px;">פירוט פריטים להשכרה</h3>
-          <table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 30px;">
+          <h3 style="font-size: 18px; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 10px;">פירוט פריטים להשכרה</h3>
+          <table width="100%" cellpadding="5" cellspacing="0" style="border: 1px solid #000; margin-bottom: 20px; border-collapse: collapse;">
             <thead>
-              <tr>
-                <th style="padding: 12px 16px; text-align: right; font-size: 14px; background-color: #f1f3f5; color: #495057; font-weight: bold; border-bottom: 2px solid #e9ecef;">דגם / תיאור</th>
-                <th style="padding: 12px 16px; text-align: right; font-size: 14px; background-color: #f1f3f5; color: #495057; font-weight: bold; border-bottom: 2px solid #e9ecef;">מידה</th>
-                <th style="padding: 12px 16px; text-align: right; font-size: 14px; background-color: #f1f3f5; color: #495057; font-weight: bold; border-bottom: 2px solid #e9ecef;">ברקוד</th>
+              <tr style="background-color: #eee;">
+                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">דגם / תיאור</th>
+                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">מידה</th>
+                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">ברקוד</th>
                 ${enableAlterations ? `
-                <th style="padding: 12px 16px; text-align: right; font-size: 14px; background-color: #f1f3f5; color: #495057; font-weight: bold; border-bottom: 2px solid #e9ecef;">תיקון צואר</th>
-                <th style="padding: 12px 16px; text-align: right; font-size: 14px; background-color: #f1f3f5; color: #495057; font-weight: bold; border-bottom: 2px solid #e9ecef;">תיקון שרוול</th>
-                <th style="padding: 12px 16px; text-align: right; font-size: 14px; background-color: #f1f3f5; color: #495057; font-weight: bold; border-bottom: 2px solid #e9ecef;">תיקון אורך</th>
+                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">תיקון צואר</th>
+                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">תיקון שרוול</th>
+                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">תיקון אורך</th>
                 ` : ''}
-                <th style="padding: 12px 16px; text-align: right; font-size: 14px; background-color: #f1f3f5; color: #495057; font-weight: bold; border-bottom: 2px solid #e9ecef;">סטטוס</th>
+                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">סטטוס</th>
               </tr>
             </thead>
             <tbody>
-              ${itemsHtml}
+              ${itemsHtml.replace(/border-bottom: 1px solid #e9ecef;/g, 'border: 1px solid #000;').replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '')}
             </tbody>
           </table>
 
-          <h3 style="font-size: 20px; color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #e9ecef; padding-bottom: 8px;">פירוט תשלומים וחובות</h3>
-          <table width="100%" cellpadding="10" cellspacing="0" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; margin-bottom: 20px;">
+          <h3 style="font-size: 18px; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 10px;">פירוט תשלומים וחובות</h3>
+          <table width="100%" cellpadding="5" cellspacing="0" style="border: 1px solid #000; margin-bottom: 20px;">
             <tr>
-              <td width="50%" valign="top">
-                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">סה"כ לחיוב</span>
-                <span style="display: block; font-size: 16px; color: #b91c1c; font-weight: bold;">₪${totalObligations}</span>
+              <td width="50%" valign="top" style="border-left: 1px solid #ccc;">
+                <strong>סה"כ לחיוב:</strong> ₪${totalObligations}
               </td>
               <td width="50%" valign="top">
-                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">סה"כ שולם</span>
-                <span style="display: block; font-size: 16px; color: #166534; font-weight: bold;">₪${totalPayments}</span>
+                <strong>סה"כ שולם:</strong> ₪${totalPayments}
               </td>
             </tr>
             <tr>
-              <td colspan="2" valign="top">
-                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">יתרה לתשלום</span>
-                <span style="display: block; color: ${totalObligations - totalPayments > 0 ? '#b91c1c' : '#212529'}; font-weight: bold; font-size: 18px;">
-                  ₪${Math.max(0, totalObligations - totalPayments)}
-                </span>
+              <td colspan="2" valign="top" style="border-top: 1px solid #ccc;">
+                <strong>יתרה לתשלום:</strong> ₪${Math.max(0, totalObligations - totalPayments)}
               </td>
             </tr>
           </table>
 
-          <div style="margin-top: 40px; text-align: center; font-size: 13px; color: #adb5bd; border-top: 1px solid #e9ecef; padding-top: 20px;">
+          <div style="margin-top: 30px; text-align: center; font-size: 12px; border-top: 1px solid #000; padding-top: 10px;">
             <p>הופק על ידי מערכת גמ"ח שמלות בתאריך: ${new Date().toLocaleString('he-IL')}</p>
           </div>
 
