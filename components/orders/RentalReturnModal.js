@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLabels } from '@/app/components/LabelsContext';
-import { X, Info, Save, Ban, Undo2, AlertTriangle, CheckCircle2, PackageX, PackageCheck, MoreVertical, Calendar, ScanLine, Loader2, Scissors } from 'lucide-react';
+import { X, Info, Save, Ban, Undo2, AlertTriangle, CheckCircle2, PackageX, PackageCheck, MoreVertical, Calendar, ScanLine, Loader2, Scissors, Pencil } from 'lucide-react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { addHistory } from '../../lib/historyManager';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
@@ -75,6 +75,16 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     }
   };
 
+  // Patch a single item's fields locally instead of re-fetching the whole order
+  // (which also recomputes obligations and pulls the full price list) after
+  // every scan/return - keeps the card responsive during a scanning session.
+  const patchItem = (itemId, patch) => {
+    setSelectedOrder(prev => {
+      if (!prev) return prev;
+      return { ...prev, items: prev.items.map(i => i.id === itemId ? { ...i, ...patch } : i) };
+    });
+  };
+
   useEffect(() => {
     fetch('/api/settings')
       .then(res => res.json())
@@ -106,7 +116,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const activeItems = selectedOrder ? selectedOrder.items.filter(i => !i.isDeleted) : [];
   const pendingItems = activeItems.filter(i => i.barcode && !i.isTaken);
   const pendingCount = pendingItems.length;
-  const hasUnsavedInput = Boolean(modalBarcode) || rentingItemId !== null || Object.values(inlineBarcode).some(v => v && v.trim());
+  const hasUnsavedInput = Boolean(modalBarcode) || Object.values(inlineBarcode).some(v => v && v.trim());
   const hasUnsavedChanges = pendingCount > 0 || hasUnsavedInput;
 
   const overallStatus = selectedOrder ? calculateOrderStatus(selectedOrder) : '';
@@ -130,7 +140,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         if (data.duplicateAlterations) {
           setDuplicates(data.options);
         } else {
-          await refreshOrder();
+          patchItem(data.id, { barcode: data.barcode, isTaken: data.isTaken });
         }
       } else {
         if (data.unreturned) {
@@ -172,7 +182,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
       const data = await res.json();
 
       if (res.ok) {
-        await refreshOrder();
+        patchItem(data.item.id, { isReturned: data.item.isReturned, returnedOk: data.item.returnedOk, returnDate: data.item.returnDate });
       } else {
         alert(data.error);
         // The item may already be up to date on the server (e.g. a previous click
@@ -234,7 +244,6 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         body: JSON.stringify({ orderId: selectedOrder.orderId })
       });
       if (res.ok) {
-        await refreshOrder();
         alert('השכרה אושרה בהצלחה!');
         onClose();
         if (onUpdate) onUpdate();
@@ -432,7 +441,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
   // Rendering
   const modalContent = (
-    <div className="modal-overlay" onClick={attemptCloseCard} style={{ direction: 'rtl', zIndex: 1100, background: 'transparent', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
+    <div className="modal-overlay" onDoubleClick={attemptCloseCard} style={{ direction: 'rtl', zIndex: 1100, background: 'rgba(15, 23, 42, 0.25)', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
       <div className="rrm-card" onClick={e => e.stopPropagation()}>
 
         {loading || !selectedOrder ? (
@@ -458,7 +467,14 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                 <h2 className="rrm-customer-name">
                   {selectedOrder.customer ? `${selectedOrder.customer.firstName || ''} ${selectedOrder.customer.lastName || ''}` : 'לא צוין לקוח'}
                 </h2>
-                <p className="rrm-order-id">הזמנה #{selectedOrder.orderId}</p>
+                <div className="rrm-order-id-row">
+                  <p className="rrm-order-id">הזמנה #{selectedOrder.orderId}</p>
+                  <button data-agy-id="rentalreturnmodal_button_23" className="rrm-order-link-btn"
+                    onClick={() => window.open(`/orders/${selectedOrder.orderId}`, '_blank')}
+                    title="כרטיס הזמנה">
+                    <Pencil size={13} />
+                  </button>
+                </div>
 
                 {selectedOrder.eventDate && (
                   <div className="rrm-date-info">
@@ -568,10 +584,10 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                           {getLabel('item_size', 'מידה')}: {item.sizeText || '-'}
                           {item.barcode && <> · {getLabel('item_barcode', 'ברקוד')}: <span className="rrm-mono">{item.barcode}</span></>}
                         </div>
-                        {(item.takenDate || item.returnDate) && (
+                        {(item.isTaken || item.isReturned) && (
                           <div className="rrm-item-dates">
-                            {item.takenDate && <div><strong>לקיחה:</strong> {getHebrewDateString(item.takenDate)}</div>}
-                            {item.returnDate && <div><strong>הוחזר:</strong> {getHebrewDateString(item.returnDate)}</div>}
+                            {item.isTaken && <div><strong>לקיחה:</strong> {item.takenDate ? getHebrewDateString(item.takenDate) : 'לא ידוע'}</div>}
+                            {item.isReturned && <div><strong>הוחזר:</strong> {item.returnDate ? getHebrewDateString(item.returnDate) : 'לא ידוע'}</div>}
                           </div>
                         )}
                       </div>
@@ -686,6 +702,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         .rrm-close-btn:hover { background: rgba(0,0,0,0.3); }
         .rrm-customer-name { color: #fff; font-size: 1.5rem; margin: 0 0 4px 0; font-family: 'Playfair Display', serif; }
         .rrm-order-id { opacity: 0.85; font-size: 0.95rem; margin: 0; }
+        .rrm-order-id-row { display: flex; align-items: center; gap: 6px; }
+        .rrm-order-link-btn {
+          background: rgba(0,0,0,0.15); color: #fff; border: none; border-radius: 50%;
+          width: 22px; height: 22px; display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: all 0.2s; padding: 0; flex-shrink: 0;
+        }
+        .rrm-order-link-btn:hover { background: rgba(0,0,0,0.3); }
         .rrm-date-info { margin-top: 20px; background: rgba(0,0,0,0.12); padding: 12px 14px; border-radius: 8px; }
         .rrm-date-info label { font-size: 0.78rem; opacity: 0.85; display: flex; align-items: center; margin-bottom: 4px; }
         .rrm-date-info .val { font-weight: 600; font-size: 1.05rem; }
@@ -849,11 +872,11 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="text-xs text-slate-500 mb-1">תאריך לקיחה</div>
-                  <div className="font-semibold text-slate-700">{itemDetails.item.takenDate ? `${getHebrewDateString(itemDetails.item.takenDate)} ${new Date(itemDetails.item.takenDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : '-'}</div>
+                  <div className="font-semibold text-slate-700">{itemDetails.item.takenDate ? `${getHebrewDateString(itemDetails.item.takenDate)} ${new Date(itemDetails.item.takenDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : (itemDetails.item.isTaken ? 'לא ידוע' : '-')}</div>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="text-xs text-slate-500 mb-1">תאריך החזרה</div>
-                  <div className="font-semibold text-slate-700">{itemDetails.item.returnDate ? `${getHebrewDateString(itemDetails.item.returnDate)} ${new Date(itemDetails.item.returnDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : '-'}</div>
+                  <div className="font-semibold text-slate-700">{itemDetails.item.returnDate ? `${getHebrewDateString(itemDetails.item.returnDate)} ${new Date(itemDetails.item.returnDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : (itemDetails.item.isReturned ? 'לא ידוע' : '-')}</div>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="text-xs text-slate-500 mb-1">חזר תקין?</div>

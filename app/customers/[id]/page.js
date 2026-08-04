@@ -20,9 +20,11 @@ export default function CustomerPage({ params }) {
   const [saving, setSaving] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   
-  const allPayments = customer?.orders 
-    ? customer.orders.flatMap(order => (order.payments || []).map(p => ({ ...p, orderId: order.orderId })))
-        .sort((a, b) => new Date(b.paymentDate || b.createdAt || 0) - new Date(a.paymentDate || a.createdAt || 0))
+  const allPayments = customer?.orders
+    ? [
+        ...customer.orders.flatMap(order => (order.payments || []).map(p => ({ ...p, orderId: order.orderId, entryType: 'payment' }))),
+        ...refunds.map(r => ({ ...r, entryType: 'refund', paymentDate: r.createdAt, paymentMethod: 'זיכוי' }))
+      ].sort((a, b) => new Date(b.paymentDate || b.createdAt || 0) - new Date(a.paymentDate || a.createdAt || 0))
     : [];
 
   useEffect(() => {
@@ -278,7 +280,12 @@ export default function CustomerPage({ params }) {
                 </tr>
               </thead>
               <tbody>
-                {[...customer.orders].sort((a, b) => new Date(b.orderDate || b.createdAt || 0) - new Date(a.orderDate || a.createdAt || 0)).map(order => {
+                {[...customer.orders].sort((a, b) => {
+                  const getEventSortDate = (o) => (o.isWeekdayEvent || o.isAbroad)
+                    ? (o.fromDate || o.eventDate || o.orderDate || o.createdAt || 0)
+                    : (o.eventDate || o.orderDate || o.createdAt || 0);
+                  return new Date(getEventSortDate(b)) - new Date(getEventSortDate(a));
+                }).map(order => {
                   const calculatedTotalAmount = order.obligations?.length > 0
                     ? order.obligations.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0)
                     : (order.totalAmount || 0);
@@ -336,6 +343,7 @@ export default function CustomerPage({ params }) {
               <thead>
                 <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
                   <th style={{ padding: '0.4rem 0.5rem' }}>תאריך</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>סוג</th>
                   <th style={{ padding: '0.4rem 0.5rem' }}>הזמנה מקושרת</th>
                   <th style={{ padding: '0.4rem 0.5rem' }}>אופן תשלום</th>
                   <th style={{ padding: '0.4rem 0.5rem' }}>סכום</th>
@@ -343,15 +351,27 @@ export default function CustomerPage({ params }) {
                 </tr>
               </thead>
               <tbody>
-                {allPayments.map(payment => (
-                  <tr key={payment.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>{new Date(payment.paymentDate).toLocaleDateString('he-IL')}</td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>{payment.orderId ? `הזמנה ${payment.orderId}` : '-'}</td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>{payment.paymentMethod}</td>
-                    <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>₪{payment.amount}</td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>{payment.notes || '-'}</td>
-                  </tr>
-                ))}
+                {allPayments.map(payment => {
+                  const isRefund = payment.entryType === 'refund';
+                  return (
+                    <tr key={`${payment.entryType}-${payment.id}`} style={{ borderBottom: '1px solid #eee' }}>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{new Date(payment.paymentDate).toLocaleDateString('he-IL')}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>
+                        <span style={{
+                          padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.8rem', fontWeight: 'bold',
+                          background: isRefund ? '#fee2e2' : '#dcfce7',
+                          color: isRefund ? '#991b1b' : '#166534'
+                        }}>
+                          {isRefund ? 'זיכוי' : 'תשלום'}
+                        </span>
+                      </td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{payment.orderId ? `הזמנה ${payment.orderId}` : '-'}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{isRefund ? (payment.reason || 'זיכוי') : payment.paymentMethod}</td>
+                      <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: isRefund ? '#ef4444' : 'var(--primary-color)' }}>{isRefund ? '-' : ''}₪{payment.amount}</td>
+                      <td style={{ padding: '0.4rem 0.5rem' }}>{isRefund ? (payment.isExecuted ? 'בוצע' : 'ממתין לביצוע') : (payment.notes || '-')}</td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           ) : (

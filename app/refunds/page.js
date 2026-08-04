@@ -23,8 +23,8 @@ export default function RefundsPage() {
     try {
       const res = await fetch('/api/orders?filterStatus=unpaid_all&page=1&limit=1000');
       const data = await res.json();
-      if (data && Array.isArray(data.orders)) {
-        setDebts(data.orders);
+      if (data && Array.isArray(data.data)) {
+        setDebts(data.data);
       }
     } catch (err) {
       console.error('Failed to fetch debts:', err);

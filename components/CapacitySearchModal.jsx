@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Search, List, Calendar as CalendarIcon, ExternalLink } from 'lucide-react';
 import HebrewDatePicker from './HebrewDatePicker';
@@ -28,6 +28,9 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   
   const [sizes, setSizes] = useState([]);
   const [models, setModels] = useState([]);
+  const [modelQuery, setModelQuery] = useState('');
+  const [showModelDropdown, setShowModelDropdown] = useState(false);
+  const modelSelectRef = useRef(null);
 
   useEffect(() => {
     const prev = JSON.parse(localStorage.getItem('capacity_search_history') || '[]');
@@ -81,6 +84,27 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
   }, [isOpen]);
+
+  // Keep the search box text in sync when barcodePrefix is set from elsewhere (e.g. history)
+  useEffect(() => {
+    if (!barcodePrefix) { setModelQuery(''); return; }
+    const m = models.find(mm => mm.barcodePrefix === barcodePrefix);
+    if (m) setModelQuery(`${m.name} (${m.barcodePrefix})`);
+  }, [barcodePrefix, models]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (modelSelectRef.current && !modelSelectRef.current.contains(e.target)) {
+        setShowModelDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredModels = modelQuery.trim()
+    ? models.filter(m => String(m.name || '').includes(modelQuery.trim()) || String(m.barcodePrefix || '').includes(modelQuery.trim()))
+    : models;
 
   const performSearch = async (searchParams = null) => {
     const pPrefix = searchParams ? searchParams.barcodePrefix : barcodePrefix;
@@ -238,25 +262,47 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
           marginBottom: '2rem', 
           alignItems: 'end'
         }}>
-          <div>
+          <div ref={modelSelectRef} style={{ position: 'relative' }}>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>דגם</label>
-            <select 
-              data-agy-id="capacity_search_model_select"              className="form-select" 
-              value={barcodePrefix} 
+            <input
+              data-agy-id="capacity_search_model_select"
+              type="text"
+              className="form-select"
+              value={modelQuery}
               onChange={e => {
-                setBarcodePrefix(e.target.value);
-                setSize('');
-              }} 
-              required
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1' }}
-            >
-              <option value="">בחר דגם...</option>
-              {models.map(m => (
-                <option key={m.id || m.barcodePrefix} value={m.barcodePrefix}>
-                  {m.name} ({m.barcodePrefix})
-                </option>
-              ))}
-            </select>
+                setModelQuery(e.target.value);
+                setShowModelDropdown(true);
+                if (barcodePrefix) { setBarcodePrefix(''); setSize(''); }
+              }}
+              onFocus={() => setShowModelDropdown(true)}
+              placeholder="הקלד לחיפוש דגם..."
+              autoComplete="off"
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+            />
+            {showModelDropdown && filteredModels.length > 0 && (
+              <div style={{
+                position: 'absolute', top: '100%', right: 0, left: 0, marginTop: '0.25rem',
+                background: 'var(--card-bg, white)', border: '1px solid #cbd5e1', borderRadius: '8px',
+                boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: '220px', overflowY: 'auto', zIndex: 20
+              }}>
+                {filteredModels.map(m => (
+                  <div
+                    key={m.id || m.barcodePrefix}
+                    onClick={() => {
+                      setBarcodePrefix(m.barcodePrefix);
+                      setModelQuery(`${m.name} (${m.barcodePrefix})`);
+                      setSize('');
+                      setShowModelDropdown(false);
+                    }}
+                    style={{ padding: '0.6rem 0.8rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    {m.name} <span style={{ color: '#64748b', fontSize: '0.85em' }}>({m.barcodePrefix})</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div>
             <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: '#334155' }}>מידה</label>

@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { CalendarSearch, Edit2, Trash2, ArrowLeft, ArrowRight, Plus, Check, UserPlus, Sparkles, CreditCard, ShieldCheck, RefreshCw } from 'lucide-react';
+import { CalendarSearch, Edit2, Trash2, ArrowLeft, ArrowRight, Plus, Check, UserPlus, Sparkles, CreditCard, ShieldCheck, RefreshCw, ExternalLink, AlertTriangle } from 'lucide-react';
 import HebrewDatePicker from '../../../components/HebrewDatePicker';
 import HebrewDateRangePicker from '../../../components/HebrewDateRangePicker';
 import CustomerSelector from '../../../components/CustomerSelector';
@@ -138,6 +138,13 @@ export default function NewOrderPage() {
   const draftQueueRef = useRef(Promise.resolve());
   // Set while the real save runs, so no autosave writes over the order behind it.
   const draftSealedRef = useRef(false);
+
+  // Set when POST /api/orders reports a real order already exists for this customer/date, so
+  // the cashier can look at it before deciding whether to save a separate one anyway.
+  const [duplicateOrderWarning, setDuplicateOrderWarning] = useState(null);
+  // The payments list the blocked save was about to submit, kept so "save anyway" can retry
+  // the exact same save instead of asking the cashier to redo the payment step.
+  const pendingSavePaymentsRef = useRef(null);
 
   const handleSwipeInputChange = (e) => {
     const val = e.target.value;
@@ -894,7 +901,8 @@ export default function NewOrderPage() {
     }
   };
 
-  const executeSaveOrderForList = async (finalPaymentsList) => {
+  const executeSaveOrderForList = async (finalPaymentsList, force = false) => {
+    pendingSavePaymentsRef.current = finalPaymentsList;
     setSaving(true);
     // Stop the autosave and let whatever it already started finish, so the real save is not
     // racing a draft write into the same row.
@@ -983,7 +991,10 @@ export default function NewOrderPage() {
         reservedOrderId,
         // The row the autosave already wrote. The save fills it in instead of creating a
         // second order next to the draft it came from.
-        draftOrderId: draftOrderIdRef.current
+        draftOrderId: draftOrderIdRef.current,
+        // Set once the cashier has seen the "already saved" warning and chose to save a
+        // separate order anyway, so the server doesn't block the same save a second time.
+        forceDuplicate: force
       };
 
       const res = await fetch('/api/orders', {
@@ -993,6 +1004,13 @@ export default function NewOrderPage() {
       });
 
       const data = await res.json();
+      if (res.status === 409 && data.duplicateOrder) {
+        // Left as an open, fillable draft/hold rather than abandoned - the cashier may still
+        // want to complete this exact save after checking the existing order.
+        abandonSave();
+        setDuplicateOrderWarning({ existingOrderId: data.existingOrderId });
+        return;
+      }
       if (!res.ok) {
         const errorMessage = data.error || 'Failed to save order';
         const details = data.details ? ` (${data.details})` : '';
@@ -1007,6 +1025,16 @@ export default function NewOrderPage() {
       alert(`שגיאה בשמירת הזמנה: ${error.message}`);
       abandonSave();
     }
+  };
+
+  const handleConfirmDuplicateSave = () => {
+    const paymentsList = pendingSavePaymentsRef.current;
+    setDuplicateOrderWarning(null);
+    executeSaveOrderForList(paymentsList, true);
+  };
+
+  const handleCancelDuplicateSave = () => {
+    setDuplicateOrderWarning(null);
   };
 
   const selectedCustomerName = getCustomerFullName(order.selectedCustomer);
@@ -2491,6 +2519,39 @@ export default function NewOrderPage() {
                 </button>
                 <button type="button" onClick={() => handleSaveNewCustomerAndProceed(true)} className="btn-danger-outline" style={{ padding: '0.9rem' }}>
                   לא, צור לקוח חדש כפול
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {duplicateOrderWarning && (
+          <div className="modal-shell-overlay">
+            <div className="modal-shell fade-in" role="dialog" aria-modal="true" aria-labelledby="dup-order-title">
+              <h3 id="dup-order-title" style={{ color: 'var(--danger)', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '1.35rem', fontWeight: 600 }}>
+                <AlertTriangle size={26} /> הזמנה זו כבר נשמרה
+              </h3>
+              <p style={{ marginBottom: '1.25rem', fontWeight: '600', fontSize: '1.05rem', color: 'var(--text-main)', lineHeight: '1.6' }}>
+                כבר קיימת הזמנה שמורה עבור אותו לקוח ואותו תאריך - הזמנה מס' {duplicateOrderWarning.existingOrderId}. כדאי לבדוק אותה לפני שממשיכים, כדי לא ליצור הזמנה כפולה.
+              </p>
+              <div className="modal-shell-panel" style={{ marginBottom: '1.5rem' }}>
+                <a
+                  href={`/orders/${duplicateOrderWarning.existingOrderId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-soft"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', padding: '0.75rem 1.1rem', textDecoration: 'none' }}
+                >
+                  <ExternalLink size={18} />
+                  <span>פתח את הזמנה מס' {duplicateOrderWarning.existingOrderId} בכרטיסייה חדשה</span>
+                </a>
+              </div>
+              <div className="modal-shell-footer">
+                <button type="button" onClick={handleCancelDuplicateSave} className="primary-button" style={{ padding: '0.9rem' }}>
+                  ביטול, אבדוק את ההזמנה הקיימת
+                </button>
+                <button type="button" onClick={handleConfirmDuplicateSave} className="btn-danger-outline" style={{ padding: '0.9rem' }}>
+                  שמור בכל זאת כהזמנה נפרדת
                 </button>
               </div>
             </div>

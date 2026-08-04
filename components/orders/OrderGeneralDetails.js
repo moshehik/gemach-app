@@ -37,8 +37,11 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
   const applyCustomSpacing = async (spacing) => {
     const prevSpacing = (order.customSpacing !== null && order.customSpacing !== undefined) ? order.customSpacing : 3;
     const newSpacing = (spacing !== null && spacing !== undefined) ? spacing : 3;
-    
-    const requiresAuth = newSpacing < 3 && newSpacing < prevSpacing;
+
+    // Manager approval is only needed the first time spacing is reduced below the
+    // default (3) — once a custom spacing is already set, further updates to it
+    // don't need re-approval.
+    const requiresAuth = newSpacing < 3 && prevSpacing === 3;
 
     if (requiresAuth) {
       const authResult = await window.customAuthPrompt("שינוי ציפוף ימים מותאם אישית דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
@@ -614,20 +617,33 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', border: '1px solid #bfdbfe', padding: '1.5rem', borderRadius: '12px', marginTop: '1rem', background: '#eff6ff' }}>
                     <div style={{ gridColumn: '1 / -1' }}>
                       <label style={{...labelStyle, color: '#1e3a8a', marginBottom: '0.5rem'}}>טווח תאריכים (לקיחה והחזרה):</label>
-                      <HebrewDateRangePicker 
-                        startDate={order.fromDate} 
-                        endDate={order.toDate || order.returnDate} 
+                      <HebrewDateRangePicker
+                        startDate={order.fromDate}
+                        endDate={order.toDate || order.returnDate}
                         onChange={(start, end) => {
-                          const updates = { 
-                            fromDate: start, 
-                            toDate: end, 
-                            returnDate: end 
+                          // HebrewDateRangePicker returns date-only strings; preserve the
+                          // previously-set time of day (or default to now) instead of
+                          // silently resetting it to 00:00 on every date pick.
+                          const applyTime = (newDateStr, prevDateStr) => {
+                            if (!newDateStr) return newDateStr;
+                            const d = new Date(newDateStr);
+                            const prev = prevDateStr ? new Date(prevDateStr) : null;
+                            const ref = (prev && !isNaN(prev.getTime())) ? prev : new Date();
+                            d.setHours(ref.getHours(), ref.getMinutes(), 0, 0);
+                            return d.toISOString();
+                          };
+                          const newFrom = applyTime(start, order.fromDate);
+                          const newTo = applyTime(end, order.toDate || order.returnDate);
+                          const updates = {
+                            fromDate: newFrom,
+                            toDate: newTo,
+                            returnDate: newTo
                           };
                           if (order.isWeekdayEvent || order.isAbroad) {
-                            updates.eventDate = start;
+                            updates.eventDate = newFrom;
                           }
                           validateAndChangeDate(updates);
-                        }} 
+                        }}
                       />
                       <div style={{ display: 'flex', gap: '1rem', marginTop: '0.8rem', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
                         {order.fromDate && (

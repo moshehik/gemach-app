@@ -171,7 +171,7 @@ export default function CustomerInventoryViewer() {
   const fetchInventory = () => {
     setLoading(true);
     setSelectedModel(null);
-    const dateQuery = selectedDate ? `?eventDate=${selectedDate.toISOString()}` : '';
+    const dateQuery = selectedDate ? `?eventDate=${selectedDate.toISOString()}&limit=10000` : '?limit=10000';
     fetch(`/api/dresses${dateQuery}`)
       .then(res => res.json())
       .then(data => {

@@ -24,7 +24,9 @@ export default function OrderPrintMenu({
   const [emailInput, setEmailInput] = useState('');
   const [emailTypePending, setEmailTypePending] = useState(null);
   const [sending, setSending] = useState(false);
+  const [confirmingSigned, setConfirmingSigned] = useState(false);
   const containerRef = useRef(null);
+  const signAbortRef = useRef(null);
 
   useEffect(() => {
     if (!open) return;
@@ -44,25 +46,41 @@ export default function OrderPrintMenu({
   };
 
   const confirmSigned = async () => {
+    setConfirmingSigned(true);
+    const controller = new AbortController();
+    signAbortRef.current = controller;
     try {
       const res = await fetch(`/api/orders/${order.orderId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ hasSignedRegulations: true })
+        body: JSON.stringify({ hasSignedRegulations: true }),
+        signal: controller.signal
       });
       if (res.ok) {
         onOrderUpdate?.({ hasSignedRegulations: true });
+        setShowRegulationsModal(false);
+        setOpen(true);
       } else {
         alert('שגיאה בשמירת אישור החתימה');
-        return;
       }
     } catch (e) {
-      console.error(e);
-      alert('שגיאת תקשורת בשמירת אישור החתימה');
-      return;
+      if (e.name !== 'AbortError') {
+        console.error(e);
+        alert('שגיאת תקשורת בשמירת אישור החתימה');
+      }
+    } finally {
+      setConfirmingSigned(false);
+      signAbortRef.current = null;
     }
+  };
+
+  const cancelSignatureConfirm = () => {
+    if (signAbortRef.current) {
+      signAbortRef.current.abort();
+      signAbortRef.current = null;
+    }
+    setConfirmingSigned(false);
     setShowRegulationsModal(false);
-    setOpen(true);
   };
 
   const openPrint = async (type) => {
@@ -84,6 +102,9 @@ export default function OrderPrintMenu({
     }
 
     setSending(true);
+    // Yield to the event loop so the spinner paints before the heavy,
+    // synchronous html2canvas render below locks up the main thread.
+    await new Promise(resolve => setTimeout(resolve, 0));
     try {
       const htmlRes = await fetch(`/api/orders/${order.orderId}/email`, {
         method: 'POST',
@@ -98,8 +119,14 @@ export default function OrderPrintMenu({
       const html2pdf = (await import('html2pdf.js')).default;
       const element = document.createElement('div');
       element.innerHTML = htmlData.html;
-      element.style.position = 'absolute';
-      element.style.top = '-9999px';
+      // html2canvas can't measure elements positioned far off-screen (e.g. top: -9999px) -
+      // it computes a 0 height and renders a blank page. Keep it on-screen but invisible instead.
+      element.style.position = 'fixed';
+      element.style.top = '0';
+      element.style.left = '0';
+      element.style.zIndex = '-1';
+      element.style.opacity = '0';
+      element.style.pointerEvents = 'none';
       document.body.appendChild(element);
 
       const pdfBase64DataUri = await html2pdf().from(element).set({
@@ -172,13 +199,16 @@ export default function OrderPrintMenu({
       </div>
 
       {showRegulationsModal && typeof document !== 'undefined' && createPortal(
-        <div className="modal-overlay" style={{ zIndex: 2000 }} onClick={() => setShowRegulationsModal(false)}>
+        <div className="modal-overlay" style={{ zIndex: 2000 }} onClick={cancelSignatureConfirm}>
           <div className="opm-modal" onClick={e => e.stopPropagation()}>
             <h2 className="opm-modal-title">חתימה על תקנון</h2>
             <p className="opm-modal-text">האם הלקוח חתם על התקנון?</p>
             <div className="opm-modal-actions">
-              <button type="button" className="btn btn-primary" onClick={confirmSigned}>כן, חתם</button>
-              <button type="button" className="btn btn-outline" onClick={() => setShowRegulationsModal(false)}>לא (ביטול)</button>
+              <button type="button" className="btn btn-primary" onClick={confirmSigned} disabled={confirmingSigned} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                {confirmingSigned && <Loader2 size={16} className="opm-spin" />}
+                כן, חתם
+              </button>
+              <button type="button" className="btn btn-outline" onClick={cancelSignatureConfirm}>לא (ביטול)</button>
             </div>
           </div>
         </div>,

@@ -107,10 +107,6 @@ export async function GET(request, { params }) {
       }
     });
 
-    const eventDate = order.eventDate;
-    const fallbackReturn = order.returnDate || (eventDate ? new Date(new Date(eventDate).getTime() + 2 * 24 * 3600 * 1000) : null);
-    const fallbackTaken = eventDate || order.orderDate;
-
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -132,18 +128,14 @@ export async function GET(request, { params }) {
         finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${item.description}`;
       }
 
-      const isTaken = item.isTaken || item.barcode !== null || item.takenDate !== null;
+      const isTaken = item.isTaken || item.takenDate !== null;
       const isReturned = item.isReturned || item.returnDate !== null;
-      const takenDate = item.takenDate || (isTaken ? fallbackTaken : null);
-      const returnDate = item.returnDate || (isReturned ? fallbackReturn : null);
-      
+
       return {
         ...item,
         description: finalDescription,
         isTaken,
-        isReturned,
-        takenDate,
-        returnDate
+        isReturned
       };
     });
 
@@ -623,10 +615,6 @@ export async function PUT(request, { params }) {
       }
     });
     
-    const eventDatePUT = finalOrder.eventDate;
-    const fallbackReturnPUT = finalOrder.returnDate || (eventDatePUT ? new Date(new Date(eventDatePUT).getTime() + 2 * 24 * 3600 * 1000) : null);
-    const fallbackTakenPUT = eventDatePUT || finalOrder.orderDate;
-
     const itemsWithLogs = items.map(item => {
       let dressName = item.dressItem?.dress?.name;
       const prefix = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;
@@ -648,18 +636,14 @@ export async function PUT(request, { params }) {
         finalDescription = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${item.description}`;
       }
 
-      const isTaken = item.isTaken || item.barcode !== null || item.takenDate !== null;
+      const isTaken = item.isTaken || item.takenDate !== null;
       const isReturned = item.isReturned || item.returnDate !== null;
-      const takenDate = item.takenDate || (isTaken ? fallbackTakenPUT : null);
-      const returnDate = item.returnDate || (isReturned ? fallbackReturnPUT : null);
-      
+
       return {
         ...item,
         description: finalDescription,
         isTaken,
-        isReturned,
-        takenDate,
-        returnDate
+        isReturned
       };
     });
 

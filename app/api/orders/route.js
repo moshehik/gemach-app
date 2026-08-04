@@ -7,7 +7,7 @@ import { cookies } from 'next/headers';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { validateOrderItemsAvailability } from '../../../lib/inventory';
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
-import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders } from '../../../lib/orderReservation';
+import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders, DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 
 export const dynamic = 'force-dynamic';
 
@@ -153,8 +153,7 @@ export async function GET(request) {
       const minimalOrders = await prisma.order.findMany({
         where,
         select: minimalSelect,
-        orderBy: { eventDate: { sort: 'desc', nulls: 'last' } },
-        take: 500
+        orderBy: { eventDate: { sort: 'desc', nulls: 'last' } }
       });
 
       let minimalFormatted = minimalOrders.map(o => {
@@ -546,6 +545,32 @@ export async function POST(request) {
         }
       } : {}))
     };
+
+    // Catch the cashier finalizing an order that has, in fact, already been saved for real -
+    // a double click on save, a colleague who already closed it out, or a stale screen catching
+    // up on a customer/date someone else already finished. Checked before anything is written,
+    // and skipped once the cashier has confirmed they want a separate order anyway.
+    const hasEventDates = orderData.eventDate || (orderData.fromDate && orderData.toDate);
+    if (!data.forceDuplicate && data.customerId && hasEventDates) {
+      const existingOrder = await prisma.order.findFirst({
+        where: {
+          customerId: data.customerId,
+          isDeleted: false,
+          status: { notIn: [DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS] },
+          eventDate: orderData.eventDate,
+          fromDate: orderData.fromDate,
+          toDate: orderData.toDate
+        },
+        select: { orderId: true }
+      });
+
+      if (existingOrder) {
+        return NextResponse.json({
+          duplicateOrder: true,
+          existingOrderId: existingOrder.orderId
+        }, { status: 409 });
+      }
+    }
 
     const createOrderWithId = (orderIdToUse) =>
       prisma.order.create({ data: { orderId: orderIdToUse, ...orderData } });

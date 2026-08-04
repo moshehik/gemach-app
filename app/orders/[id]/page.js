@@ -86,6 +86,9 @@ export default function OrderDetailsPage({ params }) {
   const initialLockChecked = useRef(false);
   // מצב ההזמנה כפי שהוא בשרת (בטעינה ואחרי כל שמירה מוצלחת) — הבסיס להשוואה ולשחזור ב"ביטול שינויים".
   const savedSnapshotRef = useRef(null);
+  // מחזיק תמיד את הגרסה העדכנית של handleExit (המוגדר בהמשך הקומפוננטה) כדי שניתן יהיה
+  // לקרוא לו מ-useEffect שמוגדר לפני ה-early return, בלי לשבור את סדר ה-hooks.
+  const handleExitRef = useRef(null);
   const [isPastEvent, setIsPastEvent] = useState(false);
   const [items, setItems] = useState([]);
   const [obligations, setObligations] = useState([]);
@@ -275,6 +278,26 @@ export default function OrderDetailsPage({ params }) {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [totalRequired, totalPaid, debtApproved, hasUnsavedChanges]);
+
+  // עוצר ניווט לעמוד אחר (תפריט עליון/סיידבר) עד שהשמירה של ההזמנה מסתיימת —
+  // לא רק לחיצה על "חזור", כדי שלא ייגרם מרוץ בין שמירה לניווט.
+  // handleExitRef מוחזק כדי לא לשבור את סדר ה-hooks (handleExit מוגדר אחרי guard מוקדם יותר בקומפוננטה).
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const handleDocumentClick = (e) => {
+      const anchor = e.target.closest && e.target.closest('a[href]');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href || href.startsWith('#') || href.startsWith('http') || anchor.target === '_blank') return;
+      if (href === window.location.pathname) return;
+      if (!handleExitRef.current) return;
+      e.preventDefault();
+      e.stopPropagation();
+      handleExitRef.current(href);
+    };
+    document.addEventListener('click', handleDocumentClick, true);
+    return () => document.removeEventListener('click', handleDocumentClick, true);
+  }, [hasUnsavedChanges]);
 
   // Save changes
   const handleSave = async (overrideOrder = null) => {
@@ -485,7 +508,7 @@ export default function OrderDetailsPage({ params }) {
 
   const createdDate = order.orderDate || order.createdAt;
 
-  const handleExit = async () => {
+  const handleExit = async (destinationHref) => {
     if (hasUnsavedChanges) {
       if (!confirm('ישנם שינויים שלא נשמרו בהזמנה! האם לצאת בכל זאת?')) return;
     }
@@ -558,12 +581,17 @@ export default function OrderDetailsPage({ params }) {
       }
 
       setSaving(false);
-      router.back();
+      if (destinationHref) {
+        router.push(destinationHref);
+      } else {
+        router.back();
+      }
     } catch (err) {
       setSaving(false);
       alert('שגיאה בשמירה: ' + (err.message || 'נסה שוב'));
     }
   };
+  handleExitRef.current = handleExit;
 
   // מבטל את כל השינויים שלא נשמרו (הוספה/הסרה של פריטים, תשלומים, התחייבויות, שינויי תאריכים/הערות וכו')
   // ומחזיר את הכרטיס למצב האחרון שנשמר בשרת.
@@ -708,9 +736,14 @@ export default function OrderDetailsPage({ params }) {
       const html2pdf = (await import('html2pdf.js')).default;
       const element = document.createElement('div');
       element.innerHTML = htmlData.html;
-      // We need to append it briefly to body for fonts to render, but hidden
-      element.style.position = 'absolute';
-      element.style.top = '-9999px';
+      // html2canvas can't measure elements positioned far off-screen (e.g. top: -9999px) -
+      // it computes a 0 height and renders a blank page. Keep it on-screen but invisible instead.
+      element.style.position = 'fixed';
+      element.style.top = '0';
+      element.style.left = '0';
+      element.style.zIndex = '-1';
+      element.style.opacity = '0';
+      element.style.pointerEvents = 'none';
       document.body.appendChild(element);
 
       const pdfBase64DataUri = await html2pdf().from(element).set({
@@ -934,22 +967,22 @@ export default function OrderDetailsPage({ params }) {
                 {order.customer?.phone1 && <span style={{ direction: 'ltr', color: '#64748b' }}>({order.customer.phone1})</span>}
               </div>
               
-              {(!order.isWeekdayEvent) && (
+              {(!order.isWeekdayEvent && !order.isAbroad) && (
                 <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontWeight: '500' }}>תאריך אירוע:</span> 
+                  <span style={{ fontWeight: '500' }}>תאריך אירוע:</span>
                   <strong style={{ color: '#0f172a' }}>
                     {order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}
                   </strong>
                 </div>
               )}
 
-              {(order.fromDate || order.toDate || order.returnDate) && (
+              {(order.isWeekdayEvent || order.isAbroad) && (
                 <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontWeight: '500' }}>לקיחה:</span> 
-                  <strong style={{ color: '#0f172a' }}>{order.fromDate ? (order.isWeekdayEvent ? `${getHebrewDateString(order.fromDate)} ${new Date(order.fromDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : new Date(order.fromDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })) : '-'}</strong>
+                  <span style={{ fontWeight: '500' }}>לקיחה:</span>
+                  <strong style={{ color: '#0f172a' }}>{order.fromDate ? `${getHebrewDateString(order.fromDate)} ${new Date(order.fromDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : '-'}</strong>
                   <span style={{ margin: '0 0.2rem' }}>|</span>
-                  <span style={{ fontWeight: '500' }}>החזרה:</span> 
-                  <strong style={{ color: '#0f172a' }}>{order.toDate || order.returnDate ? (order.isWeekdayEvent ? `${getHebrewDateString(order.toDate || order.returnDate)} ${new Date(order.toDate || order.returnDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : new Date(order.toDate || order.returnDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })) : '-'}</strong>
+                  <span style={{ fontWeight: '500' }}>החזרה:</span>
+                  <strong style={{ color: '#0f172a' }}>{order.toDate || order.returnDate ? `${getHebrewDateString(order.toDate || order.returnDate)} ${new Date(order.toDate || order.returnDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : '-'}</strong>
                 </div>
               )}
 
