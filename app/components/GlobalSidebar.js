@@ -102,7 +102,11 @@ export default function GlobalSidebar() {
         alert('ההחזרה נקלטה בהצלחה!');
         setActivePopover(null);
         setInputValue('');
-        router.push('/rentals?orderId=' + data.orderId);
+        if (openRentalModal) {
+          openRentalModal(data.orderId);
+        } else {
+          router.push('/rentals?orderId=' + data.orderId);
+        }
       } else {
         alert(data.error || 'שגיאה בהחזרה');
       }

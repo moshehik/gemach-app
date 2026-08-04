@@ -389,10 +389,15 @@ export default function RentalsPage() {
             const totalItems = order.items?.filter(i => !i.isDeleted).length || 0;
             const rentedItems = order.items?.filter(i => i.isTaken && !i.isReturned && !i.isDeleted).length || 0;
             const returnedItems = order.items?.filter(i => i.isReturned && !i.isDeleted).length || 0;
+            const hasCustomSpacing = order.customSpacing !== null && order.customSpacing !== undefined;
 
             let rowBg = 'transparent';
             let rowBorder = 'none';
-            if (totalItems > 0) {
+            
+            if (hasCustomSpacing) {
+              rowBg = '#fef9c3';
+              rowBorder = '4px solid #facc15';
+            } else if (totalItems > 0) {
               if (rentedItems === totalItems) {
                 // כל הפריטים הושכרו
                 rowBg = 'rgba(21, 101, 192, 0.08)';

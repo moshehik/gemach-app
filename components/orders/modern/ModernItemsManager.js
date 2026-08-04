@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import { createPortal } from 'react-dom';
 import {
   Plus, Trash2, RotateCcw, Edit2, X, Check, Info, CalendarSearch, Scan,
-  PackageCheck, PackageOpen, Undo2, XCircle, Shirt, Scissors, Ruler, ChevronDown
+  PackageCheck, PackageOpen, Undo2, XCircle, Shirt, Scissors, Ruler, ChevronDown, AlertTriangle
 } from 'lucide-react';
 import OrderModelSelector from '../OrderModelSelector';
 import OrderSizeSelector from '../OrderSizeSelector';
@@ -461,7 +461,12 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   };
 
   const renderStatusBadge = (item) => {
-    if (item.isReturned) return <span className="moc-badge on-white success"><PackageCheck size={13} /> הוחזר</span>;
+    if (item.isReturned) {
+      if (item.returnedOk === false) {
+        return <span className="moc-badge on-white danger"><AlertTriangle size={13} /> הוחזר - לא תקין</span>;
+      }
+      return <span className="moc-badge on-white success"><PackageCheck size={13} /> הוחזר - תקין</span>;
+    }
     if (item.isTaken) return <span className="moc-badge on-white info"><PackageOpen size={13} /> בהשכרה</span>;
     return <span className="moc-badge on-white neutral">ממתין</span>;
   };

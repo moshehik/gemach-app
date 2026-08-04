@@ -683,15 +683,15 @@ export default function OrdersPage() {
                       let rowBorder = 'none';
                       if (selectedOrder?.orderId === order.orderId) {
                         rowBg = 'var(--element-bg)';
+                      } else if (hasCustomSpacing) {
+                        rowBg = '#fef9c3';
+                        rowBorder = '4px solid #facc15';
                       } else if (isPending) {
                         rowBg = '#fff7ed'; // light orange
                         rowBorder = '4px solid #ea580c';
                       } else if (isUnpaid) {
                         rowBg = 'var(--error-bg, rgba(239, 68, 68, 0.1))';
                         rowBorder = '4px solid var(--error-color, #ef4444)';
-                      } else if (hasCustomSpacing) {
-                        rowBg = '#fef9c3';
-                        rowBorder = '4px solid #facc15';
                       }
                       
                       return (

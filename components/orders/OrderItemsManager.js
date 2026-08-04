@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import OrderModelSelector from './OrderModelSelector';
 import OrderSizeSelector from './OrderSizeSelector';
-import { Info, Trash2, RotateCcw, CalendarSearch, ChevronDown, ChevronUp, Edit2, X, PackageCheck, PackageOpen, Undo2, XCircle, Scan } from 'lucide-react';
+import { Info, Trash2, RotateCcw, CalendarSearch, ChevronDown, ChevronUp, Edit2, X, PackageCheck, PackageOpen, Undo2, XCircle, Scan, AlertTriangle } from 'lucide-react';
 import ItemCapacityModal from './ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
 import { createPortal } from 'react-dom';
@@ -553,9 +553,15 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                     {isWorkspaceMode && (
                       <td style={{ padding: '1rem', textAlign: 'center' }}>
                         {item.isReturned ? (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#dcfce7', color: '#16a34a', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
-                            <PackageCheck size={16} /> הוחזר
-                          </span>
+                          item.returnedOk === false ? (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#fee2e2', color: '#ef4444', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
+                              <AlertTriangle size={16} /> הוחזר - לא תקין
+                            </span>
+                          ) : (
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#dcfce7', color: '#16a34a', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
+                              <PackageCheck size={16} /> הוחזר - תקין
+                            </span>
+                          )
                         ) : (item.isTaken && !item.isReturned) ? (
                           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#dbeafe', color: '#2563eb', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
                             <PackageOpen size={16} /> בהשכרה

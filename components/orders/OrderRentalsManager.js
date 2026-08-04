@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, forwardRef, useImperativeHandle } from 'react';
-import { ChevronDown, ChevronUp, PackageCheck, PackageOpen, Scan, Undo2, XCircle } from 'lucide-react';
+import { ChevronDown, ChevronUp, PackageCheck, PackageOpen, Scan, Undo2, XCircle, AlertTriangle } from 'lucide-react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 
 // forwardRef כדי ששדה "סריקה מהירה" בסיידבר של העיצוב המודרני יוכל להפעיל
@@ -395,10 +395,17 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
                           {isReturned ? (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#dcfce7', color: '#16a34a', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
-                              <PackageCheck size={16} />
-                              הוחזר
-                            </span>
+                            item.returnedOk === false ? (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#fee2e2', color: '#ef4444', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
+                                <AlertTriangle size={16} />
+                                הוחזר - לא תקין
+                              </span>
+                            ) : (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#dcfce7', color: '#16a34a', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
+                                <PackageCheck size={16} />
+                                הוחזר - תקין
+                              </span>
+                            )
                           ) : isRented ? (
                             <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#dbeafe', color: '#2563eb', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
                               <PackageOpen size={16} />

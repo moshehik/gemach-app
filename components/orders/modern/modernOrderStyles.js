@@ -99,7 +99,7 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 .moc-search-wrapper { position: relative; width: 100%; }
 .moc-search-wrapper svg { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
 .moc-search-input {
-  width: 100%; padding: 11px 36px; border-radius: 20px; border: none; outline: none;
+  width: 100%; padding: 11px 42px 11px 16px; border-radius: 20px; border: none; outline: none;
   background: #fff; color: var(--moc-text-main); font-size: 0.92rem; transition: all 0.2s;
   box-shadow: inset 0 1px 3px rgba(0,0,0,0.06); font-family: inherit;
 }
@@ -125,7 +125,7 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 
 /* הטופ-בר נשאר תמיד בשורה אחת — הכותרת והמלל מתקצרים (ellipsis) במקום לשבור שורה */
 .moc-content-topbar { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; margin-bottom: 20px; border-bottom: 2px solid var(--moc-divider); gap: 16px; flex-wrap: nowrap; }
-.moc-topbar-title-block { display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden; }
+.moc-topbar-title-block { display: flex; align-items: baseline; gap: 10px; min-width: 0; overflow: hidden; }
 .moc-topbar-title-block h2 { margin: 0; font-size: 1.3rem; color: var(--moc-text-main); white-space: nowrap; flex-shrink: 0; }
 .moc-hint { color: var(--moc-text-muted); font-size: 0.85rem; }
 .moc-topbar-title-block .moc-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
@@ -260,7 +260,7 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 .moc-spacing-note p { margin: 10px 0 0 0; font-size: 0.78rem; color: #a9873a; }
 
 /* ציר ימי הרווח — בחירת ציפוף ויזואלית */
-.moc-days-axis { display: flex; align-items: center; margin: 14px 4px 20px; overflow-x: auto; padding-bottom: 2px; }
+.moc-days-axis { display: flex; align-items: center; margin: 14px 4px 0px; overflow-x: auto; padding-bottom: 24px; }
 .moc-day-stop {
   position: relative; width: 32px; height: 32px; border-radius: 50%; border: 2px solid #e9d495;
   background: #fff; color: #8a6d1c; font-weight: 700; font-size: 0.86rem; cursor: pointer;
@@ -429,7 +429,7 @@ table.moc-data-table { width: 100%; border-collapse: collapse; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.moc-scrollbar::-webkit-scrollbar, .moc ::-webkit-scrollbar { width: 8px; }
+.moc-scrollbar::-webkit-scrollbar, .moc ::-webkit-scrollbar { width: 8px; height: 8px; }
 .moc-scrollbar::-webkit-scrollbar-thumb, .moc ::-webkit-scrollbar-thumb { background: #ddd; border-radius: 8px; }
 
 @media (max-width: 900px) {

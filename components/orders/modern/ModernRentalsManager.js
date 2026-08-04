@@ -308,7 +308,11 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
                   <div className="moc-title-line">
                     {itemName(item)}
                     {isReturned ? (
-                      <span className="moc-badge on-white success"><PackageCheck size={13} /> הוחזר</span>
+                      item.returnedOk === false ? (
+                        <span className="moc-badge on-white danger"><AlertTriangle size={13} /> הוחזר - לא תקין</span>
+                      ) : (
+                        <span className="moc-badge on-white success"><PackageCheck size={13} /> הוחזר - תקין</span>
+                      )
                     ) : isRented ? (
                       <span className="moc-badge on-white info"><PackageOpen size={13} /> מושכר</span>
                     ) : (
@@ -322,13 +326,9 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
                   </div>
                   <div className="moc-sub-line">
                     מידה: {item.sizeText || '-'} · {barcode ? <>ברקוד: <span className="moc-mono">{barcode}</span></> : 'טרם נסרק ברקוד'}
+                    {taken && <span> · לקיחה: {taken}</span>}
+                    {returned && <span> · החזרה: {returned}</span>}
                   </div>
-                  {(taken || returned) && (
-                    <div className="moc-dates-line">
-                      {taken && <span><strong>לקיחה:</strong> {taken}</span>}
-                      {returned && <span><strong>הוחזר:</strong> {returned}</span>}
-                    </div>
-                  )}
                 </div>
 
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>

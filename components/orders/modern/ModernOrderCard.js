@@ -82,7 +82,7 @@ export default function ModernOrderCard({
     : (order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'ללא תאריך אירוע'));
 
   const updatedLabel = order.updatedAt
-    ? `עודכן לאחרונה: ${new Date(order.updatedAt).toLocaleDateString('he-IL')} (${getHebrewDateString(order.updatedAt)}) · ${new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+    ? `עודכן: ${getHebrewDateString(order.updatedAt)} · ${new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
     : '';
 
   const meta = TAB_META[activeTab] || { title: '' };
@@ -183,19 +183,6 @@ export default function ModernOrderCard({
             </div>
 
             <div className="moc-topbar-actions">
-              <button
-                className={`moc-icon-btn-soft money ${debt > 0 ? 'debt' : debt < 0 ? 'credit' : ''}`}
-                title={debt > 0 ? `יתרת חוב: ₪${debt.toLocaleString('he-IL')} — לחץ לתשלום בנדרים פלוס` : debt < 0 ? `יתרת זכות: ₪${Math.abs(debt).toLocaleString('he-IL')}` : 'שולם במלואו'}
-                onClick={() => (onWalletClick ? onWalletClick() : onTabChange('payments'))}
-              >
-                <Wallet size={18} />
-                {debt !== 0 && (
-                  <span className="moc-amt-badge">₪{Math.abs(debt).toLocaleString('he-IL')}</span>
-                )}
-              </button>
-
-              <div className="moc-topbar-sep" />
-
               {/* נעילת הזמנה שתאריכה עבר — הכל גלוי, פעולות פריטים חסומות עד שחרור באישור מנהל */}
               {isPastEvent && (
                 <button
@@ -216,6 +203,19 @@ export default function ModernOrderCard({
                   {isLocked ? <Lock size={18} /> : <LockOpen size={18} />}
                 </button>
               )}
+
+              <button
+                className={`moc-icon-btn-soft money ${debt > 0 ? 'debt' : debt < 0 ? 'credit' : ''}`}
+                title={debt > 0 ? `יתרת חוב: ₪${debt.toLocaleString('he-IL')} — לחץ לתשלום בנדרים פלוס` : debt < 0 ? `יתרת זכות: ₪${Math.abs(debt).toLocaleString('he-IL')}` : 'שולם במלואו'}
+                onClick={() => (onWalletClick ? onWalletClick() : onTabChange('payments'))}
+              >
+                <Wallet size={18} />
+                {debt !== 0 && (
+                  <span className="moc-amt-badge">₪{Math.abs(debt).toLocaleString('he-IL')}</span>
+                )}
+              </button>
+
+              <div className="moc-topbar-sep" />
 
               <button
                 className={`moc-icon-btn-soft sig ${order.hasSignedRegulations ? 'yes' : 'no'}`}

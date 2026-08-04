@@ -150,7 +150,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const maxAxisDay = Math.max(systemDefaultSpacing + 2, selectedSpacing !== null ? selectedSpacing : 0, 4);
   const axisDays = Array.from({ length: maxAxisDay + 1 }, (_, i) => i);
   const spacingNoteNode = (
-    <div className="moc-spacing-note">
+    <div className="moc-spacing-note" style={{ marginBottom: !isEditingEvent ? '16px' : undefined }}>
       <div className="moc-spacing-note-head">
         <span className="moc-spacing-note-label"><AlertTriangle size={15} /> ציפוף ימים מיוחד</span>
         <button
