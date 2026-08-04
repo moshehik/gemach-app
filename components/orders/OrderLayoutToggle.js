@@ -1,17 +1,19 @@
 'use client';
 
-import { Rows3, LayoutGrid } from 'lucide-react';
+import { Rows3, LayoutGrid, Sparkles } from 'lucide-react';
 
 const OPTIONS = [
+  { id: 'modern', label: 'מודרני', icon: Sparkles, title: 'העיצוב החדש — סיידבר זהב עם טאבים' },
   { id: 'classic', label: 'קלאסי', icon: Rows3, title: 'תצוגה קלאסית — נושא מתחת לנושא' },
   { id: 'workspace', label: 'חלון אחד', icon: LayoutGrid, title: 'תצוגת חלון אחד — כל הנושאים זה לצד זה' }
 ];
 
 /**
- * לחצן דו-מצבי לקביעת עיצוב כרטיס ההזמנה (קלאסי / חלון אחד).
+ * לחצן רב-מצבי לקביעת עיצוב כרטיס ההזמנה (מודרני / קלאסי / חלון אחד).
  */
 export default function OrderLayoutToggle({ value, onChange }) {
   const activeIndex = Math.max(0, OPTIONS.findIndex(o => o.id === value));
+  const optionWidth = `calc(${100 / OPTIONS.length}% - 0.25rem)`;
 
   return (
     <div
@@ -35,8 +37,8 @@ export default function OrderLayoutToggle({ value, onChange }) {
           position: 'absolute',
           top: '0.25rem',
           bottom: '0.25rem',
-          right: `calc(0.25rem + ${activeIndex} * (50% - 0.25rem))`,
-          width: 'calc(50% - 0.25rem)',
+          right: `calc(0.25rem + ${activeIndex} * (${100 / OPTIONS.length}% - 0.25rem / ${OPTIONS.length}))`,
+          width: optionWidth,
           background: 'white',
           borderRadius: '9px',
           boxShadow: '0 2px 6px rgba(15, 23, 42, 0.12)',
@@ -56,8 +58,10 @@ export default function OrderLayoutToggle({ value, onChange }) {
             style={{
               position: 'relative',
               zIndex: 1,
+              flex: 1,
               display: 'flex',
               alignItems: 'center',
+              justifyContent: 'center',
               gap: '0.4rem',
               padding: '0.4rem 0.85rem',
               background: 'none',

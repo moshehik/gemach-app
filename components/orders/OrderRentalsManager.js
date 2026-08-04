@@ -1,10 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, forwardRef, useImperativeHandle } from 'react';
 import { ChevronDown, ChevronUp, PackageCheck, PackageOpen, Scan, Undo2, XCircle } from 'lucide-react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 
-export default function OrderRentalsManager({ items, onItemsChange, order, totalRequired, totalPaid }) {
+// forwardRef כדי ששדה "סריקה מהירה" בסיידבר של העיצוב המודרני יוכל להפעיל
+// את אותה לוגיקת סריקה בדיוק (ref.current.scan(barcode)).
+const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onItemsChange, order, totalRequired, totalPaid }, ref) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [barcodeInput, setBarcodeInput] = useState('');
   const [showManualScanModal, setShowManualScanModal] = useState(false);
@@ -20,6 +22,10 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
   const summaryText = `הושכרו: ${rentedCount} | הוחזרו: ${returnedCount} מתוך ${totalCount}`;
 
   const isFullyPaid = totalRequired <= totalPaid;
+
+  useImperativeHandle(ref, () => ({
+    scan: (barcode) => handleBarcodeScan(null, barcode)
+  }));
 
   const handleBarcodeScan = async (e, forcedBarcode = null) => {
     if (e) e.preventDefault();
@@ -482,4 +488,6 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
       )}
     </div>
   );
-}
+});
+
+export default OrderRentalsManager;

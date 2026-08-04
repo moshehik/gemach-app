@@ -3,7 +3,7 @@
 import { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, CreditCard, ArrowRight, Users, Info, Package, RefreshCcw, CreditCard as PaymentIcon, History, Printer, Mail, FileText, ClipboardList, Trash2, RotateCcw } from 'lucide-react';
+import { Save, CreditCard, ArrowRight, Users, Info, Package, RefreshCcw, CreditCard as PaymentIcon, History, Printer, Mail, FileText, ClipboardList, Trash2, RotateCcw, Calendar } from 'lucide-react';
 import OrderGeneralDetails from '../../../components/orders/OrderGeneralDetails';
 import ActiveEmployeesModal from '../../../components/orders/ActiveEmployeesModal';
 import OrderItemsManager from '../../../components/orders/OrderItemsManager';
@@ -11,6 +11,8 @@ import OrderRentalsManager from '../../../components/orders/OrderRentalsManager'
 import OrderPaymentsManager from '../../../components/orders/OrderPaymentsManager';
 import OrderCardWorkspace from '../../../components/orders/OrderCardWorkspace';
 import OrderLayoutToggle from '../../../components/orders/OrderLayoutToggle';
+import ModernOrderCard from '../../../components/orders/modern/ModernOrderCard';
+import ModernGeneralDetails from '../../../components/orders/modern/ModernGeneralDetails';
 import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../../lib/orderStatus';
 import HistoryViewer from '../../../components/HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
@@ -115,15 +117,17 @@ export default function OrderDetailsPage({ params }) {
   const [debtApproved, setDebtApproved] = useState(false); // Track manager approval to skip exit warning
   const isManualRef = useRef(false); // prevent observer overriding scroll
   const manualTargetRef = useRef(null); // הנושא שאליו גוללים כרגע מלחיצה על טאב
+  const rentalsManagerRef = useRef(null); // מאפשר ל"סריקה מהירה" בסיידבר המודרני להפעיל את לוגיקת הסריקה
 
-  // עיצוב הכרטיס: 'classic' = נושא מתחת לנושא, 'workspace' = הכל בחלון אחד זה לצד זה
-  const [layoutMode, setLayoutMode] = useState('classic');
+  // עיצוב הכרטיס: 'modern' = העיצוב החדש (סיידבר זהב + טאבים), 'classic' = נושא מתחת לנושא,
+  // 'workspace' = הכל בחלון אחד זה לצד זה
+  const [layoutMode, setLayoutMode] = useState('modern');
 
   // נטען אחרי ההרכבה כדי לא לשבור hydration (localStorage לא קיים בשרת)
   useEffect(() => {
     try {
       const saved = localStorage.getItem('orderCardLayout');
-      if (saved === 'classic' || saved === 'workspace') setLayoutMode(saved);
+      if (saved === 'modern' || saved === 'classic' || saved === 'workspace') setLayoutMode(saved);
     } catch (e) { /* localStorage חסום — נשארים בברירת המחדל */ }
   }, []);
 
@@ -702,8 +706,27 @@ export default function OrderDetailsPage({ params }) {
       setShowPrintMenu(!showPrintMenu);
       return;
     }
-    
+
     setShowRegulationsModal(true);
+  };
+
+  // שינוי סטטוס חתימה על תקנון מכפתור הטופ-בר בעיצוב המודרני (עם אישור)
+  const handleToggleSignature = async () => {
+    const nowYes = !order.hasSignedRegulations;
+    const msg = nowYes ? 'האם הלקוח חתם על תקנון ההשכרה?' : 'האם לסמן שהלקוח לא חתם על התקנון?';
+    const confirmed = window.customConfirm ? await window.customConfirm(msg) : window.confirm(msg);
+    if (!confirmed) return;
+    const updatedOrder = { ...order, hasSignedRegulations: nowYes };
+    setOrder(updatedOrder);
+    handleSave(updatedOrder);
+  };
+
+  // סריקה מהירה מהסיידבר — עוברים לטאב ההשכרות ומפעילים שם את אותה לוגיקת סריקה
+  const handleQuickScan = (barcode) => {
+    setActiveTab('rentals');
+    if (rentalsManagerRef.current) {
+      rentalsManagerRef.current.scan(barcode);
+    }
   };
 
   const handleSendEmail = async (type, forcedEmail = null) => {
@@ -847,6 +870,7 @@ export default function OrderDetailsPage({ params }) {
       order: 3,
       node: (
         <OrderRentalsManager data-element-name="רכיב_page_24"
+          ref={rentalsManagerRef}
           items={items}
           onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }}
           order={order}
@@ -892,7 +916,7 @@ export default function OrderDetailsPage({ params }) {
   const workspaceSections = [...sections].sort((a, b) => a.order - b.order);
 
   return (
-    <main data-agy-id="[id]_page_main_1" style={{ padding: layoutMode === 'workspace' ? WORKSPACE_MAIN_PADDING : '2rem', maxWidth: layoutMode === 'workspace' ? '1900px' : '1400px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
+    <main data-agy-id="[id]_page_main_1" style={{ padding: layoutMode !== 'classic' ? WORKSPACE_MAIN_PADDING : '2rem', maxWidth: layoutMode !== 'classic' ? '1900px' : '1400px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
       
       {/* בתצוגת "חלון אחד" גם הכותרת מתכווצת — היא לקחה כרבע מסך לפני התוכן */}
       {layoutMode === 'workspace' && (
@@ -909,6 +933,108 @@ export default function OrderDetailsPage({ params }) {
         `}</style>
       )}
 
+      {layoutMode === 'modern' ? (
+        <ModernOrderCard
+          order={order}
+          items={items}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          totalRequired={totalRequired}
+          totalPaid={totalPaid}
+          saving={saving}
+          saveMessage={saveMessage}
+          hasUnsavedChanges={hasUnsavedChanges}
+          isLocked={isLocked}
+          onUnlock={handleUnlock}
+          onSave={() => handleSave()}
+          onCancelChanges={handleCancelChanges}
+          onDelete={handleDeleteOrder}
+          onExit={() => handleExit()}
+          onToggleSignature={handleToggleSignature}
+          onPrintButtonClick={handlePrintOrder}
+          printMenuOpen={showPrintMenu}
+          onClosePrintMenu={() => setShowPrintMenu(false)}
+          onPrint={(type) => { setShowPrintMenu(false); window.open(`/print/order?orderId=${order.orderId}&type=${type}`, '_blank'); }}
+          onSendEmail={handleSendEmail}
+          onShowEmployees={() => setShowEmployeesModal(true)}
+          onQuickScan={handleQuickScan}
+          layoutToggle={<OrderLayoutToggle value={layoutMode} onChange={handleLayoutChange} />}
+          tabContents={{
+            details: (
+              <ModernGeneralDetails
+                order={order}
+                onOrderChange={(val) => { setOrder(val); setHasUnsavedChanges(true); }}
+                onSaveRequest={handleSave}
+                onQuickEmail={() => handleSendEmail('order')}
+              />
+            ),
+            items: (
+              <OrderItemsManager
+                orderId={order.orderId}
+                order={order}
+                items={items}
+                onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }}
+                onOrderUpdated={handleOrderUpdate}
+                inventoryCache={inventoryCache}
+                isWorkspaceMode={false}
+              />
+            ),
+            rentals: (
+              <OrderRentalsManager
+                ref={rentalsManagerRef}
+                items={items}
+                onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }}
+                order={order}
+                totalRequired={totalRequired}
+                totalPaid={totalPaid}
+              />
+            ),
+            payments: (
+              <OrderPaymentsManager
+                orderId={order.orderId}
+                items={items}
+                order={order}
+                obligations={obligations}
+                payments={payments}
+                refunds={refunds}
+                onObligationsChange={(val) => { setObligations(val); setHasUnsavedChanges(true); }}
+                onPaymentsChange={(val) => { setPayments(val); setHasUnsavedChanges(true); }}
+                onRefundsChange={(val) => { setRefunds(val); setHasUnsavedChanges(true); }}
+                totalRequired={totalRequired}
+                totalPaid={totalPaid}
+                customer={order.customer}
+                onOrderUpdated={handleOrderUpdate}
+              />
+            ),
+            history: (
+              <>
+                <div className="moc-card-panel" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
+                  <div className="moc-avatar-chip lg"><Calendar size={20} /></div>
+                  <div style={{ flex: 1 }}>
+                    <span className="moc-field-label" style={{ marginBottom: '3px' }}>בוצעה על ידי</span>
+                    <div className="moc-field-value" style={{ fontSize: '1.15rem' }}>
+                      {order.employee ? `${order.employee.firstName || ''} ${order.employee.lastName || ''}`.trim() : 'לא ידוע'}
+                      {createdDate ? ` · ${new Date(createdDate).toLocaleDateString('he-IL')} ${new Date(createdDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : ''}
+                    </div>
+                  </div>
+                  <button
+                    className="moc-btn moc-btn-outline moc-btn-icon"
+                    style={{ width: '40px', height: '40px' }}
+                    title="עובדים פעילים בהזמנה"
+                    onClick={() => setShowEmployeesModal(true)}
+                  >
+                    <Users size={19} />
+                  </button>
+                </div>
+                <div className="moc-card-panel">
+                  <HistoryViewer entityType="Order" entityId={order.orderId} />
+                </div>
+              </>
+            )
+          }}
+        />
+      ) : (
+      <>
       {/* Header Sticky Bar */}
       <div className={`oc-header ${layoutMode === 'workspace' ? 'is-compact' : ''}`} style={{
         display: 'flex',
@@ -1210,8 +1336,10 @@ export default function OrderDetailsPage({ params }) {
         </div>
 
       </div>
+      </>
+      )}
 
-      <ActiveEmployeesModal data-element-name="רכיב_page_27" 
+      <ActiveEmployeesModal data-element-name="רכיב_page_27"
         orderId={order.orderId}
         isOpen={showEmployeesModal}
         onClose={() => setShowEmployeesModal(false)}
