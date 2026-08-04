@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLabels } from '@/app/components/LabelsContext';
-import { X, Info, Printer, Save, Ban, Undo2, AlertTriangle, CheckCircle2, PackageX, PackageCheck, MoreVertical, Calendar, ScanLine } from 'lucide-react';
+import { X, Info, Printer, Save, Ban, Undo2, AlertTriangle, CheckCircle2, PackageX, PackageCheck, MoreVertical, Calendar, ScanLine, Loader2, Scissors } from 'lucide-react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { addHistory } from '../../lib/historyManager';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
@@ -19,6 +19,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const modalBarcodeRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
 
   const [duplicates, setDuplicates] = useState(null);
   const [itemDetails, setItemDetails] = useState(null);
@@ -104,11 +105,14 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const activeItems = selectedOrder ? selectedOrder.items.filter(i => !i.isDeleted) : [];
   const pendingItems = activeItems.filter(i => i.barcode && !i.isTaken);
   const pendingCount = pendingItems.length;
+  const hasUnsavedInput = Boolean(modalBarcode) || rentingItemId !== null || Object.values(inlineBarcode).some(v => v && v.trim());
+  const hasUnsavedChanges = pendingCount > 0 || hasUnsavedInput;
 
   const overallStatus = selectedOrder ? calculateOrderStatus(selectedOrder) : '';
   const overallStatusColor = getStatusColor(overallStatus);
 
   const handleRentalScan = async (barcodeToScan, itemIdToForce = null) => {
+    setIsBusy(true);
     try {
       const res = await fetch('/api/rentals/scan', {
         method: 'POST',
@@ -146,6 +150,8 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     } catch (err) {
       console.error(err);
       alert('שגיאת רשת');
+    } finally {
+      setIsBusy(false);
     }
   };
 
@@ -155,6 +161,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   };
 
   const handleReturnScan = async (barcode) => {
+    setIsBusy(true);
     try {
       const res = await fetch('/api/returns/scan', {
         method: 'POST',
@@ -167,9 +174,14 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         await refreshOrder();
       } else {
         alert(data.error);
+        // The item may already be up to date on the server (e.g. a previous click
+        // already went through) - refresh so the card stops showing a stale status.
+        await refreshOrder();
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsBusy(false);
     }
   };
 
@@ -247,6 +259,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
   const undoReturn = async (itemId) => {
     if (!await window.customConfirm('האם אתה בטוח שברצונך לבטל את ההחזרה? הפריט יחזור להיות "אצל הלקוח".')) return;
+    setIsBusy(true);
     try {
       const res = await fetch('/api/returns/scan', {
         method: 'PUT',
@@ -258,11 +271,14 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsBusy(false);
     }
   };
 
   const undoRental = async (itemId) => {
     if (!await window.customConfirm('האם אתה בטוח שברצונך לבטל את הלקיחה? (הפריט יחזור לממתינים)')) return;
+    setIsBusy(true);
     try {
       const res = await fetch('/api/rentals/cancel', {
         method: 'PUT',
@@ -277,6 +293,8 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
       }
     } catch (err) {
       console.error(err);
+    } finally {
+      setIsBusy(false);
     }
   };
 
@@ -296,6 +314,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   };
 
   const doReportIssue = async (itemId, issueType) => {
+    setIsBusy(true);
     try {
       const res = await fetch('/api/returns/report-issue', {
         method: 'POST',
@@ -313,6 +332,8 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     } catch (err) {
       console.error(err);
       return false;
+    } finally {
+      setIsBusy(false);
     }
   };
 
@@ -351,17 +372,25 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   };
 
   const handleHeaderCancel = async () => {
-    if (pendingCount === 0) {
+    if (!hasUnsavedChanges) {
       onClose();
       return;
     }
-    if (!await window.customConfirm(`לבטל ${pendingCount} סריקות שטרם אושרו ולסגור בלי לשמור?`, 'ביטול שינויים')) return;
-    await discardPendingRentals();
+    const message = pendingCount > 0
+      ? `לבטל ${pendingCount} סריקות שטרם אושרו ולסגור בלי לשמור?`
+      : 'יש נתונים שהוזנו ולא נשמרו. לסגור בלי לשמור?';
+    if (!await window.customConfirm(message, 'ביטול שינויים')) return;
+    if (pendingCount > 0) await discardPendingRentals();
     onClose();
   };
 
   const attemptCloseCard = async () => {
+    if (!hasUnsavedChanges) {
+      onClose();
+      return;
+    }
     if (pendingCount === 0) {
+      if (!await window.customConfirm('יש נתונים שהוזנו ולא נשמרו. לסגור בלי לשמור?', 'יציאה מהכרטיס')) return;
       onClose();
       return;
     }
@@ -394,7 +423,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
   // Rendering
   const modalContent = (
-    <div className="modal-overlay" onClick={onClose} style={{ direction: 'rtl', zIndex: 1100 }}>
+    <div className="modal-overlay" onClick={attemptCloseCard} style={{ direction: 'rtl', zIndex: 1100, background: 'transparent', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
       <div className="rrm-card" onClick={e => e.stopPropagation()}>
 
         {loading || !selectedOrder ? (
@@ -454,6 +483,9 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               <div className="rrm-main-header">
                 <h3>השכרה והחזרה</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {(isProcessing || isConfirming || isBusy) && (
+                    <Loader2 size={18} className="rrm-header-spinner" aria-label="מעבד..." />
+                  )}
                   <button data-agy-id="rentalreturnmodal_button_5" className="rrm-icon-btn info"
                     onClick={() => window.open(`/print/order?orderId=${selectedOrder.orderId}`, '_blank')}
                     title="הדפס פרטי השכרה">
@@ -478,7 +510,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               {pendingCount > 0 && (
                 <div className="rrm-pending-banner">
                   <span>{pendingCount} פריטים נסרקו וממתינים לאישור השכרה</span>
-                  <button data-agy-id="rentalreturnmodal_button_8" className="rrm-btn rrm-btn-primary" onClick={confirmRental} disabled={isConfirming}>
+                  <button data-agy-id="rentalreturnmodal_button_8" className="rrm-btn rrm-btn-primary" onClick={confirmRental} disabled={isConfirming || isBusy}>
                     {isConfirming ? 'מאשר...' : `אשר הכל (${pendingCount})`}
                   </button>
                 </div>
@@ -494,6 +526,11 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                         <div className="rrm-item-title">
                           {item.description}
                           <span className={`rrm-badge ${status.tone}`}>{status.text}</span>
+                          {enableAlterations && item.repairs && (
+                            <span className="rrm-repairs-icon" title="יש תיקונים - לחצו על פרטים לצפייה" onClick={() => showItemDetails(item)}>
+                              <Scissors size={14} />
+                            </span>
+                          )}
                           <div className="rrm-item-menu" style={{ position: 'relative' }}>
                             <button data-agy-id="rentalreturnmodal_button_9" className="rrm-icon-btn" onClick={(e) => toggleItemMenu(e, item.id)}>
                               <MoreVertical size={18} />
@@ -502,13 +539,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                               <div className="rrm-floating-menu">
                                 <button data-agy-id="rentalreturnmodal_button_10" className="rrm-menu-item" onClick={() => showItemDetails(item)}><Info size={14} /> פרטים</button>
                                 {item.isTaken && !item.isReturned && (
-                                  <button data-agy-id="rentalreturnmodal_button_11" className="rrm-menu-item danger" onClick={() => { setOpenMenuId(null); undoRental(item.id); }}><Undo2 size={14} /> ביטול השכרה</button>
+                                  <button data-agy-id="rentalreturnmodal_button_11" className="rrm-menu-item danger" disabled={isBusy} onClick={() => { setOpenMenuId(null); undoRental(item.id); }}><Undo2 size={14} /> ביטול השכרה</button>
                                 )}
                                 {item.isReturned && (
                                   <>
-                                    <button data-agy-id="rentalreturnmodal_button_12" className="rrm-menu-item danger" onClick={() => { setOpenMenuId(null); undoReturn(item.id); }}><Undo2 size={14} /> ביטול החזרה</button>
+                                    <button data-agy-id="rentalreturnmodal_button_12" className="rrm-menu-item danger" disabled={isBusy} onClick={() => { setOpenMenuId(null); undoReturn(item.id); }}><Undo2 size={14} /> ביטול החזרה</button>
                                     {item.returnedOk && (
-                                      <button data-agy-id="rentalreturnmodal_button_13" className="rrm-menu-item danger" onClick={() => reportIssue(item.id, 'returned-bad')}><PackageX size={14} /> דווח על בעיה</button>
+                                      <button data-agy-id="rentalreturnmodal_button_13" className="rrm-menu-item danger" disabled={isBusy} onClick={() => reportIssue(item.id, 'returned-bad')}><PackageX size={14} /> דווח על בעיה</button>
                                     )}
                                   </>
                                 )}
@@ -519,7 +556,6 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                         <div className="rrm-item-sub">
                           {getLabel('item_size', 'מידה')}: {item.sizeText || '-'}
                           {item.barcode && <> · {getLabel('item_barcode', 'ברקוד')}: <span className="rrm-mono">{item.barcode}</span></>}
-                          {enableAlterations && item.repairs && <> · תיקונים: {item.repairs}</>}
                         </div>
                         {(item.takenDate || item.returnDate) && (
                           <div className="rrm-item-dates">
@@ -541,8 +577,8 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                                 onChange={(e) => setInlineBarcode(prev => ({ ...prev, [item.id]: e.target.value.replace(/\s+/g, '') }))}
                                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmInlineRent(item); } }}
                               />
-                              <button data-agy-id="rentalreturnmodal_button_15" className="rrm-btn rrm-btn-primary rrm-btn-sm" onClick={() => confirmInlineRent(item)}>אשר</button>
-                              <button data-agy-id="rentalreturnmodal_button_16" className="rrm-icon-btn" onClick={() => setRentingItemId(null)}><X size={16} /></button>
+                              <button data-agy-id="rentalreturnmodal_button_15" className="rrm-btn rrm-btn-primary rrm-btn-sm" disabled={isBusy} onClick={() => confirmInlineRent(item)}>אשר</button>
+                              <button data-agy-id="rentalreturnmodal_button_16" className="rrm-icon-btn" disabled={isBusy} onClick={() => setRentingItemId(null)}><X size={16} /></button>
                             </div>
                           ) : (
                             <button data-agy-id="rentalreturnmodal_button_17" className="rrm-btn rrm-btn-primary" onClick={() => setRentingItemId(item.id)}>השכרה</button>
@@ -558,7 +594,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                             <button data-agy-id="rentalreturnmodal_button_18"
                               className={`rrm-return-good ${item.isReturned && item.returnedOk ? 'active' : ''}`}
                               onClick={() => handleMarkReturnGood(item)}
-                              disabled={item.isReturned}
+                              disabled={item.isReturned || isBusy}
                             >
                               <CheckCircle2 size={14} /> החזרה תקינה
                             </button>
@@ -566,7 +602,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                             <button data-agy-id="rentalreturnmodal_button_19"
                               className={`rrm-return-bad ${item.isReturned && !item.returnedOk ? 'active' : ''}`}
                               onClick={() => handleMarkReturnBad(item)}
-                              disabled={item.isReturned}
+                              disabled={item.isReturned || isBusy}
                             >
                               <AlertTriangle size={14} /> לא תקין
                             </button>
@@ -603,7 +639,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         }
         .rrm-card {
           display: flex;
-          background: var(--card-bg, #fff);
+          background: #ffffff;
           border-radius: 16px;
           overflow: hidden;
           box-shadow: var(--shadow-lg, 0 25px 50px -12px rgba(0,0,0,0.25));
@@ -612,6 +648,9 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
           max-height: 90vh;
           border: 1px solid var(--element-border, #e2e8f0);
           animation: rrm-fade-in 0.2s ease-out forwards;
+        }
+        [data-theme="dark"] .rrm-card {
+          background: #1e1e1e;
         }
         .rrm-loading {
           display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -670,6 +709,8 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         .rrm-icon-btn.info:hover { background: #3b82f6; color: #fff; }
         .rrm-icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
+        .rrm-header-spinner { color: var(--primary-color, #d4af37); animation: rrm-spin 0.8s linear infinite; }
+
         .rrm-badge {
           padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-flex;
           align-items: center; gap: 4px; white-space: nowrap;
@@ -678,6 +719,14 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         .rrm-badge.warning { background: rgba(245, 158, 11, 0.14); color: var(--warning-color, #f59e0b); }
         .rrm-badge.danger { background: var(--danger-bg, #fef2f2); color: var(--danger-text, #ef4444); }
         .rrm-badge.neutral { background: var(--element-bg, #f0f0f0); color: var(--text-muted, #666); }
+
+        .rrm-repairs-icon {
+          display: inline-flex; align-items: center; justify-content: center;
+          width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
+          color: var(--warning-color, #f59e0b); background: rgba(245, 158, 11, 0.12);
+          transition: all 0.2s;
+        }
+        .rrm-repairs-icon:hover { background: rgba(245, 158, 11, 0.25); }
 
         .rrm-notes-banner {
           background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25);

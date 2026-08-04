@@ -1144,55 +1144,6 @@ export default function OrderDetailsPage({ params }) {
           </div>
         </div>
 
-        {/* Tab Navigation — מוצג רק בתצוגה הקלאסית; בתצוגת "חלון אחד" כל הנושאים גלויים ממילא */}
-        {layoutMode === 'classic' && (
-        <div style={{ position: 'relative', background: 'rgba(241, 245, 249, 0.4)', borderTop: '1px solid #e2e8f0', borderBottomLeftRadius: '16px', borderBottomRightRadius: '16px', overflow: 'hidden' }}>
-          <div style={{ display: 'flex', padding: '0 1rem' }}>
-            {tabs.map((tab, idx) => {
-              const TabIcon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button data-element-name="כפתור_page_19" data-agy-id="[id]_page_button_6"
-                  key={tab.id}
-                  onClick={() => goToSection(tab.id)}
-                  style={{
-                    flex: 1,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: '0.5rem',
-                    padding: '1rem',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    fontSize: '1rem',
-                    fontWeight: isActive ? '700' : '500',
-                    color: isActive ? tab.color : '#64748b',
-                    transition: 'color 0.3s ease',
-                    position: 'relative'
-                  }}
-                >
-                  <TabIcon data-element-name="רכיב_page_20" size={18} />
-                  {tab.label}
-                </button>
-              );
-            })}
-          </div>
-          {/* Animated Indicator Line */}
-          <div style={{
-            position: 'absolute',
-            bottom: 0,
-            right: `${(activeTabIndex * 100) / tabs.length}%`,
-            width: `${100 / tabs.length}%`,
-            height: '4px',
-            backgroundColor: activeTabDetails.color,
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-            borderRadius: '4px 4px 0 0'
-          }} />
-        </div>
-        )}
-      </div>
-
       <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
         
         {/* Main Content Area */}

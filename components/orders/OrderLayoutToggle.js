@@ -1,14 +1,14 @@
 'use client';
 
-import { LayoutGrid, Sidebar } from 'lucide-react';
+import { Rows3, LayoutGrid } from 'lucide-react';
 
 const OPTIONS = [
-  { id: 'gold-dashboard', label: 'דאשבורד מלא', icon: LayoutGrid, title: 'תצוגת דאשבורד — כל הנושאים זה לצד זה עם פאנל צד' },
-  { id: 'gold-sidebar', label: 'תפריט צד', icon: Sidebar, title: 'תצוגת כרטיסיות — נושא אחד בכל פעם עם ניווט שמאלי' }
+  { id: 'classic', label: 'קלאסי', icon: Rows3, title: 'תצוגה קלאסית — נושא מתחת לנושא' },
+  { id: 'workspace', label: 'חלון אחד', icon: LayoutGrid, title: 'תצוגת חלון אחד — כל הנושאים זה לצד זה' }
 ];
 
 /**
- * לחצן דו-מצבי לקביעת עיצוב כרטיס ההזמנה המודרני
+ * לחצן דו-מצבי לקביעת עיצוב כרטיס ההזמנה (קלאסי / חלון אחד).
  */
 export default function OrderLayoutToggle({ value, onChange }) {
   const activeIndex = Math.max(0, OPTIONS.findIndex(o => o.id === value));

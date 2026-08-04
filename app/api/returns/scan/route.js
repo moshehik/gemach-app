@@ -89,7 +89,7 @@ export async function PUT(request) {
     }
 
     const item = await prisma.orderItem.update({
-      where: { id: parseInt(orderItemId) },
+      where: { id: orderItemId },
       data: {
         isReturned: false,
         returnedOk: false,

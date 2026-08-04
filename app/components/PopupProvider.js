@@ -13,7 +13,10 @@ export function PopupProvider({ children }) {
   const [authPromptConfig, setAuthPromptConfig] = useState({ isOpen: false, message: '', resolve: null, title: 'אימות הרשאה', requiredLevel: 'מנהל', employees: [] });
   const promptInputRef = useRef(null);
   const authInputRef = useRef(null);
+  const authSearchInputRef = useRef(null);
   const [selectedAuthEmployee, setSelectedAuthEmployee] = useState('');
+  const [authEmployeeSearch, setAuthEmployeeSearch] = useState('');
+  const [isAuthEmployeeDropdownOpen, setIsAuthEmployeeDropdownOpen] = useState(false);
   
   // Global Rental Modal state
   const [globalRentalModalOrderId, setGlobalRentalModalOrderId] = useState(null);
@@ -100,21 +103,52 @@ export function PopupProvider({ children }) {
   const showAuthPrompt = useCallback(async (message, requiredLevel = 'מנהל', title = 'אימות הרשאה') => {
     return new Promise(async (resolve) => {
       let employees = [];
+      let currentUser = null;
       try {
-        const res = await fetch('/api/employees');
-        if (res.ok) {
-          employees = await res.json();
+        const [resEmp, resMe] = await Promise.all([
+          fetch('/api/employees'),
+          fetch('/api/me').catch(() => ({ ok: false }))
+        ]);
+        
+        if (resEmp.ok) {
+          employees = await resEmp.json();
           if (requiredLevel === 'מנהל') {
             employees = employees.filter(e => e.roleId === 1 || e.roleId === 2);
+          }
+        }
+        if (resMe.ok) {
+          const meData = await resMe.json();
+          if (meData && meData.success) {
+            currentUser = meData.employee;
           }
         }
       } catch (err) {
         console.error(err);
       }
+      
+      let defaultEmpId = '';
+      let defaultEmpName = '';
+      
+      if (employees.length > 0) {
+        if (currentUser && employees.some(e => e.id === currentUser.id)) {
+          defaultEmpId = currentUser.id.toString();
+          defaultEmpName = `${currentUser.firstName} ${currentUser.lastName}`;
+        }
+      }
+      
       setAuthPromptConfig({ isOpen: true, message, resolve, title, requiredLevel, employees });
-      setSelectedAuthEmployee(employees.length > 0 ? employees[0].id.toString() : '');
+      setSelectedAuthEmployee(defaultEmpId);
+      setAuthEmployeeSearch(defaultEmpName);
+      setIsAuthEmployeeDropdownOpen(false);
+
       setTimeout(() => {
-        if (authInputRef.current) authInputRef.current.focus();
+        if (defaultEmpId && authInputRef.current) {
+          authInputRef.current.focus();
+        } else if (!defaultEmpId && authSearchInputRef.current) {
+          authSearchInputRef.current.focus();
+        } else if (authInputRef.current) {
+          authInputRef.current.focus();
+        }
       }, 100);
     });
   }, []);
@@ -125,6 +159,8 @@ export function PopupProvider({ children }) {
     }
     setAuthPromptConfig({ isOpen: false, message: '', resolve: null, title: 'אימות הרשאה', requiredLevel: 'מנהל', employees: [] });
     setSelectedAuthEmployee('');
+    setAuthEmployeeSearch('');
+    setIsAuthEmployeeDropdownOpen(false);
   }, [authPromptConfig]);
 
   useEffect(() => {
@@ -233,18 +269,53 @@ export function PopupProvider({ children }) {
                      <div style={{ fontSize: '1.05rem', color: '#475569', marginBottom: '12px', lineHeight: '1.5' }}>
                          {authPromptConfig.message}
                      </div>
-                     <div style={{ marginBottom: '16px' }}>
+                     <div style={{ marginBottom: '16px', position: 'relative' }}>
                          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#334155' }}>בחר {authPromptConfig.requiredLevel}</label>
-                         <select data-element-name="בחירה_PopupProvider_15" 
-                            value={selectedAuthEmployee}
-                            onChange={(e) => setSelectedAuthEmployee(e.target.value)}
-                            style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', background: '#f8fafc' }}
-                         >
-                            <option value="">-- בחר --</option>
-                            {authPromptConfig.employees.map(emp => (
-                                <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
-                            ))}
-                         </select>
+                         <input data-element-name="חיפוש_PopupProvider_15"
+                            ref={authSearchInputRef}
+                            type="text"
+                            value={authEmployeeSearch}
+                            placeholder="הקלד לחיפוש..."
+                            onChange={(e) => {
+                                setAuthEmployeeSearch(e.target.value);
+                                setIsAuthEmployeeDropdownOpen(true);
+                                setSelectedAuthEmployee('');
+                            }}
+                            onFocus={() => setIsAuthEmployeeDropdownOpen(true)}
+                            onBlur={() => {
+                                setTimeout(() => setIsAuthEmployeeDropdownOpen(false), 200);
+                            }}
+                            style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', transition: 'border-color 0.2s', background: '#f8fafc' }}
+                            onFocusCapture={(e) => { e.target.style.borderColor = '#4f46e5'; setIsAuthEmployeeDropdownOpen(true); }}
+                            onBlurCapture={(e) => e.target.style.borderColor = '#e2e8f0'}
+                         />
+                         {isAuthEmployeeDropdownOpen && (
+                             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'var(--card-bg)', border: '1px solid #e2e8f0', borderRadius: '10px', maxHeight: '180px', overflowY: 'auto', zIndex: 10001, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+                                 {authPromptConfig.employees
+                                     .filter(emp => `${emp.firstName} ${emp.lastName}`.includes(authEmployeeSearch))
+                                     .map(emp => (
+                                         <div 
+                                             key={emp.id}
+                                             onMouseDown={(e) => {
+                                                 e.preventDefault();
+                                                 setSelectedAuthEmployee(emp.id.toString());
+                                                 setAuthEmployeeSearch(`${emp.firstName} ${emp.lastName}`);
+                                                 setIsAuthEmployeeDropdownOpen(false);
+                                                 if (authInputRef.current) authInputRef.current.focus();
+                                             }}
+                                             style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', color: 'var(--text-color)' }}
+                                             onMouseOver={(e) => e.currentTarget.style.background = 'var(--input-bg)'}
+                                             onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                                         >
+                                             {emp.firstName} {emp.lastName}
+                                         </div>
+                                     ))
+                                 }
+                                 {authPromptConfig.employees.filter(emp => `${emp.firstName} ${emp.lastName}`.includes(authEmployeeSearch)).length === 0 && (
+                                     <div style={{ padding: '10px 16px', color: '#94a3b8' }}>לא נמצאו תוצאות</div>
+                                 )}
+                             </div>
+                         )}
                      </div>
                      <div>
                          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#334155' }}>קוד {authPromptConfig.requiredLevel}</label>

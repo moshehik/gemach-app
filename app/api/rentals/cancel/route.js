@@ -10,7 +10,7 @@ export async function PUT(request) {
     }
 
     const item = await prisma.orderItem.findUnique({
-      where: { id: parseInt(orderItemId) },
+      where: { id: orderItemId },
       include: { order: true }
     });
 
@@ -19,7 +19,7 @@ export async function PUT(request) {
     }
 
     const updatedItem = await prisma.orderItem.update({
-      where: { id: parseInt(orderItemId) },
+      where: { id: orderItemId },
       data: {
         isTaken: false,
         takenDate: null,

@@ -331,26 +331,71 @@ export default function OrdersPage() {
         
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
           {/* Status Filter Banner */}
-          <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
-            <button data-element-name="כפתור_page_1" data-agy-id="orders_page_button_2" onClick={() => { setFilterStatus('soon'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'soon' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'soon' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בקרוב (החל מהיום ואילך)">
-              <CalendarDays data-element-name="רכיב_page_2" size={20} />
-              <span style={{ fontWeight: filterStatus === 'soon' ? 'bold' : 'normal' }}>בקרוב</span>
+          <div style={{ display: 'flex', gap: '0.5rem', background: '#f8fafc', padding: '0.4rem', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)', flexWrap: 'wrap' }}>
+            <button data-element-name="כפתור_page_1" data-agy-id="orders_page_button_2" onClick={() => { setFilterStatus('soon'); setPage(1); }} style={{ 
+              padding: '0.6rem 1rem', border: 'none', 
+              background: filterStatus === 'soon' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent', 
+              borderRadius: '8px', cursor: 'pointer', 
+              color: filterStatus === 'soon' ? '#fff' : '#64748b', 
+              display: 'flex', alignItems: 'center', gap: '0.5rem', 
+              fontSize: '0.9rem', fontWeight: filterStatus === 'soon' ? '600' : '500',
+              boxShadow: filterStatus === 'soon' ? '0 4px 10px rgba(245, 158, 11, 0.3)' : 'none',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+            }} title="בקרוב (החל מהיום ואילך)">
+              <CalendarDays data-element-name="רכיב_page_2" size={16} />
+              <span>בקרוב</span>
             </button>
-            <button data-element-name="כפתור_page_3" data-agy-id="orders_page_button_3" onClick={() => { setFilterStatus('archive'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'archive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'archive' ? '#1565c0' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="ארכיון / עבר">
-              <Archive data-element-name="רכיב_page_4" size={20} />
-              <span style={{ fontWeight: filterStatus === 'archive' ? 'bold' : 'normal' }}>ארכיון/עבר</span>
+            <button data-element-name="כפתור_page_3" data-agy-id="orders_page_button_3" onClick={() => { setFilterStatus('archive'); setPage(1); }} style={{ 
+              padding: '0.6rem 1rem', border: 'none', 
+              background: filterStatus === 'archive' ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)' : 'transparent', 
+              borderRadius: '8px', cursor: 'pointer', 
+              color: filterStatus === 'archive' ? '#fff' : '#64748b', 
+              display: 'flex', alignItems: 'center', gap: '0.5rem', 
+              fontSize: '0.9rem', fontWeight: filterStatus === 'archive' ? '600' : '500',
+              boxShadow: filterStatus === 'archive' ? '0 4px 10px rgba(139, 92, 246, 0.3)' : 'none',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+            }} title="ארכיון / עבר">
+              <Archive data-element-name="רכיב_page_4" size={16} />
+              <span>ארכיון/עבר</span>
             </button>
-            <button data-element-name="כפתור_page_5" data-agy-id="orders_page_button_4" onClick={() => { setFilterStatus('deleted'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוקים">
-              <Trash2 data-element-name="רכיב_page_6" size={20} />
-              <span style={{ fontWeight: filterStatus === 'deleted' ? 'bold' : 'normal' }}>מחוק</span>
+            <button data-element-name="כפתור_page_5" data-agy-id="orders_page_button_4" onClick={() => { setFilterStatus('deleted'); setPage(1); }} style={{ 
+              padding: '0.6rem 1rem', border: 'none', 
+              background: filterStatus === 'deleted' ? 'linear-gradient(135deg, #64748b, #475569)' : 'transparent', 
+              borderRadius: '8px', cursor: 'pointer', 
+              color: filterStatus === 'deleted' ? '#fff' : '#64748b', 
+              display: 'flex', alignItems: 'center', gap: '0.5rem', 
+              fontSize: '0.9rem', fontWeight: filterStatus === 'deleted' ? '600' : '500',
+              boxShadow: filterStatus === 'deleted' ? '0 4px 10px rgba(100, 116, 139, 0.3)' : 'none',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+            }} title="מחוקים">
+              <Trash2 data-element-name="רכיב_page_6" size={16} />
+              <span>מחוק</span>
             </button>
-            <button data-element-name="כפתור_page_7" data-agy-id="orders_page_button_5" onClick={() => { setFilterStatus('unpaid'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'unpaid' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'unpaid' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא שולם (חודשים אחרונים)">
-              <AlertCircle data-element-name="רכיב_page_8" size={20} />
-              <span style={{ fontWeight: filterStatus === 'unpaid' ? 'bold' : 'normal' }}>לא שולם</span>
+            <button data-element-name="כפתור_page_7" data-agy-id="orders_page_button_5" onClick={() => { setFilterStatus('unpaid'); setPage(1); }} style={{ 
+              padding: '0.6rem 1rem', border: 'none', 
+              background: filterStatus === 'unpaid' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'transparent', 
+              borderRadius: '8px', cursor: 'pointer', 
+              color: filterStatus === 'unpaid' ? '#fff' : '#64748b', 
+              display: 'flex', alignItems: 'center', gap: '0.5rem', 
+              fontSize: '0.9rem', fontWeight: filterStatus === 'unpaid' ? '600' : '500',
+              boxShadow: filterStatus === 'unpaid' ? '0 4px 10px rgba(239, 68, 68, 0.3)' : 'none',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+            }} title="לא שולם (חודשים אחרונים)">
+              <AlertCircle data-element-name="רכיב_page_8" size={16} />
+              <span>לא שולם</span>
             </button>
-            <button data-element-name="כפתור_page_11" data-agy-id="orders_page_button_7" onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
-              <List data-element-name="רכיב_page_12" size={20} />
-              <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
+            <button data-element-name="כפתור_page_11" data-agy-id="orders_page_button_7" onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ 
+              padding: '0.6rem 1rem', border: 'none', 
+              background: filterStatus === 'all' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'transparent', 
+              borderRadius: '8px', cursor: 'pointer', 
+              color: filterStatus === 'all' ? '#fff' : '#64748b', 
+              display: 'flex', alignItems: 'center', gap: '0.5rem', 
+              fontSize: '0.9rem', fontWeight: filterStatus === 'all' ? '600' : '500',
+              boxShadow: filterStatus === 'all' ? '0 4px 10px rgba(59, 130, 246, 0.3)' : 'none',
+              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+            }} title="הצג הכל">
+              <List data-element-name="רכיב_page_12" size={16} />
+              <span>הכל</span>
             </button>
           </div>
           <div style={{ color: 'var(--text-muted)', fontSize: '1rem', fontWeight: '500' }}>סה"כ רשומות: {totalCount}</div>

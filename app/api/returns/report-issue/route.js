@@ -10,7 +10,7 @@ export async function POST(request) {
     }
 
     const item = await prisma.orderItem.findUnique({
-      where: { id: parseInt(orderItemId) },
+      where: { id: orderItemId },
       include: { order: { include: { customer: true } } }
     });
 
@@ -28,7 +28,7 @@ export async function POST(request) {
       notePrefix = `[${dateStr}] אוטומטי: שמלה ${item.description || item.barcode} (הזמנה ${item.order?.orderId}) חזרה לא תקינה.`;
       
       await prisma.orderItem.update({
-        where: { id: parseInt(orderItemId) },
+        where: { id: orderItemId },
         data: { returnedOk: false }
       });
     }
