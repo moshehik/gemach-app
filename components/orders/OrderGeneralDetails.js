@@ -35,35 +35,43 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
   };
 
   const applyCustomSpacing = async (spacing) => {
-    const authResult = await window.customAuthPrompt("שינוי ציפוף ימים מותאם אישית דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
-    if (!authResult || !authResult.pin) return;
-    try {
-      const res = await fetch('/api/auth/verify-pin', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
-      });
-      const data = await res.json();
-      if (!data.success) {
-        alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
+    const prevSpacing = (order.customSpacing !== null && order.customSpacing !== undefined) ? order.customSpacing : 3;
+    const newSpacing = (spacing !== null && spacing !== undefined) ? spacing : 3;
+    
+    const requiresAuth = newSpacing < 3 && newSpacing < prevSpacing;
+
+    if (requiresAuth) {
+      const authResult = await window.customAuthPrompt("שינוי ציפוף ימים מותאם אישית דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
+      if (!authResult || !authResult.pin) return;
+      try {
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
+          return;
+        }
+      } catch (err) {
+        alert('שגיאה באימות קוד מנהל.');
         return;
       }
+    }
+
+    if (simulationModalData) {
+      // We are applying this from the simulation modal
+      const { updates } = simulationModalData;
       
-      if (simulationModalData) {
-        // We are applying this from the simulation modal
-        const { updates } = simulationModalData;
-        
-        // Update both the customSpacing and the date fields
-        const newOrder = { ...order, customSpacing: spacing, ...updates };
-        onOrderChange(newOrder);
-        setSimulationModalData(null);
-        if (onSaveRequest) setTimeout(() => onSaveRequest(newOrder), 0);
-      } else {
-        // Just setting custom spacing directly
-        validateAndChangeDate('customSpacing', spacing);
-      }
-    } catch (err) {
-      alert('שגיאה באימות קוד מנהל.');
+      // Update both the customSpacing and the date fields
+      const newOrder = { ...order, customSpacing: spacing, ...updates };
+      onOrderChange(newOrder);
+      setSimulationModalData(null);
+      if (onSaveRequest) setTimeout(() => onSaveRequest(newOrder), 0);
+    } else {
+      // Just setting custom spacing directly
+      validateAndChangeDate('customSpacing', spacing);
     }
   };
 
@@ -158,7 +166,102 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
       </div>
       
       {isExpanded && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'stretch' }}>
+        <>
+          {(!isEditingCustomer && !isEditingOrderDetails) ? (
+            <div style={{ padding: '1.2rem 1.5rem', background: 'linear-gradient(to bottom right, #ffffff, #f8fafc)', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', flex: 1 }}>
+                
+                {/* Customer Row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                     <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', fontWeight: 'bold', fontSize: '1rem' }}>
+                        {order.customer ? (order.customer.firstName?.[0] || '') + (order.customer.lastName?.[0] || '') : '?'}
+                     </div>
+                     <span style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a' }}>{customerName}</span>
+                     {order.customer?.id && (
+                        <Link href={`/customers/${order.customer.id}`} target="_blank" title="מעבר לכרטיס לקוח" style={{ color: '#2563eb', display: 'inline-flex', marginLeft: '0.5rem', background: '#eff6ff', padding: '0.4rem', borderRadius: '6px', transition: 'all 0.2s' }}>
+                          <ExternalLink size={16}/>
+                        </Link>
+                     )}
+                  </div>
+                  
+                  {order.customer?.phone1 && (
+                    <div style={{ color: '#475569', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ color: '#94a3b8' }}>📱</span>
+                      <span style={{ direction: 'ltr', display: 'inline-block', fontWeight: '500' }}>{order.customer.phone1}</span>
+                    </div>
+                  )}
+                  {order.customer?.phone2 && (
+                    <div style={{ color: '#475569', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ color: '#94a3b8' }}>☎️</span>
+                      <span style={{ direction: 'ltr', display: 'inline-block', fontWeight: '500' }}>{order.customer.phone2}</span>
+                    </div>
+                  )}
+                  
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const newValue = !order.hasSignedRegulations;
+                      handleChange('hasSignedRegulations', newValue);
+                      if (onSaveRequest) onSaveRequest({ ...order, hasSignedRegulations: newValue });
+                    }}
+                    style={{
+                      display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer',
+                      padding: '0.4rem 0.8rem', background: order.hasSignedRegulations ? '#dcfce7' : '#f8fafc',
+                      borderRadius: '8px', border: `1px solid ${order.hasSignedRegulations ? '#86efac' : '#e2e8f0'}`,
+                      color: order.hasSignedRegulations ? '#166534' : '#475569', fontWeight: '600', fontSize: '0.95rem',
+                      transition: 'all 0.2s', marginLeft: 'auto'
+                    }}
+                  >
+                    <input 
+                      type="checkbox" 
+                      checked={!!order.hasSignedRegulations} 
+                      onChange={() => {}}
+                      style={{ cursor: 'pointer', accentColor: '#16a34a', margin: 0, transform: 'scale(1.1)' }}
+                    />
+                    <span>חתם על תקנון השכרה</span>
+                  </div>
+                </div>
+
+                {/* Event Row */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#fce7f3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#db2777', fontSize: '1rem' }}>
+                      📅
+                    </div>
+                    <span style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a' }}>{eventDateStr}</span>
+                  </div>
+                  
+                  {(order.isWeekdayEvent || order.isAbroad) && (
+                    <div style={{ color: '#475569', fontSize: '1.05rem', display: 'flex', gap: '1.5rem', alignItems: 'center', background: '#f1f5f9', padding: '0.4rem 1rem', borderRadius: '8px' }}>
+                      <span><strong style={{ color: '#64748b' }}>לקיחה:</strong> {order.fromDate ? `${new Date(order.fromDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.fromDate)})` : 'לא נבחר'}</span>
+                      <span style={{ color: '#cbd5e1' }}>|</span>
+                      <span><strong style={{ color: '#64748b' }}>החזרה:</strong> {order.toDate || order.returnDate ? `${new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.toDate || order.returnDate)})` : 'לא נבחר'}</span>
+                    </div>
+                  )}
+                  
+                  {order.notes && (
+                    <div style={{ color: '#475569', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#fffbeb', padding: '0.4rem 1rem', borderRadius: '8px', border: '1px solid #fef3c7', maxWidth: '500px' }}>
+                      <strong style={{ color: '#d97706' }}>הערות:</strong>
+                      <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{order.notes}</span>
+                    </div>
+                  )}
+                </div>
+                
+              </div>
+
+              {/* Edit Buttons */}
+              <div style={{ display: 'flex', gap: '0.8rem', flexDirection: 'column', minWidth: '140px' }}>
+                <button type="button" onClick={() => setIsEditingCustomer(true)} style={{ width: '100%', fontSize: '0.9rem', background: 'white', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <RefreshCw size={16} /> ערוך לקוח
+                </button>
+                <button type="button" onClick={() => setIsEditingOrderDetails(true)} style={{ width: '100%', fontSize: '0.9rem', background: 'white', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <Edit2 size={16} /> ערוך אירוע
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'stretch' }}>
           
           {/* Customer Information */}
           <div style={{ flex: '1 1 300px', padding: '1rem 1.5rem', background: 'linear-gradient(to bottom right, #ffffff, #f8fafc)', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
@@ -335,14 +438,44 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                 <>
                   <div>
                     <span style={{...labelStyle, color: '#64748b'}}>לקיחה:</span>
-                    <div style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: '700' }}>
-                      {(order.fromDate || order.eventDate) ? `${new Date(order.fromDate || order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.fromDate || order.eventDate)})` : 'לא נבחר'}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <div style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: '700' }}>
+                        {(order.fromDate || order.eventDate) ? `${new Date(order.fromDate || order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.fromDate || order.eventDate)})` : 'לא נבחר'}
+                      </div>
+                      {(order.fromDate || order.eventDate) && (
+                        <input type="time" 
+                          value={new Date(order.fromDate || order.eventDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })} 
+                          onChange={(e) => {
+                            const [hours, minutes] = e.target.value.split(':');
+                            if (!hours || !minutes) return;
+                            const newDate = new Date(order.fromDate || order.eventDate);
+                            newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+                            validateAndChangeDate({ fromDate: newDate.toISOString() });
+                          }}
+                          style={{ padding: '0.2rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '1rem', cursor: 'pointer' }}
+                        />
+                      )}
                     </div>
                   </div>
                   <div>
                     <span style={{...labelStyle, color: '#64748b'}}>החזרה:</span>
-                    <div style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: '700' }}>
-                      {(order.toDate || order.returnDate) ? `${new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.toDate || order.returnDate)})` : 'לא נבחר'}
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <div style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: '700' }}>
+                        {(order.toDate || order.returnDate) ? `${new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.toDate || order.returnDate)})` : 'לא נבחר'}
+                      </div>
+                      {(order.toDate || order.returnDate) && (
+                        <input type="time" 
+                          value={new Date(order.toDate || order.returnDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })} 
+                          onChange={(e) => {
+                            const [hours, minutes] = e.target.value.split(':');
+                            if (!hours || !minutes) return;
+                            const newDate = new Date(order.toDate || order.returnDate);
+                            newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+                            validateAndChangeDate({ toDate: newDate.toISOString() });
+                          }}
+                          style={{ padding: '0.2rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '1rem', cursor: 'pointer' }}
+                        />
+                      )}
                     </div>
                   </div>
                 </>
@@ -378,8 +511,10 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                             // When switching to abroad/weekday, clear eventDate since we'll use date range
                             validateAndChangeDate({ isAbroad, isWeekdayEvent, eventDate: null, eventDateHebrew: null });
                           } else {
-                            // When switching to regular event, clear the date range but keep eventDate
-                            validateAndChangeDate({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null });
+                            // When switching to regular event, clear the date range but keep eventDate.
+                            // Also clear returnDate - it was set to the abroad range's end date and would
+                            // otherwise keep marking the item occupied through that stale date.
+                            validateAndChangeDate({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null });
                           }
                         }}
                         style={{
@@ -439,6 +574,40 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                           validateAndChangeDate(updates);
                         }} 
                       />
+                      <div style={{ display: 'flex', gap: '1rem', marginTop: '0.8rem', justifyContent: 'flex-start', flexWrap: 'wrap' }}>
+                        {order.fromDate && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.9rem', color: '#1e3a8a', fontWeight: 'bold' }}>שעת לקיחה:</span>
+                            <input type="time" 
+                              value={new Date(order.fromDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })} 
+                              onChange={(e) => {
+                                const [hours, minutes] = e.target.value.split(':');
+                                if (!hours || !minutes) return;
+                                const newDate = new Date(order.fromDate);
+                                newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+                                validateAndChangeDate({ fromDate: newDate.toISOString() });
+                              }}
+                              style={{ padding: '0.3rem', borderRadius: '6px', border: '1px solid #bfdbfe', background: 'white' }}
+                            />
+                          </div>
+                        )}
+                        {(order.toDate || order.returnDate) && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            <span style={{ fontSize: '0.9rem', color: '#1e3a8a', fontWeight: 'bold' }}>שעת החזרה:</span>
+                            <input type="time" 
+                              value={new Date(order.toDate || order.returnDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })} 
+                              onChange={(e) => {
+                                const [hours, minutes] = e.target.value.split(':');
+                                if (!hours || !minutes) return;
+                                const newDate = new Date(order.toDate || order.returnDate);
+                                newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
+                                validateAndChangeDate({ toDate: newDate.toISOString(), returnDate: newDate.toISOString() });
+                              }}
+                              style={{ padding: '0.3rem', borderRadius: '6px', border: '1px solid #bfdbfe', background: 'white' }}
+                            />
+                          </div>
+                        )}
+                      </div>
                     </div>
                     {order.eventDate && order.fromDate && (order.toDate || order.returnDate) && !order.isWeekdayEvent && !order.isAbroad && 
                      (new Date(order.eventDate) < new Date(order.fromDate) || new Date(order.eventDate) > new Date(order.toDate || order.returnDate)) && (
@@ -492,7 +661,9 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
           )}
 
         </div>
-        </div>
+            </div>
+          )}
+        </>
       )}
 
       {/* Simulation Modal */}

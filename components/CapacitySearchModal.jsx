@@ -177,12 +177,24 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
               {searchHistory
                 .map(h => {
                   const modelName = models.find(m => m.barcodePrefix?.toString() === h.barcodePrefix?.toString())?.name || h.barcodePrefix;
+                  const fromHebrew = h.fromDate ? getHebrewDateString(new Date(h.fromDate)) : '';
+                  const toHebrew = h.toDate ? getHebrewDateString(new Date(h.toDate)) : '';
+                  const searchTime = new Date(h.timestamp);
+                  const searchHebrewDate = getHebrewDateString(searchTime);
+                  const searchTimeStr = searchTime.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
                   return (
                     <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderBottom: '1px solid #e2e8f0', background: 'var(--card-bg)', marginBottom: '0.5rem', borderRadius: '6px' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.9rem', flex: 1 }}>
                         <span style={{ minWidth: '120px' }}><strong>דגם:</strong> {modelName}</span>
                         <span style={{ minWidth: '80px' }}><strong>מידה:</strong> {h.size}</span>
-                        <span style={{ color: '#64748b' }}>{new Date(h.timestamp).toLocaleString('he-IL')}</span>
+                        {(fromHebrew || toHebrew) && (
+                          <span style={{ minWidth: '180px' }}><strong>תאריכים:</strong> {fromHebrew} - {toHebrew}</span>
+                        )}
+                        {h.employeeCode && (
+                          <span style={{ minWidth: '100px' }}><strong>עובד:</strong> {h.employeeCode}</span>
+                        )}
+                        <span style={{ color: '#64748b' }}>{searchHebrewDate}, {searchTimeStr}</span>
                       </div>
                       <button 
                         data-agy-id="capacity_search_history_select_btn"                        onClick={() => {
@@ -370,7 +382,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                       </tr>
                     </thead>
                     <tbody>
-                      {results.occupiedOrders.map(order => (
+                      {[...results.occupiedOrders].sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate)).map(order => (
                         <tr key={order.id}>
                           <td>{new Date(order.eventDate).toLocaleDateString('he-IL')}</td>
                           <td>{order.eventDateHebrew || 'לא צוין'}</td>

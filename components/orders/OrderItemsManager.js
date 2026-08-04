@@ -3,12 +3,12 @@
 import React, { useState } from 'react';
 import OrderModelSelector from './OrderModelSelector';
 import OrderSizeSelector from './OrderSizeSelector';
-import { Info, Trash2, RotateCcw, CalendarSearch, ChevronDown, ChevronUp, Edit2, X } from 'lucide-react';
+import { Info, Trash2, RotateCcw, CalendarSearch, ChevronDown, ChevronUp, Edit2, X, PackageCheck, PackageOpen, Undo2, XCircle, Scan } from 'lucide-react';
 import ItemCapacityModal from './ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
 import { createPortal } from 'react-dom';
 
-export default function OrderItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated, inventoryCache }) {
+export default function OrderItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated, inventoryCache, isWorkspaceMode, totalRequired, totalPaid }) {
   const [showDeleted, setShowDeleted] = useState(false);
   const [detailsModalItem, setDetailsModalItem] = useState(null);
   const [capacityModalItem, setCapacityModalItem] = useState(null);
@@ -16,6 +16,11 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
   const [settings, setSettings] = useState({});
   const [mounted, setMounted] = useState(false);
   const listEndRef = React.useRef(null);
+  const [showManualScanModal, setShowManualScanModal] = useState(false);
+  const [manualBarcode, setManualBarcode] = useState('');
+  const [selectedItemForScan, setSelectedItemForScan] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null, actionType: null });
+  const isFullyPaid = totalPaid >= totalRequired;
 
   const [isExpanded, setIsExpanded] = useState(true);
   const activeItemsCount = items ? items.filter(i => !i.isDeleted).length : 0;
@@ -83,6 +88,97 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
     const updatedItems = [...items];
     updatedItems[index] = { ...updatedItems[index], [field]: value };
     onItemsChange(updatedItems);
+  };
+
+  const handleRent = async (item, barcodeToAssign = null, skipAuth = false) => {
+    if (!isFullyPaid && !skipAuth) {
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע השכרה ללא תשלום מלא. נדרש אישור:", 'עובד');
+      if (!authResult || !authResult.pin) return;
+    }
+    const oldItems = [...items];
+    const updatedItems = items.map(i => {
+      if (i.id === item.id) {
+        const updateData = { isTaken: true, takenDate: new Date() };
+        if (barcodeToAssign) updateData.barcode = barcodeToAssign;
+        return { ...i, ...updateData };
+      }
+      return i;
+    });
+    onItemsChange(updatedItems);
+    
+    if (item.id && !item.isNew) {
+      try {
+        const res = await fetch('/api/rentals/toggle', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: item.id, action: 'rent', barcode: barcodeToAssign })
+        });
+        if (!res.ok) throw new Error('API failed');
+      } catch (err) {
+        alert('שגיאה בשמירת סטטוס השכרה');
+        onItemsChange(oldItems);
+      }
+    }
+  };
+
+  const handleReturn = async (item, skipAuth = false) => {
+    if (!isFullyPaid && !skipAuth) {
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע החזרה ללא תשלום מלא. נדרש אישור:", 'עובד');
+      if (!authResult || !authResult.pin) return;
+    }
+    const oldItems = [...items];
+    const updatedItems = items.map(i => i.id === item.id ? { ...i, isReturned: true, returnDate: new Date() } : i);
+    onItemsChange(updatedItems);
+
+    if (item.id && !item.isNew) {
+      try {
+        const res = await fetch('/api/rentals/toggle', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: item.id, action: 'return' })
+        });
+        if (!res.ok) throw new Error('API failed');
+      } catch (err) {
+        alert('שגיאה בשמירת סטטוס החזרה');
+        onItemsChange(oldItems);
+      }
+    }
+  };
+
+  const handleCancelRent = async (item) => {
+    const oldItems = [...items];
+    const updatedItems = items.map(i => i.id === item.id ? { ...i, isTaken: false, takenDate: null, barcode: null } : i);
+    onItemsChange(updatedItems);
+
+    if (item.id && !item.isNew) {
+      try {
+        const res = await fetch('/api/rentals/toggle', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: item.id, action: 'undoRent' })
+        });
+        if (!res.ok) throw new Error('API failed');
+      } catch (err) {
+        alert('שגיאה בביטול סטטוס השכרה');
+        onItemsChange(oldItems);
+      }
+    }
+  };
+
+  const handleCancelReturn = async (item) => {
+    const oldItems = [...items];
+    const updatedItems = items.map(i => i.id === item.id ? { ...i, isReturned: false, returnDate: null } : i);
+    onItemsChange(updatedItems);
+
+    if (item.id && !item.isNew) {
+      try {
+        const res = await fetch('/api/rentals/toggle', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: item.id, action: 'undoReturn' })
+        });
+        if (!res.ok) throw new Error('API failed');
+      } catch (err) {
+        alert('שגיאה בביטול סטטוס החזרה');
+        onItemsChange(oldItems);
+      }
+    }
   };
 
   const handleModelChange = (index, model) => {
@@ -266,6 +362,21 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                 הצג פריטים מחוקים
               </label>
             )}
+            {isWorkspaceMode && (
+              <button
+                onClick={(e) => { e.stopPropagation(); handleAddItem(); }}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px',
+                  background: '#3b82f6', color: 'white', border: 'none', borderRadius: '50%', cursor: 'pointer',
+                  fontSize: '1.4rem', fontWeight: 'bold', transition: 'all 0.2s', boxShadow: '0 2px 5px rgba(59, 130, 246, 0.4)'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#2563eb'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#3b82f6'}
+                title="הוסף פריט חדש"
+              >
+                +
+              </button>
+            )}
             <div style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
               {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
             </div>
@@ -283,7 +394,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                 <th style={{ ...tableHeaderStyle, width: '40px', textAlign: 'center' }}>מחק</th>
                 <th style={tableHeaderStyle}>תיאור דגם</th>
                 <th style={{ ...tableHeaderStyle, width: '150px' }}>מידה</th>
-                {enableAlterations && (
+                {enableAlterations && !isWorkspaceMode && (
                   <>
                     <th style={{ ...tableHeaderStyle, width: '60px', textAlign: 'center' }}>צוואר</th>
                     <th style={{ ...tableHeaderStyle, width: '60px', textAlign: 'center' }}>שרוול</th>
@@ -292,7 +403,16 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                     <th style={{ ...tableHeaderStyle, width: '80px', textAlign: 'center' }}>בוצע?</th>
                   </>
                 )}
-                <th style={{ ...tableHeaderStyle, width: '120px', textAlign: 'center' }}>פעולות נוספות</th>
+                {!isWorkspaceMode && (
+                  <th style={{ ...tableHeaderStyle, width: '120px', textAlign: 'center' }}>פעולות נוספות</th>
+                )}
+                {isWorkspaceMode && (
+                  <>
+                    <th style={{ ...tableHeaderStyle, width: '100px', textAlign: 'center' }}>סטטוס</th>
+                    <th style={{ ...tableHeaderStyle, width: '160px', textAlign: 'center' }}>פעולות השכרה</th>
+                    <th style={{ ...tableHeaderStyle, width: '100px', textAlign: 'center' }}>היסטוריה/פרטים</th>
+                  </>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -380,7 +500,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                         />
                       )}
                     </td>
-                    {enableAlterations && (
+                    {enableAlterations && !isWorkspaceMode && (
                       <>
                         <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
                           <input data-agy-id="orderitemsmanager_input_4" 
@@ -430,6 +550,48 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                         </td>
                       </>
                     )}
+                    {isWorkspaceMode && (
+                      <td style={{ padding: '1rem', textAlign: 'center' }}>
+                        {item.isReturned ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#dcfce7', color: '#16a34a', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
+                            <PackageCheck size={16} /> הוחזר
+                          </span>
+                        ) : (item.isTaken && !item.isReturned) ? (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#dbeafe', color: '#2563eb', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
+                            <PackageOpen size={16} /> בהשכרה
+                          </span>
+                        ) : (
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#f1f5f9', color: '#64748b', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
+                            ממתין
+                          </span>
+                        )}
+                      </td>
+                    )}
+                    {isWorkspaceMode && (
+                      <td style={{ padding: '1rem', textAlign: 'center', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                        {!item.isTaken && !item.isNew && (
+                          <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'rent' }); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#3b82f6', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                            <PackageOpen size={14} /> השכרה
+                          </button>
+                        )}
+                        {item.isTaken && !item.isReturned && (
+                          <>
+                            <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'return' }); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#10b981', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                              <PackageCheck size={14} /> החזרה
+                            </button>
+                            <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'cancelRent' }); }} title="בטל השכרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                              <XCircle size={14} /> ביטול
+                            </button>
+                          </>
+                        )}
+                        {item.isReturned && (
+                          <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'cancelReturn' }); }} title="בטל החזרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                            <Undo2 size={14} /> ביטול החזרה
+                          </button>
+                        )}
+                      </td>
+                    )}
+                    {!isWorkspaceMode && (
                     <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
                       {item.isNew || item.isEditing ? (
                         <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
@@ -571,6 +733,24 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                         </div>
                       )}
                     </td>
+                    )}
+                    {isWorkspaceMode && (
+                      <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
+                        <button
+                          onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDetailsModalItem(item); }}
+                          style={{
+                            background: '#eff6ff', border: '1px solid #bfdbfe', cursor: 'pointer', color: '#2563eb',
+                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center', padding: '0.5rem',
+                            borderRadius: '8px', transition: 'all 0.2s ease', boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
+                          }}
+                          onMouseOver={(e) => { e.currentTarget.style.backgroundColor = '#dbeafe'; e.currentTarget.style.borderColor = '#93c5fd'; }}
+                          onMouseOut={(e) => { e.currentTarget.style.backgroundColor = '#eff6ff'; e.currentTarget.style.borderColor = '#bfdbfe'; }}
+                          title="פרטים נוספים / היסטוריה"
+                        >
+                          <Info size={18} strokeWidth={2.5} />
+                        </button>
+                      </td>
+                    )}
                   </tr>
                 );
               })}
@@ -735,6 +915,92 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
         />
       )}
 
+      {confirmModal.isOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100000, backdropFilter: 'blur(4px)' }}>
+          <div className="animate-fade-in" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', textAlign: 'center', fontSize: '1.2rem' }}>
+              {confirmModal.actionType === 'rent' ? 'אישור השכרה' : confirmModal.actionType === 'return' ? 'אישור החזרה' : confirmModal.actionType === 'cancelRent' ? 'ביטול השכרה' : 'ביטול החזרה'}
+            </h3>
+            <p style={{ color: '#475569', fontSize: '1rem', marginBottom: '1.5rem', textAlign: 'center', lineHeight: 1.5 }}>
+              האם אתה בטוח שברצונך {confirmModal.actionType === 'rent' ? 'לסמן פריט זה כמושכר' : confirmModal.actionType === 'return' ? 'לסמן פריט זה כמוחזר' : confirmModal.actionType === 'cancelRent' ? 'לבטל את השכרת הפריט' : 'לבטל את החזרת הפריט'}?
+            </p>
+            {!isFullyPaid && (confirmModal.actionType === 'rent' || confirmModal.actionType === 'return') && (
+              <p style={{ color: '#ef4444', fontWeight: 'bold', fontSize: '0.9rem', textAlign: 'center', background: '#fee2e2', padding: '0.5rem', borderRadius: '8px', marginBottom: '1.5rem' }}>
+                שים לב: ההזמנה לא שולמה במלואה! נדרש אישור מנהל.
+              </p>
+            )}
+            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
+              <button 
+                onClick={async () => {
+                  const { item, actionType } = confirmModal;
+                  setConfirmModal({ isOpen: false, item: null, actionType: null });
+                  if (actionType === 'rent') {
+                    if (item.barcodePrefix || item.dressItem?.barcodePrefix) {
+                      setSelectedItemForScan(item);
+                      setShowManualScanModal(true);
+                    } else {
+                      await handleRent(item);
+                    }
+                  } else if (actionType === 'return') {
+                    await handleReturn(item);
+                  } else if (actionType === 'cancelRent') {
+                    await handleCancelRent(item);
+                  } else if (actionType === 'cancelReturn') {
+                    await handleCancelReturn(item);
+                  }
+                }}
+                style={{ padding: '0.6rem 1.2rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', flex: 1 }}
+              >
+                אישור
+              </button>
+              <button 
+                onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}
+                style={{ padding: '0.6rem 1.2rem', background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', flex: 1 }}
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showManualScanModal && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100000, backdropFilter: 'blur(4px)' }}>
+          <div className="animate-fade-in" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', textAlign: 'center' }}>הזנת ברקוד ידנית</h3>
+            <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '1.5rem', textAlign: 'center' }}>הזן את הברקוד המופיע על הפריט כדי לאשר את הפעולה.</p>
+            <form onSubmit={async (e) => {
+              e.preventDefault();
+              setShowManualScanModal(false);
+              const barcode = manualBarcode.trim();
+              setManualBarcode('');
+              if (selectedItemForScan) {
+                 await handleRent(selectedItemForScan, barcode);
+              }
+            }} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  autoFocus
+                  placeholder="סרוק או הקלד ברקוד..."
+                  value={manualBarcode}
+                  onChange={(e) => setManualBarcode(e.target.value)}
+                  style={{ width: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '10px', border: '2px solid #cbd5e1', fontSize: '1rem', outline: 'none', boxSizing: 'border-box' }}
+                />
+                <Scan size={18} color="#64748b" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
+              </div>
+              <button type="submit" style={{ padding: '0.8rem 1.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>
+                בצע סריקה
+              </button>
+            </form>
+            <button onClick={() => { setShowManualScanModal(false); setManualBarcode(''); }} style={{ marginTop: '1rem', width: '100%', padding: '0.8rem', background: 'transparent', color: '#64748b', border: 'none', cursor: 'pointer' }}>
+              ביטול
+            </button>
+          </div>
+        </div>
+      )}
+
+      {!isWorkspaceMode && (
       <div style={{ marginTop: '1.5rem', display: 'flex', justifyContent: 'center' }}>
         <button data-agy-id="orderitemsmanager_button_14"
           onClick={handleAddItem}
@@ -770,6 +1036,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
           <span>הוסף פריט חדש</span>
         </button>
       </div>
+      )}
         </>
       )}
     </div>

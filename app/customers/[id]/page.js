@@ -19,6 +19,12 @@ export default function CustomerPage({ params }) {
   const [activeTab, setActiveTab] = useState('details');
   const [saving, setSaving] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  
+  const allPayments = customer?.orders 
+    ? customer.orders.flatMap(order => (order.payments || []).map(p => ({ ...p, orderId: order.orderId })))
+        .sort((a, b) => new Date(b.paymentDate || b.createdAt || 0) - new Date(a.paymentDate || a.createdAt || 0))
+    : [];
+
   useEffect(() => {
     if (id === 'new') {
       setCustomer({ firstName: '', lastName: '', phone1: '', phone2: '', email: '', city: '', street: '', houseNum: '', notes: '' });
@@ -264,7 +270,7 @@ export default function CustomerPage({ params }) {
               <thead>
                 <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
                   <th style={{ padding: '0.4rem 0.5rem' }}>קוד הזמנה</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>תאריך אירוע</th>
+                  <th style={{ padding: '0.4rem 0.5rem' }}>תאריך אירוע/השכרה</th>
                   <th style={{ padding: '0.4rem 0.5rem' }}>סטטוס פריטים</th>
                   <th style={{ padding: '0.4rem 0.5rem' }}>סכום לחיוב</th>
                   <th style={{ padding: '0.4rem 0.5rem' }}>שולם</th>
@@ -272,7 +278,7 @@ export default function CustomerPage({ params }) {
                 </tr>
               </thead>
               <tbody>
-                {customer.orders.map(order => {
+                {[...customer.orders].sort((a, b) => new Date(b.orderDate || b.createdAt || 0) - new Date(a.orderDate || a.createdAt || 0)).map(order => {
                   const calculatedTotalAmount = order.obligations?.length > 0
                     ? order.obligations.reduce((sum, o) => sum + (o.isDeleted ? 0 : o.amount), 0)
                     : (order.totalAmount || 0);
@@ -291,7 +297,16 @@ export default function CustomerPage({ params }) {
                     onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
                     <td style={{ padding: '0.4rem 0.5rem' }}><Link data-element-name="לחיץ_page_24" href={`/orders/${order.orderId}`} onClick={(e) => e.stopPropagation()} style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: 'bold' }}>{order.orderId}</Link></td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>{order.eventDateHebrew || (order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : (order.orderDate ? new Date(order.orderDate).toLocaleDateString('he-IL') : '-'))}</td>
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
+                      {order.isWeekdayEvent ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.85rem' }}>
+                          <span><strong>לקיחה:</strong> {order.fromDate ? new Date(order.fromDate).toLocaleDateString('he-IL') : '-'}</span>
+                          <span><strong>החזרה:</strong> {order.toDate || order.returnDate ? new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL') : '-'}</span>
+                        </div>
+                      ) : (
+                        order.eventDateHebrew || (order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : (order.orderDate ? new Date(order.orderDate).toLocaleDateString('he-IL') : '-'))
+                      )}
+                    </td>
                     <td style={{ padding: '0.4rem 0.5rem' }}>
                       <span style={{ background: statusColors.bg, color: statusColors.text, padding: '0.3rem 0.6rem', borderRadius: '12px', fontSize: '0.85rem', fontWeight: 'bold' }}>
                         {orderStatus}
@@ -316,7 +331,7 @@ export default function CustomerPage({ params }) {
 
       {activeTab === 'payments' && (
         <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
-          {customer.payments && customer.payments.length > 0 ? (
+          {allPayments.length > 0 ? (
             <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
@@ -328,7 +343,7 @@ export default function CustomerPage({ params }) {
                 </tr>
               </thead>
               <tbody>
-                {customer.payments.map(payment => (
+                {allPayments.map(payment => (
                   <tr key={payment.id} style={{ borderBottom: '1px solid #eee' }}>
                     <td style={{ padding: '0.4rem 0.5rem' }}>{new Date(payment.paymentDate).toLocaleDateString('he-IL')}</td>
                     <td style={{ padding: '0.4rem 0.5rem' }}>{payment.orderId ? `הזמנה ${payment.orderId}` : '-'}</td>

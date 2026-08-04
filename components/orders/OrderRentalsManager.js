@@ -10,6 +10,7 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
   const [showManualScanModal, setShowManualScanModal] = useState(false);
   const [manualBarcode, setManualBarcode] = useState('');
   const [selectedItemForScan, setSelectedItemForScan] = useState(null);
+  const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null, actionType: null });
 
   const activeItems = (items || []).filter(item => !item.isDeleted);
   const rentedCount = activeItems.filter(item => item.isTaken && !item.isReturned).length;
@@ -152,6 +153,7 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
       if (!authResult || !authResult.pin) return;
       // Assume verification for brevity in UI, but ideally we verify again
     }
+    const oldItems = [...items];
     const updatedItems = items.map(i => {
       if (i.id === item.id) {
         const updateData = { isTaken: true, takenDate: new Date() };
@@ -163,6 +165,19 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
       return i;
     });
     onItemsChange(updatedItems);
+    
+    if (item.id && !item.isNew) {
+      try {
+        const res = await fetch('/api/rentals/toggle', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: item.id, action: 'rent', barcode: barcodeToAssign })
+        });
+        if (!res.ok) throw new Error('API failed');
+      } catch (err) {
+        alert('שגיאה בשמירת סטטוס השכרה');
+        onItemsChange(oldItems);
+      }
+    }
   };
 
   const handleReturn = async (item, skipAuth = false) => {
@@ -170,6 +185,7 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
       const authResult = await window.customAuthPrompt("לא ניתן לבצע החזרה ללא תשלום מלא. נדרש אישור:", 'עובד');
       if (!authResult || !authResult.pin) return;
     }
+    const oldItems = [...items];
     const updatedItems = items.map(i => {
       if (i.id === item.id) {
         return { ...i, isReturned: true, returnDate: new Date() };
@@ -177,9 +193,23 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
       return i;
     });
     onItemsChange(updatedItems);
+
+    if (item.id && !item.isNew) {
+      try {
+        const res = await fetch('/api/rentals/toggle', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: item.id, action: 'return' })
+        });
+        if (!res.ok) throw new Error('API failed');
+      } catch (err) {
+        alert('שגיאה בשמירת סטטוס החזרה');
+        onItemsChange(oldItems);
+      }
+    }
   };
 
-  const handleCancelRent = (item) => {
+  const handleCancelRent = async (item) => {
+    const oldItems = [...items];
     const updatedItems = items.map(i => {
       if (i.id === item.id) {
         return { ...i, isTaken: false, takenDate: null };
@@ -187,9 +217,23 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
       return i;
     });
     onItemsChange(updatedItems);
+
+    if (item.id && !item.isNew) {
+      try {
+        const res = await fetch('/api/rentals/toggle', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: item.id, action: 'undoRent' })
+        });
+        if (!res.ok) throw new Error('API failed');
+      } catch (err) {
+        alert('שגיאה בביטול סטטוס השכרה');
+        onItemsChange(oldItems);
+      }
+    }
   };
 
-  const handleCancelReturn = (item) => {
+  const handleCancelReturn = async (item) => {
+    const oldItems = [...items];
     const updatedItems = items.map(i => {
       if (i.id === item.id) {
         return { ...i, isReturned: false, returnDate: null };
@@ -197,6 +241,19 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
       return i;
     });
     onItemsChange(updatedItems);
+
+    if (item.id && !item.isNew) {
+      try {
+        const res = await fetch('/api/rentals/toggle', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ itemId: item.id, action: 'undoReturn' })
+        });
+        if (!res.ok) throw new Error('API failed');
+      } catch (err) {
+        alert('שגיאה בביטול סטטוס החזרה');
+        onItemsChange(oldItems);
+      }
+    }
   };
 
 
@@ -282,9 +339,9 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
           )}
 
           {activeItems.length > 0 ? (
-            <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+            <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.95rem' }}>
-                <thead>
+                <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr>
                     <th style={tableHeaderStyle}>תיאור דגם</th>
                     <th style={{ ...tableHeaderStyle, width: '100px' }}>מידה</th>
@@ -356,18 +413,18 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
                           )}
                           {item.isTaken && !item.isReturned && (
                             <>
-                              <button data-agy-id="orderrentalsmanager_button_9" onClick={(e) => { e.stopPropagation(); handleReturn(item); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#10b981', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                              <button data-agy-id="orderrentalsmanager_button_9" onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'return' }); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#10b981', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
                                 <PackageCheck size={14} />
                                 החזרה
                               </button>
-                              <button data-agy-id="orderrentalsmanager_button_10" onClick={(e) => { e.stopPropagation(); handleCancelRent(item); }} title="בטל השכרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                              <button data-agy-id="orderrentalsmanager_button_10" onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'cancelRent' }); }} title="בטל השכרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
                                 <XCircle size={14} />
                                 ביטול
                               </button>
                             </>
                           )}
                           {item.isReturned && (
-                            <button data-agy-id="orderrentalsmanager_button_11" onClick={(e) => { e.stopPropagation(); handleCancelReturn(item); }} title="בטל החזרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                            <button data-agy-id="orderrentalsmanager_button_11" onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'cancelReturn' }); }} title="בטל החזרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
                               <Undo2 size={14} />
                               ביטול החזרה
                             </button>
@@ -384,6 +441,43 @@ export default function OrderRentalsManager({ items, onItemsChange, order, total
               <div style={{ fontSize: '1.2rem', color: '#94a3b8' }}>אין פריטים להצגה בהשכרות והחזרות</div>
             </div>
           )}
+        </div>
+      )}
+
+      {confirmModal.isOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }} onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}>
+          <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', width: '90%', maxWidth: '400px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+            <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: confirmModal.actionType === 'return' ? '#dcfce7' : '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
+              {confirmModal.actionType === 'return' ? <PackageCheck size={32} color="#16a34a" /> : <XCircle size={32} color="#ef4444" />}
+            </div>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontSize: '1.4rem', fontWeight: '800' }}>
+              {confirmModal.actionType === 'return' ? 'אישור החזרה' : confirmModal.actionType === 'cancelReturn' ? 'ביטול החזרה' : 'ביטול השכרה'}
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '1.05rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+              האם אתה בטוח שברצונך {confirmModal.actionType === 'return' ? 'לבצע החזרה' : confirmModal.actionType === 'cancelReturn' ? 'לבטל את ההחזרה' : 'לבטל את ההשכרה'} של פריט זה?
+              <br />
+              <strong style={{ display: 'inline-block', marginTop: '0.5rem', padding: '0.3rem 0.8rem', background: '#f1f5f9', borderRadius: '8px', color: '#0f172a' }}>{(confirmModal.item?.barcode || confirmModal.item?.dressItem?.dressBarcode || 'ללא ברקוד')}</strong>
+            </p>
+            <div style={{ display: 'flex', gap: '1rem' }}>
+              <button data-agy-id="orderrentalsmanager_button_12"
+                onClick={() => {
+                  if (confirmModal.actionType === 'return') handleReturn(confirmModal.item);
+                  else if (confirmModal.actionType === 'cancelReturn') handleCancelReturn(confirmModal.item);
+                  else if (confirmModal.actionType === 'cancelRent') handleCancelRent(confirmModal.item);
+                  setConfirmModal({ isOpen: false, item: null, actionType: null });
+                }}
+                style={{ flex: 1, padding: '0.8rem', background: confirmModal.actionType === 'return' ? '#16a34a' : '#ef4444', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.05rem', transition: 'all 0.2s' }}
+              >
+                {confirmModal.actionType === 'return' ? 'אשר החזרה' : 'אשר ביטול'}
+              </button>
+              <button data-agy-id="orderrentalsmanager_button_13"
+                onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}
+                style={{ flex: 1, padding: '0.8rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.05rem', transition: 'all 0.2s' }}
+              >
+                חזור
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -12,7 +12,8 @@ const RECALC_SETTING_KEYS = [
   'NO_REFUND_DAYS_BEFORE_EVENT',
   'REFUND_PERCENTAGE',
   'REFUND_REPAIRS',
-  'ENABLE_SET_DISCOUNTS'
+  'ENABLE_SET_DISCOUNTS',
+  'CANCELLATION_CREDIT_MINUTES'
 ];
 
 export async function GET(request, { params }) {
@@ -343,9 +344,10 @@ export async function PUT(request, { params }) {
       }),
       prisma.orderItem.findMany({
         where: { orderId: parsedOrderId },
-        select: { cartStatus: true, isDeleted: true }
+        select: { id: true, cartStatus: true, isDeleted: true }
       })
     ]);
+    const storedItemById = new Map(storedItems.map(i => [i.id, i]));
     const paymentsAfterSave = new Map(storedPayments.map(p => [p.id, p]));
     if (Array.isArray(data.payments)) {
       data.payments.forEach((p, idx) => {
@@ -390,6 +392,13 @@ export async function PUT(request, { params }) {
         for (let idx = 0; idx < data.items.length; idx++) {
           const item = data.items[idx];
           if (item.id) {
+            const wasDeleted = storedItemById.get(item.id)?.isDeleted || false;
+            const nowDeleted = !!item.isDeleted;
+            // Stamped at save time (not when the checkbox was toggled in the UI) so that a
+            // cancel+add done in the same sitting always shares one "now" - see
+            // computeOrderObligations' cancellation-fee credit window in lib/pricingEngine.js.
+            const deletedAtVal = nowDeleted && !wasDeleted ? new Date()
+              : (!nowDeleted && wasDeleted ? null : undefined);
             await tx.orderItem.update({
               where: { id: item.id },
               data: {
@@ -400,6 +409,7 @@ export async function PUT(request, { params }) {
                 alterationDetails: item.alterationDetails,
                 alterationDone: item.alterationDone,
                 isDeleted: item.isDeleted,
+                deletedAt: deletedAtVal,
                 // GET synthesizes isTaken/isReturned/takenDate/returnDate for display when the
                 // stored columns are empty (falling back to barcode presence and eventDate).
                 // Writing those inferred values back would turn a guess into a stored fact -

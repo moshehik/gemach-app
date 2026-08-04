@@ -1994,7 +1994,10 @@ export default function NewOrderPage() {
                     onChange={async (e) => {
                       const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
                       
-                      if (val !== null && val !== '') {
+                      const prevSpacing = (order.customSpacing !== null && order.customSpacing !== undefined) ? order.customSpacing : 3;
+                      const newSpacing = (val !== null && val !== undefined) ? val : 3;
+                      
+                      if (newSpacing < 3 && newSpacing < prevSpacing) {
                         const authResult = await window.customAuthPrompt("שינוי ציפוף ימים מיוחד להזמנה דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
                         if (!authResult || !authResult.pin) return;
                         

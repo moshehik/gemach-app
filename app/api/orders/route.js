@@ -7,7 +7,7 @@ import { cookies } from 'next/headers';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { validateOrderItemsAvailability } from '../../../lib/inventory';
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
-import { isReservedOrderPlaceholder, isFillableDraftOrder } from '../../../lib/orderReservation';
+import { isReservedOrderPlaceholder, isFillableDraftOrder, DRAFT_ORDER_STATUS } from '../../../lib/orderReservation';
 
 export const dynamic = 'force-dynamic';
 
@@ -619,6 +619,26 @@ export async function POST(request) {
           if (error?.code !== 'P2002' || !hitOrderId || attempt >= 4) throw error;
         }
       }
+    }
+
+    // A different screen instance (a stale browser tab left open, or a reload that lost the
+    // in-memory draftOrderId) can have autosaved its own draft for this same customer/date
+    // before this save landed, without this request ever knowing that row exists. Left alone
+    // it lingers forever as a duplicate of the order that just got confirmed. Clean up any
+    // other draft rows that match this order's customer and date now that this one is real.
+    if (data.customerId) {
+      await prisma.order.updateMany({
+        where: {
+          orderId: { not: order.orderId },
+          customerId: data.customerId,
+          status: DRAFT_ORDER_STATUS,
+          isDeleted: false,
+          eventDate: orderData.eventDate,
+          fromDate: orderData.fromDate,
+          toDate: orderData.toDate
+        },
+        data: { isDeleted: true, deletedAt: new Date() }
+      });
     }
 
     const reservationWarning = lostReservationId

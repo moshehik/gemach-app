@@ -824,7 +824,13 @@ export default function DressesManagement() {
                 </tr>
               </thead>
               <tbody>
-                {filteredDresses.map(dress => (
+                {filteredDresses.length === 0 ? (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '1.2rem' }}>
+                      לא נמצאו דגמים. נסה לשנות את הסינון או הוסף דגם חדש.
+                    </td>
+                  </tr>
+                ) : filteredDresses.map(dress => (
                   <tr key={dress.id} style={{ borderBottom: '1px solid var(--element-border)', background: dress.isDeleted ? 'var(--deleted-bg, #ffebee)' : ((!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo ? 'var(--inactive-bg, #fff5f5)' : 'transparent') }}>
                     {settings.hide_dress_images !== 'true' && (
                       <td style={{ padding: '0.4rem 0.5rem' }}>

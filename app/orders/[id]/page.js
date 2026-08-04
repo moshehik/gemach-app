@@ -3,7 +3,7 @@
 import { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, CreditCard, ArrowRight, Users, Info, Package, RefreshCcw, CreditCard as PaymentIcon, History, Printer, Mail, FileText, ClipboardList } from 'lucide-react';
+import { Save, CreditCard, ArrowRight, Users, Info, Package, RefreshCcw, CreditCard as PaymentIcon, History, Printer, Mail, FileText, ClipboardList, Trash2, RotateCcw } from 'lucide-react';
 import OrderGeneralDetails from '../../../components/orders/OrderGeneralDetails';
 import ActiveEmployeesModal from '../../../components/orders/ActiveEmployeesModal';
 import OrderItemsManager from '../../../components/orders/OrderItemsManager';
@@ -20,6 +20,63 @@ import { addHistory } from '../../../lib/historyManager';
 // הצף בצד ימין (‎.global-sidebar: רוחב 55px במרחק 24px מקצה החלון).
 const WORKSPACE_MAIN_PADDING = '1.25rem 5.75rem 1.25rem 1.25rem';
 
+// שדות בהזמנה שכפתור "ביטול שינויים" צריך לדווח עליהם אם השתנו מאז השמירה האחרונה
+const ORDER_FIELD_LABELS = {
+  eventDate: 'תאריך אירוע',
+  eventDateHebrew: 'תאריך אירוע (עברי)',
+  returnDate: 'תאריך החזרה',
+  fromDate: 'מתאריך',
+  toDate: 'עד תאריך',
+  isAbroad: 'אירוע חו"ל',
+  isWeekdayEvent: 'אירוע באמצע שבוע',
+  customSpacing: 'ריווח מותאם',
+  notes: 'הערות',
+  hasSignedRegulations: 'חתימה על תקנון',
+  customerId: 'לקוח'
+};
+
+const summarizeOrderFieldChanges = (snapOrder, currOrder) => {
+  const changed = [];
+  Object.entries(ORDER_FIELD_LABELS).forEach(([field, label]) => {
+    const before = snapOrder ? (snapOrder[field] ?? null) : null;
+    const after = currOrder ? (currOrder[field] ?? null) : null;
+    if (JSON.stringify(before) !== JSON.stringify(after)) changed.push(`${label} השתנה`);
+  });
+  return changed;
+};
+
+// משווה רשימה שמורה (מהשרת) מול הרשימה הנוכחית ומחזיר תיאור בעברית של מה נוסף/הוסר/שוחזר/עודכן.
+// שורות חדשות שהמשתמש הוסיף (בלי id) נחשבות "נוספו". שורות "טיוטה" בלי id שמנוע התמחור
+// מחשב תמיד מחדש מהפריטים (למשל תצוגה מקדימה של חיוב) מזוהות לפי תוכן זהה, כדי שלא יוצגו
+// כ"שינוי" רק כי אין להן עדיין מזהה משרת.
+const summarizeListDiff = (snapList = [], currList = [], label) => {
+  const snapMap = new Map(snapList.filter(x => x.id).map(x => [x.id, x]));
+  const snapDraftPool = snapList.filter(x => !x.id).map(x => JSON.stringify(x));
+  let added = 0, removed = 0, restored = 0, modified = 0;
+  currList.forEach(curr => {
+    if (!curr.id) {
+      const draftKey = JSON.stringify(curr);
+      const idx = snapDraftPool.indexOf(draftKey);
+      if (idx === -1) added++; else snapDraftPool.splice(idx, 1);
+      return;
+    }
+    const snap = snapMap.get(curr.id);
+    if (!snap) { added++; return; }
+    snapMap.delete(curr.id);
+    if (!snap.isDeleted && curr.isDeleted) { removed++; return; }
+    if (snap.isDeleted && !curr.isDeleted) { restored++; return; }
+    if (JSON.stringify(snap) !== JSON.stringify(curr)) modified++;
+  });
+  removed += snapMap.size; // שורות עם id שנעלמו לגמרי מהמערך
+
+  const parts = [];
+  if (added) parts.push(`${added} ${label} נוספו`);
+  if (removed) parts.push(`${removed} ${label} הוסרו`);
+  if (restored) parts.push(`${restored} ${label} שוחזרו`);
+  if (modified) parts.push(`${modified} ${label} עודכנו`);
+  return parts;
+};
+
 export default function OrderDetailsPage({ params }) {
   const router = useRouter();
   const unwrappedParams = use(params);
@@ -27,6 +84,8 @@ export default function OrderDetailsPage({ params }) {
   
   const [order, setOrder] = useState(null);
   const initialLockChecked = useRef(false);
+  // מצב ההזמנה כפי שהוא בשרת (בטעינה ואחרי כל שמירה מוצלחת) — הבסיס להשוואה ולשחזור ב"ביטול שינויים".
+  const savedSnapshotRef = useRef(null);
   const [isPastEvent, setIsPastEvent] = useState(false);
   const [items, setItems] = useState([]);
   const [obligations, setObligations] = useState([]);
@@ -39,7 +98,9 @@ export default function OrderDetailsPage({ params }) {
   const [showEmployeesModal, setShowEmployeesModal] = useState(false);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
+  const [showWorkspaceHistory, setShowWorkspaceHistory] = useState(false);
   const [inventoryCache, setInventoryCache] = useState(null);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
   // Custom Email Prompt State
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
@@ -139,10 +200,16 @@ export default function OrderDetailsPage({ params }) {
           }
           initialLockChecked.current = true;
         }
-        setItems(data.items || []);
-        setObligations(data.obligations || []);
-        setPayments(data.payments || []);
-        setRefunds(data.refunds || []);
+        const loadedItems = data.items || [];
+        const loadedObligations = data.obligations || [];
+        const loadedPayments = data.payments || [];
+        const loadedRefunds = data.refunds || [];
+        setItems(loadedItems);
+        setObligations(loadedObligations);
+        setPayments(loadedPayments);
+        setRefunds(loadedRefunds);
+        savedSnapshotRef.current = { order: data, items: loadedItems, obligations: loadedObligations, payments: loadedPayments, refunds: loadedRefunds };
+        setTimeout(() => setHasUnsavedChanges(false), 0);
         setLoading(false);
         
         // Add to history
@@ -190,15 +257,24 @@ export default function OrderDetailsPage({ params }) {
   // Prevent closing window if there is a debt
   useEffect(() => {
     const handleBeforeUnload = (e) => {
+      let block = false;
+      let msg = '';
       if (totalRequired - totalPaid > 0 && !debtApproved) {
+        block = true;
+        msg = 'קיימת יתרת חוב בהזמנה! אנא דאג לתשלום או אישור מנהל.';
+      } else if (hasUnsavedChanges) {
+        block = true;
+        msg = 'ישנם שינויים שלא נשמרו בהזמנה! האם אתה בטוח שברצונך לעזוב?';
+      }
+      if (block) {
         e.preventDefault();
-        e.returnValue = 'קיימת יתרת חוב בהזמנה! אנא דאג לתשלום או אישור מנהל.';
-        return 'קיימת יתרת חוב בהזמנה! אנא דאג לתשלום או אישור מנהל.';
+        e.returnValue = msg;
+        return msg;
       }
     };
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [totalRequired, totalPaid, debtApproved]);
+  }, [totalRequired, totalPaid, debtApproved, hasUnsavedChanges]);
 
   // Save changes
   const handleSave = async (overrideOrder = null) => {
@@ -356,12 +432,15 @@ export default function OrderDetailsPage({ params }) {
       
       const updatedOrder = await res.json();
       setOrder(updatedOrder);
+      setHasUnsavedChanges(false);
       // הפריטים ששלחנו כבר נוצרו בשרת; שורה שנוספה אחרי השליחה עדיין לא — היא נשמרת.
-      setItems(prev => mergePendingItems(updatedOrder.items || [], prev, submittedLocalIds));
+      const mergedItems = mergePendingItems(updatedOrder.items || [], items, submittedLocalIds);
+      setItems(mergedItems);
       setObligations(updatedOrder.obligations || []);
       setPayments(updatedOrder.payments || []);
       setRefunds(updatedOrder.refunds || []);
-      
+      savedSnapshotRef.current = { order: updatedOrder, items: mergedItems, obligations: updatedOrder.obligations || [], payments: updatedOrder.payments || [], refunds: updatedOrder.refunds || [] };
+
       setSaveMessage('השינויים נשמרו בהצלחה!');
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (err) {
@@ -381,6 +460,7 @@ export default function OrderDetailsPage({ params }) {
 
   const handleOrderUpdate = (updatedOrder, { savedLocalId } = {}) => {
     setOrder(updatedOrder);
+    setHasUnsavedChanges(true);
     setItems(prev => mergePendingItems(updatedOrder.items || [], prev, savedLocalId ? [savedLocalId] : []));
     setObligations(updatedOrder.obligations || []);
     setPayments(updatedOrder.payments || []);
@@ -405,6 +485,9 @@ export default function OrderDetailsPage({ params }) {
   const createdDate = order.orderDate || order.createdAt;
 
   const handleExit = async () => {
+    if (hasUnsavedChanges) {
+      if (!confirm('ישנם שינויים שלא נשמרו בהזמנה! האם לצאת בכל זאת?')) return;
+    }
     if (totalRequired - totalPaid > 0 && !debtApproved) {
       const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת עובד או מנהל. אנא בחר משתמש והזן סיסמה:", 'עובד');
       if (!authResult || !authResult.pin) {
@@ -478,6 +561,66 @@ export default function OrderDetailsPage({ params }) {
     } catch (err) {
       setSaving(false);
       alert('שגיאה בשמירה: ' + (err.message || 'נסה שוב'));
+    }
+  };
+
+  // מבטל את כל השינויים שלא נשמרו (הוספה/הסרה של פריטים, תשלומים, התחייבויות, שינויי תאריכים/הערות וכו')
+  // ומחזיר את הכרטיס למצב האחרון שנשמר בשרת.
+  const buildChangeSummary = () => {
+    const snap = savedSnapshotRef.current;
+    if (!snap) return [];
+    return [
+      ...summarizeOrderFieldChanges(snap.order, order),
+      ...summarizeListDiff(snap.items, items, 'פריטים'),
+      ...summarizeListDiff(snap.obligations, obligations, 'התחייבויות תשלום'),
+      ...summarizeListDiff(snap.payments, payments, 'תשלומים')
+    ];
+  };
+
+  const handleCancelChanges = async () => {
+    const snap = savedSnapshotRef.current;
+    if (!hasUnsavedChanges || !snap) {
+      alert('אין שינויים לביטול.');
+      return;
+    }
+
+    const changes = buildChangeSummary();
+    const changesText = changes.length > 0 ? changes.map(c => `- ${c}`).join('\n') : '- שינויים שלא נשמרו';
+    const confirmed = await window.customConfirm(
+      `פעולה זו תבטל את כל השינויים שלא נשמרו בהזמנה זו, ותחזיר אותה למצב האחרון שנשמר:\n\n${changesText}\n\nלהמשיך?`
+    );
+    if (!confirmed) return;
+
+    setOrder(snap.order);
+    setItems(snap.items);
+    setObligations(snap.obligations);
+    setPayments(snap.payments);
+    setRefunds(snap.refunds);
+    setHasUnsavedChanges(false);
+    setSaveMessage(changes.length > 0 ? `בוטלו השינויים: ${changes.join(', ')}` : 'השינויים בוטלו.');
+    setTimeout(() => setSaveMessage(''), 5000);
+  };
+
+  // מחיקת ההזמנה — אותה פעולה בדיוק כמו איקון המחיקה בטבלת ההזמנות (מחיקה רכה + אותם תנאי חסימה).
+  const handleDeleteOrder = async () => {
+    const status = calculateOrderStatus({ ...order, items });
+    if (status === 'הוחזר' || status === 'הוחזר חלקי' || status === 'הושכר' || status === 'הושכר חלקי') {
+      alert('לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר');
+      return;
+    }
+    if (!(await window.customConfirm('האם אתה בטוח שברצונך למחוק הזמנה זו?'))) return;
+
+    try {
+      const res = await fetch(`/api/orders/${order.orderId}`, { method: 'DELETE' });
+      if (res.ok) {
+        router.push('/orders');
+      } else {
+        const data = await res.json().catch(() => null);
+        alert((data && data.error) || 'שגיאה במחיקת הזמנה');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה במחיקת הזמנה');
     }
   };
 
@@ -646,7 +789,7 @@ export default function OrderDetailsPage({ params }) {
       id: 'details',
       span: 4,
       order: 1,
-      node: <OrderGeneralDetails data-element-name="רכיב_page_22" order={order} items={items} onOrderChange={setOrder} onSaveRequest={handleSave} />
+      node: <OrderGeneralDetails data-element-name="רכיב_page_22" order={order} items={items} onOrderChange={(val) => { setOrder(val); setHasUnsavedChanges(true); }} onSaveRequest={handleSave} />
     },
     {
       id: 'items',
@@ -657,26 +800,27 @@ export default function OrderDetailsPage({ params }) {
           orderId={order.orderId}
           order={order}
           items={items}
-          onItemsChange={setItems}
+          onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }}
           onOrderUpdated={handleOrderUpdate}
           inventoryCache={inventoryCache}
+          isWorkspaceMode={layoutMode === 'workspace'}
         />
       )
     },
-    {
+    ...(layoutMode !== 'workspace' ? [{
       id: 'rentals',
       span: 4,
       order: 3,
       node: (
         <OrderRentalsManager data-element-name="רכיב_page_24"
           items={items}
-          onItemsChange={setItems}
+          onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }}
           order={order}
           totalRequired={totalRequired}
           totalPaid={totalPaid}
         />
       )
-    },
+    }] : []),
     {
       id: 'payments',
       span: 5,
@@ -689,9 +833,9 @@ export default function OrderDetailsPage({ params }) {
           obligations={obligations}
           payments={payments}
           refunds={refunds}
-          onObligationsChange={setObligations}
-          onPaymentsChange={setPayments}
-          onRefundsChange={setRefunds}
+          onObligationsChange={(val) => { setObligations(val); setHasUnsavedChanges(true); }}
+          onPaymentsChange={(val) => { setPayments(val); setHasUnsavedChanges(true); }}
+          onRefundsChange={(val) => { setRefunds(val); setHasUnsavedChanges(true); }}
           totalRequired={totalRequired}
           totalPaid={totalPaid}
           customer={order.customer}
@@ -801,10 +945,10 @@ export default function OrderDetailsPage({ params }) {
               {(order.fromDate || order.toDate || order.returnDate) && (
                 <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                   <span style={{ fontWeight: '500' }}>לקיחה:</span> 
-                  <strong style={{ color: '#0f172a' }}>{order.fromDate ? (order.isWeekdayEvent ? getHebrewDateString(order.fromDate) : new Date(order.fromDate).toLocaleDateString('he-IL')) : '-'}</strong>
+                  <strong style={{ color: '#0f172a' }}>{order.fromDate ? (order.isWeekdayEvent ? `${getHebrewDateString(order.fromDate)} ${new Date(order.fromDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : new Date(order.fromDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })) : '-'}</strong>
                   <span style={{ margin: '0 0.2rem' }}>|</span>
                   <span style={{ fontWeight: '500' }}>החזרה:</span> 
-                  <strong style={{ color: '#0f172a' }}>{order.toDate || order.returnDate ? (order.isWeekdayEvent ? getHebrewDateString(order.toDate || order.returnDate) : new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL')) : '-'}</strong>
+                  <strong style={{ color: '#0f172a' }}>{order.toDate || order.returnDate ? (order.isWeekdayEvent ? `${getHebrewDateString(order.toDate || order.returnDate)} ${new Date(order.toDate || order.returnDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : new Date(order.toDate || order.returnDate).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })) : '-'}</strong>
                 </div>
               )}
 
@@ -849,8 +993,26 @@ export default function OrderDetailsPage({ params }) {
               {saving ? <div className="spinner" style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Save data-element-name="רכיב_page_2" size={18} />}
               שמור
             </button>
-            
-            <button data-element-name="כפתור_page_3" data-agy-id="[id]_page_button_3" 
+
+            <button
+              onClick={handleCancelChanges}
+              disabled={!hasUnsavedChanges || saving || isLocked}
+              title={hasUnsavedChanges ? "ביטול שינויים שלא נשמרו" : "אין שינויים לביטול"}
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                padding: '0.65rem 1rem', background: '#f1f5f9', color: '#64748b', border: 'none',
+                borderRadius: '10px', cursor: (!hasUnsavedChanges || saving || isLocked) ? 'not-allowed' : 'pointer',
+                opacity: (!hasUnsavedChanges || saving || isLocked) ? 0.5 : 1,
+                transition: 'all 0.2s ease', fontWeight: '600', fontSize: '0.95rem'
+              }}
+              onMouseOver={(e) => { if (hasUnsavedChanges && !saving && !isLocked) e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
+              onMouseOut={(e) => { if (hasUnsavedChanges && !saving && !isLocked) e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
+            >
+              <RotateCcw size={18} />
+              ביטול שינויים
+            </button>
+
+            <button data-element-name="כפתור_page_3" data-agy-id="[id]_page_button_3"
               onClick={() => setShowEmployeesModal(true)}
               title="עובדים פעילים"
               style={{ 
@@ -880,6 +1042,22 @@ export default function OrderDetailsPage({ params }) {
               <CreditCard data-element-name="רכיב_page_6" size={18} />
             </button>
 
+            {layoutMode === 'workspace' && (
+              <button
+                onClick={() => setShowWorkspaceHistory(true)}
+                title="היסטוריית הזמנה"
+                style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                  padding: '0.65rem 1rem', background: '#e0f2fe', color: '#0284c7', border: 'none', 
+                  borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
+                  fontSize: '0.95rem'
+                }}
+                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#bae6fd'}
+                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e0f2fe'}
+              >
+                <History data-element-name="רכיב_page_history" size={18} />
+              </button>
+            )}
             <div style={{ position: 'relative' }}>
               <button data-element-name="כפתור_page_7" data-agy-id="[id]_page_button_print" 
                 onClick={handlePrintOrder}
@@ -933,7 +1111,22 @@ export default function OrderDetailsPage({ params }) {
               )}
             </div>
 
-            <button data-element-name="כפתור_page_17" data-agy-id="[id]_page_button_5" 
+            <button
+              onClick={handleDeleteOrder}
+              title="מחיקת הזמנה"
+              style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
+                padding: '0.65rem 1rem', background: '#fef2f2', color: '#ef4444', border: 'none',
+                borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
+                fontSize: '0.95rem'
+              }}
+              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
+              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
+            >
+              <Trash2 size={18} />
+            </button>
+
+            <button data-element-name="כפתור_page_17" data-agy-id="[id]_page_button_5"
               onClick={handleExit}
               title="חזרה"
               style={{ 
@@ -1037,6 +1230,20 @@ export default function OrderDetailsPage({ params }) {
         isOpen={showEmployeesModal}
         onClose={() => setShowEmployeesModal(false)}
       />
+
+      {showWorkspaceHistory && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
+          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
+              <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.2rem' }}>היסטוריית פריטים</h3>
+              <button onClick={() => setShowWorkspaceHistory(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: '1.5rem', fontWeight: 'bold' }}>
+                ✕
+              </button>
+            </div>
+            <OrderRentalsManager order={order} items={items} onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }} onSaveRequest={handleSave} debtApproved={debtApproved} totalRequired={totalRequired} totalPaid={totalPaid} />
+          </div>
+        </div>
+      )}
 
       {/* Regulations Modal */}
       {showRegulationsModal && typeof document !== 'undefined' && (

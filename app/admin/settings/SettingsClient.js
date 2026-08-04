@@ -68,6 +68,7 @@ const HEBREW_NAMES = {
   NO_REFUND_DAYS_BEFORE_EVENT: 'ימים ללא החזר לפני אירוע',
   REFUND_DAYS_FROM_ORDER: 'ימי החזר מיום ביצוע ההזמנה',
   REFUND_REPAIRS: 'החזר על עלויות תיקונים',
+  CANCELLATION_CREDIT_MINUTES: 'דקות לניצול זיכוי דמי ביטול על פריט חלופי',
   ALLOWED_PAYMENT_METHODS: 'אפשרויות תשלום מורשות',
 
   calendar_filtering: 'סינון ואירועים עבריים ביומן',
@@ -124,6 +125,7 @@ const HEBREW_NOTES = {
   NO_REFUND_DAYS_BEFORE_EVENT: 'מספר ימים לפני האירוע שמתחתיו לא יינתן החזר כספי.',
   REFUND_DAYS_FROM_ORDER: 'מספר ימים מביצוע ההזמנה שבהם זכאים להחזר מלא.',
   REFUND_REPAIRS: 'כולל עלויות תיקונים בחישוב ההחזר הכספי בביטול.',
+  CANCELLATION_CREDIT_MINUTES: 'מספר הדקות לאחר ביטול פריט שבהן דמי הביטול ניתנים לניצול כזיכוי על פריט אחר שנוסף לאותה הזמנה. אם ההזמנה עדיין נערכת ונשמרת רק אחרי שהזמן הזה חלף, הזיכוי עדיין תקף - כי הזמן נספר החל משמירת הביטול בפועל.',
   ALLOWED_PAYMENT_METHODS: 'רשימת אמצעי תשלום מורשים (מופרדים בפסיק, למשל: מזומן,אשראי,העברה).',
 
   calendar_filtering: 'סינון תצוגת יומן לפי חודשים ומועדים עבריים.',
@@ -867,7 +869,8 @@ export default function SettingsClient() {
                   'max_items_per_order', 'barcodePrefixLength', 'BUFFER_DAYS',
                   'barcode_length', 'REFUND_PERCENTAGE', 'REFUND_DAYS',
                   'NO_REFUND_DAYS_BEFORE_EVENT', 'REFUND_DAYS_FROM_ORDER',
-                  'full_refund_days', 'inventory_buffer_days', 'registration_fee'
+                  'full_refund_days', 'inventory_buffer_days', 'registration_fee',
+                  'CANCELLATION_CREDIT_MINUTES'
                 ].includes(setting.key);
                 const isNumber = setting.type === 'number' || isNumberKey;
 
