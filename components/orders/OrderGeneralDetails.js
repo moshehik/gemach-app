@@ -346,22 +346,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                     </div>
                   </div>
                 </>
-              ) : (
-                <>
-                  {order.fromDate && (
-                    <div>
-                      <span style={{...labelStyle, color: '#64748b'}}>לקיחה:</span>
-                      <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{getHebrewDateString(order.fromDate)}</div>
-                    </div>
-                  )}
-                  {(order.toDate || order.returnDate) && (
-                    <div>
-                      <span style={{...labelStyle, color: '#64748b'}}>החזרה:</span>
-                      <div style={{ fontSize: '1.1rem', color: '#334155', fontWeight: '500' }}>{getHebrewDateString(order.toDate || order.returnDate)}</div>
-                    </div>
-                  )}
-                </>
-              )}
+              ) : null}
               <div style={{ flex: '1 1 100%', marginTop: '0.5rem' }}>
                 <span style={{...labelStyle, color: '#64748b'}}>הערות להזמנה:</span>
                 <div style={{ fontSize: '1rem', color: '#334155', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', minHeight: '60px' }}>

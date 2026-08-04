@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { CalendarSearch, Edit2, Trash2, ArrowLeft, ArrowRight, Plus, Check, UserPlus, Sparkles, CreditCard, ShieldCheck, RefreshCw } from 'lucide-react';
@@ -125,6 +125,20 @@ export default function NewOrderPage() {
   // so the saved order carries the same number that appears on the charge.
   const [reservedOrderId, setReservedOrderId] = useState(null);
 
+  // Everything on this screen lived in React state until the final save, so closing it at the
+  // payment step threw the whole order away and released nothing - it had never reached the
+  // database to begin with. The cart is now autosaved as a 'טיוטה' order the moment it has
+  // items, which puts it in the orders list with its 15-minute hold counting down.
+  const [draftOrderId, setDraftOrderId] = useState(null);
+  // Also kept in a ref: the autosave runs from a timer, and the inventory lookups need the id
+  // at the moment they fire rather than the one their closure captured.
+  const draftOrderIdRef = useRef(null);
+  // Drafts are saved one at a time. Two creates in flight together would each allocate their
+  // own order number and leave the screen with two rows.
+  const draftQueueRef = useRef(Promise.resolve());
+  // Set while the real save runs, so no autosave writes over the order behind it.
+  const draftSealedRef = useRef(false);
+
   const handleSwipeInputChange = (e) => {
     const val = e.target.value;
     setSwipeInput(val);
@@ -225,9 +239,11 @@ export default function NewOrderPage() {
       const fullAddress = [cust.street || '', cust.houseNum || '', cust.city || ''].filter(Boolean).join(' ');
 
       // Claim the real order number before charging - it is written into the Nedarim Plus
-      // comment and cannot be corrected there afterwards. If the reservation fails we still
-      // charge (the customer is standing at the counter) and fall back to the old wording.
-      let orderNumberForCharge = reservedOrderId;
+      // comment and cannot be corrected there afterwards. If the draft was already saved it
+      // owns a number and there is nothing to reserve; the order is saved onto that same row.
+      // If the reservation fails we still charge (the customer is standing at the counter) and
+      // fall back to the old wording.
+      let orderNumberForCharge = draftOrderIdRef.current || reservedOrderId;
       if (!orderNumberForCharge) {
         try {
           const reserveRes = await fetch('/api/orders/reserve', {
@@ -239,6 +255,10 @@ export default function NewOrderPage() {
           if (reserveRes.ok && reserveData.orderId) {
             orderNumberForCharge = reserveData.orderId;
             setReservedOrderId(reserveData.orderId);
+            // Point the autosave at the placeholder too, so the draft fills that row in rather
+            // than claiming a second number alongside the one that just went out on the charge.
+            draftOrderIdRef.current = reserveData.orderId;
+            setDraftOrderId(reserveData.orderId);
           }
         } catch (reserveErr) {
           console.error('Failed to reserve order number for Nedarim charge', reserveErr);
@@ -404,6 +424,11 @@ export default function NewOrderPage() {
       if (order.eventDate) queryParams.append('eventDate', order.eventDate);
       if (order.fromDate) queryParams.append('fromDate', order.fromDate);
       if (order.toDate) queryParams.append('toDate', order.toDate);
+      // The draft holds this screen's own items. Left in, they would be counted twice - once
+      // in the server's bookings and again when calculateDynamicAvailability subtracts the
+      // cart - and the sizes already chosen would show as unavailable. Read from the ref so a
+      // draft appearing does not refetch the cache and wipe the size being picked.
+      if (draftOrderIdRef.current) queryParams.append('excludeOrderId', draftOrderIdRef.current);
 
       fetch(`/api/inventory/preload?${queryParams.toString()}`)
         .then(res => {
@@ -433,7 +458,8 @@ export default function NewOrderPage() {
       if (order.eventDate) queryParams.append('eventDate', order.eventDate);
       if (order.fromDate) queryParams.append('fromDate', order.fromDate);
       if (order.toDate) queryParams.append('toDate', order.toDate);
-      
+      if (draftOrderIdRef.current) queryParams.append('excludeOrderId', draftOrderIdRef.current);
+
       queryParams.append('_t', new Date().getTime());
 
       fetch(`/api/inventory/preload?${queryParams.toString()}`)
@@ -546,7 +572,9 @@ export default function NewOrderPage() {
             isWeekdayEvent: proposedOrder.isWeekdayEvent,
             fromDate: proposedOrder.fromDate,
             toDate: proposedOrder.toDate,
-            customSpacing: proposedOrder.customSpacing
+            customSpacing: proposedOrder.customSpacing,
+            // Don't count the draft's own pending items against it.
+            orderId: draftOrderIdRef.current
           })
         });
         
@@ -719,6 +747,54 @@ export default function NewOrderPage() {
     setPayment(prev => ({ ...prev, amount: remainder }));
   }, [totalAmount, paymentsList]);
 
+  // Autosave the cart as a draft order. Debounced - a keystroke in the notes field should not
+  // rewrite the order - and only once the order has enough of itself to be worth keeping: a
+  // customer, dates and at least one item. A failure here is logged and otherwise ignored; the
+  // draft is a safety net, and blocking the screen over it would be worse than losing it.
+  useEffect(() => {
+    const activeItems = (order.items || []).filter(i => !i.isDeleted);
+    const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+    if (draftSealedRef.current || !order.customerId || !hasDates || activeItems.length === 0) return;
+
+    const timer = setTimeout(() => {
+      draftQueueRef.current = draftQueueRef.current.then(async () => {
+        if (draftSealedRef.current) return;
+        try {
+          const res = await fetch('/api/orders/draft', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId: draftOrderIdRef.current,
+              customerId: order.customerId,
+              eventDate: order.eventDate,
+              eventDateHebrew: order.eventDateHebrew,
+              returnDate: order.returnDate,
+              isAbroad: order.isAbroad,
+              isWeekdayEvent: order.isWeekdayEvent,
+              fromDate: order.fromDate,
+              toDate: order.toDate,
+              notes: order.notes,
+              customSpacing: order.customSpacing,
+              totalAmount,
+              items: activeItems
+            })
+          });
+          const saved = await res.json();
+          if (res.ok && saved?.orderId && !draftSealedRef.current) {
+            draftOrderIdRef.current = saved.orderId;
+            setDraftOrderId(saved.orderId);
+          }
+        } catch (err) {
+          console.error('Draft autosave failed', err);
+        }
+      });
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [order.customerId, order.eventDate, order.eventDateHebrew, order.returnDate, order.isAbroad,
+      order.isWeekdayEvent, order.fromDate, order.toDate, order.notes, order.customSpacing,
+      order.items, totalAmount]);
+
   // Escape closes whichever modal is on top. Skipped while a charge/save is in
   // flight so nobody dismisses a modal mid-transaction.
   useEffect(() => {
@@ -820,6 +896,18 @@ export default function NewOrderPage() {
 
   const executeSaveOrderForList = async (finalPaymentsList) => {
     setSaving(true);
+    // Stop the autosave and let whatever it already started finish, so the real save is not
+    // racing a draft write into the same row.
+    draftSealedRef.current = true;
+    await draftQueueRef.current;
+
+    // The screen stays open when a save is refused, so hand it back to the autosave - the
+    // draft has to keep holding the dresses while the user sorts the problem out.
+    const abandonSave = () => {
+      draftSealedRef.current = false;
+      setSaving(false);
+    };
+
     const activeItems = (order.items || []).filter(i => !i.isDeleted);
     const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
 
@@ -835,18 +923,20 @@ export default function NewOrderPage() {
             isWeekdayEvent: order.isWeekdayEvent,
             fromDate: order.fromDate,
             toDate: order.toDate,
-            customSpacing: order.customSpacing
+            customSpacing: order.customSpacing,
+            // Don't count the draft's own pending items against it.
+            orderId: draftOrderIdRef.current
           })
         });
-        
+
         const validateData = await validateRes.json();
         if (validateData.error) {
-          setSaving(false);
+          abandonSave();
           alert(`שגיאה: ${validateData.error}`);
           return;
         }
         if (!validateData.valid) {
-          setSaving(false);
+          abandonSave();
           const errorLines = validateData.errors.map(e => {
             const msg = `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`;
             return e.isCustomSpacingIssue ? `${msg} (בגלל ציפוף)` : msg;
@@ -859,7 +949,7 @@ export default function NewOrderPage() {
         }
       } catch (err) {
         console.error('Validation fetch error', err);
-        setSaving(false);
+        abandonSave();
         alert('שגיאה בבדיקת המלאי מול השרת.');
         return;
       }
@@ -890,7 +980,10 @@ export default function NewOrderPage() {
         paymentsList: finalPaymentsList,
         // Set once a card was charged: the order must be saved under the number that already
         // went out with the charge, not under a freshly allocated one.
-        reservedOrderId
+        reservedOrderId,
+        // The row the autosave already wrote. The save fills it in instead of creating a
+        // second order next to the draft it came from.
+        draftOrderId: draftOrderIdRef.current
       };
 
       const res = await fetch('/api/orders', {
@@ -912,7 +1005,7 @@ export default function NewOrderPage() {
     } catch (error) {
       console.error(error);
       alert(`שגיאה בשמירת הזמנה: ${error.message}`);
-      setSaving(false);
+      abandonSave();
     }
   };
 
@@ -1687,7 +1780,16 @@ export default function NewOrderPage() {
             );
           })}
         </nav>
-        
+
+        {/* Without this the autosave is invisible, and an employee who closes the screen has no
+            way of knowing the order is waiting for them in the list. */}
+        {draftOrderId && !saving && (
+          <div className="fade-in" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem', margin: '0 0 0.6rem 0', fontSize: '0.85rem', color: '#c2410c' }}>
+            <ShieldCheck size={15} />
+            <span>נשמר כטיוטה — הזמנה #{draftOrderId}. הפריטים שמורים למשך זמן מוגבל גם אם תסגור את המסך.</span>
+          </div>
+        )}
+
         {/* STEP 1: CUSTOMER */}
         {step === 1 && (
           <div className="fade-in glass-card wizard-step" style={{ padding: '1.2rem', position: 'relative' }}>

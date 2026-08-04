@@ -214,7 +214,10 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
     backgroundColor: '#f8fafc',
     borderBottom: '2px solid #e2e8f0',
     fontWeight: '700',
-    whiteSpace: 'nowrap'
+    whiteSpace: 'nowrap',
+    position: 'sticky',
+    top: 0,
+    zIndex: 10
   };
 
   const inputStyle = {
@@ -266,7 +269,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       {isExpanded && (
         <>
           {items && items.length > 0 ? (
-        <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+        <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.95rem' }}>
             <thead>
               <tr>
