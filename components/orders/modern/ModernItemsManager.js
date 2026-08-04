@@ -175,21 +175,25 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   };
 
   const handleItemChange = (index, field, value) => {
-    const updatedItems = [...items];
-    updatedItems[index] = { ...updatedItems[index], [field]: value };
-    onItemsChange(updatedItems);
+    onItemsChange(prev => {
+      const updatedItems = [...prev];
+      updatedItems[index] = { ...updatedItems[index], [field]: value };
+      return updatedItems;
+    });
   };
 
   const handleModelChange = (index, model) => {
-    const updatedItems = [...items];
-    updatedItems[index] = {
-      ...updatedItems[index],
-      dressModelId: model.id,
-      barcodePrefix: model.barcodePrefix,
-      description: model.name,
-      sizeText: ''
-    };
-    onItemsChange(updatedItems);
+    onItemsChange(prev => {
+      const updatedItems = [...prev];
+      updatedItems[index] = {
+        ...updatedItems[index],
+        dressModelId: model.id,
+        barcodePrefix: model.barcodePrefix,
+        description: model.name,
+        sizeText: ''
+      };
+      return updatedItems;
+    });
   };
 
   const handleConfirmItem = async (index) => {
@@ -236,31 +240,37 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       alert('לא ניתן לערוך פריט שכבר נלקח (מושכר).');
       return;
     }
-    const updatedItems = [...items];
-    updatedItems[index] = {
-      ...item,
-      isEditing: true,
-      originalState: { ...item },
-      dressModelId: item.dressModelId || item.dressItem?.dressModelId,
-      sizeText: item.sizeText || item.dressItem?.sizeText || item.dressItem?.size || '',
-      // שם נקי בלי "(קוד: X)" — item.description מהשרת כולל את הקוד בסוגריים,
-      // וזה היה מוצג כפי שהוא בתיבת בורר הדגם בעת עריכה
-      description: itemName(item)
-    };
-    onItemsChange(updatedItems);
+    onItemsChange(prev => {
+      const updatedItems = [...prev];
+      updatedItems[index] = {
+        ...item,
+        isEditing: true,
+        originalState: { ...item },
+        dressModelId: item.dressModelId || item.dressItem?.dressModelId,
+        sizeText: item.sizeText || item.dressItem?.sizeText || item.dressItem?.size || '',
+        // שם נקי בלי "(קוד: X)" — item.description מהשרת כולל את הקוד בסוגריים,
+        // וזה היה מוצג כפי שהוא בתיבת בורר הדגם בעת עריכה
+        description: itemName(item)
+      };
+      return updatedItems;
+    });
   };
 
   const cancelEditItem = (index) => {
-    const updatedItems = [...items];
-    const original = updatedItems[index].originalState;
-    updatedItems[index] = original ? { ...original } : { ...updatedItems[index], isEditing: false };
-    onItemsChange(updatedItems);
+    onItemsChange(prev => {
+      const updatedItems = [...prev];
+      const original = updatedItems[index].originalState;
+      updatedItems[index] = original ? { ...original } : { ...updatedItems[index], isEditing: false };
+      return updatedItems;
+    });
   };
 
   const cancelNewItem = (index) => {
-    const updatedItems = [...items];
-    updatedItems.splice(index, 1);
-    onItemsChange(updatedItems);
+    onItemsChange(prev => {
+      const updatedItems = [...prev];
+      updatedItems.splice(index, 1);
+      return updatedItems;
+    });
   };
 
   const toggleDeleted = async (index) => {
@@ -313,26 +323,25 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       isDeleted: false,
       createdAt: new Date().toISOString()
     };
-    onItemsChange([...items, newItem]);
+    onItemsChange(prev => [...prev, newItem]);
     setTimeout(() => listEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
   };
 
   // ===== השכרה/החזרה (זהה ללוגיקה במנהל ההשכרות) =====
+  // כל הפעולות כאן עוברות דרך await (אישור PIN/תשלום) לפני העדכון בפועל — לכן העדכון האופטימי
+  // וגם השחזור בכשלון חייבים להיות פונקציונליים (prev => ...) ולגעת רק בפריט הרלוונטי, אחרת
+  // עריכה אחרת שקרתה באותו חלון זמן (למשל שינוי בפריט אחר) עלולה להידרס.
   const handleRent = async (item, barcodeToAssign = null, skipAuth = false) => {
     if (!isFullyPaid && !skipAuth) {
       const authResult = await window.customAuthPrompt("לא ניתן לבצע השכרה ללא תשלום מלא. נדרש אישור:", 'עובד');
       if (!authResult || !authResult.pin) return;
     }
-    const oldItems = [...items];
-    const updatedItems = items.map(i => {
-      if (i.id === item.id) {
-        const updateData = { isTaken: true, takenDate: new Date() };
-        if (barcodeToAssign) updateData.barcode = barcodeToAssign;
-        return { ...i, ...updateData };
-      }
-      return i;
-    });
-    onItemsChange(updatedItems);
+    onItemsChange(prev => prev.map(i => {
+      if (i.id !== item.id) return i;
+      const updateData = { isTaken: true, takenDate: new Date() };
+      if (barcodeToAssign) updateData.barcode = barcodeToAssign;
+      return { ...i, ...updateData };
+    }));
 
     if (item.id && !item.isNew) {
       try {
@@ -343,7 +352,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         if (!res.ok) throw new Error('API failed');
       } catch (err) {
         alert('שגיאה בשמירת סטטוס השכרה');
-        onItemsChange(oldItems);
+        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode } : i));
       }
     }
   };
@@ -353,8 +362,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       const authResult = await window.customAuthPrompt("לא ניתן לבצע החזרה ללא תשלום מלא. נדרש אישור:", 'עובד');
       if (!authResult || !authResult.pin) return;
     }
-    const oldItems = [...items];
-    onItemsChange(items.map(i => i.id === item.id ? { ...i, isReturned: true, returnDate: new Date() } : i));
+    onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: true, returnDate: new Date() } : i));
 
     if (item.id && !item.isNew) {
       try {
@@ -365,14 +373,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         if (!res.ok) throw new Error('API failed');
       } catch (err) {
         alert('שגיאה בשמירת סטטוס החזרה');
-        onItemsChange(oldItems);
+        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: item.isReturned, returnDate: item.returnDate } : i));
       }
     }
   };
 
   const handleCancelRent = async (item) => {
-    const oldItems = [...items];
-    onItemsChange(items.map(i => i.id === item.id ? { ...i, isTaken: false, takenDate: null, barcode: null } : i));
+    onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: false, takenDate: null, barcode: null } : i));
     if (item.id && !item.isNew) {
       try {
         const res = await fetch('/api/rentals/toggle', {
@@ -382,14 +389,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         if (!res.ok) throw new Error('API failed');
       } catch (err) {
         alert('שגיאה בביטול סטטוס השכרה');
-        onItemsChange(oldItems);
+        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode } : i));
       }
     }
   };
 
   const handleCancelReturn = async (item) => {
-    const oldItems = [...items];
-    onItemsChange(items.map(i => i.id === item.id ? { ...i, isReturned: false, returnDate: null } : i));
+    onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: false, returnDate: null } : i));
     if (item.id && !item.isNew) {
       try {
         const res = await fetch('/api/rentals/toggle', {
@@ -399,7 +405,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         if (!res.ok) throw new Error('API failed');
       } catch (err) {
         alert('שגיאה בביטול סטטוס החזרה');
-        onItemsChange(oldItems);
+        onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: item.isReturned, returnDate: item.returnDate } : i));
       }
     }
   };
@@ -878,7 +884,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                           <div className="moc-history-dot" />
                           <span className="moc-action-tag">{actionLabel}</span>
                           <span className="moc-meta">
-                            {new Date(log.createdAt).toLocaleDateString('he-IL')} · {new Date(log.createdAt).toLocaleTimeString('he-IL', { timeStyle: 'short' })}
+                            {new Date(log.createdAt).toLocaleDateString('he-IL')} ({getHebrewDateString(log.createdAt)}) · {new Date(log.createdAt).toLocaleTimeString('he-IL', { timeStyle: 'short' })}
                           </span>
                         </button>
                         {isExpanded && <div className="moc-history-details">{changesNode}</div>}

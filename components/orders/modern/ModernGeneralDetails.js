@@ -55,12 +55,16 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const applyCustomSpacing = async (spacing) => {
     const prevSpacing = (order.customSpacing !== null && order.customSpacing !== undefined) ? order.customSpacing : systemDefaultSpacing;
     const newSpacing = (spacing !== null && spacing !== undefined) ? spacing : systemDefaultSpacing;
-    // אישור מנהל נדרש רק בפעם הראשונה שמצמצמים מתחת לברירת המחדל של המערכת
-    if (newSpacing < systemDefaultSpacing && prevSpacing === systemDefaultSpacing) {
+    // אישור מנהל נדרש בכל צמצום בפועל של הציפוף — לא רק בפעם הראשונה מברירת המחדל.
+    // בלי זה, אחרי אישור אחד אפשר היה להמשיך ולהקטין עוד ועוד (למשל מ-1 ל-0) בלי אישור נוסף.
+    if (newSpacing < prevSpacing) {
       const ok = await verifyPin('שינוי ציפוף ימים מותאם אישית דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
       if (!ok) return;
     }
-    changeDates({ customSpacing: spacing });
+    // ערך זהה לברירת המחדל של המערכת שקול ל"ללא ציפוף מותאם" — לא נשמר כערך מפורש,
+    // אחרת הבאנר ממשיך להיות מוצג גם כשבפועל אין שום ציפוף מיוחד
+    const valueToStore = (spacing !== null && spacing !== undefined && spacing === systemDefaultSpacing) ? null : spacing;
+    changeDates({ customSpacing: valueToStore });
   };
 
   // עריכת תאריך ההזמנה משפיעה על חלון הזיכוי במנוע התמחור — מוגבלת למתכנת בלבד

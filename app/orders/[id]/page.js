@@ -794,6 +794,7 @@ export default function OrderDetailsPage({ params }) {
           isLocked={isLocked}
           isPastEvent={isPastEvent}
           onUnlock={handleUnlock}
+          onLock={() => setIsUnlocked(false)}
           onSave={() => handleSave()}
           onCancelChanges={handleCancelChanges}
           onDelete={handleDeleteOrder}
@@ -829,7 +830,13 @@ export default function OrderDetailsPage({ params }) {
                 orderId={order.orderId}
                 order={order}
                 items={items}
-                onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }}
+                onItemsChange={(val) => {
+                  // תומך גם בעדכון פונקציונלי (prev => ...) — נחוץ לפעולות שעוברות דרך await
+                  // (למשל סריקת ברקוד: אישור PIN / בדיקת מלאי / דיאלוג אישור), כדי לא לדרוס
+                  // שינויים אחרים בפריטים שקרו בינתיים על בסיס סנאפשוט ישן של items.
+                  setItems(prev => (typeof val === 'function' ? val(prev) : val));
+                  setHasUnsavedChanges(true);
+                }}
                 onOrderUpdated={handleOrderUpdate}
                 inventoryCache={inventoryCache}
                 totalRequired={totalRequired}

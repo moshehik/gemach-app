@@ -384,11 +384,16 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               <tbody>
                 {activeObligations.map((obs, idx) => {
                   const descText = (obs.productName || obs.description || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim() || (obs.isManual ? 'חיוב ידני' : 'חיוב מחירון');
+                  // חיוב שלילי הוא זיכוי/ביטול — הסימן וכיוון ה-LTR נדרשים במפורש, אחרת אלגוריתם
+                  // הכיווניות של הדפדפן מציג "₪-45" הפוך בתוך הקשר RTL
+                  const isCredit = obs.amount < 0;
                   return (
                     <tr key={idx}>
                       <td style={{ fontWeight: 600 }}>{descText}</td>
                       <td className="moc-hint">{fmtDate(obs.createdAt)}</td>
-                      <td style={{ fontWeight: 700, color: '#b91c1c' }}>₪{obs.amount}</td>
+                      <td style={{ fontWeight: 700, color: isCredit ? '#16a34a' : '#b91c1c', direction: 'ltr', textAlign: 'left' }}>
+                        {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
+                      </td>
                       <td>
                         <div style={{ display: 'flex', gap: '4px' }}>
                           <button className="moc-icon-btn-plain" title="פרטים נוספים" onClick={() => setSelectedObligationDetails(obs)}>
@@ -432,11 +437,17 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 <tr><th>אופן</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}>פעולות</th></tr>
               </thead>
               <tbody>
-                {activePayments.map((p, idx) => (
+                {activePayments.map((p, idx) => {
+                  // תשלום שלילי הוא זיכוי/החזר שנרשם כתנועה שלילית — אותו טיפול סימן/כיווניות
+                  // כמו בטבלת החיובים, כדי שלא יוצג "₪-45" (סימן במקום הלא נכון) בהקשר RTL
+                  const isCreditPayment = p.amount < 0;
+                  return (
                   <tr key={idx}>
                     <td style={{ fontWeight: 600 }}>{p.paymentMethod || '-'}</td>
                     <td className="moc-hint">{fmtDate(p.paymentDate)}</td>
-                    <td style={{ fontWeight: 700, color: '#16a34a' }}>₪{p.amount}</td>
+                    <td style={{ fontWeight: 700, color: isCreditPayment ? '#2563eb' : '#16a34a', direction: 'ltr', textAlign: 'left' }}>
+                      {isCreditPayment ? `-₪${Math.abs(p.amount)}` : `₪${p.amount}`}
+                    </td>
                     <td>
                       <div style={{ display: 'flex', gap: '4px' }}>
                         <button className="moc-icon-btn-plain" title="פרטים נוספים" onClick={() => setSelectedPaymentDetails(p)}>
@@ -448,7 +459,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                       </div>
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           ) : (
@@ -473,7 +485,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                   <tr key={idx}>
                     <td style={{ fontWeight: 600 }}>{r.reason || 'ללא סיבה'}</td>
                     <td className="moc-hint">{r.createdAt ? new Date(r.createdAt).toLocaleDateString('he-IL') : new Date().toLocaleDateString('he-IL')}</td>
-                    <td style={{ fontWeight: 700, color: '#2563eb' }}>₪{r.amount}</td>
+                    <td style={{ fontWeight: 700, color: '#2563eb', direction: 'ltr', textAlign: 'left' }}>₪{r.amount}</td>
                     <td>
                       <button className="moc-btn moc-btn-gold moc-btn-sm" disabled={isProcessing} onClick={() => approveRefund(r.id)}>
                         {isProcessing ? <span className="moc-spinner" /> : 'אשר ביצוע'}
@@ -623,7 +635,9 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 </div>
                 <div>
                   <span className="moc-field-label">סכום</span>
-                  <div className="moc-field-value" style={{ color: '#16a34a' }}>₪{selectedPaymentDetails.amount}</div>
+                  <div className="moc-field-value" style={{ color: selectedPaymentDetails.amount < 0 ? '#2563eb' : '#16a34a', direction: 'ltr', textAlign: 'left' }}>
+                    {selectedPaymentDetails.amount < 0 ? `-₪${Math.abs(selectedPaymentDetails.amount)}` : `₪${selectedPaymentDetails.amount}`}
+                  </div>
                 </div>
               </div>
               <span className="moc-field-label">תאריך</span>
@@ -683,7 +697,9 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 </div>
                 <div>
                   <span className="moc-field-label">סכום</span>
-                  <div className="moc-field-value" style={{ color: 'var(--moc-danger-text)' }}>₪{selectedObligationDetails.amount}</div>
+                  <div className="moc-field-value" style={{ color: selectedObligationDetails.amount < 0 ? '#16a34a' : 'var(--moc-danger-text)', direction: 'ltr', textAlign: 'left' }}>
+                    {selectedObligationDetails.amount < 0 ? `-₪${Math.abs(selectedObligationDetails.amount)}` : `₪${selectedObligationDetails.amount}`}
+                  </div>
                 </div>
               </div>
               <span className="moc-field-label">תאריך</span>

@@ -1763,6 +1763,12 @@ table.items-table thead tr th,
     display: none !important;
   }
 
+  .navbar,
+  .global-sidebar,
+  .print-hide {
+    display: none !important;
+  }
+
   table thead tr th,
   table.items-table thead tr th,
   .sticky-table-header thead tr th,

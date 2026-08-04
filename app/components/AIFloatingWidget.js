@@ -293,6 +293,7 @@ export default function AIFloatingWidget() {
   if (!isOpen) {
     return (
       <button data-element-name="כפתור_AIFloatingWidget_2" 
+        className="print-hide"
         onClick={() => setIsOpen(true)}
         style={{
           position: 'fixed',
@@ -323,7 +324,7 @@ export default function AIFloatingWidget() {
 
   return (
     <>
-      <div style={{
+      <div className="print-hide" style={{
         position: 'fixed',
         bottom: '80px',
         left: '20px',

@@ -35,6 +35,7 @@ export default function ModernOrderCard({
   isLocked,
   isPastEvent,
   onUnlock,
+  onLock,
   onSave,
   onCancelChanges,
   onDelete,
@@ -182,14 +183,35 @@ export default function ModernOrderCard({
             </div>
 
             <div className="moc-topbar-actions">
+              <button
+                className={`moc-icon-btn-soft money ${debt > 0 ? 'debt' : debt < 0 ? 'credit' : ''}`}
+                title={debt > 0 ? `יתרת חוב: ₪${debt.toLocaleString('he-IL')} — לחץ לתשלום בנדרים פלוס` : debt < 0 ? `יתרת זכות: ₪${Math.abs(debt).toLocaleString('he-IL')}` : 'שולם במלואו'}
+                onClick={() => (onWalletClick ? onWalletClick() : onTabChange('payments'))}
+              >
+                <Wallet size={18} />
+                {debt !== 0 && (
+                  <span className="moc-amt-badge">₪{Math.abs(debt).toLocaleString('he-IL')}</span>
+                )}
+              </button>
+
+              <div className="moc-topbar-sep" />
+
               {/* נעילת הזמנה שתאריכה עבר — הכל גלוי, פעולות פריטים חסומות עד שחרור באישור מנהל */}
               {isPastEvent && (
                 <button
                   className={`moc-icon-btn-soft ${isLocked ? 'lock-on' : 'lock-off'}`}
                   title={isLocked
                     ? 'הזמנה נעולה — תאריך האירוע עבר. ניתן להחזיר בלבד; השכרה ועריכה חסומות. לחץ לשחרור באישור מנהל'
-                    : 'ההזמנה שוחררה לעריכה באישור מנהל'}
-                  onClick={() => { if (isLocked) setShowUnlockModal(true); }}
+                    : 'ההזמנה שוחררה לעריכה. לחץ לנעילה מחדש'}
+                  onClick={async () => {
+                    if (isLocked) {
+                      setShowUnlockModal(true);
+                    } else if (onLock) {
+                      const msg = 'האם ברצונך לנעול מחדש את ההזמנה?';
+                      const confirmed = window.customConfirm ? await window.customConfirm(msg) : window.confirm(msg);
+                      if (confirmed) onLock();
+                    }
+                  }}
                 >
                   {isLocked ? <Lock size={18} /> : <LockOpen size={18} />}
                 </button>

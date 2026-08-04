@@ -252,8 +252,9 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 .moc-toggle-pair .moc-opt { padding: 7px 16px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; color: var(--moc-text-muted); border: none; background: transparent; font-family: inherit; }
 .moc-toggle-pair .moc-opt.active { background: #fff; color: var(--moc-text-main); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
 
-/* קומפקטי במכוון — לא נמתח לרוחב מלא של הכרטיס כמו שאר שדות ה-edit-box */
-.moc-spacing-note { background: linear-gradient(135deg, #fffaf0, #fff4dc); border: 1px solid #f0dfa8; border-radius: 12px; padding: 14px 16px; margin-top: 16px; align-self: flex-start; max-width: 440px; width: 100%; }
+/* קומפקטי במכוון — לא נמתח לרוחב מלא של הכרטיס כמו שאר שדות ה-edit-box, אבל רחב מספיק
+   שהציר לא ייצור שורת גלילה גם כשיש 6-7 עצירות (0..ברירת מחדל+2) */
+.moc-spacing-note { background: linear-gradient(135deg, #fffaf0, #fff4dc); border: 1px solid #f0dfa8; border-radius: 12px; padding: 14px 16px; margin-top: 16px; align-self: flex-start; max-width: 620px; width: 100%; }
 .moc-spacing-note-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .moc-spacing-note-label { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.92rem; color: #8a6d1c; }
 .moc-spacing-note p { margin: 10px 0 0 0; font-size: 0.78rem; color: #a9873a; }
@@ -261,8 +262,8 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 /* ציר ימי הרווח — בחירת ציפוף ויזואלית */
 .moc-days-axis { display: flex; align-items: center; margin: 14px 4px 20px; overflow-x: auto; padding-bottom: 2px; }
 .moc-day-stop {
-  position: relative; width: 36px; height: 36px; border-radius: 50%; border: 2px solid #e9d495;
-  background: #fff; color: #8a6d1c; font-weight: 700; font-size: 0.92rem; cursor: pointer;
+  position: relative; width: 32px; height: 32px; border-radius: 50%; border: 2px solid #e9d495;
+  background: #fff; color: #8a6d1c; font-weight: 700; font-size: 0.86rem; cursor: pointer;
   display: flex; align-items: center; justify-content: center; transition: all 0.18s; font-family: inherit; flex-shrink: 0;
 }
 .moc-day-stop:hover { border-color: var(--moc-primary); transform: scale(1.1); }
@@ -274,7 +275,7 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
   position: absolute; top: calc(100% + 4px); font-size: 0.62rem; color: #a9873a;
   white-space: nowrap; font-weight: 600; right: 50%; transform: translateX(50%);
 }
-.moc-day-connector { height: 3px; flex: 1; background: #eeddab; min-width: 16px; border-radius: 2px; }
+.moc-day-connector { height: 3px; flex: 1; background: #eeddab; min-width: 10px; border-radius: 2px; }
 .moc-day-connector.passed { background: var(--moc-primary); }
 
 /* אייקון נעילת הזמנה בטופ-בר */
