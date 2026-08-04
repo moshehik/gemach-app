@@ -13,6 +13,9 @@ import OrderCardWorkspace from '../../../components/orders/OrderCardWorkspace';
 import OrderLayoutToggle from '../../../components/orders/OrderLayoutToggle';
 import ModernOrderCard from '../../../components/orders/modern/ModernOrderCard';
 import ModernGeneralDetails from '../../../components/orders/modern/ModernGeneralDetails';
+import ModernItemsManager from '../../../components/orders/modern/ModernItemsManager';
+import ModernRentalsManager from '../../../components/orders/modern/ModernRentalsManager';
+import ModernPaymentsManager from '../../../components/orders/modern/ModernPaymentsManager';
 import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../../lib/orderStatus';
 import HistoryViewer from '../../../components/HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
@@ -969,18 +972,19 @@ export default function OrderDetailsPage({ params }) {
               />
             ),
             items: (
-              <OrderItemsManager
+              <ModernItemsManager
                 orderId={order.orderId}
                 order={order}
                 items={items}
                 onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }}
                 onOrderUpdated={handleOrderUpdate}
                 inventoryCache={inventoryCache}
-                isWorkspaceMode={false}
+                totalRequired={totalRequired}
+                totalPaid={totalPaid}
               />
             ),
             rentals: (
-              <OrderRentalsManager
+              <ModernRentalsManager
                 ref={rentalsManagerRef}
                 items={items}
                 onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }}
@@ -990,7 +994,7 @@ export default function OrderDetailsPage({ params }) {
               />
             ),
             payments: (
-              <OrderPaymentsManager
+              <ModernPaymentsManager
                 orderId={order.orderId}
                 items={items}
                 order={order}

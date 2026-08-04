@@ -30,11 +30,25 @@ const modernOrderCss = `
 .moc *, .moc *::before, .moc *::after { box-sizing: border-box; }
 .moc h1, .moc h2, .moc h3, .moc .moc-serif { font-family: 'Playfair Display', 'Heebo', serif; }
 
+/* שכבת מסך מלא — הכרטיס עולה מעל המערכת עם רקע נקי (מכסה את הניווט, מתחת למודלים) */
+.moc-page-overlay {
+  position: fixed; inset: 0; z-index: 500; background: var(--moc-bg-page);
+  overflow-y: auto; padding: 16px 22px 20px;
+}
+.moc-page-wrap { max-width: 1520px; margin: 0 auto; }
+
+.moc-top-strip { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 0 4px; }
+.moc-breadcrumb { color: var(--moc-text-muted); font-size: 0.9rem; }
+.moc-breadcrumb a { color: inherit; text-decoration: none; transition: color 0.15s; }
+.moc-breadcrumb a:hover { color: var(--moc-primary-dark); }
+.moc-breadcrumb strong { color: var(--moc-primary-dark); }
+
 .moc-container {
   background: var(--moc-card-bg); border-radius: 20px; box-shadow: var(--moc-shadow-lg);
   display: flex; overflow: hidden; height: calc(100vh - 110px); min-height: 560px;
   border: 1px solid var(--moc-border-color);
 }
+.moc-page-overlay .moc-container { height: calc(100vh - 92px); }
 
 /* ===== Sidebar ===== */
 .moc-sidebar {
@@ -194,6 +208,10 @@ const modernOrderCss = `
 .moc-btn-outline { background: #f7f4ec; border: none; color: #555; }
 .moc-btn-outline:hover { background: #eee6d3; }
 .moc-btn-icon { width: 34px; height: 34px; padding: 0; justify-content: center; border-radius: 8px; }
+.moc-btn-sm { padding: 6px 12px; font-size: 0.82rem; }
+.moc-btn-danger-soft { background: var(--moc-danger-bg); color: var(--moc-danger-text); }
+.moc-btn-danger-soft:hover { background: #fee2e2; }
+.moc-btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
 .moc-field-label { display: block; font-size: 0.85rem; color: var(--moc-text-muted); font-weight: 600; margin-bottom: 4px; }
 .moc-field-value { font-size: 1.08rem; font-weight: 700; color: var(--moc-text-main); }
@@ -221,6 +239,92 @@ const modernOrderCss = `
 .moc-spacing-note p { margin: 8px 0 0 0; font-size: 0.78rem; color: #a9873a; }
 
 .moc-empty-state { text-align: center; padding: 40px 0; color: #b8b2a2; }
+
+/* ===== טבלאות נתונים (פריטים / תשלומים) ===== */
+.moc-table-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+.moc-section-head {
+  display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end;
+  margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid var(--moc-divider);
+}
+table.moc-data-table { width: 100%; border-collapse: collapse; }
+.moc-data-table th, .moc-data-table td { padding: 12px 10px; text-align: right; border-bottom: 1px solid var(--moc-divider); font-size: 0.92rem; vertical-align: middle; }
+.moc-data-table th { color: var(--moc-text-muted); font-weight: 700; font-size: 0.82rem; background: #faf9f5; position: sticky; top: 0; z-index: 5; }
+.moc-data-table tbody tr { transition: background 0.15s; }
+.moc-data-table tbody tr:hover { background: var(--moc-primary-light); }
+.moc-data-table tbody tr.deleted { opacity: 0.55; background: var(--moc-neutral-bg); }
+.moc-data-table tbody tr.editing { background: #fffbeb; box-shadow: inset -4px 0 0 var(--moc-warning-text); }
+.moc-data-table tbody tr.editing:hover { background: #fef3c7; }
+.moc-mono { font-family: 'Consolas', monospace; }
+
+.moc-icon-btn-add {
+  width: 38px; height: 38px; border-radius: 50%; border: none; cursor: pointer; padding: 0;
+  background: var(--moc-primary-light); color: var(--moc-primary-dark); display: flex; align-items: center;
+  justify-content: center; transition: all 0.2s; flex-shrink: 0;
+}
+.moc-icon-btn-add:hover { background: var(--moc-primary); color: #1e293b; }
+
+.moc-icon-btn-plain {
+  background: transparent; border: none; border-radius: 8px; cursor: pointer; padding: 0;
+  display: inline-flex; align-items: center; justify-content: center; color: var(--moc-text-muted); transition: all 0.2s;
+  width: 30px; height: 30px;
+}
+.moc-icon-btn-plain:hover { background: var(--moc-neutral-bg); color: var(--moc-text-main); }
+.moc-icon-btn-plain.row-delete:hover { background: var(--moc-danger-bg); color: var(--moc-danger-text); }
+.moc-icon-btn-plain.restore:hover { background: var(--moc-success-bg); color: #16a34a; }
+
+.moc-check-label { display: flex; align-items: center; gap: 6px; font-size: 0.85rem; color: var(--moc-text-muted); cursor: pointer; white-space: nowrap; font-weight: 600; }
+
+.moc-repair-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.moc-repair-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 4px 9px; border-radius: 8px;
+  background: var(--moc-primary-light); color: var(--moc-primary-dark); font-size: 0.78rem; font-weight: 700; white-space: nowrap;
+  border: none; font-family: inherit;
+}
+.moc-repair-chip.muted { background: var(--moc-neutral-bg); color: var(--moc-text-muted); font-weight: 600; }
+.moc-repair-chip.done { background: var(--moc-success-bg); color: #16a34a; cursor: pointer; }
+.moc-repair-chip.not-done { background: var(--moc-warning-bg); color: #92400e; cursor: pointer; }
+.moc-data-table.hide-alter .moc-col-alter { display: none; }
+
+/* שורת עריכה/פריט חדש — עורכי דגם/מידה/תיקונים בתוך התא */
+.moc-inline-edit { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
+.moc-inline-edit .moc-field-label { margin-bottom: 0; font-size: 0.75rem; }
+
+/* ===== השכרות והחזרות ===== */
+.moc-rental-item { padding: 16px 4px; border-bottom: 1px solid var(--moc-divider); display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+.moc-rental-item:last-child { border-bottom: none; }
+.moc-rental-item .moc-title-line { font-size: 1.02rem; font-weight: 700; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.moc-rental-item .moc-sub-line { font-size: 0.85rem; color: var(--moc-text-muted); margin-top: 4px; }
+.moc-rental-item .moc-dates-line { font-size: 0.8rem; color: var(--moc-text-muted); display: flex; gap: 14px; margin-top: 8px; background: var(--moc-neutral-bg); padding: 6px 10px; border-radius: 6px; width: fit-content; flex-wrap: wrap; }
+.moc-return-toggle { display: inline-flex; background: var(--moc-neutral-bg); border-radius: 50px; padding: 4px; border: 1px solid #e5e5e5; align-items: stretch; }
+.moc-return-toggle button { border: none; background: transparent; padding: 7px 14px; border-radius: 50px; font-weight: 700; font-size: 0.84rem; cursor: pointer; display: flex; align-items: center; gap: 5px; color: var(--moc-text-muted); font-family: inherit; }
+.moc-return-toggle button:hover { color: var(--moc-text-main); }
+.moc-return-toggle button.good.active, .moc-return-toggle button.good:hover { background: var(--moc-success-bg); color: #16a34a; }
+.moc-return-toggle button.bad.active, .moc-return-toggle button.bad:hover { background: var(--moc-danger-bg); color: var(--moc-danger-text); }
+.moc-return-toggle .moc-rt-sep { width: 1px; background: #ddd; margin: 6px 2px; }
+
+.moc-notes-banner { background: var(--moc-warning-bg); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; display: flex; gap: 10px; font-size: 0.9rem; color: var(--moc-text-main); align-items: flex-start; }
+.moc-pending-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--moc-danger-bg); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-weight: 700; font-size: 0.92rem; color: #991b1b; flex-wrap: wrap; }
+
+/* ===== תשלומים ===== */
+.moc-pay-summary { display: flex; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
+.moc-pay-tile { flex: 1; min-width: 180px; padding: 16px 18px; border-radius: 12px; }
+.moc-pay-tile .moc-pt-lbl { font-size: 0.85rem; opacity: 0.85; }
+.moc-pay-tile .moc-pt-amt { font-size: 1.6rem; font-weight: 800; margin-top: 4px; }
+.moc-pay-tile.total { background: var(--moc-neutral-bg); color: var(--moc-text-main); }
+.moc-pay-tile.paid { background: var(--moc-success-bg); color: #16a34a; }
+.moc-pay-tile.debt { background: var(--moc-danger-bg); color: var(--moc-danger-text); }
+.moc-pay-tile.credit { background: var(--moc-info-bg); color: var(--moc-info-text); }
+
+.moc-section-block { margin-bottom: 26px; }
+.moc-section-block h3 { margin: 0 0 12px 0; font-size: 1.1rem; }
+
+/* ===== היסטוריה ===== */
+.moc-history-item { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--moc-divider); }
+.moc-history-item:last-child { border-bottom: none; }
+.moc-history-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--moc-primary); margin-top: 6px; flex-shrink: 0; }
+.moc-history-item .moc-action-tag { font-size: 0.76rem; font-weight: 700; background: var(--moc-primary-light); color: var(--moc-primary-dark); padding: 2px 8px; border-radius: 6px; margin-left: 8px; }
+.moc-history-item .moc-meta { color: var(--moc-text-muted); font-size: 0.8rem; margin-top: 3px; }
+.moc-history-item .moc-diff { margin-top: 6px; background: #faf9f5; border: 1px solid var(--moc-divider); border-radius: 6px; padding: 6px 10px; font-size: 0.82rem; color: #555; }
 
 /* ===== Modals ===== */
 .moc-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; z-index: 1500; padding: 20px; direction: rtl; font-family: 'Heebo', var(--font-primary, system-ui), sans-serif; }

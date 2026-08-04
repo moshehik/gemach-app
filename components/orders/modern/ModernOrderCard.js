@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
   X, Info, Package, RefreshCcw, CreditCard, History, User, Phone, Calendar,
   ScanLine, Wallet, PenTool, Check, Printer, Trash2, Save, Undo2, ArrowRight,
@@ -103,8 +104,15 @@ export default function ModernOrderCard({
   ];
 
   return (
-    <div className="moc">
+    <div className="moc moc-page-overlay">
       <style>{modernOrderCss}</style>
+
+      <div className="moc-page-wrap">
+      <div className="moc-top-strip">
+        <div className="moc-breadcrumb">
+          גמ"ח שמלות &raquo; <Link href="/orders">הזמנות</Link> &raquo; <strong>הזמנה #{order.orderId}</strong>
+        </div>
+      </div>
 
       <div className="moc-container" style={{ position: 'relative' }}>
         {isLocked && (
@@ -280,6 +288,7 @@ export default function ModernOrderCard({
             ))}
           </div>
         </main>
+      </div>
       </div>
     </div>
   );
