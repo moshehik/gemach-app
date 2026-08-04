@@ -70,7 +70,7 @@ const newOrderCss = `
 /* ===== מעטפת זכוכית ===== */
 .noc-shell {
   display: flex; overflow: hidden; border-radius: 24px;
-  height: calc(100vh - var(--noc-nav, 72px) - 62px); min-height: 520px;
+  height: calc(100vh - var(--noc-nav, 72px) - 64px); min-height: 520px;
   background: var(--noc-shell);
   backdrop-filter: blur(26px) saturate(150%);
   -webkit-backdrop-filter: blur(26px) saturate(150%);
@@ -335,6 +335,7 @@ const newOrderCss = `
 .noc-note-box.err { background: rgba(208, 72, 59, 0.1); border-color: rgba(208, 72, 59, 0.35); color: var(--noc-alert); }
 
 /* ===== מודלים ===== */
+body:has(.noc-ov) { overflow: hidden; }
 .noc-ov {
   position: fixed; inset: 0; background: rgba(60, 50, 30, 0.34); backdrop-filter: blur(6px);
   display: flex; align-items: center; justify-content: center; padding: 20px; z-index: 1500;

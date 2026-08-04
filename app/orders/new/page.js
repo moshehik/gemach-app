@@ -14,14 +14,6 @@ import newOrderCss from '../../../components/orders/new/newOrderStyles';
 import { calculateDynamicAvailability } from '../../../lib/clientInventory';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
-const STEP_LABELS = [
-  { id: 1, label: 'לקוח' },
-  { id: 2, label: 'תאריכים' },
-  { id: 3, label: 'פריטים' },
-  { id: 4, label: 'סיכום' },
-  { id: 5, label: 'תשלום' },
-];
-
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
   const f = (c.firstName === 'null' || c.firstName === 'undefined' || !c.firstName) ? '' : c.firstName;
@@ -1558,7 +1550,7 @@ export default function NewOrderPage() {
                 <NocCollapsible
                   title="תיקונים לפריט"
                   badge={alterationsChosen ? alterationsSummary : null}
-                  defaultOpen={alterationsChosen}
+                  openWhen={alterationsChosen}
                 >
                   <div className="noc-chips">
                     <button
@@ -2020,8 +2012,12 @@ export default function NewOrderPage() {
  * מגירה מתקפלת — כל מה שאינו חובה במסך יושב בתוכה, כדי שכל שלב יציג
  * רק את השדות שבאמת נדרשים כדי להתקדם.
  */
-function NocCollapsible({ title, badge, defaultOpen = false, children }) {
-  const [open, setOpen] = useState(defaultOpen);
+function NocCollapsible({ title, badge, defaultOpen = false, openWhen = false, children }) {
+  const [open, setOpen] = useState(defaultOpen || openWhen);
+  // עריכת פריט קיים ממלאת שדות שיושבים בתוך המגירה — היא נפתחת כדי שלא יעלמו מהעין.
+  useEffect(() => {
+    if (openWhen) setOpen(true);
+  }, [openWhen]);
   return (
     <div className={`noc-more ${open ? 'open' : ''}`}>
       <button type="button" className="noc-more-t" onClick={() => setOpen(o => !o)} aria-expanded={open}>
