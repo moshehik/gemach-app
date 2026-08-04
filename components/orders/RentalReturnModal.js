@@ -3,32 +3,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLabels } from '@/app/components/LabelsContext';
-import { X, Info, Printer, Undo2, AlertTriangle, CheckCircle2, RotateCcw, Box, Search, PackageCheck, PackageX, Clock, Shirt } from 'lucide-react';
+import { X, Info, Printer, Save, Ban, Undo2, AlertTriangle, CheckCircle2, PackageX, PackageCheck, MoreVertical, Calendar, ScanLine } from 'lucide-react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { addHistory } from '../../lib/historyManager';
+import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 
 export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const { getLabel } = useLabels();
-  
+
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('rental'); // 'rental' or 'return'
   const [enableAlterations, setEnableAlterations] = useState(true);
-  
+
   const [modalBarcode, setModalBarcode] = useState('');
   const modalBarcodeRef = useRef(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
-  
+
   const [duplicates, setDuplicates] = useState(null);
   const [itemDetails, setItemDetails] = useState(null);
 
-  // Fetch the order when orderId changes
-  useEffect(() => {
-    if (orderId) {
-      loadOrder(orderId);
-    }
-  }, [orderId]);
+  const [openMenuId, setOpenMenuId] = useState(null);
+  const [rentingItemId, setRentingItemId] = useState(null);
+  const [inlineBarcode, setInlineBarcode] = useState({});
 
   async function loadOrder(id) {
     setLoading(true);
@@ -55,6 +52,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     }
   };
 
+  // Fetch the order when orderId changes
+  useEffect(() => {
+    if (orderId) {
+      loadOrder(orderId);
+    }
+  }, [orderId]);
+
   const refreshOrder = async () => {
     if (!orderId) return;
     try {
@@ -79,51 +83,44 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         }
       })
       .catch(console.error);
-    // We intentionally removed the body overflow hidden logic to prevent layout jumping
-    
-    return () => {
-      // Cleanup
-    };
   }, []);
 
   useEffect(() => {
     if (selectedOrder && modalBarcodeRef.current) {
       modalBarcodeRef.current.focus({ preventScroll: true });
     }
-  }, [selectedOrder, activeTab, duplicates]);
+  }, [selectedOrder, duplicates]);
 
-  const handleModalScan = async (e) => {
-    e.preventDefault();
-    if (!modalBarcode || isProcessing) return;
-    
-    setIsProcessing(true);
-    const cleanBarcode = modalBarcode.replace(/\s+/g, '');
-    
-    try {
-      if (activeTab === 'rental') {
-        await handleRentalScan(cleanBarcode);
-      } else {
-        await handleReturnScan(cleanBarcode);
-      }
-      setModalBarcode('');
-    } finally {
-      setIsProcessing(false);
-    }
-  };
+  // Close any open item action-menu on outside click
+  useEffect(() => {
+    if (!openMenuId) return;
+    const handler = (e) => {
+      if (!e.target.closest('.rrm-item-menu')) setOpenMenuId(null);
+    };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [openMenuId]);
+
+  const activeItems = selectedOrder ? selectedOrder.items.filter(i => !i.isDeleted) : [];
+  const pendingItems = activeItems.filter(i => i.barcode && !i.isTaken);
+  const pendingCount = pendingItems.length;
+
+  const overallStatus = selectedOrder ? calculateOrderStatus(selectedOrder) : '';
+  const overallStatusColor = getStatusColor(overallStatus);
 
   const handleRentalScan = async (barcodeToScan, itemIdToForce = null) => {
     try {
       const res = await fetch('/api/rentals/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          orderId: selectedOrder.orderId, 
+        body: JSON.stringify({
+          orderId: selectedOrder.orderId,
           barcode: barcodeToScan,
           ...(itemIdToForce && { itemIdToForce })
         })
       });
       const data = await res.json();
-      
+
       if (res.ok) {
         if (data.duplicateAlterations) {
           setDuplicates(data.options);
@@ -165,7 +162,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         body: JSON.stringify({ orderId: selectedOrder.orderId, barcode })
       });
       const data = await res.json();
-      
+
       if (res.ok) {
         await refreshOrder();
       } else {
@@ -174,6 +171,38 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     } catch (err) {
       console.error(err);
     }
+  };
+
+  // Single smart scan bar: detects whether the barcode belongs to an item
+  // currently with the customer (return) or a still-unassigned item (rental).
+  const handleGlobalBarcodeScan = async (e) => {
+    e.preventDefault();
+    if (!modalBarcode || isProcessing) return;
+
+    setIsProcessing(true);
+    const cleanBarcode = modalBarcode.replace(/\s+/g, '');
+
+    try {
+      const isAwaitingReturn = activeItems.some(i => i.barcode === cleanBarcode && i.isTaken && !i.isReturned);
+      if (isAwaitingReturn) {
+        await handleReturnScan(cleanBarcode);
+      } else {
+        await handleRentalScan(cleanBarcode);
+      }
+      setModalBarcode('');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const confirmInlineRent = async (item) => {
+    const barcode = (inlineBarcode[item.id] || '').replace(/\s+/g, '').trim();
+    if (!barcode) {
+      alert('חובה להזין ברקוד');
+      return;
+    }
+    await handleRentalScan(barcode);
+    setInlineBarcode(prev => ({ ...prev, [item.id]: '' }));
   };
 
   const confirmRental = async () => {
@@ -208,7 +237,16 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     }
   };
 
+  const discardPendingRentals = async () => {
+    try {
+      await fetch(`/api/rentals/confirm?orderId=${selectedOrder.orderId}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   const undoReturn = async (itemId) => {
+    if (!await window.customConfirm('האם אתה בטוח שברצונך לבטל את ההחזרה? הפריט יחזור להיות "אצל הלקוח".')) return;
     try {
       const res = await fetch('/api/returns/scan', {
         method: 'PUT',
@@ -243,6 +281,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   };
 
   const showItemDetails = async (item) => {
+    setOpenMenuId(null);
     try {
       const res = await fetch(`/api/audit/order-item/${item.id}`);
       let history = [];
@@ -256,8 +295,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     }
   };
 
-  const reportIssue = async (itemId, issueType) => {
-    if (!await window.customConfirm('האם אתה בטוח? תוסף הערה אוטומטית בכרטיס הלקוח.')) return;
+  const doReportIssue = async (itemId, issueType) => {
     try {
       const res = await fetch('/api/returns/report-issue', {
         method: 'POST',
@@ -265,277 +303,469 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         body: JSON.stringify({ orderItemId: itemId, issueType })
       });
       if (res.ok) {
-        alert('הערה נוספה בהצלחה.');
         await refreshOrder();
+        return true;
       } else {
         const data = await res.json();
         alert(data.error || 'שגיאה');
+        return false;
       }
     } catch (err) {
       console.error(err);
+      return false;
     }
+  };
+
+  const reportIssue = async (itemId, issueType) => {
+    setOpenMenuId(null);
+    if (!await window.customConfirm('האם אתה בטוח? תוסף הערה אוטומטית בכרטיס הלקוח.')) return;
+    const success = await doReportIssue(itemId, issueType);
+    if (success) alert('הערה נוספה בהצלחה.');
+  };
+
+  const handleMarkReturnGood = async (item) => {
+    if (item.isReturned) return;
+    if (!await window.customConfirm(`לסמן את "${item.description}" כהוחזר תקין?`, 'אישור החזרה')) return;
+    await handleReturnScan(item.barcode);
+  };
+
+  const handleMarkReturnBad = async (item) => {
+    if (item.isReturned) return;
+    if (!await window.customConfirm(`לסמן את "${item.description}" כהוחזר לא תקין?`, 'דיווח על פריט פגום')) return;
+    await handleReturnScan(item.barcode);
+    await doReportIssue(item.id, 'returned-bad');
+  };
+
+  const toggleItemMenu = (e, itemId) => {
+    e.stopPropagation();
+    setOpenMenuId(prev => prev === itemId ? null : itemId);
+  };
+
+  const handleHeaderSave = async () => {
+    if (pendingCount === 0) {
+      onClose();
+      return;
+    }
+    if (!await window.customConfirm(`לאשר ${pendingCount} פריטים שנסרקו ולסגור את הכרטיס?`, 'שמירה וסגירה')) return;
+    await confirmRental();
+  };
+
+  const handleHeaderCancel = async () => {
+    if (pendingCount === 0) {
+      onClose();
+      return;
+    }
+    if (!await window.customConfirm(`לבטל ${pendingCount} סריקות שטרם אושרו ולסגור בלי לשמור?`, 'ביטול שינויים')) return;
+    await discardPendingRentals();
+    onClose();
+  };
+
+  const attemptCloseCard = async () => {
+    if (pendingCount === 0) {
+      onClose();
+      return;
+    }
+    const wantsSave = await window.customConfirm(`יש ${pendingCount} פריטים שנסרקו ולא אושרו. לשמור אותם לפני היציאה?`, 'יציאה מהכרטיס');
+    if (wantsSave) {
+      await confirmRental();
+      return;
+    }
+    const wantsDiscard = await window.customConfirm('למחוק את הסריקות הממתינות ולצאת בלי לשמור?', 'יציאה בלי לשמור');
+    if (wantsDiscard) {
+      await discardPendingRentals();
+      onClose();
+    }
+  };
+
+  const getItemStatus = (item) => {
+    if (item.isReturned) {
+      return item.returnedOk
+        ? { text: 'הוחזר', tone: 'success' }
+        : { text: 'הוחזר - לא תקין', tone: 'danger' };
+    }
+    if (item.isTaken) {
+      return { text: 'מושכר', tone: 'warning' };
+    }
+    if (item.barcode) {
+      return { text: 'נסרק - ממתין לאישור', tone: 'warning' };
+    }
+    return { text: 'ממתין', tone: 'neutral' };
   };
 
   // Rendering
   const modalContent = (
-    <div className="modal-overlay" onClick={onClose} style={{ direction: 'rtl', zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', position: 'fixed', inset: 0 }}>
-      <div className="modal-content animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '1000px', width: '95%', maxHeight: '90vh', padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: '16px', background: 'var(--card-bg, #fff)', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid var(--element-border, #e2e8f0)' }}>
-        
-        {/* Header */}
-        <div className="border-b px-6 py-4 flex justify-between items-center sticky top-0 z-10" style={{ background: 'var(--card-bg, #f8fafc)', borderColor: 'var(--element-border, #e2e8f0)' }}>
-          <div className="flex items-center gap-4">
-            <h2 className="text-2xl font-bold m-0 flex items-center gap-2" style={{ color: 'var(--primary-color, #2563eb)' }}>
-              <Box style={{ color: 'var(--primary-color, #2563eb)' }} />
-              הזמנה {selectedOrder ? `#${selectedOrder.orderId}` : `#${orderId}`}
-            </h2>
-            {selectedOrder ? (
-              <div className="px-3 py-1 rounded-full text-sm font-semibold flex items-center gap-2" style={{ backgroundColor: 'var(--accent-color, #e0e7ff)', color: 'var(--primary-color, #3730a3)' }}>
-                <span>{selectedOrder.customer ? `${selectedOrder.customer.firstName || ''} ${selectedOrder.customer.lastName || ''}` : 'לא צוין לקוח'}</span>
-              </div>
-            ) : (
-              <div className="px-3 py-1 rounded-full text-sm font-semibold flex items-center justify-center gap-2" style={{ backgroundColor: '#e2e8f0', color: '#64748b', width: '100px', height: '28px' }}>
-                טוען...
-              </div>
-            )}
-          </div>
-          
-          <div className="flex gap-3">
-            <button data-agy-id="rentalreturnmodal_button_1" 
-              onClick={() => selectedOrder && window.open(`/print/order?orderId=${selectedOrder.orderId}`, '_blank')}
-              className="flex items-center gap-2 px-4 py-2 border rounded-xl font-semibold transition-all shadow-sm disabled:opacity-50"
-              style={{ backgroundColor: 'var(--card-bg, #ffffff)', borderColor: 'var(--element-border, #e2e8f0)', color: 'var(--text-main, #334155)' }}
-              disabled={loading || !selectedOrder}
-              title="הדפס פרטי השכרה"
-            >
-              <Printer size={18} />
-              הדפס
-            </button>
-            <button data-agy-id="rentalreturnmodal_button_2" 
-              onClick={onClose}
-              className="flex items-center justify-center w-10 h-10 rounded-full transition-colors hover:opacity-80"
-              style={{ backgroundColor: 'var(--element-bg-hover, #f1f5f9)', color: 'var(--text-main, #64748b)' }}
-            >
-              <X size={20} />
-            </button>
-          </div>
-        </div>
+    <div className="modal-overlay" onClick={onClose} style={{ direction: 'rtl', zIndex: 1100 }}>
+      <div className="rrm-card" onClick={e => e.stopPropagation()}>
 
         {loading || !selectedOrder ? (
-          <div className="p-10 flex flex-col items-center justify-center flex-1" style={{ backgroundColor: 'var(--app-bg, #f8fafc)' }}>
-             <div style={{ width: '48px', height: '48px', border: '4px solid var(--element-border, #e2e8f0)', borderTop: '4px solid var(--primary-color, #2563eb)', borderRadius: '50%', animation: 'spin 1s linear infinite', marginBottom: '1.5rem' }}></div>
-             <h2 style={{ fontSize: '1.25rem', fontWeight: '600', color: 'var(--text-main, #334155)', margin: 0 }}>טוען נתוני השכרה...</h2>
+          <div className="rrm-loading">
+            <div className="rrm-spinner"></div>
+            <h2>טוען נתוני השכרה...</h2>
           </div>
         ) : (
           <>
+            {/* Sidebar */}
+            <div className="rrm-sidebar">
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '10px' }}>
+                  <button data-agy-id="rentalreturnmodal_button_1" className="rrm-close-btn" title="סגור חלון" onClick={attemptCloseCard}>
+                    <X size={18} />
+                  </button>
+                </div>
 
-        {/* Notes */}
-        {(selectedOrder.orderNotes || selectedOrder.notes) && (
-          <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex items-start gap-3">
-            <AlertTriangle className="text-amber-600 flex-shrink-0 mt-0.5" size={18} />
-            <div className="text-amber-900 text-sm">
-              <strong className="font-bold">הערות להזמנה: </strong>
-              {selectedOrder.orderNotes || selectedOrder.notes}
-            </div>
-          </div>
-        )}
+                <div style={{ marginBottom: '12px' }}>
+                  <span className="rrm-badge" style={{ background: overallStatusColor.bg, color: overallStatusColor.text }}>{overallStatus}</span>
+                </div>
 
-        {/* Tabs */}
-        <div className="flex px-6 pt-4 gap-2 bg-white border-b border-slate-200">
-          <button data-agy-id="rentalreturnmodal_button_3"
-            className={`flex items-center gap-2 px-6 py-3 font-bold rounded-lg transition-all ${activeTab === 'rental' ? 'bg-blue-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
-            onClick={() => setActiveTab('rental')}
-          >
-            <Shirt size={18} />
-            ניפוק
-          </button>
-          <button data-agy-id="rentalreturnmodal_button_4"
-            className={`flex items-center gap-2 px-6 py-3 font-bold rounded-lg transition-all ${activeTab === 'return' ? 'bg-emerald-500 text-white shadow-md' : 'text-slate-600 hover:bg-slate-100'}`}
-            onClick={() => setActiveTab('return')}
-          >
-            <PackageCheck size={18} />
-            החזרות
-          </button>
-        </div>
+                <h2 className="rrm-customer-name">
+                  {selectedOrder.customer ? `${selectedOrder.customer.firstName || ''} ${selectedOrder.customer.lastName || ''}` : 'לא צוין לקוח'}
+                </h2>
+                <p className="rrm-order-id">הזמנה #{selectedOrder.orderId}</p>
 
-        <div className="flex-1 overflow-y-auto bg-slate-50/50 p-6">
-          
-          {/* Scan Bar */}
-          <div className="max-w-2xl mx-auto mb-8 relative">
-            <form data-agy-id="rentalreturnmodal_form_5" onSubmit={handleModalScan} className="relative shadow-md rounded-xl overflow-hidden group border-2 border-slate-300 focus-within:border-blue-500 focus-within:ring-2 focus-within:ring-blue-300 transition-all bg-white">
-              <div className="absolute inset-y-0 right-0 flex items-center pr-4 pointer-events-none text-slate-400 group-focus-within:text-blue-600 transition-all">
-                <Search size={22} />
+                {selectedOrder.eventDate && (
+                  <div className="rrm-date-info">
+                    <label><Calendar size={13} style={{ verticalAlign: 'text-bottom', marginLeft: '4px' }} />תאריך אירוע</label>
+                    <div className="val">{getHebrewDateString(selectedOrder.eventDate)}</div>
+                    <div className="rrm-date-sub">{new Date(selectedOrder.eventDate).toLocaleDateString('he-IL')}</div>
+                  </div>
+                )}
+
+                <div className="rrm-barcode-section">
+                  <label>סריקה מהירה (השכרה/החזרה):</label>
+                  <form data-agy-id="rentalreturnmodal_form_2" onSubmit={handleGlobalBarcodeScan} className="rrm-barcode-form">
+                    <ScanLine size={16} className="rrm-barcode-icon" />
+                    <input data-agy-id="rentalreturnmodal_input_3"
+                      ref={modalBarcodeRef}
+                      type="text"
+                      className="rrm-barcode-input"
+                      placeholder="הזן ברקוד..."
+                      value={modalBarcode}
+                      onChange={(e) => setModalBarcode(e.target.value.replace(/\s+/g, ''))}
+                      disabled={isProcessing}
+                    />
+                    <button data-agy-id="rentalreturnmodal_button_4" type="submit" className="hidden">סרוק</button>
+                  </form>
+                </div>
               </div>
-              <input data-agy-id="rentalreturnmodal_input_6"
-                ref={modalBarcodeRef}
-                type="text"
-                className="w-full pl-4 pr-12 py-4 text-lg bg-transparent border-none focus:outline-none placeholder-slate-400 text-slate-900 font-medium"
-                placeholder="סרוק ברקוד כאן..."
-                value={modalBarcode}
-                onChange={(e) => setModalBarcode(e.target.value.replace(/\s+/g, ''))}
-                disabled={isProcessing}
-              />
-              <button data-agy-id="rentalreturnmodal_button_7" type="submit" className="hidden">סרוק</button>
-              {isProcessing && (
-                <div className="absolute inset-y-0 left-0 flex items-center pl-4">
-                  <div className="w-6 h-6 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin"></div>
+            </div>
+
+            {/* Main */}
+            <div className="rrm-main">
+              <div className="rrm-main-header">
+                <h3>השכרה והחזרה</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button data-agy-id="rentalreturnmodal_button_5" className="rrm-icon-btn info"
+                    onClick={() => window.open(`/print/order?orderId=${selectedOrder.orderId}`, '_blank')}
+                    title="הדפס פרטי השכרה">
+                    <Printer size={18} />
+                  </button>
+                  <button data-agy-id="rentalreturnmodal_button_6" className="rrm-icon-btn primary" onClick={handleHeaderSave} title="שמור וסגור" disabled={isConfirming}>
+                    <Save size={18} />
+                  </button>
+                  <button data-agy-id="rentalreturnmodal_button_7" className="rrm-icon-btn danger" onClick={handleHeaderCancel} title="בטל שינויים שלא אושרו וסגור">
+                    <Ban size={18} />
+                  </button>
+                </div>
+              </div>
+
+              {(selectedOrder.orderNotes || selectedOrder.notes) && (
+                <div className="rrm-notes-banner">
+                  <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div><strong>הערות להזמנה: </strong>{selectedOrder.orderNotes || selectedOrder.notes}</div>
                 </div>
               )}
-            </form>
-          </div>
 
-          {/* Tables */}
-          <div className="bg-white rounded-lg shadow-sm border border-slate-300 overflow-hidden">
-            {activeTab === 'rental' && (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-right text-sm">
-                    <thead>
-                      <tr className="bg-slate-100 border-b border-slate-300">
-                        <th className="p-4 font-bold text-slate-800">{getLabel('item_modelName', 'דגם')}</th>
-                        <th className="p-4 font-bold text-slate-800 w-24 text-center">{getLabel('item_size', 'מידה')}</th>
-                        {enableAlterations && <th className="p-4 font-bold text-slate-800">תיקונים</th>}
-                        <th className="p-4 font-bold text-slate-800">{getLabel('item_barcode', 'ברקוד')}</th>
-                        <th className="p-4 font-bold text-slate-800 text-center">סטטוס</th>
-                        <th className="p-4 font-bold text-slate-800 text-center w-32">פעולות</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {selectedOrder.items.filter(i => !i.isDeleted).map(item => (
-                        <tr key={item.id} className={`transition-colors hover:bg-slate-50 ${item.isTaken ? 'bg-green-50' : (item.barcode ? 'bg-amber-50' : '')}`}>
-                          <td className="p-4 font-medium text-slate-800">{item.description}</td>
-                          <td className="p-4 text-center">
-                            <span className="inline-block px-2.5 py-1 bg-slate-100 rounded-md font-semibold text-slate-700 border border-slate-200">{item.sizeText}</span>
-                          </td>
-                          {enableAlterations && <td className="p-4 text-slate-600 text-sm max-w-[200px] truncate" title={item.repairs || '-'}>{item.repairs || '-'}</td>}
-                          <td className="p-4">
-                            {item.barcode ? (
-                               <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-1 rounded">{item.barcode}</span>
-                            ) : (
-                               <span className="text-slate-400 italic">לא נסרק</span>
-                            )}
-                          </td>
-                          <td className="p-4 text-center">
-                            {item.isTaken ? (
-                              <span className="inline-block px-3 py-1 bg-green-500 text-white rounded-full text-xs font-bold">✓ נלקח</span>
-                            ) : (item.barcode ? (
-                              <span className="inline-block px-3 py-1 bg-amber-500 text-white rounded-full text-xs font-bold">⏳ ממתין</span>
-                            ) : (
-                              <span className="inline-block px-3 py-1 bg-slate-400 text-white rounded-full text-xs font-bold">טרם</span>
-                            ))}
-                          </td>
-                          <td className="p-4">
-                            <div className="flex justify-center gap-2">
-                              <button data-agy-id="rentalreturnmodal_button_8" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); showItemDetails(item); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded" title="פרטים"><Info size={16} /></button>
-                              {item.isTaken && (
-                                <button data-agy-id="rentalreturnmodal_button_9" onClick={() => undoRental(item.id)} className="p-2 text-red-600 hover:bg-red-100 rounded" title="בטל"><Undo2 size={16} /></button>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {selectedOrder.items.filter(i => !i.isDeleted).length === 0 && (
-                        <tr>
-                          <td colSpan="6" className="p-8 text-center text-slate-500">אין פריטים להשכרה בהזמנה זו</td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                
-                <div className="p-4 bg-slate-50 border-t border-slate-300 flex justify-end gap-3">
-                  <button data-agy-id="rentalreturnmodal_button_10" onClick={onClose} className="px-6 py-2 rounded-lg text-slate-700 font-bold border border-slate-300 hover:bg-slate-100 transition-all">
-                    סגור
-                  </button>
-                  <button data-agy-id="rentalreturnmodal_button_11" onClick={confirmRental} disabled={isConfirming} className={`px-8 py-2 rounded-lg bg-blue-500 text-white font-bold hover:bg-blue-600 transition-all flex items-center gap-2 ${isConfirming ? 'opacity-70 cursor-not-allowed' : ''}`}>
-                    {isConfirming ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                        מאשר...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle2 size={18} />
-                        אישור
-                      </>
-                    )}
+              {pendingCount > 0 && (
+                <div className="rrm-pending-banner">
+                  <span>{pendingCount} פריטים נסרקו וממתינים לאישור השכרה</span>
+                  <button data-agy-id="rentalreturnmodal_button_8" className="rrm-btn rrm-btn-primary" onClick={confirmRental} disabled={isConfirming}>
+                    {isConfirming ? 'מאשר...' : `אשר הכל (${pendingCount})`}
                   </button>
                 </div>
-              </>
-            )}
+              )}
 
-            {activeTab === 'return' && (
-              <>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-right text-sm">
-                    <thead>
-                      <tr className="bg-slate-100 border-b border-slate-300">
-                        <th className="p-4 font-bold text-slate-800">{getLabel('item_modelName', 'דגם')}</th>
-                        <th className="p-4 font-bold text-slate-800 w-24 text-center">{getLabel('item_size', 'מידה')}</th>
-                        <th className="p-4 font-bold text-slate-800">{getLabel('item_barcode', 'ברקוד')}</th>
-                        <th className="p-4 font-bold text-slate-800 text-center">סטטוס</th>
-                        <th className="p-4 font-bold text-slate-800 text-center">פעולות</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-200">
-                      {selectedOrder.items.filter(i => i.isTaken && !i.isDeleted).map(item => (
-                        <tr key={item.id} className={`transition-colors hover:bg-slate-50 ${item.isReturned ? 'bg-green-50' : 'bg-orange-50'}`}>
-                          <td className="p-4 font-medium text-slate-800">{item.description}</td>
-                          <td className="p-4 text-center">
-                            <span className="inline-block px-2.5 py-1 bg-slate-100 rounded-md font-semibold text-slate-700 border border-slate-200">{item.sizeText}</span>
-                          </td>
-                          <td className="p-4">
-                            <span className="font-mono font-bold text-slate-800 bg-slate-100 px-2 py-1 rounded">{item.barcode}</span>
-                          </td>
-                          <td className="p-4 text-center">
-                            {item.isReturned ? (
-                              <span className="inline-block px-3 py-1 bg-green-500 text-white rounded-full text-xs font-bold">✓ הוחזר</span>
-                            ) : (
-                              <span className="inline-block px-3 py-1 bg-orange-500 text-white rounded-full text-xs font-bold animate-pulse">👕 אצל לקוח</span>
+              <ul className="rrm-item-list">
+                {activeItems.map(item => {
+                  const status = getItemStatus(item);
+                  const isRenting = rentingItemId === item.id;
+                  return (
+                    <li key={item.id}>
+                      <div className="rrm-item-details">
+                        <div className="rrm-item-title">
+                          {item.description}
+                          <span className={`rrm-badge ${status.tone}`}>{status.text}</span>
+                          <div className="rrm-item-menu" style={{ position: 'relative' }}>
+                            <button data-agy-id="rentalreturnmodal_button_9" className="rrm-icon-btn" onClick={(e) => toggleItemMenu(e, item.id)}>
+                              <MoreVertical size={18} />
+                            </button>
+                            {openMenuId === item.id && (
+                              <div className="rrm-floating-menu">
+                                <button data-agy-id="rentalreturnmodal_button_10" className="rrm-menu-item" onClick={() => showItemDetails(item)}><Info size={14} /> פרטים</button>
+                                {item.isTaken && !item.isReturned && (
+                                  <button data-agy-id="rentalreturnmodal_button_11" className="rrm-menu-item danger" onClick={() => { setOpenMenuId(null); undoRental(item.id); }}><Undo2 size={14} /> ביטול השכרה</button>
+                                )}
+                                {item.isReturned && (
+                                  <>
+                                    <button data-agy-id="rentalreturnmodal_button_12" className="rrm-menu-item danger" onClick={() => { setOpenMenuId(null); undoReturn(item.id); }}><Undo2 size={14} /> ביטול החזרה</button>
+                                    {item.returnedOk && (
+                                      <button data-agy-id="rentalreturnmodal_button_13" className="rrm-menu-item danger" onClick={() => reportIssue(item.id, 'returned-bad')}><PackageX size={14} /> דווח על בעיה</button>
+                                    )}
+                                  </>
+                                )}
+                              </div>
                             )}
-                          </td>
-                          <td className="p-4">
-                            <div className="flex justify-center gap-2 flex-wrap">
-                              <button data-agy-id="rentalreturnmodal_button_12" type="button" onClick={(e) => { e.preventDefault(); e.stopPropagation(); showItemDetails(item); }} className="p-2 text-blue-600 hover:bg-blue-100 rounded" title="פרטים"><Info size={16} /></button>
-                              {item.isReturned ? (
-                                <>
-                                  <button data-agy-id="rentalreturnmodal_button_13" onClick={() => undoReturn(item.id)} className="p-2 text-amber-600 hover:bg-amber-100 rounded" title="בטל"><Undo2 size={16} /></button>
-                                  <button data-agy-id="rentalreturnmodal_button_14" onClick={() => reportIssue(item.id, 'returned-bad')} className="p-2 text-red-600 hover:bg-red-100 rounded" title="בעיה"><PackageX size={16} /></button>
-                                </>
-                              ) : (
-                                <button data-agy-id="rentalreturnmodal_button_15" onClick={() => reportIssue(item.id, 'not-returned')} className="px-2 py-1 text-red-600 hover:bg-red-100 rounded text-xs font-bold flex items-center gap-1" title="דווח">
-                                  דווח
-                                </button>
-                              )}
+                          </div>
+                        </div>
+                        <div className="rrm-item-sub">
+                          {getLabel('item_size', 'מידה')}: {item.sizeText || '-'}
+                          {item.barcode && <> · {getLabel('item_barcode', 'ברקוד')}: <span className="rrm-mono">{item.barcode}</span></>}
+                          {enableAlterations && item.repairs && <> · תיקונים: {item.repairs}</>}
+                        </div>
+                        {(item.takenDate || item.returnDate) && (
+                          <div className="rrm-item-dates">
+                            {item.takenDate && <div><strong>לקיחה:</strong> {getHebrewDateString(item.takenDate)}</div>}
+                            {item.returnDate && <div><strong>הוחזר:</strong> {getHebrewDateString(item.returnDate)}</div>}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="rrm-action-bar">
+                        {!item.barcode && !item.isTaken && (
+                          isRenting ? (
+                            <div className="rrm-inline-barcode">
+                              <input data-agy-id="rentalreturnmodal_input_14"
+                                type="text"
+                                autoFocus
+                                placeholder="סרוק ברקוד"
+                                value={inlineBarcode[item.id] || ''}
+                                onChange={(e) => setInlineBarcode(prev => ({ ...prev, [item.id]: e.target.value.replace(/\s+/g, '') }))}
+                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmInlineRent(item); } }}
+                              />
+                              <button data-agy-id="rentalreturnmodal_button_15" className="rrm-btn rrm-btn-primary rrm-btn-sm" onClick={() => confirmInlineRent(item)}>אשר</button>
+                              <button data-agy-id="rentalreturnmodal_button_16" className="rrm-icon-btn" onClick={() => setRentingItemId(null)}><X size={16} /></button>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                      {selectedOrder.items.filter(i => i.isTaken && !i.isDeleted).length === 0 && (
-                        <tr>
-                          <td colSpan="5" className="p-10 text-center text-slate-500 text-lg flex flex-col items-center gap-3">
-                            <PackageCheck size={48} className="text-slate-300 mx-auto" />
-                            אין פריטים אצל הלקוח שניתן להחזיר
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-        </>
+                          ) : (
+                            <button data-agy-id="rentalreturnmodal_button_17" className="rrm-btn rrm-btn-primary" onClick={() => setRentingItemId(item.id)}>השכרה</button>
+                          )
+                        )}
+
+                        {item.barcode && !item.isTaken && (
+                          <span className="rrm-hint-text">ממתין לאישור השכרה</span>
+                        )}
+
+                        {item.isTaken && (
+                          <div className={`rrm-return-banner ${item.isReturned ? 'readonly' : ''}`}>
+                            <button data-agy-id="rentalreturnmodal_button_18"
+                              className={`rrm-return-good ${item.isReturned && item.returnedOk ? 'active' : ''}`}
+                              onClick={() => handleMarkReturnGood(item)}
+                              disabled={item.isReturned}
+                            >
+                              <CheckCircle2 size={14} /> החזרה תקינה
+                            </button>
+                            <div className="rrm-divider-v"></div>
+                            <button data-agy-id="rentalreturnmodal_button_19"
+                              className={`rrm-return-bad ${item.isReturned && !item.returnedOk ? 'active' : ''}`}
+                              onClick={() => handleMarkReturnBad(item)}
+                              disabled={item.isReturned}
+                            >
+                              <AlertTriangle size={14} /> לא תקין
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </li>
+                  );
+                })}
+                {activeItems.length === 0 && (
+                  <li className="rrm-empty-state">
+                    <PackageCheck size={40} />
+                    אין פריטים בהזמנה זו
+                  </li>
+                )}
+              </ul>
+            </div>
+          </>
         )}
       </div>
 
-      <style dangerouslySetInnerHTML={{__html: `
-        @keyframes fade-in {
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @keyframes rrm-fade-in {
           from { opacity: 0; transform: scale(0.98); }
           to { opacity: 1; transform: scale(1); }
         }
-        .animate-fade-in {
-          animation: fade-in 0.2s ease-out forwards;
+        @keyframes rrm-slide-in {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes rrm-spin {
+          to { transform: rotate(360deg); }
+        }
+        .rrm-card {
+          display: flex;
+          background: var(--card-bg, #fff);
+          border-radius: 16px;
+          overflow: hidden;
+          box-shadow: var(--shadow-lg, 0 25px 50px -12px rgba(0,0,0,0.25));
+          width: 95%;
+          max-width: 1000px;
+          max-height: 90vh;
+          border: 1px solid var(--element-border, #e2e8f0);
+          animation: rrm-fade-in 0.2s ease-out forwards;
+        }
+        .rrm-loading {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          padding: 4rem 2rem; width: 100%;
+        }
+        .rrm-spinner {
+          width: 48px; height: 48px; border: 4px solid var(--element-border, #e2e8f0);
+          border-top: 4px solid var(--primary-color, #d4af37); border-radius: 50%;
+          animation: rrm-spin 1s linear infinite; margin-bottom: 1.5rem;
+        }
+        .rrm-loading h2 { font-size: 1.25rem; font-weight: 600; color: var(--text-main); margin: 0; }
+
+        .rrm-sidebar {
+          background: var(--primary-color, #d4af37); color: #fff; padding: 24px 20px;
+          width: 30%; min-width: 220px; display: flex; flex-direction: column; justify-content: space-between;
+        }
+        .rrm-close-btn {
+          background: rgba(0,0,0,0.15); color: #fff; border: none; border-radius: 50%;
+          width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+          cursor: pointer; transition: all 0.2s;
+        }
+        .rrm-close-btn:hover { background: rgba(0,0,0,0.3); }
+        .rrm-customer-name { color: #fff; font-size: 1.5rem; margin: 0 0 4px 0; font-family: 'Playfair Display', serif; }
+        .rrm-order-id { opacity: 0.85; font-size: 0.95rem; margin: 0; }
+        .rrm-date-info { margin-top: 20px; background: rgba(0,0,0,0.12); padding: 12px 14px; border-radius: 8px; }
+        .rrm-date-info label { font-size: 0.78rem; opacity: 0.85; display: flex; align-items: center; margin-bottom: 4px; }
+        .rrm-date-info .val { font-weight: 600; font-size: 1.05rem; }
+        .rrm-date-sub { font-size: 0.75rem; opacity: 0.75; margin-top: 2px; }
+        .rrm-barcode-section { margin-top: 20px; background: rgba(255,255,255,0.15); padding: 14px; border-radius: 8px; }
+        .rrm-barcode-section label { font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 8px; }
+        .rrm-barcode-form { position: relative; display: flex; align-items: center; }
+        .rrm-barcode-icon { position: absolute; right: 10px; color: #888; pointer-events: none; }
+        .rrm-barcode-input {
+          width: 100%; padding: 10px 34px 10px 10px; border-radius: 6px; border: none; outline: none;
+          text-align: center; font-size: 1rem; direction: ltr;
+        }
+
+        .rrm-main { padding: 24px 28px; width: 70%; overflow-y: auto; }
+        .rrm-main-header {
+          display: flex; justify-content: space-between; align-items: center;
+          margin-bottom: 16px; border-bottom: 2px solid var(--divider, #eee); padding-bottom: 14px;
+        }
+        .rrm-main-header h3 { margin: 0; font-family: 'Playfair Display', serif; font-size: 1.35rem; color: var(--text-main); }
+
+        .rrm-icon-btn {
+          background: transparent; border: none; border-radius: 8px; width: 34px; height: 34px;
+          display: flex; align-items: center; justify-content: center; cursor: pointer;
+          color: var(--text-muted); transition: all 0.2s; padding: 0;
+        }
+        .rrm-icon-btn:hover { background: var(--element-bg, #f5f5f5); color: var(--text-main); }
+        .rrm-icon-btn.primary { color: var(--primary-color); }
+        .rrm-icon-btn.primary:hover { background: var(--primary-color); color: #fff; }
+        .rrm-icon-btn.danger { color: var(--danger-text, #ef4444); }
+        .rrm-icon-btn.danger:hover { background: var(--danger-bg, #fef2f2); }
+        .rrm-icon-btn.info { color: #3b82f6; }
+        .rrm-icon-btn.info:hover { background: #3b82f6; color: #fff; }
+        .rrm-icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .rrm-badge {
+          padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-flex;
+          align-items: center; gap: 4px; white-space: nowrap;
+        }
+        .rrm-badge.success { background: var(--success-bg, #f0fdf4); color: var(--success-text, #22c55e); }
+        .rrm-badge.warning { background: rgba(245, 158, 11, 0.14); color: var(--warning-color, #f59e0b); }
+        .rrm-badge.danger { background: var(--danger-bg, #fef2f2); color: var(--danger-text, #ef4444); }
+        .rrm-badge.neutral { background: var(--element-bg, #f0f0f0); color: var(--text-muted, #666); }
+
+        .rrm-notes-banner {
+          background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25);
+          border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; display: flex; gap: 10px;
+          font-size: 0.9rem; color: var(--text-main);
+        }
+
+        .rrm-pending-banner {
+          display: flex; align-items: center; justify-content: space-between; gap: 12px;
+          background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);
+          border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-weight: 600;
+          color: var(--text-main); font-size: 0.92rem;
+        }
+
+        .rrm-item-list { list-style: none; padding: 0; margin: 0; }
+        .rrm-item-list li {
+          padding: 18px 0; border-bottom: 1px solid var(--divider, #eee);
+          display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;
+        }
+        .rrm-item-list li:last-child { border-bottom: none; }
+        .rrm-item-details { flex: 1; min-width: 240px; }
+        .rrm-item-title {
+          font-size: 1.05rem; font-weight: 600; margin-bottom: 6px; display: flex;
+          align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-main);
+        }
+        .rrm-item-sub { font-size: 0.85rem; color: var(--text-muted); }
+        .rrm-mono { font-family: monospace; font-weight: 600; color: var(--text-main); }
+        .rrm-item-dates {
+          font-size: 0.82rem; color: var(--text-muted); display: flex; gap: 16px; flex-wrap: wrap;
+          background: var(--element-bg, #f5f5f5); padding: 8px 10px; border-radius: 6px; margin-top: 8px;
+        }
+
+        .rrm-action-bar { display: flex; align-items: center; }
+        .rrm-hint-text { font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
+
+        .rrm-btn {
+          padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;
+          transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem;
+        }
+        .rrm-btn-primary { background: var(--primary-color); color: var(--btn-primary-text, #1e293b); }
+        .rrm-btn-primary:hover { background: var(--primary-hover, #b5952f); }
+        .rrm-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+        .rrm-btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+
+        .rrm-inline-barcode { display: flex; align-items: center; gap: 8px; }
+        .rrm-inline-barcode input {
+          padding: 6px 10px; border-radius: 6px; border: 1px solid var(--element-border, #ccc);
+          width: 140px; direction: ltr; background: var(--input-bg, #fff); color: var(--text-main);
+        }
+
+        .rrm-return-banner {
+          display: inline-flex; background: var(--element-bg, #f5f5f5); border-radius: 50px;
+          padding: 4px; border: 1px solid var(--element-border, #e5e5e5);
+        }
+        .rrm-return-banner button {
+          border: none; background: transparent; padding: 6px 14px; border-radius: 50px;
+          font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.2s;
+          display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+        }
+        .rrm-return-good.active { background: var(--success-bg, #f0fdf4); color: var(--success-text, #22c55e); }
+        .rrm-return-bad.active { background: var(--danger-bg, #fef2f2); color: var(--danger-text, #ef4444); }
+        .rrm-return-banner button:not(:disabled):hover { color: var(--text-main); }
+        .rrm-return-banner.readonly button { cursor: default; }
+        .rrm-divider-v { width: 1px; background: var(--element-border, #ddd); margin: 6px 2px; }
+
+        .rrm-item-menu .rrm-floating-menu {
+          position: absolute; top: 100%; right: 0; background: var(--card-bg, #fff);
+          border: 1px solid var(--element-border, #eee); border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; flex-direction: column;
+          padding: 4px; z-index: 50; min-width: 160px; animation: rrm-slide-in 0.15s ease-out forwards;
+        }
+        .rrm-menu-item {
+          background: transparent; border: none; width: 100%; text-align: right; padding: 8px 10px;
+          font-size: 0.85rem; border-radius: 4px; cursor: pointer; color: var(--text-main);
+          display: flex; align-items: center; gap: 6px;
+        }
+        .rrm-menu-item:hover { background: var(--element-bg, #f9f9f9); }
+        .rrm-menu-item.danger { color: var(--danger-text, #ef4444); }
+        .rrm-menu-item.danger:hover { background: var(--danger-bg, #fef2f2); }
+
+        .rrm-empty-state {
+          flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+          color: var(--text-muted); padding: 40px 0 !important; text-align: center;
+        }
+
+        @media (max-width: 720px) {
+          .rrm-card { flex-direction: column; max-height: 95vh; }
+          .rrm-sidebar, .rrm-main { width: 100%; }
         }
       `}} />
     </div>
@@ -549,7 +779,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
           <div className="modal-content" style={{ maxWidth: '500px', width: '100%', padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
             <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
               <h3 className="font-bold text-lg text-slate-800">פרטי פריט: {itemDetails.item.barcode || itemDetails.item.description}</h3>
-              <button data-agy-id="rentalreturnmodal_button_16" type="button" onClick={() => setItemDetails(null)} className="text-slate-400 hover:text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-full p-1"><X size={20}/></button>
+              <button data-agy-id="rentalreturnmodal_button_20" type="button" onClick={() => setItemDetails(null)} className="text-slate-400 hover:text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-full p-1"><X size={20}/></button>
             </div>
             <div className="p-6 overflow-y-auto max-h-[70vh]">
               <div className="grid grid-cols-2 gap-4 mb-6">
@@ -617,9 +847,9 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
             <div className="p-6 overflow-y-auto max-h-[60vh] bg-slate-50">
               <div className="grid gap-4">
                 {duplicates.map((opt, idx) => (
-                  <button data-agy-id="rentalreturnmodal_button_17" 
+                  <button data-agy-id="rentalreturnmodal_button_21"
                     type="button"
-                    key={opt.id} 
+                    key={opt.id}
                     onClick={() => selectDuplicate(opt.id)}
                     className="flex items-center gap-4 p-4 bg-white border-2 border-slate-200 hover:border-blue-500 hover:shadow-md rounded-xl transition-all group text-right"
                   >
@@ -643,7 +873,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               </div>
             </div>
             <div className="bg-slate-100 p-4 flex justify-end border-t border-slate-200">
-               <button data-agy-id="rentalreturnmodal_button_18" type="button" onClick={() => setDuplicates(null)} className="px-6 py-2 rounded-lg text-slate-600 font-semibold hover:bg-slate-200 transition-colors">ביטול</button>
+               <button data-agy-id="rentalreturnmodal_button_22" type="button" onClick={() => setDuplicates(null)} className="px-6 py-2 rounded-lg text-slate-600 font-semibold hover:bg-slate-200 transition-colors">ביטול</button>
             </div>
           </div>
         </div>
