@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { HDate } from '@hebcal/core';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import HebrewDatePicker from '../../../components/HebrewDatePicker';
-import { Info, ExternalLink, RefreshCw, Trash2, Printer, CheckCircle, XCircle, List, ArrowUp, ArrowDown, ArrowUpDown, X, Save, Search, Filter, Wrench } from 'lucide-react';
+import { Info, ExternalLink, RefreshCw, Trash2, Printer, CheckCircle, XCircle, List, ArrowUp, ArrowDown, ArrowUpDown, X, Save, Search, Filter, Wrench, Plus } from 'lucide-react';
 import { useLabels } from '@/app/components/LabelsContext';
 
 const dressesCache = new Map();
@@ -39,7 +39,7 @@ export default function DressesManagement() {
   const [itemsColumnFilters, setItemsColumnFilters] = useState({ sizeText: '', serialNumber: '', dressBarcode: '', location: '' });
   const [showColumnFilters, setShowColumnFilters] = useState(false);
   const [catalogSearch, setCatalogSearch] = useState('');
-  const [catalogSort, setCatalogSort] = useState({ key: 'entryDateToRepo', direction: 'desc' });
+  const [catalogSort, setCatalogSort] = useState({ key: 'name', direction: 'asc' });
   const [advancedFilters, setAdvancedFilters] = useState({
     name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false
   });
@@ -723,58 +723,94 @@ export default function DressesManagement() {
     <>
       <main className="container animate-fade-in page-shell">
         <div className="page-scroll">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-          <h1>מאגר שמלות - קטלוג ראשי</h1>
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <div style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
-                <input data-element-name="שדה_page_1" 
-                  type="text" 
-                  placeholder="חיפוש טקסט חופשי..."
-                  value={catalogSearch}
-                  onChange={e => setCatalogSearch(e.target.value)}
-                  className="filter-select"
-                  style={{ minWidth: '200px', padding: '0.5rem', paddingLeft: '2rem', borderRadius: '8px' }}
-                />
-                {catalogSearch && (
-                  <button data-element-name="כפתור_page_2"
-                    onClick={() => setCatalogSearch('')}
-                    style={{
-                      position: 'absolute',
-                      left: '0.5rem',
-                      background: 'none',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontSize: '1.2rem',
-                      color: 'var(--text-muted)',
-                      padding: 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center'
-                    }}
-                    title="נקה חיפוש"
-                  >
-                    ×
-                  </button>
-                )}
-              </div>
-              <button data-element-name="כפתור_page_3" 
-                onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-                className="btn btn-outline" 
-                style={{ padding: '0.4rem 0.8rem', borderRadius: '8px', background: showAdvancedFilters ? '#e3f2fd' : 'var(--card-bg)', borderColor: showAdvancedFilters ? '#1976d2' : 'var(--element-border)' }}
-                title="סינון מתקדם"
-              >
-                סינון מתקדם {showAdvancedFilters ? '▲' : '▼'}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+          <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>מאגר שמלות - קטלוג ראשי</h1>
+          
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
+              <button data-element-name="כפתור_page_4" onClick={() => setFilterStatus('active')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'active' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'active' ? '#2e7d32' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="דגמים פעילים">
+                <CheckCircle data-element-name="רכיב_page_5" size={20} />
+                <span style={{ fontWeight: filterStatus === 'active' ? 'bold' : 'normal' }}>פעילים</span>
+              </button>
+              <button data-element-name="כפתור_page_6" onClick={() => setFilterStatus('inactive')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'inactive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'inactive' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא פעילים">
+                <XCircle data-element-name="רכיב_page_7" size={20} />
+                <span style={{ fontWeight: filterStatus === 'inactive' ? 'bold' : 'normal' }}>לא פעילים</span>
+              </button>
+              <button data-element-name="כפתור_page_8" onClick={() => setFilterStatus('deleted')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="מחוקים">
+                <Trash2 data-element-name="רכיב_page_9" size={20} />
+                <span style={{ fontWeight: filterStatus === 'deleted' ? 'bold' : 'normal' }}>מחוקים</span>
+              </button>
+              <button data-element-name="כפתור_page_10" onClick={() => setFilterStatus('all')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
+                <List data-element-name="רכיב_page_11" size={20} />
+                <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
               </button>
             </div>
-            <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
-              <button data-element-name="כפתור_page_4" onClick={() => setFilterStatus('active')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'active' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'active' ? '#2e7d32' : 'var(--text-main)' }} title="דגמים פעילים"><CheckCircle data-element-name="רכיב_page_5" size={20} /></button>
-              <button data-element-name="כפתור_page_6" onClick={() => setFilterStatus('inactive')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'inactive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'inactive' ? '#f57c00' : 'var(--text-main)' }} title="לא פעילים"><XCircle data-element-name="רכיב_page_7" size={20} /></button>
-              <button data-element-name="כפתור_page_8" onClick={() => setFilterStatus('deleted')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'deleted' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'deleted' ? '#e53935' : 'var(--text-main)' }} title="מחוקים"><Trash2 data-element-name="רכיב_page_9" size={20} /></button>
-              <button data-element-name="כפתור_page_10" onClick={() => setFilterStatus('all')} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#1976d2' : 'var(--text-main)' }} title="הצג הכל"><List data-element-name="רכיב_page_11" size={20} /></button>
+            <div style={{ color: 'var(--text-muted)', fontSize: '1rem', fontWeight: '500' }}>סה"כ רשומות: {totalDresses}</div>
+          </div>
+        </div>
+        
+        {/* Search and Action Bar */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center', 
+          marginBottom: '2rem',
+          background: 'var(--card-bg)', 
+          padding: '0.75rem 1.5rem', 
+          borderRadius: '16px', 
+          boxShadow: 'var(--shadow-sm)',
+          gap: '1rem',
+          flexWrap: 'wrap',
+          border: '1px solid var(--border-color)'
+        }}>
+          <div style={{ flex: '1', minWidth: '300px', maxWidth: '600px' }}>
+            <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
+              <Search data-element-name="רכיב_search_icon" size={18} style={{ position: 'absolute', right: '12px', color: 'var(--text-muted)' }} />
+              <input data-element-name="שדה_page_1" 
+                type="text" 
+                placeholder="חיפוש טקסט חופשי (שם, מקט, מידה)..."
+                value={catalogSearch}
+                onChange={e => setCatalogSearch(e.target.value)}
+                className="form-control"
+                style={{ width: '100%', padding: '0.6rem 2.5rem 0.6rem 0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
+              />
+              {catalogSearch && (
+                <button data-element-name="כפתור_page_2"
+                  onClick={() => setCatalogSearch('')}
+                  style={{
+                    position: 'absolute',
+                    left: '0.5rem',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '1.2rem',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center'
+                  }}
+                  title="נקה חיפוש"
+                >
+                  <X data-element-name="רכיב_clear_icon" size={16} />
+                </button>
+              )}
             </div>
-            <button data-element-name="כפתור_page_12" onClick={handleNewModelClick} className="btn btn-primary" style={{ background: '#2e7d32', borderColor: '#2e7d32' }}>
-              + הוסף דגם חדש
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button data-element-name="כפתור_page_3" 
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              className="btn-header-icon" 
+              title="סינון מתקדם"
+            >
+              <Filter data-element-name="רכיב_filter_icon" size={22} color={showAdvancedFilters ? 'var(--primary-color)' : 'currentColor'} />
+            </button>
+            <button data-element-name="כפתור_page_12" 
+              onClick={handleNewModelClick} 
+              className="btn-header-icon" 
+              title="הוסף דגם חדש"
+            >
+              <Plus data-element-name="רכיב_plus_icon" size={22} />
             </button>
           </div>
         </div>

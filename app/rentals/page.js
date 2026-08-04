@@ -10,6 +10,7 @@ import StatisticsModal from '../components/StatisticsModal';
 import { useLabels } from '@/app/components/LabelsContext';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import OrderModelSelector from '../../components/orders/OrderModelSelector';
+import { List, ShoppingBag, Clock, CheckCircle, RotateCcw } from 'lucide-react';
 
 export default function RentalsPage() {
   const { getLabel } = useLabels();
@@ -39,6 +40,23 @@ export default function RentalsPage() {
   const [aiQueryUsed, setAiQueryUsed] = useState('');
   const [isAiModeActive, setIsAiModeActive] = useState(false);
 
+  const [sort, setSort] = useState('orderId');
+  const [order, setOrder] = useState('desc');
+
+  const handleSort = (column) => {
+    if (sort === column) {
+      setOrder(order === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSort(column);
+      setOrder('asc');
+    }
+  };
+
+  const SortIcon = ({ column }) => {
+    if (sort !== column) return <span style={{ opacity: 0.3, marginRight: '4px' }}>↕</span>;
+    return <span style={{ marginRight: '4px' }}>{order === 'asc' ? '↑' : '↓'}</span>;
+  };
+
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
@@ -56,7 +74,7 @@ export default function RentalsPage() {
     try {
       const hasAdvFilters = Object.values(advFilters).some(v => v !== '');
 
-      const queryParams = new URLSearchParams({ search, sort: 'orderId', order: 'desc', limit: '200', forRentals: 'true' });
+      const queryParams = new URLSearchParams({ search, sort, order, limit: '200', forRentals: 'true' });
 
       if (!search && !hasAdvFilters) {
         if (viewMode === 'rented') queryParams.append('activeOnly', 'true');
@@ -86,7 +104,7 @@ export default function RentalsPage() {
     if (!isAiModeActive) {
       fetchOrders();
     }
-  }, [search, viewMode, advFilters, isAiModeActive]);
+  }, [search, viewMode, advFilters, isAiModeActive, sort, order]);
 
   const handleAiSearch = async (query) => {
     setAiLoading(true);
@@ -164,21 +182,70 @@ export default function RentalsPage() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
         <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול השכרות והחזרות</h1>
 
-        <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
-          <button data-element-name="כפתור_page_1" data-agy-id="rentals_page_button_1" onClick={() => { setViewMode('all'); }} style={{ padding: '0.4rem', border: 'none', background: viewMode === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: viewMode === 'all' ? 'var(--primary-color)' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
-            <span style={{ fontWeight: viewMode === 'all' ? 'bold' : 'normal' }}>הכל</span>
+        <div style={{ display: 'flex', gap: '0.5rem', background: '#f8fafc', padding: '0.4rem', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)', flexWrap: 'wrap' }}>
+          <button data-element-name="כפתור_page_1" data-agy-id="rentals_page_button_1" onClick={() => setViewMode('all')} style={{ 
+            padding: '0.6rem 1rem', border: 'none', 
+            background: viewMode === 'all' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'transparent', 
+            borderRadius: '8px', cursor: 'pointer', 
+            color: viewMode === 'all' ? '#fff' : '#64748b', 
+            display: 'flex', alignItems: 'center', gap: '0.5rem', 
+            fontSize: '0.9rem', fontWeight: viewMode === 'all' ? '600' : '500',
+            boxShadow: viewMode === 'all' ? '0 4px 10px rgba(59, 130, 246, 0.3)' : 'none',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+          }} title="הצג הכל">
+            <List size={16} /> <span>הכל</span>
           </button>
-          <button data-element-name="כפתור_page_2" data-agy-id="rentals_page_button_2" onClick={() => { setViewMode('rented'); }} style={{ padding: '0.4rem', border: 'none', background: viewMode === 'rented' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: viewMode === 'rented' ? '#1565c0' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הושכר">
-            <span style={{ fontWeight: viewMode === 'rented' ? 'bold' : 'normal' }}>הושכר</span>
+          
+          <button data-element-name="כפתור_page_2" data-agy-id="rentals_page_button_2" onClick={() => setViewMode('rented')} style={{ 
+            padding: '0.6rem 1rem', border: 'none', 
+            background: viewMode === 'rented' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent', 
+            borderRadius: '8px', cursor: 'pointer', 
+            color: viewMode === 'rented' ? '#fff' : '#64748b', 
+            display: 'flex', alignItems: 'center', gap: '0.5rem', 
+            fontSize: '0.9rem', fontWeight: viewMode === 'rented' ? '600' : '500',
+            boxShadow: viewMode === 'rented' ? '0 4px 10px rgba(16, 185, 129, 0.3)' : 'none',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+          }} title="הושכר">
+            <ShoppingBag size={16} /> <span>הושכר</span>
           </button>
-          <button data-element-name="כפתור_page_3" data-agy-id="rentals_page_button_3" onClick={() => { setViewMode('rented_partial'); }} style={{ padding: '0.4rem', border: 'none', background: viewMode === 'rented_partial' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: viewMode === 'rented_partial' ? '#f57c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הושכר חלקי">
-            <span style={{ fontWeight: viewMode === 'rented_partial' ? 'bold' : 'normal' }}>הושכר חלקי</span>
+
+          <button data-element-name="כפתור_page_3" data-agy-id="rentals_page_button_3" onClick={() => setViewMode('rented_partial')} style={{ 
+            padding: '0.6rem 1rem', border: 'none', 
+            background: viewMode === 'rented_partial' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent', 
+            borderRadius: '8px', cursor: 'pointer', 
+            color: viewMode === 'rented_partial' ? '#fff' : '#64748b', 
+            display: 'flex', alignItems: 'center', gap: '0.5rem', 
+            fontSize: '0.9rem', fontWeight: viewMode === 'rented_partial' ? '600' : '500',
+            boxShadow: viewMode === 'rented_partial' ? '0 4px 10px rgba(245, 158, 11, 0.3)' : 'none',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+          }} title="הושכר חלקי">
+            <Clock size={16} /> <span>הושכר חלקי</span>
           </button>
-          <button data-element-name="כפתור_page_4" data-agy-id="rentals_page_button_4" onClick={() => { setViewMode('returned'); }} style={{ padding: '0.4rem', border: 'none', background: viewMode === 'returned' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: viewMode === 'returned' ? '#2e7d32' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הוחזר">
-            <span style={{ fontWeight: viewMode === 'returned' ? 'bold' : 'normal' }}>הוחזר</span>
+
+          <button data-element-name="כפתור_page_4" data-agy-id="rentals_page_button_4" onClick={() => setViewMode('returned')} style={{ 
+            padding: '0.6rem 1rem', border: 'none', 
+            background: viewMode === 'returned' ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)' : 'transparent', 
+            borderRadius: '8px', cursor: 'pointer', 
+            color: viewMode === 'returned' ? '#fff' : '#64748b', 
+            display: 'flex', alignItems: 'center', gap: '0.5rem', 
+            fontSize: '0.9rem', fontWeight: viewMode === 'returned' ? '600' : '500',
+            boxShadow: viewMode === 'returned' ? '0 4px 10px rgba(139, 92, 246, 0.3)' : 'none',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+          }} title="הוחזר">
+            <CheckCircle size={16} /> <span>הוחזר</span>
           </button>
-          <button data-element-name="כפתור_page_5" data-agy-id="rentals_page_button_5" onClick={() => { setViewMode('returned_partial'); }} style={{ padding: '0.4rem', border: 'none', background: viewMode === 'returned_partial' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: viewMode === 'returned_partial' ? '#e11d48' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הוחזר חלקי">
-            <span style={{ fontWeight: viewMode === 'returned_partial' ? 'bold' : 'normal' }}>הוחזר חלקי</span>
+
+          <button data-element-name="כפתור_page_5" data-agy-id="rentals_page_button_5" onClick={() => setViewMode('returned_partial')} style={{ 
+            padding: '0.6rem 1rem', border: 'none', 
+            background: viewMode === 'returned_partial' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'transparent', 
+            borderRadius: '8px', cursor: 'pointer', 
+            color: viewMode === 'returned_partial' ? '#fff' : '#64748b', 
+            display: 'flex', alignItems: 'center', gap: '0.5rem', 
+            fontSize: '0.9rem', fontWeight: viewMode === 'returned_partial' ? '600' : '500',
+            boxShadow: viewMode === 'returned_partial' ? '0 4px 10px rgba(239, 68, 68, 0.3)' : 'none',
+            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
+          }} title="הוחזר חלקי">
+            <RotateCcw size={16} /> <span>הוחזר חלקי</span>
           </button>
         </div>
       </div>
@@ -302,10 +369,10 @@ export default function RentalsPage() {
         <table className="items-table" style={{ margin: 0, minWidth: '800px' }}>
           <thead>
             <tr>
-              <th>מספר הזמנה</th>
-              <th>לקוח</th>
-              <th>תאריך אירוע</th>
-              <th>סטטוס</th>
+              <th data-element-name="לחיץ_sort_1" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('orderId')}>מספר הזמנה <SortIcon column="orderId" /></th>
+              <th data-element-name="לחיץ_sort_2" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('customerName')}>לקוח <SortIcon column="customerName" /></th>
+              <th data-element-name="לחיץ_sort_3" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('eventDate')}>תאריך אירוע <SortIcon column="eventDate" /></th>
+              <th data-element-name="לחיץ_sort_4" style={{ cursor: 'pointer', userSelect: 'none' }} onClick={() => handleSort('status')}>סטטוס <SortIcon column="status" /></th>
               <th>פריטים (מתוך סה"כ)</th>
               <th>הערות</th>
             </tr>

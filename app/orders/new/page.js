@@ -1537,7 +1537,7 @@ export default function NewOrderPage() {
           content: '';
           position: absolute;
           top: var(--node-half);
-          right: calc(50% + var(--node-half) + 6px);
+          left: calc(50% + var(--node-half) + 6px);
           width: calc(100% - var(--node-size) - 12px);
           height: 3px;
           border-radius: 3px;

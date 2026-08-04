@@ -394,7 +394,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                 <th style={{ ...tableHeaderStyle, width: '40px', textAlign: 'center' }}>מחק</th>
                 <th style={tableHeaderStyle}>תיאור דגם</th>
                 <th style={{ ...tableHeaderStyle, width: '150px' }}>מידה</th>
-                {enableAlterations && !isWorkspaceMode && (
+                {enableAlterations && (
                   <>
                     <th style={{ ...tableHeaderStyle, width: '60px', textAlign: 'center' }}>צוואר</th>
                     <th style={{ ...tableHeaderStyle, width: '60px', textAlign: 'center' }}>שרוול</th>
@@ -409,7 +409,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                 {isWorkspaceMode && (
                   <>
                     <th style={{ ...tableHeaderStyle, width: '100px', textAlign: 'center' }}>סטטוס</th>
-                    <th style={{ ...tableHeaderStyle, width: '160px', textAlign: 'center' }}>פעולות השכרה</th>
+                    <th style={{ ...tableHeaderStyle, width: '190px', textAlign: 'center' }}>פעולות</th>
                     <th style={{ ...tableHeaderStyle, width: '100px', textAlign: 'center' }}>היסטוריה/פרטים</th>
                   </>
                 )}
@@ -500,7 +500,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                         />
                       )}
                     </td>
-                    {enableAlterations && !isWorkspaceMode && (
+                    {enableAlterations && (
                       <>
                         <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
                           <input data-agy-id="orderitemsmanager_input_4" 
@@ -569,25 +569,53 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                     )}
                     {isWorkspaceMode && (
                       <td style={{ padding: '1rem', textAlign: 'center', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                        {!item.isTaken && !item.isNew && (
-                          <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'rent' }); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#3b82f6', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                            <PackageOpen size={14} /> השכרה
-                          </button>
-                        )}
-                        {item.isTaken && !item.isReturned && (
+                        {item.isNew || item.isEditing ? (
+                          <div style={{ display: 'flex', gap: '0.4rem', justifyContent: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleConfirmItem(originalIndex); }}
+                              disabled={savingItemIndex === originalIndex}
+                              style={{ background: 'linear-gradient(to right, #10b981, #22c55e)', color: 'white', border: 'none', borderRadius: '6px', cursor: savingItemIndex === originalIndex ? 'not-allowed' : 'pointer', padding: '0.4rem 0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              {savingItemIndex === originalIndex ? '⏳' : '✔️ אישור'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (item.isNew) cancelNewItem(originalIndex); else cancelEditItem(originalIndex); }}
+                              disabled={savingItemIndex === originalIndex}
+                              style={{ background: '#fef2f2', color: '#ef4444', border: '1px solid #fecaca', borderRadius: '6px', cursor: savingItemIndex === originalIndex ? 'not-allowed' : 'pointer', padding: '0.4rem 0.8rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            >
+                              <X size={14} strokeWidth={2.5} /> ביטול
+                            </button>
+                          </div>
+                        ) : (
                           <>
-                            <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'return' }); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#10b981', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                              <PackageCheck size={14} /> החזרה
-                            </button>
-                            <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'cancelRent' }); }} title="בטל השכרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                              <XCircle size={14} /> ביטול
-                            </button>
+                            {!item.isTaken && !item.isNew && (
+                              <button onClick={(e) => { e.stopPropagation(); handleEditItem(originalIndex); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }} title="ערוך">
+                                <Edit2 size={14} /> עריכה
+                              </button>
+                            )}
+                            {!item.isTaken && !item.isNew && (
+                              <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'rent' }); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#3b82f6', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                <PackageOpen size={14} /> השכרה
+                              </button>
+                            )}
+                            {item.isTaken && !item.isReturned && (
+                              <>
+                                <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'return' }); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#10b981', color: 'white', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                  <PackageCheck size={14} /> החזרה
+                                </button>
+                                <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'cancelRent' }); }} title="בטל השכרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                  <XCircle size={14} /> ביטול
+                                </button>
+                              </>
+                            )}
+                            {item.isReturned && (
+                              <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'cancelReturn' }); }} title="בטל החזרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                                <Undo2 size={14} /> ביטול החזרה
+                              </button>
+                            )}
                           </>
-                        )}
-                        {item.isReturned && (
-                          <button onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item: item, actionType: 'cancelReturn' }); }} title="בטל החזרה" style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fee2e2', color: '#ef4444', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
-                            <Undo2 size={14} /> ביטול החזרה
-                          </button>
                         )}
                       </td>
                     )}

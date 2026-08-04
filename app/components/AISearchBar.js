@@ -52,7 +52,9 @@ export default function AISearchBar({
                 boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
                 outline: 'none',
                 fontSize: '1rem',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                textAlign: 'right',
+                direction: 'rtl'
               }}
             />
             {value && (
@@ -88,7 +90,9 @@ export default function AISearchBar({
                 boxShadow: '0 4px 15px rgba(236, 72, 153, 0.15)',
                 outline: 'none',
                 fontSize: '1rem',
-                transition: 'all 0.3s ease'
+                transition: 'all 0.3s ease',
+                textAlign: 'right',
+                direction: 'rtl'
               }}
             />
             {aiInput && !loading && (

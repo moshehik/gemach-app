@@ -722,7 +722,7 @@ export default function OrdersPage() {
                             <Pencil data-element-name="רכיב_page_57" size={18} />
                           </Link>
                           <button data-element-name="כפתור_page_58" data-agy-id="orders_page_button_18" 
-                            className="btn btn-primary" 
+                            className="btn btn-outline" 
                             style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: 'transparent', color: 'var(--success-color, #10b981)' }}
                             onClick={(e) => {
                               e.stopPropagation();
