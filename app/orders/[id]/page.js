@@ -3,27 +3,16 @@
 import { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Save, CreditCard, ArrowRight, Users, Info, Package, RefreshCcw, CreditCard as PaymentIcon, History, Printer, Mail, FileText, ClipboardList, Trash2, RotateCcw, Calendar } from 'lucide-react';
-import OrderGeneralDetails from '../../../components/orders/OrderGeneralDetails';
+import { Mail, PenTool } from 'lucide-react';
 import ActiveEmployeesModal from '../../../components/orders/ActiveEmployeesModal';
-import OrderItemsManager from '../../../components/orders/OrderItemsManager';
-import OrderRentalsManager from '../../../components/orders/OrderRentalsManager';
-import OrderPaymentsManager from '../../../components/orders/OrderPaymentsManager';
-import OrderCardWorkspace from '../../../components/orders/OrderCardWorkspace';
-import OrderLayoutToggle from '../../../components/orders/OrderLayoutToggle';
 import ModernOrderCard from '../../../components/orders/modern/ModernOrderCard';
 import ModernGeneralDetails from '../../../components/orders/modern/ModernGeneralDetails';
 import ModernItemsManager from '../../../components/orders/modern/ModernItemsManager';
-import ModernRentalsManager from '../../../components/orders/modern/ModernRentalsManager';
 import ModernPaymentsManager from '../../../components/orders/modern/ModernPaymentsManager';
-import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../../lib/orderStatus';
-import HistoryViewer from '../../../components/HistoryViewer';
-import { getHebrewDateString } from '../../../lib/hebrewDate';
+import ModernInfoTab from '../../../components/orders/modern/ModernInfoTab';
+import modernOrderCss from '../../../components/orders/modern/modernOrderStyles';
+import { calculateOrderStatus } from '../../../lib/orderStatus';
 import { addHistory } from '../../../lib/historyManager';
-
-// בתצוגת "חלון אחד" התוכן כמעט ברוחב מלא, ולכן צריך לפנות מקום לסרגל המהיר
-// הצף בצד ימין (‎.global-sidebar: רוחב 55px במרחק 24px מקצה החלון).
-const WORKSPACE_MAIN_PADDING = '1.25rem 5.75rem 1.25rem 1.25rem';
 
 // שדות בהזמנה שכפתור "ביטול שינויים" צריך לדווח עליהם אם השתנו מאז השמירה האחרונה
 const ORDER_FIELD_LABELS = {
@@ -106,7 +95,6 @@ export default function OrderDetailsPage({ params }) {
   const [showEmployeesModal, setShowEmployeesModal] = useState(false);
   const [showPrintMenu, setShowPrintMenu] = useState(false);
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
-  const [showWorkspaceHistory, setShowWorkspaceHistory] = useState(false);
   const [inventoryCache, setInventoryCache] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
@@ -118,81 +106,8 @@ export default function OrderDetailsPage({ params }) {
   // Tab State
   const [activeTab, setActiveTab] = useState('details'); // details, items, rentals, payments, history
   const [debtApproved, setDebtApproved] = useState(false); // Track manager approval to skip exit warning
-  const isManualRef = useRef(false); // prevent observer overriding scroll
-  const manualTargetRef = useRef(null); // הנושא שאליו גוללים כרגע מלחיצה על טאב
-  const rentalsManagerRef = useRef(null); // מאפשר ל"סריקה מהירה" בסיידבר המודרני להפעיל את לוגיקת הסריקה
-
-  // עיצוב הכרטיס: 'modern' = העיצוב החדש (סיידבר זהב + טאבים), 'classic' = נושא מתחת לנושא,
-  // 'workspace' = הכל בחלון אחד זה לצד זה
-  const [layoutMode, setLayoutMode] = useState('modern');
-
-  // נטען אחרי ההרכבה כדי לא לשבור hydration (localStorage לא קיים בשרת)
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem('orderCardLayout');
-      if (saved === 'modern' || saved === 'classic' || saved === 'workspace') setLayoutMode(saved);
-    } catch (e) { /* localStorage חסום — נשארים בברירת המחדל */ }
-  }, []);
-
-  const handleLayoutChange = (mode) => {
-    setLayoutMode(mode);
-    try { localStorage.setItem('orderCardLayout', mode); } catch (e) { /* אין מה לעשות */ }
-  };
-
-  /*
-    סימון הטאב הפעיל לפי מיקום הגלילה. חישוב ישיר מהגאומטריה ולא IntersectionObserver:
-    המשקיף דיווח רק על נושא ש"נכנס" לטווח, ולכן הקו לא זז בתחתית העמוד, ברווח שבין
-    שני נושאים, או אחרי קפיצה — כאן פשוט נבחר בכל גלילה הנושא האחרון שהתחיל מעל הקו.
-  */
-  useEffect(() => {
-    if (loading || layoutMode !== 'classic') return;
-
-    const sectionIds = ['details', 'items', 'rentals', 'payments', 'history'];
-
-    const pickActiveSection = () => {
-      const present = sectionIds.filter(id => document.getElementById(id));
-      if (present.length === 0) return null;
-
-      const line = window.innerHeight * 0.3; // קו הזיהוי — שליש עליון של המסך
-      let current = present[0];
-      for (const id of present) {
-        if (document.getElementById(id).getBoundingClientRect().top <= line) current = id;
-      }
-
-      // בתחתית העמוד הנושא האחרון לא תמיד מגיע לקו — מסמנים אותו בכל זאת
-      const reachedBottom = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
-      return reachedBottom ? present[present.length - 1] : current;
-    };
-
-    let queued = false;
-    const syncActiveTab = () => {
-      queued = false;
-      const current = pickActiveSection();
-      if (!current) return;
-      // בזמן גלילה יזומה מלחיצה על טאב לא נוגעים בסימון, עד שמגיעים ליעד.
-      if (isManualRef.current) {
-        if (current === manualTargetRef.current) isManualRef.current = false;
-        return;
-      }
-      setActiveTab(prev => (prev === current ? prev : current));
-    };
-
-    const handleScroll = () => {
-      if (queued) return;
-      queued = true;
-      // חישוב אחד לכל פריים, כדי לא לחשב מחדש על כל אירוע גלילה
-      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(syncActiveTab);
-      else setTimeout(syncActiveTab, 50);
-    };
-
-    syncActiveTab();
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    window.addEventListener('resize', handleScroll);
-    return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
-    };
-  }, [loading, layoutMode]);
+  const itemsManagerRef = useRef(null); // מאפשר ל"סריקה מהירה" בסיידבר להפעיל השכרה/החזרה בטאב הפריטים
+  const paymentsManagerRef = useRef(null); // מאפשר לאייקון החוב בטופ-בר לפתוח את חלון נדרים פלוס
 
   // Fetch Order
   useEffect(() => {
@@ -510,8 +425,6 @@ export default function OrderDetailsPage({ params }) {
 
   const totalPayable = items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
 
-  const paymentStatus = calculatePaymentStatus(totalRequired, totalPaid);
-  const paymentColor = getPaymentStatusColor(paymentStatus);
 
   const createdDate = order.orderDate || order.createdAt;
 
@@ -682,28 +595,6 @@ export default function OrderDetailsPage({ params }) {
     }
   };
 
-  // גלילה לנושא — עובד בשתי התצוגות (ה-id זהה גם בערימה וגם בגריד)
-  const goToSection = (sectionId) => {
-    isManualRef.current = true;
-    manualTargetRef.current = sectionId;
-    setActiveTab(sectionId);
-    const el = document.getElementById(sectionId);
-    if (el) {
-      const y = el.getBoundingClientRect().top + window.scrollY - 150; // offset for sticky header
-      window.scrollTo({ top: y, behavior: 'smooth' });
-    }
-    // הנעילה משתחררת כשהגלילה מגיעה ליעד; הטיימר הוא רשת ביטחון אם היא נעצרה בדרך.
-    setTimeout(() => { isManualRef.current = false; }, 1500);
-  };
-
-  const tabs = [
-    { id: 'details', label: 'פרטים כלליים', icon: Info, color: '#3b82f6' },
-    { id: 'items', label: 'פריטים', icon: Package, color: '#8b5cf6' },
-    { id: 'rentals', label: 'השכרות והחזרות', icon: RefreshCcw, color: '#10b981' },
-    { id: 'payments', label: 'תשלומים', icon: PaymentIcon, color: '#f59e0b' },
-    { id: 'history', label: 'היסטוריה', icon: History, color: '#64748b' }
-  ];
-
   const handlePrintOrder = () => {
     if (order.hasSignedRegulations) {
       setShowPrintMenu(!showPrintMenu);
@@ -724,11 +615,19 @@ export default function OrderDetailsPage({ params }) {
     handleSave(updatedOrder);
   };
 
-  // סריקה מהירה מהסיידבר — עוברים לטאב ההשכרות ומפעילים שם את אותה לוגיקת סריקה
+  // סריקה מהירה מהסיידבר — עוברים לטאב הפריטים ומבצעים שם השכרה/החזרה
   const handleQuickScan = (barcode) => {
-    setActiveTab('rentals');
-    if (rentalsManagerRef.current) {
-      rentalsManagerRef.current.scan(barcode);
+    setActiveTab('items');
+    if (itemsManagerRef.current) {
+      itemsManagerRef.current.scan(barcode);
+    }
+  };
+
+  // אייקון החוב בטופ-בר: מעבר לתשלומים, ואם יש חוב — פתיחת חלון נדרים פלוס
+  const handleWalletClick = () => {
+    setActiveTab('payments');
+    if (totalRequired - totalPaid > 0) {
+      setTimeout(() => paymentsManagerRef.current?.openCreditModal(), 60);
     }
   };
 
@@ -762,13 +661,15 @@ export default function OrderDetailsPage({ params }) {
       const html2pdf = (await import('html2pdf.js')).default;
       const element = document.createElement('div');
       element.innerHTML = htmlData.html;
-      // html2canvas can't measure elements positioned far off-screen (e.g. top: -9999px) -
-      // it computes a 0 height and renders a blank page. Keep it on-screen but invisible instead.
+      // html2canvas can't reliably measure/render elements positioned far off-screen
+      // (top: -9999px) or hidden via opacity - it needs the node laid out at real,
+      // in-viewport coordinates and fully opaque, or it captures a blank/wrong image.
+      // Keep it on-screen at normal coordinates but tucked behind the real UI with a
+      // negative z-index, so it's invisible to the user without breaking the capture.
       element.style.position = 'fixed';
       element.style.top = '0';
       element.style.left = '0';
       element.style.zIndex = '-1';
-      element.style.opacity = '0';
       element.style.pointerEvents = 'none';
       document.body.appendChild(element);
 
@@ -838,106 +739,12 @@ export default function OrderDetailsPage({ params }) {
     handleSendEmail(emailTypePending, validEmail);
   };
 
-  const activeTabIndex = tabs.findIndex(t => t.id === activeTab);
-  const activeTabDetails = tabs[activeTabIndex];
-
-  // הנושאים מוגדרים פעם אחת ומשמשים את שתי התצוגות.
-  // `span` = רוחב בגריד של 12 עמודות בתצוגת "חלון אחד", `order` = סדר הנושאים שם.
-  // הפריסה היא שתי שורות בלבד (4+8 / 4+5+3) כדי שהכל ייכנס למסך אחד.
-  const sections = [
-    {
-      id: 'details',
-      span: 4,
-      order: 1,
-      node: <OrderGeneralDetails data-element-name="רכיב_page_22" order={order} items={items} onOrderChange={(val) => { setOrder(val); setHasUnsavedChanges(true); }} onSaveRequest={handleSave} />
-    },
-    {
-      id: 'items',
-      span: 8,
-      order: 2,
-      node: (
-        <OrderItemsManager data-element-name="רכיב_page_23"
-          orderId={order.orderId}
-          order={order}
-          items={items}
-          onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }}
-          onOrderUpdated={handleOrderUpdate}
-          inventoryCache={inventoryCache}
-          isWorkspaceMode={layoutMode === 'workspace'}
-        />
-      )
-    },
-    ...(layoutMode !== 'workspace' ? [{
-      id: 'rentals',
-      span: 4,
-      order: 3,
-      node: (
-        <OrderRentalsManager data-element-name="רכיב_page_24"
-          ref={rentalsManagerRef}
-          items={items}
-          onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }}
-          order={order}
-          totalRequired={totalRequired}
-          totalPaid={totalPaid}
-        />
-      )
-    }] : []),
-    {
-      id: 'payments',
-      span: 5,
-      order: 4,
-      node: (
-        <OrderPaymentsManager data-element-name="רכיב_page_25"
-          orderId={order.orderId}
-          items={items}
-          order={order}
-          obligations={obligations}
-          payments={payments}
-          refunds={refunds}
-          onObligationsChange={(val) => { setObligations(val); setHasUnsavedChanges(true); }}
-          onPaymentsChange={(val) => { setPayments(val); setHasUnsavedChanges(true); }}
-          onRefundsChange={(val) => { setRefunds(val); setHasUnsavedChanges(true); }}
-          totalRequired={totalRequired}
-          totalPaid={totalPaid}
-          customer={order.customer}
-          onOrderUpdated={handleOrderUpdate}
-        />
-      )
-    },
-    {
-      id: 'history',
-      span: 3,
-      order: 5,
-      node: (
-        <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
-          <HistoryViewer data-element-name="רכיב_page_26" entityType="Order" entityId={order.orderId} />
-        </div>
-      )
-    }
-  ];
-
-  const workspaceSections = [...sections].sort((a, b) => a.order - b.order);
-
   return (
-    <main data-agy-id="[id]_page_main_1" style={{ padding: layoutMode !== 'classic' ? WORKSPACE_MAIN_PADDING : '2rem', maxWidth: layoutMode !== 'classic' ? '1900px' : '1400px', margin: '0 auto', direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
-      
-      {/* בתצוגת "חלון אחד" גם הכותרת מתכווצת — היא לקחה כרבע מסך לפני התוכן */}
-      {layoutMode === 'workspace' && (
-        <style>{`
-          .oc-header.is-compact { border-radius: 12px !important; margin-bottom: 0.7rem !important; }
-          .oc-header.is-compact > div:first-child { padding: 0.55rem 0.85rem !important; gap: 0.5rem !important; }
-          .oc-header.is-compact h1 { font-size: 1.05rem !important; }
-          .oc-header.is-compact :is(span, strong) { font-size: 0.75rem !important; }
-          .oc-header.is-compact button { padding: 0.35rem 0.6rem !important; font-size: 0.78rem !important; }
-          .oc-header.is-compact svg { width: 15px !important; height: 15px !important; }
-          .oc-header.is-compact [style*="gap: 0.8rem"] { gap: 0.35rem !important; }
-          .oc-header.is-compact [style*="padding: 0.4rem 0.8rem"] { padding: 0.2rem 0.5rem !important; }
-          .oc-header.is-compact [style*="padding: 0.3rem 1rem"] { padding: 0.15rem 0.6rem !important; }
-        `}</style>
-      )}
+    <main data-agy-id="[id]_page_main_1" style={{ direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
+      {/* עיצוב הכרטיס המודרני — נטען כאן כדי שגם המודלים המשותפים (תקנון, מייל, עובדים) יעוצבו בו */}
+      <style>{modernOrderCss}</style>
 
-      {layoutMode === 'modern' ? (
-        <ModernOrderCard
+      <ModernOrderCard
           order={order}
           items={items}
           activeTab={activeTab}
@@ -961,7 +768,7 @@ export default function OrderDetailsPage({ params }) {
           onSendEmail={handleSendEmail}
           onShowEmployees={() => setShowEmployeesModal(true)}
           onQuickScan={handleQuickScan}
-          layoutToggle={<OrderLayoutToggle value={layoutMode} onChange={handleLayoutChange} />}
+          onWalletClick={handleWalletClick}
           tabContents={{
             details: (
               <ModernGeneralDetails
@@ -973,6 +780,7 @@ export default function OrderDetailsPage({ params }) {
             ),
             items: (
               <ModernItemsManager
+                ref={itemsManagerRef}
                 orderId={order.orderId}
                 order={order}
                 items={items}
@@ -983,18 +791,9 @@ export default function OrderDetailsPage({ params }) {
                 totalPaid={totalPaid}
               />
             ),
-            rentals: (
-              <ModernRentalsManager
-                ref={rentalsManagerRef}
-                items={items}
-                onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }}
-                order={order}
-                totalRequired={totalRequired}
-                totalPaid={totalPaid}
-              />
-            ),
             payments: (
               <ModernPaymentsManager
+                ref={paymentsManagerRef}
                 orderId={order.orderId}
                 items={items}
                 order={order}
@@ -1011,337 +810,19 @@ export default function OrderDetailsPage({ params }) {
               />
             ),
             history: (
-              <>
-                <div className="moc-card-panel" style={{ display: 'flex', alignItems: 'center', gap: '16px', marginBottom: '20px' }}>
-                  <div className="moc-avatar-chip lg"><Calendar size={20} /></div>
-                  <div style={{ flex: 1 }}>
-                    <span className="moc-field-label" style={{ marginBottom: '3px' }}>בוצעה על ידי</span>
-                    <div className="moc-field-value" style={{ fontSize: '1.15rem' }}>
-                      {order.employee ? `${order.employee.firstName || ''} ${order.employee.lastName || ''}`.trim() : 'לא ידוע'}
-                      {createdDate ? ` · ${new Date(createdDate).toLocaleDateString('he-IL')} ${new Date(createdDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : ''}
-                    </div>
-                  </div>
-                  <button
-                    className="moc-btn moc-btn-outline moc-btn-icon"
-                    style={{ width: '40px', height: '40px' }}
-                    title="עובדים פעילים בהזמנה"
-                    onClick={() => setShowEmployeesModal(true)}
-                  >
-                    <Users size={19} />
-                  </button>
-                </div>
-                <div className="moc-card-panel">
-                  <HistoryViewer entityType="Order" entityId={order.orderId} />
-                </div>
-              </>
+              <ModernInfoTab
+                order={order}
+                createdDate={createdDate}
+                onShowEmployees={() => setShowEmployeesModal(true)}
+                onOrderDateSave={(date) => {
+                  const newOrder = { ...order, orderDate: date };
+                  setOrder(newOrder);
+                  handleSave(newOrder);
+                }}
+              />
             )
           }}
         />
-      ) : (
-      <>
-      {/* Header Sticky Bar */}
-      <div className={`oc-header ${layoutMode === 'workspace' ? 'is-compact' : ''}`} style={{
-        display: 'flex',
-        flexDirection: 'column',
-        background: (totalRequired - totalPaid > 0) ? 'rgba(254, 226, 226, 0.95)' : 'rgba(255, 255, 255, 0.95)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
-        borderRadius: '16px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
-        border: '1px solid rgba(255,255,255,0.4)',
-        marginBottom: '2rem',
-        position: 'sticky',
-        top: '1rem',
-        zIndex: 100,
-        transition: 'background-color 0.3s ease',
-        overflow: 'visible'
-      }}>
-        {/* Top Header Information */}
-        <div style={{
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          padding: '1.5rem 2rem 1rem 2rem',
-          flexWrap: 'wrap',
-          gap: '1rem',
-        }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-              <h1 style={{ margin: 0, color: '#1e293b', fontSize: '1.8rem', fontWeight: '800' }}>
-                כרטיס הזמנה #{order.orderId}
-              </h1>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <span style={{ 
-                  fontSize: '0.9rem', padding: '0.3rem 1rem', borderRadius: '20px', fontWeight: '600',
-                  background: getStatusColor(calculateOrderStatus(order)).bg,
-                  color: getStatusColor(calculateOrderStatus(order)).text,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                }}>
-                  {calculateOrderStatus(order)}
-                </span>
-                <span style={{ 
-                  fontSize: '0.9rem', padding: '0.3rem 1rem', borderRadius: '20px', fontWeight: '600',
-                  background: paymentColor.bg,
-                  color: paymentColor.text,
-                  boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                }}>
-                  {paymentStatus}
-                </span>
-              </div>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap', alignItems: 'center', fontSize: '0.9rem' }}>
-              <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span style={{ fontWeight: '500' }}>לקוח:</span> 
-                <strong style={{ color: '#0f172a' }}>{order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לא נבחר'}</strong>
-                {order.customer?.phone1 && <span style={{ direction: 'ltr', color: '#64748b' }}>({order.customer.phone1})</span>}
-              </div>
-              
-              {(!order.isWeekdayEvent && !order.isAbroad) && (
-                <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontWeight: '500' }}>תאריך אירוע:</span>
-                  <strong style={{ color: '#0f172a' }}>
-                    {order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}
-                  </strong>
-                </div>
-              )}
-
-              {(order.isWeekdayEvent || order.isAbroad) && (
-                <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <span style={{ fontWeight: '500' }}>לקיחה:</span>
-                  <strong style={{ color: '#0f172a' }}>{order.fromDate ? `${getHebrewDateString(order.fromDate)} ${new Date(order.fromDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : '-'}</strong>
-                  <span style={{ margin: '0 0.2rem' }}>|</span>
-                  <span style={{ fontWeight: '500' }}>החזרה:</span>
-                  <strong style={{ color: '#0f172a' }}>{order.toDate || order.returnDate ? `${getHebrewDateString(order.toDate || order.returnDate)} ${new Date(order.toDate || order.returnDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}` : '-'}</strong>
-                </div>
-              )}
-
-              <div style={{ background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px', color: '#475569', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <span style={{ fontWeight: '500' }}>קופאי:</span> 
-                <strong style={{ color: '#0f172a' }}>
-                  {order.employee ? `${order.employee.firstName || ''} ${order.employee.lastName || ''}`.trim() : 'לא ידוע'}
-                </strong>
-              </div>
-
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginRight: 'auto' }}>
-            {saveMessage && <span style={{ color: saveMessage.includes('שגיאה') ? '#ef4444' : '#10b981', fontWeight: 'bold', background: saveMessage.includes('שגיאה') ? '#fee2e2' : '#d1fae5', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>{saveMessage}</span>}
-
-            <OrderLayoutToggle value={layoutMode} onChange={handleLayoutChange} />
-
-            <div style={{ width: '1px', alignSelf: 'stretch', background: '#e2e8f0', margin: '0 0.2rem' }} />
-
-            <button data-element-name="כפתור_page_1" data-agy-id="[id]_page_button_2" 
-              onClick={() => handleSave()}
-              disabled={saving || isLocked}
-              title={isLocked ? "הזמנה נעולה" : "שמור שינויים"}
-              style={{ 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                padding: '0.65rem 1.2rem', 
-                background: '#2563eb', 
-                color: 'white', 
-                border: 'none', 
-                borderRadius: '10px', 
-                cursor: (saving || isLocked) ? 'not-allowed' : 'pointer',
-                opacity: (saving || isLocked) ? 0.7 : 1,
-                fontWeight: '600',
-                fontSize: '0.95rem',
-                transition: 'all 0.2s ease',
-                transform: saving ? 'scale(0.98)' : 'scale(1)'
-              }}
-              onMouseOver={(e) => { if (!saving && !isLocked) e.currentTarget.style.backgroundColor = '#1d4ed8'; }}
-              onMouseOut={(e) => { if (!saving && !isLocked) e.currentTarget.style.backgroundColor = '#2563eb'; }}
-            >
-              {saving ? <div className="spinner" style={{ width: '18px', height: '18px', border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid white', borderRadius: '50%', animation: 'spin 1s linear infinite' }} /> : <Save data-element-name="רכיב_page_2" size={18} />}
-              שמור
-            </button>
-
-            <button
-              onClick={handleCancelChanges}
-              disabled={!hasUnsavedChanges || saving || isLocked}
-              title={hasUnsavedChanges ? "ביטול שינויים שלא נשמרו" : "אין שינויים לביטול"}
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                padding: '0.65rem 1rem', background: '#f1f5f9', color: '#64748b', border: 'none',
-                borderRadius: '10px', cursor: (!hasUnsavedChanges || saving || isLocked) ? 'not-allowed' : 'pointer',
-                opacity: (!hasUnsavedChanges || saving || isLocked) ? 0.5 : 1,
-                transition: 'all 0.2s ease', fontWeight: '600', fontSize: '0.95rem'
-              }}
-              onMouseOver={(e) => { if (hasUnsavedChanges && !saving && !isLocked) e.currentTarget.style.backgroundColor = '#e2e8f0'; }}
-              onMouseOut={(e) => { if (hasUnsavedChanges && !saving && !isLocked) e.currentTarget.style.backgroundColor = '#f1f5f9'; }}
-            >
-              <RotateCcw size={18} />
-              ביטול שינויים
-            </button>
-
-            <button data-element-name="כפתור_page_3" data-agy-id="[id]_page_button_3"
-              onClick={() => setShowEmployeesModal(true)}
-              title="עובדים פעילים"
-              style={{ 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                padding: '0.65rem 1rem', background: '#fff7ed', color: '#ea580c', border: 'none', 
-                borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#ffedd5'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fff7ed'}
-            >
-              <Users data-element-name="רכיב_page_4" size={18} />
-            </button>
-
-            <button data-element-name="כפתור_page_5" data-agy-id="[id]_page_button_4" 
-              onClick={() => goToSection('payments')}
-              title={`מעבר לתשלום (₪${totalRequired - totalPaid})`}
-              style={{ 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                padding: '0.65rem 1rem', background: '#f0fdf4', color: '#16a34a', border: 'none', 
-                borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f0fdf4'}
-            >
-              <CreditCard data-element-name="רכיב_page_6" size={18} />
-            </button>
-
-            {layoutMode === 'workspace' && (
-              <button
-                onClick={() => setShowWorkspaceHistory(true)}
-                title="היסטוריית הזמנה"
-                style={{ 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                  padding: '0.65rem 1rem', background: '#e0f2fe', color: '#0284c7', border: 'none', 
-                  borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
-                  fontSize: '0.95rem'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#bae6fd'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e0f2fe'}
-              >
-                <History data-element-name="רכיב_page_history" size={18} />
-              </button>
-            )}
-            <div style={{ position: 'relative' }}>
-              <button data-element-name="כפתור_page_7" data-agy-id="[id]_page_button_print" 
-                onClick={handlePrintOrder}
-                title="הדפסת הזמנה"
-                style={{ 
-                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                  padding: '0.65rem 1rem', background: '#f3e8ff', color: '#7e22ce', border: 'none', 
-                  borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
-                  fontSize: '0.95rem'
-                }}
-                onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e9d5ff'}
-                onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f3e8ff'}
-              >
-                <Printer data-element-name="רכיב_page_8" size={18} />
-              </button>
-              {showPrintMenu && (
-                <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '0.5rem', background: 'white', border: 'none', borderRadius: '10px', boxShadow: '0 10px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.05)', zIndex: 1050, minWidth: '160px', overflow: 'hidden', padding: '0.3rem 0' }}>
-                  <div data-element-name="לחיץ_page_9" 
-                    onClick={() => { setShowPrintMenu(false); window.open(`/print/order?orderId=${order.orderId}&type=order`, '_blank'); }}
-                    style={{ padding: '0.7rem 1rem', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <FileText data-element-name="רכיב_page_10" size={16} /> הזמנה
-                  </div>
-                  <div data-element-name="לחיץ_page_11" 
-                    onClick={() => { setShowPrintMenu(false); window.open(`/print/order?orderId=${order.orderId}&type=rental`, '_blank'); }}
-                    style={{ padding: '0.7rem 1rem', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <ClipboardList data-element-name="רכיב_page_12" size={16} /> השכרה
-                  </div>
-                  <div data-element-name="לחיץ_page_13" 
-                    onClick={() => handleSendEmail('order')}
-                    style={{ padding: '0.7rem 1rem', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <Mail data-element-name="רכיב_page_14" size={16} /> מייל הזמנה
-                  </div>
-                  <div data-element-name="לחיץ_page_15" 
-                    onClick={() => handleSendEmail('rental')}
-                    style={{ padding: '0.7rem 1rem', cursor: 'pointer', fontWeight: '600', color: '#475569', transition: 'background-color 0.2s ease', display: 'flex', alignItems: 'center', gap: '0.6rem', fontSize: '0.9rem' }}
-                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
-                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                  >
-                    <Mail data-element-name="רכיב_page_16" size={16} /> מייל השכרה
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <button
-              onClick={handleDeleteOrder}
-              title="מחיקת הזמנה"
-              style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                padding: '0.65rem 1rem', background: '#fef2f2', color: '#ef4444', border: 'none',
-                borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fef2f2'}
-            >
-              <Trash2 size={18} />
-            </button>
-
-            <button data-element-name="כפתור_page_17" data-agy-id="[id]_page_button_5"
-              onClick={handleExit}
-              title="חזרה"
-              style={{ 
-                display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem',
-                padding: '0.65rem 1rem', background: '#f1f5f9', color: '#475569', border: 'none', 
-                borderRadius: '10px', cursor: 'pointer', transition: 'all 0.2s ease', fontWeight: '600',
-                fontSize: '0.95rem'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
-              onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'}
-            >
-              <ArrowRight data-element-name="רכיב_page_18" size={18} />
-              חזור
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-        
-        {/* Main Content Area */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-          {/* Protected Section (Locked if past event) */}
-          <div style={{ position: 'relative' }}>
-            {isLocked && (
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(255,255,255,0.4)', zIndex: 10, display: 'flex', justifyContent: 'center', alignItems: 'flex-start', backdropFilter: 'blur(2px)', borderRadius: '16px' }}>
-                <button data-element-name="כפתור_page_21" data-agy-id="[id]_page_button_7" 
-                  onClick={handleUnlock}
-                  style={{ position: 'sticky', top: '150px', marginTop: '2rem', padding: '1rem 2.5rem', background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none', borderRadius: '10px', fontSize: '1.1rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 8px 16px rgba(220, 38, 38, 0.3)' }}
-                >
-                  🔒 הזמנה נעולה - לחץ לשחרור בעזרת סיסמת מנהל
-                </button>
-              </div>
-            )}
-            <div className="animate-fade-in" style={{ opacity: isLocked ? 0.7 : 1, pointerEvents: isLocked ? 'none' : 'auto', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-
-              {layoutMode === 'workspace' ? (
-                <OrderCardWorkspace sections={workspaceSections} />
-              ) : (
-                sections.map(section => (
-                  <div key={section.id} id={section.id}>{section.node}</div>
-                ))
-              )}
-
-            </div>
-          </div>
-        </div>
-
-      </div>
-      </>
-      )}
 
       <ActiveEmployeesModal data-element-name="רכיב_page_27"
         orderId={order.orderId}
@@ -1349,28 +830,22 @@ export default function OrderDetailsPage({ params }) {
         onClose={() => setShowEmployeesModal(false)}
       />
 
-      {showWorkspaceHistory && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 10000 }}>
-          <div style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 10px 25px rgba(0,0,0,0.2)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
-              <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.2rem' }}>היסטוריית פריטים</h3>
-              <button onClick={() => setShowWorkspaceHistory(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b', fontSize: '1.5rem', fontWeight: 'bold' }}>
-                ✕
-              </button>
-            </div>
-            <OrderRentalsManager order={order} items={items} onItemsChange={(val) => { setItems(val); setHasUnsavedChanges(true); }} onSaveRequest={handleSave} debtApproved={debtApproved} totalRequired={totalRequired} totalPaid={totalPaid} />
-          </div>
-        </div>
-      )}
-
       {/* Regulations Modal */}
       {showRegulationsModal && typeof document !== 'undefined' && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-          <div className="animate-slide-in" style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--border-color)', textAlign: 'center' }}>
-            <h2 style={{ color: 'var(--primary-color)', marginTop: 0, marginBottom: '1.5rem', fontSize: '1.5rem', fontWeight: 'bold' }}>חתימה על תקנון</h2>
-            <p style={{ fontSize: '1.1rem', marginBottom: '2rem', color: 'var(--text-main)' }}>האם הלקוח חתם על התקנון?</p>
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button data-element-name="כפתור_page_28" 
+        <div className="moc moc-modal-overlay" style={{ zIndex: 2000 }}>
+          <div className="moc-modal-box" style={{ maxWidth: '400px', textAlign: 'center' }}>
+            <div className="moc-modal-body" style={{ paddingTop: '28px' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', background: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)' }}>
+                <PenTool size={26} />
+              </div>
+              <h3 style={{ margin: '0 0 10px', fontSize: '1.2rem' }}>חתימה על תקנון</h3>
+              <p style={{ color: 'var(--moc-text-muted)', margin: 0, lineHeight: 1.6 }}>האם הלקוח חתם על התקנון?</p>
+            </div>
+            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
+              <button data-element-name="כפתור_page_29" className="moc-btn moc-btn-outline" onClick={() => setShowRegulationsModal(false)}>
+                לא (ביטול)
+              </button>
+              <button data-element-name="כפתור_page_28" className="moc-btn moc-btn-gold"
                 onClick={() => {
                   const updatedOrder = { ...order, hasSignedRegulations: true };
                   setOrder(updatedOrder);
@@ -1378,17 +853,8 @@ export default function OrderDetailsPage({ params }) {
                   setShowRegulationsModal(false);
                   setShowPrintMenu(true);
                 }}
-                className="btn btn-primary"
-                style={{ padding: '0.8rem 2rem', borderRadius: '8px', fontSize: '1rem', fontWeight: 'bold' }}
               >
                 כן, חתם
-              </button>
-              <button data-element-name="כפתור_page_29" 
-                onClick={() => setShowRegulationsModal(false)}
-                className="btn btn-outline"
-                style={{ padding: '0.8rem 2rem', borderRadius: '8px', fontSize: '1rem', fontWeight: 'bold' }}
-              >
-                לא (ביטול)
               </button>
             </div>
           </div>
@@ -1396,45 +862,35 @@ export default function OrderDetailsPage({ params }) {
       )}
       {/* Email Prompt Modal */}
       {showEmailPrompt && typeof document !== 'undefined' && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}>
-          <div className="animate-slide-in" style={{ background: 'white', padding: '2.5rem', borderRadius: '20px', width: '100%', maxWidth: '420px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0', textAlign: 'center' }}>
-            <div style={{ width: '60px', height: '60px', background: '#eff6ff', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
-              <Mail data-element-name="רכיב_page_30" size={30} color="#3b82f6" />
+        <div className="moc moc-modal-overlay" style={{ zIndex: 2000 }}>
+          <div className="moc-modal-box" style={{ maxWidth: '420px', textAlign: 'center' }}>
+            <div className="moc-modal-body" style={{ paddingTop: '28px' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', background: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)' }}>
+                <Mail data-element-name="רכיב_page_30" size={26} />
+              </div>
+              <h3 style={{ margin: '0 0 10px', fontSize: '1.2rem' }}>כתובת מייל חסרה</h3>
+              <p style={{ color: 'var(--moc-text-muted)', margin: '0 0 18px', lineHeight: 1.6 }}>
+                ללקוח זה לא מעודכנת כתובת מייל במערכת. אנא הזן כתובת מייל עדכנית לשליחת הדוח (תישמר אוטומטית בכרטיס הלקוח).
+              </p>
+              <input data-element-name="שדה_page_31"
+                type="email"
+                value={emailInput}
+                onChange={(e) => setEmailInput(e.target.value)}
+                placeholder="example@gmail.com"
+                dir="ltr"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleEmailSubmit();
+                }}
+                style={{ textAlign: 'left' }}
+              />
             </div>
-            <h2 style={{ color: '#1e293b', marginTop: 0, marginBottom: '0.5rem', fontSize: '1.5rem', fontWeight: '800' }}>כתובת מייל חסרה</h2>
-            <p style={{ fontSize: '1rem', marginBottom: '2rem', color: '#64748b', lineHeight: '1.5' }}>
-              ללקוח זה לא מעודכנת כתובת מייל במערכת. אנא הזן כתובת מייל עדכנית לשליחת הדוח (תישמר אוטומטית בכרטיס הלקוח).
-            </p>
-            <input data-element-name="שדה_page_31" 
-              type="email" 
-              value={emailInput}
-              onChange={(e) => setEmailInput(e.target.value)}
-              placeholder="example@gmail.com"
-              dir="ltr"
-              autoFocus
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleEmailSubmit();
-              }}
-              style={{ width: '100%', padding: '0.8rem 1rem', fontSize: '1.1rem', borderRadius: '10px', border: '2px solid #cbd5e1', marginBottom: '1.5rem', textAlign: 'left', outline: 'none', transition: 'border-color 0.2s' }}
-              onFocus={(e) => e.target.style.borderColor = '#3b82f6'}
-              onBlur={(e) => e.target.style.borderColor = '#cbd5e1'}
-            />
-            <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center' }}>
-              <button data-element-name="כפתור_page_32" 
-                onClick={handleEmailSubmit}
-                style={{ flex: 1, padding: '0.8rem 1.5rem', borderRadius: '10px', fontSize: '1rem', fontWeight: 'bold', background: '#3b82f6', color: 'white', border: 'none', cursor: 'pointer', transition: 'background-color 0.2s', boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)' }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
-              >
-                שמור ושלח
-              </button>
-              <button data-element-name="כפתור_page_33" 
-                onClick={() => setShowEmailPrompt(false)}
-                style={{ flex: 1, padding: '0.8rem 1.5rem', borderRadius: '10px', fontSize: '1rem', fontWeight: 'bold', background: '#f1f5f9', color: '#475569', border: 'none', cursor: 'pointer', transition: 'background-color 0.2s' }}
-                onMouseOver={(e) => e.target.style.backgroundColor = '#e2e8f0'}
-                onMouseOut={(e) => e.target.style.backgroundColor = '#f1f5f9'}
-              >
+            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
+              <button data-element-name="כפתור_page_33" className="moc-btn moc-btn-outline" onClick={() => setShowEmailPrompt(false)}>
                 ביטול
+              </button>
+              <button data-element-name="כפתור_page_32" className="moc-btn moc-btn-gold" onClick={handleEmailSubmit}>
+                שמור ושלח
               </button>
             </div>
           </div>

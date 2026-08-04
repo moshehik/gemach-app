@@ -1,24 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { Trash2, Info, RefreshCcw, CreditCard, Plus, X, Zap } from 'lucide-react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 /**
  * טאב "תשלומים" בעיצוב המודרני — פורט מלא של OrderPaymentsManager:
- * אריחי סיכום, חיובים (כולל ידניים), תשלומים, סליקת אשראי דרך נדרים פלוס
- * (כולל העברה מהירה בקורא מגנטי), קבלת תשלום ידנית, בקשות זיכוי וזיכויים ממתינים.
+ * אריחי סיכום, חיובים (כולל ידניים), תשלומים דרך נדרים פלוס בלבד
+ * (כולל העברה מהירה בקורא מגנטי), בקשות זיכוי וזיכויים ממתינים.
+ * חשוף דרך ref: openCreditModal() — אייקון החוב בטופ-בר פותח את חלון נדרים.
  */
-export default function ModernPaymentsManager({ orderId, items = [], order = {}, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated }) {
+const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderId, items = [], order = {}, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated }, ref) {
   const [newObligation, setNewObligation] = useState({ description: '', amount: '' });
-  const [newPayment, setNewPayment] = useState({ paymentMethod: 'אשראי', notes: '', amount: '' });
 
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [showQuickSwipeModal, setShowQuickSwipeModal] = useState(false);
   const [swipeInput, setSwipeInput] = useState('');
   const [showAddChargeModal, setShowAddChargeModal] = useState(false);
-  const [showAddPaymentModal, setShowAddPaymentModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
   const [refundData, setRefundData] = useState({
     amount: '', reason: '', bankName: '', bankBranch: '', bankAccount: '', bankAccountName: '', paymentDetails: '', email: ''
@@ -33,36 +32,22 @@ export default function ModernPaymentsManager({ orderId, items = [], order = {},
 
   useEffect(() => { setMounted(true); }, []);
 
-  useEffect(() => {
-    setNewPayment(prev => {
-      if (!prev.amount || parseFloat(prev.amount) === 0 || parseFloat(prev.amount) > Math.max(0, totalRequired - totalPaid)) {
-        return { ...prev, amount: Math.max(0, totalRequired - totalPaid).toString() };
-      }
-      return prev;
-    });
-  }, [totalRequired, totalPaid]);
+  useImperativeHandle(ref, () => ({
+    openCreditModal: () => handleOpenCreditModal()
+  }));
 
   useEffect(() => {
     fetch('/api/settings')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) {
-          const settingsObj = data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
-          setSettings(settingsObj);
-          if (settingsObj.ALLOWED_PAYMENT_METHODS) {
-            const opts = settingsObj.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean);
-            if (opts.length > 0) setNewPayment(prev => ({ ...prev, paymentMethod: opts[0] }));
-          }
+          setSettings(data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {}));
         } else {
           setSettings(data || {});
         }
       })
       .catch(err => console.error(err));
   }, []);
-
-  const paymentMethodOptions = settings.ALLOWED_PAYMENT_METHODS
-    ? settings.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean)
-    : ['אשראי (דרך נדרים פלוס)', 'יציאה באישור מנהל'];
 
   const addObligation = () => {
     if (!newObligation.description || !newObligation.amount) return;
@@ -84,60 +69,6 @@ export default function ModernPaymentsManager({ orderId, items = [], order = {},
     if (updated[idx].id) updated[idx].isDeleted = true;
     else updated.splice(idx, 1);
     onObligationsChange(updated);
-  };
-
-  const addPayment = async () => {
-    if (!newPayment.amount) return;
-
-    const paymentAmount = parseFloat(newPayment.amount);
-    const balance = totalRequired - totalPaid;
-    if (paymentAmount > balance) {
-      alert(`לא ניתן לשלם יותר מהיתרה הנדרשת (₪${balance}).`);
-      return;
-    }
-
-    let isCodeRequired = false;
-    if (!(newPayment.paymentMethod.includes('אשראי') && !newPayment.paymentMethod.includes('חיצונית'))) {
-      const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
-      if (level === 'מנהל' || level === 'עובד') {
-        isCodeRequired = true;
-        const pin = await window.customPrompt(`פעולה זו דורשת הרשאת ${level}. אנא הזן סיסמת אישור:`, '', '', 'password');
-        if (!pin) {
-          alert('אישור תשלום בוטל.');
-          return;
-        }
-        try {
-          const res = await fetch('/api/auth/verify-pin', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ pin, requiredLevel: level })
-          });
-          const data = await res.json();
-          if (!data.success) {
-            alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
-            return;
-          }
-        } catch (err) {
-          alert('שגיאה באימות קוד מנהל.');
-          return;
-        }
-      }
-    }
-
-    if (!isCodeRequired) {
-      if (!(await window.customConfirm('האם אתה בטוח שברצונך להוסיף תשלום זה?'))) return;
-    }
-
-    const added = {
-      isNew: true,
-      paymentMethod: newPayment.paymentMethod,
-      notes: newPayment.paymentMethod === 'יציאה באישור מנהל' ? `אושר על סך ₪${newPayment.amount} ` + newPayment.notes : newPayment.notes,
-      amount: newPayment.paymentMethod === 'יציאה באישור מנהל' ? 0 : paymentAmount,
-      paymentDate: new Date().toISOString()
-    };
-    onPaymentsChange([...payments, added]);
-    setNewPayment({ paymentMethod: paymentMethodOptions[0] || 'אשראי', notes: '', amount: '' });
-    setShowAddPaymentModal(false);
   };
 
   const removePayment = async (idx) => {
@@ -486,14 +417,11 @@ export default function ModernPaymentsManager({ orderId, items = [], order = {},
         <div className="moc-table-toolbar">
           <h3 style={{ color: '#166534' }}>תשלומים</h3>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button className="moc-btn moc-btn-outline moc-btn-sm" onClick={handleOpenCreditModal} title="תשלום בכרטיס אשראי (נדרים פלוס)">
+            <button className="moc-btn moc-btn-gold moc-btn-sm" onClick={handleOpenCreditModal} title="תשלום בכרטיס אשראי (נדרים פלוס)">
               <CreditCard size={15} /> תשלום בכרטיס אשראי (נדרים פלוס)
             </button>
             <button className="moc-btn moc-btn-outline moc-btn-sm" onClick={handleOpenRefundModal} title="בקשת זיכוי ללקוח">
               <RefreshCcw size={15} /> בקשת זיכוי ללקוח
-            </button>
-            <button className="moc-btn moc-btn-gold moc-btn-sm" onClick={() => setShowAddPaymentModal(true)}>
-              <Plus size={15} /> הוסף קבלת תשלום
             </button>
           </div>
         </div>
@@ -548,7 +476,7 @@ export default function ModernPaymentsManager({ orderId, items = [], order = {},
                     <td style={{ fontWeight: 700, color: '#2563eb' }}>₪{r.amount}</td>
                     <td>
                       <button className="moc-btn moc-btn-gold moc-btn-sm" disabled={isProcessing} onClick={() => approveRefund(r.id)}>
-                        אשר ביצוע
+                        {isProcessing ? <span className="moc-spinner" /> : 'אשר ביצוע'}
                       </button>
                     </td>
                   </tr>
@@ -644,43 +572,8 @@ export default function ModernPaymentsManager({ orderId, items = [], order = {},
             <div className="moc-modal-foot">
               <button className="moc-btn moc-btn-outline" disabled={isProcessing} onClick={() => setShowCreditModal(false)}>ביטול</button>
               <button className="moc-btn moc-btn-gold" disabled={isProcessing} onClick={handleProcessCreditCard}>
-                {isProcessing ? 'מעבד...' : 'בצע חיוב'}
+                {isProcessing ? <><span className="moc-spinner" /> מעבד...</> : 'בצע חיוב'}
               </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
-
-      {/* ===== מודל הוספת קבלת תשלום ===== */}
-      {mounted && showAddPaymentModal && createPortal(
-        <div className="moc moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAddPaymentModal(false); }}>
-          <div className="moc-modal-box">
-            <div className="moc-modal-head">
-              <h3>הוספת קבלת תשלום</h3>
-              <button className="moc-close-x" onClick={() => setShowAddPaymentModal(false)}><X size={15} /></button>
-            </div>
-            <div className="moc-modal-body">
-              <label className="moc-field-label">אופן תשלום</label>
-              <select value={newPayment.paymentMethod}
-                onChange={e => setNewPayment({ ...newPayment, paymentMethod: e.target.value })}
-                style={{ marginBottom: '12px' }}>
-                {paymentMethodOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-              </select>
-
-              <label className="moc-field-label">סכום (₪)</label>
-              <input type="number" value={newPayment.amount}
-                onChange={e => setNewPayment({ ...newPayment, amount: e.target.value })}
-                style={{ marginBottom: '12px', fontWeight: 700 }} />
-
-              <label className="moc-field-label">הערות</label>
-              <input type="text" value={newPayment.notes}
-                onChange={e => setNewPayment({ ...newPayment, notes: e.target.value })}
-                placeholder="הערות לתשלום" />
-            </div>
-            <div className="moc-modal-foot">
-              <button className="moc-btn moc-btn-outline" onClick={() => setShowAddPaymentModal(false)}>ביטול</button>
-              <button className="moc-btn moc-btn-gold" disabled={!newPayment.amount} onClick={addPayment}>הוסף תשלום</button>
             </div>
           </div>
         </div>,
@@ -851,7 +744,7 @@ export default function ModernPaymentsManager({ orderId, items = [], order = {},
             <div className="moc-modal-foot">
               <button className="moc-btn moc-btn-outline" onClick={() => setShowRefundModal(false)}>ביטול</button>
               <button className="moc-btn moc-btn-gold" disabled={isProcessing} onClick={submitRefund}>
-                {isProcessing ? 'מעבד...' : 'צור בקשת זיכוי'}
+                {isProcessing ? <><span className="moc-spinner" /> מעבד...</> : 'צור בקשת זיכוי'}
               </button>
             </div>
           </div>
@@ -860,4 +753,6 @@ export default function ModernPaymentsManager({ orderId, items = [], order = {},
       )}
     </>
   );
-}
+});
+
+export default ModernPaymentsManager;

@@ -1,7 +1,11 @@
-﻿import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Users, User, Clock, X } from 'lucide-react';
 
+/**
+ * מודל "עובדים פעילים בזמן ההזמנה" — בשפת העיצוב המודרנית (מחלקות moc,
+ * שמוזרקות גלובלית מדף כרטיס ההזמנה).
+ */
 export default function ActiveEmployeesModal({ orderId, isOpen, onClose }) {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState({ executingEmployee: null, activeEmployees: [], orderDate: null });
@@ -9,7 +13,7 @@ export default function ActiveEmployeesModal({ orderId, isOpen, onClose }) {
 
   useEffect(() => {
     if (!isOpen || !orderId) return;
-    
+
     setLoading(true);
     fetch(`/api/orders/${orderId}/employees`)
       .then(res => {
@@ -33,120 +37,70 @@ export default function ActiveEmployeesModal({ orderId, isOpen, onClose }) {
   const formatDate = (dateString) => {
     if (!dateString) return '';
     return new Date(dateString).toLocaleString('he-IL', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit'
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit'
     });
   };
 
   const content = (
-    <div style={{
-      position: 'fixed',
-      top: 0, left: 0, right: 0, bottom: 0,
-      background: 'rgba(0,0,0,0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 1000,
-      direction: 'rtl'
-    }}>
-      <div style={{
-        background: 'var(--card-bg, #fff)',
-        padding: '2rem',
-        borderRadius: '16px',
-        width: '90%',
-        maxWidth: '500px',
-        boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-        position: 'relative',
-        maxHeight: '90vh',
-        overflowY: 'auto'
-      }}>
-        <button data-agy-id="activeemployeesmodal_button_1" 
-          onClick={onClose}
-          style={{
-            position: 'absolute',
-            top: '1rem',
-            left: '1rem',
-            background: 'none',
-            border: 'none',
-            cursor: 'pointer',
-            color: '#64748b'
-          }}
-        >
-          <X size={24} />
-        </button>
+    <div className="moc moc-modal-overlay" style={{ zIndex: 1600 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="moc-modal-box">
+        <div className="moc-modal-head">
+          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={19} /> עובדים פעילים (זמן הזמנה)</h3>
+          <button className="moc-close-x" onClick={onClose}><X size={15} /></button>
+        </div>
 
-        <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: 0, color: 'var(--primary-color)', borderBottom: '2px solid #eee', paddingBottom: '0.5rem' }}>
-          <Users size={28} />
-          עובדים פעילים (זמן הזמנה)
-        </h2>
-
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '2rem 0' }}>
-            <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto' }} />
-            <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>טוען נתונים...</p>
-            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-          </div>
-        ) : error ? (
-          <div style={{ color: '#d32f2f', textAlign: 'center', padding: '2rem 0', fontWeight: 'bold' }}>
-            {error}
-          </div>
-        ) : (
-          <div style={{ marginTop: '1.5rem' }}>
-            <div style={{ marginBottom: '1.5rem', color: 'var(--text-muted)', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <Clock size={16} />
-              תאריך ביצוע: {formatDate(data.orderDate)}
+        <div className="moc-modal-body">
+          {loading ? (
+            <div style={{ textAlign: 'center', padding: '28px 0' }}>
+              <span className="moc-spinner lg" style={{ margin: '0 auto' }} />
+              <p className="moc-hint" style={{ marginTop: '12px' }}>טוען נתונים...</p>
             </div>
+          ) : error ? (
+            <div style={{ color: 'var(--moc-danger-text)', textAlign: 'center', padding: '24px 0', fontWeight: 700 }}>
+              {error}
+            </div>
+          ) : (
+            <>
+              <div className="moc-hint" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px' }}>
+                <Clock size={15} />
+                תאריך ביצוע: {formatDate(data.orderDate)}
+              </div>
 
-            <div style={{ marginBottom: '2rem' }}>
-              <h3 style={{ color: '#0f172a', marginBottom: '1rem', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <User size={20} color="#3b82f6" /> 
-                עובד מבצע
-              </h3>
+              <span className="moc-field-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <User size={14} /> ביצע/ה את ההזמנה
+              </span>
               {data.executingEmployee ? (
-                <div style={{ background: '#eff6ff', padding: '1rem', borderRadius: '8px', border: '1px solid #bfdbfe' }}>
-                  <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#1e40af' }}>
-                    {data.executingEmployee.fullName || `${data.executingEmployee.firstName} ${data.executingEmployee.lastName}`}
-                  </span>
+                <div className="moc-employee-row" style={{ background: 'var(--moc-primary-light)', borderRadius: '8px', padding: '10px 12px', borderBottom: 'none', fontWeight: 700, marginBottom: '16px' }}>
+                  <span>{data.executingEmployee.fullName || `${data.executingEmployee.firstName} ${data.executingEmployee.lastName}`}</span>
+                  <span className="moc-hint">קופאי/ת ההזמנה</span>
                 </div>
               ) : (
-                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', color: '#64748b' }}>
-                  לא מוגדר עובד מבצע להזמנה זו.
-                </div>
+                <div className="moc-empty-state" style={{ padding: '12px 0', textAlign: 'right' }}>לא מוגדר עובד מבצע להזמנה זו.</div>
               )}
-            </div>
 
-            <div>
-              <h3 style={{ color: '#0f172a', marginBottom: '1rem', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Users size={20} color="#10b981" />
-                עובדים נוספים במשמרת
-              </h3>
+              <span className="moc-field-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
+                <Users size={14} /> עובדים נוספים במשמרת
+              </span>
               {data.activeEmployees && data.activeEmployees.length > 0 ? (
-                <ul style={{ listStyle: 'none', padding: 0, margin: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <div>
                   {data.activeEmployees.map(emp => (
-                    <li key={emp.id} style={{ background: '#ecfdf5', padding: '0.8rem 1rem', borderRadius: '8px', border: '1px solid #a7f3d0', color: '#065f46', fontWeight: 'bold' }}>
-                      {emp.fullName || `${emp.firstName} ${emp.lastName}`}
-                    </li>
+                    <div key={emp.id} className="moc-employee-row">
+                      <span style={{ fontWeight: 600 }}>
+                        <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--moc-success-text)', marginLeft: '8px' }} />
+                        {emp.fullName || `${emp.firstName} ${emp.lastName}`}
+                      </span>
+                    </div>
                   ))}
-                </ul>
-              ) : (
-                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '8px', color: '#64748b' }}>
-                  לא נמצאו עובדים נוספים במשמרת בזמן זה.
                 </div>
+              ) : (
+                <div className="moc-empty-state" style={{ padding: '12px 0', textAlign: 'right' }}>לא נמצאו עובדים נוספים במשמרת בזמן זה.</div>
               )}
-            </div>
-          </div>
-        )}
+            </>
+          )}
+        </div>
 
-        <div style={{ marginTop: '2rem', textAlign: 'left' }}>
-          <button data-agy-id="activeemployeesmodal_button_2" 
-            onClick={onClose}
-            style={{ padding: '0.6rem 1.5rem', background: 'var(--element-bg, #f1f5f9)', color: 'var(--text-main, #334155)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
-          >
-            סגור
-          </button>
+        <div className="moc-modal-foot">
+          <button className="moc-btn moc-btn-outline" onClick={onClose}>סגור</button>
         </div>
       </div>
     </div>

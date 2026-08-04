@@ -5,16 +5,14 @@ import Link from 'next/link';
 import {
   X, Info, Package, RefreshCcw, CreditCard, History, User, Phone, Calendar,
   ScanLine, Wallet, PenTool, Check, Printer, Trash2, Save, Undo2, ArrowRight,
-  FileText, ClipboardList, Mail, Users, Clock
+  FileText, ClipboardList, Mail, Clock, Lock, LockOpen
 } from 'lucide-react';
-import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../../lib/orderStatus';
+import { calculateOrderStatus, getStatusColor } from '../../../lib/orderStatus';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
-import modernOrderCss from './modernOrderStyles';
 
 const TAB_META = {
   details: { title: 'פרטים כלליים' },
-  items: { title: 'פירוט פריטים בהזמנה' },
-  rentals: { title: 'השכרות והחזרות', hint: 'הרשימה מתעדכנת מיד לאחר כל סריקה' },
+  items: { title: 'פירוט פריטים בהזמנה', hint: 'סריקה מהירה בסיידבר מבצעת השכרה / החזרה' },
   payments: { title: 'תשלומים' },
   history: { title: 'מידע והיסטוריה' }
 };
@@ -35,6 +33,7 @@ export default function ModernOrderCard({
   saveMessage,
   hasUnsavedChanges,
   isLocked,
+  isPastEvent,
   onUnlock,
   onSave,
   onCancelChanges,
@@ -48,10 +47,13 @@ export default function ModernOrderCard({
   onSendEmail,
   onShowEmployees,
   onQuickScan,
+  onWalletClick,
   layoutToggle,
   tabContents
 }) {
   const [scanValue, setScanValue] = useState('');
+  const [showUnlockModal, setShowUnlockModal] = useState(false);
+  const [unlocking, setUnlocking] = useState(false);
   const printWrapRef = useRef(null);
 
   // סגירת תפריט ההדפסה בלחיצה מחוץ לו
@@ -69,8 +71,6 @@ export default function ModernOrderCard({
 
   const orderStatus = calculateOrderStatus(order);
   const statusColor = getStatusColor(orderStatus);
-  const paymentStatus = calculatePaymentStatus(totalRequired, totalPaid);
-  const paymentColor = getPaymentStatusColor(paymentStatus);
 
   const customerName = order.customer
     ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ')
@@ -97,16 +97,13 @@ export default function ModernOrderCard({
 
   const tabs = [
     { id: 'details', label: 'פרטים כלליים', icon: Info },
-    { id: 'items', label: 'פריטים', icon: Package, count: activeItems.length },
-    { id: 'rentals', label: 'השכרות והחזרות', icon: RefreshCcw, count: activeItems.length },
+    { id: 'items', label: 'פריטים והשכרות', icon: Package, count: activeItems.length },
     { id: 'payments', label: 'תשלומים', icon: CreditCard },
     { id: 'history', label: 'מידע', icon: History }
   ];
 
   return (
     <div className="moc moc-page-overlay">
-      <style>{modernOrderCss}</style>
-
       <div className="moc-page-wrap">
       <div className="moc-top-strip">
         <div className="moc-breadcrumb">
@@ -115,22 +112,6 @@ export default function ModernOrderCard({
       </div>
 
       <div className="moc-container" style={{ position: 'relative' }}>
-        {isLocked && (
-          <div className="moc-lock-overlay">
-            <button
-              onClick={onUnlock}
-              style={{
-                position: 'sticky', top: '90px', marginTop: '2rem', padding: '1rem 2.5rem',
-                background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', border: 'none',
-                borderRadius: '10px', fontSize: '1.05rem', fontWeight: 'bold', cursor: 'pointer',
-                boxShadow: '0 8px 16px rgba(220, 38, 38, 0.3)'
-              }}
-            >
-              🔒 הזמנה נעולה - לחץ לשחרור בעזרת סיסמת מנהל
-            </button>
-          </div>
-        )}
-
         {/* ============ סיידבר ============ */}
         <aside className="moc-sidebar">
           <div>
@@ -143,9 +124,6 @@ export default function ModernOrderCard({
                 <span className="moc-v-divider" />
                 <span className="moc-badge" style={{ background: statusColor.bg, color: statusColor.text }}>
                   <Clock size={13} /> {orderStatus}
-                </span>
-                <span className="moc-badge" style={{ background: paymentColor.bg, color: paymentColor.text }}>
-                  {paymentStatus}
                 </span>
               </div>
             </div>
@@ -209,8 +187,8 @@ export default function ModernOrderCard({
 
               <button
                 className={`moc-icon-btn-soft money ${debt > 0 ? 'debt' : debt < 0 ? 'credit' : ''}`}
-                title={debt > 0 ? `יתרת חוב: ₪${debt.toLocaleString('he-IL')}` : debt < 0 ? `יתרת זכות: ₪${Math.abs(debt).toLocaleString('he-IL')}` : 'שולם במלואו'}
-                onClick={() => onTabChange('payments')}
+                title={debt > 0 ? `יתרת חוב: ₪${debt.toLocaleString('he-IL')} — לחץ לתשלום בנדרים פלוס` : debt < 0 ? `יתרת זכות: ₪${Math.abs(debt).toLocaleString('he-IL')}` : 'שולם במלואו'}
+                onClick={() => (onWalletClick ? onWalletClick() : onTabChange('payments'))}
               >
                 <Wallet size={18} />
                 {debt !== 0 && (
@@ -218,20 +196,28 @@ export default function ModernOrderCard({
                 )}
               </button>
 
+              {/* נעילת הזמנה שתאריכה עבר — הכל גלוי, פעולות פריטים חסומות עד שחרור באישור מנהל */}
+              {isPastEvent && (
+                <button
+                  className={`moc-icon-btn-soft ${isLocked ? 'lock-on' : 'lock-off'}`}
+                  title={isLocked
+                    ? 'הזמנה נעולה — תאריך האירוע עבר. פעולות פריטים חסומות; לחץ לשחרור באישור מנהל'
+                    : 'ההזמנה שוחררה לעריכה באישור מנהל'}
+                  onClick={() => { if (isLocked) setShowUnlockModal(true); }}
+                >
+                  {isLocked ? <Lock size={18} /> : <LockOpen size={18} />}
+                </button>
+              )}
+
               <button
                 className={`moc-icon-btn-soft sig ${order.hasSignedRegulations ? 'yes' : 'no'}`}
                 title={order.hasSignedRegulations ? 'חתם על תקנון השכרה — לחץ לשינוי' : 'לא חתם על תקנון — לחץ לשינוי'}
                 onClick={onToggleSignature}
-                disabled={isLocked}
               >
                 <PenTool size={17} />
                 <span className="moc-mini-badge">
                   {order.hasSignedRegulations ? <Check size={8} /> : <X size={8} />}
                 </span>
-              </button>
-
-              <button className="moc-icon-btn-soft orange" title="עובדים פעילים" onClick={onShowEmployees}>
-                <Users size={18} />
               </button>
 
               <div style={{ position: 'relative' }} ref={printWrapRef}>
@@ -256,20 +242,18 @@ export default function ModernOrderCard({
 
               <button
                 className="moc-icon-btn-soft primary"
-                title={isLocked ? 'הזמנה נעולה' : 'שמור שינויים'}
+                title="שמור שינויים"
                 onClick={() => onSave()}
-                disabled={saving || isLocked}
+                disabled={saving}
               >
-                {saving
-                  ? <div style={{ width: '16px', height: '16px', border: '2px solid rgba(181,149,47,0.3)', borderTop: '2px solid #b5952f', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-                  : <Save size={18} />}
+                {saving ? <span className="moc-spinner" /> : <Save size={18} />}
               </button>
 
               <button
                 className="moc-icon-btn-soft warn"
                 title={hasUnsavedChanges ? 'ביטול שינויים שלא נשמרו' : 'אין שינויים לביטול'}
                 onClick={onCancelChanges}
-                disabled={!hasUnsavedChanges || saving || isLocked}
+                disabled={!hasUnsavedChanges || saving}
               >
                 <Undo2 size={18} />
               </button>

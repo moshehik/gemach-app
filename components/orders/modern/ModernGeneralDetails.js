@@ -10,28 +10,7 @@ import HebrewDatePicker from '../../HebrewDatePicker';
 import HebrewDateRangePicker from '../../HebrewDateRangePicker';
 import CustomerSelector from '../../CustomerSelector';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
-
-// אימות עובד/מנהל/מתכנת מול השרת. מחזיר את פרטי המאשר או null אם בוטל/נכשל.
-const verifyPin = async (message, level) => {
-  const authResult = await window.customAuthPrompt(message, level);
-  if (!authResult || !authResult.pin) return null;
-  try {
-    const res = await fetch('/api/auth/verify-pin', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: level })
-    });
-    const data = await res.json();
-    if (!data.success) {
-      alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
-      return null;
-    }
-    return authResult;
-  } catch (err) {
-    alert('שגיאה באימות מול השרת.');
-    return null;
-  }
-};
+import { verifyPin } from './mocAuth';
 
 /**
  * טאב "פרטים כלליים" בעיצוב המודרני — כרטיס לקוח + כרטיס אירוע.
@@ -162,18 +141,18 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                 <div className="moc-sub-lbl">פרטי לקוח</div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="moc-btn moc-btn-outline moc-btn-icon" title="שליחת מייל מהיר (באישור מנהל)" onClick={handleQuickEmail}>
-                <Mail size={16} />
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <button className="moc-icon-btn-plain" style={{ width: '34px', height: '34px' }} title="שליחת מייל מהיר (באישור מנהל)" onClick={handleQuickEmail}>
+                <Mail size={17} />
               </button>
               {customer?.id && (
                 <Link href={`/customers/${customer.id}`} target="_blank" title="מעבר לכרטיס לקוח"
-                  className="moc-btn moc-btn-outline moc-btn-icon" style={{ textDecoration: 'none' }}>
-                  <ExternalLink size={16} />
+                  className="moc-icon-btn-plain" style={{ width: '34px', height: '34px', textDecoration: 'none' }}>
+                  <ExternalLink size={17} />
                 </Link>
               )}
-              <button className="moc-btn moc-btn-outline moc-btn-icon" title="החלף לקוח" onClick={() => setShowCustomerModal(true)}>
-                <RefreshCw size={16} />
+              <button className="moc-icon-btn-plain" style={{ width: '34px', height: '34px' }} title="החלף לקוח" onClick={() => setShowCustomerModal(true)}>
+                <RefreshCw size={17} />
               </button>
             </div>
           </div>
@@ -218,32 +197,49 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
             </button>
           </div>
 
-          <div style={{ margin: '14px 0' }}>
-            <div className="moc-toggle-pair">
-              <button
-                className={`moc-opt ${!isAbroad ? 'active' : ''}`}
-                onClick={() => {
-                  if (!isAbroad) return;
-                  // חזרה לאירוע רגיל — מנקים את טווח התאריכים ואת תאריך ההחזרה שנקבע ממנו
-                  changeDates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null });
-                  setIsEditingEvent(true);
-                }}
-              >
-                אירוע רגיל
-              </button>
-              <button
-                className={`moc-opt ${isAbroad ? 'active' : ''}`}
-                onClick={() => {
-                  if (isAbroad) return;
-                  // מעבר לאירוע חו"ל — עוברים לטווח תאריכים במקום תאריך בודד
-                  changeDates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null });
-                  setIsEditingEvent(true);
-                }}
-              >
-                אירוע חו"ל
-              </button>
+          {/* בורר סוג האירוע מוצג רק במצב עריכה */}
+          {isEditingEvent && (
+            <div style={{ margin: '14px 0' }}>
+              <div className="moc-toggle-pair">
+                <button
+                  className={`moc-opt ${!isAbroad ? 'active' : ''}`}
+                  onClick={() => {
+                    if (!isAbroad) return;
+                    // חזרה לאירוע רגיל — מנקים את טווח התאריכים ואת תאריך ההחזרה שנקבע ממנו
+                    changeDates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null });
+                  }}
+                >
+                  אירוע רגיל
+                </button>
+                <button
+                  className={`moc-opt ${isAbroad ? 'active' : ''}`}
+                  onClick={() => {
+                    if (isAbroad) return;
+                    // מעבר לאירוע חו"ל — עוברים לטווח תאריכים במקום תאריך בודד
+                    changeDates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null });
+                  }}
+                >
+                  אירוע חו"ל
+                </button>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* מצב קריאה — הצגת תאריך האירוע כשדה מלא */}
+          {!isEditingEvent && (
+            <div style={{ margin: '14px 0' }}>
+              <span className="moc-field-label">{isAbroad ? 'אירוע חו"ל — לקיחה והחזרה' : 'תאריך אירוע'}</span>
+              <div className="moc-field-value">
+                {isAbroad
+                  ? (order.fromDate
+                    ? `${new Date(order.fromDate).toLocaleDateString('he-IL')} ${timeOf(order.fromDate)} — ${(order.toDate || order.returnDate) ? `${new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL')} ${timeOf(order.toDate || order.returnDate)}` : '?'}`
+                    : 'טרם נבחרו תאריכים')
+                  : (order.eventDate
+                    ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} · ${order.eventDateHebrew || getHebrewDateString(order.eventDate)}`
+                    : 'טרם נבחר תאריך')}
+              </div>
+            </div>
+          )}
 
           {isEditingEvent ? (
             <div style={{ marginBottom: '14px' }}>
@@ -321,26 +317,45 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
             )}
           </div>
 
-          <div className="moc-spacing-note">
-            <div className="moc-spacing-note-head">
-              <span className="moc-spacing-note-label"><AlertTriangle size={15} /> ציפוף ימים מיוחד</span>
-              <select
-                value={order.customSpacing !== null && order.customSpacing !== undefined ? order.customSpacing : ''}
-                onChange={(e) => {
-                  const val = e.target.value === '' ? null : parseInt(e.target.value, 10);
-                  if (val !== order.customSpacing) applyCustomSpacing(val);
-                }}
-              >
-                <option value="">רגיל (לפי המערכת)</option>
-                <option value="1">1 יום רווח</option>
-                <option value="2">2 ימי רווח</option>
-                <option value="3">3 ימי רווח</option>
-                <option value="4">4 ימי רווח</option>
-                <option value="0">ללא רווח כלל (0)</option>
-              </select>
-            </div>
-            <p>דורש הרשאת מנהל · צובע את ההזמנה בצהוב ומשפיע על בדיקת המלאי להזמנה זו בלבד</p>
-          </div>
+          {/* ציפוף ימים — בעריכה תמיד; בקריאה רק אם הוגדר ציפוף מיוחד */}
+          {(isEditingEvent || (order.customSpacing !== null && order.customSpacing !== undefined)) && (() => {
+            const hasCustom = order.customSpacing !== null && order.customSpacing !== undefined;
+            const selected = hasCustom ? order.customSpacing : null;
+            return (
+              <div className="moc-spacing-note">
+                <div className="moc-spacing-note-head">
+                  <span className="moc-spacing-note-label"><AlertTriangle size={15} /> ציפוף ימים מיוחד</span>
+                  <button
+                    className={`moc-pill-toggle ${!hasCustom ? 'on' : ''}`}
+                    onClick={() => { if (hasCustom) applyCustomSpacing(null); }}
+                    title="חזרה לרווח הרגיל של המערכת"
+                  >
+                    {!hasCustom && <Check size={13} />} רגיל (לפי המערכת)
+                  </button>
+                </div>
+
+                {/* ציר ימי הרווח בין השכרות: 0 = ללא רווח, 3 = ברירת המחדל */}
+                <div className="moc-days-axis">
+                  {[0, 1, 2, 3, 4].map((d, i) => (
+                    <React.Fragment key={d}>
+                      {i > 0 && <div className={`moc-day-connector ${selected !== null && selected >= d ? 'passed' : ''}`} />}
+                      <button
+                        className={`moc-day-stop ${selected === d ? 'selected' : ''}`}
+                        title={d === 0 ? 'ללא רווח כלל' : `${d} ימי רווח בין השכרות`}
+                        onClick={() => { if (selected !== d) applyCustomSpacing(d); }}
+                      >
+                        {d}
+                        {d === 0 && <span className="moc-day-caption">ללא רווח</span>}
+                        {d === 3 && <span className="moc-day-caption">ברירת מחדל</span>}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </div>
+
+                <p>דורש הרשאת מנהל · צובע את ההזמנה בצהוב ומשפיע על בדיקת המלאי להזמנה זו בלבד</p>
+              </div>
+            );
+          })()}
         </div>
       </div>
 
@@ -361,8 +376,9 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
               {customerMode === 'existing' ? (
                 <div>
                   <span className="moc-field-label">חיפוש לקוח</span>
+                  {/* value=null בכוונה — אחרת שדה החיפוש מתמלא בשם הלקוח הנוכחי והרשימה מסוננת רק אליו */}
                   <CustomerSelector
-                    value={customer}
+                    value={null}
                     onChange={selectCustomer}
                     placeholder="חפש לקוח לפי שם, טלפון, עיר..."
                   />

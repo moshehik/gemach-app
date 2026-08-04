@@ -119,13 +119,15 @@ export default function OrderPrintMenu({
       const html2pdf = (await import('html2pdf.js')).default;
       const element = document.createElement('div');
       element.innerHTML = htmlData.html;
-      // html2canvas can't measure elements positioned far off-screen (e.g. top: -9999px) -
-      // it computes a 0 height and renders a blank page. Keep it on-screen but invisible instead.
+      // html2canvas can't reliably measure/render elements positioned far off-screen
+      // (top: -9999px) or hidden via opacity - it needs the node laid out at real,
+      // in-viewport coordinates and fully opaque, or it captures a blank/wrong image.
+      // Keep it on-screen at normal coordinates but tucked behind the real UI with a
+      // negative z-index, so it's invisible to the user without breaking the capture.
       element.style.position = 'fixed';
       element.style.top = '0';
       element.style.left = '0';
       element.style.zIndex = '-1';
-      element.style.opacity = '0';
       element.style.pointerEvents = 'none';
       document.body.appendChild(element);
 

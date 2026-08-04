@@ -30,11 +30,21 @@ const modernOrderCss = `
 .moc *, .moc *::before, .moc *::after { box-sizing: border-box; }
 .moc h1, .moc h2, .moc h3, .moc .moc-serif { font-family: 'Playfair Display', 'Heebo', serif; }
 
-/* שכבת מסך מלא — הכרטיס עולה מעל המערכת עם רקע נקי (מכסה את הניווט, מתחת למודלים) */
+/* שכבת מסך מלא — הכרטיס עולה מעל המערכת עם רקע נקי (מכסה את הניווט, מתחת למודלים).
+   הריווח מימין משאיר את הסרגל המהיר הצף (global-sidebar, z-index 999) גלוי לצד הכרטיס. */
 .moc-page-overlay {
   position: fixed; inset: 0; z-index: 500; background: var(--moc-bg-page);
-  overflow-y: auto; padding: 16px 22px 20px;
+  overflow-y: auto; padding: 16px 104px 20px 22px;
 }
+
+/* שילוב הסרגל המהיר הצף בשפת העיצוב של הכרטיס כשהוא פתוח */
+body:has(.moc-page-overlay) .global-sidebar {
+  background: #fff;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  box-shadow: 0 10px 25px -5px rgba(0,0,0,0.10), 0 8px 10px -6px rgba(0,0,0,0.05);
+}
+body:has(.moc-page-overlay) .global-sidebar-icon { color: #a08a3c; }
+body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; background: rgba(212, 175, 55, 0.14); }
 .moc-page-wrap { max-width: 1520px; margin: 0 auto; }
 
 .moc-top-strip { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 0 4px; }
@@ -57,8 +67,8 @@ const modernOrderCss = `
   color: #fff; padding: 22px 20px; display: flex; flex-direction: column; justify-content: space-between;
   overflow-y: auto; overflow-x: hidden;
 }
-.moc-sidebar-top-row { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; flex-wrap: wrap; }
-.moc-order-id-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.moc-sidebar-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: nowrap; min-width: 0; }
+.moc-order-id-group { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; overflow: hidden; }
 .moc-order-num { font-weight: 700; font-size: 1rem; color: #fff; font-family: 'Playfair Display', serif; }
 .moc-v-divider { width: 1px; height: 16px; background: rgba(255,255,255,0.3); display: inline-block; }
 .moc-icon-btn-ghost {
@@ -235,17 +245,59 @@ const modernOrderCss = `
 .moc-spacing-note { background: linear-gradient(135deg, #fffaf0, #fff4dc); border: 1px solid #f0dfa8; border-radius: 12px; padding: 14px 16px; margin-top: 16px; }
 .moc-spacing-note-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .moc-spacing-note-label { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.92rem; color: #8a6d1c; }
-.moc-spacing-note select { width: 170px; border-color: #e9d495; }
-.moc-spacing-note p { margin: 8px 0 0 0; font-size: 0.78rem; color: #a9873a; }
+.moc-spacing-note p { margin: 10px 0 0 0; font-size: 0.78rem; color: #a9873a; }
+
+/* ציר ימי הרווח — בחירת ציפוף ויזואלית */
+.moc-days-axis { display: flex; align-items: center; margin: 14px 4px 20px; }
+.moc-day-stop {
+  position: relative; width: 36px; height: 36px; border-radius: 50%; border: 2px solid #e9d495;
+  background: #fff; color: #8a6d1c; font-weight: 700; font-size: 0.92rem; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; transition: all 0.18s; font-family: inherit; flex-shrink: 0;
+}
+.moc-day-stop:hover { border-color: var(--moc-primary); transform: scale(1.1); }
+.moc-day-stop.selected {
+  background: var(--moc-primary); border-color: var(--moc-primary-dark); color: #1e293b;
+  box-shadow: 0 3px 10px rgba(212, 175, 55, 0.45); transform: scale(1.12);
+}
+.moc-day-stop .moc-day-caption {
+  position: absolute; top: calc(100% + 4px); font-size: 0.62rem; color: #a9873a;
+  white-space: nowrap; font-weight: 600; right: 50%; transform: translateX(50%);
+}
+.moc-day-connector { height: 3px; flex: 1; background: #eeddab; min-width: 16px; border-radius: 2px; }
+.moc-day-connector.passed { background: var(--moc-primary); }
+
+/* אייקון נעילת הזמנה בטופ-בר */
+.moc-icon-btn-soft.lock-on { color: var(--moc-danger-text); background: var(--moc-danger-bg); }
+.moc-icon-btn-soft.lock-on:hover:not(:disabled) { background: #fee2e2; color: var(--moc-danger-text); }
+.moc-icon-btn-soft.lock-off { color: #16a34a; }
+.moc-icon-btn-soft.lock-off:hover:not(:disabled) { background: var(--moc-success-bg); color: #16a34a; }
 
 .moc-empty-state { text-align: center; padding: 40px 0; color: #b8b2a2; }
 
 /* ===== טבלאות נתונים (פריטים / תשלומים) ===== */
 .moc-table-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
 .moc-section-head {
-  display: flex; align-items: center; gap: 14px; flex-wrap: wrap; justify-content: flex-end;
-  margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px solid var(--moc-divider);
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  margin-bottom: 18px;
 }
+
+/* לחצן דו-מצבי מודרני (מופעל/כבוי) */
+.moc-pill-toggle {
+  display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px; border-radius: 20px;
+  border: 1px solid var(--moc-divider); background: #fff; color: var(--moc-text-muted);
+  font-weight: 700; font-size: 0.82rem; cursor: pointer; transition: all 0.18s; font-family: inherit; white-space: nowrap;
+}
+.moc-pill-toggle:hover { border-color: var(--moc-border-color); }
+.moc-pill-toggle.on { background: var(--moc-primary-light); border-color: var(--moc-border-color); color: var(--moc-primary-dark); }
+
+/* עיגול המתנה אחיד לכל פעולה אסינכרונית */
+.moc-spinner {
+  display: inline-block; width: 15px; height: 15px; flex-shrink: 0;
+  border: 2px solid rgba(181, 149, 47, 0.25); border-top-color: var(--moc-primary-dark);
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+.moc-spinner.light { border-color: rgba(255,255,255,0.35); border-top-color: #fff; }
+.moc-spinner.lg { width: 34px; height: 34px; border-width: 3px; }
 table.moc-data-table { width: 100%; border-collapse: collapse; }
 .moc-data-table th, .moc-data-table td { padding: 12px 10px; text-align: right; border-bottom: 1px solid var(--moc-divider); font-size: 0.92rem; vertical-align: middle; }
 .moc-data-table th { color: var(--moc-text-muted); font-weight: 700; font-size: 0.82rem; background: #faf9f5; position: sticky; top: 0; z-index: 5; }
@@ -286,8 +338,15 @@ table.moc-data-table { width: 100%; border-collapse: collapse; }
 .moc-data-table.hide-alter .moc-col-alter { display: none; }
 
 /* שורת עריכה/פריט חדש — עורכי דגם/מידה/תיקונים בתוך התא */
-.moc-inline-edit { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
+.moc-inline-edit { display: flex; flex-direction: column; gap: 8px; min-width: 170px; }
 .moc-inline-edit .moc-field-label { margin-bottom: 0; font-size: 0.75rem; }
+.moc-data-table tbody tr.editing { background: #fffdf4; box-shadow: inset -3px 0 0 var(--moc-primary); }
+.moc-data-table tbody tr.editing:hover { background: #fff8e5; }
+.moc-data-table tbody tr.editing td { padding-top: 16px; padding-bottom: 16px; vertical-align: top; }
+.moc-edit-box {
+  background: #fff; border: 1px solid var(--moc-border-color); border-radius: 10px;
+  padding: 10px 12px; display: flex; flex-direction: column; gap: 8px;
+}
 
 /* ===== השכרות והחזרות ===== */
 .moc-rental-item { padding: 16px 4px; border-bottom: 1px solid var(--moc-divider); display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }

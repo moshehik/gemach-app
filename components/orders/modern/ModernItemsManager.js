@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Plus, Trash2, RotateCcw, Edit2, X, Check, Info, CalendarSearch, Scan,
@@ -10,13 +10,16 @@ import OrderModelSelector from '../OrderModelSelector';
 import OrderSizeSelector from '../OrderSizeSelector';
 import ItemCapacityModal from '../ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../../HistoryViewer';
+import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 /**
- * טאב "פריטים" בעיצוב המודרני — פורט מלא של OrderItemsManager:
+ * טאב "פריטים" בעיצוב המודרני — פורט מלא של OrderItemsManager, כולל ההשכרות:
  * הוספה/עריכה עם בורר דגם ומידה (כולל מטמון מלאי), תיקונים כצ'יפים,
  * השכרה/החזרה עם אישור וברקוד, מחיקה/שחזור, פרטי חיובים והיסטוריה לפריט.
+ * חשוף דרך ref: scan(barcode) — סריקת ברקוד מהסיידבר מבצעת השכרה/החזרה
+ * (כולל אימות מלאי בשרת וטיפול בפריט שלא הוחזר מהזמנה קודמת).
  */
-export default function ModernItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated, inventoryCache, totalRequired, totalPaid }) {
+const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated, inventoryCache, totalRequired, totalPaid }, ref) {
   const [showDeleted, setShowDeleted] = useState(false);
   const [showAlterations, setShowAlterations] = useState(true);
   const [detailsModalItem, setDetailsModalItem] = useState(null);
@@ -48,6 +51,112 @@ export default function ModernItemsManager({ orderId, order, items, onItemsChang
   const enableAlterations = settings.enable_alterations !== 'false';
   const activeItems = (items || []).filter(i => !i.isDeleted);
   const totalPrice = activeItems.reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
+
+  useImperativeHandle(ref, () => ({
+    scan: (barcode) => handleBarcodeScan(barcode)
+  }));
+
+  // סריקת ברקוד (מהסיידבר) — משכירה פריט ממתין או מחזירה פריט מושכר.
+  // פורט מלוגיקת ההשכרות הקודמת: אישור עובד כשלא שולם, אימות מלאי בשרת,
+  // וטיפול בפריט שטרם הוחזר מהזמנה אחרת.
+  const handleBarcodeScan = async (rawBarcode) => {
+    const barcode = (rawBarcode || '').trim();
+    if (!barcode) return;
+
+    if (!isFullyPaid) {
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע פעולה ללא תשלום מלא. נדרש אישור מנהל או עובד מורשה:", 'עובד');
+      if (!authResult || !authResult.pin) return;
+      try {
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'עובד' })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+          return;
+        }
+      } catch (err) {
+        alert('שגיאה באימות קוד.');
+        return;
+      }
+    }
+
+    // 1. אימות הפריט מול המלאי בשרת
+    let dressInfo = null;
+    try {
+      const vRes = await fetch('/api/rentals/verify-item', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ barcode, orderId: order?.orderId })
+      });
+      const vData = await vRes.json();
+      if (!vRes.ok || !vData.valid) {
+        alert(vData.error || `ברקוד ${barcode} אינו תקף להשכרה.`);
+        return;
+      }
+
+      if (vData.unreturned) {
+        const confirmMsg = `${vData.warning}\nהאם ברצונך לסמן אותה כהוחזרה מההשכרה הקודמת (הזמנה #${vData.unreturnedOrderId}) ולהמשיך בהשכרה זו?`;
+        const promptFunc = window.customConfirm || window.confirm;
+        if (await promptFunc(confirmMsg)) {
+          const putRes = await fetch('/api/rentals/scan', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ unreturnedItemId: vData.unreturnedItemId })
+          });
+          if (!putRes.ok) {
+            const errData = await putRes.json();
+            alert(errData.error || 'שגיאה בעדכון החזרה מהשכרה קודמת');
+            return;
+          }
+        } else {
+          return;
+        }
+      }
+
+      dressInfo = vData.dressItem;
+    } catch (err) {
+      console.error('Error calling verify-item API:', err);
+    }
+
+    // 2. מציאת הפריט המתאים בהזמנה
+    const itemIndex = activeItems.findIndex(i => {
+      const b = i.barcode || i.dressItem?.barcode || i.dressItem?.dressBarcode;
+      if (b && b === barcode) return true;
+      if (i.isTaken) return false;
+
+      const iPfx = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+      const iSize = i.dressItem?.sizeText || i.sizeText;
+
+      if (dressInfo) {
+        const matchPfx = dressInfo.barcodePrefix ? (iPfx === dressInfo.barcodePrefix || String(barcode).startsWith(String(iPfx))) : true;
+        const matchSize = dressInfo.sizeText ? (iSize === dressInfo.sizeText || (parseInt(iSize) === parseInt(dressInfo.sizeText))) : true;
+        if (matchPfx && matchSize) return true;
+      }
+
+      if (iPfx && iSize) {
+        if (barcode.startsWith(String(iPfx)) && barcode.includes(String(iSize))) return true;
+      }
+      return false;
+    });
+
+    if (itemIndex === -1) {
+      const detailsStr = dressInfo ? ` (דגם ${dressInfo.dressName || dressInfo.barcodePrefix || ''}, מידה ${dressInfo.sizeText || ''})` : '';
+      alert(`ברקוד ${barcode}${detailsStr} לא נמצא בין הפריטים שטרם הושכרו בהזמנה זו.`);
+      return;
+    }
+
+    const item = activeItems[itemIndex];
+    if (!item.isTaken) {
+      handleRent(item, barcode, true); // האימות בוצע כבר למעלה
+    } else if (!item.isReturned) {
+      handleReturn(item, true);
+    } else {
+      alert(`פריט ${barcode} כבר הוחזר.`);
+    }
+  };
 
   const handleItemChange = (index, field, value) => {
     const updatedItems = [...items];
@@ -286,9 +395,11 @@ export default function ModernItemsManager({ orderId, order, items, onItemsChang
     }
   };
 
-  const itemName = (item) => item.dressItem?.dress?.name
-    ? item.dressItem.dress.name
-    : (item.description || item.dressItem?.dressName || 'פריט כללי');
+  // שם הדגם בלבד — בלי "(קוד: X)" שמוטמע בתיאור, כי הקוד מוצג בכיתוב הקטן מתחת
+  const itemName = (item) => {
+    const raw = item.dressItem?.dress?.name || item.description || item.dressItem?.dressName || 'פריט כללי';
+    return raw.replace(/\s*\(קוד:[^)]*\)/g, '').trim() || 'פריט כללי';
+  };
 
   const itemCode = (item) => item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix || null;
 
@@ -327,24 +438,22 @@ export default function ModernItemsManager({ orderId, order, items, onItemsChang
 
   return (
     <>
-      {/* סרגל עליון של הטאב */}
+      {/* סרגל עליון של הטאב — כפתור ההוספה בימין, מונה בשמאל */}
       <div className="moc-section-head">
-        <span className="moc-hint" style={{ marginLeft: 'auto' }}>
-          {activeItems.length} פריטים פעילים{totalPrice > 0 ? ` · סה"כ ₪${totalPrice.toLocaleString('he-IL')}` : ''}
-        </span>
-        {enableAlterations && (
-          <label className="moc-check-label">
-            <input type="checkbox" checked={showAlterations} onChange={(e) => setShowAlterations(e.target.checked)} />
-            הצג פרטי תיקונים
-          </label>
-        )}
-        <label className="moc-check-label">
-          <input type="checkbox" checked={showDeleted} onChange={(e) => setShowDeleted(e.target.checked)} />
-          הצג פריטים מחוקים
-        </label>
         <button className="moc-icon-btn-add" title="הוסף פריט חדש" onClick={handleAddItem}>
           <Plus size={18} />
         </button>
+        {enableAlterations && (
+          <button className={`moc-pill-toggle ${showAlterations ? 'on' : ''}`} onClick={() => setShowAlterations(v => !v)} title="הצגת עמודת התיקונים">
+            {showAlterations && <Check size={13} />} פרטי תיקונים
+          </button>
+        )}
+        <button className={`moc-pill-toggle ${showDeleted ? 'on' : ''}`} onClick={() => setShowDeleted(v => !v)} title="הצגת פריטים שנמחקו">
+          {showDeleted && <Check size={13} />} פריטים מחוקים
+        </button>
+        <span className="moc-hint" style={{ marginInlineStart: 'auto' }}>
+          {activeItems.length} פריטים פעילים{totalPrice > 0 ? ` · סה"כ ₪${totalPrice.toLocaleString('he-IL')}` : ''}
+        </span>
       </div>
 
       {items && items.filter(i => showDeleted || !i.isDeleted).length > 0 ? (
@@ -352,13 +461,12 @@ export default function ModernItemsManager({ orderId, order, items, onItemsChang
           <table className={`moc-data-table ${(!showAlterations || !enableAlterations) ? 'hide-alter' : ''}`}>
             <thead>
               <tr>
-                <th style={{ width: '40px' }}>מחק</th>
                 <th>תיאור דגם</th>
                 <th style={{ width: '140px' }}>מידה</th>
                 <th className="moc-col-alter">תיקונים</th>
                 <th style={{ textAlign: 'center', width: '110px' }}>סטטוס</th>
                 <th style={{ textAlign: 'center' }}>פעולות</th>
-                <th style={{ textAlign: 'center', width: '90px' }}>פרטים</th>
+                <th style={{ textAlign: 'center', width: '110px' }}>פרטים</th>
               </tr>
             </thead>
             <tbody>
@@ -371,15 +479,6 @@ export default function ModernItemsManager({ orderId, order, items, onItemsChang
 
                 return (
                   <tr key={item.id || item._localId || originalIndex} className={isDeletedRow ? 'deleted' : isEditingMode ? 'editing' : ''}>
-                    <td>
-                      <button
-                        className={`moc-icon-btn-plain ${isDeletedRow ? 'restore' : 'row-delete'}`}
-                        title={isDeletedRow ? 'שחזר פריט' : 'מחק פריט'}
-                        onClick={(e) => { e.stopPropagation(); toggleDeleted(originalIndex); }}
-                      >
-                        {isDeletedRow ? <RotateCcw size={15} /> : <Trash2 size={15} />}
-                      </button>
-                    </td>
                     <td>
                       {item.isNew ? (
                         <div className="moc-inline-edit">
@@ -411,7 +510,7 @@ export default function ModernItemsManager({ orderId, order, items, onItemsChang
                     </td>
                     <td className="moc-col-alter">
                       {isEditingMode && enableAlterations ? (
-                        <div className="moc-inline-edit">
+                        <div className="moc-inline-edit moc-edit-box">
                           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                             <label className="moc-check-label">
                               <input type="checkbox"
@@ -450,7 +549,7 @@ export default function ModernItemsManager({ orderId, order, items, onItemsChang
                             <button className="moc-btn moc-btn-gold moc-btn-sm"
                               disabled={savingItemIndex === originalIndex}
                               onClick={(e) => { e.stopPropagation(); handleConfirmItem(originalIndex); }}>
-                              {savingItemIndex === originalIndex ? '...' : <><Check size={14} /> אישור</>}
+                              {savingItemIndex === originalIndex ? <><span className="moc-spinner" /> שומר...</> : <><Check size={14} /> אישור</>}
                             </button>
                             <button className="moc-btn moc-btn-outline moc-btn-sm"
                               disabled={savingItemIndex === originalIndex}
@@ -506,6 +605,16 @@ export default function ModernItemsManager({ orderId, order, items, onItemsChang
                           <button className="moc-icon-btn-plain" title="בדוק תפוסה לתאריך אירוע"
                             onClick={(e) => { e.stopPropagation(); setCapacityModalItem(item); }}>
                             <CalendarSearch size={16} />
+                          </button>
+                        )}
+                        {/* מחיקה — לא זמינה לפריט מושכר (יש להחזירו או לבטל את הלקיחה קודם) */}
+                        {!item.isNew && !isRented && (
+                          <button
+                            className={`moc-icon-btn-plain ${isDeletedRow ? 'restore' : 'row-delete'}`}
+                            title={isDeletedRow ? 'שחזר פריט' : 'מחק פריט'}
+                            onClick={(e) => { e.stopPropagation(); toggleDeleted(originalIndex); }}
+                          >
+                            {isDeletedRow ? <RotateCcw size={15} /> : <Trash2 size={15} />}
                           </button>
                         )}
                       </div>
@@ -608,28 +717,40 @@ export default function ModernItemsManager({ orderId, order, items, onItemsChang
               <button className="moc-close-x" onClick={() => setDetailsModalItem(null)}><X size={15} /></button>
             </div>
             <div className="moc-modal-body">
-              <span className="moc-field-label">פירוט חיובים לפריט זה</span>
-              <div className="moc-card-panel" style={{ padding: '10px 14px', marginBottom: '16px', maxHeight: '170px', overflowY: 'auto' }}>
+              <span className="moc-field-label">תשלומים וחיובים לפריט זה (חיוב, זיכוי, ביטול, תיקונים)</span>
+              <div className="moc-card-panel" style={{ padding: '10px 14px', marginBottom: '16px', maxHeight: '190px', overflowY: 'auto' }}>
                 {(() => {
                   if (!order || !order.obligations) return <span className="moc-hint">לא נמצאו חיובים מפורטים</span>;
                   const searchStr = `(פריט #${detailsModalItem.id})`;
+                  const cleanTxt = (t) => (t || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim();
+                  // כל ההתחייבויות שמשויכות לפריט — כולל זיכויים/ביטולים (סכומים שליליים)
                   const relatedObligations = order.obligations.filter(obs =>
-                    obs.isManual === false && obs.description && obs.description.includes(searchStr) && obs.amount >= 0
+                    !obs.isDeleted && obs.description && obs.description.includes(searchStr)
                   );
                   if (relatedObligations.length === 0) return <span className="moc-hint">אין חיובים מפורטים לפריט זה</span>;
                   return (
                     <table className="moc-data-table">
                       <tbody>
-                        {relatedObligations.map((obs, idx) => (
-                          <tr key={idx}>
-                            <td style={{ fontWeight: 600 }}>{obs.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || (obs.description.includes('תיקון') ? 'תיקון' : 'חיוב')}</td>
-                            <td className="moc-hint">{obs.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '')}</td>
-                            <td style={{ fontWeight: 700, color: '#16a34a' }}>₪{obs.amount}</td>
-                          </tr>
-                        ))}
+                        {relatedObligations.map((obs, idx) => {
+                          const isCredit = obs.amount < 0;
+                          const label = cleanTxt(obs.productName)
+                            || (isCredit ? 'זיכוי / ביטול' : (obs.description.includes('תיקון') ? 'תיקון' : 'חיוב'));
+                          return (
+                            <tr key={idx}>
+                              <td style={{ fontWeight: 600 }}>
+                                {label}
+                                {isCredit && <span className="moc-badge on-white danger" style={{ marginRight: '6px' }}>זיכוי</span>}
+                              </td>
+                              <td className="moc-hint">{cleanTxt(obs.description)}</td>
+                              <td style={{ fontWeight: 700, color: isCredit ? 'var(--moc-danger-text)' : '#16a34a', direction: 'ltr', textAlign: 'left' }}>
+                                {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
+                              </td>
+                            </tr>
+                          );
+                        })}
                         <tr style={{ fontWeight: 700, background: 'var(--moc-neutral-bg)' }}>
                           <td colSpan={2}>סה"כ לפריט</td>
-                          <td style={{ color: '#16a34a' }}>₪{relatedObligations.reduce((sum, obs) => sum + obs.amount, 0)}</td>
+                          <td style={{ color: '#16a34a', direction: 'ltr', textAlign: 'left' }}>₪{relatedObligations.reduce((sum, obs) => sum + obs.amount, 0)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -637,11 +758,38 @@ export default function ModernItemsManager({ orderId, order, items, onItemsChang
                 })()}
               </div>
 
-              <span className="moc-field-label">תאריך הוספה</span>
-              <div className="moc-field-value" style={{ fontSize: '0.95rem', marginBottom: '16px' }}>
-                {new Date(detailsModalItem.orderDate || order?.orderDate || detailsModalItem.createdAt || new Date()).toLocaleDateString('he-IL')}{' '}
-                {new Date(detailsModalItem.orderDate || order?.orderDate || detailsModalItem.createdAt || new Date()).toLocaleTimeString('he-IL')}
-              </div>
+              {(() => {
+                // כל התאריכים עם תאריך עברי: הוספה, לקיחה, החזרה
+                const fmtFull = (d0) => {
+                  if (!d0) return null;
+                  const d = new Date(d0);
+                  if (isNaN(d.getTime())) return null;
+                  return `${d.toLocaleDateString('he-IL')} (${getHebrewDateString(d)}) · ${d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
+                };
+                const addedDate = fmtFull(detailsModalItem.orderDate || order?.orderDate || detailsModalItem.createdAt);
+                const takenDate = fmtFull(detailsModalItem.takenDate);
+                const returnDate = fmtFull(detailsModalItem.returnDate);
+                return (
+                  <div className="moc-grid-2" style={{ marginBottom: '16px' }}>
+                    <div>
+                      <span className="moc-field-label">תאריך הוספה</span>
+                      <div className="moc-field-value" style={{ fontSize: '0.92rem' }}>{addedDate || '-'}</div>
+                    </div>
+                    <div>
+                      <span className="moc-field-label">תאריך השכרה (לקיחה)</span>
+                      <div className="moc-field-value" style={{ fontSize: '0.92rem', color: takenDate ? undefined : 'var(--moc-text-muted)' }}>
+                        {takenDate || 'טרם הושכר'}
+                      </div>
+                    </div>
+                    <div>
+                      <span className="moc-field-label">תאריך החזרה</span>
+                      <div className="moc-field-value" style={{ fontSize: '0.92rem', color: returnDate ? undefined : 'var(--moc-text-muted)' }}>
+                        {returnDate || 'טרם הוחזר'}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
 
               <span className="moc-field-label">היסטוריית שינויים</span>
               <div className="moc-card-panel" style={{ padding: '6px 14px', maxHeight: '250px', overflowY: 'auto' }}>
@@ -711,4 +859,6 @@ export default function ModernItemsManager({ orderId, order, items, onItemsChang
       )}
     </>
   );
-}
+});
+
+export default ModernItemsManager;
