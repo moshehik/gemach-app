@@ -5,6 +5,19 @@ import RentalReturnModal from '../../components/orders/RentalReturnModal';
 
 const PopupContext = createContext(null);
 
+// מטמון לנתוני האימות (רשימת עובדים + משתמש נוכחי) — נטען פעם אחת לכל טעינת עמוד,
+// כדי שחלונית אישור מנהל/עובד תיפתח מיד ולא תחכה לשרת בכל פתיחה.
+let authDataCachePromise = null;
+const loadAuthData = () => {
+  if (!authDataCachePromise) {
+    authDataCachePromise = Promise.all([
+      fetch('/api/employees').then(r => (r.ok ? r.json() : [])).catch(() => []),
+      fetch('/api/me').then(r => (r.ok ? r.json() : null)).catch(() => null)
+    ]);
+  }
+  return authDataCachePromise;
+};
+
 export function PopupProvider({ children }) {
   const [alerts, setAlerts] = useState([]);
   const [alertsHistory, setAlertsHistory] = useState([]);
@@ -100,58 +113,45 @@ export function PopupProvider({ children }) {
     setPromptConfig({ isOpen: false, message: '', resolve: null, title: 'הזנת נתונים', defaultValue: '', type: 'text' });
   }, [promptConfig]);
 
-  const showAuthPrompt = useCallback(async (message, requiredLevel = 'מנהל', title = 'אימות הרשאה') => {
-    return new Promise(async (resolve) => {
-      let employees = [];
-      let currentUser = null;
-      try {
-        const [resEmp, resMe] = await Promise.all([
-          fetch('/api/employees'),
-          fetch('/api/me').catch(() => ({ ok: false }))
-        ]);
-        
-        if (resEmp.ok) {
-          employees = await resEmp.json();
-          if (requiredLevel === 'מנהל') {
-            employees = employees.filter(e => e.roleId === 1 || e.roleId === 2);
-          } else if (requiredLevel === 'מתכנת') {
-            employees = employees.filter(e => e.roleId === 2);
-          }
+  const showAuthPrompt = useCallback((message, requiredLevel = 'מנהל', title = 'אימות הרשאה') => {
+    return new Promise((resolve) => {
+      // החלונית נפתחת מיד; רשימת העובדים נטענת ברקע (עם מטמון) — employees:null = בטעינה
+      setAuthPromptConfig({ isOpen: true, message, resolve, title, requiredLevel, employees: null });
+      setSelectedAuthEmployee('');
+      setAuthEmployeeSearch('');
+      setIsAuthEmployeeDropdownOpen(false);
+      setTimeout(() => { if (authInputRef.current) authInputRef.current.focus(); }, 100);
+
+      loadAuthData().then(([allEmployees, meData]) => {
+        let employees = Array.isArray(allEmployees) ? allEmployees : [];
+        if (requiredLevel === 'מנהל') {
+          employees = employees.filter(e => e.roleId === 1 || e.roleId === 2);
+        } else if (requiredLevel === 'מתכנת') {
+          employees = employees.filter(e => e.roleId === 2);
         }
-        if (resMe.ok) {
-          const meData = await resMe.json();
-          if (meData && meData.success) {
-            currentUser = meData.employee;
-          }
-        }
-      } catch (err) {
-        console.error(err);
-      }
-      
-      let defaultEmpId = '';
-      let defaultEmpName = '';
-      
-      if (employees.length > 0) {
+        const currentUser = (meData && meData.success) ? meData.employee : null;
+
+        let defaultEmpId = '';
+        let defaultEmpName = '';
         if (currentUser && employees.some(e => e.id === currentUser.id)) {
           defaultEmpId = currentUser.id.toString();
           defaultEmpName = `${currentUser.firstName} ${currentUser.lastName}`;
         }
-      }
-      
-      setAuthPromptConfig({ isOpen: true, message, resolve, title, requiredLevel, employees });
-      setSelectedAuthEmployee(defaultEmpId);
-      setAuthEmployeeSearch(defaultEmpName);
-      setIsAuthEmployeeDropdownOpen(false);
 
-      setTimeout(() => {
-        if (defaultEmpId && authInputRef.current) {
-          authInputRef.current.focus();
-        } else if (!defaultEmpId && authSearchInputRef.current) {
-          authSearchInputRef.current.focus();
-        } else if (authInputRef.current) {
-          authInputRef.current.focus();
+        // מעדכנים רק אם זו עדיין אותה חלונית פתוחה (ולא דורסים בחירה שהמשתמש כבר התחיל)
+        setAuthPromptConfig(prev => (prev.isOpen && prev.resolve === resolve) ? { ...prev, employees } : prev);
+        if (defaultEmpId) {
+          setSelectedAuthEmployee(prev => prev || defaultEmpId);
+          setAuthEmployeeSearch(prev => prev || defaultEmpName);
+        } else {
+          setTimeout(() => {
+            if (authSearchInputRef.current && !authSearchInputRef.current.value
+              && authInputRef.current && !authInputRef.current.value) {
+              authSearchInputRef.current.focus();
+            }
+          }, 50);
         }
-      }, 100);
+      });
     });
   }, []);
 
@@ -293,28 +293,34 @@ export function PopupProvider({ children }) {
                          />
                          {isAuthEmployeeDropdownOpen && (
                              <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'var(--card-bg)', border: '1px solid #e2e8f0', borderRadius: '10px', maxHeight: '180px', overflowY: 'auto', zIndex: 10001, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
-                                 {authPromptConfig.employees
-                                     .filter(emp => `${emp.firstName} ${emp.lastName}`.includes(authEmployeeSearch))
-                                     .map(emp => (
-                                         <div 
-                                             key={emp.id}
-                                             onMouseDown={(e) => {
-                                                 e.preventDefault();
-                                                 setSelectedAuthEmployee(emp.id.toString());
-                                                 setAuthEmployeeSearch(`${emp.firstName} ${emp.lastName}`);
-                                                 setIsAuthEmployeeDropdownOpen(false);
-                                                 if (authInputRef.current) authInputRef.current.focus();
-                                             }}
-                                             style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', color: 'var(--text-color)' }}
-                                             onMouseOver={(e) => e.currentTarget.style.background = 'var(--input-bg)'}
-                                             onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                                         >
-                                             {emp.firstName} {emp.lastName}
-                                         </div>
-                                     ))
-                                 }
-                                 {authPromptConfig.employees.filter(emp => `${emp.firstName} ${emp.lastName}`.includes(authEmployeeSearch)).length === 0 && (
-                                     <div style={{ padding: '10px 16px', color: '#94a3b8' }}>לא נמצאו תוצאות</div>
+                                 {authPromptConfig.employees === null ? (
+                                     <div style={{ padding: '10px 16px', color: '#94a3b8' }}>טוען רשימת עובדים...</div>
+                                 ) : (
+                                     <>
+                                         {authPromptConfig.employees
+                                             .filter(emp => `${emp.firstName} ${emp.lastName}`.includes(authEmployeeSearch))
+                                             .map(emp => (
+                                                 <div
+                                                     key={emp.id}
+                                                     onMouseDown={(e) => {
+                                                         e.preventDefault();
+                                                         setSelectedAuthEmployee(emp.id.toString());
+                                                         setAuthEmployeeSearch(`${emp.firstName} ${emp.lastName}`);
+                                                         setIsAuthEmployeeDropdownOpen(false);
+                                                         if (authInputRef.current) authInputRef.current.focus();
+                                                     }}
+                                                     style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', color: 'var(--text-color)' }}
+                                                     onMouseOver={(e) => e.currentTarget.style.background = 'var(--input-bg)'}
+                                                     onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
+                                                 >
+                                                     {emp.firstName} {emp.lastName}
+                                                 </div>
+                                             ))
+                                         }
+                                         {authPromptConfig.employees.filter(emp => `${emp.firstName} ${emp.lastName}`.includes(authEmployeeSearch)).length === 0 && (
+                                             <div style={{ padding: '10px 16px', color: '#94a3b8' }}>לא נמצאו תוצאות</div>
+                                         )}
+                                     </>
                                  )}
                              </div>
                          )}

@@ -3,7 +3,7 @@
 import { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Mail, PenTool } from 'lucide-react';
+import { Mail, PenTool, Calendar, CalendarRange, Globe, SlidersHorizontal, FileText, User, Package, Receipt, CreditCard } from 'lucide-react';
 import ActiveEmployeesModal from '../../../components/orders/ActiveEmployeesModal';
 import ModernOrderCard from '../../../components/orders/modern/ModernOrderCard';
 import ModernGeneralDetails from '../../../components/orders/modern/ModernGeneralDetails';
@@ -39,11 +39,11 @@ const summarizeOrderFieldChanges = (snapOrder, currOrder) => {
   return changed;
 };
 
-// משווה רשימה שמורה (מהשרת) מול הרשימה הנוכחית ומחזיר תיאור בעברית של מה נוסף/הוסר/שוחזר/עודכן.
+// משווה רשימה שמורה (מהשרת) מול הרשימה הנוכחית ומחזירה כמה שורות נוספו/הוסרו/שוחזרו/עודכנו.
 // שורות חדשות שהמשתמש הוסיף (בלי id) נחשבות "נוספו". שורות "טיוטה" בלי id שמנוע התמחור
 // מחשב תמיד מחדש מהפריטים (למשל תצוגה מקדימה של חיוב) מזוהות לפי תוכן זהה, כדי שלא יוצגו
 // כ"שינוי" רק כי אין להן עדיין מזהה משרת.
-const summarizeListDiff = (snapList = [], currList = [], label) => {
+const summarizeListDiffCounts = (snapList = [], currList = []) => {
   const snapMap = new Map(snapList.filter(x => x.id).map(x => [x.id, x]));
   const snapDraftPool = snapList.filter(x => !x.id).map(x => JSON.stringify(x));
   let added = 0, removed = 0, restored = 0, modified = 0;
@@ -62,7 +62,11 @@ const summarizeListDiff = (snapList = [], currList = [], label) => {
     if (JSON.stringify(snap) !== JSON.stringify(curr)) modified++;
   });
   removed += snapMap.size; // שורות עם id שנעלמו לגמרי מהמערך
+  return { added, removed, restored, modified };
+};
 
+const summarizeListDiff = (snapList, currList, label) => {
+  const { added, removed, restored, modified } = summarizeListDiffCounts(snapList, currList);
   const parts = [];
   if (added) parts.push(`${added} ${label} נוספו`);
   if (removed) parts.push(`${removed} ${label} הוסרו`);
@@ -70,6 +74,28 @@ const summarizeListDiff = (snapList = [], currList = [], label) => {
   if (modified) parts.push(`${modified} ${label} עודכנו`);
   return parts;
 };
+
+const formatListCounts = (label, counts) => {
+  const parts = [];
+  if (counts.added) parts.push(`${counts.added} נוספו`);
+  if (counts.removed) parts.push(`${counts.removed} הוסרו`);
+  if (counts.restored) parts.push(`${counts.restored} שוחזרו`);
+  if (counts.modified) parts.push(`${counts.modified} עודכנו`);
+  return parts.length ? `${label}: ${parts.join(', ')}` : null;
+};
+
+// קיבוץ שדות ההזמנה לקבוצות שינוי הגיוניות למודל אישור "ביטול שינויים" —
+// כל קבוצה מקבלת איקון אחד וכיתוב קצר אחד, במקום שורה נפרדת לכל שדה טכני
+// (eventDate/eventDateHebrew למשל תמיד משתנים יחד, אין טעם בשתי שורות עבורם).
+const CHANGE_GROUPS = [
+  { Icon: Calendar, label: 'תאריך אירוע', fields: ['eventDate', 'eventDateHebrew'] },
+  { Icon: CalendarRange, label: 'טווח תאריכים (לקיחה/החזרה)', fields: ['fromDate', 'toDate', 'returnDate'] },
+  { Icon: Globe, label: 'סוג אירוע (רגיל/חו"ל)', fields: ['isAbroad', 'isWeekdayEvent'] },
+  { Icon: SlidersHorizontal, label: 'ריווח ימים מותאם', fields: ['customSpacing'] },
+  { Icon: FileText, label: 'הערות להזמנה', fields: ['notes'] },
+  { Icon: PenTool, label: 'חתימה על תקנון', fields: ['hasSignedRegulations'] },
+  { Icon: User, label: 'לקוח', fields: ['customerId'] }
+];
 
 export default function OrderDetailsPage({ params }) {
   const router = useRouter();
@@ -526,6 +552,24 @@ export default function OrderDetailsPage({ params }) {
     ];
   };
 
+  // גרסה מקובצת עם איקון + כיתוב קצר לכל שינוי, לתצוגה במודל אישור "ביטול שינויים".
+  const buildChangeRows = () => {
+    const snap = savedSnapshotRef.current;
+    if (!snap) return [];
+    const rows = [];
+    CHANGE_GROUPS.forEach(({ Icon, label, fields }) => {
+      const changed = fields.some(f => JSON.stringify((snap.order && snap.order[f]) ?? null) !== JSON.stringify((order && order[f]) ?? null));
+      if (changed) rows.push({ Icon, text: label });
+    });
+    const itemsText = formatListCounts('פריטים', summarizeListDiffCounts(snap.items, items));
+    if (itemsText) rows.push({ Icon: Package, text: itemsText });
+    const obligationsText = formatListCounts('התחייבויות תשלום', summarizeListDiffCounts(snap.obligations, obligations));
+    if (obligationsText) rows.push({ Icon: Receipt, text: obligationsText });
+    const paymentsText = formatListCounts('תשלומים', summarizeListDiffCounts(snap.payments, payments));
+    if (paymentsText) rows.push({ Icon: CreditCard, text: paymentsText });
+    return rows;
+  };
+
   const handleCancelChanges = async () => {
     const snap = savedSnapshotRef.current;
     if (!hasUnsavedChanges || !snap) {
@@ -534,9 +578,27 @@ export default function OrderDetailsPage({ params }) {
     }
 
     const changes = buildChangeSummary();
-    const changesText = changes.length > 0 ? changes.map(c => `- ${c}`).join('\n') : '- שינויים שלא נשמרו';
+    const rows = buildChangeRows();
     const confirmed = await window.customConfirm(
-      `פעולה זו תבטל את כל השינויים שלא נשמרו בהזמנה זו, ותחזיר אותה למצב האחרון שנשמר:\n\n${changesText}\n\nלהמשיך?`
+      <div>
+        <p style={{ margin: '0 0 14px', color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5 }}>
+          פעולה זו תבטל את כל השינויים שלא נשמרו בהזמנה זו, ותחזיר אותה למצב האחרון שנשמר:
+        </p>
+        {rows.length > 0 ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '260px', overflowY: 'auto' }}>
+            {rows.map((r, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0' }}>
+                <span style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'rgba(212, 175, 55, 0.14)', color: '#b5952f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <r.Icon size={15} />
+                </span>
+                <span style={{ fontSize: '0.92rem', fontWeight: 600, color: '#334155' }}>{r.text}</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div style={{ fontSize: '0.92rem', color: '#94a3b8', fontStyle: 'italic' }}>שינויים שלא נשמרו</div>
+        )}
+      </div>
     );
     if (!confirmed) return;
 
@@ -657,36 +719,9 @@ export default function OrderDetailsPage({ params }) {
         throw new Error(htmlData.error || 'שגיאה ביצירת נתוני המייל');
       }
 
-      // Step 2: Convert HTML to PDF. html2canvas (used by html2pdf.js) kept rendering
-      // this content as a blank/broken page - it reimplements CSS layout from scratch
-      // and chokes on things like flex+float combos. html-to-image instead serializes
-      // the DOM into an SVG <foreignObject> and lets the real browser rasterize it, so
-      // it renders exactly what's on screen.
-      const htmlToImage = await import('html-to-image');
-      const { jsPDF } = await import('jspdf');
-      const element = document.createElement('div');
-      element.innerHTML = htmlData.html;
-      element.style.position = 'fixed';
-      element.style.top = '0';
-      element.style.left = '0';
-      element.style.zIndex = '-1';
-      element.style.pointerEvents = 'none';
-      document.body.appendChild(element);
-
-      const pixelRatio = 2;
-      const dataUrl = await htmlToImage.toPng(element, { pixelRatio, backgroundColor: '#ffffff' });
-      const cssWidth = element.offsetWidth;
-      const cssHeight = element.offsetHeight;
-      document.body.removeChild(element);
-
-      // Size the PDF page to the content itself (no A4 pagination) so the whole
-      // document fits on one continuous page.
-      const pdf = new jsPDF({ unit: 'px', format: [cssWidth, cssHeight], hotfixes: ['px_scaling'] });
-      pdf.addImage(dataUrl, 'PNG', 0, 0, cssWidth, cssHeight);
-      const pdfBase64DataUri = pdf.output('datauristring');
-
-      // Extract just the base64 part
-      const pdfBase64 = pdfBase64DataUri.split(',')[1];
+      // Step 2: Convert HTML to PDF
+      const { htmlToPdfBase64 } = await import('@/app/lib/htmlToPdf');
+      const pdfBase64 = await htmlToPdfBase64(htmlData.html);
 
       setSaveMessage('שולח מייל...');
       // Step 3: Send PDF to server
@@ -776,7 +811,13 @@ export default function OrderDetailsPage({ params }) {
             details: (
               <ModernGeneralDetails
                 order={order}
-                onOrderChange={(val) => { setOrder(val); setHasUnsavedChanges(true); }}
+                onOrderChange={(val) => {
+                  // val יכול להיות אובייקט מלא (עדכון סינכרוני) או פונקציה (prev => ...) —
+                  // הצורה הפונקציונלית נחוצה לעדכונים שמגיעים אחרי await (למשל אישור PIN לציפוף),
+                  // כדי לא לדרוס שינויים שקרו בינתיים על בסיס סנאפשוט ישן של order.
+                  setOrder(prev => (typeof val === 'function' ? val(prev) : val));
+                  setHasUnsavedChanges(true);
+                }}
                 onSaveRequest={handleSave}
                 onQuickEmail={() => handleSendEmail('order')}
               />

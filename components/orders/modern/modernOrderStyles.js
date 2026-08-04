@@ -123,10 +123,13 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 /* ===== Content ===== */
 .moc-content-area { flex: 1; padding: 26px 30px; overflow-y: auto; background: var(--moc-card-bg); min-width: 0; }
 
-.moc-content-topbar { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; margin-bottom: 20px; border-bottom: 2px solid var(--moc-divider); gap: 16px; flex-wrap: wrap; }
-.moc-topbar-title-block h2 { margin: 0; font-size: 1.3rem; color: var(--moc-text-main); }
+/* הטופ-בר נשאר תמיד בשורה אחת — הכותרת והמלל מתקצרים (ellipsis) במקום לשבור שורה */
+.moc-content-topbar { display: flex; justify-content: space-between; align-items: center; padding-bottom: 14px; margin-bottom: 20px; border-bottom: 2px solid var(--moc-divider); gap: 16px; flex-wrap: nowrap; }
+.moc-topbar-title-block { display: flex; align-items: center; gap: 10px; min-width: 0; overflow: hidden; }
+.moc-topbar-title-block h2 { margin: 0; font-size: 1.3rem; color: var(--moc-text-main); white-space: nowrap; flex-shrink: 0; }
 .moc-hint { color: var(--moc-text-muted); font-size: 0.85rem; }
-.moc-topbar-actions { display: flex; align-items: center; gap: 4px; padding-top: 12px; flex-wrap: wrap; }
+.moc-topbar-title-block .moc-hint { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.moc-topbar-actions { display: flex; align-items: center; gap: 4px; flex-wrap: nowrap; flex-shrink: 0; }
 
 .moc-icon-btn-soft {
   background: transparent; border: none; border-radius: 9px; width: 38px; height: 38px;
@@ -196,7 +199,6 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 .moc-panel-head .moc-lbl { font-weight: 700; font-size: 1.1rem; color: var(--moc-text-main); display: block; }
 .moc-panel-head .moc-sub-lbl { font-size: 0.82rem; color: var(--moc-text-muted); margin-top: 2px; }
 
-.moc-detail-card { border-top: 3px solid var(--moc-primary); }
 
 /* שורות קומפקטיות בפרטים כלליים — נושא אחד מתחת לשני */
 .moc-compact-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
@@ -239,7 +241,7 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
   color: #444; white-space: pre-wrap; min-height: 50px; font-size: 0.95rem;
 }
 
-.moc input[type=text], .moc input[type=email], .moc input[type=date], .moc input[type=time], .moc textarea, .moc select {
+.moc input[type=text], .moc input[type=email], .moc input[type=number], .moc input[type=password], .moc input[type=tel], .moc input[type=date], .moc input[type=time], .moc textarea, .moc select {
   width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #ddd6c4; font-size: 0.95rem;
   font-family: inherit; background: #fff; outline: none; transition: border-color 0.15s;
 }
@@ -250,13 +252,14 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 .moc-toggle-pair .moc-opt { padding: 7px 16px; border-radius: 8px; font-weight: 700; font-size: 0.88rem; cursor: pointer; color: var(--moc-text-muted); border: none; background: transparent; font-family: inherit; }
 .moc-toggle-pair .moc-opt.active { background: #fff; color: var(--moc-text-main); box-shadow: 0 2px 6px rgba(0,0,0,0.08); }
 
-.moc-spacing-note { background: linear-gradient(135deg, #fffaf0, #fff4dc); border: 1px solid #f0dfa8; border-radius: 12px; padding: 14px 16px; margin-top: 16px; }
+/* קומפקטי במכוון — לא נמתח לרוחב מלא של הכרטיס כמו שאר שדות ה-edit-box */
+.moc-spacing-note { background: linear-gradient(135deg, #fffaf0, #fff4dc); border: 1px solid #f0dfa8; border-radius: 12px; padding: 14px 16px; margin-top: 16px; align-self: flex-start; max-width: 440px; width: 100%; }
 .moc-spacing-note-head { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
 .moc-spacing-note-label { display: flex; align-items: center; gap: 6px; font-weight: 700; font-size: 0.92rem; color: #8a6d1c; }
 .moc-spacing-note p { margin: 10px 0 0 0; font-size: 0.78rem; color: #a9873a; }
 
 /* ציר ימי הרווח — בחירת ציפוף ויזואלית */
-.moc-days-axis { display: flex; align-items: center; margin: 14px 4px 20px; }
+.moc-days-axis { display: flex; align-items: center; margin: 14px 4px 20px; overflow-x: auto; padding-bottom: 2px; }
 .moc-day-stop {
   position: relative; width: 36px; height: 36px; border-radius: 50%; border: 2px solid #e9d495;
   background: #fff; color: #8a6d1c; font-weight: 700; font-size: 0.92rem; cursor: pointer;
@@ -312,8 +315,6 @@ table.moc-data-table { width: 100%; border-collapse: collapse; }
 .moc-data-table tbody tr { transition: background 0.15s; }
 .moc-data-table tbody tr:hover { background: var(--moc-primary-light); }
 .moc-data-table tbody tr.deleted { opacity: 0.55; background: var(--moc-neutral-bg); }
-.moc-data-table tbody tr.editing { background: #fffbeb; box-shadow: inset -4px 0 0 var(--moc-warning-text); }
-.moc-data-table tbody tr.editing:hover { background: #fef3c7; }
 .moc-mono { font-family: 'Consolas', monospace; }
 
 .moc-icon-btn-add {
@@ -386,12 +387,20 @@ table.moc-data-table { width: 100%; border-collapse: collapse; }
 .moc-section-block h3 { margin: 0 0 12px 0; font-size: 1.1rem; }
 
 /* ===== היסטוריה ===== */
-.moc-history-item { display: flex; gap: 14px; padding: 14px 0; border-bottom: 1px solid var(--moc-divider); }
+/* כל שורת היסטוריה מכווצת לשורה אחת כברירת מחדל — לחיצה עליה חושפת את פירוט השינויים מתחת */
+.moc-history-item { border-bottom: 1px solid var(--moc-divider); }
 .moc-history-item:last-child { border-bottom: none; }
-.moc-history-dot { width: 10px; height: 10px; border-radius: 50%; background: var(--moc-primary); margin-top: 6px; flex-shrink: 0; }
-.moc-history-item .moc-action-tag { font-size: 0.76rem; font-weight: 700; background: var(--moc-primary-light); color: var(--moc-primary-dark); padding: 2px 8px; border-radius: 6px; margin-left: 8px; }
-.moc-history-item .moc-meta { color: var(--moc-text-muted); font-size: 0.8rem; margin-top: 3px; }
-.moc-history-item .moc-diff { margin-top: 6px; background: #faf9f5; border: 1px solid var(--moc-divider); border-radius: 6px; padding: 6px 10px; font-size: 0.82rem; color: #555; }
+.moc-history-row {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 0; border: none; background: none;
+  cursor: pointer; font-family: inherit; text-align: right; color: inherit;
+}
+.moc-history-chevron { color: var(--moc-text-muted); flex-shrink: 0; transition: transform 0.15s ease; }
+.moc-history-chevron.expanded { transform: rotate(180deg); color: var(--moc-primary-dark); }
+.moc-history-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--moc-primary); flex-shrink: 0; }
+.moc-history-item .moc-action-tag { font-size: 0.76rem; font-weight: 700; background: var(--moc-primary-light); color: var(--moc-primary-dark); padding: 2px 8px; border-radius: 6px; flex-shrink: 0; }
+.moc-history-item .moc-meta { color: var(--moc-text-muted); font-size: 0.8rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.moc-history-details { padding: 0 0 12px 25px; }
+.moc-history-item .moc-diff { background: #faf9f5; border: 1px solid var(--moc-divider); border-radius: 6px; padding: 6px 10px; font-size: 0.82rem; color: #555; }
 
 /* ===== Modals ===== */
 .moc-modal-overlay { position: fixed; inset: 0; background: rgba(15,23,42,0.55); backdrop-filter: blur(3px); display: flex; align-items: center; justify-content: center; z-index: 1500; padding: 20px; direction: rtl; font-family: 'Heebo', var(--font-primary, system-ui), sans-serif; }
@@ -407,7 +416,7 @@ table.moc-data-table { width: 100%; border-collapse: collapse; }
 .moc-employee-row:last-child { border-bottom: none; }
 
 /* משפט טעינה/הודעות */
-.moc-save-msg { font-size: 0.85rem; font-weight: 700; padding: 0.35rem 0.8rem; border-radius: 8px; }
+.moc-save-msg { font-size: 0.85rem; font-weight: 700; padding: 0.35rem 0.8rem; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px; min-width: 0; }
 .moc-save-msg.ok { background: var(--moc-success-bg); color: #166534; }
 .moc-save-msg.err { background: var(--moc-danger-bg); color: var(--moc-danger-text); }
 

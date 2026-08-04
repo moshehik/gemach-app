@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import { createPortal } from 'react-dom';
 import {
   Plus, Trash2, RotateCcw, Edit2, X, Check, Info, CalendarSearch, Scan,
-  PackageCheck, PackageOpen, Undo2, XCircle, Shirt, Scissors, Ruler
+  PackageCheck, PackageOpen, Undo2, XCircle, Shirt, Scissors, Ruler, ChevronDown
 } from 'lucide-react';
 import OrderModelSelector from '../OrderModelSelector';
 import OrderSizeSelector from '../OrderSizeSelector';
@@ -32,7 +32,11 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   const [manualBarcode, setManualBarcode] = useState('');
   const [selectedItemForScan, setSelectedItemForScan] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null, actionType: null });
+  const [expandedHistory, setExpandedHistory] = useState({});
   const isFullyPaid = totalPaid >= totalRequired;
+
+  // כל שורת היסטוריה מתחילה מכווצת — לחיצה על השורה מרחיבה את פירוט השינויים שלה בלבד
+  const toggleHistoryExpand = (idx) => setExpandedHistory(prev => ({ ...prev, [idx]: !prev[idx] }));
 
   useEffect(() => {
     setMounted(true);
@@ -63,9 +67,16 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     const barcode = (rawBarcode || '').trim();
     if (!barcode) return;
 
+    // בהזמנה נעולה מותרת רק החזרה — סריקה של פריט שמושכר בהזמנה זו; כל סריקת השכרה נחסמת
     if (locked) {
-      alert('ההזמנה נעולה (תאריך האירוע עבר) — יש לשחרר באישור מנהל כדי לבצע השכרה/החזרה.');
-      return;
+      const isReturnScan = activeItems.some(i => {
+        const b = i.barcode || i.dressItem?.barcode || i.dressItem?.dressBarcode;
+        return b === barcode && i.isTaken && !i.isReturned;
+      });
+      if (!isReturnScan) {
+        alert('ההזמנה נעולה (תאריך האירוע עבר) — ניתן לבצע החזרה בלבד. השכרה דורשת שחרור באישור מנהל.');
+        return;
+      }
     }
 
     if (!isFullyPaid) {
@@ -183,7 +194,10 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
   const handleConfirmItem = async (index) => {
     const item = items[index];
-    if (!item.dressModelId || !item.sizeText) {
+    // פריטים מיובאים מ-Access בלי DressItem מקושר מזוהים לפי barcodePrefix בלבד ולא dressModelId —
+    // מותר לאשר עריכת תיקונים עבורם בלי לדרוש בחירת דגם דרך הבורר (שאין להם ממנו מה לבחור)
+    const hasModelIdentity = !!(item.dressModelId || item.barcodePrefix || item.dressItem?.dressModelId || item.dressItem?.barcodePrefix);
+    if (!item.sizeText || !hasModelIdentity) {
       alert('יש לבחור דגם ומידה לפני האישור');
       return;
     }
@@ -229,7 +243,9 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       originalState: { ...item },
       dressModelId: item.dressModelId || item.dressItem?.dressModelId,
       sizeText: item.sizeText || item.dressItem?.sizeText || item.dressItem?.size || '',
-      description: item.description || item.dressItem?.dress?.name || ''
+      // שם נקי בלי "(קוד: X)" — item.description מהשרת כולל את הקוד בסוגריים,
+      // וזה היה מוצג כפי שהוא בתיבת בורר הדגם בעת עריכה
+      description: itemName(item)
     };
     onItemsChange(updatedItems);
   };
@@ -389,6 +405,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   };
 
   const showItemDetails = async (item) => {
+    setExpandedHistory({});
     setDetailsModalItem({ ...item, auditLogs: null, loadingLogs: true });
     try {
       const res = await fetch(`/api/audit/order-item/${item.id}`);
@@ -447,7 +464,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     <>
       {locked && (
         <div className="moc-pending-banner">
-          <span>ההזמנה נעולה — תאריך האירוע עבר. פעולות פריטים (השכרה, החזרה, עריכה, מחיקה) חסומות עד שחרור באישור מנהל דרך אייקון המנעול למעלה.</span>
+          <span>ההזמנה נעולה — תאריך האירוע עבר. ניתן לבצע החזרה מהשכרה בלבד; השכרה, עריכה ומחיקה חסומות עד שחרור באישור מנהל דרך אייקון המנעול למעלה.</span>
         </div>
       )}
 
@@ -489,25 +506,37 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                 const isDeletedRow = item.isDeleted;
                 const isRented = item.isTaken && !item.isReturned;
                 const isEditingMode = item.isNew || item.isEditing;
+                // פריטים ישנים שהוגרו מ-Access בלי DressItem מקושר (dressModelId ריק) אין להם
+                // מלאי מזוהה לבחור ממנו — עבורם דגם/מידה נשארים לקריאה בלבד גם במצב עריכה,
+                // ורק פרטי התיקון ניתנים לעריכה.
+                const canEditModelSize = item.isNew || (item.isEditing && !!item.dressModelId);
                 const code = itemCode(item);
 
                 return (
                   <tr key={item.id || item._localId || originalIndex} className={isDeletedRow ? 'deleted' : isEditingMode ? 'editing' : ''}>
                     <td>
-                      {item.isNew ? (
+                      {canEditModelSize ? (
                         <div className="moc-inline-edit">
-                          <OrderModelSelector
-                            value={{ name: item.description, id: item.dressModelId }}
-                            onChange={(model) => handleModelChange(originalIndex, model)}
-                          />
-                          <OrderSizeSelector
-                            modelId={item.dressModelId}
-                            order={order}
-                            value={item.sizeText}
-                            onChange={(val) => handleItemChange(originalIndex, 'sizeText', val)}
-                            inventoryCache={inventoryCache}
-                            currentCartItems={items}
-                          />
+                          <div>
+                            <span className="moc-field-label">דגם</span>
+                            <OrderModelSelector
+                              value={{ name: item.description, id: item.dressModelId }}
+                              onChange={(model) => handleModelChange(originalIndex, model)}
+                            />
+                          </div>
+                          <div>
+                            <span className="moc-field-label">מידה</span>
+                            <OrderSizeSelector
+                              modelId={item.dressModelId}
+                              order={order}
+                              value={item.sizeText}
+                              onChange={(val) => handleItemChange(originalIndex, 'sizeText', val)}
+                              inventoryCache={inventoryCache}
+                              // הפריט הנערך עצמו לא נספר כ"תפוס" מול עצמו — אחרת המידה הנוכחית שלו
+                              // תוצג כלא זמינה רק כי הוא כבר מחזיק אותה
+                              currentCartItems={items.filter((_, i) => i !== originalIndex)}
+                            />
+                          </div>
                         </div>
                       ) : (
                         <>
@@ -553,7 +582,15 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
                         {locked ? (
-                          <span className="moc-hint" style={{ fontStyle: 'italic' }}>נעול</span>
+                          // הזמנה נעולה — מותרת החזרה בלבד; עריכה, השכרה וביטולים חסומים
+                          isRented ? (
+                            <button className="moc-btn moc-btn-gold moc-btn-sm"
+                              onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
+                              <PackageCheck size={13} /> החזרה
+                            </button>
+                          ) : (
+                            <span className="moc-hint" style={{ fontStyle: 'italic' }}>נעול</span>
+                          )
                         ) : isEditingMode ? (
                           <>
                             <button className="moc-btn moc-btn-gold moc-btn-sm"
@@ -833,16 +870,18 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                     } catch (e) {
                       changesNode = <div className="moc-diff moc-mono">{String(log.changesJson)}</div>;
                     }
+                    const isExpanded = !!expandedHistory[idx];
                     return (
                       <div key={idx} className="moc-history-item">
-                        <div className="moc-history-dot" />
-                        <div style={{ minWidth: 0 }}>
+                        <button type="button" className="moc-history-row" onClick={() => toggleHistoryExpand(idx)}>
+                          <ChevronDown size={15} className={`moc-history-chevron ${isExpanded ? 'expanded' : ''}`} />
+                          <div className="moc-history-dot" />
                           <span className="moc-action-tag">{actionLabel}</span>
-                          <span className="moc-meta" style={{ display: 'inline' }}>
+                          <span className="moc-meta">
                             {new Date(log.createdAt).toLocaleDateString('he-IL')} · {new Date(log.createdAt).toLocaleTimeString('he-IL', { timeStyle: 'short' })}
                           </span>
-                          {changesNode}
-                        </div>
+                        </button>
+                        {isExpanded && <div className="moc-history-details">{changesNode}</div>}
                       </div>
                     );
                   })

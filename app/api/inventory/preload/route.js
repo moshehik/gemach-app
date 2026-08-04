@@ -32,7 +32,7 @@ export async function GET(request) {
     // 1. Fetch system settings
     const settingsRaw = await prisma.systemSetting.findMany({
       where: {
-        key: { in: ['inventory_buffer_days', 'inventory_skip_weekends', 'inventory_include_warehouse'] }
+        key: { in: ['inventory_buffer_days', 'inventory_skip_weekends', 'inventory_include_warehouse', 'inventory_hold_minutes'] }
       }
     });
 
@@ -48,6 +48,13 @@ export async function GET(request) {
 
     const warehouseSetting = settingsRaw.find(s => s.key === 'inventory_include_warehouse');
     if (warehouseSetting) includeWarehouse = warehouseSetting.value === 'true';
+
+    // חייב להיות זהה בדיוק לכלל השחרור של החזקה זמנית ב-getAvailableInventory (lib/inventory.js) —
+    // אחרת המטמון בצד הלקוח "רואה" שמלה כפנויה/תפוסה אחרת מהבדיקה האמיתית בזמן ההוספה בשרת,
+    // וההוספה נכשלת עם "אין במלאי" אחרי שהלקוח כבר הראה שהמידה זמינה.
+    const holdSetting = settingsRaw.find(s => s.key === 'inventory_hold_minutes');
+    const holdMinutes = holdSetting && !isNaN(parseInt(holdSetting.value, 10)) ? parseInt(holdSetting.value, 10) : 15;
+    const cutoffDate = new Date(Date.now() - holdMinutes * 60 * 1000);
 
     // 2. Fetch total active stock (all dress items)
     const stockItems = await prisma.dressItem.findMany({
@@ -102,13 +109,23 @@ export async function GET(request) {
       }
     });
 
-    // 4. Fetch bookings in date range window
+    // 4. Fetch bookings in date range window — אותם תנאים בדיוק כמו getAvailableInventory
+    // בשרת (ללא סינון לפי status, עם אותו כלל שחרור החזקה זמנית שפג תוקפה), כדי שהזמינות
+    // שהלקוח רואה כאן תתאים תמיד לבדיקה האמיתית שתרוץ בהוספה/עריכה בפועל.
     const bookingsWhere = {
       isDeleted: false,
       isReturned: false,
+      NOT: {
+        AND: [
+          { cartStatus: 'pending' },
+          { cartStatusDate: { lt: cutoffDate } },
+          { order: { legacyId: null } },
+          { isTaken: false },
+          { barcode: null }
+        ]
+      },
       order: {
         isDeleted: false,
-        status: { notIn: ['מבוטל', 'מחוק'] },
         OR: [
           { eventDate: { gte: dateLimitStart, lte: dateLimitEnd } },
           { fromDate: { gte: dateLimitStart, lte: dateLimitEnd } },

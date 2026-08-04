@@ -173,35 +173,21 @@ export default function ModernOrderCard({
           <div className="moc-content-topbar">
             <div className="moc-topbar-title-block">
               <h2>{meta.title}</h2>
-              {hint && <span className="moc-hint">{hint}</span>}
+              {hint && <span className="moc-hint" title={hint}>{hint}</span>}
+              {saveMessage && (
+                <span className={`moc-save-msg ${saveMessage.includes('שגיאה') || saveMessage.includes('בוטלה') ? 'err' : 'ok'}`} title={saveMessage}>
+                  {saveMessage}
+                </span>
+              )}
             </div>
 
             <div className="moc-topbar-actions">
-              {saveMessage && (
-                <span className={`moc-save-msg ${saveMessage.includes('שגיאה') ? 'err' : 'ok'}`}>{saveMessage}</span>
-              )}
-
-              {layoutToggle}
-
-              <div className="moc-topbar-sep" />
-
-              <button
-                className={`moc-icon-btn-soft money ${debt > 0 ? 'debt' : debt < 0 ? 'credit' : ''}`}
-                title={debt > 0 ? `יתרת חוב: ₪${debt.toLocaleString('he-IL')} — לחץ לתשלום בנדרים פלוס` : debt < 0 ? `יתרת זכות: ₪${Math.abs(debt).toLocaleString('he-IL')}` : 'שולם במלואו'}
-                onClick={() => (onWalletClick ? onWalletClick() : onTabChange('payments'))}
-              >
-                <Wallet size={18} />
-                {debt !== 0 && (
-                  <span className="moc-amt-badge">₪{Math.abs(debt).toLocaleString('he-IL')}</span>
-                )}
-              </button>
-
               {/* נעילת הזמנה שתאריכה עבר — הכל גלוי, פעולות פריטים חסומות עד שחרור באישור מנהל */}
               {isPastEvent && (
                 <button
                   className={`moc-icon-btn-soft ${isLocked ? 'lock-on' : 'lock-off'}`}
                   title={isLocked
-                    ? 'הזמנה נעולה — תאריך האירוע עבר. פעולות פריטים חסומות; לחץ לשחרור באישור מנהל'
+                    ? 'הזמנה נעולה — תאריך האירוע עבר. ניתן להחזיר בלבד; השכרה ועריכה חסומות. לחץ לשחרור באישור מנהל'
                     : 'ההזמנה שוחררה לעריכה באישור מנהל'}
                   onClick={() => { if (isLocked) setShowUnlockModal(true); }}
                 >
@@ -285,9 +271,9 @@ export default function ModernOrderCard({
               </div>
               <h3 style={{ margin: '0 0 10px', fontSize: '1.2rem' }}>הזמנה נעולה</h3>
               <p style={{ color: 'var(--moc-text-muted)', margin: 0, lineHeight: 1.7 }}>
-                תאריך האירוע של הזמנה זו עבר, ולכן פעולות על פריטים (השכרה, החזרה, עריכה ומחיקה) חסומות.
+                תאריך האירוע של הזמנה זו עבר, ולכן השכרה, עריכה ומחיקה של פריטים חסומות.
                 <br />
-                תשלומים וזיכויים זמינים כרגיל.
+                החזרה מהשכרה, תשלומים וזיכויים זמינים כרגיל.
                 <br />
                 <strong>שחרור מלא לעריכה דורש אישור מנהל.</strong>
               </p>

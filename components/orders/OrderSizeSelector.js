@@ -6,22 +6,6 @@ import { sortSizeRows } from '../../lib/sizeSort';
 export default function OrderSizeSelector({ modelId, order, value, onChange, placeholder = '-', inventoryCache, currentCartItems }) {
   const [sizes, setSizes] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [defaultSpacing, setDefaultSpacing] = useState(null);
-
-  useEffect(() => {
-    // Fetch default spacing to show "X out of Y" if custom spacing is used
-    fetch('/api/settings')
-      .then(res => res.json())
-      .then(data => {
-        const bufferSetting = (Array.isArray(data) ? data : []).find(s => s.key === 'inventory_buffer_days');
-        if (bufferSetting) {
-          setDefaultSpacing(parseInt(bufferSetting.value, 10));
-        } else {
-          setDefaultSpacing(3); // system fallback
-        }
-      })
-      .catch(console.error);
-  }, []);
 
   useEffect(() => {
     if (!modelId) {

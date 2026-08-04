@@ -21,8 +21,11 @@ export async function PUT(request, { params }) {
 
     const itemData = await request.json();
 
-    if (!itemData.dressModelId || !itemData.sizeText) {
-      return NextResponse.json({ error: 'יש לבחור דגם ומידה' }, { status: 400 });
+    // dressModelId לא נדרש כאן באופן גורף: פריטים שהוגרו מ-Access בלי DressItem מקושר
+    // (currentItem.dressItem === null) מזוהים לפי barcodePrefix/legacyId ולא מחזיקים dressModelId
+    // בכלל — עדיין צריך להיות אפשר לערוך את התיקונים שלהם.
+    if (!itemData.sizeText) {
+      return NextResponse.json({ error: 'יש להזין מידה' }, { status: 400 });
     }
 
     const updatedOrder = await prisma.$transaction(async (tx) => {
@@ -57,20 +60,28 @@ export async function PUT(request, { params }) {
 
       let dressItemIdToUse = currentItem.dressItemId;
 
-      // If model or size changed, we need a new inventory check
-      if (currentItem.dressItem.dressModelId !== itemData.dressModelId || currentItem.sizeText !== itemData.sizeText) {
+      // dressModelId הנוכחי של הפריט (אם יש לו DressItem מקושר בכלל — פריטי Access ישנים לא)
+      const currentDressModelId = currentItem.dressItem?.dressModelId ?? null;
+      const incomingDressModelId = itemData.dressModelId ?? null;
+      const sizeChanged = currentItem.sizeText !== itemData.sizeText;
+      const modelChanged = currentDressModelId !== null && incomingDressModelId !== null && currentDressModelId !== incomingDressModelId;
+
+      // בודקים זמינות מלאי מחדש רק כשיש בכלל דגם לבדוק מולו (הרכיב לא מציג בורר דגם/מידה
+      // לפריטים ישנים בלי dressModelId, כך שאין להם ממה "לשנות" בפועל).
+      if ((modelChanged || sizeChanged) && (incomingDressModelId || currentDressModelId)) {
         if (currentItem.isTaken) {
             throw ruleError('לא ניתן לשנות דגם/מידה לפריט שכבר נלקח. יש להחזירו תחילה.');
         }
 
         const availability = await getAvailableInventory(
-            itemData.dressModelId,
+            incomingDressModelId || currentDressModelId,
             targetMinDate,
             bufferDays,
             skipWeekends,
             newOrderIsAbroad,
             targetMaxDate,
-            parsedId
+            parsedId,
+            order.customSpacing ?? null
         );
 
         const sizeAvail = availability.find(a => (a.sizeText || a.size || 'כללי') === itemData.sizeText);
@@ -78,7 +89,7 @@ export async function PUT(request, { params }) {
         if (!sizeAvail || sizeAvail.availableQuantity <= 0 || !sizeAvail.itemIds || sizeAvail.itemIds.length === 0) {
             throw ruleError(`אין פריט פנוי במלאי עבור דגם זה במידה ${itemData.sizeText} בתאריך המבוקש`);
         }
-        
+
         dressItemIdToUse = sizeAvail.itemIds[0];
       }
 

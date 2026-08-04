@@ -23,9 +23,24 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const [customerMode, setCustomerMode] = useState('existing');
   const [newCustomer, setNewCustomer] = useState({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '' });
   const [isEditingOrderDate, setIsEditingOrderDate] = useState(false);
+  const [systemDefaultSpacing, setSystemDefaultSpacing] = useState(3);
 
+  React.useEffect(() => {
+    fetch('/api/settings')
+      .then(res => res.json())
+      .then(data => {
+        const arr = Array.isArray(data) ? data : Object.entries(data || {}).map(([key, value]) => ({ key, value }));
+        const setting = arr.find(s => s.key === 'inventory_buffer_days');
+        if (setting && !isNaN(parseInt(setting.value, 10))) setSystemDefaultSpacing(parseInt(setting.value, 10));
+      })
+      .catch(() => {});
+  }, []);
+
+  // כל עדכון להזמנה עובר כפונקציה (prev => ...) ולא כאובייקט מלא — updates מתמזג תמיד
+  // עם הגרסה העדכנית ביותר של ההזמנה, כדי לא לדרוס שינויים שקרו בזמן המתנה ל-PIN
+  // (למשל applyCustomSpacing למטה, שממתין לאישור מנהל לפני הכתיבה בפועל).
   const handleChange = (updates) => {
-    onOrderChange({ ...order, ...updates });
+    onOrderChange(prev => ({ ...prev, ...updates }));
   };
 
   const changeDates = (updates) => {
@@ -38,10 +53,10 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const isAbroad = !!(order.isAbroad || order.isWeekdayEvent);
 
   const applyCustomSpacing = async (spacing) => {
-    const prevSpacing = (order.customSpacing !== null && order.customSpacing !== undefined) ? order.customSpacing : 3;
-    const newSpacing = (spacing !== null && spacing !== undefined) ? spacing : 3;
-    // אישור מנהל נדרש רק בפעם הראשונה שמצמצמים מתחת לברירת המחדל (3)
-    if (newSpacing < 3 && prevSpacing === 3) {
+    const prevSpacing = (order.customSpacing !== null && order.customSpacing !== undefined) ? order.customSpacing : systemDefaultSpacing;
+    const newSpacing = (spacing !== null && spacing !== undefined) ? spacing : systemDefaultSpacing;
+    // אישור מנהל נדרש רק בפעם הראשונה שמצמצמים מתחת לברירת המחדל של המערכת
+    if (newSpacing < systemDefaultSpacing && prevSpacing === systemDefaultSpacing) {
       const ok = await verifyPin('שינוי ציפוף ימים מותאם אישית דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
       if (!ok) return;
     }
@@ -111,33 +126,25 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   // רק סוג האירוע — התאריכים עצמם מוצגים בשדה שמתחת (בלי כפילות)
   const eventSubLabel = isAbroad ? 'אירוע חו"ל' : 'אירוע רגיל';
 
-  // תאריך מלא: לועזי (עברי) · שעה
+  // טווח תאריכים (חו"ל): תאריך עברי בלבד — בלי לועזי ובלי שעה
   const fmtFullDate = (d0) => {
     if (!d0) return null;
     const d = new Date(d0);
     if (isNaN(d.getTime())) return null;
-    return `${d.toLocaleDateString('he-IL')} (${getHebrewDateString(d)}) · ${d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
+    return getHebrewDateString(d);
   };
 
   const orderDateStr = order.orderDate
     ? `${new Date(order.orderDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.orderDate)})`
     : 'לא ידוע';
 
-  const timeOf = (dateStr) => dateStr ? new Date(dateStr).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '';
-
-  const setTime = (field, dateStr, timeVal, alsoReturnDate = false) => {
-    const [hours, minutes] = timeVal.split(':');
-    if (!hours || !minutes) return;
-    const newDate = new Date(dateStr);
-    newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
-    const updates = { [field]: newDate.toISOString() };
-    if (alsoReturnDate) updates.returnDate = newDate.toISOString();
-    changeDates(updates);
-  };
-
-  // ציר ימי הרווח (ציפוף) — משמש גם בפאנל העריכה וגם כאינדיקציה במצב קריאה
+  // ציר ימי הרווח (ציפוף) — משמש גם בפאנל העריכה וגם כאינדיקציה במצב קריאה.
+  // הטווח נגזר מברירת המחדל של המערכת (inventory_buffer_days) ולא מקובע — כולל תמיד
+  // כמה ימים מעבר לברירת המחדל, כדי שיהיה אפשר גם להרחיב את הציפוף ולא רק לצמצם אותו.
   const hasCustomSpacing = order.customSpacing !== null && order.customSpacing !== undefined;
   const selectedSpacing = hasCustomSpacing ? order.customSpacing : null;
+  const maxAxisDay = Math.max(systemDefaultSpacing + 2, selectedSpacing !== null ? selectedSpacing : 0, 4);
+  const axisDays = Array.from({ length: maxAxisDay + 1 }, (_, i) => i);
   const spacingNoteNode = (
     <div className="moc-spacing-note">
       <div className="moc-spacing-note-head">
@@ -147,13 +154,12 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
           onClick={() => { if (hasCustomSpacing) applyCustomSpacing(null); }}
           title="חזרה לרווח הרגיל של המערכת"
         >
-          {!hasCustomSpacing && <Check size={13} />} רגיל (לפי המערכת)
+          {!hasCustomSpacing && <Check size={13} />} רגיל (לפי המערכת — {systemDefaultSpacing} ימים)
         </button>
       </div>
 
-      {/* ציר ימי הרווח בין השכרות: 0 = ללא רווח, 3 = ברירת המחדל */}
       <div className="moc-days-axis">
-        {[0, 1, 2, 3, 4].map((d, i) => (
+        {axisDays.map((d, i) => (
           <React.Fragment key={d}>
             {i > 0 && <div className={`moc-day-connector ${selectedSpacing !== null && selectedSpacing >= d ? 'passed' : ''}`} />}
             <button
@@ -163,7 +169,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
             >
               {d}
               {d === 0 && <span className="moc-day-caption">ללא רווח</span>}
-              {d === 3 && <span className="moc-day-caption">ברירת מחדל</span>}
+              {d === systemDefaultSpacing && <span className="moc-day-caption">ברירת מחדל</span>}
             </button>
           </React.Fragment>
         ))}
@@ -286,20 +292,6 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                     changeDates({ fromDate: newFrom, toDate: newTo, returnDate: newTo, eventDate: newFrom });
                   }}
                 />
-                <div className="moc-grid-2" style={{ marginTop: '10px' }}>
-                  {order.fromDate && (
-                    <div>
-                      <span className="moc-field-label">שעת לקיחה</span>
-                      <input type="time" value={timeOf(order.fromDate)} onChange={(e) => setTime('fromDate', order.fromDate, e.target.value)} />
-                    </div>
-                  )}
-                  {(order.toDate || order.returnDate) && (
-                    <div>
-                      <span className="moc-field-label">שעת החזרה</span>
-                      <input type="time" value={timeOf(order.toDate || order.returnDate)} onChange={(e) => setTime('toDate', order.toDate || order.returnDate, e.target.value, true)} />
-                    </div>
-                  )}
-                </div>
               </div>
             )}
 

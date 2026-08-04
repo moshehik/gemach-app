@@ -116,33 +116,8 @@ export default function OrderPrintMenu({
         throw new Error(htmlData.error || 'שגיאה ביצירת נתוני המייל');
       }
 
-      // html2canvas (used by html2pdf.js) kept rendering this content as a blank/broken
-      // page - it reimplements CSS layout from scratch and chokes on things like
-      // flex+float combos. html-to-image instead serializes the DOM into an SVG
-      // <foreignObject> and lets the real browser rasterize it.
-      const htmlToImage = await import('html-to-image');
-      const { jsPDF } = await import('jspdf');
-      const element = document.createElement('div');
-      element.innerHTML = htmlData.html;
-      element.style.position = 'fixed';
-      element.style.top = '0';
-      element.style.left = '0';
-      element.style.zIndex = '-1';
-      element.style.pointerEvents = 'none';
-      document.body.appendChild(element);
-
-      const pixelRatio = 2;
-      const dataUrl = await htmlToImage.toPng(element, { pixelRatio, backgroundColor: '#ffffff' });
-      const cssWidth = element.offsetWidth;
-      const cssHeight = element.offsetHeight;
-      document.body.removeChild(element);
-
-      // Size the PDF page to the content itself (no A4 pagination) so the whole
-      // document fits on one continuous page.
-      const pdf = new jsPDF({ unit: 'px', format: [cssWidth, cssHeight], hotfixes: ['px_scaling'] });
-      pdf.addImage(dataUrl, 'PNG', 0, 0, cssWidth, cssHeight);
-      const pdfBase64DataUri = pdf.output('datauristring');
-      const pdfBase64 = pdfBase64DataUri.split(',')[1];
+      const { htmlToPdfBase64 } = await import('@/app/lib/htmlToPdf');
+      const pdfBase64 = await htmlToPdfBase64(htmlData.html);
 
       const res = await fetch(`/api/orders/${order.orderId}/email`, {
         method: 'POST',
