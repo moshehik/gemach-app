@@ -12,7 +12,7 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 const TAB_META = {
   details: { title: 'פרטים כלליים' },
-  items: { title: 'פירוט פריטים בהזמנה', hint: 'סריקה מהירה בסיידבר מבצעת השכרה / החזרה' },
+  items: { title: 'פירוט פריטים בהזמנה' },
   payments: { title: 'תשלומים' },
   history: { title: 'מידע והיסטוריה' }
 };
@@ -81,7 +81,7 @@ export default function ModernOrderCard({
     : (order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'ללא תאריך אירוע'));
 
   const updatedLabel = order.updatedAt
-    ? `עודכן לאחרונה: ${new Date(order.updatedAt).toLocaleDateString('he-IL')} ${new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+    ? `עודכן לאחרונה: ${new Date(order.updatedAt).toLocaleDateString('he-IL')} (${getHebrewDateString(order.updatedAt)}) · ${new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
     : '';
 
   const meta = TAB_META[activeTab] || { title: '' };
@@ -264,7 +264,7 @@ export default function ModernOrderCard({
             </div>
           </div>
 
-          <div style={isLocked ? { opacity: 0.7, pointerEvents: 'none' } : undefined}>
+          <div>
             {tabs.map(tab => (
               <section key={tab.id} className={`moc-content-section ${activeTab === tab.id ? 'active' : ''}`}>
                 {tabContents[tab.id]}
@@ -274,6 +274,45 @@ export default function ModernOrderCard({
         </main>
       </div>
       </div>
+
+      {/* מודל שחרור נעילה באישור מנהל */}
+      {showUnlockModal && (
+        <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && !unlocking) setShowUnlockModal(false); }}>
+          <div className="moc moc-modal-box" style={{ maxWidth: '420px', textAlign: 'center' }}>
+            <div className="moc-modal-body" style={{ paddingTop: '28px' }}>
+              <div style={{ width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', background: 'var(--moc-danger-bg)', color: 'var(--moc-danger-text)' }}>
+                <Lock size={26} />
+              </div>
+              <h3 style={{ margin: '0 0 10px', fontSize: '1.2rem' }}>הזמנה נעולה</h3>
+              <p style={{ color: 'var(--moc-text-muted)', margin: 0, lineHeight: 1.7 }}>
+                תאריך האירוע של הזמנה זו עבר, ולכן פעולות על פריטים (השכרה, החזרה, עריכה ומחיקה) חסומות.
+                <br />
+                תשלומים וזיכויים זמינים כרגיל.
+                <br />
+                <strong>שחרור מלא לעריכה דורש אישור מנהל.</strong>
+              </p>
+            </div>
+            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
+              <button className="moc-btn moc-btn-outline" disabled={unlocking} onClick={() => setShowUnlockModal(false)}>ביטול</button>
+              <button
+                className="moc-btn moc-btn-gold"
+                disabled={unlocking}
+                onClick={async () => {
+                  setUnlocking(true);
+                  try {
+                    await onUnlock();
+                  } finally {
+                    setUnlocking(false);
+                    setShowUnlockModal(false);
+                  }
+                }}
+              >
+                {unlocking ? <><span className="moc-spinner" /> מאמת...</> : <><LockOpen size={15} /> שחרר באישור מנהל</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

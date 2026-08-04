@@ -108,9 +108,6 @@ export default function ModernInfoTab({ order, createdDate, onShowEmployees, onO
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [filterAction, setFilterAction] = useState('');
-  const [filterStartDate, setFilterStartDate] = useState('');
-  const [filterEndDate, setFilterEndDate] = useState('');
   const [filterSearch, setFilterSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
 
@@ -123,9 +120,6 @@ export default function ModernInfoTab({ order, createdDate, onShowEmployees, onO
         const query = new URLSearchParams();
         query.append('entityType', 'Order');
         if (order?.orderId) query.append('entityId', order.orderId);
-        if (filterAction) query.append('action', filterAction);
-        if (filterStartDate) query.append('startDate', filterStartDate);
-        if (filterEndDate) query.append('endDate', filterEndDate);
         if (filterSearch) query.append('search', filterSearch);
 
         const res = await fetch(`/api/audit?${query.toString()}`);
@@ -140,16 +134,7 @@ export default function ModernInfoTab({ order, createdDate, onShowEmployees, onO
     };
     fetchLogs();
     return () => { cancelled = true; };
-  }, [order?.orderId, filterAction, filterStartDate, filterEndDate, filterSearch]);
-
-  const hasFilters = filterAction || filterStartDate || filterEndDate || filterSearch;
-  const resetFilters = () => {
-    setFilterAction('');
-    setFilterStartDate('');
-    setFilterEndDate('');
-    setFilterSearch('');
-    setSearchInput('');
-  };
+  }, [order?.orderId, filterSearch]);
 
   // עריכת תאריך ההזמנה משפיעה על חישובי זיכוי בביטול — מוגבלת למתכנת בלבד
   const requestOrderDateEdit = async () => {
@@ -215,37 +200,25 @@ export default function ModernInfoTab({ order, createdDate, onShowEmployees, onO
           <span className="moc-hint">{logs.length} תיעודי פעולות</span>
         </div>
 
-        {/* סינון */}
-        <div className="moc-card-panel" style={{ padding: '12px 16px', marginBottom: '14px' }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', alignItems: 'center' }}>
-            <form onSubmit={(e) => { e.preventDefault(); setFilterSearch(searchInput); }} style={{ display: 'flex', gap: '6px', flex: 2, minWidth: '220px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <input
-                  type="text"
-                  placeholder="חיפוש חופשי בהיסטוריה..."
-                  value={searchInput}
-                  onChange={e => setSearchInput(e.target.value)}
-                  style={{ paddingLeft: '32px' }}
-                />
-                <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--moc-text-muted)' }} />
-              </div>
-              <button type="submit" className="moc-btn moc-btn-gold moc-btn-sm">חפש</button>
-            </form>
-            <select value={filterAction} onChange={e => setFilterAction(e.target.value)} style={{ width: '120px' }}>
-              <option value="">כל הפעולות</option>
-              <option value="CREATE">יצירה</option>
-              <option value="UPDATE">עדכון</option>
-              <option value="DELETE">מחיקה</option>
-            </select>
-            <input type="date" value={filterStartDate} onChange={e => setFilterStartDate(e.target.value)} style={{ width: '140px' }} title="מתאריך" />
-            <input type="date" value={filterEndDate} onChange={e => setFilterEndDate(e.target.value)} style={{ width: '140px' }} title="עד תאריך" />
-            {hasFilters && (
-              <button className="moc-btn moc-btn-outline moc-btn-sm" onClick={resetFilters}>
-                <X size={13} /> נקה
-              </button>
-            )}
+        {/* חיפוש פשוט */}
+        <form onSubmit={(e) => { e.preventDefault(); setFilterSearch(searchInput); }} style={{ display: 'flex', gap: '8px', marginBottom: '14px' }}>
+          <div style={{ position: 'relative', flex: 1 }}>
+            <input
+              type="text"
+              placeholder="חיפוש בהיסטוריה..."
+              value={searchInput}
+              onChange={e => setSearchInput(e.target.value)}
+              style={{ paddingLeft: '32px' }}
+            />
+            <Search size={15} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--moc-text-muted)' }} />
           </div>
-        </div>
+          <button type="submit" className="moc-btn moc-btn-gold moc-btn-sm">חפש</button>
+          {filterSearch && (
+            <button type="button" className="moc-btn moc-btn-outline moc-btn-sm" onClick={() => { setFilterSearch(''); setSearchInput(''); }}>
+              <X size={13} /> נקה
+            </button>
+          )}
+        </form>
 
         <div className="moc-card-panel">
           {loading ? (

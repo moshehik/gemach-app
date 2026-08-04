@@ -19,7 +19,7 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
  * חשוף דרך ref: scan(barcode) — סריקת ברקוד מהסיידבר מבצעת השכרה/החזרה
  * (כולל אימות מלאי בשרת וטיפול בפריט שלא הוחזר מהזמנה קודמת).
  */
-const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated, inventoryCache, totalRequired, totalPaid }, ref) {
+const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated, inventoryCache, totalRequired, totalPaid, locked = false }, ref) {
   const [showDeleted, setShowDeleted] = useState(false);
   const [showAlterations, setShowAlterations] = useState(true);
   const [detailsModalItem, setDetailsModalItem] = useState(null);
@@ -62,6 +62,11 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   const handleBarcodeScan = async (rawBarcode) => {
     const barcode = (rawBarcode || '').trim();
     if (!barcode) return;
+
+    if (locked) {
+      alert('ההזמנה נעולה (תאריך האירוע עבר) — יש לשחרר באישור מנהל כדי לבצע השכרה/החזרה.');
+      return;
+    }
 
     if (!isFullyPaid) {
       const authResult = await window.customAuthPrompt("לא ניתן לבצע פעולה ללא תשלום מלא. נדרש אישור מנהל או עובד מורשה:", 'עובד');
@@ -267,6 +272,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   };
 
   const handleAddItem = () => {
+    if (locked) return;
     const maxItems = parseInt(settings.max_items_per_order);
     const activeCount = items.filter(i => !i.isDeleted).length;
     if (!isNaN(maxItems) && maxItems > 0 && activeCount >= maxItems) {
@@ -417,8 +423,9 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
         {hasAny && (
           <button
             className={`moc-repair-chip ${item.alterationDone ? 'done' : 'not-done'}`}
-            title={(item.alterationDetails ? `פירוט: ${item.alterationDetails} · ` : '') + 'לחץ לשינוי סטטוס ביצוע התיקון'}
-            onClick={() => handleItemChange(index, 'alterationDone', !item.alterationDone)}
+            style={locked ? { cursor: 'default' } : undefined}
+            title={(item.alterationDetails ? `פירוט: ${item.alterationDetails} · ` : '') + (locked ? 'הזמנה נעולה' : 'לחץ לשינוי סטטוס ביצוע התיקון')}
+            onClick={() => { if (!locked) handleItemChange(index, 'alterationDone', !item.alterationDone); }}
           >
             {item.alterationDone ? <><Check size={12} /> בוצע</> : 'לא בוצע'}
           </button>
@@ -438,11 +445,19 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
   return (
     <>
+      {locked && (
+        <div className="moc-pending-banner">
+          <span>ההזמנה נעולה — תאריך האירוע עבר. פעולות פריטים (השכרה, החזרה, עריכה, מחיקה) חסומות עד שחרור באישור מנהל דרך אייקון המנעול למעלה.</span>
+        </div>
+      )}
+
       {/* סרגל עליון של הטאב — כפתור ההוספה בימין, מונה בשמאל */}
       <div className="moc-section-head">
-        <button className="moc-icon-btn-add" title="הוסף פריט חדש" onClick={handleAddItem}>
-          <Plus size={18} />
-        </button>
+        {!locked && (
+          <button className="moc-icon-btn-add" title="הוסף פריט חדש" onClick={handleAddItem}>
+            <Plus size={18} />
+          </button>
+        )}
         {enableAlterations && (
           <button className={`moc-pill-toggle ${showAlterations ? 'on' : ''}`} onClick={() => setShowAlterations(v => !v)} title="הצגת עמודת התיקונים">
             {showAlterations && <Check size={13} />} פרטי תיקונים
@@ -461,8 +476,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
           <table className={`moc-data-table ${(!showAlterations || !enableAlterations) ? 'hide-alter' : ''}`}>
             <thead>
               <tr>
-                <th>תיאור דגם</th>
-                <th style={{ width: '140px' }}>מידה</th>
+                <th>תיאור דגם ומידה</th>
                 <th className="moc-col-alter">תיקונים</th>
                 <th style={{ textAlign: 'center', width: '110px' }}>סטטוס</th>
                 <th style={{ textAlign: 'center' }}>פעולות</th>
@@ -486,26 +500,20 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                             value={{ name: item.description, id: item.dressModelId }}
                             onChange={(model) => handleModelChange(originalIndex, model)}
                           />
+                          <OrderSizeSelector
+                            modelId={item.dressModelId}
+                            order={order}
+                            value={item.sizeText}
+                            onChange={(val) => handleItemChange(originalIndex, 'sizeText', val)}
+                            inventoryCache={inventoryCache}
+                            currentCartItems={items}
+                          />
                         </div>
                       ) : (
                         <>
-                          <strong>{itemName(item)}</strong>
+                          <strong>{itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}</strong>
                           {code && <div className="moc-mono" style={{ fontSize: '0.78rem', color: 'var(--moc-text-muted)' }}>קוד: {code}{item.barcode ? ` · ברקוד: ${item.barcode}` : ''}</div>}
                         </>
-                      )}
-                    </td>
-                    <td>
-                      {item.isNew ? (
-                        <OrderSizeSelector
-                          modelId={item.dressModelId}
-                          order={order}
-                          value={item.sizeText}
-                          onChange={(val) => handleItemChange(originalIndex, 'sizeText', val)}
-                          inventoryCache={inventoryCache}
-                          currentCartItems={items}
-                        />
-                      ) : (
-                        <span style={{ fontWeight: 600 }}>{item.sizeText || '-'}</span>
                       )}
                     </td>
                     <td className="moc-col-alter">
@@ -544,7 +552,9 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
-                        {isEditingMode ? (
+                        {locked ? (
+                          <span className="moc-hint" style={{ fontStyle: 'italic' }}>נעול</span>
+                        ) : isEditingMode ? (
                           <>
                             <button className="moc-btn moc-btn-gold moc-btn-sm"
                               disabled={savingItemIndex === originalIndex}
@@ -607,8 +617,8 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                             <CalendarSearch size={16} />
                           </button>
                         )}
-                        {/* מחיקה — לא זמינה לפריט מושכר (יש להחזירו או לבטל את הלקיחה קודם) */}
-                        {!item.isNew && !isRented && (
+                        {/* מחיקה — לא זמינה לפריט שנלקח (מושכר או הוחזר) או בהזמנה נעולה; שחזור תמיד מוצג לשורה מחוקה */}
+                        {!locked && !item.isNew && (isDeletedRow || !item.isTaken) && (
                           <button
                             className={`moc-icon-btn-plain ${isDeletedRow ? 'restore' : 'row-delete'}`}
                             title={isDeletedRow ? 'שחזר פריט' : 'מחק פריט'}

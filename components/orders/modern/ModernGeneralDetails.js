@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import {
-  Mail, ExternalLink, RefreshCw, Edit2, Check, CheckCircle2, X, Phone, MapPin,
+  Mail, ExternalLink, Edit2, Check, CheckCircle2, X,
   Calendar, AlertTriangle, CalendarClock
 } from 'lucide-react';
 import HebrewDatePicker from '../../HebrewDatePicker';
@@ -108,9 +108,16 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const initials = customer ? `${customer.firstName?.[0] || ''}${customer.lastName?.[0] || ''}` : '?';
   const address = customer ? [customer.street && `${customer.street} ${customer.houseNum || ''}`.trim(), customer.city].filter(Boolean).join(', ') : '';
 
-  const eventSubLabel = isAbroad
-    ? (order.fromDate ? `${new Date(order.fromDate).toLocaleDateString('he-IL')} — ${order.toDate || order.returnDate ? new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL') : '?'}` : 'טרם נבחרו תאריכים')
-    : (order.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} · ${order.eventDateHebrew || getHebrewDateString(order.eventDate)}` : 'טרם נבחר תאריך');
+  // רק סוג האירוע — התאריכים עצמם מוצגים בשדה שמתחת (בלי כפילות)
+  const eventSubLabel = isAbroad ? 'אירוע חו"ל' : 'אירוע רגיל';
+
+  // תאריך מלא: לועזי (עברי) · שעה
+  const fmtFullDate = (d0) => {
+    if (!d0) return null;
+    const d = new Date(d0);
+    if (isNaN(d.getTime())) return null;
+    return `${d.toLocaleDateString('he-IL')} (${getHebrewDateString(d)}) · ${d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`;
+  };
 
   const orderDateStr = order.orderDate
     ? `${new Date(order.orderDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.orderDate)})`
@@ -128,234 +135,210 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
     changeDates(updates);
   };
 
+  // ציר ימי הרווח (ציפוף) — משמש גם בפאנל העריכה וגם כאינדיקציה במצב קריאה
+  const hasCustomSpacing = order.customSpacing !== null && order.customSpacing !== undefined;
+  const selectedSpacing = hasCustomSpacing ? order.customSpacing : null;
+  const spacingNoteNode = (
+    <div className="moc-spacing-note">
+      <div className="moc-spacing-note-head">
+        <span className="moc-spacing-note-label"><AlertTriangle size={15} /> ציפוף ימים מיוחד</span>
+        <button
+          className={`moc-pill-toggle ${!hasCustomSpacing ? 'on' : ''}`}
+          onClick={() => { if (hasCustomSpacing) applyCustomSpacing(null); }}
+          title="חזרה לרווח הרגיל של המערכת"
+        >
+          {!hasCustomSpacing && <Check size={13} />} רגיל (לפי המערכת)
+        </button>
+      </div>
+
+      {/* ציר ימי הרווח בין השכרות: 0 = ללא רווח, 3 = ברירת המחדל */}
+      <div className="moc-days-axis">
+        {[0, 1, 2, 3, 4].map((d, i) => (
+          <React.Fragment key={d}>
+            {i > 0 && <div className={`moc-day-connector ${selectedSpacing !== null && selectedSpacing >= d ? 'passed' : ''}`} />}
+            <button
+              className={`moc-day-stop ${selectedSpacing === d ? 'selected' : ''}`}
+              title={d === 0 ? 'ללא רווח כלל' : `${d} ימי רווח בין השכרות`}
+              onClick={() => { if (selectedSpacing !== d) applyCustomSpacing(d); }}
+            >
+              {d}
+              {d === 0 && <span className="moc-day-caption">ללא רווח</span>}
+              {d === 3 && <span className="moc-day-caption">ברירת מחדל</span>}
+            </button>
+          </React.Fragment>
+        ))}
+      </div>
+
+      <p>דורש הרשאת מנהל · צובע את ההזמנה בצהוב ומשפיע על בדיקת המלאי להזמנה זו בלבד</p>
+    </div>
+  );
+
   return (
     <>
-      <div className="moc-grid-2">
-        {/* ===== כרטיס לקוח ===== */}
-        <div className="moc-card-panel moc-detail-card">
-          <div className="moc-panel-head">
-            <div className="moc-title-row">
-              <div className="moc-avatar-chip lg">{initials}</div>
-              <div>
-                <span className="moc-lbl">{customerName}</span>
-                <div className="moc-sub-lbl">פרטי לקוח</div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <button className="moc-icon-btn-plain" style={{ width: '34px', height: '34px' }} title="שליחת מייל מהיר (באישור מנהל)" onClick={handleQuickEmail}>
-                <Mail size={17} />
-              </button>
-              {customer?.id && (
-                <Link href={`/customers/${customer.id}`} target="_blank" title="מעבר לכרטיס לקוח"
-                  className="moc-icon-btn-plain" style={{ width: '34px', height: '34px', textDecoration: 'none' }}>
-                  <ExternalLink size={17} />
-                </Link>
-              )}
-              <button className="moc-icon-btn-plain" style={{ width: '34px', height: '34px' }} title="החלף לקוח" onClick={() => setShowCustomerModal(true)}>
-                <RefreshCw size={17} />
-              </button>
+      <div className="moc-card-panel moc-detail-card" style={{ padding: '6px 20px 16px' }}>
+        {/* לקוח — שורה קומפקטית */}
+        <div className="moc-compact-row">
+          <div className="moc-avatar-chip">{initials}</div>
+          <div className="moc-cr-main">
+            <div className="moc-cr-title">{customerName}</div>
+            <div className="moc-cr-sub" title={customer ? [customer.phone1, customer.phone2, customer.email, address].filter(Boolean).join(' · ') : ''}>
+              {customer
+                ? ([customer.phone1, customer.phone2, customer.email, address].filter(Boolean).join(' · ') || 'אין פרטי קשר')
+                : 'לא נבחר לקוח — לחץ על אייקון העריכה לבחירה'}
             </div>
           </div>
-
-          <div className="moc-detail-rows">
-            {customer?.phone1 && (
-              <div className="moc-detail-row"><span>{customer.phone1}</span><Phone size={15} /></div>
+          <div className="moc-cr-actions">
+            <button
+              className={`moc-sign-status-pill ${order.hasSignedRegulations ? 'yes' : 'no'}`}
+              style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+              onClick={toggleSignature}
+              title="סטטוס חתימה על תקנון — לחץ לשינוי"
+            >
+              {order.hasSignedRegulations ? <><CheckCircle2 size={14} /> חתם על תקנון</> : <><X size={14} /> לא חתם</>}
+            </button>
+            <button className="moc-icon-btn-plain" title="שליחת מייל מהיר (באישור מנהל)" onClick={handleQuickEmail}>
+              <Mail size={16} />
+            </button>
+            {customer?.id && (
+              <Link href={`/customers/${customer.id}`} target="_blank" title="מעבר לכרטיס לקוח"
+                className="moc-icon-btn-plain" style={{ textDecoration: 'none' }}>
+                <ExternalLink size={16} />
+              </Link>
             )}
-            {customer?.phone2 && (
-              <div className="moc-detail-row"><span>{customer.phone2}</span><Phone size={15} /></div>
-            )}
-            {customer?.email && (
-              <div className="moc-detail-row"><span style={{ direction: 'ltr' }}>{customer.email}</span><Mail size={15} /></div>
-            )}
-            {address && (
-              <div className="moc-detail-row plain"><MapPin size={15} /><span>{address}</span></div>
-            )}
-            {!customer && (
-              <div className="moc-empty-state" style={{ padding: '14px 0' }}>לא נבחר לקוח להזמנה — לחץ על ⟳ לבחירה</div>
-            )}
+            <button className="moc-icon-btn-plain" title="החלפת לקוח" onClick={() => setShowCustomerModal(true)}>
+              <Edit2 size={16} />
+            </button>
           </div>
-
-          <button className={`moc-sign-status-pill ${order.hasSignedRegulations ? 'yes' : 'no'}`} onClick={toggleSignature}>
-            {order.hasSignedRegulations
-              ? <><CheckCircle2 size={16} /> חתם על תקנון השכרה</>
-              : <><X size={16} /> לא חתם על תקנון</>}
-          </button>
         </div>
 
-        {/* ===== כרטיס אירוע ===== */}
-        <div className="moc-card-panel moc-detail-card">
-          <div className="moc-panel-head">
-            <div className="moc-title-row">
-              <div className="moc-avatar-chip lg"><Calendar size={19} /></div>
-              <div>
-                <span className="moc-lbl">פרטי אירוע</span>
-                <div className="moc-sub-lbl">{eventSubLabel}</div>
-              </div>
+        {/* אירוע — שורה קומפקטית */}
+        <div className="moc-compact-row">
+          <div className="moc-avatar-chip"><Calendar size={17} /></div>
+          <div className="moc-cr-main">
+            <div className="moc-cr-title">{eventSubLabel}</div>
+            <div className="moc-cr-sub" style={{ whiteSpace: 'normal' }}>
+              {isAbroad
+                ? (order.fromDate
+                  ? <>לקיחה: <strong>{fmtFullDate(order.fromDate)}</strong> · החזרה: <strong>{fmtFullDate(order.toDate || order.returnDate) || '?'}</strong></>
+                  : 'טרם נבחרו תאריכים')
+                : (order.eventDate
+                  ? <strong>{`${new Date(order.eventDate).toLocaleDateString('he-IL')} (${order.eventDateHebrew || getHebrewDateString(order.eventDate)})`}</strong>
+                  : 'טרם נבחר תאריך')}
+              {!isEditingEvent && order.notes ? <> · הערות: {order.notes}</> : null}
             </div>
-            <button className="moc-btn moc-btn-outline moc-btn-icon" title={isEditingEvent ? 'סיים עריכה' : 'ערוך פרטים'} onClick={() => setIsEditingEvent(!isEditingEvent)}>
+          </div>
+          <div className="moc-cr-actions">
+            <button className="moc-icon-btn-plain" title={isEditingEvent ? 'סיים עריכה' : 'עריכת פרטי אירוע'} onClick={() => setIsEditingEvent(!isEditingEvent)}>
               {isEditingEvent ? <Check size={16} /> : <Edit2 size={16} />}
             </button>
           </div>
+        </div>
 
-          {/* בורר סוג האירוע מוצג רק במצב עריכה */}
-          {isEditingEvent && (
-            <div style={{ margin: '14px 0' }}>
-              <div className="moc-toggle-pair">
-                <button
-                  className={`moc-opt ${!isAbroad ? 'active' : ''}`}
-                  onClick={() => {
-                    if (!isAbroad) return;
-                    // חזרה לאירוע רגיל — מנקים את טווח התאריכים ואת תאריך ההחזרה שנקבע ממנו
-                    changeDates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null });
-                  }}
-                >
-                  אירוע רגיל
-                </button>
-                <button
-                  className={`moc-opt ${isAbroad ? 'active' : ''}`}
-                  onClick={() => {
-                    if (isAbroad) return;
-                    // מעבר לאירוע חו"ל — עוברים לטווח תאריכים במקום תאריך בודד
-                    changeDates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null });
-                  }}
-                >
-                  אירוע חו"ל
-                </button>
+        {/* פאנל עריכת אירוע — נפתח מאייקון העריכה */}
+        {isEditingEvent && (
+          <div className="moc-edit-box" style={{ margin: '2px 0 10px' }}>
+            <div className="moc-toggle-pair" style={{ alignSelf: 'flex-start' }}>
+              <button
+                className={`moc-opt ${!isAbroad ? 'active' : ''}`}
+                onClick={() => {
+                  if (!isAbroad) return;
+                  // חזרה לאירוע רגיל — מנקים את טווח התאריכים ואת תאריך ההחזרה שנקבע ממנו
+                  changeDates({ isAbroad: false, isWeekdayEvent: false, fromDate: null, toDate: null, returnDate: null });
+                }}
+              >
+                אירוע רגיל
+              </button>
+              <button
+                className={`moc-opt ${isAbroad ? 'active' : ''}`}
+                onClick={() => {
+                  if (isAbroad) return;
+                  // מעבר לאירוע חו"ל — עוברים לטווח תאריכים במקום תאריך בודד
+                  changeDates({ isAbroad: true, isWeekdayEvent: false, eventDate: null, eventDateHebrew: null });
+                }}
+              >
+                אירוע חו"ל
+              </button>
+            </div>
+
+            {!isAbroad ? (
+              <div>
+                <span className="moc-field-label">תאריך אירוע</span>
+                <HebrewDatePicker value={order.eventDate} onChange={(date) => changeDates({ eventDate: date })} />
               </div>
-            </div>
-          )}
-
-          {/* מצב קריאה — הצגת תאריך האירוע כשדה מלא */}
-          {!isEditingEvent && (
-            <div style={{ margin: '14px 0' }}>
-              <span className="moc-field-label">{isAbroad ? 'אירוע חו"ל — לקיחה והחזרה' : 'תאריך אירוע'}</span>
-              <div className="moc-field-value">
-                {isAbroad
-                  ? (order.fromDate
-                    ? `${new Date(order.fromDate).toLocaleDateString('he-IL')} ${timeOf(order.fromDate)} — ${(order.toDate || order.returnDate) ? `${new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL')} ${timeOf(order.toDate || order.returnDate)}` : '?'}`
-                    : 'טרם נבחרו תאריכים')
-                  : (order.eventDate
-                    ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} · ${order.eventDateHebrew || getHebrewDateString(order.eventDate)}`
-                    : 'טרם נבחר תאריך')}
+            ) : (
+              <div>
+                <span className="moc-field-label">טווח תאריכים (לקיחה והחזרה)</span>
+                <HebrewDateRangePicker
+                  startDate={order.fromDate}
+                  endDate={order.toDate || order.returnDate}
+                  onChange={(start, end) => {
+                    // הבורר מחזיר תאריך בלבד; משמרים את שעת היום שנבחרה קודם
+                    const applyTime = (newDateStr, prevDateStr) => {
+                      if (!newDateStr) return newDateStr;
+                      const d = new Date(newDateStr);
+                      const prev = prevDateStr ? new Date(prevDateStr) : null;
+                      const ref = (prev && !isNaN(prev.getTime())) ? prev : new Date();
+                      d.setHours(ref.getHours(), ref.getMinutes(), 0, 0);
+                      return d.toISOString();
+                    };
+                    const newFrom = applyTime(start, order.fromDate);
+                    const newTo = applyTime(end, order.toDate || order.returnDate);
+                    changeDates({ fromDate: newFrom, toDate: newTo, returnDate: newTo, eventDate: newFrom });
+                  }}
+                />
+                <div className="moc-grid-2" style={{ marginTop: '10px' }}>
+                  {order.fromDate && (
+                    <div>
+                      <span className="moc-field-label">שעת לקיחה</span>
+                      <input type="time" value={timeOf(order.fromDate)} onChange={(e) => setTime('fromDate', order.fromDate, e.target.value)} />
+                    </div>
+                  )}
+                  {(order.toDate || order.returnDate) && (
+                    <div>
+                      <span className="moc-field-label">שעת החזרה</span>
+                      <input type="time" value={timeOf(order.toDate || order.returnDate)} onChange={(e) => setTime('toDate', order.toDate || order.returnDate, e.target.value, true)} />
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {isEditingEvent ? (
-            <div style={{ marginBottom: '14px' }}>
-              {!isAbroad ? (
-                <div>
-                  <span className="moc-field-label">תאריך אירוע</span>
-                  <HebrewDatePicker value={order.eventDate} onChange={(date) => changeDates({ eventDate: date })} />
-                </div>
-              ) : (
-                <div>
-                  <span className="moc-field-label">טווח תאריכים (לקיחה והחזרה)</span>
-                  <HebrewDateRangePicker
-                    startDate={order.fromDate}
-                    endDate={order.toDate || order.returnDate}
-                    onChange={(start, end) => {
-                      // הבורר מחזיר תאריך בלבד; משמרים את שעת היום שנבחרה קודם
-                      const applyTime = (newDateStr, prevDateStr) => {
-                        if (!newDateStr) return newDateStr;
-                        const d = new Date(newDateStr);
-                        const prev = prevDateStr ? new Date(prevDateStr) : null;
-                        const ref = (prev && !isNaN(prev.getTime())) ? prev : new Date();
-                        d.setHours(ref.getHours(), ref.getMinutes(), 0, 0);
-                        return d.toISOString();
-                      };
-                      const newFrom = applyTime(start, order.fromDate);
-                      const newTo = applyTime(end, order.toDate || order.returnDate);
-                      changeDates({ fromDate: newFrom, toDate: newTo, returnDate: newTo, eventDate: newFrom });
-                    }}
-                  />
-                  <div className="moc-grid-2" style={{ marginTop: '10px' }}>
-                    {order.fromDate && (
-                      <div>
-                        <span className="moc-field-label">שעת לקיחה</span>
-                        <input type="time" value={timeOf(order.fromDate)} onChange={(e) => setTime('fromDate', order.fromDate, e.target.value)} />
-                      </div>
-                    )}
-                    {(order.toDate || order.returnDate) && (
-                      <div>
-                        <span className="moc-field-label">שעת החזרה</span>
-                        <input type="time" value={timeOf(order.toDate || order.returnDate)} onChange={(e) => setTime('toDate', order.toDate || order.returnDate, e.target.value, true)} />
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : null}
-
-          <div style={{ marginBottom: '12px' }}>
-            <span className="moc-field-label">הערות להזמנה</span>
-            {isEditingEvent ? (
+            <div>
+              <span className="moc-field-label">הערות להזמנה</span>
               <textarea
                 rows={3}
                 value={order.notes || ''}
                 onChange={(e) => handleChange({ notes: e.target.value })}
                 placeholder="הערות כלליות לגבי ההזמנה..."
               />
-            ) : (
-              <div className="moc-notes-box">{order.notes || 'אין הערות'}</div>
-            )}
-          </div>
+            </div>
 
-          <div className="moc-detail-row plain" style={{ fontSize: '0.9rem', color: 'var(--moc-text-muted)', gap: '6px' }}>
-            <CalendarClock size={14} />
-            <span>תאריך הזמנה: <strong style={{ color: 'var(--moc-text-main)' }}>{orderDateStr}</strong></span>
+            {spacingNoteNode}
+          </div>
+        )}
+
+        {/* ציפוף מוגדר — אינדיקציה גם במצב קריאה */}
+        {!isEditingEvent && hasCustomSpacing && spacingNoteNode}
+
+        {/* תאריך ביצוע ההזמנה — שורה קומפקטית */}
+        <div className="moc-compact-row" style={{ paddingBottom: 0 }}>
+          <div className="moc-avatar-chip"><CalendarClock size={16} /></div>
+          <div className="moc-cr-main">
+            <div className="moc-cr-sub" style={{ whiteSpace: 'normal' }}>
+              תאריך ביצוע ההזמנה: <strong style={{ color: 'var(--moc-text-main)' }}>{orderDateStr}</strong>
+            </div>
+          </div>
+          <div className="moc-cr-actions">
             {isEditingOrderDate ? (
-              <span style={{ minWidth: '180px', display: 'inline-block' }}>
+              <span style={{ minWidth: '190px', display: 'inline-block' }}>
                 <HebrewDatePicker value={order.orderDate} onChange={handleOrderDateChange} />
               </span>
             ) : (
-              <button className="moc-btn moc-btn-outline moc-btn-icon" style={{ width: '26px', height: '26px' }}
-                title="ערוך תאריך הזמנה (מתכנת בלבד)" onClick={requestOrderDateEdit}>
-                <Edit2 size={12} />
+              <button className="moc-icon-btn-plain" title="ערוך תאריך הזמנה (מתכנת בלבד)" onClick={requestOrderDateEdit}>
+                <Edit2 size={14} />
               </button>
             )}
           </div>
-
-          {/* ציפוף ימים — בעריכה תמיד; בקריאה רק אם הוגדר ציפוף מיוחד */}
-          {(isEditingEvent || (order.customSpacing !== null && order.customSpacing !== undefined)) && (() => {
-            const hasCustom = order.customSpacing !== null && order.customSpacing !== undefined;
-            const selected = hasCustom ? order.customSpacing : null;
-            return (
-              <div className="moc-spacing-note">
-                <div className="moc-spacing-note-head">
-                  <span className="moc-spacing-note-label"><AlertTriangle size={15} /> ציפוף ימים מיוחד</span>
-                  <button
-                    className={`moc-pill-toggle ${!hasCustom ? 'on' : ''}`}
-                    onClick={() => { if (hasCustom) applyCustomSpacing(null); }}
-                    title="חזרה לרווח הרגיל של המערכת"
-                  >
-                    {!hasCustom && <Check size={13} />} רגיל (לפי המערכת)
-                  </button>
-                </div>
-
-                {/* ציר ימי הרווח בין השכרות: 0 = ללא רווח, 3 = ברירת המחדל */}
-                <div className="moc-days-axis">
-                  {[0, 1, 2, 3, 4].map((d, i) => (
-                    <React.Fragment key={d}>
-                      {i > 0 && <div className={`moc-day-connector ${selected !== null && selected >= d ? 'passed' : ''}`} />}
-                      <button
-                        className={`moc-day-stop ${selected === d ? 'selected' : ''}`}
-                        title={d === 0 ? 'ללא רווח כלל' : `${d} ימי רווח בין השכרות`}
-                        onClick={() => { if (selected !== d) applyCustomSpacing(d); }}
-                      >
-                        {d}
-                        {d === 0 && <span className="moc-day-caption">ללא רווח</span>}
-                        {d === 3 && <span className="moc-day-caption">ברירת מחדל</span>}
-                      </button>
-                    </React.Fragment>
-                  ))}
-                </div>
-
-                <p>דורש הרשאת מנהל · צובע את ההזמנה בצהוב ומשפיע על בדיקת המלאי להזמנה זו בלבד</p>
-              </div>
-            );
-          })()}
         </div>
       </div>
 

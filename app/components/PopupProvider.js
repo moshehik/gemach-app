@@ -1,6 +1,6 @@
 'use client';
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
-import { AlertTriangle, CheckCircle, Info, HelpCircle, X, Copy } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, HelpCircle, X, Copy, KeyRound } from 'lucide-react';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 
 const PopupContext = createContext(null);
@@ -205,7 +205,7 @@ export function PopupProvider({ children }) {
          <div className="popup-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1rem' }}>
              <div className="popup-content animate-fade-in" style={{ background: 'var(--card-bg)', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
                  <div style={{ padding: '24px 24px 0 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                     <div style={{ background: '#fef3c7', color: '#d97706', padding: '10px', borderRadius: '12px' }}>
+                     <div style={{ background: 'rgba(212, 175, 55, 0.14)', color: '#b5952f', padding: '10px', borderRadius: '12px' }}>
                         <HelpCircle data-element-name="רכיב_PopupProvider_7" size={28} />
                      </div>
                      <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: '700' }}>{confirmConfig.title}</h3>
@@ -214,8 +214,8 @@ export function PopupProvider({ children }) {
                      {confirmConfig.message}
                  </div>
                  <div style={{ background: '#f8fafc', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
-                     <button data-element-name="כפתור_PopupProvider_8" onClick={() => handleConfirmResponse(false)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f1f5f9'} onMouseOut={e => e.currentTarget.style.background='var(--input-bg)'}>ביטול</button>
-                     <button data-element-name="כפתור_PopupProvider_9" onClick={() => handleConfirmResponse(true)} style={{ padding: '10px 20px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(59, 130, 246, 0.2)' }} onMouseOver={e => e.currentTarget.style.background='#2563eb'} onMouseOut={e => e.currentTarget.style.background='#3b82f6'}>אישור</button>
+                     <button data-element-name="כפתור_PopupProvider_8" onClick={() => handleConfirmResponse(false)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
+                     <button data-element-name="כפתור_PopupProvider_9" onClick={() => handleConfirmResponse(true)} style={{ padding: '10px 20px', background: '#d4af37', color: '#1e293b', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(212, 175, 55, 0.35)' }} onMouseOver={e => { e.currentTarget.style.background='#b5952f'; e.currentTarget.style.color='#fff'; }} onMouseOut={e => { e.currentTarget.style.background='#d4af37'; e.currentTarget.style.color='#1e293b'; }}>אישור</button>
                  </div>
              </div>
          </div>
@@ -226,7 +226,7 @@ export function PopupProvider({ children }) {
          <div className="popup-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1rem' }}>
              <div className="popup-content animate-fade-in" style={{ background: 'var(--card-bg)', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
                  <div style={{ padding: '24px 24px 0 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                     <div style={{ background: '#e0e7ff', color: '#4f46e5', padding: '10px', borderRadius: '12px' }}>
+                     <div style={{ background: 'rgba(212, 175, 55, 0.14)', color: '#b5952f', padding: '10px', borderRadius: '12px' }}>
                         <Info data-element-name="רכיב_PopupProvider_10" size={28} />
                      </div>
                      <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: '700' }}>{promptConfig.title}</h3>
@@ -245,13 +245,13 @@ export function PopupProvider({ children }) {
                             if (e.key === 'Escape') handlePromptResponse(null);
                          }}
                          style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', transition: 'border-color 0.2s', background: '#f8fafc' }}
-                         onFocus={(e) => e.target.style.borderColor = '#4f46e5'}
+                         onFocus={(e) => e.target.style.borderColor = '#d4af37'}
                          onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                      />
                  </div>
                  <div style={{ background: '#f8fafc', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
-                     <button data-element-name="כפתור_PopupProvider_12" onClick={() => handlePromptResponse(null)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f1f5f9'} onMouseOut={e => e.currentTarget.style.background='var(--input-bg)'}>ביטול</button>
-                     <button data-element-name="כפתור_PopupProvider_13" onClick={() => handlePromptResponse(promptInputRef.current.value)} style={{ padding: '10px 20px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.2)' }} onMouseOver={e => e.currentTarget.style.background='#4338ca'} onMouseOut={e => e.currentTarget.style.background='#4f46e5'}>אישור</button>
+                     <button data-element-name="כפתור_PopupProvider_12" onClick={() => handlePromptResponse(null)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
+                     <button data-element-name="כפתור_PopupProvider_13" onClick={() => handlePromptResponse(promptInputRef.current.value)} style={{ padding: '10px 20px', background: '#d4af37', color: '#1e293b', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(212, 175, 55, 0.35)' }} onMouseOver={e => { e.currentTarget.style.background='#b5952f'; e.currentTarget.style.color='#fff'; }} onMouseOut={e => { e.currentTarget.style.background='#d4af37'; e.currentTarget.style.color='#1e293b'; }}>אישור</button>
                  </div>
              </div>
          </div>
@@ -262,8 +262,8 @@ export function PopupProvider({ children }) {
          <div className="popup-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1rem' }}>
              <div className="popup-content animate-fade-in" style={{ background: 'var(--card-bg)', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
                  <div style={{ padding: '24px 24px 0 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                     <div style={{ background: '#e0e7ff', color: '#4f46e5', padding: '10px', borderRadius: '12px' }}>
-                        <Info data-element-name="רכיב_PopupProvider_14" size={28} />
+                     <div style={{ background: 'rgba(212, 175, 55, 0.14)', color: '#b5952f', padding: '10px', borderRadius: '12px' }}>
+                        <KeyRound data-element-name="רכיב_PopupProvider_14" size={28} />
                      </div>
                      <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: '700' }}>{authPromptConfig.title}</h3>
                  </div>
@@ -288,7 +288,7 @@ export function PopupProvider({ children }) {
                                 setTimeout(() => setIsAuthEmployeeDropdownOpen(false), 200);
                             }}
                             style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', transition: 'border-color 0.2s', background: '#f8fafc' }}
-                            onFocusCapture={(e) => { e.target.style.borderColor = '#4f46e5'; setIsAuthEmployeeDropdownOpen(true); }}
+                            onFocusCapture={(e) => { e.target.style.borderColor = '#d4af37'; setIsAuthEmployeeDropdownOpen(true); }}
                             onBlurCapture={(e) => e.target.style.borderColor = '#e2e8f0'}
                          />
                          {isAuthEmployeeDropdownOpen && (
@@ -330,14 +330,14 @@ export function PopupProvider({ children }) {
                                 if (e.key === 'Escape') handleAuthPromptResponse(null);
                              }}
                              style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', transition: 'border-color 0.2s', background: '#f8fafc' }}
-                             onFocus={(e) => e.target.style.borderColor = '#4f46e5'}
+                             onFocus={(e) => e.target.style.borderColor = '#d4af37'}
                              onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                          />
                      </div>
                  </div>
                  <div style={{ background: '#f8fafc', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
-                     <button data-element-name="כפתור_PopupProvider_17" onClick={() => handleAuthPromptResponse(null)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f1f5f9'} onMouseOut={e => e.currentTarget.style.background='var(--input-bg)'}>ביטול</button>
-                     <button data-element-name="כפתור_PopupProvider_18" onClick={() => handleAuthPromptResponse({ pin: authInputRef.current.value, employeeId: selectedAuthEmployee })} style={{ padding: '10px 20px', background: '#4f46e5', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(79, 70, 229, 0.2)' }} onMouseOver={e => e.currentTarget.style.background='#4338ca'} onMouseOut={e => e.currentTarget.style.background='#4f46e5'}>אישור</button>
+                     <button data-element-name="כפתור_PopupProvider_17" onClick={() => handleAuthPromptResponse(null)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
+                     <button data-element-name="כפתור_PopupProvider_18" onClick={() => handleAuthPromptResponse({ pin: authInputRef.current.value, employeeId: selectedAuthEmployee })} style={{ padding: '10px 20px', background: '#d4af37', color: '#1e293b', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(212, 175, 55, 0.35)' }} onMouseOver={e => { e.currentTarget.style.background='#b5952f'; e.currentTarget.style.color='#fff'; }} onMouseOut={e => { e.currentTarget.style.background='#d4af37'; e.currentTarget.style.color='#1e293b'; }}>אישור</button>
                  </div>
              </div>
          </div>

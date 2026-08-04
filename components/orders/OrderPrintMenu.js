@@ -116,14 +116,14 @@ export default function OrderPrintMenu({
         throw new Error(htmlData.error || 'שגיאה ביצירת נתוני המייל');
       }
 
-      const html2pdf = (await import('html2pdf.js')).default;
+      // html2canvas (used by html2pdf.js) kept rendering this content as a blank/broken
+      // page - it reimplements CSS layout from scratch and chokes on things like
+      // flex+float combos. html-to-image instead serializes the DOM into an SVG
+      // <foreignObject> and lets the real browser rasterize it.
+      const htmlToImage = await import('html-to-image');
+      const { jsPDF } = await import('jspdf');
       const element = document.createElement('div');
       element.innerHTML = htmlData.html;
-      // html2canvas can't reliably measure/render elements positioned far off-screen
-      // (top: -9999px) or hidden via opacity - it needs the node laid out at real,
-      // in-viewport coordinates and fully opaque, or it captures a blank/wrong image.
-      // Keep it on-screen at normal coordinates but tucked behind the real UI with a
-      // negative z-index, so it's invisible to the user without breaking the capture.
       element.style.position = 'fixed';
       element.style.top = '0';
       element.style.left = '0';
@@ -131,15 +131,17 @@ export default function OrderPrintMenu({
       element.style.pointerEvents = 'none';
       document.body.appendChild(element);
 
-      const pdfBase64DataUri = await html2pdf().from(element).set({
-        margin: 10,
-        filename: 'order.pdf',
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }).outputPdf('datauristring');
-
+      const pixelRatio = 2;
+      const dataUrl = await htmlToImage.toPng(element, { pixelRatio, backgroundColor: '#ffffff' });
+      const cssWidth = element.offsetWidth;
+      const cssHeight = element.offsetHeight;
       document.body.removeChild(element);
+
+      // Size the PDF page to the content itself (no A4 pagination) so the whole
+      // document fits on one continuous page.
+      const pdf = new jsPDF({ unit: 'px', format: [cssWidth, cssHeight], hotfixes: ['px_scaling'] });
+      pdf.addImage(dataUrl, 'PNG', 0, 0, cssWidth, cssHeight);
+      const pdfBase64DataUri = pdf.output('datauristring');
       const pdfBase64 = pdfBase64DataUri.split(',')[1];
 
       const res = await fetch(`/api/orders/${order.orderId}/email`, {

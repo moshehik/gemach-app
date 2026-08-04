@@ -197,6 +197,14 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 .moc-panel-head .moc-sub-lbl { font-size: 0.82rem; color: var(--moc-text-muted); margin-top: 2px; }
 
 .moc-detail-card { border-top: 3px solid var(--moc-primary); }
+
+/* שורות קומפקטיות בפרטים כלליים — נושא אחד מתחת לשני */
+.moc-compact-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+.moc-compact-row + .moc-compact-row, .moc-compact-row + div + .moc-compact-row { border-top: 1px solid var(--moc-divider); }
+.moc-cr-main { flex: 1; min-width: 0; }
+.moc-cr-title { font-weight: 700; font-size: 1rem; color: var(--moc-text-main); }
+.moc-cr-sub { font-size: 0.85rem; color: var(--moc-text-muted); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.moc-cr-actions { display: flex; gap: 4px; align-items: center; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
 .moc-detail-rows { display: flex; flex-direction: column; gap: 8px; margin: 14px 0; }
 .moc-detail-row { display: flex; align-items: center; gap: 8px; font-size: 1rem; color: var(--moc-text-main); font-weight: 600; direction: ltr; justify-content: flex-end; }
 .moc-detail-row svg { color: var(--moc-text-muted); flex-shrink: 0; }
