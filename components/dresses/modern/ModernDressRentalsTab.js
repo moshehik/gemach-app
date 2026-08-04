@@ -16,6 +16,9 @@ export default function ModernDressRentalsTab({ dressId, active }) {
   const [sizeFilter, setSizeFilter] = useState('all');
   const [search, setSearch] = useState('');
 
+  const [page, setPage] = useState(1);
+  const limit = 50;
+
   // נטען רק כשנכנסים לטאב בפעם הראשונה — לא מעכב את פתיחת הכרטיס
   useEffect(() => {
     if (!active || loaded || !dressId) return;
@@ -47,6 +50,16 @@ export default function ModernDressRentalsTab({ dressId, active }) {
       .filter(r => sizeFilter === 'all' || r.sizeText === sizeFilter)
       .filter(r => !term || [r.orderId, r.customerName, r.dressBarcode].some(v => v != null && String(v).toLowerCase().includes(term)));
   }, [rentals, sizeFilter, search]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [sizeFilter, search]);
+
+  const totalPages = Math.ceil(visible.length / limit) || 1;
+  const paginatedRentals = useMemo(() => {
+    const start = (page - 1) * limit;
+    return visible.slice(start, start + limit);
+  }, [visible, page]);
 
   if (loading) {
     return (
@@ -127,7 +140,7 @@ export default function ModernDressRentalsTab({ dressId, active }) {
               </tr>
             </thead>
             <tbody>
-              {visible.map((r, idx) => (
+              {paginatedRentals.map((r, idx) => (
                 <tr key={idx}>
                   <td className="moc-mono">{r.orderId}</td>
                   <td>{r.customerName}</td>
@@ -162,6 +175,25 @@ export default function ModernDressRentalsTab({ dressId, active }) {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {/* Pagination Footer */}
+      {visible.length > 0 && (
+        <div className="page-footer-bar" style={{ position: 'sticky', bottom: 0, zIndex: 10, background: 'var(--card-bg)', borderTop: '1px solid var(--border-color)', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)' }}>
+          <div className="page-footer-summary">סה"כ השכרות מוצגות: {visible.length}</div>
+          
+          {totalPages > 1 && (
+            <div className="page-footer-pager" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>&lt; הקודם</button>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                עמוד 
+                <input type="number" min={1} max={totalPages} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> 
+                מתוך {totalPages}
+              </span>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הבא &gt;</button>
+            </div>
+          )}
         </div>
       )}
     </>

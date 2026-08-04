@@ -196,15 +196,14 @@ export default function RefundsPage() {
 
   const filteredDebts = debts.filter(d => {
     const matchesSearch = 
-      (d.customer?.firstName || '').includes(debtsSearchTerm) ||
-      (d.customer?.lastName || '').includes(debtsSearchTerm) ||
-      (d.customer?.phone1 || '').includes(debtsSearchTerm) ||
+      (d.customerName || '').includes(debtsSearchTerm) ||
+      (d.customerPhone || '').includes(debtsSearchTerm) ||
       (d.orderId?.toString() || '').includes(debtsSearchTerm);
     return matchesSearch;
   });
 
   return (
-    <main data-agy-id="refunds_page_main" className="container animate-fade-in page-shell" style={{ '--page-content-max': '1400px' }}>
+    <main data-agy-id="refunds_page_main" className="container animate-fade-in page-shell" style={{ '--page-content-max': '1200px', paddingRight: '120px', maxWidth: 'calc(100% - 120px)' }}>
       <div className="page-scroll">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
         <h1 style={{ color: activeTab === 'debts' ? '#e11d48' : 'var(--primary-color)', margin: 0, display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '2rem', fontWeight: 'bold' }}>
@@ -467,10 +466,10 @@ export default function RefundsPage() {
                         <td style={{ padding: '0.4rem 0.5rem' }}>
                           <div style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
                             <Link href={`/customers/${order.customerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                              {order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לקוח לא ידוע'}
+                              {order.customerName || 'לקוח לא ידוע'}
                             </Link>
                           </div>
-                          <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{order.customer?.phone1}</div>
+                          <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{order.customerPhone || ''}</div>
                         </td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>
                           <Link href={`/orders/${order.orderId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#0ea5e9', textDecoration: 'none', fontWeight: 'bold', background: '#e0f2fe', padding: '0.4rem 0.8rem', borderRadius: '8px', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = '#bae6fd'} onMouseOut={(e) => e.currentTarget.style.background = '#e0f2fe'}>

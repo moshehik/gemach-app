@@ -65,6 +65,9 @@ export default function ModernDressItemsTab({
   const [sort, setSort] = useState({ key: 'sizeText', direction: 'asc' });
   const [viewMode, setViewMode] = useState('rows');
 
+  const [page, setPage] = useState(1);
+  const limit = 50;
+
   const [editingId, setEditingId] = useState(null);
   const [draft, setDraft] = useState(null);
   const [rowSaving, setRowSaving] = useState(false);
@@ -141,6 +144,16 @@ export default function ModernDressItemsTab({
         return String(av ?? '').localeCompare(String(bv ?? ''), 'he') * dir;
       });
   }, [items, statusFilter, search, colFilters, sort]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [statusFilter, search, colFilters, sort]);
+
+  const totalPages = Math.ceil(visibleItems.length / limit) || 1;
+  const paginatedItems = useMemo(() => {
+    const start = (page - 1) * limit;
+    return visibleItems.slice(start, start + limit);
+  }, [visibleItems, page]);
 
   const itemsBySize = useMemo(() => {
     const map = {};
@@ -482,7 +495,7 @@ export default function ModernDressItemsTab({
               </thead>
 
               <tbody>
-                {visibleItems.map(item => {
+                {paginatedItems.map(item => {
                   const isEditing = editingId === item.id;
                   const rowStatus = statusOf(item);
                   const rowClass = [
@@ -661,6 +674,25 @@ export default function ModernDressItemsTab({
                 </div>
               );
             })}
+        </div>
+      )}
+
+      {/* Pagination Footer */}
+      {viewMode === 'rows' && visibleItems.length > 0 && (
+        <div className="page-footer-bar" style={{ position: 'sticky', bottom: 0, zIndex: 10, background: 'var(--card-bg)', borderTop: '1px solid var(--border-color)', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)' }}>
+          <div className="page-footer-summary">סה"כ פריטים מוצגים: {visibleItems.length}</div>
+          
+          {totalPages > 1 && (
+            <div className="page-footer-pager" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>&lt; הקודם</button>
+              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
+                עמוד 
+                <input type="number" min={1} max={totalPages} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> 
+                מתוך {totalPages}
+              </span>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הבא &gt;</button>
+            </div>
+          )}
         </div>
       )}
 

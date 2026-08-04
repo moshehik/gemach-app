@@ -2,7 +2,7 @@
 
 import React, { useState, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
 import {
-  ScanLine, PackageCheck, PackageOpen, Undo2, XCircle, X, Check, Scissors, AlertTriangle
+  ScanLine, PackageCheck, PackageOpen, Undo2, XCircle, X, Check, Scissors, AlertTriangle, CheckCircle2
 } from 'lucide-react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
@@ -17,6 +17,7 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
   const [rentingItemId, setRentingItemId] = useState(null); // פריט שנפתחה לו שורת הזנת ברקוד
   const [inlineBarcode, setInlineBarcode] = useState('');
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null, actionType: null });
+  const [savingConditionId, setSavingConditionId] = useState(null);
   const inlineInputRef = useRef(null);
 
   useEffect(() => {
@@ -232,6 +233,41 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
     }
   };
 
+  // סימון מצב הפריט אחרי שהוחזר: תקין / לא תקין — זהה ללוגיקה בטאב "פריטים" (ModernItemsManager),
+  // כדי ש"לא תקין" יעבור דרך report-issue ותתווסף גם ההערה האוטומטית בכרטיס הלקוח.
+  const handleSetReturnCondition = async (item, ok) => {
+    if (!item?.id || item.isNew || !item.isReturned) return;
+    const current = item.returnedOk !== false;
+    if (current === ok) return;
+
+    if (!ok) {
+      const promptFunc = window.customConfirm || window.confirm;
+      const confirmed = await promptFunc('לסמן את הפריט כ"הוחזר - לא תקין"? תתווסף הערה אוטומטית בכרטיס הלקוח.', 'דיווח על פריט פגום');
+      if (!confirmed) return;
+    }
+
+    setSavingConditionId(item.id);
+    const oldItems = [...items];
+    onItemsChange(items.map(i => i.id === item.id ? { ...i, returnedOk: ok } : i));
+    try {
+      const res = ok
+        ? await fetch('/api/rentals/toggle', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ itemId: item.id, action: 'setReturnCondition', returnedOk: true })
+          })
+        : await fetch('/api/returns/report-issue', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ orderItemId: item.id, issueType: 'returned-bad' })
+          });
+      if (!res.ok) throw new Error('API failed');
+    } catch (err) {
+      alert('שגיאה בעדכון מצב הפריט');
+      onItemsChange(oldItems);
+    } finally {
+      setSavingConditionId(null);
+    }
+  };
+
   const startInlineRent = (item) => {
     setRentingItemId(item.id);
     setInlineBarcode('');
@@ -374,10 +410,25 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
                   )}
 
                   {isReturned && (
-                    <button className="moc-btn moc-btn-danger-soft moc-btn-sm" title="ביטול החזרה"
-                      onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' })}>
-                      <Undo2 size={14} /> ביטול החזרה
-                    </button>
+                    <>
+                      <div className="moc-return-toggle compact" title="מצב הפריט בהחזרה">
+                        <button type="button" className={`good ${item.returnedOk !== false ? 'active' : ''}`}
+                          disabled={savingConditionId === item.id}
+                          onClick={() => handleSetReturnCondition(item, true)}>
+                          <CheckCircle2 size={13} /> תקין
+                        </button>
+                        <div className="moc-rt-sep" />
+                        <button type="button" className={`bad ${item.returnedOk === false ? 'active' : ''}`}
+                          disabled={savingConditionId === item.id}
+                          onClick={() => handleSetReturnCondition(item, false)}>
+                          <AlertTriangle size={13} /> לא תקין
+                        </button>
+                      </div>
+                      <button className="moc-btn moc-btn-danger-soft moc-btn-sm" title="ביטול החזרה"
+                        onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' })}>
+                        <Undo2 size={14} /> ביטול החזרה
+                      </button>
+                    </>
                   )}
                 </div>
               </div>
