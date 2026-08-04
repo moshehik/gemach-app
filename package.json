@@ -1,6 +1,6 @@
 {
   "name": "gemach-app",
-  "version": "0.1.59",
+  "version": "0.1.60",
   "lastUpdated": "2026-07-27",
   "private": true,
   "scripts": {
@@ -14,6 +14,7 @@
     "@hebcal/core": "^6.6.0",
     "@prisma/client": "^5.22.0",
     "hebcal": "^2.3.2",
+    "html2pdf.js": "^0.14.0",
     "lucide-react": "^1.23.0",
     "next": "16.2.10",
     "pg": "^8.22.0",

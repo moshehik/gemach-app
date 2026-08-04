@@ -15,6 +15,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
   const [savingItemIndex, setSavingItemIndex] = useState(null);
   const [settings, setSettings] = useState({});
   const [mounted, setMounted] = useState(false);
+  const listEndRef = React.useRef(null);
 
   const [isExpanded, setIsExpanded] = useState(true);
   const activeItemsCount = items ? items.filter(i => !i.isDeleted).length : 0;
@@ -186,6 +187,12 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       createdAt: new Date().toISOString()
     };
     onItemsChange([...items, newItem]);
+
+    setTimeout(() => {
+      if (listEndRef.current) {
+        listEndRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    }, 100);
   };
 
   const showItemDetails = async (item) => {
@@ -569,6 +576,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
               })}
             </tbody>
           </table>
+          <div ref={listEndRef} />
         </div>
       ) : (
         <div style={{ textAlign: 'center', color: '#64748b', padding: '3rem 0', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>

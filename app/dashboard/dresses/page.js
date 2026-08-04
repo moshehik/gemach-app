@@ -925,7 +925,9 @@ export default function DressesManagement() {
                       <div style={{ display: 'flex', gap: '0.5rem' }}>
                         <input data-element-name="שדה_page_58" type="number" value={editingDress.barcodePrefix || ''} onChange={e => setEditingDress({...editingDress, barcodePrefix: e.target.value})} className="filter-select" style={{ flex: 1 }} required={!useModelNames} disabled={!isNewModel} />
                         {isNewModel && (
-                           <button data-element-name="כפתור_page_59" type="button" onClick={handleAutoCode} className="btn btn-outline" style={{ whiteSpace: 'nowrap', padding: '0.5rem', fontSize: '0.9rem' }}>בחר קוד אוטומטי</button>
+                           <button data-element-name="כפתור_page_59" type="button" onClick={handleAutoCode} style={{ background: 'none', border: 'none', color: 'var(--primary-color)', cursor: 'pointer', whiteSpace: 'nowrap', padding: '0.5rem', fontSize: '0.9rem', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: 'none' }}>
+                             <RefreshCw size={14} /> בחר קוד אוטומטי
+                           </button>
                         )}
                       </div>
                     </div>

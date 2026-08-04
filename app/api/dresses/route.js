@@ -124,7 +124,6 @@ export async function GET(request) {
             select: {
               id: true,
               sizeText: true,
-              size: true,
               quantity: true,
               location: true,
               inRepair: true,
@@ -132,7 +131,6 @@ export async function GET(request) {
               isDeleted: true,
               serialNumber: true,
               dressBarcode: true,
-              notes: true,
               _count: { select: { orderItems: true } }
             }
           }

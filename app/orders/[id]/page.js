@@ -546,12 +546,48 @@ export default function OrderDetailsPage({ params }) {
       return;
     }
     
-    setSaveMessage('שולח מייל...');
+    setSaveMessage('מייצר קובץ PDF...');
     try {
+      // Step 1: Fetch HTML from server
+      const htmlRes = await fetch(`/api/orders/${order.orderId}/email`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: targetEmail, type: type, returnHtmlOnly: true })
+      });
+      const htmlData = await htmlRes.json();
+      
+      if (!htmlData.success || !htmlData.html) {
+        throw new Error(htmlData.error || 'שגיאה ביצירת נתוני המייל');
+      }
+
+      // Step 2: Convert HTML to PDF using html2pdf
+      const html2pdf = (await import('html2pdf.js')).default;
+      const element = document.createElement('div');
+      element.innerHTML = htmlData.html;
+      // We need to append it briefly to body for fonts to render, but hidden
+      element.style.position = 'absolute';
+      element.style.top = '-9999px';
+      document.body.appendChild(element);
+
+      const pdfBase64DataUri = await html2pdf().from(element).set({
+        margin: 10,
+        filename: 'order.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true },
+        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+      }).outputPdf('datauristring');
+      
+      document.body.removeChild(element);
+      
+      // Extract just the base64 part
+      const pdfBase64 = pdfBase64DataUri.split(',')[1];
+
+      setSaveMessage('שולח מייל...');
+      // Step 3: Send PDF to server
       const res = await fetch(`/api/orders/${order.orderId}/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail, type: type })
+        body: JSON.stringify({ email: targetEmail, type: type, pdfBase64 })
       });
       const data = await res.json();
       if (data.success) {
@@ -560,7 +596,8 @@ export default function OrderDetailsPage({ params }) {
         setSaveMessage('שגיאה: ' + (data.error || 'השליחה נכשלה'));
       }
     } catch (err) {
-      setSaveMessage('שגיאה בשליחת המייל');
+      console.error(err);
+      setSaveMessage('שגיאה ביצירת ה-PDF או בשליחת המייל');
     }
     setTimeout(() => setSaveMessage(''), 3000);
   };

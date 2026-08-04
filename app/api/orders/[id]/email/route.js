@@ -188,13 +188,19 @@ export async function POST(request, { params }) {
       </div>
     `;
 
+    if (body.returnHtmlOnly) {
+      return NextResponse.json({ success: true, html: htmlBody });
+    }
+
+    const { pdfBase64 } = body;
+
     const googlePayload = {
       to: email,
       cc: '',
       subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
-      body: htmlBody,
-      fileName: 'order.txt',
-      fileContent: Buffer.from('Email body contains the order details').toString('base64')
+      body: pdfBase64 ? 'מצורף כרטיס הזמנה/השכרה.' : htmlBody,
+      fileName: pdfBase64 ? `order_${order.orderId}.pdf` : 'order.txt',
+      fileContent: pdfBase64 || Buffer.from('Email body contains the order details').toString('base64')
     };
 
     const scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
