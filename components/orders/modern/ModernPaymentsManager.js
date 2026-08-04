@@ -96,6 +96,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState(null);
   const [selectedObligationDetails, setSelectedObligationDetails] = useState(null);
   const [mounted, setMounted] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
 
@@ -243,6 +244,33 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       alert(err.message || 'שגיאה באישור הזיכוי');
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  /** מחשב מחדש את חיובי ההזמנה הזו בלבד (משתמש באותה לוגיקה כמו רשימת חישוב מחדש
+   * באדמין - /api/admin/recalculations - רק לפריט בודד, ישירות מטאב התשלומים). */
+  const handleRecalculate = async () => {
+    if (!(await window.customConfirm('לחשב מחדש את כל חיובי ההזמנה הזו לפי הכללים העדכניים? פעולה זו עשויה לשנות סכומים קיימים.'))) return;
+    setIsRecalculating(true);
+    try {
+      const res = await fetch('/api/admin/recalculations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: [orderId] })
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'שגיאה בחישוב מחדש');
+      if (data.errors?.length) throw new Error(data.errors[0].error || 'שגיאה בחישוב מחדש');
+
+      if (onOrderUpdated) {
+        const orderRes = await fetch(`/api/orders/${orderId}`);
+        if (orderRes.ok) onOrderUpdated(await orderRes.json());
+      }
+      alert('החישוב עודכן בהצלחה.');
+    } catch (err) {
+      alert(err.message || 'שגיאה בחישוב מחדש');
+    } finally {
+      setIsRecalculating(false);
     }
   };
 
@@ -457,7 +485,21 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     <>
       {/* אריחי סיכום */}
       <div className="moc-pay-summary">
-        <div className="moc-pay-tile total"><div className="moc-pt-lbl">סה"כ לתשלום</div><div className="moc-pt-amt">₪{(totalRequired || 0).toLocaleString('he-IL')}</div></div>
+        <div className="moc-pay-tile total">
+          <div className="moc-pt-lbl-row">
+            <span className="moc-pt-lbl">סה"כ לתשלום</span>
+            <button
+              type="button"
+              className="moc-recalc-btn"
+              onClick={handleRecalculate}
+              disabled={isRecalculating}
+              title="חשב מחדש את חיובי ההזמנה לפי הכללים העדכניים"
+            >
+              <RefreshCcw size={14} className={isRecalculating ? 'moc-recalc-spin' : ''} />
+            </button>
+          </div>
+          <div className="moc-pt-amt">₪{(totalRequired || 0).toLocaleString('he-IL')}</div>
+        </div>
         <div className="moc-pay-tile paid"><div className="moc-pt-lbl">שולם עד כה</div><div className="moc-pt-amt">₪{(totalPaid || 0).toLocaleString('he-IL')}</div></div>
         {balance >= 0 ? (
           <div className="moc-pay-tile debt"><div className="moc-pt-lbl">יתרת חוב</div><div className="moc-pt-amt">₪{balance.toLocaleString('he-IL')}</div></div>

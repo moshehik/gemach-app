@@ -396,6 +396,16 @@ table.moc-data-table { width: 100%; border-collapse: collapse; }
 .moc-pay-tile { flex: 1; min-width: 180px; padding: 16px 18px; border-radius: 12px; }
 .moc-pay-tile .moc-pt-lbl { font-size: 0.85rem; opacity: 0.85; }
 .moc-pay-tile .moc-pt-amt { font-size: 1.6rem; font-weight: 800; margin-top: 4px; }
+.moc-pt-lbl-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.moc-recalc-btn {
+  display: flex; align-items: center; justify-content: center;
+  width: 24px; height: 24px; padding: 0; border-radius: 6px; border: none;
+  background: transparent; color: inherit; opacity: 0.6; cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+}
+.moc-recalc-btn:hover:not(:disabled) { background: rgba(0,0,0,0.08); opacity: 1; }
+.moc-recalc-btn:disabled { cursor: not-allowed; opacity: 0.4; }
+.moc-recalc-spin { animation: spin 0.8s linear infinite; }
 .moc-pay-tile.total { background: var(--moc-neutral-bg); color: var(--moc-text-main); }
 .moc-pay-tile.paid { background: var(--moc-success-bg); color: #16a34a; }
 .moc-pay-tile.debt { background: var(--moc-danger-bg); color: var(--moc-danger-text); }
