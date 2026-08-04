@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../../../lib/prisma';
 import { recalculateOrderObligations } from '../../../../../../lib/pricingEngine';
 import { getAvailableInventory } from '../../../../../../lib/inventory';
+import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES } from '../../../../../../lib/orderItemEditWindow';
 
 // Rules the caller can actually do something about (missing dates, nothing free in stock).
 // Everything else is a fault on our side: reporting those as 400 too made a server crash
@@ -103,9 +104,20 @@ export async function PUT(request, { params }) {
         alterationDone: itemData.alterationDone || false
       };
 
+      const formatVal = (val) => val === undefined || val === null ? '' : String(val);
+
+      // עריכה מלאה (דגם/מידה/תיקונים המשפיעים על הסכומים) מותרת רק בתוך 15 דקות מהעדכון
+      // האחרון של הפריט. סימון "תיקון בוצע" ופירוט התיקון נשארים פתוחים תמיד — לא כפופים לחלון.
+      if (!isWithinItemEditWindow(currentItem)) {
+        const lockedFields = ['dressItemId', 'sizeText', 'neckAlteration', 'sleeveAlteration', 'lengthAlteration'];
+        const lockedFieldChanged = lockedFields.some(field => formatVal(currentItem[field]) !== formatVal(updateData[field]));
+        if (lockedFieldChanged) {
+          throw ruleError(`חלון העריכה של הפריט (${ITEM_EDIT_WINDOW_MINUTES} דקות מהעדכון האחרון) נסגר. ניתן לערוך כעת רק את תיאור התיקון.`);
+        }
+      }
+
       const changes = {};
       const fieldsToCheck = ['dressItemId', 'sizeText', 'neckAlteration', 'sleeveAlteration', 'lengthAlteration', 'alterationDetails', 'alterationDone'];
-      const formatVal = (val) => val === undefined || val === null ? '' : String(val);
 
       fieldsToCheck.forEach(field => {
          const oldVal = currentItem[field];

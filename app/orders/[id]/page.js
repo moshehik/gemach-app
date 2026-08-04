@@ -130,7 +130,7 @@ export default function OrderDetailsPage({ params }) {
   const [emailTypePending, setEmailTypePending] = useState(null);
   
   // Tab State
-  const [activeTab, setActiveTab] = useState('details'); // details, items, rentals, payments, history
+  const [activeTab, setActiveTab] = useState('items'); // details, items, rentals, payments, history
   const [debtApproved, setDebtApproved] = useState(false); // Track manager approval to skip exit warning
   const itemsManagerRef = useRef(null); // מאפשר ל"סריקה מהירה" בסיידבר להפעיל השכרה/החזרה בטאב הפריטים
   const paymentsManagerRef = useRef(null); // מאפשר לאייקון החוב בטופ-בר לפתוח את חלון נדרים פלוס
@@ -707,28 +707,11 @@ export default function OrderDetailsPage({ params }) {
     
     setSaveMessage('מייצר קובץ PDF...');
     try {
-      // Step 1: Fetch HTML from server
-      const htmlRes = await fetch(`/api/orders/${order.orderId}/email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail, type: type, returnHtmlOnly: true })
-      });
-      const htmlData = await htmlRes.json();
-      
-      if (!htmlData.success || !htmlData.html) {
-        throw new Error(htmlData.error || 'שגיאה ביצירת נתוני המייל');
-      }
-
-      // Step 2: Convert HTML to PDF
-      const { htmlToPdfBase64 } = await import('@/app/lib/htmlToPdf');
-      const pdfBase64 = await htmlToPdfBase64(htmlData.html);
-
-      setSaveMessage('שולח מייל...');
-      // Step 3: Send PDF to server
+      setSaveMessage('שולח מייל (יוצר PDF בענן)...');
       const res = await fetch(`/api/orders/${order.orderId}/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail, type: type, pdfBase64 })
+        body: JSON.stringify({ email: targetEmail, type: type })
       });
       const data = await res.json();
       if (data.success) {
@@ -738,7 +721,7 @@ export default function OrderDetailsPage({ params }) {
       }
     } catch (err) {
       console.error(err);
-      setSaveMessage('שגיאה ביצירת ה-PDF או בשליחת המייל');
+      setSaveMessage('שגיאה בשליחת המייל');
     }
     setTimeout(() => setSaveMessage(''), 3000);
   };

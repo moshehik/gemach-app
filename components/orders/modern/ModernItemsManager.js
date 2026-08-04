@@ -11,6 +11,7 @@ import OrderSizeSelector from '../OrderSizeSelector';
 import ItemCapacityModal from '../ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../../HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { isWithinItemEditWindow } from '../../../lib/orderItemEditWindow';
 
 /**
  * טאב "פריטים" בעיצוב המודרני — פורט מלא של OrderItemsManager, כולל ההשכרות:
@@ -37,6 +38,33 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
   // כל שורת היסטוריה מתחילה מכווצת — לחיצה על השורה מרחיבה את פירוט השינויים שלה בלבד
   const toggleHistoryExpand = (idx) => setExpandedHistory(prev => ({ ...prev, [idx]: !prev[idx] }));
+
+  // עריכה מלאה של פריט (דגם/מידה/תיקונים, כולל השפעה על הסכומים) מותרת רק בתוך 15 דקות
+  // מהעדכון האחרון שלו, או כל עוד הכרטיס נשאר פתוח באותו ביקור — לפי המאוחר מביניהם.
+  const [sessionEditableIds, setSessionEditableIds] = useState(() => {
+    const s = new Set();
+    (items || []).forEach(it => { if (it?.id && isWithinItemEditWindow(it)) s.add(it.id); });
+    return s;
+  });
+  useEffect(() => {
+    setSessionEditableIds(prev => {
+      let changed = false;
+      const next = new Set(prev);
+      (items || []).forEach(it => {
+        if (it?.id && !next.has(it.id) && isWithinItemEditWindow(it)) {
+          next.add(it.id);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [items]);
+  const canFullyEditItem = (item) => {
+    if (!item) return false;
+    if (item.isTaken && !item.isReturned) return false;
+    if (item.isNew || !item.id) return true;
+    return sessionEditableIds.has(item.id);
+  };
 
   useEffect(() => {
     setMounted(true);
@@ -520,7 +548,8 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                 // פריטים ישנים שהוגרו מ-Access בלי DressItem מקושר (dressModelId ריק) אין להם
                 // מלאי מזוהה לבחור ממנו — עבורם דגם/מידה נשארים לקריאה בלבד גם במצב עריכה,
                 // ורק פרטי התיקון ניתנים לעריכה.
-                const canEditModelSize = item.isNew || (item.isEditing && !!item.dressModelId);
+                const fullyEditableNow = canFullyEditItem(item);
+                const canEditModelSize = item.isNew || (item.isEditing && !!item.dressModelId && fullyEditableNow);
                 const code = itemCode(item);
 
                 return (
@@ -559,22 +588,30 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                     <td className="moc-col-alter">
                       {isEditingMode && enableAlterations ? (
                         <div className="moc-inline-edit moc-edit-box">
+                          {!item.isNew && !fullyEditableNow && (
+                            <div className="moc-hint" style={{ flexBasis: '100%', fontSize: '0.78rem' }}>
+                              חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך כעת רק את פירוט התיקון
+                            </div>
+                          )}
                           <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                            <label className="moc-check-label">
+                            <label className="moc-check-label" style={{ opacity: fullyEditableNow ? 1 : 0.6 }}>
                               <input type="checkbox"
                                 checked={item.neckAlteration === 1 || item.neckAlteration === true}
+                                disabled={!fullyEditableNow}
                                 onChange={(e) => handleItemChange(originalIndex, 'neckAlteration', e.target.checked ? 1 : 0)} />
                               צוואר
                             </label>
-                            <label className="moc-check-label">
+                            <label className="moc-check-label" style={{ opacity: fullyEditableNow ? 1 : 0.6 }}>
                               <input type="checkbox"
                                 checked={item.sleeveAlteration === 1 || item.sleeveAlteration === true}
+                                disabled={!fullyEditableNow}
                                 onChange={(e) => handleItemChange(originalIndex, 'sleeveAlteration', e.target.checked ? 1 : 0)} />
                               שרוול
                             </label>
-                            <label className="moc-check-label" style={{ gap: '4px' }}>
+                            <label className="moc-check-label" style={{ gap: '4px', opacity: fullyEditableNow ? 1 : 0.6 }}>
                               אורך (ס"מ)
                               <input type="number" value={item.lengthAlteration || ''}
+                                disabled={!fullyEditableNow}
                                 onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
                                 style={{ width: '64px', padding: '4px 6px' }} placeholder="-" />
                             </label>
@@ -618,7 +655,8 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                         ) : isDeletedRow ? null : (
                           <>
                             {!item.isTaken && (
-                              <button className="moc-btn moc-btn-outline moc-btn-sm" title="ערוך פרטי פריט"
+                              <button className="moc-btn moc-btn-outline moc-btn-sm"
+                                title={canFullyEditItem(item) ? 'ערוך פרטי פריט' : 'חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך רק את פירוט התיקון'}
                                 onClick={(e) => { e.stopPropagation(); handleEditItem(originalIndex); }}>
                                 <Edit2 size={13} /> עריכה
                               </button>

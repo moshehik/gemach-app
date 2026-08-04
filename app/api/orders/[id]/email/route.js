@@ -84,66 +84,82 @@ export async function POST(request, { params }) {
       <div dir="rtl" style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8f9fa; padding: 20px;">
         <div style="background: white; max-width: 800px; margin: 0 auto; padding: 40px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05);">
           
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; border-bottom: 2px solid #e9ecef; padding-bottom: 20px;">
-            <div>
-              <h1 style="margin: 0; font-size: 28px; color: #2c3e50;">גמ"ח שמלות</h1>
-              <h2 style="margin: 5px 0 0 0; font-size: 16px; color: #6c757d; font-weight: normal;">${printType === 'rental' ? 'הערות להשכרה' : 'דוח השכרות פירוט'}</h2>
-            </div>
-            <div style="background: #e3f2fd; color: #1976d2; padding: 8px 20px; border-radius: 30px; font-size: 20px; font-weight: bold; text-align: left; float: left; margin-top: -50px;">
-              הזמנה #${order.orderId}
-            </div>
-          </div>
+          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 30px; border-bottom: 2px solid #e9ecef; padding-bottom: 20px;">
+            <tr>
+              <td valign="top">
+                <h1 style="margin: 0; font-size: 28px; color: #2c3e50;">גמ"ח שמלות</h1>
+                <h2 style="margin: 5px 0 0 0; font-size: 16px; color: #6c757d; font-weight: normal;">${printType === 'rental' ? 'הערות להשכרה' : 'דוח השכרות פירוט'}</h2>
+              </td>
+              <td valign="top" style="text-align: left;">
+                <div style="display: inline-block; background: #e3f2fd; color: #1976d2; padding: 8px 20px; border-radius: 30px; font-size: 20px; font-weight: bold;">
+                  הזמנה #${order.orderId}
+                </div>
+              </td>
+            </tr>
+          </table>
 
           ${printType === 'rental' && printSettings.box1 ? `<div style="border: 1px solid #495057; padding: 15px; margin-bottom: 15px; white-space: pre-wrap; text-align: center; font-size: 15px; font-weight: 500; color: #212529;">${printSettings.box1}</div>` : ''}
           ${printType === 'rental' && printSettings.box2 ? `<div style="border: 1px solid #495057; padding: 10px; margin-bottom: 15px; white-space: pre-wrap; text-align: center; font-size: 15px; font-weight: bold; color: #212529; background-color: #f8f9fa;">${printSettings.box2}</div>` : ''}
           ${printType === 'rental' && printSettings.footer ? `
-            <div style="text-align: center; margin-top: 20px; margin-bottom: 20px;">
-              <h3 style="font-size: 22px; font-weight: bold; margin: 0 0 10px 0;">${printSettings.footer}</h3>
-              <div style="font-size: 18px; font-weight: bold; display: flex; justify-content: center; align-items: center;">
-                <span>על החתום:</span>
-                <span style="display: inline-block; width: 250px; border-bottom: 2px solid black; margin: 0 10px;"></span>
-              </div>
-              <div style="margin-top: 15px; font-size: 16px; font-weight: bold;">
-                נא להחזיר טופס זה חתום בעת החזרת השמלות
-              </div>
-            </div>
+            <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 20px; margin-bottom: 20px;">
+              <tr>
+                <td align="center">
+                  <h3 style="font-size: 22px; font-weight: bold; margin: 0 0 10px 0;">${printSettings.footer}</h3>
+                  <div style="font-size: 18px; font-weight: bold;">
+                    <span>על החתום:</span>
+                    <span style="display: inline-block; width: 250px; border-bottom: 2px solid black; margin: 0 10px;">&nbsp;</span>
+                  </div>
+                  <div style="margin-top: 15px; font-size: 16px; font-weight: bold;">
+                    נא להחזיר טופס זה חתום בעת החזרת השמלות
+                  </div>
+                </td>
+              </tr>
+            </table>
           ` : ''}
 
-          <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; padding: 24px; margin-bottom: 35px; display: flex; flex-wrap: wrap; gap: 20px;">
-            <div style="flex: 1 1 45%; display: flex; flex-direction: column;">
-              <span style="font-size: 13px; color: #6c757d; margin-bottom: 4px; font-weight: bold;">שם לקוח</span>
-              <span style="font-size: 16px; color: #212529; font-weight: 500;">${order.customer?.firstName || ''} ${order.customer?.lastName || ''}</span>
-            </div>
-            <div style="flex: 1 1 45%; display: flex; flex-direction: column;">
-              <span style="font-size: 13px; color: #6c757d; margin-bottom: 4px; font-weight: bold;">תאריך אירוע עברי</span>
-              <span style="font-size: 16px; color: #212529; font-weight: 500;">${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : '-')}</span>
-            </div>
-            <div style="flex: 1 1 45%; display: flex; flex-direction: column;">
-              <span style="font-size: 13px; color: #6c757d; margin-bottom: 4px; font-weight: bold;">טלפון</span>
-              <span style="font-size: 16px; color: #212529; font-weight: 500; direction: ltr; text-align: right;">${order.customer?.phone1 || order.customer?.phone || '-'}</span>
-            </div>
-            <div style="flex: 1 1 45%; display: flex; flex-direction: column;">
-              <span style="font-size: 13px; color: #6c757d; margin-bottom: 4px; font-weight: bold;">תאריך אירוע לועזי</span>
-              <span style="font-size: 16px; color: #212529; font-weight: 500;">${order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : '-'}</span>
-            </div>
-            <div style="flex: 1 1 45%; display: flex; flex-direction: column;">
-              <span style="font-size: 13px; color: #6c757d; margin-bottom: 4px; font-weight: bold;">כתובת מגורים</span>
-              <span style="font-size: 16px; color: #212529; font-weight: 500;">${order.customer?.city ? `${order.customer.city}${order.customer?.address ? `, ${order.customer.address}` : ''}` : '-'}</span>
-            </div>
-            <div style="flex: 1 1 45%; display: flex; flex-direction: column;">
-              <span style="font-size: 13px; color: #6c757d; margin-bottom: 4px; font-weight: bold;">סטטוס השכרה</span>
-              <span><span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; ${getStatusStyle(getOrderStatus(order))}">${getOrderStatus(order)}</span></span>
-            </div>
+          <table width="100%" cellpadding="10" cellspacing="0" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; margin-bottom: 35px;">
+            <tr>
+              <td width="50%" valign="top">
+                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">שם לקוח</span>
+                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500;">${order.customer?.firstName || ''} ${order.customer?.lastName || ''}</span>
+              </td>
+              <td width="50%" valign="top">
+                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">תאריך אירוע עברי</span>
+                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500;">${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : '-')}</span>
+              </td>
+            </tr>
+            <tr>
+              <td width="50%" valign="top">
+                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">טלפון</span>
+                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500; direction: ltr; text-align: right;">${order.customer?.phone1 || order.customer?.phone || '-'}</span>
+              </td>
+              <td width="50%" valign="top">
+                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">תאריך אירוע לועזי</span>
+                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500;">${order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : '-'}</span>
+              </td>
+            </tr>
+            <tr>
+              <td width="50%" valign="top">
+                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">כתובת מגורים</span>
+                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500;">${order.customer?.city ? `${order.customer.city}${order.customer?.address ? `, ${order.customer.address}` : ''}` : '-'}</span>
+              </td>
+              <td width="50%" valign="top">
+                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">סטטוס השכרה</span>
+                <span style="display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 13px; font-weight: bold; ${getStatusStyle(getOrderStatus(order))}">${getOrderStatus(order)}</span>
+              </td>
+            </tr>
             ${printType === 'order' && order.notes ? `
-            <div style="flex: 1 1 100%; display: flex; flex-direction: column; margin-top: 10px;">
-              <span style="font-size: 13px; color: #6c757d; margin-bottom: 4px; font-weight: bold;">הערות הזמנה</span>
-              <span style="font-size: 16px; color: #212529; font-weight: 500;">${order.notes}</span>
-            </div>
+            <tr>
+              <td colspan="2" valign="top">
+                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">הערות הזמנה</span>
+                <span style="display: block; font-size: 16px; color: #212529; font-weight: 500;">${order.notes}</span>
+              </td>
+            </tr>
             ` : ''}
-          </div>
+          </table>
 
           <h3 style="font-size: 20px; color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #e9ecef; padding-bottom: 8px;">פירוט פריטים להשכרה</h3>
-          <table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e9ecef; border-radius: 8px; overflow: hidden; margin-bottom: 30px;">
+          <table style="width: 100%; border-collapse: separate; border-spacing: 0; border: 1px solid #e9ecef; border-radius: 8px; margin-bottom: 30px;">
             <thead>
               <tr>
                 <th style="padding: 12px 16px; text-align: right; font-size: 14px; background-color: #f1f3f5; color: #495057; font-weight: bold; border-bottom: 2px solid #e9ecef;">דגם / תיאור</th>
@@ -163,22 +179,26 @@ export async function POST(request, { params }) {
           </table>
 
           <h3 style="font-size: 20px; color: #2c3e50; margin-bottom: 15px; border-bottom: 2px solid #e9ecef; padding-bottom: 8px;">פירוט תשלומים וחובות</h3>
-          <div style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; padding: 24px; margin-bottom: 20px; display: flex; flex-wrap: wrap; gap: 20px;">
-            <div style="flex: 1 1 45%; display: flex; flex-direction: column;">
-              <span style="font-size: 13px; color: #6c757d; margin-bottom: 4px; font-weight: bold;">סה"כ לחיוב</span>
-              <span style="font-size: 16px; color: #b91c1c; font-weight: bold;">₪${totalObligations}</span>
-            </div>
-            <div style="flex: 1 1 45%; display: flex; flex-direction: column;">
-              <span style="font-size: 13px; color: #6c757d; margin-bottom: 4px; font-weight: bold;">סה"כ שולם</span>
-              <span style="font-size: 16px; color: #166534; font-weight: bold;">₪${totalPayments}</span>
-            </div>
-            <div style="flex: 1 1 100%; display: flex; flex-direction: column; margin-top: 10px;">
-              <span style="font-size: 13px; color: #6c757d; margin-bottom: 4px; font-weight: bold;">יתרה לתשלום</span>
-              <span style="color: ${totalObligations - totalPayments > 0 ? '#b91c1c' : '#212529'}; font-weight: bold; font-size: 18px;">
-                ₪${Math.max(0, totalObligations - totalPayments)}
-              </span>
-            </div>
-          </div>
+          <table width="100%" cellpadding="10" cellspacing="0" style="background: #f8f9fa; border: 1px solid #e9ecef; border-radius: 12px; margin-bottom: 20px;">
+            <tr>
+              <td width="50%" valign="top">
+                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">סה"כ לחיוב</span>
+                <span style="display: block; font-size: 16px; color: #b91c1c; font-weight: bold;">₪${totalObligations}</span>
+              </td>
+              <td width="50%" valign="top">
+                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">סה"כ שולם</span>
+                <span style="display: block; font-size: 16px; color: #166534; font-weight: bold;">₪${totalPayments}</span>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2" valign="top">
+                <span style="display: block; font-size: 13px; color: #6c757d; font-weight: bold;">יתרה לתשלום</span>
+                <span style="display: block; color: ${totalObligations - totalPayments > 0 ? '#b91c1c' : '#212529'}; font-weight: bold; font-size: 18px;">
+                  ₪${Math.max(0, totalObligations - totalPayments)}
+                </span>
+              </td>
+            </tr>
+          </table>
 
           <div style="margin-top: 40px; text-align: center; font-size: 13px; color: #adb5bd; border-top: 1px solid #e9ecef; padding-top: 20px;">
             <p>הופק על ידי מערכת גמ"ח שמלות בתאריך: ${new Date().toLocaleString('he-IL')}</p>
@@ -194,13 +214,19 @@ export async function POST(request, { params }) {
 
     const { pdfBase64 } = body;
 
+    // Use the generic email script OR our new PDF generator action
     const googlePayload = {
+      action: "sendGemachOrderEmail", 
       to: email,
       cc: '',
       subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
+      htmlBody: htmlBody,
+      bodyText: `מצורף כרטיס הזמנה/השכרה עבור אירוע בתאריך ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : '')}.`,
+      fileName: `order_${order.orderId}.pdf`,
+      
+      // Keep old parameters for backwards compatibility just in case the old script is used
       body: pdfBase64 ? 'מצורף כרטיס הזמנה/השכרה.' : htmlBody,
-      fileName: pdfBase64 ? `order_${order.orderId}.pdf` : 'order.txt',
-      fileContent: pdfBase64 || Buffer.from('Email body contains the order details').toString('base64')
+      fileContent: pdfBase64 || ''
     };
 
     const scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
@@ -228,8 +254,8 @@ export async function POST(request, { params }) {
         to: email,
         cc: null,
         subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
-        body: 'HTML body sent',
-        fileName: null,
+        body: 'HTML body sent to App Script for PDF conversion',
+        fileName: `order_${order.orderId}.pdf`,
         status: isSuccess ? 'success' : 'error',
         errorMessage: isSuccess ? null : (result.message || 'Unknown error'),
         customerId: order.customerId,

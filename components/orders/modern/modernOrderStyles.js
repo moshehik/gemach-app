@@ -310,6 +310,17 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 }
 .moc-spinner.light { border-color: rgba(255,255,255,0.35); border-top-color: #fff; }
 .moc-spinner.lg { width: 34px; height: 34px; border-width: 3px; }
+
+/* תגית "ניתן לזכות פריט חדש" — נספרת לאחור על שורת דמי ביטול בזמן שהזיכוי עדיין בר-מימוש */
+.moc-credit-badge {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 5px;
+  padding: 3px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 700;
+  background: var(--moc-warning-bg); color: #92400e; border: 1px solid rgba(245,158,11,0.35);
+  width: fit-content;
+}
+.moc-credit-badge .moc-credit-time { direction: ltr; font-variant-numeric: tabular-nums; }
+.moc-credit-badge.urgent { background: var(--moc-danger-bg); color: var(--moc-danger-text); border-color: rgba(239,68,68,0.35); animation: mocCreditPulse 1s ease-in-out infinite; }
+@keyframes mocCreditPulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.55; } }
 table.moc-data-table { width: 100%; border-collapse: collapse; }
 .moc-data-table th, .moc-data-table td { padding: 12px 10px; text-align: right; border-bottom: 1px solid var(--moc-divider); font-size: 0.92rem; vertical-align: middle; }
 .moc-data-table th { color: var(--moc-text-muted); font-weight: 700; font-size: 0.82rem; background: #faf9f5; position: sticky; top: 0; z-index: 5; }

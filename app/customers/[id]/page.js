@@ -3,6 +3,8 @@
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import SendEmailModal from '@/components/SendEmailModal';
+import ModernSendEmailModal from '../../../components/customers/modern/ModernSendEmailModal';
+import { verifyPin } from '../../../components/orders/modern/mocAuth';
 import ModernCustomerCard from '../../../components/customers/modern/ModernCustomerCard';
 import ModernCustomerDetailsTab from '../../../components/customers/modern/ModernCustomerDetailsTab';
 import ModernCustomerOrdersTab from '../../../components/customers/modern/ModernCustomerOrdersTab';
@@ -17,11 +19,24 @@ export default function CustomerPage({ params }) {
   const router = useRouter();
   const { id } = use(params);
   const [customer, setCustomer] = useState(null);
+  const [originalCustomer, setOriginalCustomer] = useState(null);
   const [refunds, setRefunds] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('details');
   const [saving, setSaving] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
+  const [emailAuthResult, setEmailAuthResult] = useState(null);
+
+  const handleSendEmailClick = async () => {
+    if (!customer?.email) {
+      alert("ללקוח זה לא מעודכנת כתובת מייל. אנא עדכן ב'פרטים אישיים' ושמור תחילה.");
+      return;
+    }
+    const auth = await verifyPin('שליחת מייל דורשת אישור מנהל. אנא הזן סיסמה:', 'מנהל');
+    if (!auth) return;
+    setEmailAuthResult(auth);
+    setEmailModalOpen(true);
+  };
 
   const allPayments = customer?.orders
     ? [
@@ -47,6 +62,7 @@ export default function CustomerPage({ params }) {
           router.push('/customers');
         } else {
           setCustomer(customerData);
+          setOriginalCustomer(customerData);
           addHistory({
             type: 'customer',
             id: customerData.id,
@@ -108,6 +124,7 @@ export default function CustomerPage({ params }) {
       if (id === 'new' && data.id) {
         router.push(`/customers/${data.id}`);
       } else {
+        setOriginalCustomer(normalizedCustomer);
         alert('הפרטים נשמרו בהצלחה!');
       }
     } catch (e) {
@@ -116,6 +133,12 @@ export default function CustomerPage({ params }) {
       setSaving(false);
     }
   };
+
+  const handleCancelChanges = () => {
+    if (originalCustomer) setCustomer(originalCustomer);
+  };
+
+  const hasUnsavedChanges = originalCustomer && JSON.stringify(customer) !== JSON.stringify(originalCustomer);
 
   if (loading) return <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>;
   if (!customer) return null;
@@ -192,6 +215,11 @@ export default function CustomerPage({ params }) {
         activeTab={activeTab}
         onTabChange={setActiveTab}
         onExit={() => router.back()}
+        saving={saving}
+        onSave={handleSave}
+        hasUnsavedChanges={hasUnsavedChanges}
+        onCancelChanges={handleCancelChanges}
+        onSendEmail={handleSendEmailClick}
         tabContents={{
           details: (
             <ModernCustomerDetailsTab
@@ -201,14 +229,14 @@ export default function CustomerPage({ params }) {
               onSubmit={handleSave}
               saving={saving}
               onCopyEmail={() => navigator.clipboard.writeText(customer.email)}
-              onOpenEmailModal={() => setEmailModalOpen(true)}
+              onOpenEmailModal={handleSendEmailClick}
             />
           ),
           orders: (
             <ModernCustomerOrdersTab orders={customer.orders || []} />
           ),
           payments: (
-            <ModernCustomerPaymentsTab payments={allPayments} />
+            <ModernCustomerPaymentsTab payments={allPayments} customer={customer} />
           ),
           refunds: (
             <ModernCustomerRefundsTab
@@ -225,11 +253,14 @@ export default function CustomerPage({ params }) {
         }}
       />
 
-      <SendEmailModal
+      <ModernSendEmailModal
         isOpen={emailModalOpen}
-        onClose={() => setEmailModalOpen(false)}
-        defaultTo={customer.email}
-        customerId={id}
+        onClose={() => {
+          setEmailModalOpen(false);
+          setEmailAuthResult(null);
+        }}
+        customer={customer}
+        authResult={emailAuthResult}
       />
     </main>
   );

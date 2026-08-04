@@ -2,8 +2,40 @@
 
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import { Trash2, Info, RefreshCcw, CreditCard, Plus, X, Zap } from 'lucide-react';
+import { Trash2, Info, RefreshCcw, CreditCard, Plus, X, Zap, Clock } from 'lucide-react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+
+/**
+ * תגית נספרת לאחור על שורת "דמי ביטול" - מציגה עד מתי עדיין ניתן לנצל את הסכום
+ * כזיכוי אוטומטי על פריט חלופי שנוסף לאותה הזמנה (ר' CANCELLATION_CREDIT_MINUTES
+ * ולוגיקת הקרדיט ב-lib/pricingEngine.js). נעלמת מעצמה כשהזמן פג.
+ */
+function CancellationCreditBadge({ deadline }) {
+  const [now, setNow] = useState(Date.now());
+
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const remainingMs = deadline - now;
+  if (remainingMs <= 0) return null;
+
+  const totalSec = Math.floor(remainingMs / 1000);
+  const mm = String(Math.floor(totalSec / 60)).padStart(2, '0');
+  const ss = String(totalSec % 60).padStart(2, '0');
+  const urgent = remainingMs <= 60000;
+
+  return (
+    <span
+      className={`moc-credit-badge${urgent ? ' urgent' : ''}`}
+      title="ניתן לנצל סכום זה כזיכוי אוטומטי אם יתווסף פריט חלופי לאותה הזמנה, עד לתום הזמן שנקבע בהגדרות"
+    >
+      <Clock size={11} />
+      ניתן לזכות פריט חדש עוד <span className="moc-credit-time">{mm}:{ss}</span>
+    </span>
+  );
+}
 
 /**
  * טאב "תשלומים" בעיצוב המודרני — פורט מלא של OrderPaymentsManager:
@@ -354,6 +386,21 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   const pendingRefunds = refunds.filter(r => !r.isDeleted && !r.isExecuted);
   const balance = totalRequired - totalPaid;
 
+  // מועד הפקיעה של הזכאות לניצול "דמי ביטול" כזיכוי על פריט חלופי - null אם השורה
+  // אינה שורת דמי ביטול, כבר נוצל זיכוי בגינה, או שאין deletedAt לפריט שמקורו בו.
+  const getCancellationCreditDeadline = (obs) => {
+    if (!obs.orderItemId || !obs.description?.startsWith('דמי ביטול')) return null;
+    const alreadyRedeemed = activeObligations.some(
+      o => o.orderItemId === obs.orderItemId && o.description?.startsWith('זיכוי דמי ביטול')
+    );
+    if (alreadyRedeemed) return null;
+    const sourceItem = items.find(i => i.id === obs.orderItemId);
+    if (!sourceItem?.deletedAt) return null;
+    const minutes = parseFloat(settings.CANCELLATION_CREDIT_MINUTES);
+    if (isNaN(minutes)) return null;
+    return new Date(sourceItem.deletedAt).getTime() + minutes * 60000;
+  };
+
   return (
     <>
       {/* אריחי סיכום */}
@@ -387,9 +434,13 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                   // חיוב שלילי הוא זיכוי/ביטול — הסימן וכיוון ה-LTR נדרשים במפורש, אחרת אלגוריתם
                   // הכיווניות של הדפדפן מציג "₪-45" הפוך בתוך הקשר RTL
                   const isCredit = obs.amount < 0;
+                  const creditDeadline = getCancellationCreditDeadline(obs);
                   return (
                     <tr key={idx}>
-                      <td style={{ fontWeight: 600 }}>{descText}</td>
+                      <td style={{ fontWeight: 600 }}>
+                        <div>{descText}</div>
+                        {creditDeadline && <CancellationCreditBadge deadline={creditDeadline} />}
+                      </td>
                       <td className="moc-hint">{fmtDate(obs.createdAt)}</td>
                       <td style={{ fontWeight: 700, color: isCredit ? '#16a34a' : '#b91c1c', direction: 'ltr', textAlign: 'left' }}>
                         {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}

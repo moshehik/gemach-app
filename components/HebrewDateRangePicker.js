@@ -64,18 +64,29 @@ export default function HebrewDateRangePicker({
       
       if (parsedEnd) {
         const hdEnd = new HDate(parsedEnd);
-        setToPanel({
-          year: hdEnd.getFullYear(),
-          month: hdEnd.getMonth(),
-          day: hdEnd.getDate()
-        });
+        if (hdEnd.getFullYear() === hdStart.getFullYear() && hdEnd.getMonth() === hdStart.getMonth()) {
+          const daysInMonth = HDate.daysInMonth(hdStart.getMonth(), hdStart.getFullYear());
+          const hdNext = new HDate(1, hdStart.getMonth(), hdStart.getFullYear()).add(daysInMonth + 1, 'd');
+          setToPanel({
+            year: hdNext.getFullYear(),
+            month: hdNext.getMonth(),
+            day: 1
+          });
+        } else {
+          setToPanel({
+            year: hdEnd.getFullYear(),
+            month: hdEnd.getMonth(),
+            day: hdEnd.getDate()
+          });
+        }
       } else {
-        // Default to panel: start month + 1
-        const hdNext = new HDate(parsedStart).add(30, 'd');
+        // Default to panel: next month
+        const daysInMonth = HDate.daysInMonth(hdStart.getMonth(), hdStart.getFullYear());
+        const hdNext = new HDate(1, hdStart.getMonth(), hdStart.getFullYear()).add(daysInMonth + 1, 'd');
         setToPanel({
           year: hdNext.getFullYear(),
           month: hdNext.getMonth(),
-          day: hdNext.getDate()
+          day: 1
         });
       }
       
@@ -112,17 +123,15 @@ export default function HebrewDateRangePicker({
       const hd = new HDate(dayNumber, month, year);
       const isoStr = formatISO(hd);
       
-      if (panelType === 'from') {
+      if (!tempStart || (tempStart && tempEnd)) {
+        // Start a new selection
         setTempStart(isoStr);
-        // If start date is after end date, clear or adjust end date
-        if (tempEnd && new Date(isoStr) > new Date(tempEnd)) {
-          setTempEnd('');
-        }
+        setTempEnd('');
       } else {
-        // If end date is before start date, warn or set start date instead
-        if (tempStart && new Date(isoStr) < new Date(tempStart)) {
+        // tempStart is set, waiting for tempEnd
+        if (new Date(isoStr) < new Date(tempStart)) {
+          setTempEnd(tempStart);
           setTempStart(isoStr);
-          setTempEnd('');
         } else {
           setTempEnd(isoStr);
         }
@@ -298,9 +307,11 @@ export default function HebrewDateRangePicker({
 
     return (
       <div style={{ flex: 1, minWidth: '290px', padding: '10px' }}>
-        <h4 style={{ margin: '0 0 10px 0', textAlign: 'center', color: 'var(--primary-color, #a855f7)', fontWeight: 'bold' }}>
-          {title}
-        </h4>
+        {title && (
+          <h4 style={{ margin: '0 0 10px 0', textAlign: 'center', color: 'var(--primary-color, #a855f7)', fontWeight: 'bold' }}>
+            {title}
+          </h4>
+        )}
         
         {/* Navigation Month/Year */}
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center', gap: '4px' }}>
@@ -502,12 +513,12 @@ export default function HebrewDateRangePicker({
               justifyContent: 'space-between',
               marginBottom: '16px'
             }}>
-              {renderPanel('from', fromPanel, setFromPanel, 'מאיזה תאריך (התחלה)')}
+              {renderPanel('from', fromPanel, setFromPanel, '')}
               
               {/* Divider in desktop */}
               <div style={{ width: '1px', background: 'var(--border-main, #e2e8f0)', alignSelf: 'stretch' }} className="calendar-divider-y" />
               
-              {renderPanel('to', toPanel, setToPanel, 'עד איזה תאריך (סיום)')}
+              {renderPanel('to', toPanel, setToPanel, '')}
             </div>
 
             {/* Footer actions */}

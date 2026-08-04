@@ -4,7 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import {
   X, IdCard, ClipboardList, CreditCard, RefreshCcw, History,
-  User, Phone, Mail, MapPin, ArrowRight
+  User, Phone, Mail, MapPin, ArrowRight, Save, Undo2
 } from 'lucide-react';
 
 const TAB_META = {
@@ -20,7 +20,10 @@ const TAB_META = {
  * (סיידבר זהב עם טאבים, טופ-בר כותרת, ותוכן טאב אחד בכל רגע). כל הטאבים נשארים
  * mounted (display:none) כדי לשמור על סטייט פנימי של הטפסים/הטבלאות.
  */
-export default function ModernCustomerCard({ customer, activeTab, onTabChange, onExit, tabContents }) {
+export default function ModernCustomerCard({ 
+  customer, activeTab, onTabChange, onExit, tabContents,
+  saving, onSave, hasUnsavedChanges, onCancelChanges, onSendEmail 
+}) {
   const ordersCount = (customer.orders || []).length;
 
   const customerName = [customer.firstName, customer.lastName]
@@ -62,7 +65,7 @@ export default function ModernCustomerCard({ customer, activeTab, onTabChange, o
                   <X size={16} />
                 </button>
                 <div className="moc-order-id-group">
-                  <span className="moc-order-num">{customerName}</span>
+                  <span className="moc-order-num">לקוח #{customer.legacyId || customer.id}</span>
                   <span className="moc-v-divider" />
                   <span className="moc-badge" style={{ background: 'rgba(255,255,255,0.18)', color: '#fff' }}>
                     <ClipboardList size={13} /> {ordersCount} הזמנות
@@ -113,6 +116,40 @@ export default function ModernCustomerCard({ customer, activeTab, onTabChange, o
               </div>
 
               <div className="moc-topbar-actions">
+                {onSave && (
+                  <button
+                    className="moc-icon-btn-soft primary"
+                    title="שמור שינויים"
+                    onClick={(e) => onSave(e)}
+                    disabled={saving}
+                  >
+                    {saving ? <span className="moc-spinner" /> : <Save size={18} />}
+                  </button>
+                )}
+
+                {onCancelChanges && (
+                  <button
+                    className="moc-icon-btn-soft warn"
+                    title={hasUnsavedChanges ? 'ביטול שינויים שלא נשמרו' : 'אין שינויים לביטול'}
+                    onClick={onCancelChanges}
+                    disabled={!hasUnsavedChanges || saving}
+                  >
+                    <Undo2 size={18} />
+                  </button>
+                )}
+
+                <div className="moc-topbar-sep" />
+
+                {onSendEmail && (
+                  <button 
+                    className="moc-icon-btn-soft purple" 
+                    title="שלח מייל ללקוח" 
+                    onClick={onSendEmail}
+                  >
+                    <Mail size={18} />
+                  </button>
+                )}
+
                 <button className="moc-icon-btn-soft exit" title="חזור" onClick={onExit}>
                   <ArrowRight size={16} /> חזור
                 </button>

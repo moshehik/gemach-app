@@ -7,6 +7,7 @@ import { Info, Trash2, RotateCcw, CalendarSearch, ChevronDown, ChevronUp, Edit2,
 import ItemCapacityModal from './ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
 import { createPortal } from 'react-dom';
+import { isWithinItemEditWindow } from '../../lib/orderItemEditWindow';
 
 export default function OrderItemsManager({ orderId, order, items, onItemsChange, onOrderUpdated, inventoryCache, isWorkspaceMode, totalRequired, totalPaid }) {
   const [showDeleted, setShowDeleted] = useState(false);
@@ -25,6 +26,35 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
   const [isExpanded, setIsExpanded] = useState(true);
   const activeItemsCount = items ? items.filter(i => !i.isDeleted).length : 0;
   const summaryText = `${activeItemsCount} פריטים פעילים בהזמנה`;
+
+  // עריכה מלאה של פריט (דגם/מידה/תיקונים, כולל השפעה על הסכומים) מותרת רק בתוך 15 דקות
+  // מהעדכון האחרון שלו, או כל עוד הכרטיס נשאר פתוח באותו ביקור — לפי המאוחר מביניהם.
+  // ה-state שומר "חנינה" לכל פריט שהיה בתוך החלון בזמן כלשהו במהלך הביקור הנוכחי בכרטיס,
+  // כדי שלא ננעל שדות באמצע עבודה רק כי חלף זמן בעוד הכרטיס עדיין פתוח על המסך.
+  const [sessionEditableIds, setSessionEditableIds] = useState(() => {
+    const s = new Set();
+    (items || []).forEach(it => { if (it?.id && isWithinItemEditWindow(it)) s.add(it.id); });
+    return s;
+  });
+  React.useEffect(() => {
+    setSessionEditableIds(prev => {
+      let changed = false;
+      const next = new Set(prev);
+      (items || []).forEach(it => {
+        if (it?.id && !next.has(it.id) && isWithinItemEditWindow(it)) {
+          next.add(it.id);
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [items]);
+  const canFullyEditItem = (item) => {
+    if (!item) return false;
+    if (item.isTaken && !item.isReturned) return false;
+    if (item.isNew || !item.id) return true;
+    return sessionEditableIds.has(item.id);
+  };
 
   React.useEffect(() => {
     setMounted(true);
@@ -503,30 +533,33 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                     {enableAlterations && (
                       <>
                         <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                          <input data-agy-id="orderitemsmanager_input_4" 
-                            type="checkbox" 
-                            checked={item.neckAlteration === 1 || item.neckAlteration === true} 
+                          <input data-agy-id="orderitemsmanager_input_4"
+                            type="checkbox"
+                            checked={item.neckAlteration === 1 || item.neckAlteration === true}
                             onChange={(e) => handleItemChange(originalIndex, 'neckAlteration', e.target.checked ? 1 : 0)}
-                            disabled={!item.isNew && !item.isEditing}
-                            style={{ transform: 'scale(1.4)', cursor: (!item.isNew && !item.isEditing) ? 'not-allowed' : 'pointer', opacity: (!item.isNew && !item.isEditing) ? 0.6 : 1, accentColor: '#3b82f6' }}
+                            disabled={!item.isNew && (!item.isEditing || !canFullyEditItem(item))}
+                            title={(!item.isNew && item.isEditing && !canFullyEditItem(item)) ? 'חלון העריכה המלא (15 דק׳) נסגר' : undefined}
+                            style={{ transform: 'scale(1.4)', cursor: (!item.isNew && (!item.isEditing || !canFullyEditItem(item))) ? 'not-allowed' : 'pointer', opacity: (!item.isNew && (!item.isEditing || !canFullyEditItem(item))) ? 0.6 : 1, accentColor: '#3b82f6' }}
                           />
                         </td>
                         <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                          <input data-agy-id="orderitemsmanager_input_5" 
-                            type="checkbox" 
-                            checked={item.sleeveAlteration === 1 || item.sleeveAlteration === true} 
+                          <input data-agy-id="orderitemsmanager_input_5"
+                            type="checkbox"
+                            checked={item.sleeveAlteration === 1 || item.sleeveAlteration === true}
                             onChange={(e) => handleItemChange(originalIndex, 'sleeveAlteration', e.target.checked ? 1 : 0)}
-                            disabled={!item.isNew && !item.isEditing}
-                            style={{ transform: 'scale(1.4)', cursor: (!item.isNew && !item.isEditing) ? 'not-allowed' : 'pointer', opacity: (!item.isNew && !item.isEditing) ? 0.6 : 1, accentColor: '#3b82f6' }}
+                            disabled={!item.isNew && (!item.isEditing || !canFullyEditItem(item))}
+                            title={(!item.isNew && item.isEditing && !canFullyEditItem(item)) ? 'חלון העריכה המלא (15 דק׳) נסגר' : undefined}
+                            style={{ transform: 'scale(1.4)', cursor: (!item.isNew && (!item.isEditing || !canFullyEditItem(item))) ? 'not-allowed' : 'pointer', opacity: (!item.isNew && (!item.isEditing || !canFullyEditItem(item))) ? 0.6 : 1, accentColor: '#3b82f6' }}
                           />
                         </td>
                         <td style={{ padding: '1rem 0.5rem', textAlign: 'center' }}>
-                          <input data-agy-id="orderitemsmanager_input_6" 
-                            type="number" 
-                            value={item.lengthAlteration || ''} 
+                          <input data-agy-id="orderitemsmanager_input_6"
+                            type="number"
+                            value={item.lengthAlteration || ''}
                             onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
-                            disabled={!item.isNew && !item.isEditing}
-                            style={{ ...inputStyle, width: '60px', padding: '0.5rem', backgroundColor: (!item.isNew && !item.isEditing) ? '#f1f5f9' : 'white', cursor: (!item.isNew && !item.isEditing) ? 'not-allowed' : 'text' }}
+                            disabled={!item.isNew && (!item.isEditing || !canFullyEditItem(item))}
+                            title={(!item.isNew && item.isEditing && !canFullyEditItem(item)) ? 'חלון העריכה המלא (15 דק׳) נסגר' : undefined}
+                            style={{ ...inputStyle, width: '60px', padding: '0.5rem', backgroundColor: (!item.isNew && (!item.isEditing || !canFullyEditItem(item))) ? '#f1f5f9' : 'white', cursor: (!item.isNew && (!item.isEditing || !canFullyEditItem(item))) ? 'not-allowed' : 'text' }}
                             placeholder="-"
                           />
                         </td>
@@ -597,7 +630,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                         ) : (
                           <>
                             {!item.isTaken && !item.isNew && (
-                              <button onClick={(e) => { e.stopPropagation(); handleEditItem(originalIndex); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }} title="ערוך">
+                              <button onClick={(e) => { e.stopPropagation(); handleEditItem(originalIndex); }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#fffbeb', color: '#d97706', border: '1px solid #fde68a', padding: '0.4rem 0.8rem', borderRadius: '6px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }} title={canFullyEditItem(item) ? 'ערוך' : 'חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך רק את תיאור התיקון'}>
                                 <Edit2 size={14} /> עריכה
                               </button>
                             )}
@@ -702,7 +735,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                                 transition: 'all 0.2s ease',
                                 boxShadow: '0 1px 2px rgba(0,0,0,0.05)'
                               }}
-                              title="ערוך פרטי תיקון"
+                              title={canFullyEditItem(item) ? 'ערוך פרטי תיקון' : 'חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך רק את תיאור התיקון'}
                             >
                               <Edit2 size={18} strokeWidth={2.5} />
                             </button>

@@ -932,17 +932,17 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-              <div>
+              <div style={{ textAlign: 'right' }}>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>אופן תשלום</span>
                 <span style={{ fontWeight: '600', color: '#334155', fontSize: '1.1rem' }}>{selectedPaymentDetails.paymentMethod || '-'}</span>
               </div>
-              <div>
+              <div style={{ textAlign: 'right' }}>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>סכום</span>
-                <span style={{ fontWeight: 'bold', color: '#16a34a', fontSize: '1.2rem', background: '#dcfce7', padding: '0.2rem 0.6rem', borderRadius: '6px' }}>₪{selectedPaymentDetails.amount}</span>
+                <span style={{ fontWeight: 'bold', color: '#16a34a', fontSize: '1.2rem', background: '#dcfce7', padding: '0.2rem 0.6rem', borderRadius: '6px', display: 'inline-block', direction: 'rtl' }}>₪{selectedPaymentDetails.amount}</span>
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'right' }}>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>תאריך</span>
-                <span style={{ color: '#334155', fontWeight: '500' }}>{new Date(selectedPaymentDetails.paymentDate).toLocaleString('he-IL')}</span>
+                <span style={{ color: '#334155', fontWeight: '500' }}>{getHebrewDateString(selectedPaymentDetails.paymentDate)}, {new Date(selectedPaymentDetails.paymentDate).toLocaleTimeString('he-IL')}</span>
               </div>
             </div>
 
@@ -1000,17 +1000,17 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-              <div>
+              <div style={{ textAlign: 'right' }}>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>סוג חיוב</span>
                 <span style={{ fontWeight: '600', color: '#334155', fontSize: '1.1rem' }}>{selectedObligationDetails.isManual === false ? (selectedObligationDetails.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב אוטומטי') : (selectedObligationDetails.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב ידני')}</span>
               </div>
-              <div>
+              <div style={{ textAlign: 'right' }}>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>סכום</span>
-                <span style={{ fontWeight: 'bold', color: '#dc2626', fontSize: '1.2rem', background: '#fef2f2', padding: '0.2rem 0.6rem', borderRadius: '6px' }}>₪{selectedObligationDetails.amount}</span>
+                <span style={{ fontWeight: 'bold', color: '#dc2626', fontSize: '1.2rem', background: '#fef2f2', padding: '0.2rem 0.6rem', borderRadius: '6px', display: 'inline-block', direction: 'rtl' }}>₪{selectedObligationDetails.amount}</span>
               </div>
-              <div style={{ gridColumn: '1 / -1' }}>
+              <div style={{ gridColumn: '1 / -1', textAlign: 'right' }}>
                 <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>תאריך</span>
-                <span style={{ color: '#334155', fontWeight: '500' }}>{new Date(selectedObligationDetails.createdAt || new Date()).toLocaleString('he-IL')}</span>
+                <span style={{ color: '#334155', fontWeight: '500' }}>{getHebrewDateString(selectedObligationDetails.createdAt || new Date())}, {new Date(selectedObligationDetails.createdAt || new Date()).toLocaleTimeString('he-IL')}</span>
               </div>
             </div>
 
