@@ -50,6 +50,7 @@ const categories = [
     colorVars: { '--cat-color': '#10b981', '--cat-bg': '#10b98115' },
     items: [
       { href: '/admin/data-explorer', icon: Search, label: 'סייר נתונים', subLabel: 'שאילתות SQL' },
+      { href: '/admin/access-import', icon: DatabaseBackup, label: 'ייבוא מאקסס', subLabel: 'תיעוד תהליך הייבוא' },
       { href: '/admin/data-history', icon: History, label: 'היסטוריית נתונים', subLabel: 'תיעוד שינויים' },
       { href: '/management/database', icon: DatabaseBackup, label: 'גיבוי נתונים', subLabel: 'החלפה מ-JSON' },
       { href: '/management/history', icon: Activity, label: 'היסטוריית גלישה', subLabel: 'דפים ושגיאות' },
