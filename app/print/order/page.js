@@ -43,7 +43,11 @@ export default function PrintOrderPage() {
         const pSettings = {
           box1: settingsData.find(s => s.key === 'print_rental_box1')?.value || '',
           box2: settingsData.find(s => s.key === 'print_rental_box2')?.value || '',
-          footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || ''
+          footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || '',
+          gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ״ח שמלות',
+          gmachAddress: settingsData.find(s => s.key === 'gmach_address')?.value || '',
+          gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
+          gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || ''
         };
         setPrintSettings(pSettings);
       }
@@ -442,9 +446,13 @@ export default function PrintOrderPage() {
                   <div className="bsd">בס&quot;ד</div>
                   <div className="print-header">
                     <div className="print-header-content">
-                      <h1>גמ&quot;ח שמלות</h1>
+                      <h1>{printSettings?.gmachName || 'גמ"ח שמלות'}</h1>
                       <div className="company-details">
-                        רחוב ירושלים 15, בני ברק | טלפון: 03-1234567 | דוא&quot;ל: info@gemach.co.il
+                        {[
+                          printSettings?.gmachAddress,
+                          printSettings?.gmachPhone && `טלפון: ${printSettings.gmachPhone}`,
+                          printSettings?.gmachEmail && `דוא"ל: ${printSettings.gmachEmail}`
+                        ].filter(Boolean).join(' | ')}
                       </div>
                     </div>
                   </div>

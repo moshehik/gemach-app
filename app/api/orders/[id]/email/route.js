@@ -68,7 +68,11 @@ export async function POST(request, { params }) {
     const printSettings = {
       box1: settingsData.find(s => s.key === 'print_rental_box1')?.value || '',
       box2: settingsData.find(s => s.key === 'print_rental_box2')?.value || '',
-      footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || ''
+      footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || '',
+      gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות',
+      gmachAddress: settingsData.find(s => s.key === 'gmach_address')?.value || '',
+      gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
+      gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || ''
     };
 
     // סטטוס ההשכרה מגיע כעת מ-lib/orderStatus.js (מקור האמת היחיד לסטטוס הזמנה) במקום
@@ -252,8 +256,12 @@ export async function POST(request, { params }) {
         <div class="invoice-box">
           <div class="bsd">בס"ד</div>
           <div class="print-header">
-            <h1>גמ"ח שמלות</h1>
-            <div class="company-details">רחוב ירושלים 15, בני ברק | טלפון: 03-1234567 | דוא"ל: info@gemach.co.il</div>
+            <h1>${printSettings.gmachName}</h1>
+            <div class="company-details">${[
+              printSettings.gmachAddress,
+              printSettings.gmachPhone ? `טלפון: ${printSettings.gmachPhone}` : '',
+              printSettings.gmachEmail ? `דוא"ל: ${printSettings.gmachEmail}` : ''
+            ].filter(Boolean).join(' | ')}</div>
           </div>
 
           <table class="order-details-table">
