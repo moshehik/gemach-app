@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { recalculateOrderObligations } from '@/lib/pricingEngine';
 import { paymentsGrantPermanentHold } from '@/lib/inventoryHold';
+import { checkAuth } from '@/lib/auth';
 
 export async function POST(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const data = await request.json();
     
