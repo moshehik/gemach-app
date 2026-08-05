@@ -385,13 +385,6 @@ export default function DressCardPage({ params }) {
     }
   };
 
-  // ===== סריקה מהסיידבר =====
-  const handleQuickScan = (barcode) => {
-    setActiveTab('items');
-    setItemsFilter('all');
-    setScanBarcode(barcode);
-  };
-
   const handleTabChange = (tab, filter) => {
     setActiveTab(tab);
     if (filter) setItemsFilter(filter);
@@ -460,7 +453,6 @@ export default function DressCardPage({ params }) {
         onToggleInspection={handleToggleInspection}
         onOpenImage={() => setShowImageModal(true)}
         onPrint={handlePrint}
-        onQuickScan={handleQuickScan}
         tabContents={{
           details: (
             <ModernDressDetailsTab

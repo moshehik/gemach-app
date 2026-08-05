@@ -64,6 +64,16 @@ export default function CustomerInventoryViewer() {
     return () => document.body.classList.remove('hide-global-nav');
   }, [isLocked]);
 
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      if (isLocked && !document.fullscreenElement) {
+        setShowUnlockModal(true);
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, [isLocked]);
+
   // AI Chat State
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiInput, setAiInput] = useState('');
@@ -263,7 +273,8 @@ export default function CustomerInventoryViewer() {
     setShowOrdersModal(true);
 
     try {
-      const res = await fetch(`/api/orders?itemDetails=${encodeURIComponent(model.name)}&eventDateFrom=${fromDate.toISOString()}&eventDateTo=${toDate.toISOString()}&filterStatus=all`);
+      const barcodePrefixParam = model.barcodePrefix ? `&modelBarcodePrefix=${encodeURIComponent(model.barcodePrefix)}` : '';
+      const res = await fetch(`/api/orders?itemDetails=${encodeURIComponent(model.name)}${barcodePrefixParam}&eventDateFrom=${fromDate.toISOString()}&eventDateTo=${toDate.toISOString()}&filterStatus=all`);
       const data = await res.json();
       if (res.ok) {
          let filtered = data.data || [];
@@ -536,14 +547,6 @@ export default function CustomerInventoryViewer() {
     );
   };
 
-  const handlePrint = () => {
-    if (!selectedModel) {
-      alert("נא לבחור דגם");
-      return;
-    }
-    window.print();
-  };
-
   const handleCatalogPrint = () => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -575,7 +578,7 @@ export default function CustomerInventoryViewer() {
       const sizesArray = Array.from(sizeMap.entries()).sort((a,b) => String(a[0]).localeCompare(String(b[0]), undefined, {numeric: true}));
       let sizesHtml = sizesArray.map(([sName, sData]) => {
         const isAvail = sData.available > 0;
-        return `<span style="display:inline-block; margin:2px; padding:4px 8px; border-radius:6px; font-size:13px; border:1px solid ; background:; color:; ${isAvail ? 'font-weight:bold;' : ''}">${sName} (${sData.available}/${sData.total})</span>`;
+        return `<span style="display:inline-block; margin:2px; padding:4px 8px; border-radius:6px; font-size:13px; border:1px solid ${isAvail ? '#555' : '#ccc'}; color:${isAvail ? '#000' : '#999'}; ${isAvail ? 'font-weight:bold;' : ''}">${sName} (${sData.available}/${sData.total})</span>`;
       }).join('');
       
       tableRows += `
@@ -595,23 +598,27 @@ export default function CustomerInventoryViewer() {
         <meta charset="utf-8" />
         <title>דוח מלאי - ${dateStr}</title>
         <style>
-          body { font-family: system-ui, -apple-system, sans-serif; color: var(--text-main); padding: 20px; margin: 0; background: var(--card-bg); }
-          .report-header { text-align: center; border-bottom: 2px solid var(--primary-color); padding-bottom: 15px; margin-bottom: 25px; }
-          .report-header h1 { margin: 0 0 10px 0; font-size: 26px; color: var(--text-main); }
-          .report-header p { margin: 0; font-size: 16px; color: var(--text-secondary); }
+          @page { size: A4; margin: 15mm; }
+          body { font-family: system-ui, -apple-system, sans-serif; color: #000; padding: 20px; margin: 0; background: #fff; }
+          .bsd { text-align: right; font-weight: bold; font-size: 13px; margin-bottom: 6px; }
+          .report-header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 25px; }
+          .report-header h1 { margin: 0 0 10px 0; font-size: 26px; color: #000; }
+          .report-header p { margin: 0; font-size: 16px; color: #555; }
           table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-          th, td { border: 1px solid var(--border-main); padding: 12px 16px; text-align: right; }
-          th { background: var(--element-bg); font-weight: bold; color: var(--text-main); font-size: 15px; border-bottom: 2px solid var(--border-main); }
-          tr:nth-child(even) { background: var(--element-bg); }
-          .summary { font-size: 16px; font-weight: bold; margin-top: 20px; text-align: right; padding-top: 15px; border-top: 2px solid var(--border-main); }
+          th, td { border: 1px solid #bbb; padding: 12px 16px; text-align: right; }
+          th { background: #f1f5f9; font-weight: bold; color: #000; font-size: 15px; border-bottom: 2px solid #999; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          tbody tr:nth-child(even) { background: #fafafa; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+          thead { display: table-header-group; }
+          tr { break-inside: avoid; page-break-inside: avoid; }
+          .summary { font-size: 16px; font-weight: bold; margin-top: 20px; text-align: right; padding-top: 15px; border-top: 2px solid #999; break-inside: avoid; page-break-inside: avoid; }
           @media print {
             body { padding: 0; }
             table { box-shadow: none; }
-            th { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           }
         </style>
       </head>
       <body>
+        <div class="bsd">בס"ד</div>
         <div class="report-header">
           <h1>דוח זמינות דגמים - גמ"ח שמלות</h1>
           <p>תאריך אירוע מבוקש: ${dateStr} | סינון: ${search ? `"${search}"` : 'ללא סינון'}</p>
@@ -1073,8 +1080,8 @@ export default function CustomerInventoryViewer() {
                     קטלוג שמלות זמינות
                   </h2>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--card-bg)', padding: '6px', borderRadius: '16px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                    <button data-element-name="כפתור_page_21" data-agy-id="exit_to_system_btn" className="header-btn" onClick={() => router.push('/')} title="חזור למערכת" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--danger-text)', background: 'var(--danger-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><LogOut data-element-name="רכיב_page_22" size={18} /></button>
-                    <button data-element-name="כפתור_page_23" data-agy-id="new_search_btn" className="header-btn" onClick={() => setStage(1)} title="חיפוש חדש" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--primary-color)', background: 'var(--primary-light)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Search data-element-name="רכיב_page_24" size={18} /></button>
+                    <button data-element-name="כפתור_page_21" data-agy-id="exit_to_system_btn" className="header-btn" onClick={() => { if (isLocked) { setShowUnlockModal(true); return; } router.push('/'); }} title="חזור למערכת" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--danger-text)', background: 'var(--danger-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><LogOut data-element-name="רכיב_page_22" size={18} /></button>
+                    <button data-element-name="כפתור_page_23" data-agy-id="new_search_btn" className="header-btn" onClick={() => { if (isLocked) { setShowUnlockModal(true); return; } setStage(1); }} title="חיפוש חדש" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--primary-color)', background: 'var(--primary-light)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Search data-element-name="רכיב_page_24" size={18} /></button>
                     <button data-element-name="כפתור_page_25" data-agy-id="refresh_inventory_btn" className="header-btn" onClick={fetchInventory} title="רענון מלאי" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--success-text)', background: 'var(--success-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><RefreshCw data-element-name="רכיב_page_26" size={18} /></button>
                     <button data-element-name="כפתור_page_27" data-agy-id="print_catalog_btn" className="header-btn" onClick={handleCatalogPrint} title="הדפסה" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--accent-color)', background: 'var(--empty-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Printer data-element-name="רכיב_page_28" size={18} /></button>
                     {isLocked ? (

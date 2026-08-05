@@ -202,7 +202,20 @@ export default function OrderDetailsPage({ params }) {
     }
   }, [order?.eventDate, order?.fromDate, order?.toDate, order?.isAbroad, order?.isWeekdayEvent, order?.orderId]);
 
-  const totalRequired = obligations.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0);
+  // תצוגה מקדימה של הסכום הכולל: פריט שסומן למחיקה מקומית אך עדיין לא נשמר (isDeleted=true
+  // אבל אין עדיין deletedAt - זה נחתם רק בשמירה, ר' lib/pricingEngine.js) לא נספר בסכום, כמו
+  // שפריט חדש כבר מעדכן את הסכום מיד עם האישור. לא מדויק כמו החישוב המלא של השרת (לא כולל
+  // למשל דמי ביטול) - זו רק תצוגה מקדימה עד לשמירה בפועל, שאז obligations יתעדכן מהשרת.
+  const totalRequired = obligations
+    .filter(o => {
+      if (o.isDeleted) return false;
+      if (o.orderItemId) {
+        const relatedItem = items.find(i => i.id === o.orderItemId);
+        if (relatedItem?.isDeleted && !relatedItem?.deletedAt) return false;
+      }
+      return true;
+    })
+    .reduce((sum, obs) => sum + obs.amount, 0);
   const totalPaid = payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
 
   // חוסם סגירה/רענון של החלון רק כשבאמת יש שינויים שלא נשמרו.

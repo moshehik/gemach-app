@@ -13,6 +13,7 @@ import NewOrderShell from '../../../components/orders/new/NewOrderShell';
 import newOrderCss from '../../../components/orders/new/newOrderStyles';
 import { calculateDynamicAvailability } from '../../../lib/clientInventory';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { verifyPin } from '../../../components/orders/modern/mocAuth';
 
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
@@ -815,6 +816,14 @@ export default function NewOrderPage() {
     if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
 
+    // חוסם שמירת הזמנה לתאריך שעבר בלי אישור מנהל, כדי למנוע הזמנות שנשמרות בטעות
+    // לתאריך שכבר חלף. נבדק לפני חיוב אשראי/תשלום כדי לא לגבות כסף על הזמנה שתיחסם.
+    const relevantDate = (order.isAbroad || order.isWeekdayEvent) ? order.fromDate : order.eventDate;
+    if (relevantDate && new Date(relevantDate).setHours(0, 0, 0, 0) < new Date().setHours(0, 0, 0, 0)) {
+      const auth = await verifyPin('התאריך שנבחר להזמנה זו הוא תאריך שעבר. שמירת הזמנה לתאריך שעבר דורשת אישור מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+      if (!auth) return;
+    }
+
     const pAmount = parseFloat(payment.amount) || 0;
     const totalPaidSoFar = paymentsList.reduce((acc, p) => acc + parseFloat(p.amount || 0), 0);
     const totalWithCurrent = totalPaidSoFar + pAmount;
@@ -910,53 +919,10 @@ export default function NewOrderPage() {
       setSaving(false);
     };
 
-    const activeItems = (order.items || []).filter(i => !i.isDeleted);
-    const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
-
-    if (activeItems.length > 0 && hasDates) {
-      try {
-        const validateRes = await fetch('/api/orders/validate-inventory', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            items: activeItems,
-            eventDate: order.eventDate,
-            isAbroad: order.isAbroad,
-            isWeekdayEvent: order.isWeekdayEvent,
-            fromDate: order.fromDate,
-            toDate: order.toDate,
-            customSpacing: order.customSpacing,
-            // Don't count the draft's own pending items against it.
-            orderId: draftOrderIdRef.current
-          })
-        });
-
-        const validateData = await validateRes.json();
-        if (validateData.error) {
-          abandonSave();
-          alert(`שגיאה: ${validateData.error}`);
-          return;
-        }
-        if (!validateData.valid) {
-          abandonSave();
-          const errorLines = validateData.errors.map(e => {
-            const msg = `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`;
-            return e.isCustomSpacingIssue ? `${msg} (בגלל ציפוף)` : msg;
-          }).join('\n');
-          const customSpacingNote = validateData.errors.some(e => e.isCustomSpacingIssue)
-            ? '\n\n💡 הערה: כמה מהבעיות קשורות לציפוף מיוחד. אם אתה בוטל בציפוף, נסה לבחור ציפוף קטן יותר.'
-            : '';
-          alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}${customSpacingNote}`);
-          return;
-        }
-      } catch (err) {
-        console.error('Validation fetch error', err);
-        abandonSave();
-        alert('שגיאה בבדיקת המלאי מול השרת.');
-        return;
-      }
-    }
-
+    // Inventory is validated server-side inside POST /api/orders itself (same
+    // validateOrderItemsAvailability call) - checking it again here first was a redundant
+    // round-trip + DB query on every successful save. The itemized error message below is
+    // built from the server's own validationErrors instead, so the UX is unchanged.
     try {
       const itemsToSave = order.items.map((item, idx) => {
         const calcItem = calculatedData.items[idx];
@@ -1003,6 +969,18 @@ export default function NewOrderPage() {
         // want to complete this exact save after checking the existing order.
         abandonSave();
         setDuplicateOrderWarning({ existingOrderId: data.existingOrderId });
+        return;
+      }
+      if (res.status === 409 && data.validationErrors) {
+        abandonSave();
+        const errorLines = data.validationErrors.map(e => {
+          const msg = `- ${e.dressName} (מידה ${e.sizeText}): חסרים ${e.requested - e.available} במלאי`;
+          return e.isCustomSpacingIssue ? `${msg} (בגלל ציפוף)` : msg;
+        }).join('\n');
+        const customSpacingNote = data.validationErrors.some(e => e.isCustomSpacingIssue)
+          ? '\n\n💡 הערה: כמה מהבעיות קשורות לציפוף מיוחד. אם אתה בוטל בציפוף, נסה לבחור ציפוף קטן יותר.'
+          : '';
+        alert(`לא ניתן לשמור את ההזמנה עקב חוסר במלאי לתאריכים המבוקשים:\n\n${errorLines}${customSpacingNote}`);
         return;
       }
       if (!res.ok) {

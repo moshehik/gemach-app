@@ -31,6 +31,8 @@ export async function GET(request) {
     const advOrderId = searchParams.get('advOrderId') || '';
     const advItemDetails = searchParams.get('itemDetails') || '';
     const advModelName = searchParams.get('advModelName') || '';
+    const advModelBarcodePrefixRaw = searchParams.get('modelBarcodePrefix') || '';
+    const advModelBarcodePrefix = advModelBarcodePrefixRaw && !isNaN(parseInt(advModelBarcodePrefixRaw, 10)) ? parseInt(advModelBarcodePrefixRaw, 10) : null;
     const advEventDateFrom = searchParams.get('eventDateFrom') || '';
     const advEventDateTo = searchParams.get('eventDateTo') || '';
 
@@ -115,17 +117,23 @@ export async function GET(request) {
           ...(advEventDateTo ? { lte: new Date(advEventDateTo) } : {})
         }
       } : {}),
-      ...(itemStatuses.length > 0 || advItemDetails || advModelName ? {
+      ...(itemStatuses.length > 0 || advItemDetails || advModelName || advModelBarcodePrefix ? {
         items: {
           some: {
             AND: [
               ...(itemStatuses.length > 0 ? [{ OR: itemStatuses }] : []),
-              ...(advItemDetails ? [{
+              ...(advItemDetails || advModelBarcodePrefix ? [{
                 isDeleted: false,
                 OR: [
-                  { barcode: { contains: advItemDetails } },
-                  { description: { contains: advItemDetails } },
-                  { dressItem: { dress: { name: { contains: advItemDetails } } } }
+                  ...(advItemDetails ? [
+                    { barcode: { contains: advItemDetails } },
+                    { description: { contains: advItemDetails } },
+                    { dressItem: { dress: { name: { contains: advItemDetails } } } }
+                  ] : []),
+                  // Some order items are booked only via the model's barcodePrefix (no
+                  // dressItemId assigned yet) — same match rule getBulkAvailableInventory
+                  // uses in lib/inventory.js, so the "X/Y available" count and this list agree.
+                  ...(advModelBarcodePrefix ? [{ barcodePrefix: advModelBarcodePrefix }] : [])
                 ]
               }] : []),
               ...(advModelName ? [{

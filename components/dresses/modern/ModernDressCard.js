@@ -3,9 +3,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
-  X, Info, Package, RefreshCcw, History, Shirt, Tag, Calendar, ScanLine,
+  X, Info, Package, RefreshCcw, History, Shirt, Tag,
   Printer, Trash2, Save, Undo2, ArrowRight, FileText, ClipboardList, Barcode,
-  Check, Power, AlertTriangle, CheckCircle2, XCircle, Image as ImageIcon, Upload
+  Check, Power, AlertTriangle, CheckCircle2, XCircle, Upload
 } from 'lucide-react';
 
 const TAB_META = {
@@ -41,10 +41,8 @@ export default function ModernDressCard({
   onOpenImage,
   onPrint,
   imageSrc,
-  onQuickScan,
   tabContents
 }) {
-  const [scanValue, setScanValue] = useState('');
   const printWrapRef = useRef(null);
   const [printMenuOpen, setPrintMenuOpen] = useState(false);
 
@@ -84,14 +82,6 @@ export default function ModernDressCard({
 
   const meta = TAB_META[activeTab] || { title: '' };
   const hint = activeTab === 'details' ? updatedLabel : (meta.hint || '');
-
-  const handleScanSubmit = (e) => {
-    e.preventDefault();
-    const code = scanValue.trim();
-    if (!code) return;
-    setScanValue('');
-    onQuickScan(code);
-  };
 
   // בדגם חדש אין עדיין פריטים/השכרות/היסטוריה — הטאבים נחשפים רק אחרי השמירה הראשונה
   const tabs = isNewModel
@@ -133,16 +123,9 @@ export default function ModernDressCard({
                 </div>
               </div>
 
-              {showImages && (
+              {showImages && imageSrc && (
                 <button className="moc-sidebar-thumb" onClick={onOpenImage} title="תמונת הדגם — לחץ להחלפה">
-                  {imageSrc ? (
-                    <img src={imageSrc} alt={dress.name || 'תמונת דגם'} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
-                  ) : (
-                    <>
-                      <ImageIcon size={26} />
-                      <span>אין תמונה</span>
-                    </>
-                  )}
+                  <img src={imageSrc} alt={dress.name || 'תמונת דגם'} onError={(e) => { e.currentTarget.style.display = 'none'; }} />
                   <span className="moc-thumb-overlay"><Upload size={15} /> החלף תמונה</span>
                 </button>
               )}
@@ -157,12 +140,6 @@ export default function ModernDressCard({
                   <div className="moc-sip-row">
                     <Package size={15} />
                     <span>{activeItems.length} פריטים · {availableItems.length} זמינים</span>
-                  </div>
-                )}
-                {dress.entryDateToRepo && (
-                  <div className="moc-sip-row">
-                    <Calendar size={15} />
-                    <span>נכנס: {new Date(dress.entryDateToRepo).toLocaleDateString('he-IL')}</span>
                   </div>
                 )}
               </div>
@@ -185,19 +162,6 @@ export default function ModernDressCard({
                   );
                 })}
               </nav>
-
-              {!isNewModel && (
-                <form className="moc-search-wrapper" style={{ marginTop: '16px' }} onSubmit={handleScanSubmit}>
-                  <ScanLine size={17} />
-                  <input
-                    type="text"
-                    className="moc-search-input"
-                    value={scanValue}
-                    onChange={e => setScanValue(e.target.value)}
-                    placeholder="סריקת ברקוד — קפיצה לפריט"
-                  />
-                </form>
-              )}
             </div>
           </aside>
 

@@ -360,7 +360,12 @@ export async function PUT(request, { params }) {
       }),
       prisma.orderItem.findMany({
         where: { orderId: parsedOrderId },
-        select: { id: true, cartStatus: true, isDeleted: true }
+        select: {
+          id: true, cartStatus: true, isDeleted: true,
+          sizeText: true, neckAlteration: true, sleeveAlteration: true,
+          lengthAlteration: true, alterationDetails: true, alterationDone: true,
+          barcode: true
+        }
       }),
       // המצב הקודם של ההתחייבויות — כדי לזהות ביטול/שחזור ולרשום אותו ביומן בשם מפורש
       prisma.paymentObligation.findMany({
@@ -428,7 +433,8 @@ export async function PUT(request, { params }) {
         for (let idx = 0; idx < data.items.length; idx++) {
           const item = data.items[idx];
           if (item.id) {
-            const wasDeleted = storedItemById.get(item.id)?.isDeleted || false;
+            const stored = storedItemById.get(item.id);
+            const wasDeleted = stored?.isDeleted || false;
             const nowDeleted = !!item.isDeleted;
             // Stamped at save time (not when the checkbox was toggled in the UI) so that a
             // cancel+add done in the same sitting always shares one "now" - see
@@ -439,28 +445,50 @@ export async function PUT(request, { params }) {
             // שמדובר בביטול הפריט מההזמנה ולא ב"עדכון" שגרתי של מידה או תיקון.
             const itemAuditAction = (nowDeleted && !wasDeleted) ? 'CANCEL_ITEM'
               : ((!nowDeleted && wasDeleted) ? 'RESTORE_ITEM' : null);
-            await tx.orderItem.update(auditAs(itemAuditAction, {
-              where: { id: item.id },
-              data: {
-                sizeText: item.sizeText,
-                neckAlteration: (item.neckAlteration === true || item.neckAlteration === 1 || item.neckAlteration === '1') ? 1 : (item.neckAlteration === null ? null : 0),
-                sleeveAlteration: (item.sleeveAlteration === true || item.sleeveAlteration === 1 || item.sleeveAlteration === '1') ? 1 : (item.sleeveAlteration === null ? null : 0),
-                lengthAlteration: (item.lengthAlteration !== undefined && item.lengthAlteration !== null && item.lengthAlteration !== '') ? String(item.lengthAlteration) : null,
-                alterationDetails: item.alterationDetails,
-                alterationDone: item.alterationDone,
-                isDeleted: item.isDeleted,
-                deletedAt: deletedAtVal,
-                // GET synthesizes isTaken/isReturned/takenDate/returnDate for display when the
-                // stored columns are empty (falling back to barcode presence and eventDate).
-                // Writing those inferred values back would turn a guess into a stored fact -
-                // e.g. an item that merely has a barcode would become permanently "taken" and
-                // could no longer be removed from the order. The rental lifecycle is owned by
-                // the rentals/returns scan routes, so this general save leaves it untouched.
-                barcode: item.barcode || item.dressItem?.barcode || undefined
-                // cartStatus is not decided per item - it follows the order's payment
-                // state, applied to the whole order in step 5 below.
-              }
-            }));
+            const normalizedNeck = (item.neckAlteration === true || item.neckAlteration === 1 || item.neckAlteration === '1') ? 1 : (item.neckAlteration === null ? null : 0);
+            const normalizedSleeve = (item.sleeveAlteration === true || item.sleeveAlteration === 1 || item.sleeveAlteration === '1') ? 1 : (item.sleeveAlteration === null ? null : 0);
+            const normalizedLength = (item.lengthAlteration !== undefined && item.lengthAlteration !== null && item.lengthAlteration !== '') ? String(item.lengthAlteration) : null;
+            const normalizedBarcode = item.barcode || item.dressItem?.barcode || undefined;
+            // Prisma's @updatedAt stamps this row's updatedAt on *any* update() call, even one
+            // that changes nothing - and orderItemEditWindow.js's 15-minute full-edit lock reads
+            // that same updatedAt. Every save used to re-touch every item in the order (e.g. on
+            // exit), silently re-arming the edit window for rows nobody actually edited. Only
+            // writing when a field truly differs keeps updatedAt meaningful as a real "last
+            // edited" marker.
+            const hasRealChange = !stored || (
+              item.sizeText !== stored.sizeText ||
+              normalizedNeck !== stored.neckAlteration ||
+              normalizedSleeve !== stored.sleeveAlteration ||
+              normalizedLength !== stored.lengthAlteration ||
+              item.alterationDetails !== stored.alterationDetails ||
+              !!item.alterationDone !== !!stored.alterationDone ||
+              nowDeleted !== wasDeleted ||
+              (normalizedBarcode !== undefined && normalizedBarcode !== stored.barcode)
+            );
+            if (hasRealChange) {
+              await tx.orderItem.update(auditAs(itemAuditAction, {
+                where: { id: item.id },
+                data: {
+                  sizeText: item.sizeText,
+                  neckAlteration: normalizedNeck,
+                  sleeveAlteration: normalizedSleeve,
+                  lengthAlteration: normalizedLength,
+                  alterationDetails: item.alterationDetails,
+                  alterationDone: item.alterationDone,
+                  isDeleted: item.isDeleted,
+                  deletedAt: deletedAtVal,
+                  // GET synthesizes isTaken/isReturned/takenDate/returnDate for display when the
+                  // stored columns are empty (falling back to barcode presence and eventDate).
+                  // Writing those inferred values back would turn a guess into a stored fact -
+                  // e.g. an item that merely has a barcode would become permanently "taken" and
+                  // could no longer be removed from the order. The rental lifecycle is owned by
+                  // the rentals/returns scan routes, so this general save leaves it untouched.
+                  barcode: normalizedBarcode
+                  // cartStatus is not decided per item - it follows the order's payment
+                  // state, applied to the whole order in step 5 below.
+                }
+              }));
+            }
           } else if (item.isNew) {
             // A row the user added but never filled in (no model/size picked) is skipped
             // rather than aborting the whole save.

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { FileText, FileSpreadsheet, Download, Sparkles, X, Loader2, FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
@@ -9,6 +9,13 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [aiPrompt, setAiPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [hideAi, setHideAi] = useState(false);
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      setHideAi(document.body.classList.contains('hide-ai-features'));
+    }
+  }, []);
   
   const [exportLimit, setExportLimit] = useState(100);
   const [adminPin, setAdminPin] = useState('');
@@ -26,6 +33,80 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
           return row;
         })
       : dataToProcess;
+  };
+
+  const buildTableHtml = (dataToExport, useColumns = true) => {
+    const withColumns = useColumns && columns.length > 0;
+    const headers = withColumns ? columns.map(c => c.label) : Object.keys(dataToExport[0] || {});
+    let tableHtml = '<table><thead><tr>';
+    headers.forEach(header => {
+      tableHtml += `<th>${header}</th>`;
+    });
+    tableHtml += '</tr></thead><tbody>';
+    dataToExport.forEach(item => {
+      tableHtml += '<tr>';
+      if (withColumns) {
+        columns.forEach(col => {
+          const cellValue = item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : '';
+          tableHtml += `<td>${cellValue}</td>`;
+        });
+      } else {
+        headers.forEach(header => {
+          const cellValue = item[header] !== undefined && item[header] !== null ? item[header] : '';
+          tableHtml += `<td>${cellValue}</td>`;
+        });
+      }
+      tableHtml += '</tr>';
+    });
+    tableHtml += '</tbody></table>';
+    return tableHtml;
+  };
+
+  // Opens a popup with a self-contained, print-ready document (A4, repeating
+  // table headers on every page, rows kept whole across page breaks) and
+  // triggers the browser's print dialog.
+  const openPrintDocument = (innerHtml) => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('אנא אפשר חלונות קופצים (Popups) עבור אתר זה כדי להדפיס.');
+      return false;
+    }
+    const html = `
+      <!DOCTYPE html>
+      <html dir="rtl" lang="he">
+        <head>
+          <meta charset="utf-8" />
+          <title>${filename}</title>
+          <style>
+            @page { size: A4; margin: 15mm; }
+            body { font-family: Arial, sans-serif; direction: rtl; margin: 0; padding: 10px; color: #000; background: #fff; }
+            .doc-bsd { text-align: right; font-weight: bold; margin-bottom: 6px; font-size: 13px; }
+            .doc-header { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid #333; padding-bottom: 8px; margin-bottom: 14px; }
+            .doc-header h2 { margin: 0; font-size: 20px; }
+            .doc-meta { font-size: 12px; color: #666; }
+            table { width: 100%; border-collapse: collapse; font-size: 13px; }
+            th, td { border: 1px solid #bbb; padding: 6px 8px; text-align: right; }
+            th { background: #f2f2f2; font-weight: bold; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            tbody tr:nth-child(even) td { background: #fafafa; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            thead { display: table-header-group; }
+            tr { break-inside: avoid; page-break-inside: avoid; }
+            h1, h2, h3 { break-after: avoid-page; page-break-after: avoid; }
+            @media print { body { padding: 0; } }
+          </style>
+        </head>
+        <body onload="setTimeout(() => { window.print(); window.close(); }, 500);">
+          <div class="doc-bsd">בס"ד</div>
+          <div class="doc-header">
+            <h2>${filename}</h2>
+            <span class="doc-meta">הופק בתאריך ${new Date().toLocaleString('he-IL')}</span>
+          </div>
+          ${innerHtml}
+        </body>
+      </html>
+    `;
+    printWindow.document.write(html);
+    printWindow.document.close();
+    return true;
   };
 
   const getExportData = async () => {
@@ -60,56 +141,9 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
       XLSX.writeFile(workbook, `${filename}.xlsx`);
       setIsModalOpen(false);
     } else if (action === 'pdf') {
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) {
-        alert('אנא אפשר חלונות קופצים (Popups) עבור אתר זה כדי להדפיס.');
-        return;
+      if (openPrintDocument(buildTableHtml(dataToExport))) {
+        setIsModalOpen(false);
       }
-      
-      const headers = columns.length > 0 ? columns.map(c => c.label) : Object.keys(dataToExport[0] || {});
-      let tableHtml = '<table style="width:100%; border-collapse: collapse; font-family: Arial, sans-serif; direction: rtl; font-size: 14px;">';
-      
-      tableHtml += '<thead><tr>';
-      headers.forEach(header => {
-        tableHtml += `<th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2; text-align: right;">${header}</th>`;
-      });
-      tableHtml += '</tr></thead><tbody>';
-      
-      dataToExport.forEach(item => {
-        tableHtml += '<tr>';
-        if (columns.length > 0) {
-          columns.forEach(col => {
-            const cellValue = item[col.key] !== undefined && item[col.key] !== null ? item[col.key] : '';
-            tableHtml += `<td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${cellValue}</td>`;
-          });
-        } else {
-          headers.forEach(header => {
-            const cellValue = item[header] !== undefined && item[header] !== null ? item[header] : '';
-            tableHtml += `<td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${cellValue}</td>`;
-          });
-        }
-        tableHtml += '</tr>';
-      });
-      tableHtml += '</tbody></table>';
-
-      const html = `
-        <html dir="rtl">
-          <head>
-            <title>${filename}</title>
-            <style>
-              @media print { @page { margin: 20px; } }
-            </style>
-          </head>
-          <body onload="setTimeout(() => { window.print(); window.close(); }, 500);">
-            <div style="text-align: right; font-weight: bold; font-family: Arial, sans-serif; margin-bottom: 10px;">בס"ד</div>
-            <h2 style="font-family: Arial, sans-serif; text-align: right;">${filename}</h2>
-            ${tableHtml}
-          </body>
-        </html>
-      `;
-      printWindow.document.write(html);
-      printWindow.document.close();
-      setIsModalOpen(false);
     } else if (action === 'excel_ai' || action === 'pdf_ai') {
       const exportFormat = action === 'excel_ai' ? 'excel' : 'pdf';
       if (!aiPrompt.trim()) {
@@ -134,62 +168,14 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
           XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
           XLSX.writeFile(workbook, `${filename}.xlsx`);
         } else {
-          const printWindow = window.open('', '_blank');
-          if (!printWindow) {
-            alert('אנא אפשר חלונות קופצים (Popups) עבור אתר זה כדי להדפיס.');
+          // processedData is either an HTML string from the AI, or (as a
+          // fallback) still an array of row objects.
+          const innerHtml = typeof processedData === 'string'
+            ? processedData
+            : buildTableHtml(processedData, false);
+          if (!openPrintDocument(innerHtml)) {
             setIsLoading(false);
             return;
-          }
-          if (typeof processedData === 'string') {
-            const html = `
-              <html dir="rtl">
-                <head>
-                  <title>${filename}</title>
-                  <style>
-                    @media print { @page { margin: 20px; } }
-                    body { font-family: Arial, sans-serif; direction: rtl; padding: 20px; }
-                    table { width:100%; border-collapse: collapse; margin-top: 15px; font-size: 14px; }
-                    th, td { border: 1px solid #ddd; padding: 8px; text-align: right; }
-                    th { background: #f2f2f2; font-weight: bold; }
-                  </style>
-                </head>
-                <body onload="setTimeout(() => { window.print(); window.close(); }, 500);">
-                  <div style="text-align: right; font-weight: bold; font-family: Arial, sans-serif; margin-bottom: 10px;">בס"ד</div>
-                  ${processedData}
-                </body>
-              </html>
-            `;
-            printWindow.document.write(html);
-            printWindow.document.close();
-          } else {
-             // Fallback if somehow it's still an array
-             const headers = Object.keys(processedData[0] || {});
-             let tableHtml = '<table style="width:100%; border-collapse: collapse; font-family: Arial, sans-serif; direction: rtl; font-size: 14px;"><thead><tr>';
-             headers.forEach(h => tableHtml += `<th style="border: 1px solid #ddd; padding: 8px; background: #f2f2f2; text-align: right;">${h}</th>`);
-             tableHtml += '</tr></thead><tbody>';
-             processedData.forEach(item => {
-               tableHtml += '<tr>';
-               headers.forEach(h => {
-                 tableHtml += `<td style="border: 1px solid #ddd; padding: 8px; text-align: right;">${item[h] !== undefined && item[h] !== null ? item[h] : ''}</td>`;
-               });
-               tableHtml += '</tr>';
-             });
-             tableHtml += '</tbody></table>';
-             const html = `
-                <html dir="rtl">
-                  <head>
-                    <title>${filename}</title>
-                    <style>@media print { @page { margin: 20px; } }</style>
-                  </head>
-                  <body onload="setTimeout(() => { window.print(); window.close(); }, 500);">
-                    <div style="text-align: right; font-weight: bold; font-family: Arial, sans-serif; margin-bottom: 10px;">בס"ד</div>
-                    <h2 style="font-family: Arial, sans-serif; text-align: right;">${filename}</h2>
-                    ${tableHtml}
-                  </body>
-                </html>
-              `;
-              printWindow.document.write(html);
-              printWindow.document.close();
           }
         }
         
@@ -359,46 +345,50 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                   </div>
                 </div>
 
-                <hr className="ai-feature-element" style={{ borderTop: '1px solid #eee', marginBottom: '1.5rem' }} />
+                {!hideAi && (
+                  <>
+                    <hr className="ai-feature-element" style={{ borderTop: '1px solid #eee', marginBottom: '1.5rem' }} />
 
-                <div className="ai-feature-element">
-                  <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
-                    <Sparkles size={18} color="#9c27b0" />
-                    דוח מותאם אישית באמצעות AI
-                  </h3>
-                  <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                    תאר כיצד תרצה לארגן את הנתונים, למשל: "סדר לפי מחיר וסכם לפי מידות", או "הצג רק דגמים במחיר מעל 100".
-                  </p>
-                  
-                  <textarea
-                    data-agy-id="export_ai_prompt_textarea"                    value={aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    placeholder="הכנס את בקשתך לדוח..."
-                    style={{ width: '100%', height: '80px', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', marginBottom: '1rem', fontFamily: 'inherit', resize: 'none' }}
-                    disabled={isLoading}
-                  />
-                  
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button 
-                      data-agy-id="export_excel_ai_btn"                      type="button"
-                      onClick={() => handleActionClick('excel_ai')}
-                      disabled={isLoading}
-                      style={{ flex: 1, padding: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: '#9c27b0', color: 'white', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
-                    >
-                      {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-                      <span>אקסל (AI)</span>
-                    </button>
-                    <button 
-                      data-agy-id="export_pdf_ai_btn"                      type="button"
-                      onClick={() => handleActionClick('pdf_ai')}
-                      disabled={isLoading}
-                      style={{ flex: 1, padding: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: '#7b1fa2', color: 'white', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
-                    >
-                      {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-                      <span>PDF (AI)</span>
-                    </button>
-                  </div>
-                </div>
+                    <div className="ai-feature-element">
+                      <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
+                        <Sparkles size={18} color="#9c27b0" />
+                        דוח מותאם אישית באמצעות AI
+                      </h3>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
+                        תאר כיצד תרצה לארגן את הנתונים, למשל: "סדר לפי מחיר וסכם לפי מידות", או "הצג רק דגמים במחיר מעל 100".
+                      </p>
+                      
+                      <textarea
+                        data-agy-id="export_ai_prompt_textarea"                    value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        placeholder="הכנס את בקשתך לדוח..."
+                        style={{ width: '100%', height: '80px', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', marginBottom: '1rem', fontFamily: 'inherit', resize: 'none' }}
+                        disabled={isLoading}
+                      />
+                      
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button 
+                          data-agy-id="export_excel_ai_btn"                      type="button"
+                          onClick={() => handleActionClick('excel_ai')}
+                          disabled={isLoading}
+                          style={{ flex: 1, padding: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: '#9c27b0', color: 'white', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
+                        >
+                          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                          <span>אקסל (AI)</span>
+                        </button>
+                        <button 
+                          data-agy-id="export_pdf_ai_btn"                      type="button"
+                          onClick={() => handleActionClick('pdf_ai')}
+                          disabled={isLoading}
+                          style={{ flex: 1, padding: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: '#7b1fa2', color: 'white', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
+                        >
+                          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                          <span>PDF (AI)</span>
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
               </>
             )}
           </div>

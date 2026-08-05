@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   X, ArrowRight, ArrowLeft, Check, Shirt, Tag, Calendar, FileText, AlertTriangle,
-  Image as ImageIcon, Upload, Trash2, Plus, RefreshCw, Package, Barcode, Sparkles
+  Image as ImageIcon, Trash2, RefreshCw, Package, Save, Sparkles
 } from 'lucide-react';
 import HebrewDatePicker from '../../HebrewDatePicker';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
@@ -45,7 +45,9 @@ export default function ModernNewDressWizard({
     imageUrl: '',
     entryDateToRepo: new Date().toISOString()
   });
-  const [sizeLines, setSizeLines] = useState([{ key: 1, sizeText: '', quantity: '1', location: '' }]);
+  const [pendingItems, setPendingItems] = useState([]);
+  const [newItem, setNewItem] = useState({ sizeText: '', serialNumber: '', location: '' });
+  const [addError, setAddError] = useState('');
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
@@ -71,60 +73,87 @@ export default function ModernNewDressWizard({
 
   useEffect(() => {
     if (locations?.length) {
-      setSizeLines(prev => prev.map(l => (l.location ? l : { ...l, location: locations[0] })));
+      setNewItem(prev => (prev.location ? prev : { ...prev, location: locations[0] }));
     }
   }, [locations]);
 
   const patch = (p) => setDress(prev => ({ ...prev, ...p }));
   const flash = (msg, ms = 4000) => { setMessage(msg); setTimeout(() => setMessage(''), ms); };
 
-  const codeOk = String(dress.barcodePrefix || '').trim() !== '';
+  const codeStr = String(dress.barcodePrefix || '').trim();
+  const codeOk = /^\d{3}$/.test(codeStr);
   const nameOk = !useModelNames || String(dress.name || '').trim() !== '';
-  const step1Ok = codeOk && nameOk;
+  const catOk = String(dress.priceCategory || '').trim() !== '';
+  const step1Ok = codeOk && nameOk && catOk;
 
   const canGoTo = (target) => {
     if (target <= 1) return true;
     return step1Ok;
   };
 
-  const validSizeLines = sizeLines.filter(l => String(l.sizeText).trim() !== '' && Number(l.quantity) > 0);
-  const totalItems = validSizeLines.reduce((sum, l) => sum + Number(l.quantity), 0);
+  const totalItems = pendingItems.length;
 
-  // הפריטים שייווצרו בפועל — מס' סידורי רץ לכל מידה, וברקוד נגזר ממנו
-  const plannedItems = (() => {
-    const bySize = {};
-    const out = [];
-    validSizeLines.forEach(line => {
-      const size = String(line.sizeText).trim();
-      bySize[size] = bySize[size] || 0;
-      for (let i = 0; i < Number(line.quantity); i++) {
-        bySize[size] += 1;
-        out.push({
-          sizeText: size,
-          serialNumber: bySize[size],
-          dressBarcode: `${dress.barcodePrefix}${pad2(size)}${pad2(bySize[size])}`,
-          location: line.location || (locations && locations[0]) || null
-        });
+  const buildBarcode = (size, serial) => `${codeStr}${pad2(String(size).trim())}${pad2(serial)}`;
+
+  // כל שורה שנוספה היא פריט אחד; הברקוד נגזר מקוד הדגם + מידה + מס' סידורי
+  const plannedItems = pendingItems.map(p => ({
+    sizeText: String(p.sizeText).trim(),
+    serialNumber: Number(p.serialNumber),
+    dressBarcode: buildBarcode(p.sizeText, p.serialNumber),
+    location: p.location || (locations && locations[0]) || null
+  }));
+
+  // המס' הסידורי הבא לאותה מידה — ברירת מחדל בסדר עולה
+  const nextSerialFor = (size) => {
+    const same = pendingItems.filter(p => String(p.sizeText).trim() === String(size).trim());
+    return same.length ? Math.max(...same.map(p => Number(p.serialNumber) || 0)) + 1 : 1;
+  };
+
+  const changeNewItem = (field, value) => {
+    setAddError('');
+    setNewItem(prev => {
+      const next = { ...prev, [field]: value };
+      if (field === 'sizeText') {
+        next.serialNumber = String(value).trim() === '' ? '' : String(nextSerialFor(value));
       }
+      return next;
     });
-    return out;
-  })();
-
-  const sizeError = validSizeLines.find(l => {
-    const n = Number(l.sizeText);
-    return !isNaN(n) && (n < 0 || n > 99 || !Number.isInteger(n));
-  });
-
-  const updateLine = (key, field, value) => {
-    setSizeLines(prev => prev.map(l => l.key === key ? { ...l, [field]: value } : l));
   };
 
-  const addLine = () => {
-    setSizeLines(prev => [...prev, { key: nextKey.current++, sizeText: '', quantity: '1', location: (locations && locations[0]) || '' }]);
+  const addPendingItem = () => {
+    const size = String(newItem.sizeText).trim();
+    if (!size) { setAddError('חובה להזין מידה'); return; }
+    const sizeNum = Number(size);
+    if (isNaN(sizeNum) || sizeNum < 0 || sizeNum > 99 || !Number.isInteger(sizeNum)) {
+      setAddError('מידה חייבת להיות מספר שלם בין 0 ל-99');
+      return;
+    }
+    const serial = Number(String(newItem.serialNumber).trim() || nextSerialFor(size));
+    if (isNaN(serial) || serial < 1 || serial > 99 || !Number.isInteger(serial)) {
+      setAddError("מס' סידורי חייב להיות מספר שלם בין 1 ל-99");
+      return;
+    }
+    if (pendingItems.some(p => Number(p.sizeText) === sizeNum && Number(p.serialNumber) === serial)) {
+      setAddError(`כבר נוסף פריט במידה ${sizeNum} עם מס' סידורי ${serial}`);
+      return;
+    }
+    const entry = {
+      key: nextKey.current++,
+      sizeText: String(sizeNum),
+      serialNumber: serial,
+      location: newItem.location || (locations && locations[0]) || ''
+    };
+    const updated = [...pendingItems, entry];
+    setPendingItems(updated);
+    // המידה נשארת והמס' הסידורי מתקדם — כדי להוסיף כמה פריטים ברצף לאותה מידה
+    const nextSer = Math.max(...updated
+      .filter(p => String(p.sizeText).trim() === String(sizeNum))
+      .map(p => Number(p.serialNumber) || 0)) + 1;
+    setNewItem({ sizeText: String(sizeNum), serialNumber: String(nextSer), location: entry.location });
   };
 
-  const removeLine = (key) => {
-    setSizeLines(prev => prev.length === 1 ? prev : prev.filter(l => l.key !== key));
+  const removePendingItem = (key) => {
+    setPendingItems(prev => prev.filter(p => p.key !== key));
   };
 
   const handleImageUpload = async (e) => {
@@ -162,7 +191,6 @@ export default function ModernNewDressWizard({
   const handleCreate = async () => {
     if (saving) return;
     if (!step1Ok) { setStep(1); flash('חסרים פרטי זיהוי חובה'); return; }
-    if (sizeError) { setStep(3); flash('מידה חייבת להיות מספר שלם בין 0 ל-99'); return; }
 
     setSaving(true);
     setMessage('יוצר את הדגם...');
@@ -291,7 +319,7 @@ export default function ModernNewDressWizard({
                 )}
 
                 <div>
-                  <span className="moc-field-label">קטגוריית מחיר</span>
+                  <span className="moc-field-label">קטגוריית מחיר *</span>
                   <select value={dress.priceCategory} onChange={e => patch({ priceCategory: e.target.value })}>
                     <option value="">-- בחר קטגוריית מחיר --</option>
                     {(categories || []).map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
@@ -306,7 +334,11 @@ export default function ModernNewDressWizard({
 
               {!step1Ok && (
                 <p className="moc-hint" style={{ display: 'block', marginTop: '14px' }}>
-                  <AlertTriangle size={13} style={{ verticalAlign: '-2px' }} /> יש להשלים {[!codeOk && 'קוד דגם', !nameOk && 'שם דגם'].filter(Boolean).join(' ו')} כדי להמשיך.
+                  <AlertTriangle size={13} style={{ verticalAlign: '-2px' }} /> יש להשלים {[
+                    !codeOk && (codeStr ? 'קוד דגם בן 3 ספרות בדיוק' : 'קוד דגם'),
+                    !nameOk && 'שם דגם',
+                    !catOk && 'קטגוריית מחיר'
+                  ].filter(Boolean).join(', ')} כדי להמשיך.
                 </p>
               )}
             </div>
@@ -393,58 +425,90 @@ export default function ModernNewDressWizard({
                   <div className="moc-avatar-chip lg"><Package size={19} /></div>
                   <div>
                     <span className="moc-lbl">מלאי ראשוני</span>
-                    <div className="moc-sub-lbl">שורה לכל מידה — הפריטים והברקודים ייווצרו אוטומטית</div>
+                    <div className="moc-sub-lbl">כל שורה היא פריט אחד — הברקוד נבנה אוטומטית מקוד הדגם, המידה והמס' הסידורי</div>
                   </div>
                 </div>
-                <button className="moc-icon-btn-add" title="הוסף שורת מידה" onClick={addLine}>
-                  <Plus size={18} />
+              </div>
+
+              {/* סרגל הוספה — אותה שיטה כמו בטאב "פריטים ומלאי" בכרטיס */}
+              <div className="moc-add-bar">
+                <div className="moc-fld w-sm">
+                  <span className="moc-field-label">מידה *</span>
+                  <input
+                    type="number" min="0" max="99" placeholder="38"
+                    value={newItem.sizeText}
+                    onChange={e => changeNewItem('sizeText', e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') addPendingItem(); }}
+                  />
+                </div>
+                <div className="moc-fld w-sm">
+                  <span className="moc-field-label">מס' סידורי</span>
+                  <input
+                    type="number" min="1" max="99"
+                    value={newItem.serialNumber}
+                    onChange={e => changeNewItem('serialNumber', e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') addPendingItem(); }}
+                  />
+                </div>
+                <div className="moc-fld w-md">
+                  <span className="moc-field-label">ברקוד פריט</span>
+                  <input
+                    type="text"
+                    className="moc-mono"
+                    placeholder={`${codeStr || '###'}____`}
+                    value={String(newItem.sizeText).trim() ? buildBarcode(newItem.sizeText, Number(newItem.serialNumber) || nextSerialFor(newItem.sizeText)) : ''}
+                    readOnly
+                    title="הברקוד נבנה אוטומטית מקוד הדגם + מידה + מס' סידורי"
+                    style={{ background: '#f6f5f1', color: '#8b8b8b', cursor: 'not-allowed' }}
+                  />
+                </div>
+                <div className="moc-fld w-md">
+                  <span className="moc-field-label">מיקום</span>
+                  <select value={newItem.location} onChange={e => changeNewItem('location', e.target.value)}>
+                    <option value="">-- בחר מיקום --</option>
+                    {(locations || []).map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
+                  </select>
+                </div>
+                <button className="moc-btn moc-btn-gold" onClick={addPendingItem}>
+                  <Save size={15} /> הוסף פריט
                 </button>
+                <div className="moc-add-hint">
+                  {addError
+                    ? <span style={{ color: 'var(--moc-danger-text)', fontWeight: 700 }}>{addError}</span>
+                    : <>המס' הסידורי מוצע אוטומטית בסדר עולה לכל מידה — אפשר לשנות אותו לפני ההוספה.</>}
+                </div>
               </div>
 
-              <div className="moc-size-builder">
-                {sizeLines.map(line => {
-                  const qty = Number(line.quantity) || 0;
-                  const size = String(line.sizeText).trim();
-                  const preview = size && qty > 0
-                    ? `${dress.barcodePrefix}${pad2(size)}01${qty > 1 ? ` … ${dress.barcodePrefix}${pad2(size)}${pad2(qty)}` : ''}`
-                    : null;
-                  return (
-                    <div key={line.key} className="moc-size-line">
-                      <div>
-                        <span className="moc-field-label">מידה</span>
-                        <input type="number" min="0" max="99" placeholder="38" value={line.sizeText}
-                          onChange={e => updateLine(line.key, 'sizeText', e.target.value)} />
-                      </div>
-                      <div>
-                        <span className="moc-field-label">כמות</span>
-                        <input type="number" min="1" max="99" value={line.quantity}
-                          onChange={e => updateLine(line.key, 'quantity', e.target.value)} />
-                      </div>
-                      <div>
-                        <span className="moc-field-label">מיקום</span>
-                        <select value={line.location} onChange={e => updateLine(line.key, 'location', e.target.value)}>
-                          {(locations || []).map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
-                        </select>
-                      </div>
-                      {preview && <span className="moc-sl-preview">{preview}</span>}
-                      <button className="moc-icon-btn-plain row-delete" title="הסר שורה"
-                        disabled={sizeLines.length === 1} onClick={() => removeLine(line.key)}>
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {sizeError && (
-                <p className="moc-hint" style={{ display: 'block', marginTop: '12px', color: 'var(--moc-danger-text)', fontWeight: 700 }}>
-                  מידה חייבת להיות מספר שלם בין 0 ל-99
-                </p>
+              {pendingItems.length === 0 ? (
+                <div className="moc-empty-state">
+                  <Package size={30} />
+                  <div style={{ marginTop: '8px' }}>עדיין לא נוספו פריטים לדגם.</div>
+                </div>
+              ) : (
+                <div className="moc-table-scroll" style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                  <table className="moc-data-table">
+                    <thead>
+                      <tr><th>מידה</th><th>מס' סידורי</th><th>ברקוד</th><th>מיקום</th><th style={{ textAlign: 'center' }}>הסרה</th></tr>
+                    </thead>
+                    <tbody>
+                      {plannedItems.map((it, idx) => (
+                        <tr key={pendingItems[idx].key}>
+                          <td><span className="moc-size-pill">{it.sizeText}</span></td>
+                          <td className="moc-mono">{pad2(it.serialNumber)}</td>
+                          <td className="moc-mono">{it.dressBarcode}</td>
+                          <td>{it.location || '—'}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button className="moc-icon-btn-plain row-delete" title="הסר פריט"
+                              onClick={() => removePendingItem(pendingItems[idx].key)}>
+                              <Trash2 size={16} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
-
-              <p className="moc-hint" style={{ display: 'block', marginTop: '14px' }}>
-                <Barcode size={13} style={{ verticalAlign: '-2px' }} /> ניתן לדלג ולהוסיף פריטים אחר כך מטאב "פריטים ומלאי" בכרטיס.
-              </p>
             </div>
           )}
 
@@ -468,7 +532,7 @@ export default function ModernNewDressWizard({
                 </div>
                 <div className="moc-stat-tile ok">
                   <div className="moc-st-label">מידות</div>
-                  <div className="moc-st-value">{new Set(validSizeLines.map(l => String(l.sizeText).trim())).size}</div>
+                  <div className="moc-st-value">{new Set(pendingItems.map(p => String(p.sizeText).trim())).size}</div>
                 </div>
                 <div className="moc-stat-tile info">
                   <div className="moc-st-label">פריטים שייווצרו</div>

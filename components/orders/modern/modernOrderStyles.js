@@ -387,6 +387,27 @@ table.moc-data-table { width: 100%; border-collapse: collapse; }
 .moc-return-toggle.compact { padding: 3px; background: #fff; border-color: var(--moc-divider); }
 .moc-return-toggle.compact button { padding: 5px 11px; font-size: 0.78rem; gap: 4px; }
 .moc-return-toggle.compact .moc-rt-sep { margin: 5px 1px; }
+.moc-return-toggle.icon-only button { padding: 6px 10px; }
+
+/* שורת עריכת תיקונים (צוואר/שרוול/אורך) — כפתורי מצב מודרניים, לא צ'קבוקסים, כולם באותה שורה */
+.moc-alter-edit-row { display: flex; gap: 8px; align-items: center; flex-wrap: nowrap; }
+.moc-alter-toggle {
+  display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 8px;
+  border: 1px solid var(--moc-border-color); background: #fff; color: var(--moc-text-muted); font-weight: 700;
+  font-size: 0.82rem; cursor: pointer; font-family: inherit; white-space: nowrap; transition: all 0.15s;
+}
+.moc-alter-toggle:hover:not(:disabled) { border-color: var(--moc-primary); }
+.moc-alter-toggle.on { background: var(--moc-primary-light); color: var(--moc-primary-dark); border-color: var(--moc-primary-light); }
+.moc-alter-toggle:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.moc-alter-length {
+  display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: 8px;
+  border: 1px solid var(--moc-border-color); background: #fff; color: var(--moc-text-muted); transition: all 0.15s;
+}
+.moc-alter-length.on { border-color: var(--moc-primary-light); background: var(--moc-primary-light); color: var(--moc-primary-dark); }
+.moc-alter-length input[type=number] { width: 44px; border: none; background: transparent; padding: 0; margin: 0; text-align: center; font-weight: 700; font-size: 0.85rem; color: inherit; font-family: inherit; border-radius: 0; }
+.moc-alter-length input:disabled { opacity: 0.6; }
+.moc-alter-length span { font-size: 0.78rem; font-weight: 600; }
 
 .moc-notes-banner { background: var(--moc-warning-bg); border: 1px solid rgba(245,158,11,0.3); border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; display: flex; gap: 10px; font-size: 0.9rem; color: var(--moc-text-main); align-items: flex-start; }
 .moc-pending-banner { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--moc-danger-bg); border: 1px solid rgba(239,68,68,0.3); border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-weight: 700; font-size: 0.92rem; color: #991b1b; flex-wrap: wrap; }
@@ -464,6 +485,24 @@ table.moc-data-table { width: 100%; border-collapse: collapse; }
 
 .moc-employee-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--moc-divider); gap: 8px; }
 .moc-employee-row:last-child { border-bottom: none; }
+
+/* כרטיס בחירה בתוך מודל (למשל: בחירת פריט לשיוך ברקוד) */
+.moc-choice-card {
+  display: flex; align-items: center; gap: 12px; width: 100%; text-align: right;
+  padding: 12px 14px; border-radius: 12px; border: 1.5px solid var(--moc-divider); background: #fff;
+  cursor: pointer; font-family: inherit; transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+}
+.moc-choice-card:hover { border-color: var(--moc-primary); background: var(--moc-primary-light); box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+.moc-choice-card .moc-choice-icon {
+  width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+  background: var(--moc-neutral-bg); color: var(--moc-text-muted);
+}
+.moc-choice-card:hover .moc-choice-icon { background: var(--moc-primary); color: #fff; }
+.moc-choice-card .moc-choice-main { flex: 1; min-width: 0; }
+.moc-choice-card .moc-choice-title { font-weight: 700; font-size: 0.96rem; color: var(--moc-text-main); }
+.moc-choice-card .moc-choice-sub { font-size: 0.8rem; color: var(--moc-text-muted); margin-top: 2px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.moc-choice-card .moc-choice-arrow { color: var(--moc-text-muted); flex-shrink: 0; transition: transform 0.15s, color 0.15s; }
+.moc-choice-card:hover .moc-choice-arrow { color: var(--moc-primary); transform: translateX(-3px); }
 
 /* משפט טעינה/הודעות */
 .moc-save-msg { font-size: 0.85rem; font-weight: 700; padding: 0.35rem 0.8rem; border-radius: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 360px; min-width: 0; }

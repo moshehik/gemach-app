@@ -142,6 +142,23 @@ export default function PrintOrderPage() {
             display: block !important;
             color: black !important;
           }
+          .print-table thead {
+            display: table-header-group;
+          }
+          .print-table tr {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          .order-details-card,
+          .rental-notes-box,
+          .print-footer {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          .section-title {
+            break-after: avoid-page;
+            page-break-after: avoid;
+          }
         }
         .bsd {
             text-align: right;

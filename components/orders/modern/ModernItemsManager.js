@@ -4,8 +4,8 @@ import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } f
 import { createPortal } from 'react-dom';
 import {
   Plus, Trash2, RotateCcw, Edit2, X, Check, Info, CalendarSearch, Scan,
-  PackageCheck, PackageOpen, Undo2, XCircle, Shirt, Scissors, Ruler, ChevronDown, AlertTriangle,
-  CheckCircle2
+  PackageCheck, PackageOpen, Undo2, XCircle, Shirt, Scissors, Ruler, ChevronDown, ChevronLeft, AlertTriangle,
+  CheckCircle2, ScanLine
 } from 'lucide-react';
 import OrderModelSelector from '../OrderModelSelector';
 import OrderSizeSelector from '../OrderSizeSelector';
@@ -66,6 +66,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   const [manualBarcode, setManualBarcode] = useState('');
   const [selectedItemForScan, setSelectedItemForScan] = useState(null);
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null, actionType: null });
+  const [itemChoiceModal, setItemChoiceModal] = useState({ isOpen: false, candidates: [], barcode: null });
   const [savingConditionId, setSavingConditionId] = useState(null);
   const [expandedHistory, setExpandedHistory] = useState({});
   const isFullyPaid = totalPaid >= totalRequired;
@@ -200,40 +201,60 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     }
 
     // 2. מציאת הפריט המתאים בהזמנה
-    const itemIndex = activeItems.findIndex(i => {
+    // התאמה מדויקת לפי ברקוד שכבר משוייך לפריט — חד-משמעית, אין צורך לבחור
+    let matchedItem = activeItems.find(i => {
       const b = i.barcode || i.dressItem?.barcode || i.dressItem?.dressBarcode;
-      if (b && b === barcode) return true;
-      if (i.isTaken) return false;
+      return b && b === barcode;
+    }) || null;
 
-      const iPfx = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
-      const iSize = i.dressItem?.sizeText || i.sizeText;
+    let candidates = [];
+    if (!matchedItem) {
+      candidates = activeItems.filter(i => {
+        if (i.isTaken) return false;
 
-      if (dressInfo) {
-        const matchPfx = dressInfo.barcodePrefix ? (iPfx === dressInfo.barcodePrefix || String(barcode).startsWith(String(iPfx))) : true;
-        const matchSize = dressInfo.sizeText ? (iSize === dressInfo.sizeText || (parseInt(iSize) === parseInt(dressInfo.sizeText))) : true;
-        if (matchPfx && matchSize) return true;
-      }
+        const iPfx = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+        const iSize = i.dressItem?.sizeText || i.sizeText;
 
-      if (iPfx && iSize) {
-        if (barcode.startsWith(String(iPfx)) && barcode.includes(String(iSize))) return true;
-      }
-      return false;
-    });
+        if (dressInfo) {
+          const matchPfx = dressInfo.barcodePrefix ? (iPfx === dressInfo.barcodePrefix || String(barcode).startsWith(String(iPfx))) : true;
+          const matchSize = dressInfo.sizeText ? (iSize === dressInfo.sizeText || (parseInt(iSize) === parseInt(dressInfo.sizeText))) : true;
+          if (matchPfx && matchSize) return true;
+        }
 
-    if (itemIndex === -1) {
+        if (iPfx && iSize) {
+          if (barcode.startsWith(String(iPfx)) && barcode.includes(String(iSize))) return true;
+        }
+        return false;
+      });
+
+      if (candidates.length === 1) matchedItem = candidates[0];
+    }
+
+    // כמה פריטים זהים (אותו דגם/מידה) תואמים לברקוד — לשאול את המשתמש לאיזה מהם לשייך אותו
+    if (!matchedItem && candidates.length > 1) {
+      setItemChoiceModal({ isOpen: true, candidates, barcode });
+      return;
+    }
+
+    if (!matchedItem) {
       const detailsStr = dressInfo ? ` (דגם ${dressInfo.dressName || dressInfo.barcodePrefix || ''}, מידה ${dressInfo.sizeText || ''})` : '';
       alert(`ברקוד ${barcode}${detailsStr} לא נמצא בין הפריטים שטרם הושכרו בהזמנה זו.`);
       return;
     }
 
-    const item = activeItems[itemIndex];
-    if (!item.isTaken) {
-      handleRent(item, barcode, true); // האימות בוצע כבר למעלה
-    } else if (!item.isReturned) {
-      handleReturn(item, true);
+    if (!matchedItem.isTaken) {
+      handleRent(matchedItem, barcode, true); // האימות בוצע כבר למעלה
+    } else if (!matchedItem.isReturned) {
+      handleReturn(matchedItem, true);
     } else {
       alert(`פריט ${barcode} כבר הוחזר.`);
     }
+  };
+
+  const chooseItemForBarcode = (item) => {
+    const barcode = itemChoiceModal.barcode;
+    setItemChoiceModal({ isOpen: false, candidates: [], barcode: null });
+    handleRent(item, barcode, true); // האימות בוצע כבר למעלה, המשתמש רק בחר לאיזה פריט לשייך
   };
 
   const handleItemChange = (index, field, value) => {
@@ -577,15 +598,15 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     const isGood = item.returnedOk !== false;
     const busy = savingConditionId === item.id;
     return (
-      <div className="moc-return-toggle compact" title="מצב הפריט בהחזרה">
-        <button type="button" className={`good ${isGood ? 'active' : ''}`} disabled={busy}
+      <div className="moc-return-toggle compact icon-only" title="מצב הפריט בהחזרה">
+        <button type="button" className={`good ${isGood ? 'active' : ''}`} disabled={busy} title="תקין"
           onClick={(e) => { e.stopPropagation(); handleSetReturnCondition(item, true); }}>
-          <CheckCircle2 size={13} /> תקין
+          <CheckCircle2 size={15} />
         </button>
         <div className="moc-rt-sep" />
-        <button type="button" className={`bad ${!isGood ? 'active' : ''}`} disabled={busy}
+        <button type="button" className={`bad ${!isGood ? 'active' : ''}`} disabled={busy} title="לא תקין"
           onClick={(e) => { e.stopPropagation(); handleSetReturnCondition(item, false); }}>
-          <AlertTriangle size={13} /> לא תקין
+          <AlertTriangle size={15} />
         </button>
       </div>
     );
@@ -699,27 +720,26 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                               חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך כעת רק את פירוט התיקון
                             </div>
                           )}
-                          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                            <label className="moc-check-label" style={{ opacity: fullyEditableNow ? 1 : 0.6 }}>
-                              <input type="checkbox"
-                                checked={item.neckAlteration === 1 || item.neckAlteration === true}
-                                disabled={!fullyEditableNow}
-                                onChange={(e) => handleItemChange(originalIndex, 'neckAlteration', e.target.checked ? 1 : 0)} />
-                              צוואר
-                            </label>
-                            <label className="moc-check-label" style={{ opacity: fullyEditableNow ? 1 : 0.6 }}>
-                              <input type="checkbox"
-                                checked={item.sleeveAlteration === 1 || item.sleeveAlteration === true}
-                                disabled={!fullyEditableNow}
-                                onChange={(e) => handleItemChange(originalIndex, 'sleeveAlteration', e.target.checked ? 1 : 0)} />
-                              שרוול
-                            </label>
-                            <label className="moc-check-label" style={{ gap: '4px', opacity: fullyEditableNow ? 1 : 0.6 }}>
-                              אורך (ס"מ)
+                          <div className="moc-alter-edit-row">
+                            <button type="button"
+                              className={`moc-alter-toggle ${(item.neckAlteration === 1 || item.neckAlteration === true) ? 'on' : ''}`}
+                              disabled={!fullyEditableNow}
+                              onClick={() => handleItemChange(originalIndex, 'neckAlteration', (item.neckAlteration === 1 || item.neckAlteration === true) ? 0 : 1)}>
+                              <Shirt size={13} /> צוואר
+                            </button>
+                            <button type="button"
+                              className={`moc-alter-toggle ${(item.sleeveAlteration === 1 || item.sleeveAlteration === true) ? 'on' : ''}`}
+                              disabled={!fullyEditableNow}
+                              onClick={() => handleItemChange(originalIndex, 'sleeveAlteration', (item.sleeveAlteration === 1 || item.sleeveAlteration === true) ? 0 : 1)}>
+                              <Scissors size={13} /> שרוול
+                            </button>
+                            <label className={`moc-alter-length ${item.lengthAlteration ? 'on' : ''}`}>
+                              <Ruler size={13} />
                               <input type="number" value={item.lengthAlteration || ''}
                                 disabled={!fullyEditableNow}
                                 onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
-                                style={{ width: '64px', padding: '4px 6px' }} placeholder="-" />
+                                placeholder="אורך" />
+                              <span>ס"מ</span>
                             </label>
                           </div>
                           <input type="text" value={item.alterationDetails || item.repairs || ''}
@@ -882,6 +902,64 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                   await handleCancelReturn(item);
                 }
               }}>אישור</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== מודל בחירת פריט — כשכמה פריטים זהים בהזמנה תואמים לברקוד שנסרק ===== */}
+      {itemChoiceModal.isOpen && (
+        <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setItemChoiceModal({ isOpen: false, candidates: [], barcode: null }); }}>
+          <div className="moc moc-modal-box">
+            <div className="moc-modal-head">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{
+                  width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)', flexShrink: 0
+                }}>
+                  <ScanLine size={18} />
+                </span>
+                לאיזה פריט לשייך את הברקוד?
+              </h3>
+              <button className="moc-close-x" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}><X size={15} /></button>
+            </div>
+            <div className="moc-modal-body">
+              <p style={{ color: 'var(--moc-text-muted)', margin: '0 0 16px', lineHeight: 1.6, fontSize: '0.9rem' }}>
+                נמצאו מספר פריטים זהים בהזמנה שמתאימים לברקוד שנסרק — יש לבחור לאיזה פריט לשייך אותו:
+                <br />
+                <strong className="moc-mono" style={{ display: 'inline-block', marginTop: '6px', padding: '4px 10px', background: 'var(--moc-neutral-bg)', borderRadius: '8px', color: 'var(--moc-text-main)' }}>
+                  {itemChoiceModal.barcode}
+                </strong>
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {itemChoiceModal.candidates.map((item, idx) => {
+                  const hasRepair = item.neckAlteration === 1 || item.neckAlteration === true ||
+                    item.sleeveAlteration === 1 || item.sleeveAlteration === true ||
+                    (item.lengthAlteration && String(item.lengthAlteration).trim() !== '');
+                  return (
+                    <button
+                      key={item.id || idx}
+                      className="moc-choice-card"
+                      onClick={() => chooseItemForBarcode(item)}
+                    >
+                      <span className="moc-choice-icon"><PackageOpen size={18} /></span>
+                      <span className="moc-choice-main">
+                        <div className="moc-choice-title">{itemName(item)}</div>
+                        <div className="moc-choice-sub">
+                          <span>מידה {item.sizeText || '-'}</span>
+                          <span className={`moc-badge on-white ${hasRepair ? 'warning' : 'neutral'}`}>
+                            {hasRepair && <Scissors size={12} />} {hasRepair ? 'עם תיקון' : 'ללא תיקון'}
+                          </span>
+                        </div>
+                      </span>
+                      <ChevronLeft size={18} className="moc-choice-arrow" />
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
+              <button className="moc-btn moc-btn-outline" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}>ביטול</button>
             </div>
           </div>
         </div>

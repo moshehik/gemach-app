@@ -42,9 +42,9 @@ export async function GET(request) {
         // Do not add any filter on alterations, we want all orders matching the dates
     } else if (hideNoAlterations) {
         // hideNoAlterations == true means we want to see orders WITHOUT alterations.
-        // Wait, the legacy said "רשימת הזמנות ללא תיקונים" uses AND IIf([תיקון_אורך]>0 Or [תיקון_צוואר] Or [תיקון_שרוול],-1,0)=0
+        // Legacy: AND IIf([תיקון_אורך]>0 Or [תיקון_צוואר] Or [תיקון_שרוול],-1,0)=0
         whereClause.neckAlteration = { in: [0, null] };
-        whereClause.lengthAlteration = null; // Assuming null or empty string means no alteration
+        whereClause.OR = [{ lengthAlteration: null }, { lengthAlteration: "" }];
         whereClause.sleeveAlteration = { in: [0, null] };
     } else {
         // Show only items that HAVE alterations
@@ -63,14 +63,22 @@ export async function GET(request) {
       where: whereClause,
       select: {
         id: true,
+        description: true,
+        quantity: true,
+        sizeText: true,
+        size: true,
+        barcodePrefix: true,
         neckAlteration: true,
         lengthAlteration: true,
         sleeveAlteration: true,
+        alterationDetails: true,
         alterationDone: true,
         order: {
           select: {
             orderId: true,
             eventDate: true,
+            eventDateHebrew: true,
+            notes: true,
             customer: {
               select: {
                 firstName: true,
@@ -85,14 +93,36 @@ export async function GET(request) {
           select: {
             sizeText: true,
             serialNumber: true,
+            dressBarcode: true,
             dress: {
               select: {
-                name: true
+                name: true,
+                barcodePrefix: true
               }
             }
           }
         }
       }
+    });
+
+    // Like the legacy Access reports, resolve the dress-model name through the
+    // item's barcode prefix (join to שמלות_דגמים) even when no physical
+    // DressItem has been assigned yet - otherwise unassigned items print
+    // without a model name.
+    const unresolvedPrefixes = [...new Set(
+      items.filter(i => !i.dressItem?.dress?.name && i.barcodePrefix != null).map(i => i.barcodePrefix)
+    )];
+    let modelByPrefix = {};
+    if (unresolvedPrefixes.length > 0) {
+      const models = await prisma.dressModel.findMany({
+        where: { barcodePrefix: { in: unresolvedPrefixes } },
+        select: { barcodePrefix: true, name: true }
+      });
+      modelByPrefix = Object.fromEntries(models.map(m => [m.barcodePrefix, m.name]));
+    }
+    items.forEach(i => {
+      i.dressModelName = i.dressItem?.dress?.name || modelByPrefix[i.barcodePrefix] || null;
+      i.dressPrefix = i.dressItem?.dress?.barcodePrefix ?? i.barcodePrefix ?? null;
     });
 
     const sortedItems = items.sort((a, b) => {

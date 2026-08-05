@@ -2,7 +2,7 @@
 
 import React, { useState, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
 import {
-  ScanLine, PackageCheck, PackageOpen, Undo2, XCircle, X, Check, Scissors, AlertTriangle, CheckCircle2
+  ScanLine, PackageCheck, PackageOpen, Undo2, XCircle, X, Check, Scissors, AlertTriangle, ChevronLeft
 } from 'lucide-react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
@@ -17,7 +17,7 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
   const [rentingItemId, setRentingItemId] = useState(null); // פריט שנפתחה לו שורת הזנת ברקוד
   const [inlineBarcode, setInlineBarcode] = useState('');
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null, actionType: null });
-  const [savingConditionId, setSavingConditionId] = useState(null);
+  const [itemChoiceModal, setItemChoiceModal] = useState({ isOpen: false, candidates: [], barcode: null });
   const inlineInputRef = useRef(null);
 
   useEffect(() => {
@@ -106,45 +106,65 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
     }
 
     // 2. מציאת הפריט המתאים בהזמנה
-    let itemIndex = -1;
+    let matchedItem = null;
+    let candidates = [];
     if (forcedItem) {
-      itemIndex = activeItems.findIndex(i => i.id === forcedItem.id);
+      matchedItem = activeItems.find(i => i.id === forcedItem.id) || null;
     } else {
-      itemIndex = activeItems.findIndex(i => {
+      // התאמה מדויקת לפי ברקוד שכבר משוייך לפריט — חד-משמעית, אין צורך לבחור
+      matchedItem = activeItems.find(i => {
         const b = i.barcode || i.dressItem?.barcode || i.dressItem?.dressBarcode;
-        if (b && b === barcode) return true;
-        if (i.isTaken) return false;
+        return b && b === barcode;
+      }) || null;
 
-        const iPfx = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
-        const iSize = i.dressItem?.sizeText || i.sizeText;
+      if (!matchedItem) {
+        candidates = activeItems.filter(i => {
+          if (i.isTaken) return false;
 
-        if (dressInfo) {
-          const matchPfx = dressInfo.barcodePrefix ? (iPfx === dressInfo.barcodePrefix || String(barcode).startsWith(String(iPfx))) : true;
-          const matchSize = dressInfo.sizeText ? (iSize === dressInfo.sizeText || (parseInt(iSize) === parseInt(dressInfo.sizeText))) : true;
-          if (matchPfx && matchSize) return true;
-        }
+          const iPfx = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+          const iSize = i.dressItem?.sizeText || i.sizeText;
 
-        if (iPfx && iSize) {
-          if (barcode.startsWith(String(iPfx)) && barcode.includes(String(iSize))) return true;
-        }
-        return false;
-      });
+          if (dressInfo) {
+            const matchPfx = dressInfo.barcodePrefix ? (iPfx === dressInfo.barcodePrefix || String(barcode).startsWith(String(iPfx))) : true;
+            const matchSize = dressInfo.sizeText ? (iSize === dressInfo.sizeText || (parseInt(iSize) === parseInt(dressInfo.sizeText))) : true;
+            if (matchPfx && matchSize) return true;
+          }
+
+          if (iPfx && iSize) {
+            if (barcode.startsWith(String(iPfx)) && barcode.includes(String(iSize))) return true;
+          }
+          return false;
+        });
+
+        if (candidates.length === 1) matchedItem = candidates[0];
+      }
     }
 
-    if (itemIndex === -1) {
+    // כמה פריטים זהים (אותו דגם/מידה) תואמים — לשאול את המשתמש לאיזה מהם לשייך את הברקוד
+    if (!matchedItem && candidates.length > 1) {
+      setItemChoiceModal({ isOpen: true, candidates, barcode });
+      return;
+    }
+
+    if (!matchedItem) {
       const detailsStr = dressInfo ? ` (דגם ${dressInfo.dressName || dressInfo.barcodePrefix || ''}, מידה ${dressInfo.sizeText || ''})` : '';
       alert(`ברקוד ${barcode}${detailsStr} לא נמצא בין הפריטים שטרם הושכרו בהזמנה זו.`);
       return;
     }
 
-    const item = activeItems[itemIndex];
-    if (!item.isTaken) {
-      handleRent(item, barcode, true); // האימות בוצע כבר למעלה
-    } else if (!item.isReturned) {
-      handleReturn(item, true);
+    if (!matchedItem.isTaken) {
+      handleRent(matchedItem, barcode, true); // האימות בוצע כבר למעלה
+    } else if (!matchedItem.isReturned) {
+      handleReturn(matchedItem, true);
     } else {
       alert(`פריט ${barcode} כבר הוחזר.`);
     }
+  };
+
+  const chooseItemForBarcode = (item) => {
+    const barcode = itemChoiceModal.barcode;
+    setItemChoiceModal({ isOpen: false, candidates: [], barcode: null });
+    handleRent(item, barcode, true); // האימות בוצע כבר למעלה, המשתמש רק בחר לאיזה פריט לשייך
   };
 
   const handleRent = async (item, barcodeToAssign = null, skipAuth = false) => {
@@ -230,41 +250,6 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
         alert('שגיאה בביטול סטטוס החזרה');
         onItemsChange(oldItems);
       }
-    }
-  };
-
-  // סימון מצב הפריט אחרי שהוחזר: תקין / לא תקין — זהה ללוגיקה בטאב "פריטים" (ModernItemsManager),
-  // כדי ש"לא תקין" יעבור דרך report-issue ותתווסף גם ההערה האוטומטית בכרטיס הלקוח.
-  const handleSetReturnCondition = async (item, ok) => {
-    if (!item?.id || item.isNew || !item.isReturned) return;
-    const current = item.returnedOk !== false;
-    if (current === ok) return;
-
-    if (!ok) {
-      const promptFunc = window.customConfirm || window.confirm;
-      const confirmed = await promptFunc('לסמן את הפריט כ"הוחזר - לא תקין"? תתווסף הערה אוטומטית בכרטיס הלקוח.', 'דיווח על פריט פגום');
-      if (!confirmed) return;
-    }
-
-    setSavingConditionId(item.id);
-    const oldItems = [...items];
-    onItemsChange(items.map(i => i.id === item.id ? { ...i, returnedOk: ok } : i));
-    try {
-      const res = ok
-        ? await fetch('/api/rentals/toggle', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ itemId: item.id, action: 'setReturnCondition', returnedOk: true })
-          })
-        : await fetch('/api/returns/report-issue', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderItemId: item.id, issueType: 'returned-bad' })
-          });
-      if (!res.ok) throw new Error('API failed');
-    } catch (err) {
-      alert('שגיאה בעדכון מצב הפריט');
-      onItemsChange(oldItems);
-    } finally {
-      setSavingConditionId(null);
     }
   };
 
@@ -410,25 +395,10 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
                   )}
 
                   {isReturned && (
-                    <>
-                      <div className="moc-return-toggle compact" title="מצב הפריט בהחזרה">
-                        <button type="button" className={`good ${item.returnedOk !== false ? 'active' : ''}`}
-                          disabled={savingConditionId === item.id}
-                          onClick={() => handleSetReturnCondition(item, true)}>
-                          <CheckCircle2 size={13} /> תקין
-                        </button>
-                        <div className="moc-rt-sep" />
-                        <button type="button" className={`bad ${item.returnedOk === false ? 'active' : ''}`}
-                          disabled={savingConditionId === item.id}
-                          onClick={() => handleSetReturnCondition(item, false)}>
-                          <AlertTriangle size={13} /> לא תקין
-                        </button>
-                      </div>
-                      <button className="moc-btn moc-btn-danger-soft moc-btn-sm" title="ביטול החזרה"
-                        onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' })}>
-                        <Undo2 size={14} /> ביטול החזרה
-                      </button>
-                    </>
+                    <button className="moc-btn moc-btn-danger-soft moc-btn-sm" title="ביטול החזרה"
+                      onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' })}>
+                      <Undo2 size={14} /> ביטול החזרה
+                    </button>
                   )}
                 </div>
               </div>
@@ -479,6 +449,59 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
               >
                 {confirmModal.actionType === 'return' ? 'אשר החזרה' : 'אשר ביטול'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* מודל בחירת פריט — כשכמה פריטים זהים בהזמנה תואמים לברקוד שנסרק */}
+      {itemChoiceModal.isOpen && (
+        <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setItemChoiceModal({ isOpen: false, candidates: [], barcode: null }); }}>
+          <div className="moc moc-modal-box">
+            <div className="moc-modal-head">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <span style={{
+                  width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)', flexShrink: 0
+                }}>
+                  <ScanLine size={18} />
+                </span>
+                לאיזה פריט לשייך את הברקוד?
+              </h3>
+              <button className="moc-close-x" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}><X size={15} /></button>
+            </div>
+            <div className="moc-modal-body">
+              <p style={{ color: 'var(--moc-text-muted)', margin: '0 0 16px', lineHeight: 1.6, fontSize: '0.9rem' }}>
+                נמצאו מספר פריטים זהים בהזמנה שמתאימים לברקוד שנסרק — יש לבחור לאיזה פריט לשייך אותו:
+                <br />
+                <strong className="moc-mono" style={{ display: 'inline-block', marginTop: '6px', padding: '4px 10px', background: 'var(--moc-neutral-bg)', borderRadius: '8px', color: 'var(--moc-text-main)' }}>
+                  {itemChoiceModal.barcode}
+                </strong>
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {itemChoiceModal.candidates.map((item, idx) => (
+                  <button
+                    key={item.id || idx}
+                    className="moc-choice-card"
+                    onClick={() => chooseItemForBarcode(item)}
+                  >
+                    <span className="moc-choice-icon"><PackageOpen size={18} /></span>
+                    <span className="moc-choice-main">
+                      <div className="moc-choice-title">{itemName(item)}</div>
+                      <div className="moc-choice-sub">
+                        <span>מידה {item.sizeText || '-'}</span>
+                        <span className={`moc-badge on-white ${itemHasRepairs(item) ? 'warning' : 'neutral'}`}>
+                          {itemHasRepairs(item) && <Scissors size={12} />} {itemHasRepairs(item) ? 'עם תיקון' : 'ללא תיקון'}
+                        </span>
+                      </div>
+                    </span>
+                    <ChevronLeft size={18} className="moc-choice-arrow" />
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
+              <button className="moc-btn moc-btn-outline" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}>ביטול</button>
             </div>
           </div>
         </div>

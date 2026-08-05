@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLabels } from '@/app/components/LabelsContext';
-import { X, Info, Save, Ban, Undo2, AlertTriangle, CheckCircle2, PackageX, PackageCheck, MoreVertical, Calendar, ScanLine, Loader2, Scissors, Pencil, User, Phone, Clock } from 'lucide-react';
+import { X, Info, Save, Ban, Undo2, AlertTriangle, CheckCircle2, PackageX, PackageCheck, MoreVertical, Calendar, ScanLine, Loader2, Scissors, Pencil, User, Phone, Clock, SquareArrowOutUpRight } from 'lucide-react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { addHistory } from '../../lib/historyManager';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
@@ -354,6 +354,30 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     if (success) alert('הערה נוספה בהצלחה.');
   };
 
+  // הפוך של reportIssue(..., 'returned-bad') — מחזיר פריט שסומן "לא תקין" בחזרה למצב "תקין".
+  const markReturnGoodAgain = async (itemId) => {
+    setOpenMenuId(null);
+    if (!await window.customConfirm('לסמן את הפריט בחזרה כ"הוחזר - תקין"?', 'עדכון מצב פריט')) return;
+    setIsBusy(true);
+    try {
+      const res = await fetch('/api/rentals/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ itemId, action: 'setReturnCondition', returnedOk: true })
+      });
+      if (res.ok) {
+        await refreshOrder();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'שגיאה');
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setIsBusy(false);
+    }
+  };
+
   const handleMarkReturnGood = async (item) => {
     if (item.isReturned) return;
     if (!await window.customConfirm(`לסמן את "${item.description}" כהוחזר תקין?`, 'אישור החזרה')) return;
@@ -517,6 +541,15 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                   {(isProcessing || isConfirming || isBusy) && (
                     <Loader2 size={18} className="rrm-header-spinner" aria-label="מעבד..." />
                   )}
+                  <a
+                    href={`/orders/${selectedOrder.orderId}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rrm-icon-btn"
+                    title="פתח כרטיס הזמנה בטאב חדש"
+                  >
+                    <SquareArrowOutUpRight size={18} />
+                  </a>
                   <OrderPrintMenu
                     order={selectedOrder}
                     onOrderUpdate={(patch) => setSelectedOrder(prev => prev ? { ...prev, ...patch } : prev)}
@@ -577,8 +610,10 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                                 {item.isReturned && (
                                   <>
                                     <button data-agy-id="rentalreturnmodal_button_12" className="rrm-menu-item danger" disabled={isBusy} onClick={() => { setOpenMenuId(null); undoReturn(item.id); }}><Undo2 size={14} /> ביטול החזרה</button>
-                                    {item.returnedOk && (
+                                    {item.returnedOk ? (
                                       <button data-agy-id="rentalreturnmodal_button_13" className="rrm-menu-item danger" disabled={isBusy} onClick={() => reportIssue(item.id, 'returned-bad')}><PackageX size={14} /> דווח על בעיה</button>
+                                    ) : (
+                                      <button data-agy-id="rentalreturnmodal_button_20" className="rrm-menu-item" disabled={isBusy} onClick={() => markReturnGoodAgain(item.id)}><PackageCheck size={14} /> סמן כתקין</button>
                                     )}
                                   </>
                                 )}

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Check } from 'lucide-react';
 
 /**
- * המעטפת של מסך "הזמנה חדשה": רקע זכוכית, באנר זהב עם מסלול חמשת השלבים,
+ * המעטפת של מסך "הזמנה חדשה": רקע זכוכית, באנר תכלת עם מסלול חמשת השלבים,
  * שורת פעולות עליונה, גוף השלב הפעיל ופוטר ניווט.
  * כל התוכן והלוגיקה מגיעים מהעמוד — כאן רק הפריסה.
  */
@@ -13,11 +13,6 @@ export default function NewOrderShell({
   step,
   steps,              // [{ id, label, value, enabled, lockedReason }]
   onStepChange,
-  draftOrderId,
-  itemsCount,
-  repairsTotal,
-  totalAmount,
-  calculating,
   topBar,             // פעולות בשורה העליונה
   children,           // גוף השלב
   footer              // כפתורי ניווט
@@ -109,21 +104,6 @@ export default function NewOrderShell({
               </nav>
             </div>
 
-            <div className="noc-side-foot">
-              <div className="noc-sf-row"><span>פריטים</span><span>{itemsCount}</span></div>
-              {repairsTotal > 0 && (
-                <div className="noc-sf-row"><span>תיקונים</span><span>₪{repairsTotal.toLocaleString('he-IL')}</span></div>
-              )}
-              <div className="noc-sf-row sum">
-                <span>סה"כ</span>
-                <span>{calculating ? '...' : `₪${(totalAmount || 0).toLocaleString('he-IL')}`}</span>
-              </div>
-              <div className="noc-side-note">
-                {draftOrderId
-                  ? `נשמר אוטומטית כטיוטה #${draftOrderId} — אפשר לסגור ולהמשיך מרשימת ההזמנות.`
-                  : 'ההזמנה תישמר אוטומטית כטיוטה ברגע שיהיו לקוח, תאריך ופריט אחד.'}
-              </div>
-            </div>
           </aside>
 
           {/* ===== תוכן ===== */}

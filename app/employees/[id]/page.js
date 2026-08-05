@@ -250,18 +250,22 @@ export default function EmployeePage({ params }) {
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * { visibility: hidden; }
-          .print-area, .print-area * { 
-            visibility: visible; 
+          .print-area, .print-area * {
+            visibility: visible;
             color: black !important;
             filter: grayscale(100%) !important;
           }
-          .print-area { 
-            position: absolute; left: 0; top: 0; width: 100%; direction: rtl; 
+          .print-area {
+            position: absolute; left: 0; top: 0; width: 100%; direction: rtl;
             overflow: visible !important;
+            background: #fff !important;
+            box-shadow: none !important;
           }
           .no-print { display: none !important; }
           .bsd-header { display: block !important; text-align: center; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; }
           ::-webkit-scrollbar { display: none; }
+          .print-area thead { display: table-header-group; }
+          .print-area tr { break-inside: avoid; page-break-inside: avoid; }
         }
       `}} />
 

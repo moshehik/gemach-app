@@ -114,20 +114,39 @@ export default function AttendanceReportPage() {
           }
           #print-area, #print-area * {
             visibility: visible;
+            color: black !important;
+            filter: grayscale(100%) !important;
           }
           #print-area {
             position: absolute;
             left: 0;
             top: 0;
             width: 100%;
+            direction: rtl;
+            overflow: visible !important;
           }
           .no-print {
             display: none !important;
           }
+          .bsd-header {
+            display: block !important;
+            text-align: center;
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+          }
+          ::-webkit-scrollbar { display: none; }
           .employee-page {
             page-break-after: always;
-            margin-bottom: 2cm;
+            margin-bottom: 0;
+            box-shadow: none !important;
+            border-radius: 0 !important;
           }
+          .employee-page:last-child {
+            page-break-after: auto;
+          }
+          .employee-page thead { display: table-header-group; }
+          .employee-page tr { break-inside: avoid; page-break-inside: avoid; }
         }
       `}} />
 
@@ -195,6 +214,7 @@ export default function AttendanceReportPage() {
       </div>
 
       <div id="print-area">
+        <div className="bsd-header" style={{ display: 'none' }}>בס"ד</div>
         {loading ? (
           <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
             <Loader2 data-element-name="רכיב_page_9" className="animate-spin" size={40} style={{ color: 'var(--primary-color)' }} />

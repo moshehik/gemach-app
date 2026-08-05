@@ -170,21 +170,26 @@ export default function EmployeesPage() {
     <main data-agy-id="employees-page-main" className="container animate-fade-in page-shell">
       
       <style dangerouslySetInnerHTML={{__html: `
+        #print-area { display: none; }
         @media print {
           body * { visibility: hidden; }
-          #print-area, #print-area * { 
-            visibility: visible; 
+          #print-area, #print-area * {
+            visibility: visible;
             color: black !important;
             filter: grayscale(100%) !important;
           }
-          #print-area { 
-            position: absolute; left: 0; top: 0; width: 100%; direction: rtl; 
+          #print-area {
+            display: block !important;
+            position: absolute; left: 0; top: 0; width: 100%; direction: rtl;
             overflow: visible !important;
           }
           .no-print { display: none !important; }
           .bsd-header { display: block !important; text-align: center; font-size: 1.2rem; font-weight: bold; margin-bottom: 1rem; }
           ::-webkit-scrollbar { display: none; }
-          .employee-page { page-break-after: always; margin-bottom: 2cm; }
+          .employee-page { page-break-after: always; margin-bottom: 0; box-shadow: none !important; border-radius: 0 !important; }
+          .employee-page:last-child { page-break-after: auto; }
+          .employee-page thead { display: table-header-group; }
+          .employee-page tr { break-inside: avoid; page-break-inside: avoid; }
         }
       `}} />
 

@@ -149,7 +149,13 @@ export default function ModernDressRentalsTab({ dressId, active }) {
                     <span className="moc-mono" style={{ color: 'var(--moc-text-muted)' }}>· {r.dressBarcode || '—'}</span>
                   </td>
                   <td>{r.eventDateHebrew || (r.eventDate ? getHebrewDateString(r.eventDate) : '—')}</td>
-                  <td>{r.takenDate ? new Date(r.takenDate).toLocaleDateString('he-IL') : '—'}</td>
+                  <td>
+                    {r.takenDate ? (
+                      <span title={new Date(r.takenDate).toLocaleDateString('he-IL')}>
+                        {getHebrewDateString(r.takenDate) || new Date(r.takenDate).toLocaleDateString('he-IL')}
+                      </span>
+                    ) : '—'}
+                  </td>
                   <td>
                     {!r.isReturned ? (
                       <span className="moc-badge on-white warning"><Clock size={12} /> טרם הוחזר</span>
@@ -178,20 +184,19 @@ export default function ModernDressRentalsTab({ dressId, active }) {
         </div>
       )}
 
-      {/* Pagination Footer */}
+      {/* שורת סך-הכל ועימוד — צמודה לתחתית הכרטיס */}
       {visible.length > 0 && (
-        <div className="page-footer-bar" style={{ position: 'sticky', bottom: 0, zIndex: 10, background: 'var(--card-bg)', borderTop: '1px solid var(--border-color)', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)' }}>
-          <div className="page-footer-summary">סה"כ השכרות מוצגות: {visible.length}</div>
-          
+        <div className="moc-table-footer">
+          <div className="moc-tf-summary">סה"כ השכרות מוצגות: {visible.length}</div>
           {totalPages > 1 && (
-            <div className="page-footer-pager" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>&lt; הקודם</button>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
-                עמוד 
-                <input type="number" min={1} max={totalPages} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> 
+            <div className="moc-tf-pager">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="moc-btn moc-btn-outline moc-btn-sm">&lt; הקודם</button>
+              <span className="moc-tf-page-jump">
+                עמוד
+                <input type="number" min={1} max={totalPages} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} />
                 מתוך {totalPages}
               </span>
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הבא &gt;</button>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="moc-btn moc-btn-outline moc-btn-sm">הבא &gt;</button>
             </div>
           )}
         </div>

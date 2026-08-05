@@ -50,7 +50,7 @@ export default function BoardPage() {
 
   useEffect(() => {
     if (jumpDate) {
-      setSelectedDate(jumpDate);
+      setSelectedDate(new Date(jumpDate));
     }
   }, [jumpDate]);
 
@@ -445,12 +445,10 @@ export default function BoardPage() {
                       <button data-element-name="כפתור_page_4"
                         onClick={(e) => {
                           e.stopPropagation();
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setSelectedDayOrders({ 
-                            date: cellGreg, 
-                            hebrewDate: hebrewDayStr, 
-                            orders: dayOrders,
-                            pos: { top: rect.bottom + window.scrollY, left: rect.left + window.scrollX }
+                          setSelectedDayOrders({
+                            date: cellGreg,
+                            hebrewDate: hebrewDayStr,
+                            orders: dayOrders
                           });
                         }}
                         style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary-color)', display: 'flex', padding: 0 }}
@@ -759,20 +757,15 @@ export default function BoardPage() {
       
       {selectedDayOrders && typeof document !== 'undefined' && createPortal(
         <>
-          <div data-element-name="לחיץ_page_50" 
-            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9998, backgroundColor: 'rgba(0,0,0,0.5)' }}
+          <div data-element-name="לחיץ_page_50"
+            style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', zIndex: 9998, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
             onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }}
-          />
-          <div data-element-name="לחיץ_page_51" 
-            className="animate-fade-in" 
-            onClick={e => e.stopPropagation()} 
-            style={{ 
-              position: 'fixed',
-              top: '50%',
-              left: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 9999,
-              width: '90%', 
+          >
+          <div data-element-name="לחיץ_page_51"
+            className="animate-fade-in"
+            onClick={e => e.stopPropagation()}
+            style={{
+              width: '90%',
               maxWidth: '500px', 
               maxHeight: '80vh', 
               display: 'flex',
@@ -847,6 +840,7 @@ export default function BoardPage() {
                   return name.includes(lower) || phone.includes(lower) || idStr.includes(lower);
               }).map(order => renderOrderCard(order))}
             </div>
+          </div>
           </div>
         </>,
         document.body

@@ -4,9 +4,10 @@ import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import {
   Trash2, Info, RefreshCcw, CreditCard, Plus, X, Zap, Clock,
-  Shirt, Wrench, FileText, Undo2, Ban, Gift, Pencil, Banknote
+  Shirt, Wrench, FileText, Undo2, Ban, Gift, Pencil, Banknote, SkipForward
 } from 'lucide-react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { verifyPin } from './mocAuth';
 
 /** מחשב את הזמן שנותר עד ל-deadline, מתעדכן כל שנייה. null כשהזמן פג. */
 function useCountdown(deadline) {
@@ -319,6 +320,49 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     setCreditCardData({ cardNumber: '', tokef: '', installments: 1, notes: '', amount: Math.max(0, totalRequired - totalPaid).toString() });
     setCreditError('');
     setShowCreditModal(true);
+  };
+
+  /** מעקף חיוב אשראי בפועל - רושם תשלום ידנית כאילו בוצע, בלי לפנות לנדרים פלוס.
+   * מוגבל למתכנת בלבד (verifyPin ברמת 'מתכנת'), עבור מצבים כמו תקלת סליקה. */
+  const handleBypassCreditPayment = async () => {
+    const amount = parseFloat(creditCardData.amount);
+    if (!amount || amount <= 0) {
+      setCreditError('אנא הזן סכום לפני מעקף.');
+      return;
+    }
+    const balance = totalRequired - totalPaid;
+    if (amount > balance) {
+      setCreditError(`לא ניתן לשלם יותר מהיתרה הנדרשת (₪${balance}).`);
+      return;
+    }
+
+    const auth = await verifyPin(
+      'מעקף חיוב אשראי בפועל ורישום ידני כאילו שולם, ללא פנייה לנדרים פלוס - מוגבל למתכנת בלבד. אנא בחר משתמש והזן סיסמה:',
+      'מתכנת'
+    );
+    if (!auth) return;
+
+    setIsProcessing(true);
+    setCreditError('');
+    try {
+      const notesObj = {
+        'אישור': 'מעקף מתכנת - לא בוצע חיוב אשראי בפועל',
+        'מזהה עובד מאשר': auth.employeeId
+      };
+      if (creditCardData.notes) notesObj['הערות משתמש'] = creditCardData.notes;
+
+      const added = {
+        isNew: true,
+        paymentMethod: 'אשראי (מעקף מתכנת)',
+        notes: JSON.stringify(notesObj),
+        amount,
+        paymentDate: new Date().toISOString()
+      };
+      onPaymentsChange([...payments, added]);
+      setShowCreditModal(false);
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleCardNumberChange = (e) => {
@@ -640,7 +684,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 {pendingRefunds.map((r, idx) => (
                   <tr key={idx}>
                     <td style={{ fontWeight: 600 }}>{r.reason || 'ללא סיבה'}</td>
-                    <td className="moc-hint">{r.createdAt ? new Date(r.createdAt).toLocaleDateString('he-IL') : new Date().toLocaleDateString('he-IL')}</td>
+                    <td className="moc-hint">{fmtDate(r.createdAt)}</td>
                     <td style={{ fontWeight: 700, color: '#2563eb', direction: 'ltr', textAlign: 'left' }}>₪{r.amount}</td>
                     <td>
                       <button className="moc-btn moc-btn-gold moc-btn-sm" disabled={isProcessing} onClick={() => approveRefund(r.id)}>
@@ -688,7 +732,21 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       {/* ===== מודל סליקת אשראי (נדרים פלוס) ===== */}
       {mounted && showCreditModal && createPortal(
         <div className="moc moc-modal-overlay">
-          <div className="moc-modal-box">
+          <div className="moc-modal-box" style={{ position: 'relative' }}>
+            <button
+              type="button"
+              title="מעקף מתכנת: רישום ידני כאילו שולם, ללא חיוב אשראי בפועל (מוגבל למתכנת)"
+              disabled={isProcessing}
+              onClick={handleBypassCreditPayment}
+              style={{
+                position: 'absolute', top: '12px', left: '12px', zIndex: 2,
+                width: '30px', height: '30px', borderRadius: '50%', border: 'none',
+                background: 'var(--moc-warning-bg)', color: '#b45309',
+                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
+              }}
+            >
+              <SkipForward size={15} />
+            </button>
             <div className="moc-modal-head">
               <h3>תשלום בכרטיס אשראי (נדרים פלוס)</h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -798,7 +856,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               </div>
               <span className="moc-field-label">תאריך</span>
               <div className="moc-field-value" style={{ fontSize: '0.95rem', marginBottom: '14px' }}>
-                {new Date(selectedPaymentDetails.paymentDate).toLocaleString('he-IL')}
+                {getHebrewDateString(selectedPaymentDetails.paymentDate)}, {new Date(selectedPaymentDetails.paymentDate).toLocaleTimeString('he-IL')}
               </div>
 
               <span className="moc-field-label">הערות ופירוט (נדרים פלוס / אחר)</span>
@@ -860,7 +918,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               </div>
               <span className="moc-field-label">תאריך</span>
               <div className="moc-field-value" style={{ fontSize: '0.95rem', marginBottom: '14px' }}>
-                {new Date(selectedObligationDetails.createdAt || new Date()).toLocaleString('he-IL')}
+                {getHebrewDateString(selectedObligationDetails.createdAt || new Date())}, {new Date(selectedObligationDetails.createdAt || new Date()).toLocaleTimeString('he-IL')}
               </div>
 
               <span className="moc-field-label">תיאור מפורט</span>

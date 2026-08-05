@@ -247,9 +247,13 @@ export async function GET() {
             transform: translateY(-2px);
         }
         @media print {
+            @page { size: A4; margin: 15mm; }
             body { background: white; padding: 0; }
             .header { box-shadow: none; color: black; background: none; border-bottom: 2px solid #000; }
-            .card { box-shadow: none; border: 1px solid #ddd; page-break-inside: avoid; }
+            .card { box-shadow: none; border: 1px solid #ddd; overflow: visible; }
+            .table-container { overflow: visible; }
+            thead { display: table-header-group; }
+            tr { break-inside: avoid; page-break-inside: avoid; }
             .print-btn { display: none; }
         }
     </style>

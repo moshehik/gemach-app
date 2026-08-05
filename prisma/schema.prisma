@@ -501,3 +501,33 @@ model Refund {
   @@index([isExecuted])
   @@index([isDeleted])
 }
+
+model ErrorReport {
+  id                 String   @id @default(uuid())
+  employeeId         String?
+  employee           Employee? @relation(fields: [employeeId], references: [id])
+  time               String?
+  url                String?
+  title              String?
+  queryParams        String?
+  lastButtons        String?   @db.Text
+  userText           String    @db.Text
+  status             String    @default("OPEN")
+  isReadByUser       Boolean   @default(true)
+  isReadByProgrammer Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  replies            ErrorReportReply[]
+}
+
+model ErrorReportReply {
+  id            String      @id @default(uuid())
+  errorReportId String
+  errorReport   ErrorReport @relation(fields: [errorReportId], references: [id], onDelete: Cascade)
+  employeeId    String?
+  employee      Employee?   @relation(fields: [employeeId], references: [id])
+  isProgrammer  Boolean     @default(false)
+  text          String      @db.Text
+  createdAt     DateTime    @default(now())
+}

@@ -76,6 +76,7 @@ export default function ModernDressItemsTab({
   const [newItem, setNewItem] = useState({ sizeText: '', serialNumber: '', dressBarcode: '', location: '' });
   const [adding, setAdding] = useState(false);
   const [addError, setAddError] = useState('');
+  const [showAddBar, setShowAddBar] = useState(false);
 
   const [infoItem, setInfoItem] = useState(null);
   const [highlightId, setHighlightId] = useState(null);
@@ -324,64 +325,12 @@ export default function ModernDressItemsTab({
   const addItemForSize = (size) => {
     const serial = nextSerialFor(size);
     setNewItem({ sizeText: String(size), serialNumber: String(serial), dressBarcode: buildBarcode(size, serial), location: newItem.location });
+    setShowAddBar(true);
     setViewMode('rows');
   };
 
   return (
     <>
-      {/* ===== סרגל הוספה מהירה ===== */}
-      <div className="moc-add-bar">
-        <div className="moc-fld w-sm">
-          <span className="moc-field-label">{getLabel ? getLabel('item_size', 'מידה') : 'מידה'} *</span>
-          <input
-            type="number"
-            min="0"
-            max="99"
-            placeholder="38"
-            value={newItem.sizeText}
-            onChange={e => changeNewItem('sizeText', e.target.value)}
-          />
-        </div>
-        <div className="moc-fld w-sm">
-          <span className="moc-field-label">{getLabel ? getLabel('item_serialNumber', "מס' סידורי") : "מס' סידורי"}</span>
-          <input
-            type="number"
-            min="0"
-            max="99"
-            placeholder="אוטומטי"
-            value={newItem.serialNumber}
-            onChange={e => changeNewItem('serialNumber', e.target.value)}
-          />
-        </div>
-        <div className="moc-fld w-md">
-          <span className="moc-field-label">{getLabel ? getLabel('item_barcode', 'ברקוד פריט') : 'ברקוד פריט'}</span>
-          <input
-            type="text"
-            className="moc-mono"
-            placeholder={`${prefix}____`}
-            value={newItem.dressBarcode}
-            readOnly
-            title="הברקוד נבנה אוטומטית מקוד הדגם + מידה + מס' סידורי"
-            style={{ background: '#f6f5f1', color: '#8b8b8b', cursor: 'not-allowed' }}
-          />
-        </div>
-        <div className="moc-fld w-md">
-          <span className="moc-field-label">מיקום</span>
-          <select value={newItem.location} onChange={e => changeNewItem('location', e.target.value)}>
-            <option value="">-- בחר מיקום --</option>
-            {(locations || []).map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
-          </select>
-        </div>
-        <button className="moc-btn moc-btn-gold" onClick={addItem} disabled={adding}>
-          {adding ? <><span className="moc-spinner" /> מוסיף...</> : <><Plus size={15} /> הוסף פריט</>}
-        </button>
-        <div className="moc-add-hint">
-          {addError
-            ? <span style={{ color: 'var(--moc-danger-text)', fontWeight: 700 }}>{addError}</span>
-            : <>מס' סידורי וברקוד נבנים אוטומטית לפי המידה — הברקוד אינו ניתן לעריכה.</>}
-        </div>
-      </div>
-
       {/* ===== סרגל סינון / תצוגה / חיפוש ===== */}
       <div className="moc-table-toolbar">
         <div className="moc-filter-chips">
@@ -401,6 +350,13 @@ export default function ModernDressItemsTab({
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <button
+            className={`moc-btn moc-btn-sm ${showAddBar ? 'moc-btn-outline' : 'moc-btn-gold'}`}
+            onClick={() => { setShowAddBar(v => !v); setAddError(''); }}
+          >
+            <Plus size={14} /> הוסף פריט
+          </button>
+
           <button
             className="moc-icon-btn-plain"
             title="סינון לפי עמודות"
@@ -435,6 +391,57 @@ export default function ModernDressItemsTab({
           </div>
         </div>
       </div>
+
+      {/* ===== סרגל הוספה — נפתח רק בלחיצה על "הוסף פריט" ===== */}
+      {showAddBar && (
+        <div className="moc-add-bar">
+          <div className="moc-fld w-sm">
+            <span className="moc-field-label">{getLabel ? getLabel('item_size', 'מידה') : 'מידה'} *</span>
+            <input
+              type="number"
+              min="0"
+              max="99"
+              placeholder="38"
+              autoFocus
+              value={newItem.sizeText}
+              onChange={e => changeNewItem('sizeText', e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addItem(); }}
+            />
+          </div>
+          <div className="moc-fld w-sm">
+            <span className="moc-field-label">{getLabel ? getLabel('item_serialNumber', "מס' סידורי") : "מס' סידורי"}</span>
+            <input
+              type="number"
+              min="0"
+              max="99"
+              placeholder="אוטומטי"
+              value={newItem.serialNumber}
+              onChange={e => changeNewItem('serialNumber', e.target.value)}
+              onKeyDown={e => { if (e.key === 'Enter') addItem(); }}
+            />
+          </div>
+          <div className="moc-fld w-md">
+            <span className="moc-field-label">מיקום</span>
+            <select value={newItem.location} onChange={e => changeNewItem('location', e.target.value)}>
+              <option value="">-- בחר מיקום --</option>
+              {(locations || []).map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
+            </select>
+          </div>
+          <div className="moc-fld">
+            <span className="moc-field-label">{getLabel ? getLabel('item_barcode', 'ברקוד פריט') : 'ברקוד פריט'}</span>
+            <span className="moc-ab-barcode" title="הברקוד נבנה אוטומטית מקוד הדגם + מידה + מס' סידורי">
+              {newItem.dressBarcode || `${prefix}____`}
+            </span>
+          </div>
+          <button className="moc-btn moc-btn-gold" onClick={addItem} disabled={adding}>
+            {adding ? <><span className="moc-spinner" /> מוסיף...</> : <><Plus size={15} /> הוסף</>}
+          </button>
+          <button className="moc-icon-btn-plain moc-ab-close" title="סגור" onClick={() => { setShowAddBar(false); setAddError(''); }}>
+            <X size={15} />
+          </button>
+          {addError && <div className="moc-ab-error">{addError}</div>}
+        </div>
+      )}
 
       {/* ===== תצוגת שורות ===== */}
       {viewMode === 'rows' ? (
@@ -677,20 +684,19 @@ export default function ModernDressItemsTab({
         </div>
       )}
 
-      {/* Pagination Footer */}
+      {/* שורת סך-הכל ועימוד — צמודה לתחתית הכרטיס */}
       {viewMode === 'rows' && visibleItems.length > 0 && (
-        <div className="page-footer-bar" style={{ position: 'sticky', bottom: 0, zIndex: 10, background: 'var(--card-bg)', borderTop: '1px solid var(--border-color)', padding: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', boxShadow: '0 -4px 10px rgba(0,0,0,0.05)' }}>
-          <div className="page-footer-summary">סה"כ פריטים מוצגים: {visibleItems.length}</div>
-          
+        <div className="moc-table-footer">
+          <div className="moc-tf-summary">סה"כ פריטים מוצגים: {visibleItems.length}</div>
           {totalPages > 1 && (
-            <div className="page-footer-pager" style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>&lt; הקודם</button>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>
-                עמוד 
-                <input type="number" min={1} max={totalPages} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> 
+            <div className="moc-tf-pager">
+              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="moc-btn moc-btn-outline moc-btn-sm">&lt; הקודם</button>
+              <span className="moc-tf-page-jump">
+                עמוד
+                <input type="number" min={1} max={totalPages} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} />
                 מתוך {totalPages}
               </span>
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הבא &gt;</button>
+              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="moc-btn moc-btn-outline moc-btn-sm">הבא &gt;</button>
             </div>
           )}
         </div>

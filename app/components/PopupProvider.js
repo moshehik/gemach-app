@@ -2,6 +2,7 @@
 import React, { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { AlertTriangle, CheckCircle, Info, HelpCircle, X, Copy, KeyRound } from 'lucide-react';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
+import modernOrderCss from '../../components/orders/modern/modernOrderStyles';
 
 const PopupContext = createContext(null);
 
@@ -176,9 +177,12 @@ export function PopupProvider({ children }) {
 
   return (
     <PopupContext.Provider data-element-name="רכיב_PopupProvider_1" value={{ showAlert, showConfirm, showPrompt, alertsHistory, openRentalModal, closeRentalModal }}>
+      {/* עיצוב "moc" של כרטיס ההזמנה המודרני — מוזרק גלובלית כדי שחלוניות אימות/אישור
+          המוצגות מכל דף באפליקציה (לא רק מכרטיס הזמנה) יעוצבו באותה שפה עיצובית */}
+      <style>{modernOrderCss}</style>
       {children}
 
-      
+
       {/* Toast Alerts Container */}
       <div className="popup-toast-container" style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999, display: 'flex', flexDirection: 'column', gap: '10px' }}>
         {alerts.map(alert => (
@@ -257,22 +261,28 @@ export function PopupProvider({ children }) {
          </div>
       )}
 
-      {/* Auth Prompt Modal */}
+      {/* Auth Prompt Modal — בסגנון החלונות הצפים של כרטיס ההזמנה המודרני (moc) */}
       {authPromptConfig.isOpen && (
-         <div className="popup-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1rem' }}>
-             <div className="popup-content animate-fade-in" style={{ background: 'var(--card-bg)', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
-                 <div style={{ padding: '24px 24px 0 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
-                     <div style={{ background: 'rgba(212, 175, 55, 0.14)', color: '#b5952f', padding: '10px', borderRadius: '12px' }}>
-                        <KeyRound data-element-name="רכיב_PopupProvider_14" size={28} />
-                     </div>
-                     <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: '700' }}>{authPromptConfig.title}</h3>
+         <div className="moc moc-modal-overlay" style={{ zIndex: 10000 }} onClick={(e) => { if (e.target === e.currentTarget) handleAuthPromptResponse(null); }}>
+             <div className="moc-modal-box">
+                 <div className="moc-modal-head">
+                     <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                         <span style={{
+                             width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                             background: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)', flexShrink: 0
+                         }}>
+                             <KeyRound data-element-name="רכיב_PopupProvider_14" size={18} />
+                         </span>
+                         {authPromptConfig.title}
+                     </h3>
+                     <button className="moc-close-x" onClick={() => handleAuthPromptResponse(null)}><X data-element-name="כפתור_סגירה_PopupProvider" size={15} /></button>
                  </div>
-                 <div style={{ padding: '20px 24px' }}>
-                     <div style={{ fontSize: '1.05rem', color: '#475569', marginBottom: '12px', lineHeight: '1.5' }}>
+                 <div className="moc-modal-body">
+                     <p style={{ color: 'var(--moc-text-muted)', margin: '0 0 18px', lineHeight: 1.6, fontSize: '0.92rem' }}>
                          {authPromptConfig.message}
-                     </div>
+                     </p>
                      <div style={{ marginBottom: '16px', position: 'relative' }}>
-                         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#334155' }}>בחר {authPromptConfig.requiredLevel}</label>
+                         <span className="moc-field-label">בחר {authPromptConfig.requiredLevel}</span>
                          <input data-element-name="חיפוש_PopupProvider_15"
                             ref={authSearchInputRef}
                             type="text"
@@ -287,14 +297,11 @@ export function PopupProvider({ children }) {
                             onBlur={() => {
                                 setTimeout(() => setIsAuthEmployeeDropdownOpen(false), 200);
                             }}
-                            style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', transition: 'border-color 0.2s', background: '#f8fafc' }}
-                            onFocusCapture={(e) => { e.target.style.borderColor = '#d4af37'; setIsAuthEmployeeDropdownOpen(true); }}
-                            onBlurCapture={(e) => e.target.style.borderColor = '#e2e8f0'}
                          />
                          {isAuthEmployeeDropdownOpen && (
-                             <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, marginTop: '4px', background: 'var(--card-bg)', border: '1px solid #e2e8f0', borderRadius: '10px', maxHeight: '180px', overflowY: 'auto', zIndex: 10001, boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1)' }}>
+                             <div className="moc-dropdown-menu" style={{ width: '100%', maxHeight: '190px', overflowY: 'auto' }}>
                                  {authPromptConfig.employees === null ? (
-                                     <div style={{ padding: '10px 16px', color: '#94a3b8' }}>טוען רשימת עובדים...</div>
+                                     <div className="moc-hint" style={{ padding: '10px 16px' }}>טוען רשימת עובדים...</div>
                                  ) : (
                                      <>
                                          {authPromptConfig.employees
@@ -302,6 +309,7 @@ export function PopupProvider({ children }) {
                                              .map(emp => (
                                                  <div
                                                      key={emp.id}
+                                                     className="moc-dropdown-item"
                                                      onMouseDown={(e) => {
                                                          e.preventDefault();
                                                          setSelectedAuthEmployee(emp.id.toString());
@@ -309,16 +317,13 @@ export function PopupProvider({ children }) {
                                                          setIsAuthEmployeeDropdownOpen(false);
                                                          if (authInputRef.current) authInputRef.current.focus();
                                                      }}
-                                                     style={{ padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', color: 'var(--text-color)' }}
-                                                     onMouseOver={(e) => e.currentTarget.style.background = 'var(--input-bg)'}
-                                                     onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
                                                  >
                                                      {emp.firstName} {emp.lastName}
                                                  </div>
                                              ))
                                          }
                                          {authPromptConfig.employees.filter(emp => `${emp.firstName} ${emp.lastName}`.includes(authEmployeeSearch)).length === 0 && (
-                                             <div style={{ padding: '10px 16px', color: '#94a3b8' }}>לא נמצאו תוצאות</div>
+                                             <div className="moc-hint" style={{ padding: '10px 16px' }}>לא נמצאו תוצאות</div>
                                          )}
                                      </>
                                  )}
@@ -326,7 +331,7 @@ export function PopupProvider({ children }) {
                          )}
                      </div>
                      <div>
-                         <label style={{ display: 'block', marginBottom: '8px', fontWeight: '600', color: '#334155' }}>קוד {authPromptConfig.requiredLevel}</label>
+                         <span className="moc-field-label">קוד {authPromptConfig.requiredLevel}</span>
                          <input data-element-name="שדה_PopupProvider_16"
                              ref={authInputRef}
                              type="password"
@@ -335,15 +340,12 @@ export function PopupProvider({ children }) {
                                 if (e.key === 'Enter') handleAuthPromptResponse({ pin: e.target.value, employeeId: selectedAuthEmployee });
                                 if (e.key === 'Escape') handleAuthPromptResponse(null);
                              }}
-                             style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', transition: 'border-color 0.2s', background: '#f8fafc' }}
-                             onFocus={(e) => e.target.style.borderColor = '#d4af37'}
-                             onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
                          />
                      </div>
                  </div>
-                 <div style={{ background: '#f8fafc', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
-                     <button data-element-name="כפתור_PopupProvider_17" onClick={() => handleAuthPromptResponse(null)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
-                     <button data-element-name="כפתור_PopupProvider_18" onClick={() => handleAuthPromptResponse({ pin: authInputRef.current.value, employeeId: selectedAuthEmployee })} style={{ padding: '10px 20px', background: '#d4af37', color: '#1e293b', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(212, 175, 55, 0.35)' }} onMouseOver={e => { e.currentTarget.style.background='#b5952f'; e.currentTarget.style.color='#fff'; }} onMouseOut={e => { e.currentTarget.style.background='#d4af37'; e.currentTarget.style.color='#1e293b'; }}>אישור</button>
+                 <div className="moc-modal-foot">
+                     <button data-element-name="כפתור_PopupProvider_17" className="moc-btn moc-btn-outline" onClick={() => handleAuthPromptResponse(null)}>ביטול</button>
+                     <button data-element-name="כפתור_PopupProvider_18" className="moc-btn moc-btn-gold" onClick={() => handleAuthPromptResponse({ pin: authInputRef.current.value, employeeId: selectedAuthEmployee })}>אישור</button>
                  </div>
              </div>
          </div>

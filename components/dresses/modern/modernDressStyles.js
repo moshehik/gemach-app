@@ -6,7 +6,7 @@ import modernOrderCss from '../../orders/modern/modernOrderStyles';
 const dressExtras = `
 /* ===== תמונת הדגם בסיידבר ===== */
 .moc-sidebar-thumb {
-  width: 100%; height: 132px; border-radius: 12px; overflow: hidden; margin-bottom: 14px;
+  width: 100%; height: 90px; border-radius: 12px; overflow: hidden; margin-bottom: 14px;
   background: rgba(255,255,255,0.16); display: flex; align-items: center; justify-content: center;
   color: rgba(255,255,255,0.75); font-size: 0.82rem; font-weight: 600; gap: 6px; flex-direction: column;
   border: 1px solid rgba(255,255,255,0.25); position: relative; cursor: pointer; padding: 0;
@@ -60,16 +60,36 @@ const dressExtras = `
 .moc-pill-toggle.on.red { background: var(--moc-danger-bg); border-color: #fecaca; color: var(--moc-danger-text); }
 .moc-pill-toggle .moc-cnt { opacity: .6; font-size: .76rem; }
 .moc-toolbar-search { position: relative; display: inline-flex; align-items: center; }
-.moc-toolbar-search input { width: 280px; padding: 8px 34px 8px 30px; border-radius: 20px; font-size: 0.88rem; }
-.moc-toolbar-search .moc-ts-icon { position: absolute; right: 11px; color: var(--moc-text-muted); pointer-events: none; display: flex; }
-.moc-toolbar-search .moc-ts-clear { position: absolute; left: 6px; width: 22px; height: 22px; }
+.moc .moc-toolbar-search input {
+  width: 280px; padding: 9px 36px 9px 32px; border-radius: 999px; font-size: 0.88rem;
+  border: 1.5px solid var(--moc-divider); background: var(--moc-card-bg-soft, #fbfaf6);
+  transition: width 0.25s ease, border-color 0.2s, box-shadow 0.2s, background 0.2s;
+}
+.moc .moc-toolbar-search input::placeholder { color: #b3ac9a; }
+.moc .moc-toolbar-search input:hover { border-color: var(--moc-border-color); background: #fff; }
+.moc .moc-toolbar-search input:focus {
+  outline: none; width: 330px; border-color: var(--moc-primary); background: #fff;
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.16);
+}
+.moc-toolbar-search .moc-ts-icon { position: absolute; right: 12px; color: var(--moc-text-muted); pointer-events: none; display: flex; transition: color 0.2s; }
+.moc-toolbar-search:focus-within .moc-ts-icon { color: var(--moc-primary-dark); }
+.moc-toolbar-search .moc-ts-clear { position: absolute; left: 7px; width: 22px; height: 22px; border-radius: 50%; }
+.moc-toolbar-search .moc-ts-clear:hover { background: var(--moc-danger-bg); color: var(--moc-danger-text); }
 
 /* ===== טבלת הפריטים ===== */
 .moc-table-scroll { overflow-x: auto; border-radius: 12px; border: 1px solid var(--moc-divider); }
-.moc-data-table th .moc-th-inner { display: flex; align-items: center; gap: 6px; cursor: pointer; user-select: none; }
-.moc-data-table th .moc-sort-ic { color: #c7c2b4; flex-shrink: 0; }
+/* כותרות אחידות: שורה אחת תמיד, ריווח קבוע; אייקון המיון שמור במקומו אך נראה רק בריחוף או כשהעמודה ממוינת */
+.moc-data-table thead th { white-space: nowrap; letter-spacing: 0.02em; border-bottom: 2px solid var(--moc-divider); }
+.moc-data-table th .moc-th-inner {
+  display: inline-flex; align-items: center; gap: 5px; cursor: pointer; user-select: none;
+  padding: 3px 7px; margin: -3px -7px; border-radius: 7px; transition: background 0.15s, color 0.15s;
+}
+.moc-data-table th .moc-th-inner:hover { background: var(--moc-primary-light); color: var(--moc-primary-dark); }
+.moc-data-table th .moc-sort-ic { color: #c7c2b4; flex-shrink: 0; opacity: 0; transition: opacity 0.15s; }
+.moc-data-table th .moc-th-inner:hover .moc-sort-ic { opacity: 1; }
 .moc-data-table th.sorted { color: var(--moc-primary-dark); }
-.moc-data-table th.sorted .moc-sort-ic { color: var(--moc-primary-dark); }
+.moc-data-table th.sorted .moc-th-inner { background: var(--moc-primary-light); }
+.moc-data-table th.sorted .moc-sort-ic { color: var(--moc-primary-dark); opacity: 1; }
 .moc-data-table tbody tr.st-repair { background: #fffbeb; }
 .moc-data-table tbody tr.st-unused { background: #fff5f5; }
 .moc-data-table tbody tr.st-deleted { opacity: 0.55; background: var(--moc-neutral-bg); }
@@ -106,16 +126,38 @@ const dressExtras = `
 .moc-icon-btn-plain.act-cancel:hover { background: var(--moc-neutral-bg); color: var(--moc-text-main); }
 .moc-icon-btn-plain.act-edit:hover { background: var(--moc-primary-light); color: var(--moc-primary-dark); }
 
-/* סרגל הוספה מהירה */
+/* סרגל הוספה מהירה — נפתח מכפתור "הוסף פריט" בסרגל הכלים, סגור כברירת מחדל */
 .moc-add-bar {
   background: linear-gradient(135deg, #fffdf6, #fdf8e9); border: 1px dashed var(--moc-border-color);
-  border-radius: 12px; padding: 12px 14px; display: flex; gap: 10px; align-items: flex-end;
-  flex-wrap: wrap; margin-bottom: 14px;
+  border-radius: 12px; padding: 12px 14px; display: flex; gap: 12px; align-items: flex-end;
+  flex-wrap: wrap; margin-bottom: 14px; animation: mocFadeSlide 0.2s ease;
 }
 .moc-add-bar .moc-fld { display: flex; flex-direction: column; gap: 4px; }
-.moc-add-bar .moc-fld.w-sm input, .moc-add-bar .moc-fld.w-sm select { width: 110px; }
-.moc-add-bar .moc-fld.w-md input, .moc-add-bar .moc-fld.w-md select { width: 155px; }
-.moc-add-bar .moc-add-hint { margin-right: auto; font-size: 0.78rem; color: #a9873a; align-self: center; max-width: 280px; line-height: 1.5; }
+.moc-add-bar .moc-fld.w-sm input, .moc-add-bar .moc-fld.w-sm select { width: 100px; }
+.moc-add-bar .moc-fld.w-md input, .moc-add-bar .moc-fld.w-md select { width: 150px; }
+.moc-add-bar .moc-ab-barcode {
+  font-family: 'Consolas', monospace; font-size: 0.9rem; font-weight: 700; color: var(--moc-primary-dark);
+  background: var(--moc-primary-light); padding: 8px 14px; border-radius: 8px; white-space: nowrap;
+  min-width: 88px; text-align: center; letter-spacing: 0.06em;
+}
+.moc-add-bar .moc-ab-close { margin-right: auto; width: 30px; height: 30px; align-self: center; }
+.moc-add-bar .moc-ab-error { width: 100%; color: var(--moc-danger-text); font-weight: 700; font-size: 0.82rem; }
+
+/* ===== שורת סך-הכל ועימוד — צמודה לתחתית הכרטיס בשני הטאבים ===== */
+.moc-table-footer {
+  position: sticky; bottom: 0; z-index: 10;
+  margin: 16px -30px -26px; padding: 11px 30px;
+  background: var(--moc-card-bg); border-top: 2px solid var(--moc-divider);
+  display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+  box-shadow: 0 -6px 14px rgba(0, 0, 0, 0.05);
+}
+.moc-table-footer .moc-tf-summary { font-size: 0.88rem; font-weight: 700; color: var(--moc-text-muted); }
+.moc-table-footer .moc-tf-pager { display: flex; align-items: center; gap: 8px; }
+.moc-table-footer .moc-tf-page-jump { display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 700; }
+.moc-table-footer .moc-tf-page-jump input {
+  width: 56px; padding: 6px 4px; text-align: center; border-radius: 8px;
+  border: 1px solid var(--moc-divider); font-weight: 700; font-size: 0.88rem;
+}
 
 /* ===== תצוגת קוביות לפי מידה ===== */
 .moc-cubes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }

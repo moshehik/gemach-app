@@ -1745,6 +1745,49 @@ table.items-table thead tr th,
 
 /* בהדפסה — בלי שלד ובלי כותרות דביקות, שהכל יזרום על פני העמודים */
 @media print {
+  html, body {
+    background: #fff !important;
+    color: #000 !important;
+    height: auto !important;
+    overflow: visible !important;
+  }
+
+  ::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+  }
+
+  .dev-env-container,
+  .offline-indicator,
+  .ai-floating-widget,
+  .landing-page,
+  .page-footer-bar {
+    display: none !important;
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  tfoot {
+    display: table-footer-group;
+  }
+
+  tr {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  h1, h2, h3, h4 {
+    break-after: avoid-page;
+    page-break-after: avoid;
+  }
+
   body:has(> .page-shell) {
     display: block;
     height: auto;

@@ -1,29 +1,24 @@
-const fs = require('fs');
+﻿const fs = require('fs');
 const path = require('path');
 
-function searchFiles(dir, queries) {
+function searchDir(dir, terms) {
   const files = fs.readdirSync(dir);
   for (const file of files) {
     const fullPath = path.join(dir, file);
-    const stat = fs.statSync(fullPath);
-    if (stat.isDirectory()) {
-      if (file !== 'node_modules' && file !== '.next') {
-        searchFiles(fullPath, queries);
+    if (fs.statSync(fullPath).isDirectory()) {
+      if (file !== 'node_modules' && file !== '.next' && file !== '.git') {
+        searchDir(fullPath, terms);
       }
-    } else if (fullPath.endsWith('.tsx')) {
+    } else if (file.endsWith('.js') || file.endsWith('.jsx') || file.endsWith('.ts') || file.endsWith('.tsx') || file.endsWith('.html')) {
       const content = fs.readFileSync(fullPath, 'utf8');
-      if (queries.some(q => content.includes(q))) {
-        console.log(`Found in: ${fullPath}`);
-        const lines = content.split('\n');
-        lines.forEach((line, i) => {
-           if (queries.some(q => line.includes(q))) {
-             console.log(`${i+1}: ${line.trim()}`);
-           }
-        });
+      for (const term of terms) {
+        if (content.includes(term)) {
+          console.log('Found ' + term + ' in: ' + fullPath);
+          break;
+        }
       }
     }
   }
 }
 
-searchFiles(path.join(__dirname, 'app'), ['מחק', 'פרטים', 'תשלומים']);
-searchFiles(path.join(__dirname, 'components'), ['מחק', 'פרטים', 'תשלומים']);
+searchDir('.', ['הודעות', 'שגיא', 'דיווח']);
