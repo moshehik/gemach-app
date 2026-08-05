@@ -6,6 +6,7 @@ import { Users, UserCheck, UserMinus, Plus, FileSpreadsheet, ChevronRight, Chevr
 import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
 import ExportButtons from '../../components/ExportButtons';
+import { fetchSharedJson, TTL } from '../../lib/apiCache';
 
 export default function EmployeesPage() {
   const router = useRouter();
@@ -47,12 +48,12 @@ export default function EmployeesPage() {
   // Fetch Employees List
   useEffect(() => {
     if (activeTab === 'list' && !isAiModeActive) {
-      fetch(`/api/employees?all=true`)
-        .then(res => res.json())
+      fetchSharedJson('/api/employees?all=true', { ttl: TTL.STATIC })
         .then(data => {
           setEmployees(data);
           setLoading(false);
-        });
+        })
+        .catch(e => console.error(e));
     }
   }, [activeTab, isAiModeActive]);
 

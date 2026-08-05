@@ -1,6 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import { fetchSharedJson, TTL } from '../../lib/apiCache';
 
 export default function OrderModelSelector({ value, onChange, placeholder = 'בחר דגם...', inputId }) {
   const [query, setQuery] = useState('');
@@ -57,21 +58,22 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
 
   // Fetch models when query changes
   useEffect(() => {
+    let cancelled = false;
     const fetchModels = async () => {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/inventory/models?q=${encodeURIComponent(query)}`);
-        const data = await res.json();
-        setModels(data.models || []);
+        // מטמון משותף — אותם חיפושי דגמים חוזרים על עצמם שוב ושוב בזמן קליטת הזמנה
+        const data = await fetchSharedJson(`/api/inventory/models?q=${encodeURIComponent(query)}`, { ttl: TTL.REFERENCE });
+        if (!cancelled) setModels(data.models || []);
       } catch (err) {
         console.error('Failed to fetch models', err);
       } finally {
-        setIsLoading(false);
+        if (!cancelled) setIsLoading(false);
       }
     };
     
     const timeoutId = setTimeout(fetchModels, 300);
-    return () => clearTimeout(timeoutId);
+    return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [query]);
 
   // Sync text if value changes from outside (e.g., reset)

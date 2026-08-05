@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
+import { fetchSharedJson, subscribe, TTL } from '@/lib/apiCache';
 
 const LabelsContext = createContext();
 
@@ -9,21 +10,18 @@ export function LabelsProvider({ children, initialLabels = {} }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchLabels = async () => {
-      try {
-        const res = await fetch('/api/settings/labels');
-        if (res.ok) {
-          const data = await res.json();
-          setLabels(data || {});
-        }
-      } catch (err) {
-        console.warn('Failed to fetch UI labels:', err?.message || err);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchLabels();
+    let alive = true;
+    const applyLabels = (data) => { if (alive && data) setLabels(data); };
+    // Shared cache: served instantly on repeat navigations, auto-refreshed
+    // when labels are saved (mutations to /api/settings invalidate this key).
+    const unsubscribe = subscribe('/api/settings/labels', () => {
+      fetchSharedJson('/api/settings/labels', { ttl: TTL.STATIC }).then(applyLabels).catch(() => {});
+    });
+    fetchSharedJson('/api/settings/labels', { ttl: TTL.STATIC })
+      .then(applyLabels)
+      .catch((err) => console.warn('Failed to fetch UI labels:', err?.message || err))
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; unsubscribe(); };
   }, []);
 
   const getLabel = (key, defaultValue) => {

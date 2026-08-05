@@ -10,7 +10,8 @@
 // כך שהכניסה לדף מציגה נתונים מיידית וה-fetch של הדף עצמו הופך לרענון שקט.
 
 import { HDate } from '@hebcal/core';
-import { cacheNamespace, fetchJson, getSettingsCached } from './pageCache';
+import { cacheNamespace, fetchJson } from './pageCache';
+import { fetchSharedJson, TTL } from '../../lib/apiCache';
 
 export const getThreeMonthsAgoDateString = () => {
   const d = new Date();
@@ -206,10 +207,13 @@ function warm(namespace, key, url, isValid, normalize) {
 }
 
 const routePrefetchers = {
+  // orders ו-dashboard/dresses קוראים מ-lib/apiCache (המטמון המשותף עם
+  // invalidation אוטומטי על מוטציות), לכן החימום שלהם עובר דרכו — אותו URL
+  // בדיוק שהדף עצמו יבקש. שאר הדפים עדיין קוראים מ-pageCache namespaces.
   '/orders': () => {
     const key = buildOrdersListParams().toString();
-    warm('orders', key, `/api/orders?${key}`, (d) => d && Array.isArray(d.data));
-    getSettingsCached().catch(() => {}); // הדף צריך את inventory_hold_minutes
+    fetchSharedJson(`/api/orders?${key}`, { ttl: TTL.LIST }).catch(() => {});
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC }).catch(() => {}); // inventory_hold_minutes
   },
   '/customers': () => {
     const key = buildCustomersListParams().toString();
@@ -221,13 +225,9 @@ const routePrefetchers = {
   },
   '/dashboard/dresses': () => {
     const key = buildDressesListParams().toString();
-    // הדף מנרמל את התשובה לפני שמירה למטמון — משכפלים את אותו נרמול
-    warm('dresses', key, `/api/dresses?${key}`,
-      (d) => d && (Array.isArray(d.data) || Array.isArray(d)),
-      (d) => Array.isArray(d.data)
-        ? { data: d.data, totalPages: d.totalPages || 1, total: d.total || 0 }
-        : { data: d, totalPages: 1, total: d.length });
-    getSettingsCached().catch(() => {});
+    // ב-apiCache נשמרת התשובה הגולמית — הדף מנרמל אותה בקריאה, לא בשמירה.
+    fetchSharedJson(`/api/dresses?${key}`, { ttl: TTL.LIST }).catch(() => {});
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC }).catch(() => {});
   },
   '/board': () => {
     const key = buildBoardMonthParams(new Date()).toString();

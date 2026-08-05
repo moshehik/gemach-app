@@ -14,7 +14,7 @@ import newOrderCss from '../../../components/orders/new/newOrderStyles';
 import { calculateDynamicAvailability } from '../../../lib/clientInventory';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from '../../../components/orders/modern/mocAuth';
-import { getSettingsCached } from '@/app/lib/pageCache';
+import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 
 export const getCustomerFullName = (c) => {
   if (!c) return 'לא נבחר';
@@ -316,7 +316,7 @@ export default function NewOrderPage() {
   };
 
   useEffect(() => {
-    getSettingsCached()
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then(data => {
         if (Array.isArray(data)) {
           const settingsObj = data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});

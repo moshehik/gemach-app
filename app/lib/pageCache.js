@@ -7,6 +7,8 @@
 // כי כל דף ממילא מרענן מהשרת ברקע בכל mount. אין TTL על נתוני הדפים —
 // רק תקרת כמות כדי שהזיכרון לא יגדל בלי גבול לאורך משמרת שלמה.
 
+import { fetchSharedJson, invalidate, TTL } from '../../lib/apiCache';
+
 const MAX_ENTRIES = 300;
 
 // "namespace::key" -> value; סדר ההכנסה משמש כ-LRU מקורב (get מרענן את המיקום).
@@ -65,28 +67,14 @@ export function fetchJson(url, init) {
 }
 
 // ===== /api/settings משותף =====
-// ההגדרות נשלפות בנפרד ע"י ~10 דפים ומודאלים. הן משתנות לעיתים רחוקות,
-// אז TTL קצר של דקה חוסך את רוב הקריאות הכפולות בלי סיכון אמיתי להתיישנות.
-// מסך ההגדרות קורא ל-invalidateSettings() אחרי שמירה כדי לאפס מיד.
-const SETTINGS_TTL_MS = 60 * 1000;
-let settingsEntry = null; // { data, at }
-
+// ההגדרות נשלפות בנפרד ע"י ~10 דפים ומודאלים. מקור אחד לכולן: המטמון המשותף
+// ב-lib/apiCache (SWR + ביטול אוטומטי על כל מוטציה דרך ה-interceptor שלו),
+// כדי שלא יתקיימו שני עותקים של אותן הגדרות עם גילאים שונים.
+// מסך ההגדרות עדיין קורא ל-invalidateSettings() אחרי שמירה לאיפוס מיידי.
 export function getSettingsCached() {
-  if (settingsEntry && Date.now() - settingsEntry.at < SETTINGS_TTL_MS) {
-    return Promise.resolve(settingsEntry.data);
-  }
-  return fetchJson('/api/settings')
-    .then((data) => {
-      settingsEntry = { data, at: Date.now() };
-      return data;
-    })
-    .catch((err) => {
-      // כשל רענון לא צריך להפיל דף שיש לו כבר הגדרות ישנות ביד.
-      if (settingsEntry) return settingsEntry.data;
-      throw err;
-    });
+  return fetchSharedJson('/api/settings', { ttl: TTL.STATIC });
 }
 
 export function invalidateSettings() {
-  settingsEntry = null;
+  invalidate('/api/settings');
 }

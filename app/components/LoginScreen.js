@@ -4,6 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import { Lock, User, LogIn, X, Loader2, ShieldCheck, KeyRound } from 'lucide-react';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 export default function LoginScreen({ isModal = false, onClose }) {
   const [employees, setEmployees] = useState([]);
@@ -54,8 +55,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
   }, []);
 
   useEffect(() => {
-    fetch('/api/employees')
-      .then(res => res.json())
+    fetchSharedJson('/api/employees', { ttl: TTL.STATIC })
       .then(data => {
         if (Array.isArray(data)) {
           setEmployees(data);

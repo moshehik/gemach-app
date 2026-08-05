@@ -3,21 +3,17 @@ import React, { createContext, useContext, useState, useCallback, useEffect, use
 import { AlertTriangle, CheckCircle, Info, HelpCircle, X, Copy, KeyRound } from 'lucide-react';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import modernOrderCss from '../../components/orders/modern/modernOrderStyles';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 const PopupContext = createContext(null);
 
-// מטמון לנתוני האימות (רשימת עובדים + משתמש נוכחי) — נטען פעם אחת לכל טעינת עמוד,
-// כדי שחלונית אישור מנהל/עובד תיפתח מיד ולא תחכה לשרת בכל פתיחה.
-let authDataCachePromise = null;
-const loadAuthData = () => {
-  if (!authDataCachePromise) {
-    authDataCachePromise = Promise.all([
-      fetch('/api/employees').then(r => (r.ok ? r.json() : [])).catch(() => []),
-      fetch('/api/me').then(r => (r.ok ? r.json() : null)).catch(() => null)
-    ]);
-  }
-  return authDataCachePromise;
-};
+// נתוני האימות (רשימת עובדים + משתמש נוכחי) נטענים דרך המטמון המשותף —
+// חלונית אישור מנהל/עובד נפתחת מיד, והרשימה מתרעננת אוטומטית אחרי עריכת עובדים
+// או התחברות/התנתקות (בניגוד למטמון המקומי הישן שלא התעדכן לעולם).
+const loadAuthData = () => Promise.all([
+  fetchSharedJson('/api/employees', { ttl: TTL.STATIC }).catch(() => []),
+  fetchSharedJson('/api/me', { ttl: TTL.STATIC }).catch(() => null)
+]);
 
 export function PopupProvider({ children }) {
   const [alerts, setAlerts] = useState([]);

@@ -16,7 +16,7 @@ import HebrewDateRangePicker from '../../components/HebrewDateRangePicker';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import PrintWizardModal from '../components/PrintWizardModal';
-import { cacheNamespace, getSettingsCached } from '@/app/lib/pageCache';
+import { fetchSharedJson, readCache, subscribe, TTL } from '../../lib/apiCache';
 import { buildOrdersListParams, defaultOrdersAdvFilters } from '@/app/lib/prefetchRoutes';
 
 const PendingTimer = ({ cartStatusDate, holdMinutes = 15 }) => {
@@ -50,9 +50,20 @@ const PendingTimer = ({ cartStatusDate, holdMinutes = 15 }) => {
   return <span style={{ color: timeLeft === 'פג תוקף' ? 'var(--error-color)' : '#ea580c', fontWeight: 'bold', fontSize: '0.85rem' }}>⏳ {timeLeft}</span>;
 };
 
-// מטמון SWR משותף — ראה app/lib/pageCache.js; בניית ה-query עברה ל-prefetchRoutes.js
-// כדי שה-prefetch מדפים אחרים ייצר את אותו מפתח בדיוק.
-const ordersCache = cacheNamespace('orders');
+// הזמנות ממתינות (עגלה בתוקף) מוצגות תמיד בראש הרשימה
+const sortPendingFirst = (list, holdMinutes) => {
+  const now = Date.now();
+  return [...list].sort((a, b) => {
+    const aIsPaid = (a.totalPaid >= a.totalAmount && a.totalAmount > 0) || a.totalPaid > 0 || a.status === 'שולם' || a.status === 'שולם חלקי';
+    const aPending = !a.legacyId && !aIsPaid && a.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + holdMinutes * 60000 > now);
+
+    const bIsPaid = (b.totalPaid >= b.totalAmount && b.totalAmount > 0) || b.totalPaid > 0 || b.status === 'שולם' || b.status === 'שולם חלקי';
+    const bPending = !b.legacyId && !bIsPaid && b.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + holdMinutes * 60000 > now);
+    if (aPending && !bPending) return -1;
+    if (!aPending && bPending) return 1;
+    return 0;
+  });
+};
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -94,7 +105,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     let cancelled = false;
-    getSettingsCached()
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then(data => {
         const setting = Array.isArray(data) ? data.find(s => s.key === 'inventory_hold_minutes') : null;
         const parsed = parseInt(setting?.value, 10);
@@ -104,53 +115,39 @@ export default function OrdersPage() {
     return () => { cancelled = true; };
   }, []);
 
+  // בניית ה-query דרך prefetchRoutes כדי שה-prefetch מדפים אחרים ייצר
+  // את אותו מפתח מטמון בדיוק, תו בתו.
+  const buildOrdersUrl = useCallback((targetPage) => {
+    const queryParams = buildOrdersListParams({
+      page: targetPage, limit, search, sort, order, filterStatus, advFilters
+    });
+    return `/api/orders?${queryParams.toString()}`;
+  }, [limit, search, sort, order, advFilters, filterStatus]);
+
   const fetchOrders = useCallback(async (isPrefetch = false, targetPage = page) => {
-    if (!isPrefetch) setLoading(true);
-    
-    try {
-      const queryParams = buildOrdersListParams({
-        page: targetPage, limit, search, sort, order, filterStatus, advFilters
-      });
+    const url = buildOrdersUrl(targetPage);
+    const cached = readCache(url);
 
-      const cacheKey = queryParams.toString();
-      
-      // SWR: Instant Cache Hit
-      if (!isPrefetch && ordersCache.has(cacheKey)) {
-        const cachedData = ordersCache.get(cacheKey);
-        setOrders(cachedData.data || []);
-        setTotalPages(cachedData.totalPages || 1);
-        setTotalCount(cachedData.total || 0);
-        setLoading(false); // UI becomes interactive instantly
+    if (!isPrefetch) {
+      // מטמון משותף (SWR): נתונים שנטענו כבר מוצגים מיידית, בלי מסך טעינה
+      if (cached) {
+        setOrders(sortPendingFirst(cached.data || [], holdMinutes));
+        setTotalPages(cached.totalPages || 1);
+        setTotalCount(cached.total || 0);
+        setLoading(false);
+      } else {
+        setLoading(true);
       }
+    }
 
-      const timestamp = new Date().getTime();
-      queryParams.append('_t', timestamp);
-
-      window.dispatchEvent(new Event('app-data-fetching-start'));
-      const res = await fetch(`/api/orders?${queryParams.toString()}`, { cache: 'no-store' });
-      const data = await res.json();
-      window.dispatchEvent(new Event('app-data-fetching-end'));
-      
-      // Update Cache silently
-      ordersCache.set(cacheKey, data);
-
-      // Sort function to put pending items at the top
-      const sortData = (list) => {
-        const now = Date.now();
-        return [...list].sort((a, b) => {
-          const aIsPaid = (a.totalPaid >= a.totalAmount && a.totalAmount > 0) || a.totalPaid > 0 || a.status === 'שולם' || a.status === 'שולם חלקי';
-          const aPending = !a.legacyId && !aIsPaid && a.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + holdMinutes * 60000 > now);
-          
-          const bIsPaid = (b.totalPaid >= b.totalAmount && b.totalAmount > 0) || b.totalPaid > 0 || b.status === 'שולם' || b.status === 'שולם חלקי';
-          const bPending = !b.legacyId && !bIsPaid && b.items?.some(i => i.cartStatus === 'pending' && new Date(i.cartStatusDate).getTime() + holdMinutes * 60000 > now);
-          if (aPending && !bPending) return -1;
-          if (!aPending && bPending) return 1;
-          return 0;
-        });
-      };
+    try {
+      const showSpinner = !isPrefetch && !cached;
+      if (showSpinner) window.dispatchEvent(new Event('app-data-fetching-start'));
+      const data = await fetchSharedJson(url, { ttl: TTL.LIST });
+      if (showSpinner) window.dispatchEvent(new Event('app-data-fetching-end'));
 
       if (!isPrefetch && targetPage === page) {
-        setOrders(sortData(data.data || []));
+        setOrders(sortPendingFirst(data.data || [], holdMinutes));
         setTotalPages(data.totalPages || 1);
         setTotalCount(data.total || 0);
       }
@@ -160,11 +157,11 @@ export default function OrdersPage() {
     } finally {
       if (!isPrefetch) setLoading(false);
     }
-  }, [page, limit, search, sort, order, advFilters, filterStatus, holdMinutes]);
+  }, [page, buildOrdersUrl, holdMinutes]);
 
   useEffect(() => {
     fetchOrders(false, page);
-    
+
     // Background Prefetching for the next page
     const timer = setTimeout(() => {
       if (page < totalPages) {
@@ -173,6 +170,21 @@ export default function OrdersPage() {
     }, 1500); // Wait 1.5s after load to not block UI
     return () => clearTimeout(timer);
   }, [fetchOrders, page, totalPages]);
+
+  // רענון אוטומטי: כל mutation להזמנות/השכרות/תשלומים בכל מקום באפליקציה
+  // מבטל את המטמון, והמנוי הזה מעדכן את הטבלה ברגע שהנתונים הטריים מגיעים.
+  useEffect(() => {
+    if (isAiModeActive) return undefined;
+    const url = buildOrdersUrl(page);
+    return subscribe(url, () => {
+      const data = readCache(url);
+      if (data) {
+        setOrders(sortPendingFirst(data.data || [], holdMinutes));
+        setTotalPages(data.totalPages || 1);
+        setTotalCount(data.total || 0);
+      }
+    });
+  }, [buildOrdersUrl, page, holdMinutes, isAiModeActive]);
 
   const handleSearch = (e) => {
     if (e) e.preventDefault();

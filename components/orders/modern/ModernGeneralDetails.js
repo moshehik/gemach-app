@@ -11,6 +11,7 @@ import HebrewDateRangePicker from '../../HebrewDateRangePicker';
 import CustomerSelector from '../../CustomerSelector';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
+import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 
 /**
  * טאב "פרטים כלליים" בעיצוב המודרני — כרטיס לקוח + כרטיס אירוע.
@@ -26,8 +27,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const [systemDefaultSpacing, setSystemDefaultSpacing] = useState(3);
 
   React.useEffect(() => {
-    fetch('/api/settings')
-      .then(res => res.json())
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then(data => {
         const arr = Array.isArray(data) ? data : Object.entries(data || {}).map(([key, value]) => ({ key, value }));
         const setting = arr.find(s => s.key === 'inventory_buffer_days');
