@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
 import { getHebrewDateString } from '../../../../../lib/hebrewDate';
+import { calculateOrderStatus } from '../../../../../lib/orderStatus';
 
 export async function POST(request, { params }) {
   try {
@@ -42,20 +43,26 @@ export async function POST(request, { params }) {
       footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || ''
     };
 
-    const getOrderStatus = (order) => {
-      if (order.status === 'בוטל' || order.status === 'ARCHIVED') return 'ארכיון/מבוטל';
-      const hasUnreturned = order.items && order.items.some(i => i.isTaken && !i.isReturned && !i.isDeleted);
-      const hasPending = order.items && order.items.some(i => !i.isTaken && !i.isDeleted);
-      if (hasUnreturned) return 'פעיל (אצל לקוח)';
-      if (hasPending) return 'ממתין (טרם נלקח)';
-      return 'הוחזר (מלא)';
-    };
+    // סטטוס ההשכרה מגיע כעת מ-lib/orderStatus.js (מקור האמת היחיד לסטטוס הזמנה) במקום
+    // עותק מקומי עם אוצר מילים משלו - כדי שלא יהיה פער בין מה שנשלח כאן לבין שאר המערכת.
+    const getOrderStatus = (order) => calculateOrderStatus(order);
 
+    // ממפה את אוצר המילים המלא של lib/orderStatus.js (כולל מצבים חלקיים/עתידיים/טיוטה)
+    // לארבעת סגנונות התגית הקיימים במייל.
     const getStatusStyle = (status) => {
-      if (status.includes('ארכיון') || status.includes('מבוטל')) return 'background: #e2e3e5; color: #383d41; border: 1px solid #d6d8db;';
-      if (status.includes('פעיל')) return 'background: #cce5ff; color: #004085; border: 1px solid #b8daff;';
-      if (status.includes('הוחזר')) return 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;';
-      return 'background: #fff3cd; color: #856404; border: 1px solid #ffeeba;';
+      switch (status) {
+        case 'מחוק':
+          return 'background: #e2e3e5; color: #383d41; border: 1px solid #d6d8db;';
+        case 'הוחזר':
+          return 'background: #d4edda; color: #155724; border: 1px solid #c3e6cb;';
+        case 'הושכר':
+        case 'הושכר חלקי':
+        case 'הוחזר חלקי':
+          return 'background: #cce5ff; color: #004085; border: 1px solid #b8daff;';
+        default:
+          // 'בקרוב', 'עבר', 'טיוטה' - טרם נלקח בפועל
+          return 'background: #fff3cd; color: #856404; border: 1px solid #ffeeba;';
+      }
     };
 
     const totalObligations = order.obligations.reduce((sum, o) => sum + o.amount, 0);
