@@ -6,6 +6,7 @@ import { recalculateOrderObligations, computeOrderObligations } from '../../../.
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
+import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS, deriveConfirmedOrderStatus } from '../../../../lib/orderReservation';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',
@@ -398,6 +399,24 @@ export async function PUT(request, { params }) {
       items: storedItems
     });
 
+    // A draft or reservation shell opened straight from its own card (e.g. the "open the
+    // draft in a new tab" link on the new-order screen) is saved through this same PUT route,
+    // which never used to touch `status` beyond echoing back whatever the client already had
+    // loaded - so a shell that picked up a real payment here stayed stuck showing 'טיוטה'
+    // forever, even though its items had already flipped to a permanent ('confirmed') hold.
+    // Promote it out of the shell status on the same signal that promotes the items, so the
+    // two can't drift apart the way they did for order 26125.
+    const wasShellOrder = existingOrder.status === DRAFT_ORDER_STATUS || existingOrder.status === RESERVED_ORDER_STATUS;
+    let shellExitStatus;
+    if (wasShellOrder && holdIsPermanent) {
+      const totalPaidForStatus = Array.from(paymentsAfterSave.values())
+        .reduce((sum, p) => sum + (p.isDeleted ? 0 : (parseFloat(p.amount) || 0)), 0);
+      const totalRequiredForStatus = data.totalAmount !== undefined && data.totalAmount !== null
+        ? (parseFloat(data.totalAmount) || 0)
+        : (existingOrder.totalAmount || 0);
+      shellExitStatus = deriveConfirmedOrderStatus(totalPaidForStatus, totalRequiredForStatus, 'חדש');
+    }
+
     const updatedOrder = await prisma.$transaction(async (tx) => {
       const parsedEventDate = parseSafeDate(data.eventDate);
       const parsedFromDate = parseSafeDate(data.fromDate);
@@ -423,7 +442,7 @@ export async function PUT(request, { params }) {
           toDate: parsedToDate,
           customSpacing: data.customSpacing !== undefined ? (data.customSpacing === null || data.customSpacing === '' ? null : parseInt(data.customSpacing, 10)) : undefined,
           notes: data.notes !== undefined ? data.notes : undefined,
-          status: data.status !== undefined ? data.status : undefined,
+          status: shellExitStatus !== undefined ? shellExitStatus : (data.status !== undefined ? data.status : undefined),
           hasSignedRegulations: data.hasSignedRegulations !== undefined ? data.hasSignedRegulations : undefined,
         }
       });
