@@ -94,8 +94,8 @@ export async function POST(request, { params }) {
       <head>
         <meta charset="utf-8">
         <style>
-          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #fafafa; margin: 0; padding: 20px; direction: rtl; }
-          .invoice-box { max-width: 900px; margin: 0 auto; background: #fff; padding: 50px; border: 1px solid #efefef; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #fff; margin: 0; padding: 10px; direction: rtl; }
+          .invoice-box { width: 100%; max-width: 1100px; margin: 0 auto; background: #fff; padding: 20px; box-sizing: border-box; }
           .print-header { text-align: center; margin-bottom: 40px; }
           .print-header h1 { margin: 0; font-size: 26px; color: #555; font-weight: 300; letter-spacing: 1px; margin-bottom: 10px; }
           .print-header h2 { margin: 0; font-size: 16px; color: #777; font-weight: normal; }
@@ -149,8 +149,7 @@ export async function POST(request, { params }) {
                       <td width="50%" style="border-right: 1px solid #f0f0f0;">
                         <strong>${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}</strong><br />
                         תאריך הזמנה: ${order.createdAt ? getHebrewDateString(order.createdAt) : '-'}<br />
-                        ${(!order.isWeekdayEvent && !order.isAbroad) ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}<br />
-                        סטטוס: ${getOrderStatus(order)}
+                        ${(!order.isWeekdayEvent && !order.isAbroad) ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
                         ${printType === 'order' && order.notes ? `<br />הערות: ${order.notes}` : ''}
                       </td>
                     </tr>
@@ -158,12 +157,35 @@ export async function POST(request, { params }) {
                 </td>
               </tr>
             </thead>
+            <tfoot style="display: table-footer-group;">
+              <tr>
+                <td style="border: none; padding: 0;">
+                  <div style="height: 30px;"></div>
+                </td>
+              </tr>
+            </tfoot>
             <tbody>
               <tr>
                 <td style="border: none; padding: 0;">
-                  ${printType === 'rental' && printSettings.box1 ? `<div class="rental-notes-box">${printSettings.box1}</div>` : ''}
-                  ${printType === 'rental' && printSettings.box2 ? `<div class="rental-notes-box rental-notes-box-bg">${printSettings.box2}</div>` : ''}
 
+          ${printType === 'rental' && printSettings.box1 ? `<div class="rental-notes-box">${printSettings.box1}</div>` : ''}
+          ${printType === 'rental' && printSettings.box2 ? `<div class="rental-notes-box rental-notes-box-bg">${printSettings.box2}</div>` : ''}
+          ${printType === 'rental' && printSettings.footer ? `
+            <div style="text-align: center; margin-top: 15px; margin-bottom: 25px;">
+              <h3 style="font-size: 16px; font-weight: bold; margin: 0 0 8px 0; color: #222;">${printSettings.footer}</h3>
+              <div style="font-size: 15px; font-weight: 600; display: flex; justify-content: center; align-items: center; color: #444;">
+                <span>על החתום:</span>
+                <span style="display: inline-block; width: 200px; border-bottom: 1px dashed #666; margin: 0 10px;"></span>
+              </div>
+              <div style="margin-top: 8px; font-size: 13px; font-weight: 500; color: #666;">
+                נא להחזיר טופס זה חתום בעת החזרת השמלות
+              </div>
+            </div>
+          ` : ''}
+                </td>
+              </tr>
+              <tr>
+                <td style="border: none; padding: 0;">
           <table class="print-table">
             <thead>
               <tr>
@@ -182,7 +204,10 @@ export async function POST(request, { params }) {
               ${itemsHtml}
             </tbody>
           </table>
-
+                </td>
+              </tr>
+              <tr>
+                <td style="border: none; padding: 0;">
           <table width="100%" style="margin-bottom: 50px;">
             <tr>
               <td width="60%"></td>
@@ -204,12 +229,12 @@ export async function POST(request, { params }) {
               </td>
             </tr>
           </table>
-
-          ${printType === 'rental' && printSettings.footer ? `
+                </td>
+              </tr>
+              <tr>
+                <td style="border: none; padding: 0;">
+          ${printType === 'rental' ? `
             <div class="terms">
-              <div style="text-align: center; margin-bottom: 15px;">
-                <strong style="font-size: 15px; color: #444;">${printSettings.footer}</strong>
-              </div>
               הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב. אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
             </div>
           ` : `

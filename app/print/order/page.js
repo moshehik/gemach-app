@@ -113,7 +113,7 @@ export default function PrintOrderPage() {
           background: #fff;
           max-width: 900px;
           margin: 40px auto;
-          padding: 50px;
+          padding: 20px;
           border: 1px solid #efefef;
           box-shadow: 0 2px 10px rgba(0,0,0,0.02);
           font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
@@ -122,7 +122,7 @@ export default function PrintOrderPage() {
         @media print {
           @page {
             size: A4 portrait;
-            margin: 15mm;
+            margin: 10mm;
           }
           html, body, #__next, .__next {
             background-color: white !important;
@@ -132,22 +132,35 @@ export default function PrintOrderPage() {
             min-height: auto !important;
             overflow: visible !important;
             -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
           .print-container {
             border: none !important;
             box-shadow: none !important;
-            padding: 20px !important;
+            padding: 0 !important;
             margin: 0 !important;
             max-width: 100% !important;
             width: 100%;
             height: auto !important;
+            display: block !important;
+            color: black !important;
           }
           .print-table thead {
             display: table-header-group;
           }
-          .print-table tr, .summary-section, .terms, .signatures, .rental-notes-box {
+          .print-table tr {
             break-inside: avoid;
             page-break-inside: avoid;
+          }
+          .order-details-card,
+          .rental-notes-box,
+          .print-footer {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+          .section-title {
+            break-after: avoid-page;
+            page-break-after: avoid;
           }
         }
         .bsd {
@@ -290,10 +303,11 @@ export default function PrintOrderPage() {
         ) : error ? (
           <div style={{ textAlign: 'center', padding: '50px', color: '#dc3545', fontSize: '18px' }}>{error}</div>
         ) : order ? (
-          <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
-            <thead style={{ display: 'table-header-group' }}>
+          <>
+          <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: 0 }}>
+            <thead style={{ display: 'table-header-group', border: 'none' }}>
               <tr>
-                <td style={{ border: 'none', padding: 0 }}>
+                <td colSpan={enableAlterations ? "7" : "4"} style={{ border: 'none', padding: 0 }}>
                   <div className="bsd">בס&quot;ד</div>
                   <div className="print-header">
                     <div className="print-header-content">
@@ -303,7 +317,7 @@ export default function PrintOrderPage() {
                       </div>
                     </div>
                   </div>
-
+                  
                   <div className="order-details-card">
                     {/* Right side: Customer */}
                     <div>
@@ -320,19 +334,12 @@ export default function PrintOrderPage() {
                       ) : (
                         <>סוג אירוע: אירוע חו"ל</>
                       )}
-                      <br />
-                      סטטוס: {getOrderStatus(order)}
                       {printType === 'order' && order.notes && (
                         <><br />הערות: {order.notes}</>
                       )}
                     </div>
                   </div>
-                </td>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td style={{ border: 'none', padding: 0 }}>
+
                   {printType === 'rental' && printSettings && (
                     <div style={{ marginBottom: '20px' }}>
                       {printSettings.box1 && (
@@ -345,140 +352,181 @@ export default function PrintOrderPage() {
                           {printSettings.box2}
                         </div>
                       )}
+                      {printSettings.footer && (
+                        <div style={{ textAlign: 'center', marginTop: '15px', marginBottom: '15px' }}>
+                          <h3 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#222' }}>{printSettings.footer}</h3>
+                          <div style={{ fontSize: '15px', fontWeight: '600', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#444' }}>
+                            <span>על החתום:</span>
+                            <span style={{ display: 'inline-block', width: '200px', borderBottom: '1px dashed #666', margin: '0 10px' }}></span>
+                          </div>
+                          <div style={{ marginTop: '8px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+                            נא להחזיר טופס זה חתום בעת החזרת השמלות
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
-
-            <table className="print-table">
-              <thead>
+                </td>
+              </tr>
+              <tr>
+                <th>דגם / תיאור</th>
+                <th>מידה</th>
+                <th>ברקוד</th>
+                {enableAlterations && (
+                  <>
+                    <th>תיקון צואר</th>
+                    <th>תיקון שרוול</th>
+                    <th>תיקון אורך</th>
+                  </>
+                )}
+                <th>סטטוס</th>
+              </tr>
+            </thead>
+            <tbody>
+              {!order.items || order.items.filter(i => !i.isDeleted).length === 0 ? (
                 <tr>
-                  <th>דגם / תיאור</th>
-                  <th>מידה</th>
-                  <th>ברקוד</th>
-                  {enableAlterations && (
+                  <td colSpan={enableAlterations ? "7" : "4"} style={{ textAlign: 'center', padding: '30px', color: '#6c757d' }}>אין פריטים פעילים בהזמנה זו</td>
+                </tr>
+              ) : (
+                order.items.filter(i => !i.isDeleted).map((item) => {
+                  let statusStr = 'טרם נלקח';
+                  if (item.isReturned) statusStr = 'הוחזר';
+                  else if (item.isTaken) statusStr = 'אצל הלקוח';
+                  
+                  return (
+                    <tr key={item.id}>
+                      <td style={{ fontWeight: '500' }}>{item.description || item.dressItem?.dress?.name || item.dressItem?.dressName || '-'}</td>
+                      <td>{item.sizeText || item.dressItem?.sizeText || '-'}</td>
+                      <td style={{ fontWeight: '600', color: '#666' }}>{item.barcode || item.dressItem?.dressBarcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : '-')}</td>
+                      {enableAlterations && (
+                        <>
+                          <td>{item.neckAlteration ? `הצרה ${item.neckAlteration}` : '-'}</td>
+                          <td>{item.sleeveAlteration ? `הארכה ${item.sleeveAlteration}` : '-'}</td>
+                          <td>{item.lengthAlteration || '-'}</td>
+                        </>
+                      )}
+                      <td>
+                        {statusStr}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+            <tbody>
+              <tr>
+                <td colSpan={enableAlterations ? "7" : "4"} style={{ border: 'none', padding: 0 }}>
+                  <div className="summary-section">
+                    <table className="summary-table">
+                      <tbody>
+                        <tr>
+                          <td>סה&quot;כ לחיוב:</td>
+                          <td>₪{order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0}</td>
+                        </tr>
+                        <tr>
+                          <td>סה&quot;כ שולם:</td>
+                          <td>₪{order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0}</td>
+                        </tr>
+                        <tr className="total">
+                          <td>יתרה לתשלום:</td>
+                          <td>
+                            ₪{Math.max(0, (order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0) - (order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0))}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {order.payments && order.payments.filter(p => !p.isDeleted).length > 0 && (
                     <>
-                      <th>תיקון צואר</th>
-                      <th>תיקון שרוול</th>
-                      <th>תיקון אורך</th>
+                      <h4 style={{ color: '#555', fontSize: '15px', marginBottom: '10px' }}>תשלומים שהתקבלו</h4>
+                      <table className="print-table" style={{ marginBottom: '30px' }}>
+                        <thead>
+                          <tr>
+                            <th>תאריך (עברי)</th>
+                            <th>אופן תשלום</th>
+                            <th>סכום</th>
+                            <th>הערות</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {order.payments.filter(p => !p.isDeleted).map((p, idx) => {
+                            let notes = p.notes || '-';
+                            let extraInfo = '';
+                            try {
+                              if (typeof notes === 'string' && notes.trim().startsWith('{')) {
+                                const parsed = JSON.parse(notes);
+                                const approval = parsed.Confirmation || parsed.TransactionId || parsed['אישור'];
+                                notes = approval ? `אישור: ${approval}` : 'סליקת אשראי';
+                                if (parsed.Tashloumim || parsed['תשלומים']) {
+                                   extraInfo = ` | תשלומים: ${parsed.Tashloumim || parsed['תשלומים']}`;
+                                }
+                                if (parsed['הערות משתמש']) {
+                                   extraInfo += ` | ${parsed['הערות משתמש']}`;
+                                }
+                                notes += extraInfo;
+                              } else if (typeof notes === 'string') {
+                                 const match = notes.match(/אישור:\s*([a-zA-Z0-9]+)/);
+                                 const tashMatch = notes.match(/"Tashloumim"\s*:\s*"(\d+)"/);
+                                 let approvalStr = notes;
+                                 if (match && match[1]) {
+                                   approvalStr = `אישור: ${match[1]}`;
+                                   if (tashMatch && tashMatch[1]) {
+                                     approvalStr += ` | תשלומים: ${tashMatch[1]}`;
+                                   }
+                                 } else if (notes.length > 50) {
+                                   approvalStr = notes.substring(0, 50) + '...';
+                                 }
+                                 notes = approvalStr;
+                              }
+                            } catch (e) {}
+                            const hebrewPaymentDate = p.paymentDate ? getHebrewDateString(p.paymentDate) : getHebrewDateString(new Date());
+                            return (
+                              <tr key={idx}>
+                                <td>{hebrewPaymentDate}</td>
+                                <td>{p.paymentMethod || '-'}</td>
+                                <td style={{ fontWeight: 'bold' }}>₪{p.amount}</td>
+                                <td>{notes}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
                     </>
                   )}
-                  <th>סטטוס</th>
-                </tr>
-              </thead>
-              <tbody>
-                {!order.items || order.items.filter(i => !i.isDeleted).length === 0 ? (
-                  <tr>
-                    <td colSpan={enableAlterations ? "7" : "4"} style={{ textAlign: 'center', padding: '30px', color: '#6c757d' }}>אין פריטים פעילים בהזמנה זו</td>
-                  </tr>
-                ) : (
-                  order.items.filter(i => !i.isDeleted).map((item) => {
-                    let statusStr = 'טרם נלקח';
-                    if (item.isReturned) statusStr = 'הוחזר';
-                    else if (item.isTaken) statusStr = 'אצל הלקוח';
-                    
-                    return (
-                      <tr key={item.id}>
-                        <td style={{ fontWeight: '500' }}>{item.description || item.dressItem?.dress?.name || item.dressItem?.dressName || '-'}</td>
-                        <td>{item.sizeText || item.dressItem?.sizeText || '-'}</td>
-                        <td style={{ fontWeight: '600', color: '#666' }}>{item.barcode || item.dressItem?.dressBarcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : '-')}</td>
-                        {enableAlterations && (
-                          <>
-                            <td>{item.neckAlteration ? `הצרה ${item.neckAlteration}` : '-'}</td>
-                            <td>{item.sleeveAlteration ? `הארכה ${item.sleeveAlteration}` : '-'}</td>
-                            <td>{item.lengthAlteration || '-'}</td>
-                          </>
-                        )}
-                        <td>
-                          {statusStr}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
 
-            <div className="summary-section">
-              <table className="summary-table">
-                <tbody>
-                  <tr>
-                    <td>סה&quot;כ לחיוב:</td>
-                    <td>₪{order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0}</td>
-                  </tr>
-                  <tr>
-                    <td>סה&quot;כ שולם:</td>
-                    <td>₪{order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0}</td>
-                  </tr>
-                  <tr className="total">
-                    <td>יתרה לתשלום:</td>
-                    <td>
-                      ₪{Math.max(0, (order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0) - (order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0))}
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
-            </div>
+                  {printType === 'rental' ? (
+                    <div className="terms">
+                      הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב. אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
+                    </div>
+                  ) : (
+                     <div className="terms">
+                      הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב בדיוק. אין לכבס בשום אופן באופן עצמאי. במקרה של קרע או נזק בלתי הפיך, הלקוח יישא בעלות התיקון או רכישה מחדש לפי שיקול דעת הגמ"ח.
+                     </div>
+                  )}
 
-            {order.payments && order.payments.filter(p => !p.isDeleted).length > 0 && (
-              <>
-                <h4 style={{ color: '#555', fontSize: '15px', marginBottom: '10px' }}>תשלומים שהתקבלו</h4>
-                <table className="print-table" style={{ marginBottom: '30px' }}>
-                  <thead>
-                    <tr>
-                      <th>תאריך (עברי)</th>
-                      <th>אופן תשלום</th>
-                      <th>סכום</th>
-                      <th>הערות</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {order.payments.filter(p => !p.isDeleted).map((p, idx) => {
-                      let notes = p.notes || '-';
-                      try {
-                        if (typeof notes === 'string' && notes.trim().startsWith('{')) {
-                          const parsed = JSON.parse(notes);
-                          notes = parsed.Confirmation || parsed.TransactionId || parsed['אישור'] ? `אישור: ${parsed.Confirmation || parsed.TransactionId || parsed['אישור']}` : 'סליקת אשראי';
-                        }
-                      } catch (e) {}
-                      const hebrewPaymentDate = p.paymentDate ? getHebrewDateString(p.paymentDate) : getHebrewDateString(new Date());
-                      return (
-                        <tr key={idx}>
-                          <td>{hebrewPaymentDate}</td>
-                          <td>{p.paymentMethod || '-'}</td>
-                          <td style={{ fontWeight: 'bold' }}>₪{p.amount}</td>
-                          <td>{notes}</td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </>
-            )}
-
-            {printType === 'rental' && printSettings && printSettings.footer ? (
-              <div className="terms">
-                <div style={{ textAlign: 'center', marginBottom: '15px' }}>
-                  <strong style={{ fontSize: '15px', color: '#444' }}>{printSettings.footer}</strong>
-                </div>
-                הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב. אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
-              </div>
-            ) : (
-               <div className="terms">
-                הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב בדיוק. אין לכבס בשום אופן באופן עצמאי. במקרה של קרע או נזק בלתי הפיך, הלקוח יישא בעלות התיקון או רכישה מחדש לפי שיקול דעת הגמ"ח.
-               </div>
-            )}
-
-            <div className="signatures">
-              <div>חתימת הלקוח</div>
-              <div>אישור הגמ"ח</div>
-            </div>
-            
-            <div style={{ marginTop: '40px', textAlign: 'center', fontSize: '11px', color: '#999', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-              הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(new Date())}
-            </div>
+                  {printType === 'order' && (
+                    <div className="signatures">
+                      <div>חתימת הלקוח</div>
+                      <div>אישור הגמ"ח</div>
+                    </div>
+                  )}
+                  <div style={{ marginTop: '40px', textAlign: 'center', fontSize: '11px', color: '#999', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+                    הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(new Date())}
+                  </div>
                 </td>
               </tr>
             </tbody>
+            <tfoot>
+              <tr>
+                <td colSpan={enableAlterations ? "7" : "4"} style={{ border: 'none', padding: 0 }}>
+                  <div style={{ height: '30px' }}></div>
+                </td>
+              </tr>
+            </tfoot>
           </table>
+
+          </>
         ) : null}
       </div>
     </>

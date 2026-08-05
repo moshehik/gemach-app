@@ -51,7 +51,15 @@ export default function PrintAlterationsPage() {
                  jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
                  pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
                };
-               await html2pdf().set(opt).from(element).save();
+               await html2pdf().set(opt).from(element).toPdf().get('pdf').then(function(pdf) {
+                 const totalPages = pdf.internal.getNumberOfPages();
+                 for (let i = 1; i <= totalPages; i++) {
+                   pdf.setPage(i);
+                   pdf.setFontSize(10);
+                   pdf.setTextColor(150);
+                   pdf.text('Page ' + i + ' of ' + totalPages, pdf.internal.pageSize.getWidth() / 2, pdf.internal.pageSize.getHeight() - 5, { align: 'center' });
+                 }
+               }).save();
                setTimeout(() => window.close(), 1000);
             }
           } catch (err) {
@@ -279,13 +287,7 @@ export default function PrintAlterationsPage() {
         }
         .print-table th {
           background-color: #fdfdfd;
-          font-weight: bold;
-          color: #666;
-          letter-spacing: 0.5px;
-          -webkit-print-color-adjust: exact;
-          print-color-adjust: exact;
-        }
-        .print-header {
+            .print-header {
           text-align: center;
           margin-bottom: 30px;
         }
@@ -349,154 +351,179 @@ export default function PrintAlterationsPage() {
             </td>
           </tr>
         </thead>
+        <tfoot style={{ display: 'table-footer-group' }}>
+          <tr>
+            <td style={{ border: 'none', padding: 0 }}>
+              <div className="print-footer-spacer" style={{ height: '30px' }}></div>
+            </td>
+          </tr>
+        </tfoot>
         <tbody>
           <tr>
             <td style={{ border: 'none', padding: 0 }}>
-
-      {loading ? (
-        <div>טוען נתונים להדפסה...</div>
-      ) : error ? (
-        <div style={{ color: 'red' }}>{error}</div>
-      ) : !enableAlterations ? (
-        <div style={{ textAlign: 'center', padding: '50px', fontSize: '20px', color: '#6c757d', fontWeight: 'bold' }}>
-          מערכת התיקונים מכובה בהגדרות. לא ניתן להפיק דוח תיקונים.
-        </div>
-      ) : reportType === 'labels' ? (
-        <div style={{ marginTop: '20px' }}>
-          {groupedItems.length === 0 ? (
-            <div style={{ textAlign: 'center' }}>לא נמצאו תיקונים להדפסה</div>
-          ) : (
-            groupedItems.map(group => (
-              <div key={group.date} style={{ marginBottom: '30px' }}>
-                <h3 className="group-title" style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '15px', color: 'black' }}>
-                  תאריך אירוע: {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
-                </h3>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
-                  {group.items.map(item => (
-                    <div key={item.id} style={{
-                      position: 'relative',
-                      border: '1px solid #e8e8e8',
-                      padding: '15px',
-                      borderRadius: '8px',
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      textAlign: 'center',
-                      minHeight: '150px',
-                      pageBreakInside: 'avoid',
-                      breakInside: 'avoid',
-                      background: '#fff',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                      color: '#444'
-                    }}>
-                      <div style={{ position: 'absolute', top: '5px', right: '10px', fontSize: '12px', fontWeight: 'bold' }}>בס"ד</div>
-                      <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
-                        {customerNameOf(item) || '-'}
-                      </div>
-                      <div style={{ fontSize: '15px', marginBottom: '6px' }}>
-                        דגם: <strong>{dressLabelOf(item)}</strong>
-                      </div>
-                      <div style={{ fontSize: '16px', marginBottom: '15px' }}>
-                        מידה: <strong>{sizeLabelOf(item)}</strong>
-                      </div>
-                      <div style={{ fontSize: '15px', fontWeight: 'bold', borderTop: '1px dashed #e8e8e8', paddingTop: '10px', width: '100%', color: '#666' }}>
-                        {[
-                          item.neckAlteration > 0 ? `צוואר: הצרה ${item.neckAlteration}` : null,
-                          item.sleeveAlteration > 0 ? `שרוול: הארכה ${item.sleeveAlteration}` : null,
-                          lengthAltOf(item) ? `אורך: ${lengthAltOf(item)}` : null
-                        ].filter(Boolean).join(' | ')}
-                        {item.alterationDetails && (
-                          <div style={{ fontWeight: 'normal', marginTop: '6px' }}>
-                            פירוט: {item.alterationDetails}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+              {loading ? (
+                <div>טוען נתונים להדפסה...</div>
+              ) : error ? (
+                <div style={{ color: 'red' }}>{error}</div>
+              ) : !enableAlterations ? (
+                <div style={{ textAlign: 'center', padding: '50px', fontSize: '20px', color: '#6c757d', fontWeight: 'bold' }}>
+                  מערכת התיקונים מכובה בהגדרות. לא ניתן להפיק דוח תיקונים.
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-      ) : (
-        <div style={{ marginTop: '20px' }}>
-          {groupedItems.length === 0 ? (
-            <div style={{ textAlign: 'center' }}>לא נמצאו רשומות</div>
-          ) : (
-            groupedItems.map(group => {
-              const dayOfWeek = group.date !== 'ללא תאריך' ? new Date(group.date).toLocaleDateString('he-IL', { weekday: 'long' }) : '';
-              const sums = group.items.reduce((acc, item) => {
-                const qty = item.quantity || 1;
-                if (item.neckAlteration > 0) acc.neck += qty;
-                if (lengthAltOf(item)) acc.length += qty;
-                if (item.sleeveAlteration > 0) acc.sleeve += qty;
-                return acc;
-              }, { neck: 0, length: 0, sleeve: 0 });
-              return (
-                <div key={group.date} className="date-group">
-                  <h3 className="group-title" style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '12px' }}>
-                    {dayOfWeek ? `${dayOfWeek} - ` : ''}{group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
-                  </h3>
-                  {buildOrderBlocks(group.items).map(block => (
-                    <div key={block.orderId ?? 'no-order'} className="order-block">
-                      <div className="order-header">
-                        <strong>{`${block.customer?.firstName || ''} ${block.customer?.lastName || ''}`.trim() || '-'}</strong>
-                        {block.customer?.phone1 && <span> | טלפון: <span style={{ direction: 'ltr', unicodeBidi: 'embed' }}>{block.customer.phone1}</span></span>}
-                        {block.orderId && <span> | הזמנה מס' {block.orderId}</span>}
-                      </div>
-                      {block.notes && <div className="order-notes">הערות: {block.notes}</div>}
-                      <table className="print-table">
-                        <thead>
-                          <tr>
-                            <th style={{ width: showAlterationCols ? '22%' : '50%' }}>דגם שמלה</th>
-                            <th>מידה</th>
-                            <th>כמות</th>
-                            {showAlterationCols && (
-                              <>
-                                <th>תיקון צוואר</th>
-                                <th>תיקון אורך</th>
-                                <th>תיקון שרוול</th>
-                                <th>תיאור תיקון</th>
-                              </>
-                            )}
-                            {showDoneCol && <th>בוצע</th>}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {block.items.map(item => (
-                            <tr key={item.id}>
-                              <td style={{ fontWeight: '500' }}>{dressLabelOf(item)}</td>
-                              <td>{sizeLabelOf(item)}</td>
-                              <td>{item.quantity || 1}</td>
-                              {showAlterationCols && (
-                                <>
-                                  <td>{item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : ''}</td>
-                                  <td>{lengthAltOf(item)}</td>
-                                  <td>{item.sleeveAlteration > 0 ? `הארכה ${item.sleeveAlteration}` : ''}</td>
-                                  <td>{item.alterationDetails || ''}</td>
-                                </>
-                              )}
-                              {showDoneCol && <td style={{ textAlign: 'center' }}>{item.alterationDone ? '✔' : ''}</td>}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ))}
-                  {showAlterationCols && (
-                    <div className="date-summary">
-                      כמות תיקוני צוואר: {sums.neck} | כמות תיקוני אורך: {sums.length} | כמות תיקוני שרוול: {sums.sleeve}
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
-      )}
+              ) : null}
             </td>
           </tr>
+          {enableAlterations && (reportType === 'labels' ? (
+        <tr>
+          <td style={{ border: 'none', padding: 0 }}>
+            <div style={{ marginTop: '20px' }}>
+              {groupedItems.length === 0 ? (
+                <div style={{ textAlign: 'center' }}>לא נמצאו תיקונים להדפסה</div>
+              ) : (
+                groupedItems.map(group => (
+                  <div key={group.date} style={{ marginBottom: '30px' }}>
+                    <h3 className="group-title" style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '15px', color: 'black' }}>
+                      תאריך אירוע: {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
+                    </h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+                      {group.items.map(item => (
+                        <div key={item.id} style={{
+                          position: 'relative',
+                          border: '1px solid #e8e8e8',
+                          padding: '15px',
+                          borderRadius: '8px',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          justifyContent: 'center',
+                          alignItems: 'center',
+                          textAlign: 'center',
+                          minHeight: '150px',
+                          pageBreakInside: 'avoid',
+                          breakInside: 'avoid',
+                          background: '#fff',
+                          boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                          color: '#444'
+                        }}>
+                          <div style={{ position: 'absolute', top: '5px', right: '10px', fontSize: '12px', fontWeight: 'bold' }}>בס"ד</div>
+                          <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
+                            {customerNameOf(item) || '-'}
+                          </div>
+                          <div style={{ fontSize: '15px', marginBottom: '6px' }}>
+                            דגם: <strong>{dressLabelOf(item)}</strong>
+                          </div>
+                          <div style={{ fontSize: '16px', marginBottom: '15px' }}>
+                            מידה: <strong>{sizeLabelOf(item)}</strong>
+                          </div>
+                          <div style={{ fontSize: '15px', fontWeight: 'bold', borderTop: '1px dashed #e8e8e8', paddingTop: '10px', width: '100%', color: '#666' }}>
+                            {[
+                              item.neckAlteration > 0 ? `צוואר: הצרה ${item.neckAlteration}` : null,
+                              item.sleeveAlteration > 0 ? `שרוול: הארכה ${item.sleeveAlteration}` : null,
+                              lengthAltOf(item) ? `אורך: ${lengthAltOf(item)}` : null
+                            ].filter(Boolean).join(' | ')}
+                            {item.alterationDetails && (
+                              <div style={{ fontWeight: 'normal', marginTop: '6px' }}>
+                                פירוט: {item.alterationDetails}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </td>
+        </tr>
+      ) : (
+        groupedItems.length === 0 ? (
+          <tr>
+            <td style={{ border: 'none', padding: 0 }}>
+              <div style={{ textAlign: 'center', marginTop: '20px' }}>לא נמצאו רשומות</div>
+            </td>
+          </tr>
+        ) : (
+          groupedItems.map(group => {
+            const dayOfWeek = group.date !== 'ללא תאריך' ? new Date(group.date).toLocaleDateString('he-IL', { weekday: 'long' }) : '';
+            const sums = group.items.reduce((acc, item) => {
+              const qty = item.quantity || 1;
+              if (item.neckAlteration > 0) acc.neck += qty;
+              if (lengthAltOf(item)) acc.length += qty;
+              if (item.sleeveAlteration > 0) acc.sleeve += qty;
+              return acc;
+            }, { neck: 0, length: 0, sleeve: 0 });
+            return (
+              <React.Fragment key={group.date}>
+                <tr>
+                  <td style={{ border: 'none', padding: 0 }}>
+                    <h3 className="group-title" style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '12px', marginTop: '20px' }}>
+                      {dayOfWeek ? `${dayOfWeek} - ` : ''}{group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
+                    </h3>
+                  </td>
+                </tr>
+                {buildOrderBlocks(group.items).map(block => (
+                  <tr key={block.orderId ?? 'no-order'}>
+                    <td style={{ border: 'none', padding: 0 }}>
+                      <div className="order-block">
+                        <div className="order-header">
+                          <strong>{`${block.customer?.firstName || ''} ${block.customer?.lastName || ''}`.trim() || '-'}</strong>
+                          {block.customer?.phone1 && <span> | טלפון: <span style={{ direction: 'ltr', unicodeBidi: 'embed' }}>{block.customer.phone1}</span></span>}
+                          {block.orderId && <span> | הזמנה מס' {block.orderId}</span>}
+                        </div>
+                        {block.notes && <div className="order-notes">הערות: {block.notes}</div>}
+                        <table className="print-table">
+                          <thead>
+                            <tr>
+                              <th style={{ width: showAlterationCols ? '22%' : '50%' }}>דגם שמלה</th>
+                              <th>מידה</th>
+                              <th>כמות</th>
+                              {showAlterationCols && (
+                                <>
+                                  <th>תיקון צוואר</th>
+                                  <th>תיקון אורך</th>
+                                  <th>תיקון שרוול</th>
+                                  <th>תיאור תיקון</th>
+                                </>
+                              )}
+                              {showDoneCol && <th>בוצע</th>}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {block.items.map(item => (
+                              <tr key={item.id}>
+                                <td style={{ fontWeight: '500' }}>{dressLabelOf(item)}</td>
+                                <td>{sizeLabelOf(item)}</td>
+                                <td>{item.quantity || 1}</td>
+                                {showAlterationCols && (
+                                  <>
+                                    <td>{item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : ''}</td>
+                                    <td>{lengthAltOf(item)}</td>
+                                    <td>{item.sleeveAlteration > 0 ? `הארכה ${item.sleeveAlteration}` : ''}</td>
+                                    <td>{item.alterationDetails || ''}</td>
+                                  </>
+                                )}
+                                {showDoneCol && <td style={{ textAlign: 'center' }}>{item.alterationDone ? '✔' : ''}</td>}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {showAlterationCols && (
+                  <tr>
+                    <td style={{ border: 'none', padding: 0 }}>
+                      <div className="date-summary">
+                        כמות תיקוני צוואר: {sums.neck} | כמות תיקוני אורך: {sums.length} | כמות תיקוני שרוול: {sums.sleeve}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+              </React.Fragment>
+            );
+          })
+        )
+      )}
         </tbody>
       </table>
       
