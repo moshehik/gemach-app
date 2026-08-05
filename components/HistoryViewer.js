@@ -106,7 +106,8 @@ export const FIELD_TRANSLATIONS = {
   createdAt: 'תאריך יצירה',
   updatedAt: 'תאריך עדכון',
   note: 'הערה',
-  discarded: 'שינויים שבוטלו'
+  discarded: 'שינויים שבוטלו',
+  approvedDebtAmount: 'סכום חוב שאושר'
 };
 
 export const ACTION_TRANSLATIONS = {
@@ -125,6 +126,7 @@ export const ACTION_TRANSLATIONS = {
   RETURN_CONDITION: 'עדכון מצב בהחזרה',
   ADD_AUTO_NOTE: 'הערה אוטומטית',
   DEBT_APPROVED: 'אישור יתרת חוב',
+  CANCEL_DEBT_APPROVAL: 'ביטול אישור יתרת חוב',
   // פעולות ביטול
   CANCEL_RENTAL: 'ביטול השכרה',
   CANCEL_RETURN: 'ביטול החזרה',

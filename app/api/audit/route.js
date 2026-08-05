@@ -13,13 +13,17 @@ export async function GET(request) {
     // בבקשה אחת (למשל כל הפריטים של דגם בכרטיס הדגם).
     const entityIds = searchParams.get('entityIds');
     const action = searchParams.get('action');
+    // רשימת actions מופרדת בפסיקים - למשל 'DEBT_APPROVED,CANCEL_DEBT_APPROVAL' כדי
+    // לשלוף בבקשה אחת את כל פעולות אישור/ביטול-אישור חוב עבור קבוצת הזמנות (ר' entityIds).
+    // אם גם action וגם actions סופקו, action (הבודד) גובר.
+    const actions = searchParams.get('actions');
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
     const search = searchParams.get('search');
-    
+
     const limit = parseInt(searchParams.get('limit') || '100', 10);
     const page = parseInt(searchParams.get('page') || '1', 10);
-    
+
     let where = {};
     if (entityType) where.entityType = entityType;
     if (entityId) where.entityId = entityId;
@@ -28,7 +32,12 @@ export async function GET(request) {
       // רשימה ריקה הייתה מתורגמת ל-`in: []` ומחזירה כלום בשקט; עדיף לא לסנן בכלל
       if (ids.length) where.entityId = { in: ids };
     }
-    if (action) where.action = action;
+    if (action) {
+      where.action = action;
+    } else if (actions) {
+      const actionList = actions.split(',').map(s => s.trim()).filter(Boolean);
+      if (actionList.length) where.action = { in: actionList };
+    }
 
     // An Order is identified two different ways in this table: the automatic audit hook in
     // app/lib/prisma.js stores `result.id` (the UUID), while rows written by hand - such as
