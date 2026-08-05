@@ -523,7 +523,7 @@ export default function PrintAlterationsPage() {
             );
           })
         )
-      )}
+      ))}
         </tbody>
       </table>
       
