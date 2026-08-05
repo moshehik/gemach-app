@@ -26,6 +26,12 @@
       "port": 3020
     },
     {
+      "name": "gemach-prod-3030",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["next", "start", "-p", "3030"],
+      "port": 3030
+    },
+    {
       "name": "gemach-dev-worktree-3033",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "3033"],
