@@ -122,7 +122,7 @@ export async function POST(request) {
           date: todayStart,
           entryTime: now,
           hourlyWageSnapshot: employee.hourlyWage || 0,
-          travelExpensesSnapshot: employee.travelExpenses || 0
+          travelExpensesSnapshot: typeof employee.travelExpenses === 'number' ? employee.travelExpenses : 0
         }
       });
       return NextResponse.json({ message: 'Punched IN successfully', shift: newShift });
@@ -149,7 +149,7 @@ export async function POST(request) {
 
       // Calculate total pay: (minutes / 60) * hourly wage
       const hourlyWage = currentShift.hourlyWageSnapshot || employee.hourlyWage || 0;
-      const travelEligible = currentShift.travelExpensesSnapshot || employee.travelExpenses || 0;
+      const travelEligible = currentShift.travelExpensesSnapshot || (typeof employee.travelExpenses === 'number' ? employee.travelExpenses : 0);
       let totalCalculated = (totalMinutes / 60) * hourlyWage;
 
       // Travel expense is a daily allowance, not a per-punch one: only credit it on the
