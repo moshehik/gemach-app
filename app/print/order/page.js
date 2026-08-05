@@ -3,7 +3,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
-import { calculatePaymentStatus, calculateOrderStatus } from '../../../lib/orderStatus';
 
 export default function PrintOrderPage() {
   const searchParams = useSearchParams();
@@ -33,7 +32,7 @@ export default function PrintOrderPage() {
         if (altSetting && altSetting.value === 'false') {
           setEnableAlterations(false);
         }
-        
+
         // Extract print settings
         const pSettings = {
           box1: settingsData.find(s => s.key === 'print_rental_box1')?.value || '',
@@ -74,54 +73,75 @@ export default function PrintOrderPage() {
     }
   }, [loading, error, order]);
 
-  // סטטוס ההשכרה מגיע כעת מ-lib/orderStatus.js (מקור האמת היחיד לסטטוס הזמנה) במקום
-  // עותק מקומי עם אוצר מילים משלו - כדי שלא יהיה פער בין מה שמוצג כאן לבין שאר המערכת.
-  const getOrderStatus = (order) => calculateOrderStatus(order);
+  const totalObligations = order?.obligations?.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0) || 0;
+  const totalPayments = order?.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0;
+  const balance = Math.max(0, totalObligations - totalPayments);
+  const activeItems = order?.items ? order.items.filter(i => !i.isDeleted) : [];
+  const activePayments = order?.payments ? order.payments.filter(p => !p.isDeleted) : [];
+  const colCount = enableAlterations ? 7 : 4;
 
-  // ממפה את אוצר המילים המלא של lib/orderStatus.js (כולל מצבים חלקיים/עתידיים/טיוטה)
-  // לארבעת מחלקות העיצוב הקיימות בדף ההדפסה.
-  const getStatusClass = (status) => {
-    switch (status) {
-      case 'מחוק':
-        return 'status-archived';
-      case 'הוחזר':
-        return 'status-returned';
-      case 'הושכר':
-      case 'הושכר חלקי':
-      case 'הוחזר חלקי':
-        return 'status-active';
-      default:
-        // 'בקרוב', 'עבר', 'טיוטה' - טרם נלקח בפועל
-        return 'status-pending';
+  const formatPaymentNotes = (rawNotes) => {
+    let notes = rawNotes || '-';
+    try {
+      if (typeof notes === 'string' && notes.trim().startsWith('{')) {
+        const parsed = JSON.parse(notes);
+        const approval = parsed.Confirmation || parsed.TransactionId || parsed['אישור'];
+        notes = approval ? `אישור: ${approval}` : 'סליקת אשראי';
+        let extraInfo = '';
+        if (parsed.Tashloumim || parsed['תשלומים']) {
+          extraInfo = ` | תשלומים: ${parsed.Tashloumim || parsed['תשלומים']}`;
+        }
+        if (parsed['הערות משתמש']) {
+          extraInfo += ` | ${parsed['הערות משתמש']}`;
+        }
+        notes += extraInfo;
+      } else if (typeof notes === 'string') {
+        const match = notes.match(/אישור:\s*([a-zA-Z0-9]+)/);
+        const tashMatch = notes.match(/"Tashloumim"\s*:\s*"(\d+)"/);
+        let approvalStr = notes;
+        if (match && match[1]) {
+          approvalStr = `אישור: ${match[1]}`;
+          if (tashMatch && tashMatch[1]) {
+            approvalStr += ` | תשלומים: ${tashMatch[1]}`;
+          }
+        } else if (notes.length > 50) {
+          approvalStr = notes.substring(0, 50) + '...';
+        }
+        notes = approvalStr;
+      }
+    } catch (e) {
+      // keep raw notes on parse failure
     }
+    return notes;
   };
 
   return (
     <>
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Helvetica+Neue:wght@300;400;500;600;700&display=swap');
-        
+        @import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;600;700&family=Frank+Ruhl+Libre:wght@500;700;900&display=swap');
+
         body {
           background-color: #fafafa !important;
         }
-        
+
         /* Hide global layout elements on screen */
-        nav.navbar, 
-        .global-sidebar-container, 
-        .ai-floating-widget, 
-        [class*="sidebar"], 
+        nav.navbar,
+        .global-sidebar-container,
+        .ai-floating-widget,
+        [class*="sidebar"],
         [id*="sidebar"] {
           display: none !important;
         }
-        
+
         .print-container {
           background: #fff;
-          max-width: 900px;
+          max-width: 850px;
           margin: 40px auto;
-          padding: 20px;
+          padding: 45px 50px;
           border: 1px solid #efefef;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-          font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+          font-family: 'David Libre', 'Times New Roman', Georgia, serif;
+          color: #444;
           direction: rtl;
         }
         @media print {
@@ -148,7 +168,7 @@ export default function PrintOrderPage() {
             width: 100%;
             height: auto !important;
             display: block !important;
-            color: black !important;
+            color: #444 !important;
           }
           .print-table thead {
             display: table-header-group;
@@ -159,6 +179,7 @@ export default function PrintOrderPage() {
           }
           .order-details-card,
           .rental-notes-box,
+          .payments-section,
           .print-footer {
             break-inside: avoid;
             page-break-inside: avoid;
@@ -172,41 +193,42 @@ export default function PrintOrderPage() {
           text-align: right;
           font-size: 13px;
           font-weight: 600;
-          color: #333;
-          margin-bottom: 5px;
+          color: #999;
+          margin-bottom: 6px;
+          letter-spacing: 0.5px;
         }
         .print-header {
           text-align: center;
-          margin-bottom: 40px;
+          border-bottom: 1px solid #eaeaea;
+          padding-bottom: 22px;
+          margin-bottom: 32px;
         }
         .print-header-content h1 {
-          margin: 0;
-          font-size: 26px;
-          color: #555;
-          font-weight: 300;
-          letter-spacing: 1px;
-          margin-bottom: 10px;
+          margin: 0 0 8px 0;
+          font-family: 'Frank Ruhl Libre', 'David Libre', serif;
+          font-size: 30px;
+          color: #262626;
+          font-weight: 700;
+          letter-spacing: 0.5px;
         }
         .print-header-content h2 {
           margin: 0;
-          font-size: 16px;
-          color: #777;
-          font-weight: normal;
+          font-size: 15px;
+          color: #888;
+          font-weight: 500;
         }
         .company-details {
           color: #999;
           font-size: 13px;
-          margin-top: 5px;
+          margin-top: 8px;
         }
         .order-details-card {
           display: flex;
           justify-content: space-between;
-          margin-bottom: 40px;
-          padding: 20px;
-          border: 1px solid #f0f0f0;
-          font-size: 14px;
-          color: #666;
-          line-height: 1.7;
+          margin-bottom: 32px;
+          font-size: 15px;
+          color: #555;
+          line-height: 1.75;
         }
         /* Right side: Customer, Left side: Order */
         .order-details-card > div:first-child {
@@ -216,113 +238,174 @@ export default function PrintOrderPage() {
         .order-details-card > div:last-child {
           text-align: right;
           width: 48%;
-          border-right: 1px solid #f0f0f0;
-          padding-right: 20px;
+          border-right: 1px solid #eaeaea;
+          padding-right: 24px;
+        }
+        .order-details-card strong {
+          color: #262626;
+          font-weight: 700;
         }
         .print-table {
           width: 100%;
           border-collapse: collapse;
-          margin-bottom: 40px;
-          border: 2px solid #e8e8e8;
+          margin-bottom: 36px;
+          border: 1px solid #e5e5e5;
         }
         .print-table th, .print-table td {
-          padding: 15px;
+          padding: 13px 14px;
           text-align: right;
-          border: 1px solid #f0f0f0;
-          font-size: 13px;
+          border-bottom: 1px solid #eee;
+          font-size: 13.5px;
         }
+        /* globals.css has a global sticky-header rule (table thead tr th {...!important})
+           meant for on-screen data tables - it forces position:sticky, a white/themed
+           background and a gold border-bottom on every <th>. It has no class scope, so it
+           also matches this print table; override every property it sets with !important
+           so the print header keeps its own plain design. */
         .print-table th {
-          background-color: #fdfdfd;
-          font-weight: bold;
-          color: #666;
-          letter-spacing: 0.5px;
+          position: static !important;
+          top: auto !important;
+          z-index: auto !important;
+          background-color: #f4f4f4 !important;
+          background-image: none !important;
+          box-shadow: none !important;
+          border-bottom: 1px solid #eee !important;
+          color: #333;
+          font-weight: 600;
+          letter-spacing: 0.3px;
+        }
+        .print-table tbody tr:nth-child(even) {
+          background-color: #fbfbfb;
+        }
+        .print-table tbody tr:last-child td {
+          border-bottom: none;
         }
         .summary-section {
           display: flex;
           justify-content: flex-end;
-          margin-bottom: 50px;
+          margin-bottom: 36px;
         }
         .summary-table {
-          width: 40%;
+          width: 320px;
           border-collapse: collapse;
         }
         .summary-table td {
-          padding: 12px;
+          padding: 10px 14px;
           text-align: left;
+          color: #666;
+          font-size: 14.5px;
           border-bottom: 1px solid #f5f5f5;
-          color: #555;
-          font-size: 14px;
         }
         .summary-table td:first-child {
           text-align: right;
           color: #888;
         }
+        .summary-table .total {
+          background-color: #f4f4f4;
+        }
         .summary-table .total td {
           font-size: 18px;
-          font-weight: bold;
-          color: #444;
+          font-weight: 700;
+          color: #222;
           border-bottom: none;
-          border-top: 2px solid #e8e8e8;
+          border-top: 2px solid #e5e5e5;
+        }
+        .payments-title {
+          color: #555;
+          font-size: 15px;
+          font-weight: 700;
+          margin: 0 0 10px 0;
         }
         .terms {
-          font-size: 13px;
-          color: #888;
-          margin-bottom: 50px;
+          font-size: 13.5px;
+          color: #777;
+          margin-bottom: 40px;
           text-align: justify;
-          line-height: 1.6;
+          line-height: 1.7;
+          border-top: 1px solid #eee;
+          padding-top: 18px;
+        }
+        .terms strong {
+          color: #555;
         }
         .signatures {
           display: flex;
           justify-content: space-around;
-          font-size: 14px;
-          color: #777;
+          font-size: 14.5px;
+          color: #666;
           margin-top: 20px;
         }
         .signatures div {
           text-align: center;
-          width: 200px;
-          border-top: 1px solid #ddd;
+          width: 220px;
+          border-top: 1px solid #ccc;
           padding-top: 10px;
         }
-        .status-badge {
-          display: inline-block;
-          font-weight: 500;
-          color: #444;
-        }
         .rental-notes-box {
-          border: 1px solid #e8e8e8; 
-          padding: 15px; 
-          margin-bottom: 15px; 
-          text-align: center; 
-          font-size: 14px; 
+          border: 1px solid #e5e5e5;
+          padding: 15px;
+          margin-bottom: 15px;
+          text-align: center;
+          font-size: 14.5px;
           color: #555;
         }
         .rental-notes-box-bg {
-          background-color: #fcfcfc;
+          background-color: #fbfbfb;
+        }
+        .rental-footer-title {
+          font-size: 16px;
+          font-weight: 700;
+          margin: 0 0 10px 0;
+          color: #262626;
+        }
+        .rental-footer-sign {
+          font-size: 15px;
+          font-weight: 600;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          color: #444;
+        }
+        .rental-footer-note {
+          margin-top: 8px;
+          font-size: 13px;
+          font-weight: 500;
+          color: #888;
+        }
+        .print-footer {
+          margin-top: 40px;
+          text-align: center;
+          font-size: 11px;
+          color: #aaa;
+          border-top: 1px solid #eee;
+          padding-top: 12px;
         }
       `}</style>
-      
+
       <div data-agy-id="print-order-container" className="print-container">
         {loading ? (
           <div style={{ textAlign: 'center', padding: '50px', color: '#6c757d', fontSize: '18px' }}>טוען נתונים להדפסה...</div>
         ) : error ? (
           <div style={{ textAlign: 'center', padding: '50px', color: '#dc3545', fontSize: '18px' }}>{error}</div>
         ) : order ? (
-          <>
+          // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table
+          // column headers are placed in a <thead> and repeat on every printed page when the
+          // item list overflows to page 2+, and a spacer <tfoot> keeps the last row of each page
+          // clear of the page edge. Mirrors the pagination trick used by print/alterations.
           <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: 0 }}>
             <thead style={{ display: 'table-header-group', border: 'none' }}>
               <tr>
-                <td colSpan={enableAlterations ? "7" : "4"} style={{ border: 'none', padding: 0 }}>
+                <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
                   <div className="bsd">בס&quot;ד</div>
                   <div className="print-header">
                     <div className="print-header-content">
                       <h1>גמ&quot;ח שמלות</h1>
                       <div className="company-details">
-                        רחוב ירושלים 15, בני ברק | טלפון: 03-1234567 | דוא"ל: info@gemach.co.il
+                        רחוב ירושלים 15, בני ברק | טלפון: 03-1234567 | דוא&quot;ל: info@gemach.co.il
                       </div>
                     </div>
                   </div>
-                  
+
                   <div className="order-details-card">
                     {/* Right side: Customer */}
                     <div>
@@ -337,7 +420,7 @@ export default function PrintOrderPage() {
                       {(!order.isWeekdayEvent && !order.isAbroad) ? (
                         <>תאריך אירוע: {order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}</>
                       ) : (
-                        <>סוג אירוע: אירוע חו"ל</>
+                        <>סוג אירוע: אירוע חו&quot;ל</>
                       )}
                       {printType === 'order' && order.notes && (
                         <><br />הערות: {order.notes}</>
@@ -359,12 +442,12 @@ export default function PrintOrderPage() {
                       )}
                       {printSettings.footer && (
                         <div style={{ textAlign: 'center', marginTop: '15px', marginBottom: '15px' }}>
-                          <h3 style={{ fontSize: '16px', fontWeight: 'bold', margin: '0 0 8px 0', color: '#222' }}>{printSettings.footer}</h3>
-                          <div style={{ fontSize: '15px', fontWeight: '600', display: 'flex', justifyContent: 'center', alignItems: 'center', color: '#444' }}>
+                          <h3 className="rental-footer-title">{printSettings.footer}</h3>
+                          <div className="rental-footer-sign">
                             <span>על החתום:</span>
-                            <span style={{ display: 'inline-block', width: '200px', borderBottom: '1px dashed #666', margin: '0 10px' }}></span>
+                            <span style={{ display: 'inline-block', width: '200px', borderBottom: '1px dashed #999', margin: '0 10px' }}></span>
                           </div>
-                          <div style={{ marginTop: '8px', fontSize: '13px', fontWeight: '500', color: '#666' }}>
+                          <div className="rental-footer-note">
                             נא להחזיר טופס זה חתום בעת החזרת השמלות
                           </div>
                         </div>
@@ -387,20 +470,27 @@ export default function PrintOrderPage() {
                 <th>סטטוס</th>
               </tr>
             </thead>
+            <tfoot>
+              <tr>
+                <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
+                  <div style={{ height: '30px' }}></div>
+                </td>
+              </tr>
+            </tfoot>
             <tbody>
-              {!order.items || order.items.filter(i => !i.isDeleted).length === 0 ? (
+              {activeItems.length === 0 ? (
                 <tr>
-                  <td colSpan={enableAlterations ? "7" : "4"} style={{ textAlign: 'center', padding: '30px', color: '#6c757d' }}>אין פריטים פעילים בהזמנה זו</td>
+                  <td colSpan={colCount} style={{ textAlign: 'center', padding: '30px', color: '#999' }}>אין פריטים פעילים בהזמנה זו</td>
                 </tr>
               ) : (
-                order.items.filter(i => !i.isDeleted).map((item) => {
+                activeItems.map((item) => {
                   let statusStr = 'טרם נלקח';
                   if (item.isReturned) statusStr = 'הוחזר';
                   else if (item.isTaken) statusStr = 'אצל הלקוח';
-                  
+
                   return (
                     <tr key={item.id}>
-                      <td style={{ fontWeight: '500' }}>{item.description || item.dressItem?.dress?.name || item.dressItem?.dressName || '-'}</td>
+                      <td style={{ fontWeight: '600', color: '#333' }}>{item.description || item.dressItem?.dress?.name || item.dressItem?.dressName || '-'}</td>
                       <td>{item.sizeText || item.dressItem?.sizeText || '-'}</td>
                       <td style={{ fontWeight: '600', color: '#666' }}>{item.barcode || item.dressItem?.dressBarcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : '-')}</td>
                       {enableAlterations && (
@@ -410,9 +500,7 @@ export default function PrintOrderPage() {
                           <td>{item.lengthAlteration || '-'}</td>
                         </>
                       )}
-                      <td>
-                        {statusStr}
-                      </td>
+                      <td>{statusStr}</td>
                     </tr>
                   );
                 })
@@ -420,31 +508,29 @@ export default function PrintOrderPage() {
             </tbody>
             <tbody>
               <tr>
-                <td colSpan={enableAlterations ? "7" : "4"} style={{ border: 'none', padding: 0 }}>
+                <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
                   <div className="summary-section">
                     <table className="summary-table">
                       <tbody>
                         <tr>
                           <td>סה&quot;כ לחיוב:</td>
-                          <td>₪{order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0}</td>
+                          <td>₪{totalObligations}</td>
                         </tr>
                         <tr>
                           <td>סה&quot;כ שולם:</td>
-                          <td>₪{order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0}</td>
+                          <td>₪{totalPayments}</td>
                         </tr>
                         <tr className="total">
                           <td>יתרה לתשלום:</td>
-                          <td>
-                            ₪{Math.max(0, (order.obligations?.filter(o => !o.isDeleted).reduce((sum, obs) => sum + obs.amount, 0) || 0) - (order.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0))}
-                          </td>
+                          <td>₪{balance}</td>
                         </tr>
                       </tbody>
                     </table>
                   </div>
 
-                  {order.payments && order.payments.filter(p => !p.isDeleted).length > 0 && (
-                    <>
-                      <h4 style={{ color: '#555', fontSize: '15px', marginBottom: '10px' }}>תשלומים שהתקבלו</h4>
+                  {activePayments.length > 0 && (
+                    <div className="payments-section">
+                      <h4 className="payments-title">תשלומים שהתקבלו</h4>
                       <table className="print-table" style={{ marginBottom: '30px' }}>
                         <thead>
                           <tr>
@@ -455,83 +541,46 @@ export default function PrintOrderPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {order.payments.filter(p => !p.isDeleted).map((p, idx) => {
-                            let notes = p.notes || '-';
-                            let extraInfo = '';
-                            try {
-                              if (typeof notes === 'string' && notes.trim().startsWith('{')) {
-                                const parsed = JSON.parse(notes);
-                                const approval = parsed.Confirmation || parsed.TransactionId || parsed['אישור'];
-                                notes = approval ? `אישור: ${approval}` : 'סליקת אשראי';
-                                if (parsed.Tashloumim || parsed['תשלומים']) {
-                                   extraInfo = ` | תשלומים: ${parsed.Tashloumim || parsed['תשלומים']}`;
-                                }
-                                if (parsed['הערות משתמש']) {
-                                   extraInfo += ` | ${parsed['הערות משתמש']}`;
-                                }
-                                notes += extraInfo;
-                              } else if (typeof notes === 'string') {
-                                 const match = notes.match(/אישור:\s*([a-zA-Z0-9]+)/);
-                                 const tashMatch = notes.match(/"Tashloumim"\s*:\s*"(\d+)"/);
-                                 let approvalStr = notes;
-                                 if (match && match[1]) {
-                                   approvalStr = `אישור: ${match[1]}`;
-                                   if (tashMatch && tashMatch[1]) {
-                                     approvalStr += ` | תשלומים: ${tashMatch[1]}`;
-                                   }
-                                 } else if (notes.length > 50) {
-                                   approvalStr = notes.substring(0, 50) + '...';
-                                 }
-                                 notes = approvalStr;
-                              }
-                            } catch (e) {}
+                          {activePayments.map((p, idx) => {
                             const hebrewPaymentDate = p.paymentDate ? getHebrewDateString(p.paymentDate) : getHebrewDateString(new Date());
                             return (
                               <tr key={idx}>
                                 <td>{hebrewPaymentDate}</td>
                                 <td>{p.paymentMethod || '-'}</td>
                                 <td style={{ fontWeight: 'bold' }}>₪{p.amount}</td>
-                                <td>{notes}</td>
+                                <td>{formatPaymentNotes(p.notes)}</td>
                               </tr>
                             );
                           })}
                         </tbody>
                       </table>
-                    </>
+                    </div>
                   )}
 
                   {printType === 'rental' ? (
                     <div className="terms">
-                      הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב. אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
+                      <strong>תנאים:</strong> הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב. אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
                     </div>
                   ) : (
-                     <div className="terms">
-                      הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב בדיוק. אין לכבס בשום אופן באופן עצמאי. במקרה של קרע או נזק בלתי הפיך, הלקוח יישא בעלות התיקון או רכישה מחדש לפי שיקול דעת הגמ"ח.
-                     </div>
+                    <div className="terms">
+                      <strong>תנאים:</strong> הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב בדיוק. אין לכבס בשום אופן באופן עצמאי. במקרה של קרע או נזק בלתי הפיך, הלקוח יישא בעלות התיקון או רכישה מחדש לפי שיקול דעת הגמ&quot;ח.
+                    </div>
                   )}
 
                   {printType === 'order' && (
                     <div className="signatures">
                       <div>חתימת הלקוח</div>
-                      <div>אישור הגמ"ח</div>
+                      <div>אישור הגמ&quot;ח</div>
                     </div>
                   )}
-                  <div style={{ marginTop: '40px', textAlign: 'center', fontSize: '11px', color: '#999', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+
+                  <div className="print-footer">
                     הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(new Date())}
                   </div>
                 </td>
               </tr>
             </tbody>
-            <tfoot>
-              <tr>
-                <td colSpan={enableAlterations ? "7" : "4"} style={{ border: 'none', padding: 0 }}>
-                  <div style={{ height: '30px' }}></div>
-                </td>
-              </tr>
-            </tfoot>
           </table>
-
-          </>
         ) : null}
       </div>
     </>
