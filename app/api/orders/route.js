@@ -7,7 +7,7 @@ import { cookies } from 'next/headers';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { validateOrderItemsAvailability } from '../../../lib/inventory';
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
-import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders, DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
+import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders, deriveConfirmedOrderStatus, DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 
 export const dynamic = 'force-dynamic';
 
@@ -478,9 +478,7 @@ export async function POST(request) {
     const orderTotalAmount = data.totalAmount ? parseFloat(data.totalAmount) : 0;
     const isOrderConfirmed = totalPaidAmount > 0 || hasManagerApproval || orderTotalAmount === 0;
     const derivedCartStatus = isOrderConfirmed ? 'confirmed' : 'pending';
-    const derivedStatus = (orderTotalAmount > 0 && totalPaidAmount >= orderTotalAmount)
-      ? 'שולם'
-      : (totalPaidAmount > 0 ? 'שולם חלקי' : (data.status || 'חדש'));
+    const derivedStatus = deriveConfirmedOrderStatus(totalPaidAmount, orderTotalAmount, data.status || 'חדש');
 
     if (activeItems.length > 0 && hasDates) {
       const validationResult = await validateOrderItemsAvailability(
