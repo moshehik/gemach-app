@@ -6,13 +6,23 @@ if (process.env.IS_OFFLINE_MODE === 'true') {
     const local = require(/* webpackIgnore: true */ '@prisma/local-client');
     if (local && local.PrismaClient) PrismaClient = local.PrismaClient;
   } catch (e) {
-    console.warn("Could not load local prisma client");
+    // @prisma/local-client is generated on demand (`npm run generate:offline`), it isn't
+    // committed and isn't part of the normal `npm run build`. Without it this silently
+    // falls back to the Postgres client below, which is indistinguishable from "online"
+    // until a query actually times out - so make the fallback loud instead of silent.
+    console.error(
+      "[offline-mode] IS_OFFLINE_MODE=true but @prisma/local-client isn't built - " +
+      "falling back to the Postgres client, which will hang/fail with no internet. " +
+      "Run `npm run generate:offline` (needs SQLITE_URL in .env) and restart. Original error:",
+      e.message
+    );
   }
 }
 import { cookies } from 'next/headers';
 import fs from 'fs';
 import path from 'path';
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { runOfflineSync } from '@/lib/offlineSync';
 
 // Tracks the active interactive-transaction client (if any) for the current
 // async execution context, so writes made inside `prisma.$transaction(async tx => ...)`
@@ -212,6 +222,52 @@ const prismaProxy = new Proxy({}, {
 
 if (process.env.NODE_ENV !== 'production') {
   globalForPrisma.prisma = prismaProxy;
+}
+
+/**
+ * Best-effort reconciliation of anything written to the local SQLite fallback while
+ * this machine was offline, back into Postgres - see lib/offlineSync.js for the
+ * actual sync logic and lib/offlineSync design notes.
+ *
+ * Runs once per process, only when we're NOT in offline mode (i.e. right after the
+ * app has been restarted with internet back), and only if @prisma/local-client was
+ * ever generated (`npm run generate:offline`) - most deployments (e.g. Vercel) never
+ * generate it and this is a silent no-op for them.
+ */
+export async function syncOfflineChangesIfAny({ log = console.log } = {}) {
+  if (process.env.IS_OFFLINE_MODE === 'true') return null; // still offline, nothing to push yet
+  let LocalPrismaClient;
+  try {
+    LocalPrismaClient = require(/* webpackIgnore: true */ '@prisma/local-client').PrismaClient;
+  } catch (e) {
+    return null; // local client never generated on this machine - offline mode was never used
+  }
+
+  let localClient;
+  try {
+    localClient = new LocalPrismaClient();
+    // Always syncs to prismaProd specifically (not the prismaProxy / activeDbMode toggle) -
+    // offline-collected data is real gemach data and must always land in the real database,
+    // regardless of whatever the prod/test admin toggle happens to be set to right now.
+    const summary = await runOfflineSync({ localClient, cloudClient: globalForPrisma.prismaProd, log });
+    if (summary.totalSynced > 0 || summary.totalFailed > 0) {
+      log(`[offline-sync] reconciliation complete: ${summary.totalSynced} row(s) synced to Postgres, ${summary.totalFailed} failed (see logs above).`);
+    }
+    return summary;
+  } catch (e) {
+    // Most common cause: the local sqlite db file/tables don't exist yet (offline mode
+    // was generated but never actually used) - not a real error, just nothing to do.
+    log(`[offline-sync] skipped: ${e.message}`);
+    return null;
+  } finally {
+    if (localClient) await localClient.$disconnect().catch(() => {});
+  }
+}
+
+if (process.env.IS_OFFLINE_MODE !== 'true' && !globalForPrisma.offlineSyncAttempted) {
+  globalForPrisma.offlineSyncAttempted = true;
+  // Fire-and-forget: must not delay server startup or block the first request.
+  syncOfflineChangesIfAny().catch((e) => console.error('[offline-sync] unexpected error:', e));
 }
 
 export default prismaProxy;

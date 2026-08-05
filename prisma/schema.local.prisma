@@ -5,7 +5,10 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./gemach-local.db"
+  // Was hardcoded to "file:./gemach-local.db" - switched to env() so it's consistent
+  // with every other datasource in this app (all read their URL from .env) and so the
+  // local db file path can be overridden per-machine without editing the schema.
+  url      = env("SQLITE_URL")
 }
 
 model Customer {
@@ -92,6 +95,8 @@ model Employee {
   receivedNotifications Notification[] @relation("ReceivedNotifications")
   Order                 Order[]
   AIChatSession         AIChatSession[]
+  errorReports          ErrorReport[]      @relation("EmployeeToErrorReport")
+  errorReportReplies    ErrorReportReply[] @relation("EmployeeToErrorReportReply")
   updatedAt             DateTime       @updatedAt
 
   @@index([phone1])
@@ -501,4 +506,37 @@ model Refund {
   @@index([orderId])
   @@index([isExecuted])
   @@index([isDeleted])
+}
+
+// Kept in sync with prisma/schema.prisma manually (this repo has no schema-diff CI check).
+// @db.Text is a Postgres-only attribute and is intentionally omitted here - SQLite has no
+// column-size distinction, TEXT already stores unlimited-length strings.
+model ErrorReport {
+  id                 String    @id @default(uuid())
+  employeeId         String?
+  employee           Employee? @relation("EmployeeToErrorReport", fields: [employeeId], references: [id])
+  time               String?
+  url                String?
+  title              String?
+  queryParams        String?
+  lastButtons        String?
+  userText           String
+  status             String    @default("OPEN")
+  isReadByUser       Boolean   @default(true)
+  isReadByProgrammer Boolean   @default(false)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  replies ErrorReportReply[]
+}
+
+model ErrorReportReply {
+  id            String      @id @default(uuid())
+  errorReportId String
+  errorReport   ErrorReport @relation(fields: [errorReportId], references: [id], onDelete: Cascade)
+  employeeId    String?
+  employee      Employee?   @relation("EmployeeToErrorReportReply", fields: [employeeId], references: [id])
+  isProgrammer  Boolean     @default(false)
+  text          String
+  createdAt     DateTime    @default(now())
 }

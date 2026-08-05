@@ -1,3 +1,11 @@
+// NOT the offline-mode schema. This is a stale, badly-drifted (Int ids, missing
+// several models/fields) artifact - nothing in app/ imports it or its generated
+// output (./generated/sqlite). It's only still here because a handful of one-off
+// migration scripts at the repo root (migrate-db.js, validate-migration.js,
+// cross_check_migration.js, check_migration.js) reference the path.
+// The real offline-mode schema (loaded by app/lib/prisma.js when IS_OFFLINE_MODE=true,
+// generated to node_modules/@prisma/local-client via `npm run generate:offline`) is
+// prisma/schema.local.prisma.
 generator client {
   provider = "prisma-client-js"
   output   = "./generated/sqlite"
