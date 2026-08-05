@@ -28,6 +28,13 @@ export async function POST(request, { params }) {
             {
               entryTime: { lt: exitTime },
               exitTime: { gt: entryTime }
+            },
+            // An existing shift with no exit time yet (still punched in) that started
+            // before the new shift's exit time is also an overlap - exitTime: {gt: ...}
+            // above never matches NULL, so an open shift would otherwise slip through.
+            {
+              exitTime: null,
+              entryTime: { lt: exitTime }
             }
           ]
         }
