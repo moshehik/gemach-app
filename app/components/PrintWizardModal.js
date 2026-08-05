@@ -4,6 +4,17 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { Printer, Calendar as CalendarIcon, Clock, CheckCircle, FileText, X, FileDown } from 'lucide-react';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
+import { downloadPdf as downloadGeneratedPdf } from '../lib/pdfClient';
+
+// Mirrors getReportTitle() in app/print/alterations/page.js - kept as a small local copy
+// here since it's only used to name the downloaded file, not to render anything.
+const REPORT_FILENAMES = {
+  orders_all: 'דוח הזמנות כללי',
+  orders_no_alterations: 'רשימת הזמנות ללא תיקונים',
+  alterations_all: 'כל התיקונים',
+  labels: 'תוויות לתופרות',
+  alterations_pending: 'רשימת תיקונים לביצוע',
+};
 
 export default function PrintWizardModal({ onClose, defaultStartDate, defaultEndDate, defaultReportType, getCurrentOrderIds }) {
   const [dateMode, setDateMode] = useState('current'); // 'current', 'today', 'custom'
@@ -16,28 +27,6 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  // Opens the report by loading it into a hidden iframe instead of a new tab.
-  // The /print/alterations route auto-generates and saves the PDF, then tries
-  // to close its own window - all of that can happen off-screen without ever
-  // moving keyboard/window focus away from the page the user is on.
-  const triggerBackgroundDownload = (query) => {
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.top = '-10000px';
-    iframe.style.left = '-10000px';
-    iframe.style.width = '1100px';
-    iframe.style.height = '800px';
-    iframe.style.border = 'none';
-    iframe.setAttribute('aria-hidden', 'true');
-    iframe.src = `/print/alterations${query}`;
-    document.body.appendChild(iframe);
-    // Give it enough time to fetch data, render and let html2pdf save the file
-    // before we clean it up.
-    setTimeout(() => {
-      iframe.remove();
-    }, 20000);
-  };
 
   const handlePrint = async (downloadPdf = false) => {
     let query = `?reportType=${reportType}&dateMode=${dateMode}`;
@@ -72,7 +61,22 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
 
     if (downloadPdf) {
       query += `&downloadPdf=true`;
-      triggerBackgroundDownload(query);
+      // Real server-side PDF (Puppeteer, see app/api/pdf/route.js) instead of the old
+      // hidden-iframe + html2pdf.js hack: the route navigates to /print/alterations itself
+      // (forwarding this browser's auth cookie) and returns a real, paginated PDF with
+      // selectable text, which we just hand to the browser's normal download flow.
+      setIsPreparing(true);
+      try {
+        await downloadGeneratedPdf(
+          { path: `/print/alterations${query}` },
+          `${REPORT_FILENAMES[reportType] || 'דוח'}.pdf`
+        );
+      } catch (err) {
+        console.error(err);
+        alert('אירעה שגיאה ביצירת ה-PDF: ' + (err.message || 'שגיאה לא ידועה'));
+      } finally {
+        setIsPreparing(false);
+      }
       onClose();
       return;
     }

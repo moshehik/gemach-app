@@ -102,9 +102,6 @@ export default function OrderPrintMenu({
     }
 
     setSending(true);
-    // Yield to the event loop so the spinner paints before the heavy,
-    // synchronous html2canvas render below locks up the main thread.
-    await new Promise(resolve => setTimeout(resolve, 0));
     try {
       const htmlRes = await fetch(`/api/orders/${order.orderId}/email`, {
         method: 'POST',
@@ -116,8 +113,11 @@ export default function OrderPrintMenu({
         throw new Error(htmlData.error || 'שגיאה ביצירת נתוני המייל');
       }
 
-      const { htmlToPdfBase64 } = await import('@/app/lib/htmlToPdf');
-      const pdfBase64 = await htmlToPdfBase64(htmlData.html);
+      // Real server-side PDF (Puppeteer, see app/api/pdf/route.js) instead of the old
+      // client-side html-to-image+jsPDF rasterization - the emailed attachment now has
+      // real, selectable text and correct pagination instead of a single embedded image.
+      const { fetchPdfBase64 } = await import('@/app/lib/pdfClient');
+      const pdfBase64 = await fetchPdfBase64({ html: htmlData.html, filename: `order_${order.orderId}` });
 
       const res = await fetch(`/api/orders/${order.orderId}/email`, {
         method: 'POST',

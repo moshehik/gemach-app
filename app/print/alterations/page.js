@@ -40,39 +40,11 @@ export default function PrintAlterationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pageUrl: `[הדפסת דוח] ${title} (תאריכים: ${startDate} - ${endDate})` })
       }).catch(console.error);
-      if (downloadPdf) {
-        const timer = setTimeout(async () => {
-          try {
-            const element = document.querySelector('[data-agy-id="print-alterations-container"]');
-            if (element) {
-               // Load html2pdf dynamically to avoid SSR issues
-               const html2pdf = (await import('html2pdf.js')).default;
-               const opt = {
-                 margin:       [15, 10, 15, 10], // top, left, bottom, right
-                 filename:     `${title}.pdf`,
-                 image:        { type: 'jpeg', quality: 0.98 },
-                 html2canvas:  { scale: 2, useCORS: true, windowWidth: 1100 },
-                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
-                 pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
-               };
-               await html2pdf().set(opt).from(element).toPdf().get('pdf').then(function(pdf) {
-                 const totalPages = pdf.internal.getNumberOfPages();
-                 for (let i = 1; i <= totalPages; i++) {
-                   pdf.setPage(i);
-                   pdf.setFontSize(10);
-                   pdf.setTextColor(150);
-                   pdf.text('Page ' + i + ' of ' + totalPages, pdf.internal.pageSize.getWidth() / 2, pdf.internal.pageSize.getHeight() - 5, { align: 'center' });
-                 }
-               }).save();
-               setTimeout(() => window.close(), 1000);
-            }
-          } catch (err) {
-            console.error('PDF Generation Error:', err);
-            alert('אירעה שגיאה ביצירת ה-PDF. נסה להשתמש בהדפסה רגילה.');
-          }
-        }, 1500);
-        return () => clearTimeout(timer);
-      } else {
+      // downloadPdf=true means this page is being rendered headlessly by the server-side
+      // PDF route (app/api/pdf/route.js, via Puppeteer's page.goto()) rather than shown to
+      // a person - skip the auto window.print() and just let the data-print-ready marker
+      // below (on the root container) tell that route when it's safe to snapshot.
+      if (!downloadPdf) {
         const timer = setTimeout(() => {
           window.print();
         }, 1000);
@@ -217,7 +189,16 @@ export default function PrintAlterationsPage() {
   const showDoneCol = reportType === 'alterations_all' || reportType === 'orders_all';
 
   return (
-    <div data-agy-id="print-alterations-container" className="print-container" style={{ padding: '20px', direction: 'rtl' }}>
+    <div
+      data-agy-id="print-alterations-container"
+      // Signals to app/api/pdf/route.js's Puppeteer render (page.goto() + waitForSelector)
+      // that data has finished loading and the DOM reflects its final state - loading and
+      // error/disabled-setting states are all "ready" in the sense that there's nothing
+      // more to wait for.
+      data-print-ready={loading ? undefined : 'true'}
+      className="print-container"
+      style={{ padding: '20px', direction: 'rtl' }}
+    >
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Helvetica+Neue:wght@300;400;500;600;700&display=swap');
         

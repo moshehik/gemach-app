@@ -429,7 +429,13 @@ export default function PrintOrderPage() {
         }
       `}</style>
 
-      <div data-agy-id="print-order-container" className="print-container">
+      <div
+        data-agy-id="print-order-container"
+        // Signals to app/api/pdf/route.js's Puppeteer render (page.goto() + waitForSelector)
+        // that data has finished loading and the DOM reflects its final state.
+        data-print-ready={loading ? undefined : 'true'}
+        className="print-container"
+      >
         {loading ? (
           <div style={{ textAlign: 'center', padding: '50px', color: '#6c757d', fontSize: '18px' }}>טוען נתונים להדפסה...</div>
         ) : error ? (
