@@ -2,7 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
+import { Shirt, Scissors, Ruler, Check } from 'lucide-react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+
+// "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - item.description bakes the
+// model code into the name with a "קוד:" label; the print report wants the
+// bare number without that word.
+const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
 
 export default function PrintOrderPage() {
   const searchParams = useSearchParams();
@@ -78,7 +84,23 @@ export default function PrintOrderPage() {
   const balance = Math.max(0, totalObligations - totalPayments);
   const activeItems = order?.items ? order.items.filter(i => !i.isDeleted) : [];
   const activePayments = order?.payments ? order.payments.filter(p => !p.isDeleted) : [];
-  const colCount = enableAlterations ? 7 : 4;
+  const colCount = enableAlterations ? 5 : 4;
+
+  const renderRepairChips = (item) => {
+    const neck = item.neckAlteration === 1 || item.neckAlteration === true;
+    const sleeve = item.sleeveAlteration === 1 || item.sleeveAlteration === true;
+    const length = item.lengthAlteration && String(item.lengthAlteration).trim() !== '' ? item.lengthAlteration : null;
+    if (!neck && !sleeve && !length) return <span style={{ color: '#999' }}>ללא תיקונים</span>;
+    return (
+      <span style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center' }}>
+        {neck && <span className="repair-chip" title="תיקון צוואר"><Shirt size={12} /> צוואר</span>}
+        {sleeve && <span className="repair-chip" title="תיקון שרוול"><Scissors size={12} /> שרוול</span>}
+        {length && <span className="repair-chip" title="קיצור אורך"><Ruler size={12} /> {length} ס״מ</span>}
+        {item.alterationDone && <span className="repair-chip done" title="התיקון בוצע"><Check size={12} /> בוצע</span>}
+        {item.alterationDetails && <span style={{ flexBasis: '100%', fontSize: '0.78em', color: '#888' }}>{item.alterationDetails}</span>}
+      </span>
+    );
+  };
 
   const formatPaymentNotes = (rawNotes) => {
     let notes = rawNotes || '-';
@@ -179,10 +201,16 @@ export default function PrintOrderPage() {
           }
           .order-details-card,
           .rental-notes-box,
-          .payments-section,
           .print-footer {
             break-inside: avoid;
             page-break-inside: avoid;
+          }
+          /* payments-section is intentionally NOT break-inside:avoid - it can grow
+             past a page with many payments, and forcing the whole block to stay
+             together (instead of letting its own .print-table tr rows each avoid
+             their own split) clipped the section instead of flowing to page 2+. */
+          .payments-section table thead {
+            display: table-header-group;
           }
           .section-title {
             break-after: avoid-page;
@@ -279,6 +307,21 @@ export default function PrintOrderPage() {
         }
         .print-table tbody tr:last-child td {
           border-bottom: none;
+        }
+        .repair-chip {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 2px 8px;
+          border-radius: 20px;
+          background: #f4f4f4;
+          color: #555;
+          font-size: 0.85em;
+          white-space: nowrap;
+        }
+        .repair-chip.done {
+          background: #e8f5e9;
+          color: #2e7d32;
         }
         .summary-section {
           display: flex;
@@ -440,18 +483,6 @@ export default function PrintOrderPage() {
                           {printSettings.box2}
                         </div>
                       )}
-                      {printSettings.footer && (
-                        <div style={{ textAlign: 'center', marginTop: '15px', marginBottom: '15px' }}>
-                          <h3 className="rental-footer-title">{printSettings.footer}</h3>
-                          <div className="rental-footer-sign">
-                            <span>על החתום:</span>
-                            <span style={{ display: 'inline-block', width: '200px', borderBottom: '1px dashed #999', margin: '0 10px' }}></span>
-                          </div>
-                          <div className="rental-footer-note">
-                            נא להחזיר טופס זה חתום בעת החזרת השמלות
-                          </div>
-                        </div>
-                      )}
                     </div>
                   )}
                 </td>
@@ -460,13 +491,7 @@ export default function PrintOrderPage() {
                 <th>דגם / תיאור</th>
                 <th>מידה</th>
                 <th>ברקוד</th>
-                {enableAlterations && (
-                  <>
-                    <th>תיקון צואר</th>
-                    <th>תיקון שרוול</th>
-                    <th>תיקון אורך</th>
-                  </>
-                )}
+                {enableAlterations && <th>תיקונים</th>}
                 <th>סטטוס</th>
               </tr>
             </thead>
@@ -490,15 +515,11 @@ export default function PrintOrderPage() {
 
                   return (
                     <tr key={item.id}>
-                      <td style={{ fontWeight: '600', color: '#333' }}>{item.description || item.dressItem?.dress?.name || item.dressItem?.dressName || '-'}</td>
+                      <td style={{ fontWeight: '600', color: '#333' }}>{stripCodeLabel(item.description || item.dressItem?.dress?.name || item.dressItem?.dressName) || '-'}</td>
                       <td>{item.sizeText || item.dressItem?.sizeText || '-'}</td>
-                      <td style={{ fontWeight: '600', color: '#666' }}>{item.barcode || item.dressItem?.dressBarcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : '-')}</td>
+                      <td style={{ fontWeight: '600', color: '#666' }}>{(item.isTaken && (item.barcode || item.dressItem?.dressBarcode)) || '-'}</td>
                       {enableAlterations && (
-                        <>
-                          <td>{item.neckAlteration ? `הצרה ${item.neckAlteration}` : '-'}</td>
-                          <td>{item.sleeveAlteration ? `הארכה ${item.sleeveAlteration}` : '-'}</td>
-                          <td>{item.lengthAlteration || '-'}</td>
-                        </>
+                        <td>{renderRepairChips(item)}</td>
                       )}
                       <td>{statusStr}</td>
                     </tr>
@@ -571,6 +592,19 @@ export default function PrintOrderPage() {
                     <div className="signatures">
                       <div>חתימת הלקוח</div>
                       <div>אישור הגמ&quot;ח</div>
+                    </div>
+                  )}
+
+                  {printType === 'rental' && printSettings?.footer && (
+                    <div style={{ textAlign: 'center', marginTop: '15px', marginBottom: '15px' }}>
+                      <h3 className="rental-footer-title">{printSettings.footer}</h3>
+                      <div className="rental-footer-sign">
+                        <span>על החתום:</span>
+                        <span style={{ display: 'inline-block', width: '200px', borderBottom: '1px dashed #999', margin: '0 10px' }}></span>
+                      </div>
+                      <div className="rental-footer-note">
+                        נא להחזיר טופס זה חתום בעת החזרת השמלות
+                      </div>
                     </div>
                   )}
 
