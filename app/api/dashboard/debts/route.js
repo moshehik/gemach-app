@@ -31,13 +31,15 @@ export async function GET(request) {
       take: 100
     });
 
-    // Fetch all DEBT_APPROVED audit logs for these orders
+    // Fetch DEBT_APPROVED and its undo counterpart CANCEL_DEBT_APPROVAL for these orders -
+    // whichever is most recent per order decides the current approval state (an approval
+    // can be undone later from the refunds/debts screen, see app/refunds/page.js).
     const orderIdsStr = debts.map(d => d.orderId.toString());
     const auditLogs = await prisma.auditLog.findMany({
       where: {
         entityType: 'Order',
         entityId: { in: orderIdsStr },
-        action: 'DEBT_APPROVED'
+        action: { in: ['DEBT_APPROVED', 'CANCEL_DEBT_APPROVAL'] }
       },
       orderBy: { createdAt: 'desc' }
     });
@@ -46,11 +48,12 @@ export async function GET(request) {
       const totalPaid = order.payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
       const totalObligations = order.obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
       const remaining = totalObligations - totalPaid;
-      
-      // Check if debt is approved
+
+      // Check if debt is approved - auditLogs is already ordered desc, so the first match
+      // per order is its latest DEBT_APPROVED/CANCEL_DEBT_APPROVAL entry.
       let isApproved = false;
       const latestLog = auditLogs.find(log => log.entityId === order.orderId.toString());
-      if (latestLog) {
+      if (latestLog && latestLog.action === 'DEBT_APPROVED') {
         try {
           const changes = JSON.parse(latestLog.changesJson);
           // If the approved debt amount is at least as much as the current remaining debt, it's considered approved.

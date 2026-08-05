@@ -44,6 +44,13 @@ export async function GET(request) {
     const archiveAndPastOnly = searchParams.get('archiveAndPastOnly') === 'true';
     const filterStatus = searchParams.get('filterStatus') || 'all';
 
+    // 'unpaid' / 'unpaid_all' / 'unpaid_approved' all share the same JS-memory debt
+    // calculation below (totalAmount vs. payments can't be filtered in SQL directly).
+    // 'unpaid_approved' additionally requires that at least one item was actually
+    // dispatched (isTaken) — i.e. the rental was approved/executed by staff, not just
+    // a future booking still sitting in "בקרוב" with a balance.
+    const isUnpaidQuery = filterStatus === 'unpaid' || filterStatus === 'unpaid_all' || filterStatus === 'unpaid_approved';
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
@@ -151,12 +158,15 @@ export async function GET(request) {
 
     // Only use JS memory filtering for 'unpaid' status since it requires complex calculated fields
     // Default sorting (eventDate) and other filters now use native database pagination and indexing
-    if (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') {
+    if (isUnpaidQuery) {
       const minimalSelect = {
         orderId: true,
         eventDate: true,
         totalAmount: true,
-        payments: { select: { amount: true, isDeleted: true } }
+        payments: { select: { amount: true, isDeleted: true } },
+        // Only needed to derive "dispatched" (isTaken) for 'unpaid_approved' below, but
+        // cheap enough (two booleans) to always select alongside the rest of this query.
+        items: { select: { isTaken: true, isDeleted: true } }
       };
 
       const minimalOrders = await prisma.order.findMany({
@@ -168,29 +178,38 @@ export async function GET(request) {
       let minimalFormatted = minimalOrders.map(o => {
         const calculatedTotalAmount = o.totalAmount || 0;
         const totalPaid = o.payments?.reduce((sum, p) => sum + (p.isDeleted ? 0 : p.amount), 0) || 0;
+        const hasDispatchedItem = (o.items || []).some(i => !i.isDeleted && i.isTaken);
         return {
           orderId: o.orderId,
           eventDate: o.eventDate,
           totalAmount: calculatedTotalAmount,
-          totalPaid
+          totalPaid,
+          hasDispatchedItem
         };
       });
 
-      if (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') {
+      if (isUnpaidQuery) {
         minimalFormatted = minimalFormatted.filter(o => o.totalPaid < o.totalAmount && o.totalAmount > 0);
+      }
+
+      // "מאושר" here means the rental was actually approved/dispatched (a dress physically
+      // left) as opposed to a future booking that merely reserved dresses and still owes
+      // money — that broader set is what filterStatus=unpaid_all already covers.
+      if (filterStatus === 'unpaid_approved') {
+        minimalFormatted = minimalFormatted.filter(o => o.hasDispatchedItem);
       }
 
       finalTotalCount = minimalFormatted.length;
       finalOrderIds = minimalFormatted.slice(skip, skip + limit).map(o => o.orderId);
     }
 
-    const fullOrdersWhere = (filterStatus === 'unpaid' || filterStatus === 'unpaid_all')
+    const fullOrdersWhere = isUnpaidQuery
       ? { orderId: { in: finalOrderIds } }
       : where;
 
     // Fetch orders and (for non-unpaid path) count in parallel instead of sequentially
     let orders, totalCountNonUnpaid;
-    if (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') {
+    if (isUnpaidQuery) {
       orders = await prisma.order.findMany({
         where: fullOrdersWhere,
         select: {
@@ -320,7 +339,7 @@ export async function GET(request) {
 
     // Restore the correct sort order for unpaid since the IN clause doesn't guarantee order
     let sortedOrders = orders;
-    if (filterStatus === 'unpaid' || filterStatus === 'unpaid_all') {
+    if (isUnpaidQuery) {
       const orderIdIndexMap = new Map(finalOrderIds.map((id, index) => [id, index]));
       sortedOrders = orders.sort((a, b) => orderIdIndexMap.get(a.orderId) - orderIdIndexMap.get(b.orderId));
     }
