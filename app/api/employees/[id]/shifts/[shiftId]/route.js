@@ -1,7 +1,9 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
+import { checkAuth } from '@/lib/auth';
 
 export async function PUT(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const employeeId = resolvedParams.id;
@@ -51,8 +53,12 @@ export async function PUT(request, { params }) {
         hebrewDate: body.hebrewDate !== undefined ? body.hebrewDate : undefined,
         entryTime: entryTime,
         exitTime: exitTime,
-        totalMinutes: body.totalMinutes !== undefined ? body.totalMinutes : undefined,
-        totalCalculated: body.totalCalculated !== undefined ? body.totalCalculated : undefined,
+        totalMinutes: body.totalMinutes !== undefined
+          ? (body.totalMinutes !== "" && body.totalMinutes !== null ? parseInt(body.totalMinutes, 10) : null)
+          : undefined,
+        totalCalculated: body.totalCalculated !== undefined
+          ? (body.totalCalculated !== "" && body.totalCalculated !== null ? parseFloat(body.totalCalculated) : null)
+          : undefined,
         notes: body.notes !== undefined ? body.notes : undefined,
         isDeleted: body.isDeleted !== undefined ? body.isDeleted : undefined
       }
@@ -77,6 +83,7 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const employeeId = resolvedParams.id;

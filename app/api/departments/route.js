@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const departments = await prisma.department.findMany({
       orderBy: { roleId: 'asc' }

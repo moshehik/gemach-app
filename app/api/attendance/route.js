@@ -148,12 +148,28 @@ export async function POST(request) {
 
       // Calculate total pay: (minutes / 60) * hourly wage
       const hourlyWage = currentShift.hourlyWageSnapshot || employee.hourlyWage || 0;
-      const travel = currentShift.travelExpensesSnapshot || employee.travelExpenses || 0;
+      const travelEligible = currentShift.travelExpensesSnapshot || employee.travelExpenses || 0;
       let totalCalculated = (totalMinutes / 60) * hourlyWage;
-      
-      // Add travel expenses if it's the first shift of the day? Or just add it per shift.
-      // Usually it's per day, but for simplicity we add it to the shift.
-      totalCalculated += travel;
+
+      // Travel expense is a daily allowance, not a per-punch one: only credit it on the
+      // employee's earliest shift of the calendar day, so splitting a day into several
+      // punches (e.g. a lunch break) doesn't pay travel more than once.
+      let travelForThisShift = 0;
+      if (travelEligible) {
+        const earlierShiftToday = await prisma.shift.findFirst({
+          where: {
+            employeeId: employee.id,
+            date: currentShift.date,
+            isDeleted: false,
+            id: { not: currentShift.id },
+            entryTime: { lt: currentShift.entryTime }
+          }
+        });
+        if (!earlierShiftToday) {
+          travelForThisShift = travelEligible;
+        }
+      }
+      totalCalculated += travelForThisShift;
 
       const updatedShift = await prisma.shift.update({
         where: { id: currentShift.id },

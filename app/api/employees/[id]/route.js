@@ -1,9 +1,11 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
+import { checkAuth } from '@/lib/auth';
 
 
 
 export async function GET(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
@@ -11,11 +13,14 @@ export async function GET(request, { params }) {
       return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
     }
 
+    const { searchParams } = new URL(request.url);
+    const includeDeleted = searchParams.get('includeDeleted') === 'true';
+
     const employee = await prisma.employee.findUnique({
       where: { id },
       include: {
         shifts: {
-          where: { isDeleted: false },
+          where: includeDeleted ? {} : { isDeleted: false },
           orderBy: { date: 'desc' }
         }
       }
@@ -34,6 +39,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
