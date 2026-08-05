@@ -16,6 +16,10 @@ export default function PrintAlterationsPage() {
   let startDate = searchParams.get('startDate');
   let endDate = searchParams.get('endDate');
   const downloadPdf = searchParams.get('downloadPdf') === 'true';
+  // Present only for dateMode=current when the caller (e.g. the orders list)
+  // resolved the exact set of currently-filtered/displayed order IDs - takes
+  // precedence over the date range so the report matches what's on screen.
+  const orderIds = searchParams.get('orderIds');
 
   if (dateMode === 'today') {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -25,7 +29,7 @@ export default function PrintAlterationsPage() {
 
   useEffect(() => {
     fetchData();
-  }, [reportType, startDate, endDate]);
+  }, [reportType, startDate, endDate, orderIds]);
 
   useEffect(() => {
     // Auto trigger print when loaded
@@ -86,8 +90,12 @@ export default function PrintAlterationsPage() {
       let showAllOrders = reportType === 'orders_all';
 
       let url = `/api/alterations?showOnlyPending=${showOnlyPending}&hideNoAlterations=${hideNoAlterations}&showAllOrders=${showAllOrders}`;
-      if (startDate) url += `&startDate=${startDate}`;
-      if (endDate) url += `&endDate=${endDate}`;
+      if (orderIds) {
+        url += `&orderIds=${orderIds}`;
+      } else {
+        if (startDate) url += `&startDate=${startDate}`;
+        if (endDate) url += `&endDate=${endDate}`;
+      }
 
       // Settings and alterations are independent - fetch them together instead of
       // waiting on settings before even starting the alterations request.
@@ -105,7 +113,6 @@ export default function PrintAlterationsPage() {
           return;
         }
       }
-
       if (!res.ok) throw new Error('Failed to fetch data');
       const data = await res.json();
       setItems(data);
@@ -350,7 +357,11 @@ export default function PrintAlterationsPage() {
               <div className="print-header">
                 <h1>{getReportTitle()}</h1>
                 <h3>
-                  {dateMode === 'today' ? `תאריך: ${getHebrewDateString(new Date().toISOString())}` : `מתאריך: ${formatDate(startDate)} | עד תאריך: ${formatDate(endDate)}`}
+                  {dateMode === 'today'
+                    ? `תאריך: ${getHebrewDateString(new Date().toISOString())}`
+                    : orderIds
+                      ? 'הנתונים המוצגים כעת (לפי הסינון הנוכחי)'
+                      : `מתאריך: ${formatDate(startDate)} | עד תאריך: ${formatDate(endDate)}`}
                 </h3>
               </div>
             </td>

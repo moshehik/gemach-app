@@ -309,6 +309,15 @@ export default function OrdersPage() {
     }
   };
 
+  // Used by the print wizard's "הנתונים המוצגים כעת" (currently displayed data)
+  // option: reuses the exact same filter params the visible table is using
+  // (search/sort/status/advanced filters) so the printed report matches
+  // what's actually on screen, instead of ignoring the active filters.
+  const getCurrentFilteredOrderIds = async () => {
+    const list = await fetchOrdersForExport(2000);
+    return list.map(o => o.orderId).filter(id => id != null);
+  };
+
   const thStyle = { 
     padding: '1rem', 
     cursor: 'pointer', 
@@ -831,9 +840,10 @@ export default function OrdersPage() {
       />
 
       {showPrintWizard && (
-        <PrintWizardModal data-element-name="רכיב_page_66" 
+        <PrintWizardModal data-element-name="רכיב_page_66"
           onClose={() => setShowPrintWizard(false)}
-          defaultReportType="orders_all" 
+          defaultReportType="orders_all"
+          getCurrentOrderIds={getCurrentFilteredOrderIds}
         />
       )}
 

@@ -15,6 +15,13 @@ export async function GET(request) {
     const search = searchParams.get('search') || '';
     const page = searchParams.get('page') ? parseInt(searchParams.get('page')) : null;
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')) : 60;
+    // Explicit order IDs (e.g. from the orders list's "הנתונים המוצגים כעת"
+    // print-wizard option) take precedence over the date range - they're the
+    // exact set the caller already filtered/searched down to.
+    const orderIdsParam = searchParams.get('orderIds');
+    const orderIds = orderIdsParam
+      ? orderIdsParam.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id))
+      : null;
 
     // Base query for OrderItem
     const whereClause = {
@@ -24,7 +31,9 @@ export async function GET(request) {
       }
     };
 
-    if (startDate || endDate) {
+    if (orderIds) {
+      whereClause.order.orderId = { in: orderIds };
+    } else if (startDate || endDate) {
       whereClause.order.eventDate = {};
       if (startDate) {
         // In legacy, it searched events > (date - 1), which means from the start of the date.

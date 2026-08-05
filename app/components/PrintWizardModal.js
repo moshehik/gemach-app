@@ -5,20 +5,43 @@ import { createPortal } from 'react-dom';
 import { Printer, Calendar as CalendarIcon, Clock, CheckCircle, FileText, X, FileDown } from 'lucide-react';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 
-export default function PrintWizardModal({ onClose, defaultStartDate, defaultEndDate, defaultReportType }) {
+export default function PrintWizardModal({ onClose, defaultStartDate, defaultEndDate, defaultReportType, getCurrentOrderIds }) {
   const [dateMode, setDateMode] = useState('current'); // 'current', 'today', 'custom'
   const [startDate, setStartDate] = useState(defaultStartDate || '');
   const [endDate, setEndDate] = useState(defaultEndDate || '');
   const [reportType, setReportType] = useState(defaultReportType || 'alterations_pending'); // 'alterations_pending', 'alterations_all', 'orders_no_alterations', 'orders_all'
   const [mounted, setMounted] = useState(false);
+  const [isPreparing, setIsPreparing] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const handlePrint = (downloadPdf = false) => {
+  // Opens the report by loading it into a hidden iframe instead of a new tab.
+  // The /print/alterations route auto-generates and saves the PDF, then tries
+  // to close its own window - all of that can happen off-screen without ever
+  // moving keyboard/window focus away from the page the user is on.
+  const triggerBackgroundDownload = (query) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.top = '-10000px';
+    iframe.style.left = '-10000px';
+    iframe.style.width = '1100px';
+    iframe.style.height = '800px';
+    iframe.style.border = 'none';
+    iframe.setAttribute('aria-hidden', 'true');
+    iframe.src = `/print/alterations${query}`;
+    document.body.appendChild(iframe);
+    // Give it enough time to fetch data, render and let html2pdf save the file
+    // before we clean it up.
+    setTimeout(() => {
+      iframe.remove();
+    }, 20000);
+  };
+
+  const handlePrint = async (downloadPdf = false) => {
     let query = `?reportType=${reportType}&dateMode=${dateMode}`;
-    
+
     if (dateMode === 'custom') {
       if (!startDate || !endDate) {
         alert('יש להזין תאריך התחלה וסיום.');
@@ -26,12 +49,32 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
       }
       query += `&startDate=${startDate}&endDate=${endDate}`;
     } else if (dateMode === 'current') {
-      if (startDate) query += `&startDate=${startDate}`;
-      if (endDate) query += `&endDate=${endDate}`;
+      if (getCurrentOrderIds) {
+        // Reflect exactly what's currently filtered/shown (search, status,
+        // advanced filters) rather than just an optional date range.
+        setIsPreparing(true);
+        let orderIds;
+        try {
+          orderIds = await getCurrentOrderIds();
+        } finally {
+          setIsPreparing(false);
+        }
+        if (!orderIds || orderIds.length === 0) {
+          alert('לא נמצאו רשומות התואמות לסינון הנוכחי.');
+          return;
+        }
+        query += `&orderIds=${orderIds.join(',')}`;
+      } else {
+        if (startDate) query += `&startDate=${startDate}`;
+        if (endDate) query += `&endDate=${endDate}`;
+      }
     }
 
     if (downloadPdf) {
       query += `&downloadPdf=true`;
+      triggerBackgroundDownload(query);
+      onClose();
+      return;
     }
 
     window.open(`/print/alterations${query}`, '_blank');
@@ -142,27 +185,46 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
           >
             ביטול
           </button>
-          <button data-element-name="כפתור_PrintWizardModal_pdf" 
-            className="btn btn-outline" 
+          <button data-element-name="כפתור_PrintWizardModal_pdf"
+            title="הורד כ-PDF"
+            aria-label="הורד כ-PDF"
+            disabled={isPreparing}
             onClick={() => handlePrint(true)}
-            style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
-          >
-            <FileDown data-element-name="רכיב_PrintWizardModal_pdf_icon" size={18} /> הורד כ-PDF
-          </button>
-          <button data-element-name="כפתור_PrintWizardModal_22" 
-            title="הכן להדפסה"
-            onClick={() => handlePrint(false)}
-            style={{ 
-              background: 'none', 
-              border: 'none', 
-              cursor: 'pointer', 
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: isPreparing ? 'wait' : 'pointer',
               color: 'var(--primary-color)',
-              display: 'flex', 
-              alignItems: 'center', 
+              display: 'flex',
+              alignItems: 'center',
               justifyContent: 'center',
               padding: '0.5rem',
               borderRadius: '50%',
-              transition: 'all 0.2s'
+              transition: 'all 0.2s',
+              opacity: isPreparing ? 0.6 : 1
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(212,175,55,0.1)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.transform = 'scale(1)'; }}
+          >
+            <FileDown data-element-name="רכיב_PrintWizardModal_pdf_icon" size={22} />
+          </button>
+          <button data-element-name="כפתור_PrintWizardModal_22"
+            title="הכן להדפסה"
+            aria-label="הכן להדפסה"
+            disabled={isPreparing}
+            onClick={() => handlePrint(false)}
+            style={{
+              background: 'none',
+              border: 'none',
+              cursor: isPreparing ? 'wait' : 'pointer',
+              color: 'var(--primary-color)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '0.5rem',
+              borderRadius: '50%',
+              transition: 'all 0.2s',
+              opacity: isPreparing ? 0.6 : 1
             }}
             onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(212,175,55,0.1)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
             onMouseOut={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.transform = 'scale(1)'; }}
