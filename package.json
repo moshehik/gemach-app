@@ -1,13 +1,14 @@
 {
   "name": "gemach-app",
-  "version": "0.1.104",
+  "version": "0.1.105",
   "lastUpdated": "2026-07-27",
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
     "build": "prisma generate && next build --webpack",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "backup:prod": "node scripts/backup_prod_db.js"
   },
   "dependencies": {
     "@hebcal/core": "^6.6.0",

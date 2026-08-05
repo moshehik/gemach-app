@@ -46,3 +46,6 @@ next-env.d.ts
 scratch/
 scratch_*.js
 .vercel
+
+# logical DB backups produced by scripts/backup_prod_db.js (see BACKUPS.md)
+/backups/
