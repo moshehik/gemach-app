@@ -3,13 +3,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
-import { Lock, User, LogIn, X, Loader2 } from 'lucide-react';
+import { Lock, User, LogIn, X, Loader2, ShieldCheck, KeyRound } from 'lucide-react';
 
 export default function LoginScreen({ isModal = false, onClose }) {
   const [employees, setEmployees] = useState([]);
   const [isFetchingEmployees, setIsFetchingEmployees] = useState(true);
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [password, setPassword] = useState('');
+  const [pinValue, setPinValue] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -17,6 +18,26 @@ export default function LoginScreen({ isModal = false, onClose }) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const router = useRouter();
+
+  // Trusted-device fast path: this computer may have been marked trusted by a manager
+  // (see /admin/trusted-devices), which lets whoever logs in from it use just the last 4
+  // digits of their real password instead of typing the whole thing every time.
+  const [deviceTrusted, setDeviceTrusted] = useState(false);
+  const [usePinMode, setUsePinMode] = useState(false);
+
+  // "שכחתי סיסמה" - emails a temporary password to the employee's address on file.
+  const [forgotOpen, setForgotOpen] = useState(false);
+  const [forgotSending, setForgotSending] = useState(false);
+  const [forgotResult, setForgotResult] = useState(null);
+
+  // Forced "set a new password" prompt, shown right after logging in with a temporary
+  // password issued by the forgot-password/reset flow (Employee.mustResetPassword).
+  const [resetRequired, setResetRequired] = useState(false);
+  const [resetEmployeeId, setResetEmployeeId] = useState(null);
+  const [newPass1, setNewPass1] = useState('');
+  const [newPass2, setNewPass2] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resetSaving, setResetSaving] = useState(false);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -45,11 +66,17 @@ export default function LoginScreen({ isModal = false, onClose }) {
         console.error('Failed to load employees:', err);
         setIsFetchingEmployees(false);
       });
+
+    fetch('/api/auth/device-status')
+      .then(res => res.json())
+      .then(data => {
+        setDeviceTrusted(!!data.trusted);
+        setUsePinMode(!!data.trusted);
+      })
+      .catch(() => {});
   }, []);
 
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    
+  const resolveEmployeeId = () => {
     let finalEmployeeId = selectedEmployee;
     if (!finalEmployeeId && searchTerm) {
       const match = employees.find(emp => `${emp.firstName} ${emp.lastName}`.trim() === searchTerm.trim());
@@ -58,32 +85,57 @@ export default function LoginScreen({ isModal = false, onClose }) {
         setSelectedEmployee(match.id);
       }
     }
-    
-    if (!finalEmployeeId || !password) {
-      setError('נא לבחור עובד ולהזין סיסמה');
+    return finalEmployeeId;
+  };
+
+  const finishLogin = () => {
+    if (isModal && onClose) {
+      onClose(true);
+    } else {
+      router.push('/');
+    }
+    router.refresh();
+  };
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+
+    const finalEmployeeId = resolveEmployeeId();
+    const credential = usePinMode ? pinValue : password;
+
+    if (!finalEmployeeId || !credential) {
+      setError(usePinMode ? 'נא לבחור עובד ולהזין 4 ספרות' : 'נא לבחור עובד ולהזין סיסמה');
       return;
     }
-    
+
     setError('');
     setLoading(true);
-    
+
     try {
       const res = await fetch('/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId: finalEmployeeId, password })
+        body: JSON.stringify(usePinMode
+          ? { employeeId: finalEmployeeId, pin: credential }
+          : { employeeId: finalEmployeeId, password: credential })
       });
-      
+
       const data = await res.json();
-      
+
       if (res.ok && data.success) {
-        if (isModal && onClose) {
-          onClose(true);
+        if (data.mustResetPassword) {
+          setResetEmployeeId(finalEmployeeId);
+          setResetRequired(true);
         } else {
-          router.push('/');
+          finishLogin();
         }
-        router.refresh();
       } else {
+        // The server may tell us the PIN path isn't usable right now (device not trusted
+        // after all, or this employee has no PIN yet) - fall back to the full password field.
+        if (data.requireFullPassword) {
+          setUsePinMode(false);
+          setPinValue('');
+        }
         setError(data.message || 'שגיאה בהתחברות');
       }
     } catch (err) {
@@ -91,6 +143,73 @@ export default function LoginScreen({ isModal = false, onClose }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleForgotPassword = async () => {
+    const finalEmployeeId = resolveEmployeeId();
+    if (!finalEmployeeId) {
+      setForgotResult({ success: false, message: 'יש לבחור קודם עובד מהרשימה' });
+      return;
+    }
+    setForgotSending(true);
+    setForgotResult(null);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ employeeId: finalEmployeeId })
+      });
+      const data = await res.json();
+      setForgotResult({ success: !!data.success, message: data.message || (data.success ? 'נשלח בהצלחה' : 'שליחה נכשלה') });
+    } catch (err) {
+      setForgotResult({ success: false, message: 'שגיאת תקשורת' });
+    } finally {
+      setForgotSending(false);
+    }
+  };
+
+  const handleSetNewPassword = async (e) => {
+    e.preventDefault();
+    setResetError('');
+    if (!newPass1 || newPass1.length < 4) {
+      setResetError('הסיסמה החדשה קצרה מדי (לפחות 4 תווים)');
+      return;
+    }
+    if (newPass1 !== newPass2) {
+      setResetError('הסיסמאות אינן תואמות');
+      return;
+    }
+    setResetSaving(true);
+    try {
+      const res = await fetch(`/api/employees/${resetEmployeeId}/password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newPassword: newPass1 })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setResetRequired(false);
+        finishLogin();
+      } else {
+        setResetError(data.message || 'שגיאה בשמירת הסיסמה');
+      }
+    } catch (err) {
+      setResetError('שגיאת תקשורת');
+    } finally {
+      setResetSaving(false);
+    }
+  };
+
+  const inputStyle = {
+    width: '100%',
+    background: 'rgba(15, 23, 42, 0.6)',
+    border: '1px solid rgba(255, 255, 255, 0.1)',
+    color: 'white',
+    padding: '1.1rem 3.2rem 1.1rem 1rem',
+    borderRadius: '14px',
+    fontSize: '1rem',
+    outline: 'none',
+    transition: 'all 0.2s ease'
   };
 
   const content = (
@@ -113,7 +232,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
       fontFamily: 'system-ui, -apple-system, sans-serif',
       padding: '2rem'
     }} dir="rtl">
-      
+
       <div style={{
         position: 'relative',
         width: '100%',
@@ -152,10 +271,16 @@ export default function LoginScreen({ isModal = false, onClose }) {
           <p style={{ color: '#94a3b8', margin: 0, fontSize: '1.05rem' }}>
             נא להזדהות על מנת להמשיך למערכת
           </p>
+          {deviceTrusted && (
+            <p style={{ color: '#60a5fa', margin: '0.6rem 0 0', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+              <ShieldCheck size={15} />
+              מחשב זה מוגדר כמערכת מהימנה
+            </p>
+          )}
         </div>
 
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-          
+
           {error && (
             <div style={{
               background: 'rgba(239, 68, 68, 0.1)',
@@ -171,7 +296,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
               {error}
             </div>
           )}
-          
+
           <div style={{ position: 'relative' }} ref={dropdownRef}>
             <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.9rem', fontWeight: '500', marginBottom: '0.5rem' }}>
               שם העובד
@@ -198,27 +323,27 @@ export default function LoginScreen({ isModal = false, onClose }) {
                   outline: 'none',
                   transition: 'all 0.2s ease',
                 }}
-                onFocus={(e) => { 
-                  e.target.style.borderColor = '#3b82f6'; 
-                  e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)'; 
-                  setIsDropdownOpen(true); 
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#3b82f6';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)';
+                  setIsDropdownOpen(true);
                 }}
-                onBlur={(e) => { 
-                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; 
-                  e.target.style.boxShadow = 'none'; 
+                onBlur={(e) => {
+                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
+                  e.target.style.boxShadow = 'none';
                 }}
               />
               {isFetchingEmployees ? (
                 <Loader2 data-element-name="רכיב_LoginScreen_5" size={20} color="#3b82f6" style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', animation: 'spin 1s linear infinite' }} />
               ) : (
-                <User data-element-name="לחיץ_LoginScreen_6" 
-                  size={20} 
-                  color={selectedEmployee ? '#3b82f6' : '#64748b'} 
-                  style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s', cursor: 'pointer' }} 
-                  onClick={() => setIsDropdownOpen(!isDropdownOpen)} 
+                <User data-element-name="לחיץ_LoginScreen_6"
+                  size={20}
+                  color={selectedEmployee ? '#3b82f6' : '#64748b'}
+                  style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s', cursor: 'pointer' }}
+                  onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 />
               )}
-              
+
               {isDropdownOpen && !isFetchingEmployees && (
                 <div style={{
                   position: 'absolute',
@@ -267,33 +392,56 @@ export default function LoginScreen({ isModal = false, onClose }) {
               )}
             </div>
           </div>
-          
+
           <div style={{ position: 'relative' }}>
-            <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.9rem', fontWeight: '500', marginBottom: '0.5rem' }}>
-              קוד כניסה
-            </label>
+            <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
+              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.9rem', fontWeight: '500' }}>
+                {usePinMode ? '4 הספרות האחרונות בסיסמה' : 'קוד כניסה'}
+              </label>
+              {deviceTrusted && (
+                <button
+                  type="button"
+                  onClick={() => { setUsePinMode(!usePinMode); setError(''); setPassword(''); setPinValue(''); }}
+                  style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: '0.82rem', cursor: 'pointer', padding: 0 }}
+                >
+                  {usePinMode ? 'השתמש בסיסמה המלאה' : 'השתמש בקוד מקוצר (4 ספרות)'}
+                </button>
+              )}
+            </div>
             <div style={{ position: 'relative' }}>
-              <input data-element-name="שדה_LoginScreen_8"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="הזן את הקוד שלך"
-                style={{
-                  width: '100%',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: 'white',
-                  padding: '1.1rem 3.2rem 1.1rem 1rem',
-                  borderRadius: '14px',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  transition: 'all 0.2s ease',
-                  letterSpacing: password.length > 0 ? '0.2em' : 'normal'
-                }}
-                onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)'; }}
-                onBlur={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.target.style.boxShadow = 'none'; }}
-              />
-              <Lock data-element-name="רכיב_LoginScreen_9" size={20} color={password ? '#3b82f6' : '#64748b'} style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }} />
+              {usePinMode ? (
+                <input data-element-name="שדה_LoginScreen_pin"
+                  type="password"
+                  inputMode="numeric"
+                  maxLength={4}
+                  value={pinValue}
+                  onChange={(e) => setPinValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  placeholder="••••"
+                  style={{ ...inputStyle, letterSpacing: '0.6em', textAlign: 'center', fontSize: '1.3rem' }}
+                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.target.style.boxShadow = 'none'; }}
+                />
+              ) : (
+                <input data-element-name="שדה_LoginScreen_8"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="הזן את הקוד שלך"
+                  style={{ ...inputStyle, letterSpacing: password.length > 0 ? '0.2em' : 'normal' }}
+                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)'; }}
+                  onBlur={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.target.style.boxShadow = 'none'; }}
+                />
+              )}
+              <Lock data-element-name="רכיב_LoginScreen_9" size={20} color={(usePinMode ? pinValue : password) ? '#3b82f6' : '#64748b'} style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }} />
+            </div>
+            <div style={{ textAlign: 'left', marginTop: '0.5rem' }}>
+              <button
+                type="button"
+                onClick={() => { setForgotOpen(true); setForgotResult(null); }}
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.82rem', cursor: 'pointer', padding: 0 }}
+              >
+                שכחתי סיסמה
+              </button>
             </div>
           </div>
 
@@ -301,7 +449,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
             type="submit"
             disabled={loading}
             style={{
-              marginTop: '1.5rem',
+              marginTop: '0.5rem',
               width: '100%',
               background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
               color: 'white',
@@ -345,6 +493,71 @@ export default function LoginScreen({ isModal = false, onClose }) {
           * { box-sizing: border-box; }
         `}} />
       </div>
+
+      {forgotOpen && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(15,23,42,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }} onClick={(e) => { if (e.target === e.currentTarget) setForgotOpen(false); }}>
+          <div style={{ width: '100%', maxWidth: '400px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '2rem', color: 'white' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
+              <KeyRound size={20} color="#60a5fa" />
+              <h3 style={{ margin: 0, fontSize: '1.2rem' }}>שכחתי סיסמה</h3>
+            </div>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.2rem' }}>
+              תישלח סיסמה זמנית לכתובת המייל השמורה במערכת עבור העובד שנבחר ({searchTerm || 'לא נבחר עובד'}). לאחר ההתחברות עם הסיסמה הזמנית תתבקש/י להגדיר סיסמה חדשה.
+            </p>
+            {forgotResult && (
+              <div style={{
+                background: forgotResult.success ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
+                border: `1px solid ${forgotResult.success ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                color: forgotResult.success ? '#86efac' : '#fca5a5',
+                padding: '0.75rem 1rem',
+                borderRadius: '10px',
+                fontSize: '0.88rem',
+                marginBottom: '1rem'
+              }}>
+                {forgotResult.message}
+              </div>
+            )}
+            <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
+              <button type="button" onClick={() => setForgotOpen(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: 'pointer' }}>סגור</button>
+              <button type="button" disabled={forgotSending} onClick={handleForgotPassword} style={{ background: '#3b82f6', border: 'none', color: 'white', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: forgotSending ? 'not-allowed' : 'pointer', opacity: forgotSending ? 0.7 : 1 }}>
+                {forgotSending ? 'שולח...' : 'שלח סיסמה זמנית'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {resetRequired && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'rgba(15,23,42,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+          <div style={{ width: '100%', maxWidth: '420px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '2rem', color: 'white' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
+              <ShieldCheck size={20} color="#60a5fa" />
+              <h3 style={{ margin: 0, fontSize: '1.2rem' }}>יש להגדיר סיסמה חדשה</h3>
+            </div>
+            <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.2rem' }}>
+              התחברת עם סיסמה זמנית. יש להגדיר סיסמה קבועה חדשה כדי להמשיך.
+            </p>
+            {resetError && (
+              <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', padding: '0.75rem 1rem', borderRadius: '10px', fontSize: '0.88rem', marginBottom: '1rem' }}>
+                {resetError}
+              </div>
+            )}
+            <form onSubmit={handleSetNewPassword} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
+              <div>
+                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: '0.4rem' }}>סיסמה חדשה</label>
+                <input type="password" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} style={inputStyle} />
+              </div>
+              <div>
+                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: '0.4rem' }}>אימות סיסמה חדשה</label>
+                <input type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} style={inputStyle} />
+              </div>
+              <button type="submit" disabled={resetSaving} style={{ marginTop: '0.4rem', background: '#3b82f6', border: 'none', color: 'white', padding: '0.85rem', borderRadius: '12px', cursor: resetSaving ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: resetSaving ? 0.7 : 1 }}>
+                {resetSaving ? 'שומר...' : 'שמור והמשך'}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 

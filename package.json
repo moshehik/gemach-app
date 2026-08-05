@@ -1,6 +1,6 @@
 {
   "name": "gemach-app",
-  "version": "0.1.115",
+  "version": "0.1.116",
   "lastUpdated": "2026-07-27",
   "private": true,
   "scripts": {
@@ -15,6 +15,7 @@
   "dependencies": {
     "@hebcal/core": "^6.6.0",
     "@prisma/client": "^5.22.0",
+    "bcryptjs": "^3.0.3",
     "hebcal": "^2.3.2",
     "html-to-image": "^1.11.13",
     "html2pdf.js": "^0.14.0",

@@ -1,5 +1,6 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
+import { verifySecret } from '@/lib/passwordAuth';
 
 export async function POST(request) {
   try {
@@ -9,18 +10,28 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'לא סופקה סיסמה' }, { status: 400 });
     }
 
-    // Find active employee with this password/pin
-    const whereClause = { 
-      password: pin,
-      isActive: true
-    };
+    // Note: despite the field name, this is the employee's full real password re-entered
+    // as an in-app confirmation step (see PopupProvider.js's customAuthPrompt) - unrelated
+    // to the short trusted-device PIN feature (Employee.pinHash / lib/trustedDevice.js).
+    // Passwords are hashed (bcrypt), so the match can no longer happen inside the Prisma
+    // `where` clause the way a plaintext `password: pin` equality check could - fetch
+    // candidate(s) first, then compare the hash in JS.
+    const whereClause = { isActive: true };
     if (employeeId) {
       whereClause.id = employeeId;
     }
 
-    const employee = await prisma.employee.findFirst({
-      where: whereClause
-    });
+    // When no employee is pre-selected this scans all active employees, matching the
+    // original plaintext behavior - fine at this org's scale (a handful of employees).
+    const candidates = await prisma.employee.findMany({ where: whereClause });
+
+    let employee = null;
+    for (const candidate of candidates) {
+      if (await verifySecret(pin, candidate.password)) {
+        employee = candidate;
+        break;
+      }
+    }
 
     if (!employee) {
       return NextResponse.json({ success: false, error: 'סיסמה שגויה או משתמש לא פעיל' }, { status: 401 });
