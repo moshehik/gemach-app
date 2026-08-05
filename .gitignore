@@ -49,3 +49,7 @@ scratch_*.js
 
 # logical DB backups produced by scripts/backup_prod_db.js (see BACKUPS.md)
 /backups/
+
+# offline-sync cursor state (lib/offlineSync.js) - per-machine runtime state, not
+# source; each machine that ever runs IS_OFFLINE_MODE has its own sync progress.
+/sync_state.json

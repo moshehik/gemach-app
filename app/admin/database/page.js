@@ -7,6 +7,8 @@ export default function DatabaseManagement() {
   const [uploading, setUploading] = useState(false);
   const [status, setStatus] = useState('');
   const [progress, setProgress] = useState(0);
+  const [syncing, setSyncing] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
 
   useEffect(() => {
     let interval;
@@ -34,6 +36,20 @@ export default function DatabaseManagement() {
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
+    }
+  };
+
+  const handleSyncOffline = async () => {
+    setSyncing(true);
+    setSyncMessage('');
+    try {
+      const res = await fetch('/api/admin/database/sync-offline', { method: 'POST' });
+      const data = await res.json();
+      setSyncMessage(data.message || data.error || 'הסתיים.');
+    } catch (error) {
+      setSyncMessage('שגיאה בחיבור לשרת.');
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -135,14 +151,45 @@ export default function DatabaseManagement() {
           הורד גיבוי מלא של כל הנתונים במסד למחשב שלך כקובץ JSON. מומלץ לבצע גיבוי זה לפני ביצוע שינויים גדולים.
         </p>
 
-        <a 
-          href="/api/admin/database/export" 
-          download 
+        <a
+          href="/api/admin/database/export"
+          download
           className="btn-primary"
           style={{ width: '100%', padding: '0.75rem', fontSize: '1.1rem', display: 'block', textAlign: 'center', textDecoration: 'none' }}
         >
           הורד גיבוי מלא (JSON)
         </a>
+      </div>
+
+      <div className="card" style={{ maxWidth: '600px', margin: '2rem auto', padding: '2rem' }}>
+        <h2 style={{ marginBottom: '1rem' }}>סנכרון נתוני אופליין</h2>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '2rem' }}>
+          אם המערכת עבדה במצב אופליין (ללא אינטרנט) והנתונים נשמרו זמנית במחשב המקומי,
+          לחיצה כאן תעביר את הנתונים שנוצרו במצב אופליין לענן. הסנכרון קורה גם אוטומטית
+          בכל הפעלה מחדש של השרת כשהחיבור לאינטרנט חוזר - הכפתור מיועד למקרה שהחיבור
+          חזר בלי להפעיל מחדש את השרת.
+        </p>
+
+        <button
+          className="btn-primary"
+          onClick={handleSyncOffline}
+          disabled={syncing}
+          style={{ width: '100%', padding: '0.75rem', fontSize: '1.1rem' }}
+        >
+          {syncing ? 'מסנכרן...' : 'סנכרן נתוני אופליין עכשיו'}
+        </button>
+
+        {syncMessage && (
+          <div style={{
+            marginTop: '1.5rem',
+            padding: '1rem',
+            borderRadius: '4px',
+            backgroundColor: syncMessage.includes('שגיאה') ? '#fee2e2' : '#dcfce7',
+            color: syncMessage.includes('שגיאה') ? '#991b1b' : '#166534'
+          }}>
+            {syncMessage}
+          </div>
+        )}
       </div>
     </div>
   );
