@@ -1,9 +1,29 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
+import { checkAuth } from '@/lib/auth';
+import { cookies } from 'next/headers';
 
-
+// Resolves the employee behind the auth_token cookie, same lookup /api/me uses
+// (auth_token can hold either the Employee UUID or its legacy numeric id).
+async function getActingEmployee() {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token');
+    if (!token?.value) return null;
+    const employeeId = token.value;
+    const parsedLegacyId = parseInt(employeeId, 10);
+    return prisma.employee.findFirst({
+        where: {
+            OR: [
+                { id: employeeId },
+                ...(isNaN(parsedLegacyId) ? [] : [{ legacyId: parsedLegacyId }])
+            ]
+        },
+        select: { id: true, roleId: true }
+    });
+}
 
 export async function PUT(request, { params }) {
+    if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     try {
         const resolvedParams = await params;
         const id = parseInt(resolvedParams.id);
@@ -30,7 +50,17 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+    if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     try {
+        // Mirrors the client-side lock in app/dashboard/pricelist/page.js (handleLockSubmit),
+        // which only allows unlocking delete for roleId 1/2 (מנהל/מתכנת) — enforce it server-side too,
+        // since the lock is a UI affordance only and the DELETE endpoint itself must reject anyone else.
+        const employee = await getActingEmployee();
+        const isManager = employee && (employee.roleId === 1 || employee.roleId === 2);
+        if (!isManager) {
+            return NextResponse.json({ error: 'אין הרשאה למחיקה (נדרש סיווג מנהל/מתכנת)' }, { status: 403 });
+        }
+
         const resolvedParams = await params;
         const id = parseInt(resolvedParams.id);
         await prisma.priceList.delete({

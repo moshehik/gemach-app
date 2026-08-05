@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 export async function GET(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
@@ -36,6 +38,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
@@ -108,10 +111,11 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
-    
+
     if (!id) {
       return NextResponse.json({ error: 'קוד שמלה חסר' }, { status: 400 });
     }

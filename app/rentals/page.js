@@ -11,12 +11,14 @@ import { useLabels } from '@/app/components/LabelsContext';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import { List, ShoppingBag, Clock, CheckCircle, RotateCcw } from 'lucide-react';
+import useDebounce from '@/hooks/useDebounce';
 
 export default function RentalsPage() {
   const { getLabel } = useLabels();
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const debouncedSearch = useDebounce(search, 350);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'rented', 'rented_partial', 'returned', 'returned_partial'
   
   const [advFilters, setAdvFilters] = useState({
@@ -74,9 +76,9 @@ export default function RentalsPage() {
     try {
       const hasAdvFilters = Object.values(advFilters).some(v => v !== '');
 
-      const queryParams = new URLSearchParams({ search, sort, order, limit: '200', forRentals: 'true' });
+      const queryParams = new URLSearchParams({ search: debouncedSearch, sort, order, limit: '200', forRentals: 'true' });
 
-      if (!search && !hasAdvFilters) {
+      if (!debouncedSearch && !hasAdvFilters) {
         if (viewMode === 'rented') queryParams.append('activeOnly', 'true');
         else if (viewMode === 'rented_partial') queryParams.append('partiallyRentedOnly', 'true');
         else if (viewMode === 'returned') queryParams.append('returnedOnly', 'true');
@@ -104,7 +106,7 @@ export default function RentalsPage() {
     if (!isAiModeActive) {
       fetchOrders();
     }
-  }, [search, viewMode, advFilters, isAiModeActive, sort, order]);
+  }, [debouncedSearch, viewMode, advFilters, isAiModeActive, sort, order]);
 
   const handleAiSearch = async (query) => {
     setAiLoading(true);
