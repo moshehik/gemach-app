@@ -3,8 +3,12 @@ import { writeFile } from 'fs/promises';
 import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
+import { checkAuth } from '@/lib/auth';
 
 export async function POST(req) {
+  if (!(await checkAuth('מנהל'))) {
+    return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
+  }
   try {
     const formData = await req.formData();
     const file = formData.get('file');

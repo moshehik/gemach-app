@@ -3,9 +3,13 @@
 import { recalculateOrderObligations } from '../../../../lib/pricingEngine';
 
 import prisma from '@/app/lib/prisma';
+import { checkAuth } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
+  if (!(await checkAuth('מנהל'))) {
+    return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
+  }
   try {
     const { searchParams } = new URL(request.url);
     const startDate = searchParams.get('startDate');
@@ -61,6 +65,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  if (!(await checkAuth('מנהל'))) {
+    return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
+  }
   try {
     const data = await request.json();
     const { orderIds, customNote } = data;

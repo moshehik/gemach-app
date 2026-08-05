@@ -2,6 +2,7 @@
 import { PrismaClient, Prisma } from '@prisma/client';
 
 import prisma from '@/app/lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 // Define correct insertion order to avoid Foreign Key constraint errors
 const INSERTION_ORDER = [
@@ -23,6 +24,13 @@ const INSERTION_ORDER = [
 ];
 
 export async function POST(req) {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Available only in development mode' }, { status: 403 });
+  }
+  if (!(await checkAuth())) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
   try {
     const data = await req.json();
 

@@ -1,8 +1,13 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+// GET is intentionally left public: app/components/LabelsContext.js fetches
+// this on every page mount (including public/pre-login pages such as
+// app/customer-interface) to resolve UI label text. Writing labels is
+// admin-only (see POST below).
 export async function GET() {
   try {
     const setting = await prisma.systemSetting.findUnique({
@@ -21,6 +26,9 @@ export async function GET() {
 }
 
 export async function POST(req) {
+  if (!(await checkAuth('מנהל'))) {
+    return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
+  }
   try {
     const labels = await req.json();
 
