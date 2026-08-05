@@ -6,7 +6,7 @@ import { useUniqueNames } from '../app/components/UniqueNamesContext';
 import { RefreshCw } from 'lucide-react';
 
 // Global API Fetch Interceptor to capture the exact API queries sent by pages to the server
-if (typeof window !== 'undefined' && !window.__FETCH_INTERCEPTED__) {
+if (process.env.NODE_ENV === 'development' && typeof window !== 'undefined' && !window.__FETCH_INTERCEPTED__) {
   window.__FETCH_INTERCEPTED__ = true;
   window.__LAST_API_CALLS__ = window.__LAST_API_CALLS__ || {};
   const origFetch = window.fetch;
@@ -58,6 +58,8 @@ export default function ClipboardDebugger() {
   }, []);
 
   useEffect(() => {
+    if (process.env.NODE_ENV !== 'development') return;
+
     setMounted(true);
 
     const handleGlobalClick = (e) => {
@@ -198,6 +200,8 @@ export default function ClipboardDebugger() {
       window.removeEventListener('agy_api_call', handleApiCall);
     };
   }, [searchQuery, isQueryOpen, refreshKey]);
+
+  if (process.env.NODE_ENV !== 'development') return null;
 
   const handleClick = (e) => {
     e.preventDefault();
