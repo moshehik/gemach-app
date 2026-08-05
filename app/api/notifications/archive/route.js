@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
+import { parseIdList } from '../../../../lib/notificationLists';
 
 export async function POST(request) {
   try {
@@ -33,8 +34,9 @@ export async function POST(request) {
     }
 
     if (notification.receiverId === null) {
-      // Global notification: manage the archivedBy array
-      let updatedArchivedBy = [...notification.archivedBy];
+      // Global notification: archivedBy is a scalar String column holding a
+      // JSON-encoded array of employeeIds as text, not a native Prisma list field.
+      let updatedArchivedBy = parseIdList(notification.archivedBy);
       if (archive && !updatedArchivedBy.includes(employeeId)) {
         updatedArchivedBy.push(employeeId);
       } else if (!archive && updatedArchivedBy.includes(employeeId)) {
@@ -44,7 +46,7 @@ export async function POST(request) {
       await prisma.notification.update({
         where: { id: notificationId },
         data: {
-          archivedBy: { set: updatedArchivedBy }
+          archivedBy: JSON.stringify(updatedArchivedBy)
         }
       });
     } else {

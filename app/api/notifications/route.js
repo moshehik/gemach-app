@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
+import { parseIdList } from '../../../lib/notificationLists';
 
 export async function GET(request) {
   try {
@@ -40,11 +41,11 @@ export async function GET(request) {
     const mapped = notifications.map(notif => {
       let isArchived = notif.isArchived;
       if (notif.receiverId === null) {
-        isArchived = (notif.archivedBy || []).includes(employeeId);
+        isArchived = parseIdList(notif.archivedBy).includes(employeeId);
       }
       return {
         ...notif,
-        isRead: notif.receiverId === null ? (notif.readBy || []).includes(employeeId) : notif.isRead,
+        isRead: notif.receiverId === null ? parseIdList(notif.readBy).includes(employeeId) : notif.isRead,
         isArchived,
         personalTags: notif.tags.map(t => t.tag)
       };
