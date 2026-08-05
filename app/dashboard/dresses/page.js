@@ -6,8 +6,11 @@ import Link from 'next/link';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { RefreshCw, Trash2, CheckCircle, XCircle, List, ArrowUp, ArrowDown, ArrowUpDown, X, Search, Filter, Plus } from 'lucide-react';
 import { useLabels } from '@/app/components/LabelsContext';
+import { cacheNamespace, getSettingsCached } from '@/app/lib/pageCache';
+import { buildDressesListParams } from '@/app/lib/prefetchRoutes';
 
-const dressesCache = new Map();
+// מטמון SWR משותף — ראה app/lib/pageCache.js
+const dressesCache = cacheNamespace('dresses');
 
 export default function DressesManagement() {
   const { getLabel } = useLabels();
@@ -32,20 +35,9 @@ export default function DressesManagement() {
   const fetchDresses = async (isPrefetch = false, targetPage = page) => {
     if (!isPrefetch) setLoading(true);
     try {
-      const queryParams = new URLSearchParams({
-        page: targetPage,
-        limit,
-        filterStatus,
-        search: catalogSearch,
-        sortKey: catalogSort.key,
-        sortDir: catalogSort.direction,
-        advName: advancedFilters.name,
-        advSize: advancedFilters.size,
-        advSerial: advancedFilters.serialNumber,
-        advRentalsCountMin: advancedFilters.rentalsCountMin,
-        advNotInUse: advancedFilters.notInUse,
-        advInRepair: advancedFilters.inRepair,
-        advItemDeleted: advancedFilters.itemDeleted
+      const queryParams = buildDressesListParams({
+        page: targetPage, limit, filterStatus, search: catalogSearch,
+        sortKey: catalogSort.key, sortDir: catalogSort.direction, advancedFilters
       });
 
       const cacheKey = queryParams.toString();
@@ -95,9 +87,8 @@ export default function DressesManagement() {
   };
 
   const fetchSettings = async () => {
-    const res = await fetch('/api/settings');
-    const data = await res.json();
-    
+    const data = await getSettingsCached();
+
     const settingsObj = { useModelNames: 'true', useFileNamesForImages: 'true', hide_dress_images: 'false' };
     if (Array.isArray(data)) {
       data.forEach(s => {

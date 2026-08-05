@@ -11,8 +11,11 @@ import { getHebrewDateString } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
+import { cacheNamespace } from '@/app/lib/pageCache';
+import { buildAlterationsListUrl } from '@/app/lib/prefetchRoutes';
 
-const alterationsCache = new Map();
+// מטמון SWR משותף — ראה app/lib/pageCache.js
+const alterationsCache = cacheNamespace('alterations');
 
 export default function AlterationsPage() {
   const [items, setItems] = useState([]);
@@ -50,11 +53,9 @@ export default function AlterationsPage() {
         setError('');
       }
 
-      const showOnlyPending = filterStatus === 'pending';
-      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=${targetPage}&limit=${limit}`;
-      if (startDate) url += `&startDate=${startDate}`;
-      if (endDate) url += `&endDate=${endDate}`;
-      if (search) url += `&search=${search}`;
+      const url = buildAlterationsListUrl({
+        filterStatus, page: targetPage, limit, startDate, endDate, search
+      });
 
       const cacheKey = url;
       

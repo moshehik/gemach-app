@@ -16,6 +16,8 @@ import HebrewDateRangePicker from '../../components/HebrewDateRangePicker';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import PrintWizardModal from '../components/PrintWizardModal';
+import { cacheNamespace, getSettingsCached } from '@/app/lib/pageCache';
+import { buildOrdersListParams, defaultOrdersAdvFilters } from '@/app/lib/prefetchRoutes';
 
 const PendingTimer = ({ cartStatusDate, holdMinutes = 15 }) => {
   const [timeLeft, setTimeLeft] = useState('');
@@ -48,13 +50,9 @@ const PendingTimer = ({ cartStatusDate, holdMinutes = 15 }) => {
   return <span style={{ color: timeLeft === 'פג תוקף' ? 'var(--error-color)' : '#ea580c', fontWeight: 'bold', fontSize: '0.85rem' }}>⏳ {timeLeft}</span>;
 };
 
-const getThreeMonthsAgoDateString = () => {
-  const d = new Date();
-  d.setMonth(d.getMonth() - 3);
-  return d.toISOString().split('T')[0];
-};
-
-const ordersCache = new Map();
+// מטמון SWR משותף — ראה app/lib/pageCache.js; בניית ה-query עברה ל-prefetchRoutes.js
+// כדי שה-prefetch מדפים אחרים ייצר את אותו מפתח בדיוק.
+const ordersCache = cacheNamespace('orders');
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -83,13 +81,7 @@ export default function OrdersPage() {
   // and the pending/expired badges disagree with reality whenever that setting was changed.
   const [holdMinutes, setHoldMinutes] = useState(15);
 
-  const [advFilters, setAdvFilters] = useState({
-    customerName: '', customerPhone: '', customerCity: '', 
-    advOrderId: '', itemDetails: '', advModelName: '',
-    eventDateFrom: getThreeMonthsAgoDateString(),
-    eventDateTo: '',
-    rentalStatus: []
-  });
+  const [advFilters, setAdvFilters] = useState(defaultOrdersAdvFilters);
   const [showAdvSearch, setShowAdvSearch] = useState(false);
   const [showCapacitySearch, setShowCapacitySearch] = useState(false);
   const [showPrintWizard, setShowPrintWizard] = useState(false);
@@ -102,8 +94,7 @@ export default function OrdersPage() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/settings')
-      .then(res => res.json())
+    getSettingsCached()
       .then(data => {
         const setting = Array.isArray(data) ? data.find(s => s.key === 'inventory_hold_minutes') : null;
         const parsed = parseInt(setting?.value, 10);
@@ -117,24 +108,10 @@ export default function OrdersPage() {
     if (!isPrefetch) setLoading(true);
     
     try {
-      const queryParams = new URLSearchParams({
-        page: targetPage.toString(),
-        limit: limit.toString(),
-        search,
-        sort,
-        order,
-        filterStatus
+      const queryParams = buildOrdersListParams({
+        page: targetPage, limit, search, sort, order, filterStatus, advFilters
       });
-      Object.entries(advFilters).forEach(([k, v]) => {
-        if (v && k !== 'rentalStatus') queryParams.append(k, v);
-      });
-      
-      if (Array.isArray(advFilters.rentalStatus)) {
-        if (advFilters.rentalStatus.includes('activeOnly')) queryParams.append('activeOnly', 'true');
-        if (advFilters.rentalStatus.includes('returnedOnly')) queryParams.append('returnedOnly', 'true');
-        if (advFilters.rentalStatus.includes('pendingOnly')) queryParams.append('pendingOnly', 'true');
-      }
-      
+
       const cacheKey = queryParams.toString();
       
       // SWR: Instant Cache Hit

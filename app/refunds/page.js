@@ -5,11 +5,15 @@ import Link from 'next/link';
 import { Search, CheckCircle, XCircle, Download, CreditCard, Coins, Mail, Info, RotateCcw, ExternalLink, AlertCircle, Calendar, ArrowUpRight, ShieldCheck, BadgeCheck } from 'lucide-react';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { verifyPin } from '@/components/orders/modern/mocAuth';
+import { cacheNamespace } from '@/app/lib/pageCache';
+import { REFUNDS_PAGE_SIZE } from '@/app/lib/prefetchRoutes';
 
-const refundsCache = new Map();
+// מטמון SWR משותף — ראה app/lib/pageCache.js
+const refundsCache = cacheNamespace('refunds');
 
 // שמור על 50 רשומות בטעינה בכל שלושת הטאבים - עקבי בין זיכויים/חובות/מאושרות ללא תשלום מלא.
-const PAGE_SIZE = 50;
+// הערך מוגדר ב-prefetchRoutes.js כדי שה-prefetch יבנה את אותו URL בדיוק.
+const PAGE_SIZE = REFUNDS_PAGE_SIZE;
 
 function hebrewDateFor(order) {
   if (order.eventDateHebrew) return order.eventDateHebrew;

@@ -12,9 +12,15 @@ import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import { List, ShoppingBag, Clock, CheckCircle, RotateCcw } from 'lucide-react';
 import useDebounce from '@/hooks/useDebounce';
+import { cacheNamespace } from '@/app/lib/pageCache';
+import { buildRentalsListParams, defaultRentalsAdvFilters } from '@/app/lib/prefetchRoutes';
 
 // שמור על 50 רשומות בטעינה - עקבי עם app/orders/page.js ו-app/refunds/page.js.
 const PAGE_SIZE = 50;
+
+// מטמון SWR משותף — ראה app/lib/pageCache.js; בניית ה-query עברה ל-prefetchRoutes.js
+// כדי שה-prefetch מדפים אחרים ייצר את אותו מפתח בדיוק.
+const rentalsCache = cacheNamespace('rentals');
 
 export default function RentalsPage() {
   const { getLabel } = useLabels();
@@ -24,10 +30,7 @@ export default function RentalsPage() {
   const debouncedSearch = useDebounce(search, 350);
   const [viewMode, setViewMode] = useState('all'); // 'all', 'rented', 'rented_partial', 'returned', 'returned_partial'
   
-  const [advFilters, setAdvFilters] = useState({
-    customerName: '', customerPhone: '', customerCity: '', 
-    advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: ''
-  });
+  const [advFilters, setAdvFilters] = useState(defaultRentalsAdvFilters());
   const [showAdvSearch, setShowAdvSearch] = useState(false);
   
   // Quick return state
@@ -83,26 +86,27 @@ export default function RentalsPage() {
   const fetchOrders = async (targetPage = 1, { append = false } = {}) => {
     if (append) setLoadingMore(true); else setLoading(true);
     try {
-      const hasAdvFilters = Object.values(advFilters).some(v => v !== '');
-
-      const queryParams = new URLSearchParams({ search: debouncedSearch, sort, order, page: String(targetPage), limit: String(PAGE_SIZE), forRentals: 'true' });
-
-      if (!debouncedSearch && !hasAdvFilters) {
-        if (viewMode === 'rented') queryParams.append('activeOnly', 'true');
-        else if (viewMode === 'rented_partial') queryParams.append('partiallyRentedOnly', 'true');
-        else if (viewMode === 'returned') queryParams.append('returnedOnly', 'true');
-        else if (viewMode === 'returned_partial') queryParams.append('partiallyReturnedOnly', 'true');
-      }
-
-      Object.entries(advFilters).forEach(([k, v]) => {
-        if (v) queryParams.append(k, v);
+      const queryParams = buildRentalsListParams({
+        page: targetPage, limit: PAGE_SIZE, search: debouncedSearch, sort, order, viewMode, advFilters
       });
+
+      const cacheKey = queryParams.toString();
+
+      // SWR: הצגה מיידית מהמטמון; טעינת "טען עוד" מדלגת כדי לא לשכפל שורות.
+      if (!append && rentalsCache.has(cacheKey)) {
+        const cached = rentalsCache.get(cacheKey);
+        setOrders(cached.data || []);
+        setPage(targetPage);
+        setHasMore(targetPage < (cached.totalPages || 1));
+        setLoading(false);
+      }
 
       const timestamp = new Date().getTime();
       queryParams.append('_t', timestamp);
 
       const res = await fetch(`/api/orders?${queryParams.toString()}`, { cache: 'no-store' });
       const data = await res.json();
+      if (!append) rentalsCache.set(cacheKey, data);
       const rows = data.data || [];
       setOrders(prev => append ? [...prev, ...rows] : rows);
       setPage(targetPage);
@@ -317,7 +321,7 @@ export default function RentalsPage() {
             <div style={{ display: 'flex', gap: '1rem', borderTop: '1px solid #eee', paddingTop: '1.5rem' }}>
               <button data-element-name="כפתור_page_11" className="btn btn-primary" style={{ flex: 1 }} onClick={() => setShowAdvSearch(false)}>סגור והחל סינון</button>
               <button data-element-name="כפתור_page_12" className="btn btn-outline" style={{ flex: 1 }} onClick={() => {
-                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '' });
+                setAdvFilters(defaultRentalsAdvFilters());
               }}>נקה הכל</button>
             </div>
           </div>

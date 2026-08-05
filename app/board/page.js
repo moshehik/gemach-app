@@ -12,8 +12,11 @@ import HebrewDatePicker from '../../components/HebrewDatePicker';
 import StatisticsModal from '../components/StatisticsModal';
 import styles from './board.module.css';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
+import { cacheNamespace } from '@/app/lib/pageCache';
+import { buildBoardMonthParams } from '@/app/lib/prefetchRoutes';
 
-const boardCache = new Map();
+// מטמון SWR משותף — ראה app/lib/pageCache.js
+const boardCache = cacheNamespace('board');
 
 export default function BoardPage() {
   const router = useRouter();
@@ -89,36 +92,9 @@ export default function BoardPage() {
     activeOrdersRequestRef.current = controller;
 
     try {
-      let hCurrent;
-      try {
-        hCurrent = new HDate(selectedDate);
-      } catch(e) {
-        hCurrent = new HDate(new Date());
-      }
-      
-      // Start date is roughly a month before (to cover leading grid days)
-      // End date is roughly a month after (to cover trailing grid days)
-      const firstDayHDate = new HDate(1, hCurrent.getMonth(), hCurrent.getFullYear());
-      const lastDayHDate = new HDate(hCurrent.daysInMonth(), hCurrent.getMonth(), hCurrent.getFullYear());
-      
-      const fromDate = new Date(firstDayHDate.greg());
-      fromDate.setDate(fromDate.getDate() - 14); // Buffer for leading days
-      
-      const toDate = new Date(lastDayHDate.greg());
-      toDate.setDate(toDate.getDate() + 14); // Buffer for trailing days
-
-      const queryParams = new URLSearchParams({
-        eventDateFrom: fromDate.toISOString(),
-        eventDateTo: toDate.toISOString(),
-        filterStatus: 'all',
-        limit: '2000'
-      });
-      
-      if (search) queryParams.append('search', search);
-      
-      Object.entries(advFilters).forEach(([k, v]) => {
-        if (v) queryParams.append(k, v);
-      });
+      // טווח החודש העברי המוצג (עם באפר שבועיים לכל כיוון) נבנה במודול המשותף,
+      // כדי שה-prefetch מדפים אחרים ייצר את אותו מפתח מטמון בדיוק.
+      const queryParams = buildBoardMonthParams(selectedDate, { search, advFilters });
 
       const cacheKey = queryParams.toString();
       

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import FullEmailListModal from '@/components/FullEmailListModal';
 import NeonUsageCard from './NeonUsageCard';
+import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 
 const categoryConfig = {
   'מיילים': { icon: Mail },
@@ -518,8 +519,9 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
   );
 }
 
-const settingsCache = new Map();
-const deptsCache = new Map();
+// מטמון SWR משותף — ראה app/lib/pageCache.js
+const settingsCache = cacheNamespace('settings-page');
+const deptsCache = cacheNamespace('departments');
 
 export default function SettingsClient() {
   const [settings, setSettings] = useState([]);
@@ -623,7 +625,12 @@ export default function SettingsClient() {
       });
       
       if (!res.ok) throw new Error('שגיאה בשמירת ההגדרות');
-      
+
+      // ההגדרות השתנו — מפנים גם את מטמון הדף הזה וגם את מטמון /api/settings
+      // המשותף (getSettingsCached), כדי שדפים אחרים יקבלו ערכים עדכניים מיד.
+      settingsCache.clear();
+      invalidateSettings();
+
       setSaveMessage('ההגדרות נשמרו בהצלחה במערכת.');
       setModified({});
       

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Check, Loader2, Search } from 'lucide-react';
+import { getSettingsCached } from '@/app/lib/pageCache';
 
 export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = '' }) {
   const [orderId, setOrderId] = useState(initialOrderId);
@@ -16,8 +17,7 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
   const [settings, setSettings] = useState({});
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(res => res.json())
+    getSettingsCached()
       .then(data => {
         if (Array.isArray(data)) {
           setSettings(data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {}));

@@ -8,8 +8,11 @@ import StatisticsModal from '../components/StatisticsModal';
 import { UserPlus } from 'lucide-react';
 
 import { useLabels } from '@/app/components/LabelsContext';
+import { cacheNamespace } from '@/app/lib/pageCache';
+import { buildCustomersListParams } from '@/app/lib/prefetchRoutes';
 
-const customersCache = new Map();
+// מטמון SWR משותף — ראה app/lib/pageCache.js
+const customersCache = cacheNamespace('customers');
 
 export default function CustomersPage() {
   const router = useRouter();
@@ -39,17 +42,10 @@ export default function CustomersPage() {
   const fetchCustomers = useCallback(async (isPrefetch = false, targetPage = page) => {
     if (!isPrefetch) setLoading(true);
     try {
-      const queryParams = new URLSearchParams({
-        page: targetPage.toString(),
-        limit: limit.toString(),
-        search,
-        sort,
-        order
+      const queryParams = buildCustomersListParams({
+        page: targetPage, limit, search, sort, order, advFilters
       });
-      Object.entries(advFilters).forEach(([k, v]) => {
-        if (v) queryParams.append(k, v);
-      });
-      
+
       const cacheKey = queryParams.toString();
       
       // SWR: Instant Cache Hit

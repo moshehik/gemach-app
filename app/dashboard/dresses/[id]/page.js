@@ -12,6 +12,7 @@ import { ModernInactiveReasonModal, ModernDressImageModal } from '../../../../co
 import ModernNewDressWizard from '../../../../components/dresses/modern/ModernNewDressWizard';
 import modernDressCss from '../../../../components/dresses/modern/modernDressStyles';
 import { addHistory } from '../../../../lib/historyManager';
+import { cacheNamespace, getSettingsCached } from '@/app/lib/pageCache';
 
 // השדות של הדגם שנשמרים בכפתור השמירה (הפריטים נשמרים בנפרד, מיידית)
 const MODEL_FIELDS = ['name', 'barcodePrefix', 'priceCategory', 'notes', 'inInspection', 'imageUrl', 'entryDateToRepo', 'exitDateFromRepo', 'inactiveReason'];
@@ -26,11 +27,11 @@ const emptyDress = {
   entryDateToRepo: new Date().toISOString()
 };
 
-// מטמון ברמת המודול (חי כל עוד לשונית הדפדפן פתוחה):
-// ההגדרות והקטגוריות זהות לכל הכרטיסים ונשלפות פעם אחת, והדגם עצמו מוצג מיד
-// מהמטמון בכניסה חוזרת ומתרענן ברקע (SWR) — אותה גישה כמו dressesCache בקטלוג.
-const lookupCache = { settings: null, categories: null };
-const dressCache = new Map();
+// הקטגוריות זהות לכל הכרטיסים ונשלפות פעם אחת; ההגדרות עברו ל-getSettingsCached
+// המשותף. הדגם עצמו מוצג מיד מהמטמון בכניסה חוזרת ומתרענן ברקע (SWR) —
+// דרך המטמון המשותף ב-app/lib/pageCache.js.
+const lookupCache = { categories: null };
+const dressCache = cacheNamespace('dress-detail');
 
 const parseSettings = (data) => {
   const obj = { useModelNames: 'true', useFileNamesForImages: 'true', hide_dress_images: 'false' };
@@ -57,7 +58,7 @@ export default function DressCardPage({ params }) {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [activeTab, setActiveTab] = useState('details');
 
-  const [settings, setSettings] = useState(lookupCache.settings || { useModelNames: 'true', useFileNamesForImages: 'true', hide_dress_images: 'false' });
+  const [settings, setSettings] = useState({ useModelNames: 'true', useFileNamesForImages: 'true', hide_dress_images: 'false' });
   const [categories, setCategories] = useState(lookupCache.categories || []);
   const [locations, setLocations] = useState(['חנות', 'רזרבה', 'מחסן']);
 
@@ -83,17 +84,9 @@ export default function DressCardPage({ params }) {
       if (obj.item_locations) setLocations(obj.item_locations.split(',').map(l => l.trim()).filter(Boolean));
     };
 
-    if (lookupCache.settings) {
-      applySettings(lookupCache.settings);
-    } else {
-      fetch('/api/settings')
-        .then(res => res.json())
-        .then(data => {
-          lookupCache.settings = parseSettings(data);
-          applySettings(lookupCache.settings);
-        })
-        .catch(err => console.error('Failed to load settings', err));
-    }
+    getSettingsCached()
+      .then(data => applySettings(parseSettings(data)))
+      .catch(err => console.error('Failed to load settings', err));
 
     // הקטגוריות נחוצות רק לבורר בעריכת הדגם — לא חוסמות את הצגת הכרטיס
     if (!lookupCache.categories) {

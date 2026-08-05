@@ -25,6 +25,7 @@ import { Users, Shirt, Settings, Coins } from 'lucide-react';
 import { UniqueNamesProvider } from './components/UniqueNamesContext';
 
 import AppNavLinks from './components/AppNavLinks';
+import PrefetchManager from './components/PrefetchManager';
 import OfflineIndicator from './components/OfflineIndicator';
 import ErrorReportButton from './components/ErrorReportButton';
 import ClipboardDebugger from '../components/ClipboardDebugger';
@@ -263,6 +264,7 @@ export default async function RootLayout({ children }) {
                 </div>
               </nav>
               {children}
+              <PrefetchManager />
               <GlobalSidebar />
               {!hideAIFeatures && <AIFloatingWidget data-element-name="רכיב_layout_23" hideAIFeatures={hideAIFeatures} />}
             </PopupProvider>
