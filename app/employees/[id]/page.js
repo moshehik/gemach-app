@@ -25,7 +25,6 @@ export default function EmployeePage({ params }) {
   const [showDeletedShifts, setShowDeletedShifts] = useState(false);
 
   // Password states
-  const [showPassword, setShowPassword] = useState(false);
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [oldPasswordInput, setOldPasswordInput] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
@@ -395,30 +394,32 @@ export default function EmployeePage({ params }) {
               ) : (
                 <>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input data-element-name="שדה_page_22" type="password" value={showPassword ? employee.password || '' : '********'} disabled style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: '#f8fafc', color: '#64748b' }} />
+                    <input data-element-name="שדה_page_22" type="password" value="********" disabled style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: '#f8fafc', color: '#64748b' }} />
+                    <button data-element-name="כפתור_page_24" type="button" onClick={() => setShowChangePassword(true)} className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>שינוי סיסמא</button>
                     <button data-element-name="כפתור_page_23" type="button" onClick={async () => {
-                      if (showPassword) { setShowPassword(false); return; }
-                      const authResult = await window.customAuthPrompt("הזן קוד מנהל לצפייה בסיסמא:", "מנהל");
+                      const authResult = await window.customAuthPrompt("הזן קוד מנהל לאיפוס הסיסמה ושליחתה למייל העובד:", "מנהל");
                       if (!authResult) return;
                       try {
-                        const res = await fetch('/api/auth/verify-pin', {
+                        const res = await fetch(`/api/employees/${id}/reset-password`, {
                           method: 'POST',
                           headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+                          body: JSON.stringify({ authPin: authResult.pin, authEmployeeId: authResult.employeeId })
                         });
                         const data = await res.json();
                         if (data.success) {
-                          setShowPassword(true);
+                          window.alert(data.message || 'סיסמה זמנית נשלחה למייל העובד');
                         } else {
-                          window.alert(data.error || 'קוד מנהל שגוי או הרשאה לא מספקת.');
+                          window.alert(data.message || 'איפוס הסיסמה נכשל');
                         }
                       } catch (e) {
-                        window.alert('שגיאה באימות מנהל');
+                        window.alert('שגיאה באיפוס הסיסמה');
                       }
-                    }} className="btn btn-outline" style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>{showPassword ? 'הסתר' : 'הצג'}</button>
-                    <button data-element-name="כפתור_page_24" type="button" onClick={() => setShowChangePassword(true)} className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>שינוי סיסמא</button>
+                    }} className="btn btn-outline" style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>אפס ושלח למייל</button>
                   </div>
-                  
+                  <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.4rem', marginBottom: 0 }}>
+                    מטעמי אבטחה לא ניתן לצפות בסיסמה קיימת - ניתן לשנות אותה (בידיעת הסיסמה הנוכחית) או לאפס ולשלוח סיסמה זמנית לעובד במייל.
+                  </p>
+
                   {showChangePassword && (
                     <div style={{ marginTop: '1rem', padding: '1rem', background: '#f1f5f9', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
                       <div style={{ marginBottom: '0.5rem' }}>
@@ -431,20 +432,29 @@ export default function EmployeePage({ params }) {
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                         <button data-element-name="כפתור_page_27" type="button" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); }} className="btn" style={{ background: 'white', border: '1px solid #cbd5e1' }}>ביטול</button>
-                        <button data-element-name="כפתור_page_28" type="button" onClick={() => {
-                          if (oldPasswordInput !== employee.password) {
-                              window.alert('הסיסמא הישנה אינה נכונה');
-                              return;
-                          }
+                        <button data-element-name="כפתור_page_28" type="button" onClick={async () => {
                           if (!newPasswordInput) {
                               window.alert('יש להזין סיסמא חדשה');
                               return;
                           }
-                          setEmployee(prev => ({ ...prev, password: newPasswordInput }));
-                          setShowChangePassword(false);
-                          setOldPasswordInput('');
-                          setNewPasswordInput('');
-                          window.alert('הסיסמא שונתה (לחץ על "שמור פרטים" למטה כדי לשמור)');
+                          try {
+                            const res = await fetch(`/api/employees/${id}/password`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ oldPassword: oldPasswordInput, newPassword: newPasswordInput })
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              setShowChangePassword(false);
+                              setOldPasswordInput('');
+                              setNewPasswordInput('');
+                              window.alert('הסיסמא שונתה בהצלחה');
+                            } else {
+                              window.alert(data.message || 'שינוי הסיסמה נכשל');
+                            }
+                          } catch (e) {
+                            window.alert('שגיאה בשינוי הסיסמה');
+                          }
                         }} className="btn btn-primary">אשר שינוי</button>
                       </div>
                     </div>

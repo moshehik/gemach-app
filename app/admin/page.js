@@ -11,7 +11,8 @@ import {
   History,
   Search,
   Activity,
-  ScrollText
+  ScrollText,
+  ShieldCheck
 } from 'lucide-react';
 
 const categories = [
@@ -39,6 +40,7 @@ const categories = [
       { href: '/admin/settings', icon: Settings, label: 'הגדרות', subLabel: 'תצורה ולוגו' },
       { href: '/admin/refund-policy', icon: ScrollText, label: 'מדיניות זיכויים', subLabel: 'תיעוד חוקי ביטול' },
       { href: '/admin/labels', icon: Settings, label: 'שינוי שמות', subLabel: 'כיתובים וטקסטים' },
+      { href: '/admin/trusted-devices', icon: ShieldCheck, label: 'מחשבי מערכת מהימנים', subLabel: 'כניסה מהירה ב-4 ספרות' },
     ]
   },
   {

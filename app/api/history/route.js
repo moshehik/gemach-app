@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
+import { verifyEmployeeCredentials } from '../../../lib/employeeAuth';
 
 
 export async function GET(request) {
@@ -76,33 +77,9 @@ export async function DELETE(request) {
       return NextResponse.json({ success: false, message: 'נדרש שם משתמש וסיסמה לאישור המחיקה' }, { status: 401 });
     }
 
-    // Verify employee credentials
-    const employee = await prisma.employee.findFirst({
-      where: {
-        OR: [
-          { firstName: username },
-          { lastName: username },
-          { fullName: username }
-        ],
-        password: password,
-        isActive: true
-      }
-    });
-
-    let validEmployee = employee;
-    if (!validEmployee) {
-      const parsedLegacy = parseInt(username, 10);
-      validEmployee = await prisma.employee.findFirst({
-        where: {
-          OR: [
-            ...(isNaN(parsedLegacy) ? [] : [{ legacyId: parsedLegacy }]),
-            { id: username }
-          ],
-          password: password,
-          isActive: true
-        }
-      });
-    }
+    // Verify employee credentials - passwords are hashed, so this compares via bcrypt in JS
+    // (see lib/employeeAuth.js) rather than a plaintext `password: password` clause.
+    const validEmployee = await verifyEmployeeCredentials(username, password);
 
     if (!validEmployee) {
       return NextResponse.json({ success: false, message: 'שם משתמש או סיסמה שגויים' }, { status: 401 });

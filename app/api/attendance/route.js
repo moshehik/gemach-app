@@ -1,6 +1,7 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '../../../lib/auth';
+import { verifySecret } from '../../../lib/passwordAuth';
 
 
 
@@ -74,7 +75,7 @@ export async function POST(request) {
 
     // Verify password OR check if the logged in user is the same employee
     if (password) {
-      if (employee.password !== password) {
+      if (!(await verifySecret(password, employee.password))) {
         return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
       }
     } else {

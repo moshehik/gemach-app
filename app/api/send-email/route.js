@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
+import { verifyEmployeeCredentials } from '../../../lib/employeeAuth';
 
 export async function POST(request) {
   try {
@@ -11,31 +12,11 @@ export async function POST(request) {
       return NextResponse.json({ success: false, message: 'נדרש שם משתמש וסיסמה لاישור השליחה' }, { status: 401 });
     }
 
-    // The admin select in SendEmailModal sends the employee UUID as username,
-    // but free-text name login is also supported
-    const employee = await prisma.employee.findFirst({
-      where: {
-        OR: [
-          { id: username },
-          { firstName: username },
-          { lastName: username },
-          { fullName: username }
-        ],
-        password: password,
-        isActive: true
-      }
-    });
-
-    let validEmployee = employee;
-    if (!validEmployee && !isNaN(parseInt(username, 10))) {
-      validEmployee = await prisma.employee.findFirst({
-        where: {
-          legacyId: parseInt(username, 10),
-          password: password,
-          isActive: true
-        }
-      });
-    }
+    // The admin select in SendEmailModal sends the employee UUID as username, but free-text
+    // name/legacyId login is also supported - see lib/employeeAuth.js for the identifier
+    // matching. Passwords are hashed, so the match happens via bcrypt compare in JS instead
+    // of a plaintext `password: password` clause in the Prisma query.
+    const validEmployee = await verifyEmployeeCredentials(username, password);
 
     if (!validEmployee) {
       return NextResponse.json({ success: false, message: 'שם משתמש או סיסמה שגויים' }, { status: 401 });
