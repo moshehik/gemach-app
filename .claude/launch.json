@@ -18,6 +18,16 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "3010"],
       "port": 3010
+    },
+    {
+      "name": "gemach-kiosk-verify-3033",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3033"],
+      "port": 3033
+    },
+    {
+      "name": "gemach-kiosk-verify-3033-attach",
+      "url": "http://localhost:3033"
     }
   ]
 }
