@@ -1,6 +1,6 @@
 {
   "name": "gemach-app",
-  "version": "0.1.89",
+  "version": "0.1.90",
   "lastUpdated": "2026-07-27",
   "private": true,
   "scripts": {
@@ -18,7 +18,7 @@
     "lucide-react": "^1.23.0",
     "next": "16.2.10",
     "pg": "^8.22.0",
-    "prisma": "^7.9.1",
+    "prisma": "^5.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "recharts": "^3.9.2",
