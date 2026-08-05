@@ -59,3 +59,6 @@ When referencing entities (Orders, Customers, Dress Models, etc.) in code, UI, o
 
 ## Backups
 Neon's built-in point-in-time restore (7-day window) is the first line of defense but never leaves Neon. [scripts/backup_prod_db.js](scripts/backup_prod_db.js) adds a second, independent layer — a nightly compressed logical SQL dump written to `backups/` (gitignored), scheduled via a Windows Task Scheduler job (`GemachApp-ProdDbBackup`, daily 03:30). See [BACKUPS.md](BACKUPS.md) for what each layer covers, retention/rotation, the restore command, and how to verify the nightly job actually ran.
+
+## Customer kiosk screen
+`app/customer-interface/page.js` is handed to customers unsupervised to browse the dress catalog. The in-app lock (fullscreen + code-gated header buttons + re-lock on Esc/fullscreen-exit + blocked right-click context menu) only covers the browser tab — it can't stop Alt+Tab, the Windows key, or closing the browser window. [scripts/kiosk/launch-kiosk.bat](scripts/kiosk/launch-kiosk.bat) launches the screen in real OS-level `--kiosk` mode for the physical customer-facing machine. See [KIOSK.md](KIOSK.md) for setup and how to exit kiosk mode.

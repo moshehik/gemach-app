@@ -74,6 +74,16 @@ export default function CustomerInventoryViewer() {
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, [isLocked]);
 
+  // Right-click context menu ("Inspect", "View source", etc.) is a bigger escape hole
+  // than anything the header buttons offered, so block it entirely while the kiosk is locked.
+  useEffect(() => {
+    const handleContextMenu = (e) => {
+      if (isLocked) e.preventDefault();
+    };
+    document.addEventListener('contextmenu', handleContextMenu);
+    return () => document.removeEventListener('contextmenu', handleContextMenu);
+  }, [isLocked]);
+
   // AI Chat State
   const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiInput, setAiInput] = useState('');
