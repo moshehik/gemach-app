@@ -1,8 +1,10 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 // Update a specific DressItem
 export async function PUT(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const itemId = resolvedParams.itemId;
@@ -62,6 +64,7 @@ export async function PUT(request, { params }) {
 
 // Delete a specific DressItem
 export async function DELETE(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const itemId = resolvedParams.itemId;

@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 export async function GET(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   const { searchParams } = new URL(request.url);
   const q = searchParams.get('q');
   const hasActiveItems = searchParams.get('hasActiveItems') === 'true';
-  
+
   try {
     const models = await prisma.dressModel.findMany({
       where: {

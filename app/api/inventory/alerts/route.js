@@ -2,10 +2,12 @@
 
 import prisma from '@/app/lib/prisma';
 import { addDaysSkippingWeekends } from '../../../../lib/inventory';
+import { checkAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     // 1. Fetch settings for buffer and weekends
     // המודל בסכימה הוא SystemSetting; prisma.setting לא קיים והפיל את כל הראוט ב-500
