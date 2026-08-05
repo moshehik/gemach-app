@@ -1,6 +1,7 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
+import { computeShiftTotals } from '@/lib/shiftCalc';
 
 export async function POST(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -17,6 +18,20 @@ export async function POST(request, { params }) {
     const entryTime = body.entryTime ? new Date(body.entryTime) : null;
     const exitTime = body.exitTime ? new Date(body.exitTime) : null;
     const shiftDate = body.date ? new Date(body.date) : new Date();
+
+    // לא לאפשר הוספת משמרת בתאריך שאינו בחודש המוצג כרגע במסך - שיבוץ בטעות
+    // לחודש אחר לא יבחין בזה המשתמש עד שהוא כבר לא רואה את המשמרת ברשימה.
+    // displayedMonth מגיע 0-אינדקס (כמו Date.getMonth), בהתאמה לצד הלקוח.
+    if (body.displayedMonth !== undefined && body.displayedMonth !== null && body.displayedYear) {
+      const displayedMonth = parseInt(body.displayedMonth, 10);
+      const displayedYear = parseInt(body.displayedYear, 10);
+      if (!isNaN(displayedMonth) && !isNaN(displayedYear) &&
+          (shiftDate.getMonth() !== displayedMonth || shiftDate.getFullYear() !== displayedYear)) {
+        return NextResponse.json({
+          error: `לא ניתן להוסיף משמרת בתאריך שאינו בחודש המוצג (${new Date(displayedYear, displayedMonth).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' })}). יש לבחור תאריך בחודש המוצג, או לעבור לחודש הרצוי לפני ההוספה.`
+        }, { status: 400 });
+      }
+    }
 
     // Validation for overlapping shifts
     if (entryTime && exitTime) {
@@ -37,42 +52,11 @@ export async function POST(request, { params }) {
       }
     }
 
-    // Calculate totals the same way the punch-clock (POST /api/attendance) does. The UI
-    // shows these fields as "מחושב אוטומטית" but this route used to just store whatever
-    // (empty) totalMinutes/totalCalculated the client sent, so manual shifts never got paid.
-    let totalMinutes = body.totalMinutes || null;
-    let totalCalculated = body.totalCalculated || null;
-    let hourlyWageSnapshot = null;
-    let travelExpensesSnapshot = null;
-
-    if (entryTime && exitTime) {
-      const employee = await prisma.employee.findUnique({ where: { id: employeeId } });
-      const diffMs = exitTime - entryTime;
-      totalMinutes = Math.floor(diffMs / 60000);
-
-      hourlyWageSnapshot = employee?.hourlyWage || 0;
-      const travelEligible = employee?.travelExpenses || 0;
-
-      // Same daily (not per-punch) travel rule as the punch-clock: only pay it if no other
-      // shift for this employee on the same day already carries it.
-      let travelForThisShift = 0;
-      if (travelEligible) {
-        const otherShiftWithTravelToday = await prisma.shift.findFirst({
-          where: {
-            employeeId,
-            date: shiftDate,
-            isDeleted: false,
-            travelExpensesSnapshot: { gt: 0 }
-          }
-        });
-        if (!otherShiftWithTravelToday) {
-          travelForThisShift = travelEligible;
-        }
-      }
-      travelExpensesSnapshot = travelForThisShift;
-
-      totalCalculated = parseFloat((((totalMinutes / 60) * hourlyWageSnapshot) + travelForThisShift).toFixed(2));
-    }
+    // סה"כ דקות/תשלום מחושבים תמיד בשרת (ולא לפי מה שהלקוח שלח) - השדות מוצגים
+    // בטופס כ"מחושב אוטומטית" ומנוטרלים, כך שאין טעם לסמוך על ערך שהגיע מהלקוח.
+    const { totalMinutes, totalCalculated, hourlyWageSnapshot, travelExpensesSnapshot } = await computeShiftTotals({
+      employeeId, entryTime, exitTime, shiftDate
+    });
 
     const newShift = await prisma.shift.create({
       data: {
@@ -81,23 +65,25 @@ export async function POST(request, { params }) {
         hebrewDate: body.hebrewDate || null,
         entryTime: entryTime,
         exitTime: exitTime,
-        totalMinutes: totalMinutes,
-        totalCalculated: totalCalculated,
-        hourlyWageSnapshot: hourlyWageSnapshot,
-        travelExpensesSnapshot: travelExpensesSnapshot,
+        totalMinutes,
+        totalCalculated,
+        hourlyWageSnapshot,
+        travelExpensesSnapshot,
         notes: body.notes || null,
         isDeleted: false
       }
     });
 
-    // Create Audit Log
+    // Create Audit Log - באותה צורה שהתוסף האוטומטי של פריזמה כותב יצירה (אובייקט
+    // שטוח, לא עטוף תחת "to"), כדי שההיסטוריה תוצג נכון בפאנל (ChangesChips מצפה
+    // למפתחות שהם שמות שדות, לא ל"from"/"to" ברמה העליונה).
     // eslint-disable-next-line no-restricted-syntax -- Shift מוחרג מתוסף היומן, ולכן אין שורה אוטומטית
     await prisma.auditLog.create({
       data: {
         entityType: 'Shift',
         entityId: newShift.id,
         action: 'CREATE',
-        changesJson: JSON.stringify({ to: newShift }),
+        changesJson: JSON.stringify(newShift),
         employeeId: employeeId
       }
     });

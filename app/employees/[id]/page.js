@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import SendEmailModal from '@/components/SendEmailModal';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
+import ModernEmployeeHistoryTab from '@/components/employees/ModernEmployeeHistoryTab';
+import modernOrderCss from '@/components/orders/modern/modernOrderStyles';
 import { Copy, Mail, History, RotateCcw } from 'lucide-react';
 
 export default function EmployeePage({ params }) {
@@ -30,29 +32,15 @@ export default function EmployeePage({ params }) {
   const [oldPasswordInput, setOldPasswordInput] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
 
-  // History state
-  const [historyLogs, setHistoryLogs] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(false);
-
-  useEffect(() => {
-    fetchEmployee();
-  }, [id, router, showDeletedShifts]);
-
-  useEffect(() => {
-    if (activeTab === 'history') {
-      fetchHistory();
-    }
-  }, [activeTab]);
-
   const fetchEmployee = () => {
     if (id === 'new') {
-      setEmployee({ 
-        firstName: '', lastName: '', fullName: '', phone1: '', phone2: '', 
-        email: '', emailSuffix: '', city: '', street: '', houseNum: '', 
-        joinDate: '', password: '', roleId: '', hourlyWage: '', 
-        travelExpenses: false, paymentMethod: '', notes: '', 
+      setEmployee({
+        firstName: '', lastName: '', fullName: '', phone1: '', phone2: '',
+        email: '', emailSuffix: '', city: '', street: '', houseNum: '',
+        joinDate: '', password: '', roleId: '', hourlyWage: '',
+        travelExpenses: false, paymentMethod: '', notes: '',
         themeColor: 'standard', profileImage: '',
-        isActive: true, receiveEmailAlerts: false, shifts: [] 
+        isActive: true, receiveEmailAlerts: false, shifts: []
       });
       setLoading(false);
       return;
@@ -67,18 +55,9 @@ export default function EmployeePage({ params }) {
       });
   };
 
-  const fetchHistory = async () => {
-    setLoadingHistory(true);
-    try {
-      const res = await fetch(`/api/employees/${id}/history`);
-      const data = await res.json();
-      setHistoryLogs(data);
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
+  useEffect(() => {
+    fetchEmployee();
+  }, [id, router, showDeletedShifts]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -142,7 +121,11 @@ export default function EmployeePage({ params }) {
     setIsAddingShift(true);
     setEditingShiftId('new');
     setEditShiftData({
-      date: new Date(filterYear, filterMonth, 1).toISOString().split('T')[0],
+      // בונים את מחרוזת התאריך ישירות (בלי לעבור דרך new Date(y,m,d).toISOString()) - זו
+      // בנייה של תאריך מקומי, ו-toISOString ממיר לפי UTC. באזור זמן ישראל (UTC+2/3) ה"אחד
+      // בחודש" המקומי הופך ל-31 בחודש הקודם ב-UTC, כך שהשדה נטען כברירת מחדל עם תאריך
+      // בחודש הלא נכון - בדיוק המצב שבדיקת "לא בחודש המוצג" הייתה חוסמת בטעות.
+      date: `${filterYear}-${String(filterMonth + 1).padStart(2, '0')}-01`,
       hebrewDate: '',
       entryTime: '',
       exitTime: '',
@@ -163,7 +146,31 @@ export default function EmployeePage({ params }) {
     const url = isAddingShift ? `/api/employees/${id}/shifts` : `/api/employees/${id}/shifts/${editingShiftId}`;
     const method = isAddingShift ? 'POST' : 'PUT';
 
+    // הוספת משמרת בתאריך שאינו בחודש המוצג במסך תיצור משמרת "אבודה" - היא תישמר
+    // אבל לא תופיע ברשימה המסוננת לפי החודש/שנה הנוכחיים, ותיראה כאילו "לא נוספה".
+    // בודקים את זה כאן (לפני הבקשה לשרת) כדי לתת הודעה ברורה ולחסום מיד.
+    if (isAddingShift) {
+      if (!editShiftData.date) {
+        alert('יש לבחור תאריך למשמרת');
+        return;
+      }
+      const [dY, dM] = editShiftData.date.split('-').map(Number);
+      if ((dM - 1) !== filterMonth || dY !== filterYear) {
+        const displayedLabel = new Date(filterYear, filterMonth).toLocaleDateString('he-IL', { month: 'long', year: 'numeric' });
+        alert(`לא ניתן להוסיף משמרת בתאריך שאינו בחודש המוצג (${displayedLabel}). יש לבחור תאריך בתוך החודש המוצג, או לעבור לחודש הרצוי ואז להוסיף את המשמרת.`);
+        return;
+      }
+    }
+
     const payload = { ...editShiftData };
+    // הדקות והתשלום מחושבים תמיד בשרת מכניסה/יציאה + שכר השעה - לא לשלוח את מה
+    // שהיה בטופס (מנוטרל ותמיד ריק), כדי שלא יידרס חישוב אמיתי בטעות.
+    delete payload.totalMinutes;
+    delete payload.totalCalculated;
+    if (isAddingShift) {
+      payload.displayedMonth = filterMonth;
+      payload.displayedYear = filterYear;
+    }
     const dateBase = editShiftData.date ? editShiftData.date.split('T')[0] : '';
     if (payload.date) {
         payload.date = new Date(payload.date).toISOString();
@@ -240,11 +247,19 @@ export default function EmployeePage({ params }) {
   if (loading) return <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>;
   if (!employee) return null;
 
-  const filteredShifts = employee.shifts?.filter(shift => {
+  // מיון כרונולוגי מהישן לחדש - גם על המסך וגם בהדפסה (אותו מערך משמש לשניהם)
+  const filteredShifts = (employee.shifts?.filter(shift => {
     const d = new Date(shift.date);
     if (!showDeletedShifts && shift.isDeleted) return false;
     return d.getMonth() === filterMonth && d.getFullYear() === filterYear;
-  }) || [];
+  }) || []).sort((a, b) => {
+    const dateDiff = new Date(a.date) - new Date(b.date);
+    if (dateDiff !== 0) return dateDiff;
+    return new Date(a.entryTime || a.date) - new Date(b.entryTime || b.date);
+  });
+
+  // משמרת "לא שלמה" - יש בה תאריך אבל חסרה כניסה או יציאה (לא שתיהן) - מודגשת בצהוב
+  const isIncompleteShift = (shift) => !!shift.entryTime !== !!shift.exitTime;
 
   return (
     <main data-agy-id="employee-details-main" className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1000px' }}>
@@ -627,7 +642,12 @@ export default function EmployeePage({ params }) {
               )}
 
               {filteredShifts.map(shift => (
-                <tr key={shift.id} style={{ borderBottom: '1px solid #eee', opacity: shift.isDeleted ? 0.6 : 1, textDecoration: shift.isDeleted ? 'line-through' : 'none' }}>
+                <tr key={shift.id} style={{
+                  borderBottom: '1px solid #eee',
+                  opacity: shift.isDeleted ? 0.6 : 1,
+                  textDecoration: shift.isDeleted ? 'line-through' : 'none',
+                  background: (!shift.isDeleted && isIncompleteShift(shift)) ? '#ffeb3b4a' : 'transparent'
+                }}>
                   {editingShiftId === shift.id ? (
                     <>
                       <td style={{ padding: '0.5rem' }}>
@@ -704,33 +724,10 @@ export default function EmployeePage({ params }) {
       )}
 
       {activeTab === 'history' && (
-        <div className="no-print animate-fade-in" style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
-          <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <History data-element-name="רכיב_page_67" size={24} /> היסטוריית שינויים (Audit Log)
-          </h2>
-          {loadingHistory ? (
-            <div style={{ textAlign: 'center', padding: '2rem' }}>טוען היסטוריה...</div>
-          ) : historyLogs.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>אין תיעוד היסטוריה לעובד זה.</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {historyLogs.map(log => (
-                <div key={log.id} style={{ border: '1px solid var(--element-border)', borderRadius: '8px', padding: '1rem', background: '#fafafa' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-                    <strong style={{ color: 'var(--text-main)' }}>
-                      {log.action === 'CREATE' ? 'הוספה' : log.action === 'UPDATE' ? 'עדכון' : 'מחיקה'} - {log.entityType === 'Shift' ? 'משמרת' : log.entityType}
-                    </strong>
-                    <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                      {new Date(log.createdAt).toLocaleString('he-IL')}
-                    </span>
-                  </div>
-                  <pre style={{ margin: 0, fontSize: '0.85rem', background: '#eee', padding: '0.5rem', borderRadius: '4px', overflowX: 'auto', direction: 'ltr' }}>
-                    {JSON.stringify(JSON.parse(log.changesJson), null, 2)}
-                  </pre>
-                </div>
-              ))}
-            </div>
-          )}
+        <div className="no-print animate-fade-in moc" style={{ padding: 0 }}>
+          {/* אותו עיצוב "כרטיס מודרני" (moc) שבו מעוצב פאנל ההיסטוריה בכרטיס ההזמנה/לקוח */}
+          <style>{modernOrderCss}</style>
+          <ModernEmployeeHistoryTab employeeId={id} />
         </div>
       )}
 

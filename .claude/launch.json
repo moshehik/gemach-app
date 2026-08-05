@@ -18,6 +18,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "3010"],
       "port": 3010
+    },
+    {
+      "name": "gemach-dev-agy-attendance-fix",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "9451"],
+      "port": 9451
     }
   ]
 }

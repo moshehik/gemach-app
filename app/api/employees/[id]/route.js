@@ -21,7 +21,8 @@ export async function GET(request, { params }) {
       include: {
         shifts: {
           where: includeDeleted ? {} : { isDeleted: false },
-          orderBy: { date: 'desc' }
+          // כרונולוגי מהישן לחדש - כרטיס העובד מציג/מדפיס את המשמרות לפי הסדר הזה
+          orderBy: [{ date: 'asc' }, { entryTime: 'asc' }]
         }
       }
     });
