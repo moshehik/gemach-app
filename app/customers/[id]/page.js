@@ -124,7 +124,7 @@ export default function CustomerPage({ params }) {
       if (id === 'new' && data.id) {
         router.push(`/customers/${data.id}`);
       } else {
-        setOriginalCustomer(normalizedCustomer);
+        setOriginalCustomer(data);
         alert('הפרטים נשמרו בהצלחה!');
       }
     } catch (e) {

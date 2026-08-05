@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { Bot, X, MessageSquare, Maximize2, Minimize2, MessageSquarePlus, Mic, History } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
-export default function AIFloatingWidget() {
+export default function AIFloatingWidget({ hideAIFeatures = false }) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -18,8 +18,7 @@ export default function AIFloatingWidget() {
   const [isListening, setIsListening] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [chatSessions, setChatSessions] = useState([]);
-  const [hideAi, setHideAi] = useState(false);
-  
+
   const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
 
@@ -58,31 +57,6 @@ export default function AIFloatingWidget() {
   };
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(res => res.json())
-      .then(async (data) => {
-        if (Array.isArray(data)) {
-          const aiSetting = data.find(s => s.key === 'hide_ai_features');
-          if (aiSetting && aiSetting.value === 'true') {
-            setHideAi(true);
-            return;
-          }
-          const enableAiSpecific = data.find(s => s.key === 'enable_ai_specific_employees');
-          if (enableAiSpecific && enableAiSpecific.value === 'true') {
-            try {
-              const meRes = await fetch('/api/me');
-              const meData = await meRes.json();
-              if (!meData.success || !meData.employee?.showAi) {
-                setHideAi(true);
-              }
-            } catch (e) {
-              setHideAi(true);
-            }
-          }
-        }
-      })
-      .catch(err => console.warn('Failed to fetch AI settings:', err?.message || err));
-
     const savedSessions = localStorage.getItem('ai_employee_chat_sessions');
     let sessions = [];
     if (savedSessions) {
@@ -286,7 +260,7 @@ export default function AIFloatingWidget() {
     setShowHistory(false);
   };
 
-  if (pathname === '/customer-interface' || hideAi) {
+  if (pathname === '/customer-interface' || hideAIFeatures) {
     return null;
   }
 

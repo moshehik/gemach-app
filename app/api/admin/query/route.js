@@ -3,8 +3,13 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 
 import prisma from '@/app/lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 export async function POST(request) {
+  if (!(await checkAuth('מנהל'))) {
+    return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
+  }
+
   let employeeId = null;
   try {
     const cookieStore = await cookies();

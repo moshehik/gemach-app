@@ -1,7 +1,9 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma, { getActingEmployeeId } from '../../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 export async function POST(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { orderId } = await request.json();
 
@@ -68,6 +70,7 @@ export async function POST(request) {
 }
 
 export async function DELETE(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
     const orderId = searchParams.get('orderId');

@@ -153,7 +153,7 @@ ${hiddenData}
         const csvPath = 'C:\\Users\\moshe\\Desktop\\מערכת AI\\AI_Errors.csv';
         const id = new Date().getTime().toString();
         const csvLine = `"${id}","${time}","OPEN","${(employeeName||'').replace(/"/g, '""')}","${(title||'').replace(/"/g, '""')}","${(url||'').replace(/"/g, '""')}","${(userText||'').replace(/"/g, '""')}"\n`;
-        
+
         if (!fs.existsSync(csvPath)) {
             const header = `"ID","Time","Status","Reporter","Title","URL","Description"\n`;
             fs.writeFileSync(csvPath, header, 'utf8');

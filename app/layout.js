@@ -264,7 +264,7 @@ export default async function RootLayout({ children }) {
               </nav>
               {children}
               <GlobalSidebar />
-              {!hideAIFeatures && <AIFloatingWidget data-element-name="רכיב_layout_23" />}
+              {!hideAIFeatures && <AIFloatingWidget data-element-name="רכיב_layout_23" hideAIFeatures={hideAIFeatures} />}
             </PopupProvider>
           </LabelsProvider>
         )}

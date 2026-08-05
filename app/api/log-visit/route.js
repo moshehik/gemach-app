@@ -22,20 +22,17 @@ export async function POST(request) {
     let isGuest = true;
 
     if (authCookie && authCookie.value) {
-      employeeId = parseInt(authCookie.value, 10);
-      if (!isNaN(employeeId)) {
-        const emp = await prisma.employee.findUnique({
-          where: { id: employeeId },
-          select: { firstName: true, lastName: true }
-        });
-        if (emp) {
-          isGuest = false;
-          employeeName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || `עובד ${employeeId}`;
-        } else {
-          employeeId = null;
-        }
-      } else {
-        employeeId = null;
+      // auth_token is the Employee's UUID `id`, not a numeric legacyId - store it as-is
+      // (PageVisitLog.employeeId is a String field), don't parseInt it.
+      const candidateId = authCookie.value;
+      const emp = await prisma.employee.findUnique({
+        where: { id: candidateId },
+        select: { firstName: true, lastName: true }
+      });
+      if (emp) {
+        employeeId = candidateId;
+        isGuest = false;
+        employeeName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim() || `עובד ${candidateId}`;
       }
     }
 

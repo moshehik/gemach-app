@@ -33,7 +33,9 @@ const eslintConfig = defineConfig([
     "next-env.d.ts",
     "*.js",
     "scripts/**",
-    "scratch/**"
+    "scratch/**",
+    // Isolated git worktrees for background agents - not part of this branch's tree.
+    ".claude/worktrees/**"
   ]),
 ]);
 

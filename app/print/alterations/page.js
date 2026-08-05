@@ -80,8 +80,22 @@ export default function PrintAlterationsPage() {
   async function fetchData() {
     try {
       setLoading(true);
-      
-      const settingsRes = await fetch('/api/settings');
+
+      let showOnlyPending = reportType === 'alterations_pending' || reportType === 'labels';
+      let hideNoAlterations = reportType === 'orders_no_alterations';
+      let showAllOrders = reportType === 'orders_all';
+
+      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&hideNoAlterations=${hideNoAlterations}&showAllOrders=${showAllOrders}`;
+      if (startDate) url += `&startDate=${startDate}`;
+      if (endDate) url += `&endDate=${endDate}`;
+
+      // Settings and alterations are independent - fetch them together instead of
+      // waiting on settings before even starting the alterations request.
+      const [settingsRes, res] = await Promise.all([
+        fetch('/api/settings'),
+        fetch(url)
+      ]);
+
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json();
         const altSetting = settingsData.find(s => s.key === 'enable_alterations');
@@ -92,15 +106,6 @@ export default function PrintAlterationsPage() {
         }
       }
 
-      let showOnlyPending = reportType === 'alterations_pending' || reportType === 'labels';
-      let hideNoAlterations = reportType === 'orders_no_alterations';
-      let showAllOrders = reportType === 'orders_all';
-
-      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&hideNoAlterations=${hideNoAlterations}&showAllOrders=${showAllOrders}`;
-      if (startDate) url += `&startDate=${startDate}`;
-      if (endDate) url += `&endDate=${endDate}`;
-
-      const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch data');
       const data = await res.json();
       setItems(data);

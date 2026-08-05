@@ -2,10 +2,14 @@ import { NextResponse } from 'next/server';
 
 
 import prisma from '@/app/lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
+  if (!(await checkAuth('מנהל'))) {
+    return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
+  }
   try {
     // 1. Fetch data from all major tables
     const customers = await prisma.customer.findMany();

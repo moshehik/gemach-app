@@ -36,7 +36,7 @@ export default function EmployeePage({ params }) {
 
   useEffect(() => {
     fetchEmployee();
-  }, [id, router]);
+  }, [id, router, showDeletedShifts]);
 
   useEffect(() => {
     if (activeTab === 'history') {
@@ -57,7 +57,8 @@ export default function EmployeePage({ params }) {
       setLoading(false);
       return;
     }
-    fetch(`/api/employees/${id}`)
+    const query = showDeletedShifts ? '?includeDeleted=true' : '';
+    fetch(`/api/employees/${id}${query}`)
       .then(res => res.json())
       .then(data => {
         if (data.error) router.push('/employees');

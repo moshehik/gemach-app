@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 export async function POST(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { orderId, barcode, itemIdToForce } = await request.json();
 
@@ -176,6 +178,7 @@ export async function POST(request) {
 }
 
 export async function PUT(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { unreturnedItemId } = await request.json();
 

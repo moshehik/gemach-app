@@ -1,7 +1,9 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma, { auditAs } from '../../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 export async function PUT(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { orderItemId } = await request.json();
 

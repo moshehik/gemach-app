@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
+import { parseIdList } from '../../../../lib/notificationLists';
 
 export async function POST(request) {
   try {
@@ -38,14 +39,15 @@ export async function POST(request) {
         data: { isRead: true }
       });
     } else if (notification.receiverId === null) {
-      // Global message
-      if (!notification.readBy.includes(employeeId)) {
+      // Global message: readBy is a scalar String column holding a JSON-encoded
+      // array of employeeIds as text, not a native Prisma list field.
+      const readByArr = parseIdList(notification.readBy);
+      if (!readByArr.includes(employeeId)) {
+        readByArr.push(employeeId);
         await prisma.notification.update({
           where: { id: notification.id },
           data: {
-            readBy: {
-              push: employeeId
-            }
+            readBy: JSON.stringify(readByArr)
           }
         });
       }

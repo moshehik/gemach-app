@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma, { auditAs } from '../../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 // כל פעולה כאן נרשמת ביומן בשם ברור (ולא כ"עדכון" גנרי), כדי שבהיסטוריית הפריט
 // אפשר יהיה לראות במפורש מתי בוצעה השכרה, החזרה, ביטול השכרה או ביטול החזרה.
@@ -12,6 +13,7 @@ const AUDIT_ACTIONS = {
 };
 
 export async function POST(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { itemId, action, barcode, returnedOk } = await request.json();
 

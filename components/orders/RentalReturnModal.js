@@ -219,6 +219,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   };
 
   const confirmInlineRent = async (item) => {
+    if (isBusy) return;
     const barcode = (inlineBarcode[item.id] || '').replace(/\s+/g, '').trim();
     if (!barcode) {
       alert('חובה להזין ברקוד');

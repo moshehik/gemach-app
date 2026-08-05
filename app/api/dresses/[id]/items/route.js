@@ -1,8 +1,10 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 // Create a new DressItem for a specific DressModel
 export async function POST(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const dressModelId = resolvedParams.id;

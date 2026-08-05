@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../app/lib/prisma';
 import { compareSizeText } from '../../../../lib/sizeSort';
+import { checkAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { searchParams } = new URL(request.url);
     const barcodePrefixParam = searchParams.get('barcodePrefix');

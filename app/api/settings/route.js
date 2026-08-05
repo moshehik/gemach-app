@@ -1,8 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
 
+// GET is intentionally left public: settings (e.g. UI/branding config) are
+// read by pages that render before/without login, such as the public
+// customer-interface kiosk page and the labels fetched on initial layout
+// mount. Writing settings is admin-only (see POST below).
 export async function GET() {
   try {
     const settings = await prisma.systemSetting.findMany({
@@ -24,6 +29,9 @@ export async function GET() {
 }
 
 export async function POST(request) {
+  if (!(await checkAuth('מנהל'))) {
+    return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
+  }
   try {
     const data = await request.json();
     
