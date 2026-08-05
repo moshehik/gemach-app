@@ -226,7 +226,18 @@ export async function POST(request, { params }) {
       fileContent: pdfBase64 || ''
     };
 
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
+    // Determine Script URL
+    const linkA = settingsData.find(s => s.key === 'email_link_a')?.value;
+    const linkB = settingsData.find(s => s.key === 'email_link_b')?.value;
+    const strategy = settingsData.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
+
+    let scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
+    
+    if (strategy === 'all_b' && linkB) {
+      scriptUrl = linkB;
+    } else if (linkA) {
+      scriptUrl = linkA;
+    }
     
     const response = await fetch(scriptUrl, {
       method: 'POST',

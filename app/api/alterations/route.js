@@ -44,13 +44,15 @@ export async function GET(request) {
         // hideNoAlterations == true means we want to see orders WITHOUT alterations.
         // Legacy: AND IIf([תיקון_אורך]>0 Or [תיקון_צוואר] Or [תיקון_שרוול],-1,0)=0
         whereClause.neckAlteration = { in: [0, null] };
-        whereClause.OR = [{ lengthAlteration: null }, { lengthAlteration: "" }];
+        // Legacy migration left some length values as '' / literal 'null' - treat those as "no alteration" too
+        whereClause.OR = [{ lengthAlteration: null }, { lengthAlteration: { in: ["", "null", "0"] } }];
         whereClause.sleeveAlteration = { in: [0, null] };
     } else {
         // Show only items that HAVE alterations
         whereClause.OR = [
             { neckAlteration: { gt: 0 } },
-            { lengthAlteration: { not: null, not: "" } },
+            // notIn with values also excludes NULLs; filters out legacy '' / 'null' / '0' junk
+            { lengthAlteration: { notIn: ["", "null", "0"] } },
             { sleeveAlteration: { gt: 0 } }
         ];
         

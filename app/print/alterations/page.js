@@ -103,6 +103,11 @@ export default function PrintAlterationsPage() {
   };
   const sizeLabelOf = (item) => (item.sizeText || item.size || item.dressItem?.sizeText || '-').toString();
   const customerNameOf = (item) => `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`.trim();
+  // Legacy migration left some length values as '' / 'null' / '0' - treat as "no alteration"
+  const lengthAltOf = (item) => {
+    const v = (item.lengthAlteration ?? '').toString().trim();
+    return (!v || v === 'null' || v === '0') ? '' : v;
+  };
 
   // Sorting per the Access reports:
   // labels (תופרות_תוויות): event date -> dress -> size -> customer
@@ -322,7 +327,7 @@ export default function PrintAlterationsPage() {
                         {[
                           item.neckAlteration > 0 ? `צוואר: הצרה ${item.neckAlteration}` : null,
                           item.sleeveAlteration > 0 ? `שרוול: הארכה ${item.sleeveAlteration}` : null,
-                          item.lengthAlteration ? `אורך: ${item.lengthAlteration}` : null
+                          lengthAltOf(item) ? `אורך: ${lengthAltOf(item)}` : null
                         ].filter(Boolean).join(' | ')}
                         {item.alterationDetails && (
                           <div style={{ fontWeight: 'normal', marginTop: '6px' }}>
@@ -347,7 +352,7 @@ export default function PrintAlterationsPage() {
               const sums = group.items.reduce((acc, item) => {
                 const qty = item.quantity || 1;
                 if (item.neckAlteration > 0) acc.neck += qty;
-                if (item.lengthAlteration) acc.length += qty;
+                if (lengthAltOf(item)) acc.length += qty;
                 if (item.sleeveAlteration > 0) acc.sleeve += qty;
                 return acc;
               }, { neck: 0, length: 0, sleeve: 0 });
@@ -390,7 +395,7 @@ export default function PrintAlterationsPage() {
                               {showAlterationCols && (
                                 <>
                                   <td>{item.neckAlteration > 0 ? `הצרה ${item.neckAlteration}` : ''}</td>
-                                  <td>{item.lengthAlteration || ''}</td>
+                                  <td>{lengthAltOf(item)}</td>
                                   <td>{item.sleeveAlteration > 0 ? `הארכה ${item.sleeveAlteration}` : ''}</td>
                                   <td>{item.alterationDetails || ''}</td>
                                 </>

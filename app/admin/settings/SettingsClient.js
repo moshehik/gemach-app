@@ -9,9 +9,12 @@ import {
   ChevronDown, ChevronUp, ShieldCheck, CheckSquare, Mail
 } from 'lucide-react';
 import FullEmailListModal from '@/components/FullEmailListModal';
+import NeonUsageCard from './NeonUsageCard';
 
 const categoryConfig = {
+  'מיילים': { icon: Mail },
   'תצוגה': { icon: Palette },
+  'מסד נתונים': { icon: Database },
   'הזמנות': { icon: ShoppingBag },
   'מאגר': { icon: Database },
   'כללי': { icon: Settings2 },
@@ -24,6 +27,9 @@ const categoryConfig = {
 };
 
 const HEBREW_NAMES = {
+  email_link_a: 'קישור פריסה א\' (ראשי)',
+  email_link_b: 'קישור פריסה ב\' (משני)',
+  email_routing_strategy: 'אסטרטגיית ניתוב מיילים',
   gmach_name: 'שם הגמ"ח / המערכת',
   gmach_subtitle: 'כותרת משנה לגמ"ח',
   require_login: 'חובת התחברות למערכת',
@@ -53,6 +59,7 @@ const HEBREW_NAMES = {
   hide_dress_images: 'הצג תמונות דגמים במערכת',
   hide_gregorian_calendar: 'אפשר תאריך לועזי ביומן',
   hide_internal_messaging: 'הפעל מערכת הודעות פנימית',
+  hide_error_reporting: 'הפעל מערכת דיווחי שגיאות',
 
   items_name_plural: 'שם פריטים ברבים',
   items_name_singular: 'שם פריט ביחיד',
@@ -81,6 +88,9 @@ const HEBREW_NAMES = {
 };
 
 const HEBREW_NOTES = {
+  email_link_a: 'הקישור הראשי לשליחת מיילים מהמערכת (Script URL)',
+  email_link_b: 'הקישור המשני (מומלץ עבור דיווחי שגיאות או גיבוי)',
+  email_routing_strategy: 'קבע איזה קישור ישמש כברירת מחדל ואם להפריד שליחות.',
   gmach_name: 'שם המערכת שיופיע בראש העמוד, במסמכים ובחשבוניות.',
   gmach_subtitle: 'כותרת משנה המופיעה מתחת לשם הגמ"ח בדף הראשי ובתדפיסים.',
   require_login: 'משתמשים יצטרכו להזין קוד עובד וסיסמה בכניסה למערכת.',
@@ -110,6 +120,7 @@ const HEBREW_NOTES = {
   hide_dress_images: 'מסתיר תמונות דגמים במסכי הניהול ובכרטיסי הדגמים.',
   hide_gregorian_calendar: 'הסתרת תאריכים לועזיים והתמקדות בלוח העברי.',
   hide_internal_messaging: 'הסתרה או הפעלה של פעמון ההתראות והודעות בין עובדים.',
+  hide_error_reporting: 'הסתרה או הפעלה של אפשרות דיווח שגיאות מהמערכת (כפתור גלגל הצלה).',
 
   items_name_plural: 'הכיתוב שיופיע בכל הטבלאות (למשל: שמלות / חליפות / פריטים).',
   items_name_singular: 'הכיתוב ביחיד (למשל: שמלה / חליפה / פריט).',
@@ -562,6 +573,9 @@ export default function SettingsClient() {
       if (!cats.includes('תצוגה')) {
         cats.unshift('תצוגה');
       }
+      if (!cats.includes('מסד נתונים')) {
+        cats.push('מסד נתונים');
+      }
       
       settingsCache.set('settings', { settings: data, cats });
       
@@ -819,7 +833,9 @@ export default function SettingsClient() {
             </div>
 
             <div style={{ display: 'flex', flexDirection: 'column' }}>
-              
+
+              {activeTab === 'מסד נתונים' && <NeonUsageCard data-element-name="רכיב_SettingsClient_neon" />}
+
               {activeTab === 'תצוגה' && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid #f1f5f9' }}>
                   <div style={{ flex: 1 }}>
@@ -860,7 +876,7 @@ export default function SettingsClient() {
                   'allow_date_change', 'has_variations', 'has_underskirts', 'useModelNames',
                   'useFileNamesForImages', 'hide_ai_features', 'enable_ai_specific_employees',
                   'hide_dress_images', 'hide_gregorian_calendar', 'hide_internal_messaging',
-                  'refund_per_item', 'registration_fee', 'nedarim_plus_enabled', 'ENABLE_SET_DISCOUNTS',
+                  'hide_error_reporting', 'refund_per_item', 'registration_fee', 'nedarim_plus_enabled', 'ENABLE_SET_DISCOUNTS',
                   'REFUND_REPAIRS', 'inventory_include_warehouse', 'inventory_skip_weekends',
                   'calendar_filtering'
                 ].includes(setting.key);
@@ -891,6 +907,7 @@ export default function SettingsClient() {
                 else if (setting.key === 'hide_dress_images') displayName = 'הצג תמונות דגמים במערכת';
                 else if (setting.key === 'hide_gregorian_calendar') displayName = 'אפשר תאריך לועזי ביומן';
                 else if (setting.key === 'hide_internal_messaging') displayName = 'הפעל מערכת הודעות פנימית';
+                else if (setting.key === 'hide_error_reporting') displayName = 'הפעל מערכת דיווחי שגיאות';
 
                 let notes = HEBREW_NOTES[setting.key] || setting.notes || '';
                 if (!notes || /^[a-zA-Z0-9_\-\s]+$/.test(notes)) {
@@ -908,6 +925,7 @@ export default function SettingsClient() {
                 };
                 
                 const isMandatoryFieldsSetting = setting.key === 'mandatory_fields';
+                const isSelectSetting = setting.type === 'select' || setting.key === 'email_routing_strategy';
 
                 const isDepartmentSetting = 
                   setting.key.toLowerCase().includes('permission') ||
@@ -917,7 +935,7 @@ export default function SettingsClient() {
                   setting.key === 'enable_ai_specific_employees';
 
                 // Helper to check if it needs a larger multiline textbox
-                const isMultiline = !isBoolean && !isNumber && !isDepartmentSetting && !isMandatoryFieldsSetting && (
+                const isMultiline = !isBoolean && !isNumber && !isDepartmentSetting && !isMandatoryFieldsSetting && !isSelectSetting && (
                   setting.key.toLowerCase().includes('print') ||
                   setting.key.toLowerCase().includes('box') ||
                   setting.key.toLowerCase().includes('footer') ||
@@ -974,6 +992,22 @@ export default function SettingsClient() {
                           elementName="שדה_SettingsClient_21"
                           onChange={(val) => handleChange(setting.key, val)}
                         />
+                      ) : isSelectSetting ? (
+                        <select
+                          value={rawValue || 'all_a'}
+                          data-element-name="שדה_SettingsClient_21"
+                          onChange={(e) => handleChange(setting.key, e.target.value)}
+                          style={{ 
+                            width: '100%', padding: '0.65rem 1rem', borderRadius: '12px', 
+                            border: '2px solid #cbd5e1', background: 'white', color: '#0f172a', 
+                            fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s',
+                            fontFamily: 'inherit'
+                          }}
+                        >
+                          <option value="all_a">שלח הכל מקישור א' (ראשי)</option>
+                          <option value="all_b">שלח הכל מקישור ב' (משני)</option>
+                          <option value="bugs_b_rest_a">דיווחי שגיאות מב', השאר מא'</option>
+                        </select>
                       ) : isDepartmentSetting ? (
                         <DepartmentDropdownPicker
                           value={rawValue || ''}
@@ -1020,7 +1054,7 @@ export default function SettingsClient() {
                 );
               })}
 
-              {activeSettings.length === 0 && activeTab !== 'תצוגה' && (
+              {activeSettings.length === 0 && activeTab !== 'תצוגה' && activeTab !== 'מסד נתונים' && (
                 <div style={{ textAlign: 'center', padding: '4rem 0', color: '#94a3b8' }}>
                   <p style={{ fontSize: '1.1rem' }}>אין הגדרות בקטגוריה זו</p>
                 </div>

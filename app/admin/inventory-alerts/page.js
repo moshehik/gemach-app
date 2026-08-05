@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
@@ -139,7 +139,7 @@ export default function InventoryAlertsPage() {
 
   const formatDate = (isoString) => {
     const d = new Date(isoString);
-    return d.toLocaleDateString('he-IL');
+    return d.toLocaleDateString('he-IL', { dateStyle: 'long', calendar: 'hebrew' });
   };
 
   return (

@@ -1,17 +1,37 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { LifeBuoy, X, Send } from 'lucide-react';
+import { LifeBuoy, X, Send, MessageSquare, Copy, AlertCircle, Info, User, Check, RefreshCw } from 'lucide-react';
 
 export default function ErrorReportButton() {
   const [isOpen, setIsOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('list'); // 'list' or 'new' or 'thread'
   const [userText, setUserText] = useState('');
   const [toast, setToast] = useState(null);
   const [mounted, setMounted] = useState(false);
+  
+  const [reports, setReports] = useState([]);
+  const [isProgrammer, setIsProgrammer] = useState(false);
+  const [loading, setLoading] = useState(false);
+  
+  const [selectedReport, setSelectedReport] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [isReplying, setIsReplying] = useState(false);
+
+  // Auto-refresh interval
+  useEffect(() => {
+    let intervalId;
+    if (mounted && !isOpen) {
+      // Refresh badge every 30 seconds when closed
+      intervalId = setInterval(fetchReports, 30000);
+    }
+    return () => clearInterval(intervalId);
+  }, [mounted, isOpen]);
 
   useEffect(() => {
     setMounted(true);
+    fetchReports();
 
     const handleGlobalClick = (e) => {
       let target = e.target;
@@ -37,17 +57,36 @@ export default function ErrorReportButton() {
       document.removeEventListener('click', handleGlobalClick);
     };
   }, []);
+  
+  useEffect(() => {
+    if (isOpen && activeTab === 'list') {
+      fetchReports();
+    }
+  }, [isOpen, activeTab]);
+
+  const fetchReports = async () => {
+    try {
+      const res = await fetch('/api/error-report');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setReports(data.reports || []);
+          setIsProgrammer(data.isProgrammer || false);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching reports:', err);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!userText.trim()) {
-      setToast({ message: 'יש להזין תיאור שגיאה', type: 'error' });
-      setTimeout(() => setToast(null), 3000);
+      showToast('יש להזין תיאור שגיאה', 'error');
       return;
     }
 
-    setIsOpen(false);
-    setToast({ message: 'שולח דיווח למתכנת, אנא המתן...', type: 'info' });
+    showToast('שולח דיווח למתכנת, אנא המתן...', 'info');
 
     const payload = {
       userText,
@@ -66,25 +105,100 @@ export default function ErrorReportButton() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setToast({ message: 'הדיווח נשלח בהצלחה למתכנת! תודה.', type: 'success' });
+        showToast('הדיווח נשלח בהצלחה למתכנת! תודה.', 'success');
         setUserText('');
+        setActiveTab('list');
+        fetchReports();
       } else {
-        setToast({ message: data.error || 'שגיאה בשליחת דיווח', type: 'error' });
+        showToast(data.error || 'שגיאה בשליחת דיווח', 'error');
       }
     } catch (err) {
-      setToast({ message: 'שגיאת תקשורת', type: 'error' });
+      showToast('שגיאת תקשורת', 'error');
     }
-    
-    setTimeout(() => {
-      setToast(null);
-    }, 4000);
   };
+  
+  const handleReply = async (e) => {
+    e.preventDefault();
+    if (!replyText.trim() || !selectedReport) return;
+    
+    setIsReplying(true);
+    try {
+      const res = await fetch('/api/error-report/reply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          reportId: selectedReport.id,
+          text: replyText
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setReplyText('');
+        // Update local state to show new reply instantly
+        setSelectedReport(prev => ({
+          ...prev,
+          replies: [...prev.replies, data.reply]
+        }));
+        fetchReports(); // refresh list behind the scenes
+      } else {
+        showToast(data.error || 'שגיאה בשליחת תגובה', 'error');
+      }
+    } catch (err) {
+      showToast('שגיאת תקשורת', 'error');
+    } finally {
+      setIsReplying(false);
+    }
+  };
+
+  const copyDetails = (report) => {
+    const details = `
+מאת: ${report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'לא ידוע'}
+זמן: ${report.time || new Date(report.createdAt).toLocaleString('he-IL')}
+חלון/דף: ${report.title || 'לא צוין'}
+כתובת URL: ${report.url || 'לא צוין'}
+שאילתות/פרמטרים: ${report.queryParams || 'אין'}
+תיאור התקלה:
+${report.userText}
+
+לחצנים אחרונים:
+${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.parse(report.lastButtons).map((b,i)=>`${i+1}. ${b}`).join('\n') : report.lastButtons) : 'אין מידע'}
+    `.trim();
+    
+    navigator.clipboard.writeText(details).then(() => {
+      showToast('הפרטים הועתקו ללוח!', 'success');
+    });
+  };
+
+  const showToast = (message, type) => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
+  
+  const openThread = (report) => {
+    setSelectedReport(report);
+    setActiveTab('thread');
+    
+    // Mark as read locally immediately if needed
+    if ((isProgrammer && !report.isReadByProgrammer) || (!isProgrammer && !report.isReadByUser)) {
+      setReports(prev => prev.map(r => r.id === report.id ? { 
+        ...r, 
+        isReadByProgrammer: isProgrammer ? true : r.isReadByProgrammer,
+        isReadByUser: !isProgrammer ? true : r.isReadByUser
+      } : r));
+    }
+  };
+  
+  const unreadCount = reports.filter(r => (isProgrammer && !r.isReadByProgrammer) || (!isProgrammer && !r.isReadByUser)).length;
 
   return (
     <>
       <button data-element-name="כפתור_ErrorReportButton_1" 
-        onClick={() => setIsOpen(true)}
-        title="דיווח על שגיאה"
+        onClick={() => {
+          setIsOpen(true);
+          setActiveTab('list');
+          fetchReports();
+        }}
+        title="מערכת דיווחי שגיאות"
         className="icon-nav-link"
         style={{ 
           background: 'none', 
@@ -93,85 +207,257 @@ export default function ErrorReportButton() {
           display: 'flex', 
           alignItems: 'center', 
           justifyContent: 'center',
-          color: '#6366f1', // modern indigo instead of scary red
+          color: '#6366f1',
           position: 'relative',
           padding: '0.25rem'
         }}
       >
         <LifeBuoy data-element-name="רכיב_ErrorReportButton_2" size={22} />
+        {unreadCount > 0 && (
+          <span style={{
+            position: 'absolute',
+            top: '0',
+            right: '0',
+            background: '#ef4444',
+            color: 'white',
+            borderRadius: '50%',
+            width: '14px',
+            height: '14px',
+            fontSize: '9px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontWeight: 'bold'
+          }}>
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
       </button>
 
       {isOpen && mounted && createPortal(
         <div style={{
           position: 'fixed',
           top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.5)',
+          background: 'rgba(0,0,0,0.6)',
           zIndex: 999999,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          direction: 'rtl'
+          direction: 'rtl',
+          fontFamily: 'system-ui, -apple-system, sans-serif'
         }}>
           <div style={{
-            background: 'var(--card-bg)',
+            background: 'var(--card-bg, #ffffff)',
             width: '90%',
-            maxWidth: '500px',
-            borderRadius: '16px',
-            boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            maxWidth: '600px',
+            maxHeight: '85vh',
+            borderRadius: '20px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden'
           }}>
-            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#eef2ff' }}>
-              <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <LifeBuoy data-element-name="רכיב_ErrorReportButton_3" size={20} /> דיווח על שגיאה במערכת
-              </h3>
-              <button data-element-name="כפתור_ErrorReportButton_4" onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6366f1' }}>
-                <X data-element-name="רכיב_ErrorReportButton_5" size={20} />
-              </button>
+            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color, #e5e7eb)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#eef2ff' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700' }}>
+                  <LifeBuoy data-element-name="רכיב_ErrorReportButton_3" size={22} /> מערכת תמיכה ושגיאות
+                </h3>
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                {activeTab === 'list' && (
+                  <button onClick={fetchReports} title="רענן" style={{ background: 'white', border: '1px solid #c7d2fe', borderRadius: '8px', padding: '0.4rem', cursor: 'pointer', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <RefreshCw size={16} />
+                  </button>
+                )}
+                <button data-element-name="כפתור_ErrorReportButton_4" onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6366f1', display: 'flex', alignItems: 'center' }}>
+                  <X data-element-name="רכיב_ErrorReportButton_5" size={24} />
+                </button>
+              </div>
             </div>
             
-            <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              
-              <div style={{ background: 'var(--input-bg)', padding: '0.75rem', borderRadius: '8px', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-                <p style={{ margin: '0 0 0.5rem 0' }}><strong>הנתונים הבאים יישלחו אוטומטית ברקע:</strong></p>
-                <ul style={{ margin: 0, paddingRight: '1.2rem' }}>
-                  <li>שעת הדיווח וכתובת המסך הנוכחי</li>
-                  <li>שם החלון ופרמטרים פעילים</li>
-                  <li>5 הלחצנים האחרונים שנלחצו</li>
-                </ul>
-              </div>
-
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: 'var(--text-color)', fontWeight: '500' }}>
-                  אנא תאר בקצרה מה ניסית לעשות ומה קרה:
-                </label>
-                <textarea data-element-name="טקסט_ErrorReportButton_6"
-                  value={userText}
-                  onChange={e => setUserText(e.target.value)}
-                  className="form-control"
-                  placeholder="לדוגמה: לחצתי על כפתור השמירה אך הדף נתקע והופיעה שגיאה אדומה..."
-                  style={{ width: '100%', height: '120px', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-color)', resize: 'none' }}
-                  required
-                />
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: '0.5rem' }}>
-                <button data-element-name="כפתור_ErrorReportButton_7" 
-                  type="button"
-                  onClick={() => setIsOpen(false)}
-                  style={{ background: 'transparent', color: '#64748b', border: 'none', padding: '0.5rem 1rem', borderRadius: '8px', fontWeight: '500', cursor: 'pointer' }}
+            {/* Header Tabs */}
+            {activeTab !== 'thread' && (
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color, #e5e7eb)' }}>
+                <button 
+                  onClick={() => setActiveTab('list')}
+                  style={{ flex: 1, padding: '1rem', background: activeTab === 'list' ? 'transparent' : '#f8fafc', border: 'none', borderBottom: activeTab === 'list' ? '2px solid #6366f1' : '2px solid transparent', color: activeTab === 'list' ? '#6366f1' : '#64748b', fontWeight: '600', cursor: 'pointer', fontSize: '1rem' }}
                 >
-                  ביטול
+                  פניות שלי {isProgrammer ? '(כל הדיווחים)' : ''}
                 </button>
-                <button data-element-name="כפתור_ErrorReportButton_8" 
-                  type="submit"
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#6366f1', color: 'white', border: 'none', padding: '0.5rem 1.25rem', borderRadius: '8px', fontWeight: '500', cursor: 'pointer' }}
+                <button 
+                  onClick={() => setActiveTab('new')}
+                  style={{ flex: 1, padding: '1rem', background: activeTab === 'new' ? 'transparent' : '#f8fafc', border: 'none', borderBottom: activeTab === 'new' ? '2px solid #6366f1' : '2px solid transparent', color: activeTab === 'new' ? '#6366f1' : '#64748b', fontWeight: '600', cursor: 'pointer', fontSize: '1rem' }}
                 >
-                  <Send data-element-name="רכיב_ErrorReportButton_9" size={16} /> שליחה למתכנת
+                  דיווח על תקלה חדשה
                 </button>
               </div>
-            </form>
+            )}
+            
+            {/* THREAD VIEW */}
+            {activeTab === 'thread' && selectedReport && (
+              <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+                <div style={{ padding: '0.75rem 1.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button onClick={() => { setActiveTab('list'); fetchReports(); }} style={{ background: 'white', border: '1px solid #cbd5e1', padding: '0.3rem 0.8rem', borderRadius: '8px', cursor: 'pointer', color: '#475569', fontWeight: '600', fontSize: '0.85rem' }}>
+                    חזור לרשימה
+                  </button>
+                  {isProgrammer && (
+                    <button onClick={() => copyDetails(selectedReport)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.3rem 0.8rem', borderRadius: '8px', cursor: 'pointer', color: '#0f172a', fontWeight: '600', fontSize: '0.85rem' }}>
+                      <Copy size={14} /> העתק פרטי מערכת
+                    </button>
+                  )}
+                </div>
+                
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f1f5f9' }}>
+                  {/* Original Report */}
+                  <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', alignSelf: 'flex-start', maxWidth: '85%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#64748b', fontSize: '0.85rem' }}>
+                      <User size={14} /> <strong>{selectedReport.employee ? selectedReport.employee.firstName + ' ' + selectedReport.employee.lastName : 'משתמש'}</strong>
+                      <span>•</span>
+                      <span>{new Date(selectedReport.createdAt).toLocaleString('he-IL')}</span>
+                    </div>
+                    <p style={{ margin: 0, color: '#0f172a', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                      {selectedReport.userText}
+                    </p>
+                  </div>
+                  
+                  {/* Replies */}
+                  {selectedReport.replies && selectedReport.replies.map(reply => {
+                    const isMe = (isProgrammer && reply.isProgrammer) || (!isProgrammer && !reply.isProgrammer);
+                    return (
+                      <div key={reply.id} style={{ 
+                        background: reply.isProgrammer ? '#eef2ff' : 'white', 
+                        padding: '1rem', 
+                        borderRadius: '12px', 
+                        border: `1px solid ${reply.isProgrammer ? '#c7d2fe' : '#e2e8f0'}`, 
+                        alignSelf: isMe ? 'flex-end' : 'flex-start',
+                        maxWidth: '85%' 
+                      }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: reply.isProgrammer ? '#4338ca' : '#64748b', fontSize: '0.85rem' }}>
+                          <User size={14} /> <strong>{reply.isProgrammer ? 'מתכנת מערכת' : (reply.employee ? reply.employee.firstName + ' ' + reply.employee.lastName : 'משתמש')}</strong>
+                          <span>•</span>
+                          <span>{new Date(reply.createdAt).toLocaleString('he-IL')}</span>
+                        </div>
+                        <p style={{ margin: 0, color: '#0f172a', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                          {reply.text}
+                        </p>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* Reply Form */}
+                <form onSubmit={handleReply} style={{ padding: '1rem', background: 'white', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.75rem' }}>
+                  <input 
+                    type="text" 
+                    value={replyText}
+                    onChange={e => setReplyText(e.target.value)}
+                    placeholder="הקלד תגובה..."
+                    style={{ flex: 1, padding: '0.75rem 1rem', borderRadius: '999px', border: '1px solid #cbd5e1', outline: 'none', background: '#f8fafc', fontSize: '0.95rem' }}
+                    required
+                  />
+                  <button 
+                    type="submit"
+                    disabled={isReplying}
+                    style={{ background: '#6366f1', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isReplying ? 'not-allowed' : 'pointer', opacity: isReplying ? 0.7 : 1 }}
+                  >
+                    <Send size={18} style={{ transform: 'rotate(180deg) translateX(2px)' }} />
+                  </button>
+                </form>
+              </div>
+            )}
+            
+            {/* LIST VIEW */}
+            {activeTab === 'list' && (
+              <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f1f5f9' }}>
+                {reports.length === 0 ? (
+                  <div style={{ textAlign: 'center', color: '#94a3b8', padding: '3rem 0' }}>
+                    <MessageSquare size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
+                    <p style={{ fontSize: '1.1rem' }}>אין דיווחים קיימים</p>
+                  </div>
+                ) : (
+                  reports.map(report => {
+                    const isUnread = (isProgrammer && !report.isReadByProgrammer) || (!isProgrammer && !report.isReadByUser);
+                    return (
+                      <div key={report.id} onClick={() => openThread(report)} style={{
+                        background: isUnread ? '#eef2ff' : 'white',
+                        border: `1px solid ${isUnread ? '#c7d2fe' : '#e2e8f0'}`,
+                        borderRadius: '12px',
+                        padding: '1.25rem',
+                        cursor: 'pointer',
+                        transition: 'all 0.2s',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
+                          <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                            {isUnread && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', display: 'inline-block' }} />}
+                            {report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'משתמש'}
+                          </h4>
+                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                            {new Date(report.updatedAt).toLocaleDateString('he-IL')} {new Date(report.updatedAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}
+                          </span>
+                        </div>
+                        <p style={{ margin: '0 0 0.75rem 0', color: '#475569', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {report.userText}
+                        </p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#64748b' }}>
+                          <MessageSquare size={14} />
+                          <span>{report.replies?.length || 0} תגובות</span>
+                          {isProgrammer && (
+                            <>
+                              <span style={{ margin: '0 0.5rem' }}>|</span>
+                              <span>מסך: {report.title || 'לא ידוע'}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            )}
+            
+            {/* NEW REPORT VIEW */}
+            {activeTab === 'new' && (
+              <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f8fafc', flex: 1, overflowY: 'auto' }}>
+                <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '0.9rem', color: '#475569', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+                  <Info color="#6366f1" size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+                  <div>
+                    <strong style={{ display: 'block', color: '#0f172a', marginBottom: '0.25rem' }}>הנתונים הבאים יישלחו למתכנת אוטומטית ברקע:</strong>
+                    שעת הדיווח, כתובת המסך (URL), שם המסך, ו-5 הלחצנים האחרונים עליהם לחצת לפני שדיווחת.
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#0f172a', fontWeight: '600' }}>
+                    תאר את התקלה בצורה המפורטת ביותר (מה ניסית לעשות, ומה קרה?):
+                  </label>
+                  <textarea data-element-name="טקסט_ErrorReportButton_6"
+                    value={userText}
+                    onChange={e => setUserText(e.target.value)}
+                    className="form-control"
+                    placeholder="לדוגמה: לחצתי על כפתור השמירה, הופיעה שגיאה אדומה והדף קפא..."
+                    style={{ width: '100%', height: '140px', padding: '1rem', borderRadius: '12px', border: '1px solid #cbd5e1', background: 'white', color: '#0f172a', resize: 'none', fontSize: '1rem' }}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: 'auto', paddingTop: '1rem' }}>
+                  <button data-element-name="כפתור_ErrorReportButton_7" 
+                    type="button"
+                    onClick={() => setActiveTab('list')}
+                    style={{ background: 'transparent', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.6rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
+                  >
+                    ביטול
+                  </button>
+                  <button data-element-name="כפתור_ErrorReportButton_8" 
+                    type="submit"
+                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#6366f1', color: 'white', border: 'none', padding: '0.6rem 1.5rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.3)' }}
+                  >
+                    <Send data-element-name="רכיב_ErrorReportButton_9" size={16} /> שליחה למתכנת
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>,
         document.body

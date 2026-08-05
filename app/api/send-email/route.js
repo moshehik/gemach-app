@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 
 export async function POST(request) {
@@ -59,8 +59,24 @@ export async function POST(request) {
       fileContent: finalFileContent
     };
 
-    // 3. Call Google Apps Script
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
+    // 3. Call Google Apps Script - Get URL from settings
+    const settings = await prisma.systemSetting.findMany({
+      where: {
+        key: { in: ['email_link_a', 'email_link_b', 'email_routing_strategy'] }
+      }
+    });
+    const linkA = settings.find(s => s.key === 'email_link_a')?.value;
+    const linkB = settings.find(s => s.key === 'email_link_b')?.value;
+    const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
+
+    let scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
+    
+    // For standard emails, only use B if strategy is 'all_b'. Otherwise use A.
+    if (strategy === 'all_b' && linkB) {
+      scriptUrl = linkB;
+    } else if (linkA) {
+      scriptUrl = linkA;
+    }
     
     const response = await fetch(scriptUrl, {
       method: 'POST',

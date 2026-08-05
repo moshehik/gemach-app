@@ -40,9 +40,10 @@ export default async function RootLayout({ children }) {
   let hideInternalMessaging = false;
   let hideGregorianCalendar = false;
   let enableAiSpecific = false;
+  let hideErrorReporting = false;
   try {
     const settings = await prisma.systemSetting.findMany({
-      where: { key: { in: ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees'] } }
+      where: { key: { in: ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting'] } }
     });
     
     const requireLoginSetting = settings.find(s => s.key === 'require_login');
@@ -73,6 +74,11 @@ export default async function RootLayout({ children }) {
     const enableAiSpecificSetting = settings.find(s => s.key === 'enable_ai_specific_employees');
     if (enableAiSpecificSetting && enableAiSpecificSetting.value === 'true') {
       enableAiSpecific = true;
+    }
+
+    const hideErrorReportingSetting = settings.find(s => s.key === 'hide_error_reporting');
+    if (hideErrorReportingSetting && hideErrorReportingSetting.value === 'true') {
+      hideErrorReporting = true;
     }
   } catch (err) {
     console.warn('Failed to fetch settings:', err?.message || err);
@@ -251,7 +257,7 @@ export default async function RootLayout({ children }) {
                   <ThemeToggle data-element-name="רכיב_layout_18" employeeId={authToken?.value} initialTheme={themePreference} />
                   <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 0.25rem' }}></div>
                   {isProgrammer && <MessageHistoryButton data-element-name="רכיב_layout_msg_hist" />}
-                  <ErrorReportButton data-element-name="רכיב_layout_19" />
+                  {!hideErrorReporting && <ErrorReportButton data-element-name="רכיב_layout_19" />}
                   {authToken?.value && !hideInternalMessaging && <NotificationBell data-element-name="רכיב_layout_20" employeeId={authToken.value} />}
                   <UserMenu data-element-name="רכיב_layout_21" />
                 </div>

@@ -2,15 +2,58 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 
+export async function GET(request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token');
+    
+    if (!token?.value) {
+      return NextResponse.json({ success: false, error: 'לא מורשה' }, { status: 401 });
+    }
+
+    const employee = await prisma.employee.findUnique({ where: { id: token.value } });
+    if (!employee) {
+      return NextResponse.json({ success: false, error: 'משתמש לא נמצא' }, { status: 404 });
+    }
+
+    const isProgrammer = employee.roleId === 2;
+    
+    // Fetch reports: programmers see all, regular users see their own
+    const whereClause = isProgrammer ? {} : { employeeId: employee.id };
+    
+    const reports = await prisma.errorReport.findMany({
+      where: whereClause,
+      orderBy: { updatedAt: 'desc' },
+      include: {
+        employee: { select: { firstName: true, lastName: true } },
+        replies: {
+          orderBy: { createdAt: 'asc' },
+          include: {
+            employee: { select: { firstName: true, lastName: true } }
+          }
+        }
+      }
+    });
+
+    return NextResponse.json({ success: true, reports, isProgrammer });
+  } catch (error) {
+    console.error('Error fetching error reports:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
+
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token');
 
+    let employeeId = null;
     let employeeName = 'לא ידוע / אורח';
+    
     if (token?.value) {
       const emp = await prisma.employee.findUnique({ where: { id: token.value } });
       if (emp) {
+        employeeId = emp.id;
         employeeName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
       }
     }
@@ -22,22 +65,51 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'יש להזין תיאור שגיאה' }, { status: 400 });
     }
 
-    // Find programmers
+    // Save to Database
+    const newReport = await prisma.errorReport.create({
+      data: {
+        employeeId,
+        time,
+        url,
+        title,
+        queryParams,
+        lastButtons: lastButtons ? JSON.stringify(lastButtons) : null,
+        userText,
+        isReadByUser: true,
+        isReadByProgrammer: false
+      }
+    });
+
+    // Find programmers to email (optional - keep as backup)
     const programmers = await prisma.employee.findMany({
       where: { roleId: 2, isActive: true, email: { not: null } }
     });
 
-    if (programmers.length === 0) {
-      return NextResponse.json({ success: false, error: 'לא נמצא מתכנת במערכת עם כתובת מייל פעילה' }, { status: 404 });
-    }
+    if (programmers.length > 0) {
+      // Determine Script URL from settings
+      const settings = await prisma.systemSetting.findMany({
+        where: {
+          key: { in: ['email_link_a', 'email_link_b', 'email_routing_strategy'] }
+        }
+      });
+      const linkA = settings.find(s => s.key === 'email_link_a')?.value;
+      const linkB = settings.find(s => s.key === 'email_link_b')?.value;
+      const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
 
-    const scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
-    
-    const hiddenData = JSON.stringify({
-      employeeName, time, title, url, queryParams, lastButtons, userText, status: 'OPEN'
-    });
+      let scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
+      
+      // For bugs, use B if strategy is 'all_b' OR 'bugs_b_rest_a'
+      if ((strategy === 'all_b' || strategy === 'bugs_b_rest_a') && linkB) {
+        scriptUrl = linkB;
+      } else if (linkA) {
+        scriptUrl = linkA;
+      }
+      
+      const hiddenData = JSON.stringify({
+        employeeName, time, title, url, queryParams, lastButtons, userText, status: 'OPEN', reportId: newReport.id
+      });
 
-    const emailContent = `
+      const emailContent = `
 דיווח שגיאה מאת: ${employeeName}
 זמן: ${time}
 חלון/דף: ${title}
@@ -53,24 +125,25 @@ ${userText}
 ---AI_DATA_START---
 ${hiddenData}
 ---AI_DATA_END---
-    `.trim();
+      `.trim();
 
-    for (const prog of programmers) {
-      try {
-        await fetch(scriptUrl, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            to: prog.email,
-            cc: '',
-            subject: 'דיווח תקלה ממערכת הגמח - לטיפול AI',
-            body: emailContent,
-            fileName: 'error_report.txt',
-            fileContent: Buffer.from('Error Report').toString('base64')
-          })
-        });
-      } catch (e) {
-        console.error('Failed to send error report to', prog.email, e);
+      for (const prog of programmers) {
+        try {
+          await fetch(scriptUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              to: prog.email,
+              cc: '',
+              subject: 'דיווח תקלה ממערכת הגמח - לטיפול AI',
+              body: emailContent,
+              fileName: 'error_report.txt',
+              fileContent: Buffer.from('Error Report').toString('base64')
+            })
+          });
+        } catch (e) {
+          console.error('Failed to send error report to', prog.email, e);
+        }
       }
     }
 
@@ -90,7 +163,7 @@ ${hiddenData}
         console.error('Failed to append to local CSV', err);
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, report: newReport });
   } catch (error) {
     console.error('Error sending error report:', error);
     return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
