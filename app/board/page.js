@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -48,6 +48,11 @@ export default function BoardPage() {
   
   const [jumpDate, setJumpDate] = useState(null);
 
+  // Tracks the AbortController for the in-flight fetchOrdersForMonth request, so clicking
+  // through months quickly cancels the previous (slower) request instead of letting it
+  // resolve later and overwrite the orders of the month currently being viewed.
+  const activeOrdersRequestRef = useRef(null);
+
   useEffect(() => {
     if (jumpDate) {
       setSelectedDate(jumpDate);
@@ -75,7 +80,14 @@ export default function BoardPage() {
   // Fetch orders for the currently viewed month
   const fetchOrdersForMonth = useCallback(async () => {
     if (isAiModeActive) return;
-    
+
+    // Cancel whatever request is still in flight before starting a new one.
+    if (activeOrdersRequestRef.current) {
+      activeOrdersRequestRef.current.abort();
+    }
+    const controller = new AbortController();
+    activeOrdersRequestRef.current = controller;
+
     try {
       let hCurrent;
       try {
@@ -122,21 +134,27 @@ export default function BoardPage() {
         setLoading(true);
       }
 
-      const res = await fetch(`/api/orders?${queryParams.toString()}`);
+      const res = await fetch(`/api/orders?${queryParams.toString()}`, { signal: controller.signal });
       const data = await res.json();
-      
+
       // Update cache
       boardCache.set(cacheKey, data);
-      
+
       if (data.data) {
         setOrders(data.data);
       } else if (data.orders) {
         setOrders(data.orders);
       }
     } catch (err) {
+      if (err.name === 'AbortError') return; // superseded by a newer month's request
       console.error('Failed to fetch orders:', err);
     } finally {
-      setLoading(false);
+      // Only the still-current request gets to clear the loading flag / ref - a request
+      // that was aborted and superseded must not stomp on the newer one's state.
+      if (activeOrdersRequestRef.current === controller) {
+        setLoading(false);
+        activeOrdersRequestRef.current = null;
+      }
     }
   }, [selectedDate, search, advFilters, isAiModeActive]);
 
