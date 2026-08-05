@@ -1,7 +1,9 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma, { auditAs } from '../../../lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 export async function POST(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const { orderItemId, issueType } = await request.json(); // issueType: 'not-returned' | 'returned-bad'
 

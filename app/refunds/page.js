@@ -12,6 +12,10 @@ export default function RefundsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all'); // 'all', 'pending', 'executed'
   const [isProcessing, setIsProcessing] = useState(false);
+  const [refundsPage, setRefundsPage] = useState(1);
+  const [refundsHasMore, setRefundsHasMore] = useState(false);
+  const [loadingMoreRefunds, setLoadingMoreRefunds] = useState(false);
+  const REFUNDS_PAGE_SIZE = 100;
 
   const [activeTab, setActiveTab] = useState('refunds'); // 'refunds' or 'debts'
   const [debts, setDebts] = useState([]);
@@ -42,19 +46,30 @@ export default function RefundsPage() {
 
   async function fetchRefunds(isPrefetch = false) {
     if (!isPrefetch) setLoading(true);
-    
+
     // SWR Cache Hit
     if (!isPrefetch && refundsCache.has('refunds')) {
-      setRefunds(refundsCache.get('refunds'));
+      const cached = refundsCache.get('refunds');
+      setRefunds(cached.data);
+      setRefundsPage(cached.page);
+      setRefundsHasMore(cached.page < cached.totalPages);
       setLoading(false); // UI becomes interactive instantly
     }
 
     try {
-      const res = await fetch('/api/refunds');
+      // Paginated fetch: GET /api/refunds defaulted to the most recent 100 rows with
+      // no way to reach anything older. Requesting page 1 explicitly opts into the
+      // paginated response shape ({ data, total, totalPages }) so "טען עוד" below can
+      // page through the rest instead of older refunds being permanently invisible.
+      const res = await fetch(`/api/refunds?page=1&limit=${REFUNDS_PAGE_SIZE}`);
       const data = await res.json();
-      if (Array.isArray(data)) {
+      if (data && Array.isArray(data.data)) {
         refundsCache.set('refunds', data); // Update Cache silently
-        if (!isPrefetch) setRefunds(data);
+        if (!isPrefetch) {
+          setRefunds(data.data);
+          setRefundsPage(1);
+          setRefundsHasMore(1 < data.totalPages);
+        }
       } else {
         if (!isPrefetch) setRefunds([]);
       }
@@ -64,6 +79,25 @@ export default function RefundsPage() {
       if (!isPrefetch) setLoading(false);
     }
   };
+
+  async function loadMoreRefunds() {
+    if (loadingMoreRefunds || !refundsHasMore) return;
+    setLoadingMoreRefunds(true);
+    try {
+      const nextPage = refundsPage + 1;
+      const res = await fetch(`/api/refunds?page=${nextPage}&limit=${REFUNDS_PAGE_SIZE}`);
+      const data = await res.json();
+      if (data && Array.isArray(data.data)) {
+        setRefunds(prev => [...prev, ...data.data]);
+        setRefundsPage(nextPage);
+        setRefundsHasMore(nextPage < data.totalPages);
+      }
+    } catch (err) {
+      console.error('Failed to load more refunds:', err);
+    } finally {
+      setLoadingMoreRefunds(false);
+    }
+  }
 
   useEffect(() => {
     fetchRefunds();
@@ -120,7 +154,11 @@ export default function RefundsPage() {
   };
 
   const cancelRefund = async (id) => {
-    if (!(await window.customConfirm('האם אתה בטוח שברצונך לבטל ולמחוק בקשת זיכוי זו לחלוטין?'))) {
+    const refund = refunds.find(r => r.id === id);
+    const confirmMessage = refund?.isExecuted
+      ? 'זיכוי זה כבר בוצע ויש תשלום הפכי (זיכוי) רשום בכרטיס ההזמנה. מחיקת הבקשה תמחק גם את תנועת ההחזר הזו מכרטיס ההזמנה. להמשיך?'
+      : 'האם אתה בטוח שברצונך לבטל ולמחוק בקשת זיכוי זו לחלוטין?';
+    if (!(await window.customConfirm(confirmMessage))) {
       return;
     }
 
@@ -412,6 +450,17 @@ export default function RefundsPage() {
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+        {!loading && refundsHasMore && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '1.25rem' }}>
+            <button
+              onClick={loadMoreRefunds}
+              disabled={loadingMoreRefunds}
+              style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', border: '1px solid var(--element-border)', background: 'var(--card-bg)', color: 'var(--primary-color)', fontWeight: '600', cursor: loadingMoreRefunds ? 'default' : 'pointer' }}
+            >
+              {loadingMoreRefunds ? 'טוען...' : 'טען זיכויים ישנים יותר'}
+            </button>
           </div>
         )}
       </div>
