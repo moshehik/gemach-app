@@ -425,8 +425,39 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
           amount: parseFloat(creditCardData.amount),
           paymentDate: new Date().toISOString()
         };
-        onPaymentsChange([...payments, added]);
-        setShowCreditModal(false);
+
+        // הכרטיס כבר חויב בפועל (כסף אמיתי זז) - חובה לשמור את התשלום בשרת מיד, לא רק
+        // ב-state המקומי. אחרת קריסת טאב/נפילת רשת בין רגע החיוב לשמירה הידנית הבאה
+        // משאירה חיוב אמיתי בלי שום רישום על ההזמנה. אותו endpoint שמשמש ליצירת תשלום
+        // ידני (POST /api/payments) - אם ההזמנה עדיין "עגלה" הוא גם הופך אותה למוזמנת
+        // לצמיתות, בדיוק כמו בשמירה הרגילה.
+        let savedPayment = null;
+        try {
+          const saveRes = await fetch('/api/payments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderId,
+              amount: added.amount,
+              paymentMethod: added.paymentMethod,
+              notes: added.notes
+            })
+          });
+          if (saveRes.ok) savedPayment = await saveRes.json();
+        } catch (persistErr) {
+          // saveRes נשאר null - מטופל למטה
+        }
+
+        if (savedPayment) {
+          onPaymentsChange([...payments, savedPayment]);
+          setShowCreditModal(false);
+        } else {
+          // החיוב הצליח אבל השמירה בשרת נכשלה - עדיין מוסיפים ל-state המקומי (יישמר
+          // בשמירה הידנית הבאה), אבל חובה להתריע בקול רם: הכסף כבר נגבה מהלקוח.
+          onPaymentsChange([...payments, added]);
+          setShowCreditModal(false);
+          alert(`שים לב: הכרטיס חויב בהצלחה בסך ₪${added.amount}, אך שמירת התשלום בשרת נכשלה. יש ללחוץ מיד על "שמור" כדי לתעד את התשלום בהזמנה. אם השמירה הידנית נכשלת גם היא - יש לתעד את התשלום באופן חריג ולפנות לתמיכה, כדי שלא יישאר חיוב בלי רישום.`);
+        }
       } else {
         setCreditError(data.error || 'שגיאה בחיוב הכרטיס');
       }

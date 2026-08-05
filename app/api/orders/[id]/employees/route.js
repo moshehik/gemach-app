@@ -87,7 +87,6 @@ export async function GET(request, { params }) {
     });
   } catch (error) {
     console.error('Error fetching order employees:', error);
-    require('fs').appendFileSync('c:/Users/moshe/Desktop/גמח שמלות חדש/api_error.log', error.stack + '\\n');
     return NextResponse.json({ error: 'Failed to fetch order employees', details: error.message }, { status: 500 });
   }
 }

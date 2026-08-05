@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
-import { calculatePaymentStatus } from '../../../lib/orderStatus';
+import { calculatePaymentStatus, calculateOrderStatus } from '../../../lib/orderStatus';
 
 export default function PrintOrderPage() {
   const searchParams = useSearchParams();
@@ -74,21 +74,26 @@ export default function PrintOrderPage() {
     }
   }, [loading, error, order]);
 
-  const getOrderStatus = (order) => {
-    if (!order) return '';
-    if (order.status === 'בוטל' || order.status === 'ARCHIVED') return 'ארכיון/מבוטל';
-    const hasUnreturned = order.items && order.items.some(i => i.isTaken && !i.isReturned && !i.isDeleted);
-    const hasPending = order.items && order.items.some(i => !i.isTaken && !i.isDeleted);
-    if (hasUnreturned) return 'פעיל (אצל לקוח)';
-    if (hasPending) return 'ממתין (טרם נלקח)';
-    return 'הוחזר (מלא)';
-  };
+  // סטטוס ההשכרה מגיע כעת מ-lib/orderStatus.js (מקור האמת היחיד לסטטוס הזמנה) במקום
+  // עותק מקומי עם אוצר מילים משלו - כדי שלא יהיה פער בין מה שמוצג כאן לבין שאר המערכת.
+  const getOrderStatus = (order) => calculateOrderStatus(order);
 
+  // ממפה את אוצר המילים המלא של lib/orderStatus.js (כולל מצבים חלקיים/עתידיים/טיוטה)
+  // לארבעת מחלקות העיצוב הקיימות בדף ההדפסה.
   const getStatusClass = (status) => {
-    if (status.includes('ארכיון') || status.includes('מבוטל')) return 'status-archived';
-    if (status.includes('פעיל')) return 'status-active';
-    if (status.includes('הוחזר')) return 'status-returned';
-    return 'status-pending';
+    switch (status) {
+      case 'מחוק':
+        return 'status-archived';
+      case 'הוחזר':
+        return 'status-returned';
+      case 'הושכר':
+      case 'הושכר חלקי':
+      case 'הוחזר חלקי':
+        return 'status-active';
+      default:
+        // 'בקרוב', 'עבר', 'טיוטה' - טרם נלקח בפועל
+        return 'status-pending';
+    }
   };
 
   return (
