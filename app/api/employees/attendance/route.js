@@ -33,9 +33,8 @@ export async function GET(request) {
               lte: endDate
             }
           },
-          orderBy: {
-            date: 'asc'
-          }
+          // כרונולוגי מהישן לחדש - גם דוח כלל העובדים וגם ההדפסה של כל עובד משתמשים בסדר הזה
+          orderBy: [{ date: 'asc' }, { entryTime: 'asc' }]
         },
         department: true
       },
