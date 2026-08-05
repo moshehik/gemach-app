@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { UserCircle, LogOut, Clock, CheckCircle, LogIn, Monitor } from 'lucide-react';
 import LoginScreen from './LoginScreen';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 export default function UserMenu() {
   const router = useRouter();
@@ -28,17 +29,21 @@ export default function UserMenu() {
   }, []);
 
   useEffect(() => {
-    fetch('/api/me')
-      .then(res => res.json())
+    // מטמון משותף — אותה קריאת /api/me משרתת גם את PopupProvider ודפים נוספים.
+    // 401 (לא מחובר) נזרק כשגיאה מהמטמון ומטופל כ"אורח" בדיוק כמו קודם.
+    fetchSharedJson('/api/me', { ttl: TTL.STATIC })
       .then(data => {
-        if (data.success) {
+        if (data && data.success) {
           setUser(data.employee);
           setActiveShift(data.activeShift);
         }
       })
       .catch(err => {
+        // 401 = לא מחובר (מצב אורח רגיל) — לא שגיאה אמיתית.
         // Log as string to prevent Next.js dev overlay from catching the Error object
-        console.warn('Network or fetch error checking user session:', err.message || 'Failed to fetch');
+        if (!(err?.message || '').includes('HTTP 401')) {
+          console.warn('Network or fetch error checking user session:', err.message || 'Failed to fetch');
+        }
       })
       .finally(() => setLoading(false));
   }, []);

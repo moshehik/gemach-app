@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
+import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 
 /** מחשב את הזמן שנותר עד ל-deadline, מתעדכן כל שנייה. null כשהזמן פג. */
 function useCountdown(deadline) {
@@ -106,8 +107,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   }));
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(res => res.json())
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then(data => {
         if (Array.isArray(data)) {
           setSettings(data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {}));

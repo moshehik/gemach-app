@@ -8,6 +8,7 @@ import { getHebrewDateString } from '../../lib/hebrewDate';
 import { addHistory } from '../../lib/historyManager';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import OrderPrintMenu from './OrderPrintMenu';
+import { fetchSharedJson, TTL } from '../../lib/apiCache';
 
 export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const { getLabel } = useLabels();
@@ -86,8 +87,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   };
 
   useEffect(() => {
-    fetch('/api/settings')
-      .then(res => res.json())
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then(data => {
         const altSetting = Array.isArray(data) ? data.find(s => s.key === 'enable_alterations') : null;
         if (altSetting && altSetting.value === 'false') {

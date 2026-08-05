@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { X, Check, Loader2, Search } from 'lucide-react';
+import { useSystemSettings } from '@/lib/useCachedFetch';
 
 export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = '' }) {
   const [orderId, setOrderId] = useState(initialOrderId);
@@ -13,20 +14,7 @@ export default function QuickPaymentModal({ isOpen, onClose, initialOrderId = ''
   const [searching, setSearching] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [settings, setSettings] = useState({});
-
-  useEffect(() => {
-    fetch('/api/settings')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setSettings(data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {}));
-        } else {
-          setSettings(data || {});
-        }
-      })
-      .catch(console.error);
-  }, []);
+  const { settings } = useSystemSettings();
 
   const paymentMethodOptions = settings.ALLOWED_PAYMENT_METHODS 
     ? settings.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean) 

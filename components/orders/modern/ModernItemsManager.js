@@ -13,6 +13,7 @@ import ItemCapacityModal from '../ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../../HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { isWithinItemEditWindow } from '../../../lib/orderItemEditWindow';
+import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 
 // שדות פנימיים של עגלת הקניות (טיימר ההחזקה) — לא מידע שמעניין את המשתמש ביומן השינויים
 const HIDDEN_HISTORY_FIELDS = ['id', 'orderId', 'dressItemId', 'deletedAt', 'barcode', 'barcodePrefix', 'cartStatus', 'cartStatusDate'];
@@ -103,8 +104,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
   useEffect(() => {
     setMounted(true);
-    fetch('/api/settings')
-      .then(res => res.json())
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then(data => {
         if (Array.isArray(data)) {
           setSettings(data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {}));

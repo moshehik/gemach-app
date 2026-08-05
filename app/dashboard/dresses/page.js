@@ -6,8 +6,7 @@ import Link from 'next/link';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { RefreshCw, Trash2, CheckCircle, XCircle, List, ArrowUp, ArrowDown, ArrowUpDown, X, Search, Filter, Plus } from 'lucide-react';
 import { useLabels } from '@/app/components/LabelsContext';
-
-const dressesCache = new Map();
+import { fetchSharedJson, readCache, TTL } from '@/lib/apiCache';
 
 export default function DressesManagement() {
   const { getLabel } = useLabels();
@@ -48,24 +47,24 @@ export default function DressesManagement() {
         advItemDeleted: advancedFilters.itemDeleted
       });
 
-      const cacheKey = queryParams.toString();
-      
-      // SWR: Instant Cache Hit
-      if (!isPrefetch && dressesCache.has(cacheKey)) {
-        const cachedData = dressesCache.get(cacheKey);
-        setDresses(cachedData.data);
-        setTotalPages(cachedData.totalPages);
-        setTotalDresses(cachedData.total);
+      const url = `/api/dresses?${queryParams.toString()}`;
+
+      // מטמון משותף (SWR): נתונים שנטענו כבר מוצגים מיידית; mutations לשמלות/פריטים
+      // מבטלות את המטמון אוטומטית דרך lib/apiCache.js
+      const cached = readCache(url);
+      if (!isPrefetch && cached && Array.isArray(cached.data)) {
+        setDresses(cached.data);
+        setTotalPages(cached.totalPages || 1);
+        setTotalDresses(cached.total || 0);
         setLoading(false); // UI becomes interactive instantly
       }
 
-      const res = await fetch(`/api/dresses?${queryParams.toString()}`);
-      const data = await res.json();
-      
+      const data = await fetchSharedJson(url, { ttl: TTL.LIST });
+
       let parsedData = [];
       let parsedTotalPages = 1;
       let parsedTotal = 0;
-      
+
       if (data && Array.isArray(data.data)) {
         parsedData = data.data;
         parsedTotalPages = data.totalPages || 1;
@@ -77,9 +76,6 @@ export default function DressesManagement() {
       } else {
         console.error('API returned non-array:', data);
       }
-      
-      // Update Cache silently
-      dressesCache.set(cacheKey, { data: parsedData, totalPages: parsedTotalPages, total: parsedTotal });
 
       if (!isPrefetch && targetPage === page) {
         setDresses(parsedData);
@@ -95,9 +91,8 @@ export default function DressesManagement() {
   };
 
   const fetchSettings = async () => {
-    const res = await fetch('/api/settings');
-    const data = await res.json();
-    
+    const data = await fetchSharedJson('/api/settings', { ttl: TTL.STATIC });
+
     const settingsObj = { useModelNames: 'true', useFileNamesForImages: 'true', hide_dress_images: 'false' };
     if (Array.isArray(data)) {
       data.forEach(s => {
