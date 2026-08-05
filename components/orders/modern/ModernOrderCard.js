@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   X, Info, Package, RefreshCcw, CreditCard, History, User, Phone, Calendar,
   ScanLine, Wallet, PenTool, Check, Printer, Trash2, Save, Undo2, ArrowRight,
-  FileText, ClipboardList, Mail, Clock, Lock, LockOpen
+  FileText, ClipboardList, Mail, Clock, Lock, LockOpen, ShieldAlert
 } from 'lucide-react';
 import { calculateOrderStatus, getStatusColor } from '../../../lib/orderStatus';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
@@ -248,13 +248,25 @@ export default function ModernOrderCard({
 
               <div className="moc-topbar-sep" />
 
+              {/* שני מצבים ברורים: שמירה רגילה מול שמירה שתעצור לבקשת אישור מנהל בגלל יתרת
+                  חוב חדשה (ר' handleSave - הבדיקה totalRequired-totalPaid>0). needs-approval
+                  משנה את גוון האייקון, מוסיף תג מגן ותג-סכום כדי שהמשתמש ידע מראש, בלי
+                  לשנות שום דבר בלוגיקת האישור עצמה. */}
               <button
-                className="moc-icon-btn-soft primary"
-                title="שמור שינויים"
+                className={`moc-icon-btn-soft primary save-btn ${debt > 0 ? 'needs-approval' : ''}`}
+                title={debt > 0
+                  ? `שמירה עם יתרת חוב של ₪${debt.toLocaleString('he-IL')} תדרוש אישור מנהל`
+                  : 'שמור שינויים'}
                 onClick={() => onSave()}
                 disabled={saving}
               >
                 {saving ? <span className="moc-spinner" /> : <Save size={18} />}
+                {!saving && debt > 0 && (
+                  <>
+                    <span className="moc-mini-badge"><ShieldAlert size={9} /></span>
+                    <span className="moc-amt-badge">₪{debt.toLocaleString('he-IL')}</span>
+                  </>
+                )}
               </button>
 
               <button

@@ -135,6 +135,13 @@ export default function OrderDetailsPage({ params }) {
   const itemsManagerRef = useRef(null); // מאפשר ל"סריקה מהירה" בסיידבר להפעיל השכרה/החזרה בטאב הפריטים
   const paymentsManagerRef = useRef(null); // מאפשר לאייקון החוב בטופ-בר לפתוח את חלון נדרים פלוס
 
+  // תצוגה מקדימה חיה של המחיר (ר' app/api/orders/[id]/preview-pricing) - רצה ברקע כשעוברים
+  // לטאב תשלומים עם שינויים שטרם נשמרו, כדי שהסכום שרואים לפני "שמור" יהיה מדויק (כולל
+  // דמי ביטול/שינויי תאריך שהחישוב המקומי הפשוט למטה לא יודע לחשב). previewSeqRef מבטיח
+  // שתשובה איטית ממרוץ קודם לא תדרוס תוצאה חדשה יותר.
+  const [isLivePreviewing, setIsLivePreviewing] = useState(false);
+  const previewSeqRef = useRef(0);
+
   // Fetch Order
   useEffect(() => {
     if (!id) return;
@@ -204,11 +211,13 @@ export default function OrderDetailsPage({ params }) {
 
   // תצוגה מקדימה של הסכום הכולל: פריט שסומן למחיקה מקומית אך עדיין לא נשמר (isDeleted=true
   // אבל אין עדיין deletedAt - זה נחתם רק בשמירה, ר' lib/pricingEngine.js) לא נספר בסכום, כמו
-  // שפריט חדש כבר מעדכן את הסכום מיד עם האישור. לא מדויק כמו החישוב המלא של השרת (לא כולל
-  // למשל דמי ביטול) - זו רק תצוגה מקדימה עד לשמירה בפועל, שאז obligations יתעדכן מהשרת.
+  // שפריט חדש כבר מעדכן את הסכום מיד עם האישור. שורה עם isPreview=true היא כבר תוצאה של
+  // חישוב מלא ומדויק מהשרת (ר' preview-pricing למטה) שכולל גם דמי ביטול/זיכויים לפריט הזה -
+  // ולכן היא לא מוחרגת כמו החישוב המקומי הגולמי.
   const totalRequired = obligations
     .filter(o => {
       if (o.isDeleted) return false;
+      if (o.isPreview) return true;
       if (o.orderItemId) {
         const relatedItem = items.find(i => i.id === o.orderItemId);
         if (relatedItem?.isDeleted && !relatedItem?.deletedAt) return false;
@@ -217,6 +226,48 @@ export default function OrderDetailsPage({ params }) {
     })
     .reduce((sum, obs) => sum + obs.amount, 0);
   const totalPaid = payments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+
+  // מחשב מחדש ברקע כשעוברים לטאב תשלומים עם שינויים שטרם נשמרו (הוספת/מחיקת פריט, שינוי
+  // תאריך אירוע/חו"ל וכו') - כדי שהסכום שרואים בטאב התשלומים לפני "שמור" יהיה כבר מדויק,
+  // ולא רק ההערכה הגולמית למעלה. מוחלף רק על חלק החיובים האוטומטיים (isManual===false);
+  // חיובים ידניים שהמשתמש הוסיף/ערך נשארים כמות שהם. ר' app/api/orders/[id]/preview-pricing.
+  useEffect(() => {
+    if (activeTab !== 'payments' || !hasUnsavedChanges || !order?.orderId) return;
+    const mySeq = ++previewSeqRef.current;
+    const timer = setTimeout(async () => {
+      setIsLivePreviewing(true);
+      try {
+        const res = await fetch(`/api/orders/${order.orderId}/preview-pricing`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            items,
+            order: {
+              eventDate: order.eventDate,
+              isAbroad: order.isAbroad,
+              isWeekdayEvent: order.isWeekdayEvent,
+              fromDate: order.fromDate,
+              toDate: order.toDate
+            }
+          })
+        });
+        if (mySeq !== previewSeqRef.current || !res.ok) return;
+        const data = await res.json();
+        if (mySeq !== previewSeqRef.current) return; // תשובה איטית ממרוץ קודם - התעלמות
+        setObligations(prev => {
+          const manual = prev.filter(o => o.isManual !== false);
+          const autoPreview = (data.newObligations || []).map(o => ({ ...o, isPreview: true }));
+          return [...manual, ...autoPreview];
+        });
+      } catch (err) {
+        console.error('Pricing preview failed', err);
+      } finally {
+        if (mySeq === previewSeqRef.current) setIsLivePreviewing(false);
+      }
+    }, 400);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, items, order?.eventDate, order?.isAbroad, order?.isWeekdayEvent, order?.fromDate, order?.toDate, order?.orderId, hasUnsavedChanges]);
 
   // חוסם סגירה/רענון של החלון רק כשבאמת יש שינויים שלא נשמרו.
   // יתרת חוב לא נחסמת כאן: הדפדפן מתעלם מהודעה מותאמת ומציג תמיד טקסט גנרי ("ייתכן שהשינויים
@@ -922,6 +973,7 @@ export default function OrderDetailsPage({ params }) {
                 totalPaid={totalPaid}
                 customer={order.customer}
                 onOrderUpdated={handleOrderUpdate}
+                isLivePreviewing={isLivePreviewing}
               />
             ),
             history: (

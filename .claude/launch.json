@@ -12,6 +12,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--", "--port", "3005"],
       "port": 3005
+    },
+    {
+      "name": "gemach-dev-3033",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3033"],
+      "port": 3033
     }
   ]
 }
