@@ -54,7 +54,11 @@ export default function NotificationBell({ employeeId }) {
 
   if (!employeeId) return null;
 
-  const unreadCount = notifications.filter(n => !n.isRead).length;
+  // Mirror /messages's fetchData filtering: archived messages (personal isArchived,
+  // or broadcast messages already in this employee's archivedBy) shouldn't inflate
+  // the bell badge/dropdown.
+  const activeNotifications = notifications.filter(n => !n.isArchived);
+  const unreadCount = activeNotifications.filter(n => !n.isRead).length;
 
   return (
     <div style={{ position: 'relative' }} ref={menuRef}>
@@ -125,13 +129,13 @@ export default function NotificationBell({ employeeId }) {
           </div>
           
           <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
-            {notifications.length === 0 ? (
+            {activeNotifications.length === 0 ? (
               <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
                 <MessageSquare data-element-name="רכיב_NotificationBell_5" size={32} style={{ opacity: 0.2, margin: '0 auto 0.5rem' }} />
                 אין הודעות חדשות
               </div>
             ) : (
-              notifications.map((notif) => (
+              activeNotifications.map((notif) => (
                 <div key={notif.id} style={{
                   padding: '1rem',
                   borderBottom: '1px solid var(--border-color)',
