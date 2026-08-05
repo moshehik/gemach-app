@@ -173,6 +173,22 @@ export default function PrintAlterationsPage() {
   return (
     <div data-agy-id="print-alterations-container" className="print-container" style={{ padding: '20px', direction: 'rtl' }}>
       <style>{`
+        @import url('https://fonts.googleapis.com/css2?family=Helvetica+Neue:wght@300;400;500;600;700&display=swap');
+        
+        body {
+          background-color: #fafafa !important;
+          font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+        }
+
+        /* Hide global layout elements on screen */
+        nav.navbar, 
+        .global-sidebar-container, 
+        .ai-floating-widget, 
+        [class*="sidebar"], 
+        [id*="sidebar"] {
+          display: none !important;
+        }
+
         @media print {
           @page {
             size: A4 portrait;
@@ -183,7 +199,6 @@ export default function PrintAlterationsPage() {
             height: auto !important;
             overflow: visible !important;
           }
-          /* Hide layout elements instead of visibility trick */
           nav.navbar, 
           .dev-env-container, 
           .offline-indicator,
@@ -195,87 +210,122 @@ export default function PrintAlterationsPage() {
             height: auto !important;
             overflow: visible !important;
             margin: 0;
-            padding: 0;
+            padding: 0 !important;
             display: block !important;
-            filter: grayscale(100%);
-            color: black !important;
+            color: #333 !important;
+            border: none !important;
+            box-shadow: none !important;
           }
           .print-table thead {
             display: table-header-group;
           }
-          .print-table tr {
+          .print-table tr, .order-block, .date-summary {
             break-inside: avoid;
             page-break-inside: avoid;
           }
-          .group-title {
-            break-after: avoid-page;
-            page-break-after: avoid;
-          }
-          .print-header {
+          .group-title, .print-header {
             break-after: avoid-page;
             page-break-after: avoid;
           }
         }
+        
+        .print-container {
+          background: #fff;
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 40px !important;
+          border: 1px solid #efefef;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+          color: #555;
+        }
+        
         .print-table {
           width: 100%;
           border-collapse: collapse;
-          margin-top: 20px;
+          margin-top: 10px;
+          border: 2px solid #e8e8e8;
         }
         .print-table th, .print-table td {
-          border: 1px solid #000;
-          padding: 6px 8px;
+          border: 1px solid #f0f0f0;
+          padding: 10px 12px;
           text-align: right;
           font-size: 13px;
         }
         .print-table th {
-          background-color: #f2f2f2;
+          background-color: #fdfdfd;
           font-weight: bold;
+          color: #666;
+          letter-spacing: 0.5px;
           -webkit-print-color-adjust: exact;
           print-color-adjust: exact;
         }
         .print-header {
           text-align: center;
-          margin-bottom: 20px;
-          border-bottom: 2px solid #000;
-          padding-bottom: 10px;
+          margin-bottom: 30px;
+        }
+        .print-header h1 {
+          margin: 0; font-size: 26px; color: #555; font-weight: 300; letter-spacing: 1px; margin-bottom: 10px;
+        }
+        .print-header h3 {
+          margin: 0; font-size: 15px; color: #777; font-weight: normal;
         }
         .date-group {
-          margin-bottom: 34px;
+          margin-bottom: 40px;
+        }
+        .group-title {
+          border-bottom: 1px solid #e8e8e8;
+          padding-bottom: 8px;
+          margin-bottom: 20px;
+          color: #444;
+          font-size: 18px;
+          font-weight: 600;
         }
         .order-block {
-          margin-bottom: 14px;
-          break-inside: avoid;
-          page-break-inside: avoid;
+          margin-bottom: 25px;
+          background: #fafafa;
+          border: 1px solid #f0f0f0;
+          padding: 15px;
+          border-radius: 6px;
         }
         .order-header {
           font-size: 14px;
-          padding: 4px 2px;
+          color: #333;
+          margin-bottom: 8px;
         }
         .order-notes {
           font-size: 13px;
-          color: #333;
-          padding: 0 2px 2px;
+          color: #666;
+          margin-bottom: 10px;
         }
         .date-summary {
-          margin-top: 8px;
-          padding: 6px 10px;
-          border: 1px solid #000;
+          margin-top: 15px;
+          padding: 10px 15px;
+          border: 1px solid #e8e8e8;
+          background: #fdfdfd;
           display: inline-block;
-          font-weight: bold;
-          font-size: 13px;
-          break-inside: avoid;
-          page-break-inside: avoid;
+          font-weight: 600;
+          color: #555;
+          border-radius: 4px;
         }
       `}</style>
 
-      <div style={{ position: 'absolute', top: '20px', right: '20px', fontWeight: 'bold', fontSize: '14px' }}>בס"ד</div>
-
-      <div className="print-header">
-        <h1>{getReportTitle()}</h1>
-        <h3>
-          {dateMode === 'today' ? `תאריך: ${getHebrewDateString(new Date().toISOString())}` : `מתאריך: ${formatDate(startDate)} | עד תאריך: ${formatDate(endDate)}`}
-        </h3>
-      </div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', border: 'none' }}>
+        <thead style={{ display: 'table-header-group' }}>
+          <tr>
+            <td style={{ border: 'none', padding: 0 }}>
+              <div style={{ textAlign: 'right', fontWeight: '600', fontSize: '13px', color: '#333', marginBottom: '5px' }}>בס"ד</div>
+              <div className="print-header">
+                <h1>{getReportTitle()}</h1>
+                <h3>
+                  {dateMode === 'today' ? `תאריך: ${getHebrewDateString(new Date().toISOString())}` : `מתאריך: ${formatDate(startDate)} | עד תאריך: ${formatDate(endDate)}`}
+                </h3>
+              </div>
+            </td>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td style={{ border: 'none', padding: 0 }}>
 
       {loading ? (
         <div>טוען נתונים להדפסה...</div>
@@ -299,7 +349,7 @@ export default function PrintAlterationsPage() {
                   {group.items.map(item => (
                     <div key={item.id} style={{
                       position: 'relative',
-                      border: '1px solid #000',
+                      border: '1px solid #e8e8e8',
                       padding: '15px',
                       borderRadius: '8px',
                       display: 'flex',
@@ -311,7 +361,8 @@ export default function PrintAlterationsPage() {
                       pageBreakInside: 'avoid',
                       breakInside: 'avoid',
                       background: '#fff',
-                      color: '#000'
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                      color: '#444'
                     }}>
                       <div style={{ position: 'absolute', top: '5px', right: '10px', fontSize: '12px', fontWeight: 'bold' }}>בס"ד</div>
                       <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
@@ -323,7 +374,7 @@ export default function PrintAlterationsPage() {
                       <div style={{ fontSize: '16px', marginBottom: '15px' }}>
                         מידה: <strong>{sizeLabelOf(item)}</strong>
                       </div>
-                      <div style={{ fontSize: '15px', fontWeight: 'bold', borderTop: '1px dashed #000', paddingTop: '10px', width: '100%' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 'bold', borderTop: '1px dashed #e8e8e8', paddingTop: '10px', width: '100%', color: '#666' }}>
                         {[
                           item.neckAlteration > 0 ? `צוואר: הצרה ${item.neckAlteration}` : null,
                           item.sleeveAlteration > 0 ? `שרוול: הארכה ${item.sleeveAlteration}` : null,
@@ -369,7 +420,7 @@ export default function PrintAlterationsPage() {
                         {block.orderId && <span> | הזמנה מס' {block.orderId}</span>}
                       </div>
                       {block.notes && <div className="order-notes">הערות: {block.notes}</div>}
-                      <table className="print-table" style={{ marginTop: '6px', marginBottom: '0' }}>
+                      <table className="print-table">
                         <thead>
                           <tr>
                             <th style={{ width: showAlterationCols ? '22%' : '50%' }}>דגם שמלה</th>
@@ -389,7 +440,7 @@ export default function PrintAlterationsPage() {
                         <tbody>
                           {block.items.map(item => (
                             <tr key={item.id}>
-                              <td style={{ fontWeight: '600' }}>{dressLabelOf(item)}</td>
+                              <td style={{ fontWeight: '500' }}>{dressLabelOf(item)}</td>
                               <td>{sizeLabelOf(item)}</td>
                               <td>{item.quantity || 1}</td>
                               {showAlterationCols && (
@@ -418,6 +469,14 @@ export default function PrintAlterationsPage() {
           )}
         </div>
       )}
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      
+      <div style={{ marginTop: '40px', textAlign: 'center', fontSize: '11px', color: '#999', borderTop: '1px solid #eee', paddingTop: '10px' }}>
+        הופק על ידי מערכת גמ"ח שמלות בתאריך: {getHebrewDateString(new Date())}
+      </div>
     </div>
   );
 }

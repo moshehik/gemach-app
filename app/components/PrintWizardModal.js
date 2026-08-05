@@ -19,12 +19,15 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
   const handlePrint = () => {
     let query = `?reportType=${reportType}&dateMode=${dateMode}`;
     
-    if (dateMode === 'custom' || dateMode === 'current') {
+    if (dateMode === 'custom') {
       if (!startDate || !endDate) {
         alert('יש להזין תאריך התחלה וסיום.');
         return;
       }
       query += `&startDate=${startDate}&endDate=${endDate}`;
+    } else if (dateMode === 'current') {
+      if (startDate) query += `&startDate=${startDate}`;
+      if (endDate) query += `&endDate=${endDate}`;
     }
 
     window.open(`/print/alterations${query}`, '_blank');

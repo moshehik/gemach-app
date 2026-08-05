@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 
 export default function LandingPage() {
-  const [isActive, setIsActive] = useState(true);
+  const [isActive, setIsActive] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
 
   // Set mounted state

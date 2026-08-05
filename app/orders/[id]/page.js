@@ -404,7 +404,7 @@ export default function OrderDetailsPage({ params }) {
           return;
         }
         debtApprovedBy = authResult.employeeId;
-        setDebtApproved(true);
+        setDebtApproved(authResult.employeeId);
       } catch (err) {
         setSaving(false);
         alert('שגיאה באימות קוד עובד/מנהל.');
@@ -511,9 +511,22 @@ export default function OrderDetailsPage({ params }) {
 
   const handleExit = async (destinationHref) => {
     if (hasUnsavedChanges) {
-      if (!confirm('ישנם שינויים שלא נשמרו בהזמנה! האם לצאת בכל זאת?')) return;
+      const choice = await window.customThreeWayConfirm(
+        'ישנם שינויים שלא נשמרו בהזמנה! האם ברצונך לשמור אותם לפני היציאה?',
+        'שינויים לא נשמרו'
+      );
+      if (choice === 'cancel' || !choice) return;
+      if (choice === 'discard') {
+        if (destinationHref) {
+          router.push(destinationHref);
+        } else {
+          router.back();
+        }
+        return;
+      }
     }
-    if (totalRequired - totalPaid > 0 && !debtApproved) {
+    let exitDebtApprovedBy = typeof debtApproved === 'string' ? debtApproved : null;
+    if (totalRequired - totalPaid > 0 && !exitDebtApprovedBy) {
       const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
       if (!authResult || !authResult.pin) {
         return;
@@ -529,7 +542,8 @@ export default function OrderDetailsPage({ params }) {
           alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
           return;
         }
-        setDebtApproved(true);
+        setDebtApproved(authResult.employeeId);
+        exitDebtApprovedBy = authResult.employeeId;
       } catch (err) {
         alert('שגיאה באימות קוד עובד/מנהל.');
         return;
@@ -562,7 +576,7 @@ export default function OrderDetailsPage({ params }) {
           items: items,
           obligations: obligations,
           payments: payments,
-          debtApprovedBy: debtApproved ? true : null,
+          debtApprovedBy: exitDebtApprovedBy,
           totalAmount: (() => {
             const itemsSum = items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
             const obligationsSum = obligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);

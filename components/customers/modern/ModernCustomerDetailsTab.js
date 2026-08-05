@@ -1,7 +1,53 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Copy, Mail, Save, Edit2, Check, FileText } from 'lucide-react';
+import { Copy, Mail, Save, Edit2, Check, FileText, ExternalLink } from 'lucide-react';
+import { getHebrewDateString } from '../../../lib/hebrewDate';
+
+const renderCustomerNotes = (notes) => {
+  if (!notes) return null;
+  const lines = notes.split('\n');
+  
+  return lines.map((line, index) => {
+    const autoNoteRegex = /\[(\d{1,2}\.\d{1,2}\.\d{4})\] אוטומטי: שמלה (\d+) \(הזמנה (\d+)\) (.*)/;
+    const match = line.match(autoNoteRegex);
+    
+    if (match) {
+      const [_, dateStr, barcode, orderId, restText] = match;
+      const [day, month, year] = dateStr.split('.').map(Number);
+      const dateObj = new Date(year, month - 1, day);
+      const hebDate = getHebrewDateString(dateObj);
+      
+      const model = barcode.substring(0, 3);
+      const size = barcode.substring(3, 5) || '';
+      
+      return (
+        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', marginBottom: '6px', padding: '6px', background: 'var(--moc-bg-hover, rgba(0,0,0,0.03))', borderRadius: '6px' }}>
+          <span style={{ color: 'var(--moc-text-muted)', fontSize: '0.85em' }}>[{hebDate}]</span>
+          <span style={{ fontWeight: '500', color: 'var(--moc-primary)' }}>אוטומטי:</span>
+          <span>דגם {model} מידה {size}</span>
+          <span>{restText}</span>
+          <a 
+            href={`/orders/${orderId}`} 
+            title={`צפה בהזמנה ${orderId}`}
+            style={{ 
+              color: 'var(--moc-primary)', 
+              display: 'inline-flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              textDecoration: 'none',
+              marginLeft: '4px'
+            }}
+          >
+            <ExternalLink size={15} />
+          </a>
+        </div>
+      );
+    }
+    
+    return <div key={index} style={{ marginBottom: '4px' }}>{line}</div>;
+  });
+};
 
 export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal }) {
   const [isEditing, setIsEditing] = useState(false);
@@ -47,7 +93,7 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
           <div className="moc-avatar-chip" style={{ background: 'transparent', color: 'var(--moc-text-muted)' }}><FileText size={17} /></div>
           <div className="moc-cr-main">
              <div className="moc-cr-title" style={{ fontSize: '0.9rem', color: 'var(--moc-text-muted)' }}>הערות הלקוח</div>
-             <div className="moc-cr-sub" style={{ whiteSpace: 'pre-wrap' }}>{customer.notes}</div>
+             <div className="moc-cr-sub" style={{ whiteSpace: 'pre-wrap' }}>{renderCustomerNotes(customer.notes)}</div>
           </div>
         </div>
       )}

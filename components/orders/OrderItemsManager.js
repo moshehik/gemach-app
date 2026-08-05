@@ -851,9 +851,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                   const searchStr = `(פריט #${detailsModalItem.id})`;
                   const relatedObligations = order.obligations.filter(obs => 
                     obs.isManual === false && 
-                    obs.description && 
-                    obs.description.includes(searchStr) &&
-                    obs.amount >= 0
+                    ((obs.description && obs.description.includes(searchStr)) || obs.orderItemId === detailsModalItem.id)
                   );
                   
                   if (relatedObligations.length === 0) return <span style={{ color: '#64748b' }}>אין חיובים מפורטים לפריט זה</span>;
@@ -861,16 +859,23 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                   return (
                     <table style={{ width: '100%', fontSize: '0.95rem', textAlign: 'right', borderCollapse: 'collapse' }}>
                       <tbody>
-                        {relatedObligations.map((obs, idx) => (
-                          <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                            <td style={{ padding: '0.6rem 0.2rem', fontWeight: '500' }}>{obs.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || (obs.description.includes('תיקון') ? 'תיקון' : 'חיוב')}</td>
-                            <td style={{ padding: '0.6rem 0.2rem', color: '#64748b', fontSize: '0.85rem' }}>{obs.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '')}</td>
-                            <td style={{ padding: '0.6rem 0.2rem', fontWeight: 'bold', color: '#16a34a' }}>₪{obs.amount}</td>
-                          </tr>
-                        ))}
+                        {relatedObligations.map((obs, idx) => {
+                          const isNegative = obs.amount < 0;
+                          return (
+                            <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                              <td style={{ padding: '0.6rem 0.2rem', fontWeight: '500' }}>{obs.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || (obs.description?.includes('תיקון') ? 'תיקון' : 'חיוב')}</td>
+                              <td style={{ padding: '0.6rem 0.2rem', color: '#64748b', fontSize: '0.85rem' }}>{obs.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '')}</td>
+                              <td style={{ padding: '0.6rem 0.2rem', fontWeight: 'bold', color: isNegative ? '#ef4444' : '#16a34a', direction: 'ltr' }}>
+                                {isNegative ? '-' : ''}₪{Math.abs(obs.amount)}
+                              </td>
+                            </tr>
+                          );
+                        })}
                         <tr style={{ fontWeight: 'bold', background: '#f1f5f9' }}>
                           <td colSpan="2" style={{ padding: '0.8rem 0.5rem', borderRadius: '0 8px 8px 0' }}>סה"כ לפריט</td>
-                          <td style={{ padding: '0.8rem 0.5rem', color: '#16a34a', borderRadius: '8px 0 0 8px' }}>₪{relatedObligations.reduce((sum, obs) => sum + obs.amount, 0)}</td>
+                          <td style={{ padding: '0.8rem 0.5rem', color: relatedObligations.reduce((sum, obs) => sum + obs.amount, 0) < 0 ? '#ef4444' : '#16a34a', direction: 'ltr', borderRadius: '8px 0 0 8px' }}>
+                            {relatedObligations.reduce((sum, obs) => sum + obs.amount, 0) < 0 ? '-' : ''}₪{Math.abs(relatedObligations.reduce((sum, obs) => sum + obs.amount, 0))}
+                          </td>
                         </tr>
                       </tbody>
                     </table>

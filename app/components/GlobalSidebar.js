@@ -22,10 +22,6 @@ export default function GlobalSidebar() {
   
   const sidebarRef = useRef(null);
 
-  if (pathname && (pathname === '/admin' || pathname.startsWith('/admin/'))) {
-    return null;
-  }
-
   useEffect(() => {
     function handleClickOutside(event) {
       if (sidebarRef.current && !sidebarRef.current.contains(event.target)) {
@@ -147,6 +143,10 @@ export default function GlobalSidebar() {
   const handleSearchInput = (e) => {
     setInputValue(e.target.value);
   };
+
+  if (pathname && (pathname === '/admin' || pathname.startsWith('/admin/'))) {
+    return null;
+  }
 
   return (
     <div className="global-sidebar" ref={sidebarRef} data-element-name="רכיב_GlobalSidebar_1">

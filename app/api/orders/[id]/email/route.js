@@ -62,16 +62,16 @@ export async function POST(request, { params }) {
     const totalPayments = order.payments.reduce((sum, p) => sum + p.amount, 0);
 
     const itemsHtml = (!order.items || order.items.filter(i => !i.isDeleted).length === 0) 
-      ? `<tr><td colspan="7" style="text-align: center; padding: 30px; color: #6c757d;">אין פריטים פעילים בהזמנה זו</td></tr>`
+      ? `<tr><td colspan="${enableAlterations ? '7' : '4'}" style="text-align: center; padding: 30px; color: #6c757d;">אין פריטים פעילים בהזמנה זו</td></tr>`
       : order.items.filter(i => !i.isDeleted).map(item => {
           let statusStr = 'טרם נלקח';
           if (item.isReturned) statusStr = 'הוחזר';
           else if (item.isTaken) statusStr = 'אצל הלקוח';
           
           let alts = enableAlterations ? `
-            <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef;">${item.neckAlteration ? `הצרה ${item.neckAlteration}` : '-'}</td>
-            <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef;">${item.sleeveAlteration ? `הארכה ${item.sleeveAlteration}` : '-'}</td>
-            <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef;">${item.lengthAlteration || '-'}</td>
+            <td>${item.neckAlteration ? `הצרה ${item.neckAlteration}` : '-'}</td>
+            <td>${item.sleeveAlteration ? `הארכה ${item.sleeveAlteration}` : '-'}</td>
+            <td>${item.lengthAlteration || '-'}</td>
           ` : '';
 
           const modelName = item.dressItem?.dress?.name || item.dressItem?.dressName || item.description || '-';
@@ -79,130 +79,162 @@ export async function POST(request, { params }) {
 
           return `
             <tr>
-              <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef; font-weight: 500;">${modelName}</td>
-              <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef;">${sizeText}</td>
-              <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef; font-weight: 600; color: #495057;">${item.barcode || '-'}</td>
+              <td style="font-weight: 500;">${modelName}</td>
+              <td>${sizeText}</td>
+              <td style="font-weight: 600; color: #666;">${item.barcode || '-'}</td>
               ${alts}
-              <td style="padding: 12px 16px; border-bottom: 1px solid #e9ecef;">
-                <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; ${getStatusStyle(statusStr)}">${statusStr}</span>
-              </td>
+              <td>${statusStr}</td>
             </tr>
           `;
         }).join('');
 
     const htmlBody = `
-      <div dir="rtl" style="font-family: Arial, sans-serif; padding: 10px;">
-        <div style="max-width: 800px; margin: 0 auto;">
+      <!DOCTYPE html>
+      <html dir="rtl" lang="he">
+      <head>
+        <meta charset="utf-8">
+        <style>
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; background-color: #fafafa; margin: 0; padding: 20px; direction: rtl; }
+          .invoice-box { max-width: 900px; margin: 0 auto; background: #fff; padding: 50px; border: 1px solid #efefef; box-shadow: 0 2px 10px rgba(0,0,0,0.02); }
+          .print-header { text-align: center; margin-bottom: 40px; }
+          .print-header h1 { margin: 0; font-size: 26px; color: #555; font-weight: 300; letter-spacing: 1px; margin-bottom: 10px; }
+          .print-header h2 { margin: 0; font-size: 16px; color: #777; font-weight: normal; }
+          .company-details { color: #999; font-size: 13px; margin-top: 5px; }
           
-          <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom: 20px; border-bottom: 1px solid #000; padding-bottom: 10px;">
-            <tr>
-              <td valign="top">
-                <h1 style="margin: 0; font-size: 24px; color: #000;">גמ"ח שמלות</h1>
-                <h2 style="margin: 5px 0 0 0; font-size: 16px; color: #333; font-weight: normal;">${printType === 'rental' ? 'הערות להשכרה' : 'דוח השכרות פירוט'}</h2>
-              </td>
-              <td valign="top" style="text-align: left;">
-                <div style="font-size: 18px; font-weight: bold; border: 1px solid #000; padding: 5px 10px; display: inline-block;">
-                  הזמנה #${order.orderId}
-                </div>
-              </td>
-            </tr>
-          </table>
-
-          ${printType === 'rental' && printSettings.box1 ? `<div style="border: 1px solid #000; padding: 10px; margin-bottom: 15px; text-align: center; font-size: 14px; font-weight: bold;">${printSettings.box1}</div>` : ''}
-          ${printType === 'rental' && printSettings.box2 ? `<div style="border: 1px solid #000; padding: 10px; margin-bottom: 15px; text-align: center; font-size: 14px; font-weight: bold; background-color: #eee;">${printSettings.box2}</div>` : ''}
-          ${printType === 'rental' && printSettings.footer ? `
-            <table width="100%" cellpadding="0" cellspacing="0" style="margin-top: 20px; margin-bottom: 20px;">
+          .print-table { width: 100%; border-collapse: collapse; margin-bottom: 40px; border: 2px solid #e8e8e8; }
+          .print-table th, .print-table td { padding: 15px; text-align: right; border: 1px solid #f0f0f0; font-size: 13px; }
+          .print-table th { background-color: #fdfdfd; font-weight: bold; color: #666; letter-spacing: 0.5px; }
+          
+          .summary-table { width: 100%; border-collapse: collapse; }
+          .summary-table td { padding: 12px; text-align: left; border-bottom: 1px solid #f5f5f5; color: #555; font-size: 14px; }
+          .summary-table td:first-child { text-align: right; color: #888; }
+          .summary-table .total td { font-size: 18px; font-weight: bold; color: #444; border-bottom: none; border-top: 2px solid #e8e8e8; }
+          
+          .terms { font-size: 13px; color: #888; margin-bottom: 50px; text-align: justify; line-height: 1.6; }
+          .signatures { display: flex; justify-content: space-around; font-size: 14px; color: #777; margin-top: 20px; }
+          .signatures div { text-align: center; width: 200px; border-top: 1px solid #ddd; padding-top: 10px; }
+          
+          .rental-notes-box { border: 1px solid #e8e8e8; padding: 15px; margin-bottom: 15px; text-align: center; font-size: 14px; color: #555; }
+          .rental-notes-box-bg { background-color: #fcfcfc; }
+          
+          /* For PDF rendering compatibility */
+          .order-details-table { width: 100%; margin-bottom: 40px; border: 1px solid #f0f0f0; border-collapse: collapse; }
+          .order-details-table td { padding: 20px; vertical-align: top; font-size: 14px; color: #666; line-height: 1.7; }
+          
+          .print-table tr, .summary-table, .terms, .signatures, .rental-notes-box {
+            break-inside: avoid;
+            page-break-inside: avoid;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="invoice-box">
+          <table style="width: 100%; border-collapse: collapse; border: none;">
+            <thead style="display: table-header-group;">
               <tr>
-                <td align="center">
-                  <h3 style="font-size: 18px; font-weight: bold; margin: 0 0 10px 0;">${printSettings.footer}</h3>
-                  <div style="font-size: 16px; font-weight: bold;">
-                    <span>על החתום: _____________________</span>
+                <td style="border: none; padding: 0;">
+                  <div style="text-align: right; font-size: 13px; font-weight: 600; color: #333; margin-bottom: 5px;">בס"ד</div>
+                  <div class="print-header">
+                    <h1>גמ"ח שמלות</h1>
+                    <div class="company-details">רחוב ירושלים 15, בני ברק | טלפון: 03-1234567 | דוא"ל: info@gemach.co.il</div>
                   </div>
-                  <div style="margin-top: 10px; font-size: 14px; font-weight: bold;">
-                    נא להחזיר טופס זה חתום בעת החזרת השמלות
-                  </div>
+
+                  <table class="order-details-table">
+                    <tr>
+                      <td width="50%">
+                        <strong>לכבוד: ${order.customer?.firstName || ''} ${order.customer?.lastName || ''}</strong><br />
+                        טלפון: <span dir="ltr">${order.customer?.phone1 || order.customer?.phone || '-'}</span><br />
+                        כתובת: ${order.customer?.city ? `${order.customer.city}${order.customer?.address ? `, ${order.customer.address}` : ''}` : '-'}
+                      </td>
+                      <td width="50%" style="border-right: 1px solid #f0f0f0;">
+                        <strong>${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}</strong><br />
+                        תאריך הזמנה: ${order.createdAt ? getHebrewDateString(order.createdAt) : '-'}<br />
+                        ${(!order.isWeekdayEvent && !order.isAbroad) ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}<br />
+                        סטטוס: ${getOrderStatus(order)}
+                        ${printType === 'order' && order.notes ? `<br />הערות: ${order.notes}` : ''}
+                      </td>
+                    </tr>
+                  </table>
                 </td>
-              </tr>
-            </table>
-          ` : ''}
-
-          <table width="100%" cellpadding="5" cellspacing="0" style="border: 1px solid #000; margin-bottom: 20px;">
-            <tr>
-              <td width="50%" valign="top" style="border-bottom: 1px solid #ccc; border-left: 1px solid #ccc;">
-                <strong>שם לקוח:</strong> ${order.customer?.firstName || ''} ${order.customer?.lastName || ''}
-              </td>
-              <td width="50%" valign="top" style="border-bottom: 1px solid #ccc;">
-                <strong>תאריך אירוע עברי:</strong> ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : '-')}
-              </td>
-            </tr>
-            <tr>
-              <td width="50%" valign="top" style="border-bottom: 1px solid #ccc; border-left: 1px solid #ccc;">
-                <strong>טלפון:</strong> <span dir="ltr">${order.customer?.phone1 || order.customer?.phone || '-'}</span>
-              </td>
-              <td width="50%" valign="top" style="border-bottom: 1px solid #ccc;">
-                <strong>תאריך אירוע לועזי:</strong> ${order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : '-'}
-              </td>
-            </tr>
-            <tr>
-              <td width="50%" valign="top" style="border-left: 1px solid #ccc;">
-                <strong>כתובת מגורים:</strong> ${order.customer?.city ? `${order.customer.city}${order.customer?.address ? `, ${order.customer.address}` : ''}` : '-'}
-              </td>
-              <td width="50%" valign="top">
-                <strong>סטטוס השכרה:</strong> ${getOrderStatus(order)}
-              </td>
-            </tr>
-            ${printType === 'order' && order.notes ? `
-            <tr>
-              <td colspan="2" valign="top" style="border-top: 1px solid #ccc;">
-                <strong>הערות הזמנה:</strong> ${order.notes}
-              </td>
-            </tr>
-            ` : ''}
-          </table>
-
-          <h3 style="font-size: 18px; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 10px;">פירוט פריטים להשכרה</h3>
-          <table width="100%" cellpadding="5" cellspacing="0" style="border: 1px solid #000; margin-bottom: 20px; border-collapse: collapse;">
-            <thead>
-              <tr style="background-color: #eee;">
-                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">דגם / תיאור</th>
-                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">מידה</th>
-                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">ברקוד</th>
-                ${enableAlterations ? `
-                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">תיקון צואר</th>
-                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">תיקון שרוול</th>
-                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">תיקון אורך</th>
-                ` : ''}
-                <th style="border: 1px solid #000; text-align: right; font-size: 14px;">סטטוס</th>
               </tr>
             </thead>
             <tbody>
-              ${itemsHtml.replace(/border-bottom: 1px solid #e9ecef;/g, 'border: 1px solid #000;').replace(/<span[^>]*>/g, '').replace(/<\/span>/g, '')}
+              <tr>
+                <td style="border: none; padding: 0;">
+                  ${printType === 'rental' && printSettings.box1 ? `<div class="rental-notes-box">${printSettings.box1}</div>` : ''}
+                  ${printType === 'rental' && printSettings.box2 ? `<div class="rental-notes-box rental-notes-box-bg">${printSettings.box2}</div>` : ''}
+
+          <table class="print-table">
+            <thead>
+              <tr>
+                <th>דגם / תיאור</th>
+                <th>מידה</th>
+                <th>ברקוד</th>
+                ${enableAlterations ? `
+                <th>תיקון צואר</th>
+                <th>תיקון שרוול</th>
+                <th>תיקון אורך</th>
+                ` : ''}
+                <th>סטטוס</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${itemsHtml}
             </tbody>
           </table>
 
-          <h3 style="font-size: 18px; border-bottom: 1px solid #000; padding-bottom: 5px; margin-bottom: 10px;">פירוט תשלומים וחובות</h3>
-          <table width="100%" cellpadding="5" cellspacing="0" style="border: 1px solid #000; margin-bottom: 20px;">
+          <table width="100%" style="margin-bottom: 50px;">
             <tr>
-              <td width="50%" valign="top" style="border-left: 1px solid #ccc;">
-                <strong>סה"כ לחיוב:</strong> ₪${totalObligations}
-              </td>
-              <td width="50%" valign="top">
-                <strong>סה"כ שולם:</strong> ₪${totalPayments}
-              </td>
-            </tr>
-            <tr>
-              <td colspan="2" valign="top" style="border-top: 1px solid #ccc;">
-                <strong>יתרה לתשלום:</strong> ₪${Math.max(0, totalObligations - totalPayments)}
+              <td width="60%"></td>
+              <td width="40%">
+                <table class="summary-table">
+                  <tr>
+                    <td>סה"כ לחיוב:</td>
+                    <td>₪${totalObligations}</td>
+                  </tr>
+                  <tr>
+                    <td>סה"כ שולם:</td>
+                    <td>₪${totalPayments}</td>
+                  </tr>
+                  <tr class="total">
+                    <td>יתרה לתשלום:</td>
+                    <td>₪${Math.max(0, totalObligations - totalPayments)}</td>
+                  </tr>
+                </table>
               </td>
             </tr>
           </table>
 
-          <div style="margin-top: 30px; text-align: center; font-size: 12px; border-top: 1px solid #000; padding-top: 10px;">
-            <p>הופק על ידי מערכת גמ"ח שמלות בתאריך: ${new Date().toLocaleString('he-IL')}</p>
-          </div>
+          ${printType === 'rental' && printSettings.footer ? `
+            <div class="terms">
+              <div style="text-align: center; margin-bottom: 15px;">
+                <strong style="font-size: 15px; color: #444;">${printSettings.footer}</strong>
+              </div>
+              הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב. אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
+            </div>
+          ` : `
+            <div class="terms">
+              הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב בדיוק. אין לכבס בשום אופן באופן עצמאי. במקרה של קרע או נזק בלתי הפיך, הלקוח יישא בעלות התיקון או רכישה מחדש לפי שיקול דעת הגמ"ח.
+            </div>
+          `}
 
+          <table width="100%" style="margin-top: 20px;">
+            <tr>
+              <td width="50%" align="center" style="border-top: 1px solid #ddd; padding-top: 10px; font-size: 14px; color: #777;">חתימת הלקוח</td>
+              <td width="50%" align="center" style="border-top: 1px solid #ddd; padding-top: 10px; font-size: 14px; color: #777;">אישור הגמ"ח</td>
+            </tr>
+          </table>
+          
+          <div style="margin-top: 40px; text-align: center; font-size: 11px; color: #999; border-top: 1px solid #eee; padding-top: 10px;">
+            הופק על ידי מערכת גמ"ח שמלות בתאריך: ${getHebrewDateString(new Date())}
+          </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-      </div>
+      </body>
+      </html>
     `;
 
     if (body.returnHtmlOnly) {

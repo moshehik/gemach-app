@@ -178,6 +178,7 @@ export async function GET(request, { params }) {
     return NextResponse.json(order);
   } catch (error) {
     console.error('Error fetching order details:', error);
+    try { require('fs').appendFileSync(process.cwd() + '/dev_error.txt', '[GET] ' + (error.stack || error) + '\\n'); } catch (e) {}
     return NextResponse.json(
       { error: 'Failed to fetch order details' },
       { status: 500 }
@@ -749,6 +750,7 @@ export async function PUT(request, { params }) {
     return NextResponse.json(finalOrder);
   } catch (error) {
     console.error('Error updating order:', error);
+    try { require('fs').appendFileSync(process.cwd() + '/dev_error.txt', '[PUT] ' + (error.stack || error) + '\\n'); } catch (e) {}
     return NextResponse.json(
       { error: 'Failed to update order details', message: error.message },
       { status: 500 }

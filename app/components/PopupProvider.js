@@ -23,6 +23,7 @@ export function PopupProvider({ children }) {
   const [alerts, setAlerts] = useState([]);
   const [alertsHistory, setAlertsHistory] = useState([]);
   const [confirmConfig, setConfirmConfig] = useState({ isOpen: false, message: '', resolve: null, title: 'אישור פעולה' });
+  const [threeWayConfirmConfig, setThreeWayConfirmConfig] = useState({ isOpen: false, message: '', resolve: null, title: 'שינויים לא נשמרו' });
   const [promptConfig, setPromptConfig] = useState({ isOpen: false, message: '', resolve: null, title: 'הזנת נתונים', defaultValue: '', type: 'text' });
   const [authPromptConfig, setAuthPromptConfig] = useState({ isOpen: false, message: '', resolve: null, title: 'אימות הרשאה', requiredLevel: 'מנהל', employees: [] });
   const promptInputRef = useRef(null);
@@ -96,6 +97,19 @@ export function PopupProvider({ children }) {
     }
     setConfirmConfig({ isOpen: false, message: '', resolve: null, title: 'אישור פעולה' });
   }, [confirmConfig]);
+
+  const showThreeWayConfirm = useCallback((message, title = 'שינויים לא נשמרו') => {
+    return new Promise((resolve) => {
+      setThreeWayConfirmConfig({ isOpen: true, message, resolve, title });
+    });
+  }, []);
+
+  const handleThreeWayConfirmResponse = useCallback((result) => {
+    if (threeWayConfirmConfig.resolve) {
+      threeWayConfirmConfig.resolve(result);
+    }
+    setThreeWayConfirmConfig({ isOpen: false, message: '', resolve: null, title: 'שינויים לא נשמרו' });
+  }, [threeWayConfirmConfig]);
 
   const showPrompt = useCallback((message, title = 'הזנת נתונים', defaultValue = '', type = 'text') => {
     return new Promise((resolve) => {
@@ -172,8 +186,9 @@ export function PopupProvider({ children }) {
       window.customConfirm = (message) => showConfirm(message);
       window.customPrompt = (message, defaultValue, type) => showPrompt(message, 'הזנת נתונים', defaultValue, type);
       window.customAuthPrompt = (message, requiredLevel) => showAuthPrompt(message, requiredLevel, 'אימות הרשאה');
+      window.customThreeWayConfirm = (message, title) => showThreeWayConfirm(message, title);
     }
-  }, [showAlert, showConfirm, showPrompt, showAuthPrompt]);
+  }, [showAlert, showConfirm, showPrompt, showAuthPrompt, showThreeWayConfirm]);
 
   return (
     <PopupContext.Provider data-element-name="רכיב_PopupProvider_1" value={{ showAlert, showConfirm, showPrompt, alertsHistory, openRentalModal, closeRentalModal }}>
@@ -220,6 +235,29 @@ export function PopupProvider({ children }) {
                  <div style={{ background: '#f8fafc', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
                      <button data-element-name="כפתור_PopupProvider_8" onClick={() => handleConfirmResponse(false)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
                      <button data-element-name="כפתור_PopupProvider_9" onClick={() => handleConfirmResponse(true)} style={{ padding: '10px 20px', background: '#d4af37', color: '#1e293b', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(212, 175, 55, 0.35)' }} onMouseOver={e => { e.currentTarget.style.background='#b5952f'; e.currentTarget.style.color='#fff'; }} onMouseOut={e => { e.currentTarget.style.background='#d4af37'; e.currentTarget.style.color='#1e293b'; }}>אישור</button>
+                 </div>
+             </div>
+         </div>
+      )}
+
+      {/* Three Way Confirm Modal */}
+      {threeWayConfirmConfig.isOpen && (
+         <div className="popup-overlay" style={{ position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10000, padding: '1rem' }}>
+             <div className="popup-content animate-fade-in" style={{ background: 'var(--card-bg)', borderRadius: '16px', width: '100%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', overflow: 'hidden' }}>
+                 <div style={{ padding: '24px 24px 0 24px', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                     <div style={{ background: 'rgba(212, 175, 55, 0.14)', color: '#b5952f', padding: '10px', borderRadius: '12px' }}>
+                        <HelpCircle data-element-name="רכיב_PopupProvider_19_3way" size={28} />
+                     </div>
+                     <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: '700' }}>{threeWayConfirmConfig.title}</h3>
+                 </div>
+                 <div style={{ padding: '20px 24px', fontSize: '1.05rem', color: '#475569', lineHeight: '1.5' }}>
+                     {threeWayConfirmConfig.message}
+                 </div>
+                 <div style={{ background: '#f8fafc', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-start', flexWrap: 'wrap', borderTop: '1px solid #e2e8f0' }}>
+                     <button data-element-name="כפתור_שמור_PopupProvider" onClick={() => handleThreeWayConfirmResponse('save')} style={{ padding: '10px 20px', background: '#d4af37', color: '#1e293b', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(212, 175, 55, 0.35)' }} onMouseOver={e => { e.currentTarget.style.background='#b5952f'; e.currentTarget.style.color='#fff'; }} onMouseOut={e => { e.currentTarget.style.background='#d4af37'; e.currentTarget.style.color='#1e293b'; }}>לשמור</button>
+                     <button data-element-name="כפתור_אל_תשמור_PopupProvider" onClick={() => handleThreeWayConfirmResponse('discard')} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#fef2f2'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>אל תשמור</button>
+                     <div style={{ flex: 1 }}></div>
+                     <button data-element-name="כפתור_ביטול_PopupProvider" onClick={() => handleThreeWayConfirmResponse('cancel')} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
                  </div>
              </div>
          </div>

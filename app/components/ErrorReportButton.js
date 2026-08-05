@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { LifeBuoy, X, Send, MessageSquare, Copy, AlertCircle, Info, User, Check, RefreshCw } from 'lucide-react';
+import { getHebrewDateString } from '../../lib/hebrewDate';
 
 export default function ErrorReportButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -92,7 +93,7 @@ export default function ErrorReportButton() {
       userText,
       url: window.location.href,
       title: document.title,
-      time: new Date().toLocaleString('he-IL'),
+      time: getHebrewDateString(new Date()) + ' ' + new Date().toLocaleTimeString('he-IL'),
       queryParams: window.location.search || 'אין',
       lastButtons: window.__lastButtons || []
     };
@@ -153,7 +154,7 @@ export default function ErrorReportButton() {
   const copyDetails = (report) => {
     const details = `
 מאת: ${report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'לא ידוע'}
-זמן: ${report.time || new Date(report.createdAt).toLocaleString('he-IL')}
+זמן: ${report.time || (getHebrewDateString(report.createdAt) + ' ' + new Date(report.createdAt).toLocaleTimeString('he-IL'))}
 חלון/דף: ${report.title || 'לא צוין'}
 כתובת URL: ${report.url || 'לא צוין'}
 שאילתות/פרמטרים: ${report.queryParams || 'אין'}
@@ -313,7 +314,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#64748b', fontSize: '0.85rem' }}>
                       <User size={14} /> <strong>{selectedReport.employee ? selectedReport.employee.firstName + ' ' + selectedReport.employee.lastName : 'משתמש'}</strong>
                       <span>•</span>
-                      <span>{new Date(selectedReport.createdAt).toLocaleString('he-IL')}</span>
+                      <span>{getHebrewDateString(selectedReport.createdAt)} {new Date(selectedReport.createdAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}</span>
                     </div>
                     <p style={{ margin: 0, color: '#0f172a', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
                       {selectedReport.userText}
@@ -335,7 +336,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: reply.isProgrammer ? '#4338ca' : '#64748b', fontSize: '0.85rem' }}>
                           <User size={14} /> <strong>{reply.isProgrammer ? 'מתכנת מערכת' : (reply.employee ? reply.employee.firstName + ' ' + reply.employee.lastName : 'משתמש')}</strong>
                           <span>•</span>
-                          <span>{new Date(reply.createdAt).toLocaleString('he-IL')}</span>
+                          <span>{getHebrewDateString(reply.createdAt)} {new Date(reply.createdAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
                         <p style={{ margin: 0, color: '#0f172a', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
                           {reply.text}
@@ -393,7 +394,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                             {report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'משתמש'}
                           </h4>
                           <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                            {new Date(report.updatedAt).toLocaleDateString('he-IL')} {new Date(report.updatedAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}
+                            {getHebrewDateString(report.updatedAt)} {new Date(report.updatedAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}
                           </span>
                         </div>
                         <p style={{ margin: '0 0 0.75rem 0', color: '#475569', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
