@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
@@ -370,67 +370,74 @@ export default function PrintAlterationsPage() {
             </td>
           </tr>
           {enableAlterations && (reportType === 'labels' ? (
-        <tr>
-          <td style={{ border: 'none', padding: 0 }}>
-            <div style={{ marginTop: '20px' }}>
-              {groupedItems.length === 0 ? (
-                <div style={{ textAlign: 'center' }}>לא נמצאו תיקונים להדפסה</div>
-              ) : (
-                groupedItems.map(group => (
-                  <div key={group.date} style={{ marginBottom: '30px' }}>
-                    <h3 className="group-title" style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '15px', color: 'black' }}>
-                      תאריך אירוע: {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
-                    </h3>
-                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
-                      {group.items.map(item => (
-                        <div key={item.id} style={{
-                          position: 'relative',
-                          border: '1px solid #e8e8e8',
-                          padding: '15px',
-                          borderRadius: '8px',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          justifyContent: 'center',
-                          alignItems: 'center',
-                          textAlign: 'center',
-                          minHeight: '150px',
-                          pageBreakInside: 'avoid',
-                          breakInside: 'avoid',
-                          background: '#fff',
-                          boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                          color: '#444'
-                        }}>
-                          <div style={{ position: 'absolute', top: '5px', right: '10px', fontSize: '12px', fontWeight: 'bold' }}>בס"ד</div>
-                          <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
-                            {customerNameOf(item) || '-'}
-                          </div>
-                          <div style={{ fontSize: '15px', marginBottom: '6px' }}>
-                            דגם: <strong>{dressLabelOf(item)}</strong>
-                          </div>
-                          <div style={{ fontSize: '16px', marginBottom: '15px' }}>
-                            מידה: <strong>{sizeLabelOf(item)}</strong>
-                          </div>
-                          <div style={{ fontSize: '15px', fontWeight: 'bold', borderTop: '1px dashed #e8e8e8', paddingTop: '10px', width: '100%', color: '#666' }}>
-                            {[
-                              item.neckAlteration > 0 ? `צוואר: הצרה ${item.neckAlteration}` : null,
-                              item.sleeveAlteration > 0 ? `שרוול: הארכה ${item.sleeveAlteration}` : null,
-                              lengthAltOf(item) ? `אורך: ${lengthAltOf(item)}` : null
-                            ].filter(Boolean).join(' | ')}
-                            {item.alterationDetails && (
-                              <div style={{ fontWeight: 'normal', marginTop: '6px' }}>
-                                פירוט: {item.alterationDetails}
-                              </div>
-                            )}
-                          </div>
+        groupedItems.length === 0 ? (
+          <tr>
+            <td style={{ border: 'none', padding: 0 }}>
+              <div style={{ textAlign: 'center', marginTop: '20px' }}>לא נמצאו תיקונים להדפסה</div>
+            </td>
+          </tr>
+        ) : (
+          // One <tr> per date-group (rather than a single row wrapping the whole
+          // report) so the browser can insert a page break between groups when the
+          // label grid grows past one printed page - a lone giant row/div can't
+          // reliably fragment across pages and gets clipped instead of flowing to
+          // page 2+ (same class of issue as the print/order payments-section fix).
+          groupedItems.map((group, groupIdx) => (
+            <tr key={group.date}>
+              <td style={{ border: 'none', padding: 0 }}>
+                <div style={{ marginTop: groupIdx === 0 ? '20px' : 0, marginBottom: '30px' }}>
+                  <h3 className="group-title" style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '15px', color: 'black' }}>
+                    תאריך אירוע: {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
+                  </h3>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+                    {group.items.map(item => (
+                      <div key={item.id} style={{
+                        position: 'relative',
+                        border: '1px solid #e8e8e8',
+                        padding: '15px',
+                        borderRadius: '8px',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        textAlign: 'center',
+                        minHeight: '150px',
+                        pageBreakInside: 'avoid',
+                        breakInside: 'avoid',
+                        background: '#fff',
+                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
+                        color: '#444'
+                      }}>
+                        <div style={{ position: 'absolute', top: '5px', right: '10px', fontSize: '12px', fontWeight: 'bold' }}>בס"ד</div>
+                        <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
+                          {customerNameOf(item) || '-'}
                         </div>
-                      ))}
-                    </div>
+                        <div style={{ fontSize: '15px', marginBottom: '6px' }}>
+                          דגם: <strong>{dressLabelOf(item)}</strong>
+                        </div>
+                        <div style={{ fontSize: '16px', marginBottom: '15px' }}>
+                          מידה: <strong>{sizeLabelOf(item)}</strong>
+                        </div>
+                        <div style={{ fontSize: '15px', fontWeight: 'bold', borderTop: '1px dashed #e8e8e8', paddingTop: '10px', width: '100%', color: '#666' }}>
+                          {[
+                            item.neckAlteration > 0 ? `צוואר: הצרה ${item.neckAlteration}` : null,
+                            item.sleeveAlteration > 0 ? `שרוול: הארכה ${item.sleeveAlteration}` : null,
+                            lengthAltOf(item) ? `אורך: ${lengthAltOf(item)}` : null
+                          ].filter(Boolean).join(' | ')}
+                          {item.alterationDetails && (
+                            <div style={{ fontWeight: 'normal', marginTop: '6px' }}>
+                              פירוט: {item.alterationDetails}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))
-              )}
-            </div>
-          </td>
-        </tr>
+                </div>
+              </td>
+            </tr>
+          ))
+        )
       ) : (
         groupedItems.length === 0 ? (
           <tr>
@@ -449,7 +456,7 @@ export default function PrintAlterationsPage() {
               return acc;
             }, { neck: 0, length: 0, sleeve: 0 });
             return (
-              <React.Fragment key={group.date}>
+              <Fragment key={group.date}>
                 <tr>
                   <td style={{ border: 'none', padding: 0 }}>
                     <h3 className="group-title" style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '12px', marginTop: '20px' }}>
@@ -516,7 +523,7 @@ export default function PrintAlterationsPage() {
                     </td>
                   </tr>
                 )}
-              </React.Fragment>
+              </Fragment>
             );
           })
         )

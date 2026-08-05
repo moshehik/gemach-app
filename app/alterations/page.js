@@ -222,6 +222,35 @@ export default function AlterationsPage() {
     }
   };
 
+  // Used by the print wizard's "הנתונים המוצגים כעת" (currently displayed data)
+  // option: without this, PrintWizardModal had no getCurrentOrderIds prop to call
+  // for this page, so "current" mode silently fell back to whatever startDate/
+  // endDate happened to be set on the page (often empty, or a single filtered
+  // day) instead of everything actually matching the active filters - producing
+  // an empty or misleadingly narrow report. Mirrors getCurrentFilteredOrderIds
+  // in app/orders/page.js.
+  const getCurrentAlterationOrderIds = async () => {
+    try {
+      const showOnlyPending = filterStatus === 'pending';
+      // Capped like fetchForExport/orders-page's getCurrentFilteredOrderIds - an
+      // unfiltered "current" print can otherwise match tens of thousands of
+      // OrderItem rows, and passing that many orderIds in a query string would
+      // blow past any sane URL length limit.
+      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=1&limit=2000`;
+      if (startDate) url += `&startDate=${startDate}`;
+      if (endDate) url += `&endDate=${endDate}`;
+      if (search) url += `&search=${search}`;
+      const res = await fetch(url);
+      if (!res.ok) return [];
+      const data = await res.json();
+      const list = Array.isArray(data) ? data : (data.data || []);
+      return [...new Set(list.map(item => item.order?.orderId).filter(id => id != null))];
+    } catch (e) {
+      console.error(e);
+      return [];
+    }
+  };
+
   return (
     <main data-agy-id="alterations-page-main" className="container animate-fade-in page-shell">
       <div className="page-scroll">
@@ -497,10 +526,11 @@ export default function AlterationsPage() {
       </div>
 
       {isPrintWizardOpen && (
-        <PrintWizardModal data-element-name="רכיב_page_25" 
-          onClose={() => setIsPrintWizardOpen(false)} 
+        <PrintWizardModal data-element-name="רכיב_page_25"
+          onClose={() => setIsPrintWizardOpen(false)}
           defaultStartDate={startDate}
           defaultEndDate={endDate}
+          getCurrentOrderIds={getCurrentAlterationOrderIds}
         />
       )}
 
