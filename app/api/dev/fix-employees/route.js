@@ -2,8 +2,14 @@
 import prisma from '@/app/lib/prisma';
 import path from 'path';
 import * as xlsx from 'xlsx';
+import { checkAuth } from '@/lib/auth';
 
 export async function GET(request) {
+  if (process.env.NODE_ENV !== 'development') {
+    return NextResponse.json({ error: 'Available only in development mode' }, { status: 403 });
+  }
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+
   try {
     const outDir = path.resolve(process.cwd(), '../csv_exports');
     const ordersFile = path.join(outDir, 'הזמנות.xlsx');
