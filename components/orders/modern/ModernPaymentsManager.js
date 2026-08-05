@@ -322,7 +322,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     setShowCreditModal(true);
   };
 
-  /** מעקף חיוב אשראי בפועל - רושם תשלום ידנית כאילו בוצע, בלי לפנות לנדרים פלוס.
+  /** מעקף אשראי מלא מתוך האתר - רושם תשלום אשראי כאילו שולם, מבלי לפנות למסוף נדרים פלוס בכלל.
    * מוגבל למתכנת בלבד (verifyPin ברמת 'מתכנת'), עבור מצבים כמו תקלת סליקה. */
   const handleBypassCreditPayment = async () => {
     const amount = parseFloat(creditCardData.amount);
@@ -733,20 +733,6 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       {mounted && showCreditModal && createPortal(
         <div className="moc moc-modal-overlay">
           <div className="moc-modal-box" style={{ position: 'relative' }}>
-            <button
-              type="button"
-              title="מעקף מתכנת: רישום ידני כאילו שולם, ללא חיוב אשראי בפועל (מוגבל למתכנת)"
-              disabled={isProcessing}
-              onClick={handleBypassCreditPayment}
-              style={{
-                position: 'absolute', top: '12px', left: '12px', zIndex: 2,
-                width: '30px', height: '30px', borderRadius: '50%', border: 'none',
-                background: 'var(--moc-warning-bg)', color: '#b45309',
-                display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer'
-              }}
-            >
-              <SkipForward size={15} />
-            </button>
             <div className="moc-modal-head">
               <h3>תשלום בכרטיס אשראי (נדרים פלוס)</h3>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -796,6 +782,19 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               )}
             </div>
             <div className="moc-modal-foot">
+              <button
+                type="button"
+                title="מעקף מתכנת: רישום ידני כאילו שולם, ללא חיוב אשראי בפועל (מוגבל למתכנת)"
+                disabled={isProcessing}
+                onClick={handleBypassCreditPayment}
+                style={{
+                  background: 'transparent', border: 'none', color: '#b45309',
+                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  padding: '8px', marginInlineEnd: 'auto'
+                }}
+              >
+                <SkipForward size={18} />
+              </button>
               <button className="moc-btn moc-btn-outline" disabled={isProcessing} onClick={() => setShowCreditModal(false)}>ביטול</button>
               <button className="moc-btn moc-btn-gold" disabled={isProcessing} onClick={handleProcessCreditCard}>
                 {isProcessing ? <><span className="moc-spinner" /> מעבד...</> : 'בצע חיוב'}

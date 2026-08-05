@@ -1,6 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Mail, Search, Copy, Download, X, Check, ExternalLink, RefreshCw, UserCheck } from 'lucide-react';
+import { Mail, Search, Copy, Download, X, Check, ExternalLink, RefreshCw, UserCheck, ChevronRight, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function FullEmailListModal({ isOpen, onClose }) {
@@ -9,6 +9,8 @@ export default function FullEmailListModal({ isOpen, onClose }) {
   const [search, setSearch] = useState('');
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedSingle, setCopiedSingle] = useState(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 50;
 
   useEffect(() => {
     if (isOpen) {
@@ -37,6 +39,14 @@ export default function FullEmailListModal({ isOpen, onClose }) {
       item.city.toLowerCase().includes(q)
     );
   });
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
+  const totalPages = Math.ceil(filteredEmails.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedEmails = filteredEmails.slice(startIndex, startIndex + itemsPerPage);
 
   const handleCopyAll = () => {
     const emailListStr = filteredEmails.map(i => i.email).join(', ');
@@ -84,7 +94,7 @@ export default function FullEmailListModal({ isOpen, onClose }) {
         zIndex: 9999,
         display: 'flex',
         alignItems: 'center',
-        justify: 'center',
+        justifyContent: 'center',
         padding: '1.5rem',
         direction: 'rtl'
       }}
@@ -271,7 +281,7 @@ export default function FullEmailListModal({ isOpen, onClose }) {
                 </tr>
               </thead>
               <tbody>
-                {filteredEmails.map((item, idx) => (
+                {paginatedEmails.map((item, idx) => (
                   <tr 
                     key={item.id || idx}
                     style={{
@@ -281,7 +291,7 @@ export default function FullEmailListModal({ isOpen, onClose }) {
                     onMouseOver={(e) => e.currentTarget.style.background = '#f8fafc'}
                     onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    <td style={{ padding: '0.75rem 1rem', color: '#94a3b8', fontSize: '0.85rem' }}>{idx + 1}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: '#94a3b8', fontSize: '0.85rem' }}>{startIndex + idx + 1}</td>
                     <td style={{ padding: '0.75rem 1rem', fontWeight: '600', color: '#0f172a' }}>{item.name}</td>
                     <td style={{ padding: '0.75rem 1rem', color: '#2563eb', fontWeight: '500', direction: 'ltr', textAlign: 'right' }}>
                       {item.email}
@@ -336,6 +346,62 @@ export default function FullEmailListModal({ isOpen, onClose }) {
             </table>
           )}
         </div>
+
+        {/* Footer - Pagination and Summary */}
+        {!loading && filteredEmails.length > 0 && (
+          <div 
+            style={{
+              padding: '1rem 2rem',
+              background: '#f8fafc',
+              borderTop: '1px solid #e2e8f0',
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center'
+            }}
+          >
+            <div style={{ color: '#475569', fontSize: '0.95rem' }}>
+              מציג <strong>{startIndex + 1}</strong> עד <strong>{Math.min(startIndex + itemsPerPage, filteredEmails.length)}</strong> מתוך <strong>{filteredEmails.length}</strong> רשומות
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <button
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '36px', height: '36px', borderRadius: '8px',
+                  background: currentPage === 1 ? '#e2e8f0' : 'white',
+                  color: currentPage === 1 ? '#94a3b8' : '#0f172a',
+                  border: '1px solid #cbd5e1',
+                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <ChevronRight size={18} />
+              </button>
+              
+              <span style={{ fontSize: '0.95rem', fontWeight: '600', color: '#0f172a', margin: '0 0.5rem' }}>
+                עמוד {currentPage} מתוך {totalPages}
+              </span>
+              
+              <button
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: '36px', height: '36px', borderRadius: '8px',
+                  background: currentPage === totalPages ? '#e2e8f0' : 'white',
+                  color: currentPage === totalPages ? '#94a3b8' : '#0f172a',
+                  border: '1px solid #cbd5e1',
+                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  transition: 'all 0.2s'
+                }}
+              >
+                <ChevronLeft size={18} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

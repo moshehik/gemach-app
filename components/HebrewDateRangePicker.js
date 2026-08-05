@@ -404,15 +404,15 @@ export default function HebrewDateRangePicker({
         style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          border: '1px solid var(--element-border, #cbd5e1)', 
-          borderRadius: '8px', 
+          border: '1px solid #ddd', 
+          borderRadius: '24px', 
           background: 'var(--card-bg, #ffffff)', 
           overflow: 'hidden', 
           height: '45px', 
           width: '100%', 
           cursor: 'pointer',
-          boxShadow: isOpen ? '0 0 0 2px rgba(168, 85, 247, 0.2)' : 'none',
-          borderColor: isOpen ? 'var(--primary-color, #a855f7)' : 'var(--element-border, #cbd5e1)',
+          boxShadow: isOpen ? '0 0 0 2px rgba(168, 85, 247, 0.2)' : '0 2px 5px rgba(0,0,0,0.05)',
+          borderColor: isOpen ? 'var(--primary-color, #a855f7)' : '#ddd',
           transition: 'all 0.2s ease'
         }}
       >

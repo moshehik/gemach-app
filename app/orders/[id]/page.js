@@ -383,7 +383,7 @@ export default function OrderDetailsPage({ params }) {
     let debtApprovedBy = null;
     // CHECK DEBT AND REQUIRE APPROVAL TO SAVE
     if (totalRequired - totalPaid > 0) {
-      const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. שמירת השינויים דורשת הרשאת עובד או מנהל. אנא בחר משתמש והזן סיסמה:", 'עובד');
+      const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. שמירת השינויים דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
       if (!authResult || !authResult.pin) {
         setSaving(false);
         // Returning quietly here made the Save button look broken - nothing happened and
@@ -514,7 +514,7 @@ export default function OrderDetailsPage({ params }) {
       if (!confirm('ישנם שינויים שלא נשמרו בהזמנה! האם לצאת בכל זאת?')) return;
     }
     if (totalRequired - totalPaid > 0 && !debtApproved) {
-      const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת עובד או מנהל. אנא בחר משתמש והזן סיסמה:", 'עובד');
+      const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
       if (!authResult || !authResult.pin) {
         return;
       }

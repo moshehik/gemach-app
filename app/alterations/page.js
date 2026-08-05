@@ -246,69 +246,69 @@ export default function AlterationsPage() {
 
       <div style={{
         display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
+        flexDirection: 'column',
+        gap: '1.5rem',
         marginBottom: '2rem',
         background: 'var(--card-bg)',
-        padding: '0.75rem 1.5rem',
+        padding: '1rem 1.5rem',
         borderRadius: '16px',
         boxShadow: 'var(--shadow-sm)',
-        gap: '1rem',
-        flexWrap: 'wrap',
         border: '1px solid var(--border-color)'
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', minWidth: '300px' }}>
-          <Calendar data-element-name="רכיב_page_5" size={18} color="var(--text-muted)" />
-          <HebrewDateRangePicker
-            data-element-name="רכיב_page_6"
-            startDate={startDate}
-            endDate={endDate}
-            onChange={(start, end) => {
-              setStartDate(start);
-              setEndDate(end);
-            }}
-            placeholderStart="בחר תאריך התחלה"
-            placeholderEnd="בחר תאריך סיום"
-          />
-        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
+          
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '300px', flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%', maxWidth: '350px' }}>
+              <Calendar data-element-name="רכיב_page_5" size={18} color="var(--text-muted)" />
+              <HebrewDateRangePicker
+                data-element-name="רכיב_page_6"
+                startDate={startDate}
+                endDate={endDate}
+                onChange={(start, end) => {
+                  setStartDate(start);
+                  setEndDate(end);
+                }}
+                placeholderStart="בחר תאריך התחלה"
+                placeholderEnd="בחר תאריך סיום"
+              />
+            </div>
+            
+            <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '500px' }}>
+              <AISearchBar data-element-name="רכיב_page_15" 
+                placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onSearch={handleSearch}
+                onClear={handleClearSearch}
+                onAiSearch={handleAiSearch}
+                onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+                loading={aiLoading}
+              />
+            </div>
+          </div>
 
-        <div style={{ flex: 1 }}></div>
+          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+            <button
+              data-element-name="כפתור_page_7"
+              data-agy-id="mark-all-done-button"
+              onClick={markAllDone}
+              disabled={!startDate}
+              style={{
+                padding: '0.5rem 1rem', fontSize: '0.9rem', borderRadius: '10px',
+                display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold',
+                background: !startDate ? 'var(--element-bg)' : 'linear-gradient(135deg, #10b981, #059669)',
+                color: !startDate ? 'var(--text-muted)' : 'white',
+                border: !startDate ? '1px solid var(--element-border)' : 'none',
+                boxShadow: !startDate ? 'none' : '0 4px 10px rgba(16, 185, 129, 0.3)',
+                cursor: !startDate ? 'not-allowed' : 'pointer',
+                transition: 'all 0.2s', height: '40px'
+              }}
+            >
+              <CheckCircle data-element-name="רכיב_page_8" size={16} /> סמן יום כבוצע
+            </button>
+            
+            <div style={{ width: '1px', height: '30px', background: 'var(--border-color)', margin: '0 0.5rem' }}></div>
 
-        <button
-          data-element-name="כפתור_page_7"
-          data-agy-id="mark-all-done-button"
-          onClick={markAllDone}
-          disabled={!startDate}
-          style={{
-            padding: '0.5rem 1rem', fontSize: '0.9rem', borderRadius: '10px',
-            display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold',
-            background: !startDate ? 'var(--element-bg)' : 'linear-gradient(135deg, #10b981, #059669)',
-            color: !startDate ? 'var(--text-muted)' : 'white',
-            border: !startDate ? '1px solid var(--element-border)' : 'none',
-            boxShadow: !startDate ? 'none' : '0 4px 10px rgba(16, 185, 129, 0.3)',
-            cursor: !startDate ? 'not-allowed' : 'pointer',
-            transition: 'all 0.2s', height: '40px'
-          }}
-        >
-          <CheckCircle data-element-name="רכיב_page_8" size={16} /> סמן יום כבוצע
-        </button>
-      </div>
-
-      {/* Search and Filters */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-        <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '600px' }}>
-          <AISearchBar data-element-name="רכיב_page_15" 
-            placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onSearch={handleSearch}
-            onClear={handleClearSearch}
-            onAiSearch={handleAiSearch}
-            onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-            loading={aiLoading}
-          />
-        </div>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <ExportButtons data-element-name="רכיב_page_2" 
               data={items.map(item => ({
                 ...item,
@@ -348,6 +348,7 @@ export default function AlterationsPage() {
             >
               <Info data-element-name="רכיב_page_6" size={20} />
             </button>
+          </div>
         </div>
       </div>
 
