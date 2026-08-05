@@ -106,6 +106,10 @@ export default function OrderDetailsPage({ params }) {
   const initialLockChecked = useRef(false);
   // מצב ההזמנה כפי שהוא בשרת (בטעינה ואחרי כל שמירה מוצלחת) — הבסיס להשוואה ולשחזור ב"ביטול שינויים".
   const savedSnapshotRef = useRef(null);
+  // יתרת החוב (totalRequired - totalPaid) כפי שהייתה כשההזמנה נטענה/נטענה-מחדש לאחרונה
+  // בכרטיס - הבסיס להשוואה ב-handleSave כדי לדעת אם השמירה הזו יצרה/הגדילה חוב, או שהיא
+  // רק שומרת שינוי אחר על הזמנה שכבר הייתה בחוב מבעוד מועד (ר' handleSave).
+  const [openedDebt, setOpenedDebt] = useState(null);
   // מחזיק תמיד את הגרסה העדכנית של handleExit (המוגדר בהמשך הקומפוננטה) כדי שניתן יהיה
   // לקרוא לו מ-useEffect שמוגדר לפני ה-early return, בלי לשבור את סדר ה-hooks.
   const handleExitRef = useRef(null);
@@ -167,9 +171,13 @@ export default function OrderDetailsPage({ params }) {
         setPayments(loadedPayments);
         setRefunds(loadedRefunds);
         savedSnapshotRef.current = { order: data, items: loadedItems, obligations: loadedObligations, payments: loadedPayments, refunds: loadedRefunds };
+        // צילום יתרת החוב כפי שהייתה בפתיחת הכרטיס - ר' openedDebt לעיל.
+        const loadedTotalRequired = loadedObligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
+        const loadedTotalPaid = loadedPayments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+        setOpenedDebt(loadedTotalRequired - loadedTotalPaid);
         setTimeout(() => setHasUnsavedChanges(false), 0);
         setLoading(false);
-        
+
         // Add to history
         addHistory({ 
           type: 'order', 
@@ -320,6 +328,9 @@ export default function OrderDetailsPage({ params }) {
       setPayments(loadedPayments);
       setRefunds(loadedRefunds);
       savedSnapshotRef.current = { order: data, items: loadedItems, obligations: loadedObligations, payments: loadedPayments, refunds: loadedRefunds };
+      const reloadedTotalRequired = loadedObligations.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
+      const reloadedTotalPaid = loadedPayments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+      setOpenedDebt(reloadedTotalRequired - reloadedTotalPaid);
       setHasUnsavedChanges(false);
       return true;
     } catch (err) {
@@ -432,8 +443,16 @@ export default function OrderDetailsPage({ params }) {
     }
 
     let debtApprovedBy = null;
-    // CHECK DEBT AND REQUIRE APPROVAL TO SAVE
-    if (totalRequired - totalPaid > 0) {
+    // CHECK DEBT AND REQUIRE APPROVAL TO SAVE - but only when this save actually creates or
+    // changes the debt. An order that was already unpaid before the card was opened, with no
+    // edit touching the amount owed, shouldn't nag for manager approval just because it's
+    // being saved (e.g. saving an unrelated notes/date change). Compare against the balance
+    // captured when the card was loaded (openedDebt) rather than always checking "is there
+    // any debt at all" - that comparison never distinguished pre-existing debt from new debt.
+    const currentDebt = totalRequired - totalPaid;
+    const debtUnchangedSinceOpen = openedDebt !== null
+      && Math.round(currentDebt * 100) === Math.round(openedDebt * 100);
+    if (currentDebt > 0 && !debtUnchangedSinceOpen) {
       const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. שמירת השינויים דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
       if (!authResult || !authResult.pin) {
         setSaving(false);
@@ -902,6 +921,7 @@ export default function OrderDetailsPage({ params }) {
           onTabChange={setActiveTab}
           totalRequired={totalRequired}
           totalPaid={totalPaid}
+          openedDebt={openedDebt}
           saving={saving}
           saveMessage={saveMessage}
           hasUnsavedChanges={hasUnsavedChanges}
