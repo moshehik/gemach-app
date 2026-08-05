@@ -79,7 +79,7 @@ function getObligationVisual(obs) {
  * (כולל העברה מהירה בקורא מגנטי), בקשות זיכוי וזיכויים ממתינים.
  * חשוף דרך ref: openCreditModal() — אייקון החוב בטופ-בר פותח את חלון נדרים.
  */
-const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderId, items = [], order = {}, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated }, ref) {
+const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderId, items = [], order = {}, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated, isLivePreviewing = false }, ref) {
   const [newObligation, setNewObligation] = useState({ description: '', amount: '' });
 
   const [showCreditModal, setShowCreditModal] = useState(false);
@@ -562,7 +562,14 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       <div className="moc-pay-summary">
         <div className="moc-pay-tile total">
           <div className="moc-pt-lbl-row">
-            <span className="moc-pt-lbl">סה"כ לתשלום</span>
+            <span className="moc-pt-lbl">
+              סה"כ לתשלום
+              {isLivePreviewing && (
+                <span className="moc-live-recalc-hint" title="מחשב מחדש ברקע לפי השינויים שעדיין לא נשמרו">
+                  <span className="moc-spinner" /> מתעדכן…
+                </span>
+              )}
+            </span>
             <button
               type="button"
               className="moc-recalc-btn"

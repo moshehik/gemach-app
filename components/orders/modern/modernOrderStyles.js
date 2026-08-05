@@ -170,6 +170,22 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 .moc-icon-btn-soft.sig.no .moc-mini-badge { background: var(--moc-danger-text); }
 .moc-topbar-sep { width: 1px; align-self: stretch; background: var(--moc-divider); margin: 4px 4px; }
 
+/* כפתור "שמור" - שני מצבים ברורים: שמירה רגילה מול שמירה שתדרוש אישור מנהל בגלל יתרת
+   חוב (ר' handleSave ב-app/orders/[id]/page.js). needs-approval מחליף את גוון האייקון
+   לענבר, מוסיף תג מגן קטן בפינה ותג-סכום צף עם היתרה - כדי שהמשתמש ידע *לפני* הלחיצה
+   שהשמירה תעצור לבקשת אישור, ובאיזה סכום מדובר, במקום להיות מופתע מדיאלוג שנפתח פתאום. */
+.moc-icon-btn-soft.save-btn.needs-approval { color: var(--moc-warning-text); animation: mocSavePulse 2.2s ease-in-out infinite; }
+.moc-icon-btn-soft.save-btn.needs-approval:hover:not(:disabled) { background: var(--moc-warning-bg); color: #92400e; }
+.moc-icon-btn-soft.save-btn.needs-approval .moc-mini-badge { background: var(--moc-warning-text); }
+.moc-icon-btn-soft.save-btn.needs-approval .moc-amt-badge { background: var(--moc-warning-text); color: #fff; }
+@keyframes mocSavePulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(245,158,11,0.35); } 50% { box-shadow: 0 0 0 5px rgba(245,158,11,0); } }
+
+.moc-live-recalc-hint {
+  display: inline-flex; align-items: center; gap: 5px; margin-right: 8px;
+  font-size: 0.74rem; font-weight: 700; color: var(--moc-text-muted); opacity: 0.85;
+}
+.moc-live-recalc-hint .moc-spinner { width: 11px; height: 11px; border-width: 2px; }
+
 .moc-dropdown-menu {
   position: absolute; top: 100%; left: 0; margin-top: 8px; background: #fff; color: #333;
   border-radius: 10px; box-shadow: var(--moc-shadow-lg); overflow: hidden; min-width: 170px; z-index: 40;
