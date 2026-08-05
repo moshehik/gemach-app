@@ -47,6 +47,16 @@ body:has(.moc-page-overlay) .global-sidebar-icon { color: #a08a3c; }
 body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; background: rgba(212, 175, 55, 0.14); }
 .moc-page-wrap { max-width: 1520px; margin: 0 auto; }
 
+/* כפתור סגירה צף על רקע החלון (moc-page-overlay), פינה ימנית-עליונה - לא בתוך
+   הכרטיס/הסיידבר. moc-page-overlay ממוקם fixed, אז מיקום absolute כאן יחסי אליו. */
+.moc-page-close-btn {
+  position: absolute; top: 18px; right: 26px; z-index: 20;
+  background: rgba(0,0,0,0.06); color: var(--moc-text-muted); border: none; border-radius: 50%;
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  cursor: pointer; transition: background 0.2s, color 0.2s;
+}
+.moc-page-close-btn:hover { background: rgba(0,0,0,0.12); color: var(--moc-text-main); }
+
 .moc-top-strip { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; padding: 0 4px; }
 .moc-breadcrumb { color: var(--moc-text-muted); font-size: 0.9rem; }
 .moc-breadcrumb a { color: inherit; text-decoration: none; transition: color 0.15s; }
