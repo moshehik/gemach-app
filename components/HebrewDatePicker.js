@@ -453,12 +453,11 @@ export default function HebrewDatePicker({
 
             <div style={{ padding: '18px 20px', overflowY: 'auto' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', alignItems: 'center' }}>
-            <button data-agy-id="hebrew_date_picker_next_month_btn" type="button" onClick={() => {
-                const days = HDate.daysInMonth(hMonth, hYear);
-                const next = new HDate(1, hMonth, hYear).add(days, 'd');
-                setHMonth(next.getMonth());
-                setHYear(next.getFullYear());
-            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: "var(--element-bg)", border: "none", borderRadius: "999px", color: "var(--text-main)", fontWeight: "600", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}><ChevronRight size={16} /> קדימה</button>
+            <button data-agy-id="hebrew_date_picker_prev_month_btn" type="button" onClick={() => {
+                const prev = new HDate(1, hMonth, hYear).subtract(1, 'd');
+                setHMonth(prev.getMonth());
+                setHYear(prev.getFullYear());
+            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: "var(--element-bg)", border: "none", borderRadius: "999px", color: "var(--text-main)", fontWeight: "600", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}><ChevronRight size={16} /> אחורה</button>
             
             <button data-agy-id="hebrew_date_picker_today_btn" type="button" onClick={() => {
                 const hd = new HDate();
@@ -467,11 +466,12 @@ export default function HebrewDatePicker({
                 setHDay(hd.getDate());
             }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: "var(--primary-light)", border: "none", borderRadius: "999px", color: "var(--primary-color)", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.05)", fontWeight: 'bold' }} title="חזור להיום"><Home size={16} /> היום</button>
             
-            <button data-agy-id="hebrew_date_picker_prev_month_btn" type="button" onClick={() => {
-                const prev = new HDate(1, hMonth, hYear).subtract(1, 'd');
-                setHMonth(prev.getMonth());
-                setHYear(prev.getFullYear());
-            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: "var(--element-bg)", border: "none", borderRadius: "999px", color: "var(--text-main)", fontWeight: "600", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>אחורה <ChevronLeft size={16} /></button>
+            <button data-agy-id="hebrew_date_picker_next_month_btn" type="button" onClick={() => {
+                const days = HDate.daysInMonth(hMonth, hYear);
+                const next = new HDate(1, hMonth, hYear).add(days, 'd');
+                setHMonth(next.getMonth());
+                setHYear(next.getFullYear());
+            }} style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', padding: '0.4rem 0.6rem', cursor: 'pointer', background: "var(--element-bg)", border: "none", borderRadius: "999px", color: "var(--text-main)", fontWeight: "600", transition: "all 0.2s", boxShadow: "0 2px 4px rgba(0,0,0,0.02)" }}>קדימה <ChevronLeft size={16} /></button>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem', marginBottom: '0.75rem' }}>

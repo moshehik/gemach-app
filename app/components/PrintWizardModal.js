@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, Calendar as CalendarIcon, Clock, CheckCircle, FileText, X } from 'lucide-react';
+import { Printer, Calendar as CalendarIcon, Clock, CheckCircle, FileText, X, FileDown } from 'lucide-react';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 
 export default function PrintWizardModal({ onClose, defaultStartDate, defaultEndDate, defaultReportType }) {
@@ -16,7 +16,7 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
     setMounted(true);
   }, []);
 
-  const handlePrint = () => {
+  const handlePrint = (downloadPdf = false) => {
     let query = `?reportType=${reportType}&dateMode=${dateMode}`;
     
     if (dateMode === 'custom') {
@@ -28,6 +28,10 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
     } else if (dateMode === 'current') {
       if (startDate) query += `&startDate=${startDate}`;
       if (endDate) query += `&endDate=${endDate}`;
+    }
+
+    if (downloadPdf) {
+      query += `&downloadPdf=true`;
     }
 
     window.open(`/print/alterations${query}`, '_blank');
@@ -138,12 +142,32 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
           >
             ביטול
           </button>
-          <button data-element-name="כפתור_PrintWizardModal_22" 
-            className="btn btn-primary" 
-            onClick={handlePrint}
-            style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}
+          <button data-element-name="כפתור_PrintWizardModal_pdf" 
+            className="btn btn-outline" 
+            onClick={() => handlePrint(true)}
+            style={{ padding: '0.75rem 1.5rem', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', borderColor: 'var(--primary-color)', color: 'var(--primary-color)' }}
           >
-            <Printer data-element-name="רכיב_PrintWizardModal_23" size={18} /> הכן להדפסה
+            <FileDown data-element-name="רכיב_PrintWizardModal_pdf_icon" size={18} /> הורד כ-PDF
+          </button>
+          <button data-element-name="כפתור_PrintWizardModal_22" 
+            title="הכן להדפסה"
+            onClick={() => handlePrint(false)}
+            style={{ 
+              background: 'none', 
+              border: 'none', 
+              cursor: 'pointer', 
+              color: 'var(--primary-color)',
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              padding: '0.5rem',
+              borderRadius: '50%',
+              transition: 'all 0.2s'
+            }}
+            onMouseOver={(e) => { e.currentTarget.style.background = 'rgba(212,175,55,0.1)'; e.currentTarget.style.transform = 'scale(1.05)'; }}
+            onMouseOut={(e) => { e.currentTarget.style.background = 'none'; e.currentTarget.style.transform = 'scale(1)'; }}
+          >
+            <Printer data-element-name="רכיב_PrintWizardModal_23" size={24} />
           </button>
         </div>
       </div>

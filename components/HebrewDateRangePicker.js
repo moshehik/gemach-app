@@ -317,9 +317,9 @@ export default function HebrewDateRangePicker({
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '12px', alignItems: 'center', gap: '4px' }}>
           <button 
             type="button" 
-            onClick={handleNextMonth} 
+            onClick={handlePrevMonth} 
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', cursor: 'pointer', background: "var(--element-bg, #f1f5f9)", border: "1px solid var(--border-main, #e2e8f0)", borderRadius: "8px", color: "var(--text-main, #0f172a)", transition: "all 0.2s" }}
-            title="חודש הבא"
+            title="חודש קודם"
           >
             <ChevronRight size={18} />
           </button>
@@ -360,9 +360,9 @@ export default function HebrewDateRangePicker({
 
           <button 
             type="button" 
-            onClick={handlePrevMonth} 
+            onClick={handleNextMonth} 
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', cursor: 'pointer', background: "var(--element-bg, #f1f5f9)", border: "1px solid var(--border-main, #e2e8f0)", borderRadius: "8px", color: "var(--text-main, #0f172a)", transition: "all 0.2s" }}
-            title="חודש קודם"
+            title="חודש הבא"
           >
             <ChevronLeft size={18} />
           </button>

@@ -15,6 +15,7 @@ export default function PrintAlterationsPage() {
   const dateMode = searchParams.get('dateMode') || 'today';
   let startDate = searchParams.get('startDate');
   let endDate = searchParams.get('endDate');
+  const downloadPdf = searchParams.get('downloadPdf') === 'true';
 
   if (dateMode === 'today') {
     const todayStr = new Date().toISOString().split('T')[0];
@@ -35,13 +36,38 @@ export default function PrintAlterationsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pageUrl: `[הדפסת דוח] ${title} (תאריכים: ${startDate} - ${endDate})` })
       }).catch(console.error);
-
-      const timer = setTimeout(() => {
-        window.print();
-      }, 1000);
-      return () => clearTimeout(timer);
+      if (downloadPdf) {
+        const timer = setTimeout(async () => {
+          try {
+            const element = document.querySelector('[data-agy-id="print-alterations-container"]');
+            if (element) {
+               // Load html2pdf dynamically to avoid SSR issues
+               const html2pdf = (await import('html2pdf.js')).default;
+               const opt = {
+                 margin:       [15, 10, 15, 10], // top, left, bottom, right
+                 filename:     `${title}.pdf`,
+                 image:        { type: 'jpeg', quality: 0.98 },
+                 html2canvas:  { scale: 2, useCORS: true, windowWidth: 1100 },
+                 jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' },
+                 pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }
+               };
+               await html2pdf().set(opt).from(element).save();
+               setTimeout(() => window.close(), 1000);
+            }
+          } catch (err) {
+            console.error('PDF Generation Error:', err);
+            alert('אירעה שגיאה ביצירת ה-PDF. נסה להשתמש בהדפסה רגילה.');
+          }
+        }, 1500);
+        return () => clearTimeout(timer);
+      } else {
+        const timer = setTimeout(() => {
+          window.print();
+        }, 1000);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [loading, error, reportType, startDate, endDate]);
+  }, [loading, error, reportType, startDate, endDate, downloadPdf]);
 
   async function fetchData() {
     try {

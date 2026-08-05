@@ -1,6 +1,6 @@
 {
   "name": "gemach-app",
-  "version": "0.1.98",
+  "version": "0.1.99",
   "lastUpdated": "2026-07-27",
   "private": true,
   "scripts": {
@@ -14,6 +14,7 @@
     "@prisma/client": "^5.22.0",
     "hebcal": "^2.3.2",
     "html-to-image": "^1.11.13",
+    "html2pdf.js": "^0.14.0",
     "jspdf": "^4.2.1",
     "lucide-react": "^1.23.0",
     "next": "16.2.10",
@@ -21,6 +22,7 @@
     "prisma": "^5.22.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "react-to-pdf": "^3.2.2",
     "recharts": "^3.9.2",
     "xlsx": "^0.18.5"
   },
