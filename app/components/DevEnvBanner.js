@@ -10,6 +10,12 @@ export default function DevEnvBanner() {
   const [copied, setCopied] = useState(null);
 
   useEffect(() => {
+    // The endpoint itself is dev-only gated; skip the request entirely in production
+    // instead of firing it and letting it 403 on every page load.
+    if (process.env.NODE_ENV !== 'development') {
+      setLoading(false);
+      return;
+    }
     fetch('/api/dev/switch-env')
       .then(res => res.json())
       .then(data => {
