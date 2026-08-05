@@ -1,6 +1,6 @@
 {
   "name": "gemach-app",
-  "version": "0.1.115",
+  "version": "0.1.116",
   "lastUpdated": "2026-07-27",
   "private": true,
   "scripts": {
@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint",
     "backup:prod": "node scripts/backup_prod_db.js",
+    "cleanup:logs": "node scripts/cleanup_old_logs.js",
     "generate:offline": "prisma generate --schema=prisma/schema.local.prisma",
     "offline:db-push": "prisma db push --schema=prisma/schema.local.prisma"
   },
