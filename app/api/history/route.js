@@ -70,7 +70,7 @@ export async function DELETE(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
-    const { ids, deleteAll, username, password } = body;
+    const { ids, deleteAll, olderThanDays, username, password } = body;
 
     if (!username || !password) {
       return NextResponse.json({ success: false, message: 'נדרש שם משתמש וסיסמה לאישור המחיקה' }, { status: 401 });
@@ -115,6 +115,16 @@ export async function DELETE(request) {
 
     if (deleteAll) {
       await prisma.pageVisitLog.deleteMany({});
+    } else if (olderThanDays !== undefined && olderThanDays !== null && olderThanDays !== '') {
+      const days = parseInt(olderThanDays, 10);
+      if (!Number.isFinite(days) || days <= 0) {
+        return NextResponse.json({ success: false, message: 'מספר ימים לא תקין' }, { status: 400 });
+      }
+      const cutoff = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+      const result = await prisma.pageVisitLog.deleteMany({
+        where: { timestamp: { lt: cutoff } }
+      });
+      return NextResponse.json({ success: true, deletedCount: result.count });
     } else if (Array.isArray(ids) && ids.length > 0) {
       await prisma.pageVisitLog.deleteMany({
         where: { id: { in: ids } }
