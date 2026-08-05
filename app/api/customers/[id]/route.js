@@ -1,8 +1,10 @@
 import prisma, { auditAs } from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { normalizeEmail } from '@/lib/emailUtils';
+import { checkAuth } from '../../../../lib/auth';
 
 export async function GET(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
@@ -46,6 +48,7 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
@@ -85,7 +88,11 @@ export async function PUT(request, { params }) {
       city: body.city,
       street: body.street,
       houseNum: body.houseNum !== "" && body.houseNum !== null ? parseInt(body.houseNum, 10) : null,
-      notes: body.notes
+      notes: body.notes,
+      bankName: body.bankName,
+      bankBranch: body.bankBranch,
+      bankAccount: body.bankAccount,
+      bankAccountName: body.bankAccountName
     };
 
     // 2. Compute changes (before the write, so they can be handed to the audit extension)
