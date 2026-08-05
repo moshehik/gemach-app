@@ -119,3 +119,53 @@ npm run backup:prod
 # or directly:
 node scripts/backup_prod_db.js
 ```
+
+## Log retention cleanup (PageVisitLog / QueryLog)
+
+Two tables grow without bound as the app is used and are excluded from normal business-data
+concerns (they're telemetry, not customer/order/payment data):
+
+- `PageVisitLog` - every page view / API call (see `app/management/history/page.js`, which
+  also offers manual cleanup - select rows, delete all, or "מחק ישן מ-90 יום" - all gated by
+  the same manager-credential check in `app/api/history/route.js`'s `DELETE` handler).
+- `QueryLog` - every raw-SQL statement run from the admin Data Explorer
+  (`app/admin/data-explorer/page.js` / `app/api/admin/query/route.js`). Its `GET` route only
+  ever reads the most recent 50 rows for display - nothing was deleting old ones.
+
+[scripts/cleanup_old_logs.js](scripts/cleanup_old_logs.js) deletes rows older than 90 days
+from both tables in one run. It connects directly with the `pg` driver (same approach as
+`scripts/backup_prod_db.js`) rather than through `app/lib/prisma.js`, both because that module
+is Next-coupled and because a raw `DELETE` avoids flooding `AuditLog` via the app's automatic
+audit-logging Prisma extension (see CLAUDE.md). It's idempotent - deleting rows that are
+already gone is a no-op - so a missed or duplicate run is harmless.
+
+- **Task name:** `GemachApp-LogCleanup`
+- **Trigger:** daily at 03:45 local time (15 minutes after `GemachApp-ProdDbBackup`, to avoid
+  the two jobs contending for the same DB connection window)
+- **Action:** `node.exe "<repo>\scripts\cleanup_old_logs.js"` - same path-resolution and
+  `.env.local`/`.env` loading approach as the backup script, so no `cd` step is needed
+- **Runs as:** the current Windows user, only while logged on - same trade-off as the backup
+  task; a missed night just means that day's 90-day-old rows get swept up on the next run
+- **Run log:** `backups/log-cleanup.log`, one line appended per run (`OK cutoff=... PageVisitLog=<deleted> QueryLog=<deleted> ...s`, or `FAILED <error>`)
+
+### How to verify it ran
+
+```powershell
+Get-ScheduledTaskInfo -TaskName "GemachApp-LogCleanup"
+Get-Content "<repo>\backups\log-cleanup.log" -Tail 5
+```
+
+### To run it manually at any time
+
+```bash
+npm run cleanup:logs
+# or directly:
+node scripts/cleanup_old_logs.js
+```
+
+To point it at a different database (e.g. TEST, for verification) without touching
+production, override the connection string for that one run:
+
+```bash
+CLEANUP_DATABASE_URL="$TEST_DATABASE_URL" node scripts/cleanup_old_logs.js
+```

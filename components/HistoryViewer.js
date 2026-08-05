@@ -107,7 +107,16 @@ export const FIELD_TRANSLATIONS = {
   updatedAt: 'תאריך עדכון',
   note: 'הערה',
   discarded: 'שינויים שבוטלו',
-  approvedDebtAmount: 'סכום חוב שאושר'
+  approvedDebtAmount: 'סכום חוב שאושר',
+  // Shift (נוכחות)
+  date: 'תאריך',
+  hebrewDate: 'תאריך עברי',
+  entryTime: 'שעת כניסה',
+  exitTime: 'שעת יציאה',
+  totalMinutes: 'סה"כ דקות',
+  totalCalculated: 'סה"כ לתשלום',
+  hourlyWageSnapshot: 'שכר שעה (בעת המשמרת)',
+  travelExpensesSnapshot: 'נסיעות (בעת המשמרת)'
 };
 
 export const ACTION_TRANSLATIONS = {

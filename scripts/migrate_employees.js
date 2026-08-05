@@ -1,9 +1,21 @@
 
 const xlsx = require('xlsx');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 
 import prisma from '@/app/lib/prisma';
 const outDir = path.resolve(__dirname, '../../csv_exports');
+
+// Employee.password is a one-way bcrypt hash (see lib/passwordAuth.js) - any (re-)import
+// from an Access export must hash it the same way instead of writing plaintext, and derive
+// pinHash (last 4 chars) so the trusted-device fast login path keeps working. See
+// scripts/migrate_hash_passwords.js for the equivalent one-time in-place migration.
+function hashLegacyPassword(plain) {
+  if (!plain) return { password: null, pinHash: null };
+  const s = String(plain);
+  const pin = s.length <= 4 ? s : s.slice(-4);
+  return { password: bcrypt.hashSync(s, 10), pinHash: bcrypt.hashSync(pin, 10) };
+}
 
 function readExcelTable(tableName) {
   const filePath = path.join(outDir, `${tableName}.xlsx`);
@@ -53,6 +65,8 @@ async function migrateEmployees() {
       const isActive = e['לא_פעיל'] !== true && e['לא_פעיל'] !== 1 && String(e['לא_פעיל']) !== 'Yes' && String(e['לא_פעיל']).toLowerCase() !== 'true';
       const isTravelExpenses = e['נסיעות'] === true || e['נסיעות'] === 1 || String(e['נסיעות']) === 'Yes' || String(e['נסיעות']).toLowerCase() === 'true';
 
+      const { password: hashedPassword, pinHash } = hashLegacyPassword(e['סיסמא']);
+
       const data = {
         firstName: e['שם_פרטי'] ? String(e['שם_פרטי']) : null,
         lastName: e['שם_משפחה'] ? String(e['שם_משפחה']) : null,
@@ -67,7 +81,8 @@ async function migrateEmployees() {
         notes: e['הערות'] ? String(e['הערות']) : null,
         emailSuffix: e['סיומת_מייל'] ? String(e['סיומת_מייל']) : null,
         roleId: e['מס_מחלקה'] ? parseInt(e['מס_מחלקה'], 10) : null,
-        password: e['סיסמא'] ? String(e['סיסמא']) : null,
+        password: hashedPassword,
+        pinHash: pinHash,
         isActive: isActive,
         hourlyWage: e['שכר_שעה'] ? parseFloat(e['שכר_שעה']) : null,
         paymentMethod: e['אופן_תשלום'] ? String(e['אופן_תשלום']) : null,

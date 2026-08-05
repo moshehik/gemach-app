@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, UserCheck, UserMinus, Plus, FileSpreadsheet, ChevronRight, ChevronLeft, CalendarClock, Printer, AlertTriangle, Loader2 } from 'lucide-react';
+import { Users, UserCheck, UserMinus, Plus, FileSpreadsheet, ChevronRight, ChevronLeft, CalendarClock, Printer, AlertTriangle, Loader2, FileText, Table2 } from 'lucide-react';
 import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
 import ExportButtons from '../../components/ExportButtons';
@@ -31,6 +31,19 @@ export default function EmployeesPage() {
   const [attendanceData, setAttendanceData] = useState([]);
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [printEmployeeId, setPrintEmployeeId] = useState(null);
+  // 'full' = דוח מלא (עמוד לכל עובד) / 'summary' = טבלת הסיכום של החודש המוצג בלבד
+  const [printMode, setPrintMode] = useState('full');
+  const [printMenuOpen, setPrintMenuOpen] = useState(false);
+  const printMenuRef = useRef(null);
+
+  useEffect(() => {
+    if (!printMenuOpen) return;
+    const handler = (e) => {
+      if (printMenuRef.current && !printMenuRef.current.contains(e.target)) setPrintMenuOpen(false);
+    };
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [printMenuOpen]);
 
   // Fetch Employees List
   useEffect(() => {
@@ -124,8 +137,10 @@ export default function EmployeesPage() {
     return d.toLocaleDateString('he-IL', { month: 'long' });
   };
 
-  const handlePrintPdfs = (employeeId = null) => {
+  const handlePrintPdfs = (employeeId = null, mode = 'full') => {
+    setPrintMenuOpen(false);
     setPrintEmployeeId(employeeId);
+    setPrintMode(mode);
     setTimeout(() => {
       window.print();
     }, 100);
@@ -144,7 +159,9 @@ export default function EmployeesPage() {
       totalMinutes += (shift.totalMinutes || 0);
       totalCalculated += (shift.totalCalculated || 0);
       if (shift.travelExpensesSnapshot > 0) hasTravels = true;
-      if (shift.entryTime && !shift.exitTime) issues++;
+      // "תקלה" = יש תאריך אבל חסרה כניסה או יציאה (אחת מהשתיים, לא שתיהן) - אותו קריטריון
+      // כמו בכרטיס העובד הבודד (isIncompleteShift), כדי שההדגשה תהיה עקבית בין המסכים.
+      if (!!shift.entryTime !== !!shift.exitTime) issues++;
     });
 
     const hours = Math.floor(totalMinutes / 60);
@@ -191,7 +208,29 @@ export default function EmployeesPage() {
           .employee-page:last-child { page-break-after: auto; }
           .employee-page thead { display: table-header-group; }
           .employee-page tr { break-inside: avoid; page-break-inside: avoid; }
+          .summary-print-table thead { display: table-header-group; }
+          .summary-print-table tr { break-inside: avoid; page-break-inside: avoid; }
         }
+
+        .attendance-print-menu {
+          position: absolute; top: 100%; right: 0; margin-top: 8px;
+          background: var(--card-bg, #fff); border-radius: 12px;
+          box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.06);
+          z-index: 1050; min-width: 240px; overflow: hidden; padding: 6px;
+          border: 1px solid var(--element-border, #e5e7eb);
+          animation: attendance-print-menu-in 0.15s ease-out forwards;
+        }
+        @keyframes attendance-print-menu-in {
+          from { opacity: 0; transform: translateY(-6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .attendance-print-menu-item {
+          width: 100%; display: flex; align-items: center; gap: 10px;
+          padding: 10px 12px; border: none; background: transparent; cursor: pointer;
+          border-radius: 8px; font-weight: 600; font-size: 0.88rem; color: var(--text-main, #334155);
+          transition: background-color 0.15s ease; text-align: right;
+        }
+        .attendance-print-menu-item:hover { background: var(--element-bg, #f8fafc); }
       `}} />
 
       <div className="page-scroll">
@@ -333,15 +372,28 @@ export default function EmployeesPage() {
               </div>
               
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <button data-element-name="כפתור_page_20" 
-                  onClick={handlePrintPdfs} 
-                  className="btn-header-icon" 
-                  disabled={processedAttendance.length === 0}
-                  title="הורדת PDF עם דף נוכחות אישי לכל עובד"
-                >
-                  <Printer data-element-name="רכיב_page_21" size={20} />
-                </button>
-                <ExportButtons data-element-name="רכיב_page_22" 
+                <div ref={printMenuRef} style={{ position: 'relative' }}>
+                  <button data-element-name="כפתור_page_20"
+                    data-agy-id="attendance-print-menu-trigger"
+                    onClick={() => setPrintMenuOpen(o => !o)}
+                    className="btn-header-icon"
+                    disabled={processedAttendance.length === 0}
+                    title="הדפסת נוכחות"
+                  >
+                    <Printer data-element-name="רכיב_page_21" size={20} />
+                  </button>
+                  {printMenuOpen && (
+                    <div className="attendance-print-menu">
+                      <button type="button" className="attendance-print-menu-item" onClick={() => handlePrintPdfs(null, 'full')}>
+                        <FileText size={16} /> דוחות מלאים לכל עובד
+                      </button>
+                      <button type="button" className="attendance-print-menu-item" onClick={() => handlePrintPdfs(null, 'summary')}>
+                        <Table2 size={16} /> טבלת סיכום בלבד ({getMonthName(selectedMonth)} {selectedYear})
+                      </button>
+                    </div>
+                  )}
+                </div>
+                <ExportButtons data-element-name="רכיב_page_22"
                   data={processedAttendance} 
                   filename={`נוכחות_${selectedMonth}_${selectedYear}`}
                   columns={[
@@ -386,11 +438,13 @@ export default function EmployeesPage() {
                     </tr>
                   ) : (
                     processedAttendance.map(emp => (
-                      <tr key={emp.id} style={{ 
-                        borderBottom: '1px solid #eee', 
+                      <tr key={emp.id} style={{
+                        borderBottom: '1px solid #eee',
                         background: emp.issues > 0 ? '#ffeb3b4a' : 'transparent',
-                        transition: 'background 0.2s'
+                        transition: 'background 0.2s',
+                        cursor: 'pointer'
                       }}
+                      onClick={() => router.push(`/employees/${emp.id}`)}
                       onMouseEnter={e => e.currentTarget.style.background = emp.issues > 0 ? '#ffeb3b70' : 'var(--element-bg)'}
                       onMouseLeave={e => e.currentTarget.style.background = emp.issues > 0 ? '#ffeb3b4a' : 'transparent'}
                       >
@@ -427,7 +481,41 @@ export default function EmployeesPage() {
       {activeTab === 'attendance' && (
         <div id="print-area">
           <div className="bsd-header" style={{ display: 'none' }}>בס"ד</div>
-          {!loadingAttendance && processedAttendance.length > 0 && processedAttendance.filter(emp => !printEmployeeId || emp.id === printEmployeeId).map(emp => {
+
+          {printMode === 'summary' && !loadingAttendance && (
+            <div style={{ background: '#fff', color: '#000', padding: '2rem', borderRadius: '12px' }}>
+              <div style={{ borderBottom: '2px solid #eee', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+                <h2 style={{ margin: '0 0 0.5rem 0' }}>טבלת סיכום נוכחות - כלל העובדים</h2>
+                <div style={{ fontSize: '1.1rem', color: '#555' }}>תקופה: {getMonthName(selectedMonth)} {selectedYear}</div>
+              </div>
+              <table className="summary-print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
+                <thead>
+                  <tr style={{ background: '#f8f9fa' }}>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'right' }}>שם</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה"כ שעות</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>כמות ימים</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>תקלות</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה"כ לתשלום</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>נסיעות</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {processedAttendance.map(emp => (
+                    <tr key={emp.id}>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', fontWeight: 500 }}>{emp.fullName}</td>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>{emp.timeStr}</td>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>{emp.daysCount}</td>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center', color: emp.issues > 0 ? '#b71c1c' : 'inherit', fontWeight: emp.issues > 0 ? 700 : 400 }}>{emp.issues || '-'}</td>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center', fontWeight: 500 }}>₪{emp.totalCalculated.toFixed(2)}</td>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>{emp.hasTravels}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {printMode === 'full' && !loadingAttendance && processedAttendance.length > 0 && processedAttendance.filter(emp => !printEmployeeId || emp.id === printEmployeeId).map(emp => {
             const totalHours = (emp.totalMinutes / 60).toFixed(2);
             return (
               <div key={emp.id} className="employee-page" style={{ background: '#fff', color: '#000', padding: '2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>

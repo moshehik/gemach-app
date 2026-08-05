@@ -3,6 +3,34 @@ import prisma from '../../../../lib/prisma';
 import { getHebrewDateString } from '../../../../../lib/hebrewDate';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
 
+// "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
+const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
+
+// Minimal inline SVGs (lucide-react's shirt/scissors/ruler/check paths) - the emailed
+// report is a raw HTML string, not JSX, so icon components can't be imported here.
+const ICON_SVG = {
+  shirt: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10c0 1.1.9 2 2 2h8a2 2 0 0 0 2-2V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></svg>',
+  scissors: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><path d="M8.12 8.12 12 12"/><path d="M20 4 8.12 15.88"/><circle cx="6" cy="18" r="3"/><path d="M14.8 14.8 20 20"/></svg>',
+  ruler: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.41 2.41 0 0 1 0-3.4l2.6-2.6a2.41 2.41 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/><path d="m11.5 9.5 2-2"/><path d="m8.5 6.5 2-2"/><path d="m17.5 15.5 2-2"/></svg>',
+  check: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+};
+
+const renderRepairChipsHtml = (item) => {
+  const neck = item.neckAlteration === 1 || item.neckAlteration === true;
+  const sleeve = item.sleeveAlteration === 1 || item.sleeveAlteration === true;
+  const length = item.lengthAlteration && String(item.lengthAlteration).trim() !== '' ? item.lengthAlteration : null;
+  if (!neck && !sleeve && !length) return '<span style="color:#999;">ללא תיקונים</span>';
+  const chip = (iconKey, label, extraStyle = '') => `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:20px;background:#f4f4f4;color:#555;font-size:12px;white-space:nowrap;${extraStyle}">${ICON_SVG[iconKey]} ${label}</span>`;
+  let html = '<span style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;">';
+  if (neck) html += chip('shirt', 'צוואר');
+  if (sleeve) html += chip('scissors', 'שרוול');
+  if (length) html += chip('ruler', `${length} ס״מ`);
+  if (item.alterationDone) html += chip('check', 'בוצע', 'background:#e8f5e9;color:#2e7d32;');
+  if (item.alterationDetails) html += `<span style="flex-basis:100%;font-size:11px;color:#888;">${item.alterationDetails}</span>`;
+  html += '</span>';
+  return html;
+};
+
 export async function POST(request, { params }) {
   try {
     const resolvedParams = await params;
@@ -40,7 +68,11 @@ export async function POST(request, { params }) {
     const printSettings = {
       box1: settingsData.find(s => s.key === 'print_rental_box1')?.value || '',
       box2: settingsData.find(s => s.key === 'print_rental_box2')?.value || '',
-      footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || ''
+      footer: settingsData.find(s => s.key === 'print_rental_footer')?.value || '',
+      gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות',
+      gmachAddress: settingsData.find(s => s.key === 'gmach_address')?.value || '',
+      gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
+      gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || ''
     };
 
     // סטטוס ההשכרה מגיע כעת מ-lib/orderStatus.js (מקור האמת היחיד לסטטוס הזמנה) במקום
@@ -68,7 +100,7 @@ export async function POST(request, { params }) {
     const totalObligations = order.obligations.reduce((sum, o) => sum + o.amount, 0);
     const totalPayments = order.payments.reduce((sum, p) => sum + p.amount, 0);
 
-    const colCount = enableAlterations ? 7 : 4;
+    const colCount = enableAlterations ? 5 : 4;
 
     const itemsHtml = (!order.items || order.items.filter(i => !i.isDeleted).length === 0)
       ? `<tr><td colspan="${colCount}" style="text-align: center; padding: 30px; color: #999;">אין פריטים פעילים בהזמנה זו</td></tr>`
@@ -78,16 +110,14 @@ export async function POST(request, { params }) {
           else if (item.isTaken) statusStr = 'אצל הלקוח';
 
           let alts = enableAlterations ? `
-            <td>${item.neckAlteration ? `הצרה ${item.neckAlteration}` : '-'}</td>
-            <td>${item.sleeveAlteration ? `הארכה ${item.sleeveAlteration}` : '-'}</td>
-            <td>${item.lengthAlteration || '-'}</td>
+            <td>${renderRepairChipsHtml(item)}</td>
           ` : '';
 
           // Same field precedence as app/print/order/page.js, so the emailed report never
           // shows less than what the in-app print view shows for the same order.
-          const modelName = item.description || item.dressItem?.dress?.name || item.dressItem?.dressName || '-';
+          const modelName = stripCodeLabel(item.description || item.dressItem?.dress?.name || item.dressItem?.dressName) || '-';
           const sizeText = item.sizeText || item.dressItem?.sizeText || '-';
-          const barcode = item.barcode || item.dressItem?.dressBarcode || ((item.barcodePrefix && item.sizeText) ? `${item.barcodePrefix}${item.sizeText}` : '-');
+          const barcode = (item.isTaken && (item.barcode || item.dressItem?.dressBarcode)) || '-';
 
           return `
             <tr>
@@ -226,8 +256,12 @@ export async function POST(request, { params }) {
         <div class="invoice-box">
           <div class="bsd">בס"ד</div>
           <div class="print-header">
-            <h1>גמ"ח שמלות</h1>
-            <div class="company-details">רחוב ירושלים 15, בני ברק | טלפון: 03-1234567 | דוא"ל: info@gemach.co.il</div>
+            <h1>${printSettings.gmachName}</h1>
+            <div class="company-details">${[
+              printSettings.gmachAddress,
+              printSettings.gmachPhone ? `טלפון: ${printSettings.gmachPhone}` : '',
+              printSettings.gmachEmail ? `דוא"ל: ${printSettings.gmachEmail}` : ''
+            ].filter(Boolean).join(' | ')}</div>
           </div>
 
           <table class="order-details-table">
@@ -248,18 +282,6 @@ export async function POST(request, { params }) {
 
           ${printType === 'rental' && printSettings.box1 ? `<div class="rental-notes-box">${printSettings.box1}</div>` : ''}
           ${printType === 'rental' && printSettings.box2 ? `<div class="rental-notes-box rental-notes-box-bg">${printSettings.box2}</div>` : ''}
-          ${printType === 'rental' && printSettings.footer ? `
-            <div style="text-align: center; margin-top: 15px; margin-bottom: 25px;">
-              <h3 style="font-size: 16px; font-weight: 700; margin: 0 0 8px 0; color: #262626;">${printSettings.footer}</h3>
-              <div style="font-size: 15px; font-weight: 600; display: flex; justify-content: center; align-items: center; color: #444;">
-                <span>על החתום:</span>
-                <span style="display: inline-block; width: 200px; border-bottom: 1px dashed #999; margin: 0 10px;"></span>
-              </div>
-              <div style="margin-top: 8px; font-size: 13px; font-weight: 500; color: #888;">
-                נא להחזיר טופס זה חתום בעת החזרת השמלות
-              </div>
-            </div>
-          ` : ''}
 
           <table class="print-table">
             <thead>
@@ -267,11 +289,7 @@ export async function POST(request, { params }) {
                 <th>דגם / תיאור</th>
                 <th>מידה</th>
                 <th>ברקוד</th>
-                ${enableAlterations ? `
-                <th>תיקון צואר</th>
-                <th>תיקון שרוול</th>
-                <th>תיקון אורך</th>
-                ` : ''}
+                ${enableAlterations ? '<th>תיקונים</th>' : ''}
                 <th>סטטוס</th>
               </tr>
             </thead>
@@ -319,6 +337,19 @@ export async function POST(request, { params }) {
             <div>חתימת הלקוח</div>
             <div>אישור הגמ"ח</div>
           </div>
+          ` : ''}
+
+          ${printType === 'rental' && printSettings.footer ? `
+            <div style="text-align: center; margin-top: 15px; margin-bottom: 25px;">
+              <h3 style="font-size: 16px; font-weight: 700; margin: 0 0 8px 0; color: #262626;">${printSettings.footer}</h3>
+              <div style="font-size: 15px; font-weight: 600; display: flex; justify-content: center; align-items: center; color: #444;">
+                <span>על החתום:</span>
+                <span style="display: inline-block; width: 200px; border-bottom: 1px dashed #999; margin: 0 10px;"></span>
+              </div>
+              <div style="margin-top: 8px; font-size: 13px; font-weight: 500; color: #888;">
+                נא להחזיר טופס זה חתום בעת החזרת השמלות
+              </div>
+            </div>
           ` : ''}
 
           <div class="print-footer">

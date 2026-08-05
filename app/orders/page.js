@@ -84,11 +84,13 @@ export default function OrdersPage() {
   const [limit] = useState(50);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
+  // Default to the "בקרוב" (upcoming) tab sorted with the soonest event date first, so a
+  // fresh page load opens on what the staff actually need to see, not the full archive.
   const [sort, setSort] = useState('eventDate');
-  const [order, setOrder] = useState('desc');
+  const [order, setOrder] = useState('asc');
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('soon');
 
   // How long a pending cart holds its items. The server releases them back to the pool
   // based on the `inventory_hold_minutes` setting, so hardcoding 15 here made the countdown

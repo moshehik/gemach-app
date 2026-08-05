@@ -28,7 +28,9 @@ export default function HistoryPage() {
   // Deletion
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
-  const [deleteModal, setDeleteModal] = useState({ open: false, isDeleteAll: false, username: '', password: '', error: '' });
+  // mode: 'selected' | 'all' | 'old' — which delete action the confirmation modal is gating
+  const [deleteModal, setDeleteModal] = useState({ open: false, mode: 'selected', username: '', password: '', error: '' });
+  const OLD_RECORDS_DAYS = 90;
 
   const fetchHistory = useCallback(async () => {
     setLoading(true);
@@ -99,9 +101,9 @@ export default function HistoryPage() {
     }
   };
 
-  const promptDelete = (deleteAll = false) => {
-    if (!deleteAll && selectedIds.size === 0) return;
-    setDeleteModal({ open: true, isDeleteAll: deleteAll, username: '', password: '', error: '' });
+  const promptDelete = (mode = 'selected') => {
+    if (mode === 'selected' && selectedIds.size === 0) return;
+    setDeleteModal({ open: true, mode, username: '', password: '', error: '' });
   };
 
   const confirmDelete = async (e) => {
@@ -118,8 +120,9 @@ export default function HistoryPage() {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ids: Array.from(selectedIds),
-          deleteAll: deleteModal.isDeleteAll,
+          ids: deleteModal.mode === 'selected' ? Array.from(selectedIds) : [],
+          deleteAll: deleteModal.mode === 'all',
+          olderThanDays: deleteModal.mode === 'old' ? OLD_RECORDS_DAYS : undefined,
           username: deleteModal.username,
           password: deleteModal.password
         })
@@ -127,7 +130,7 @@ export default function HistoryPage() {
       const data = await res.json();
       if (data.success) {
         setSelectedIds(new Set());
-        setDeleteModal({ open: false, isDeleteAll: false, username: '', password: '', error: '' });
+        setDeleteModal({ open: false, mode: 'selected', username: '', password: '', error: '' });
         fetchHistory();
       } else {
         setDeleteModal(prev => ({ ...prev, error: data.message || 'שגיאה במחיקה' }));
@@ -305,23 +308,36 @@ export default function HistoryPage() {
           נמצאו {totalCount} רשומות (מציג 60 לעמוד)
         </div>
         <div style={{ display: 'flex', gap: '1rem' }}>
-          <button data-element-name="כפתור_page_4" 
-            onClick={() => promptDelete(false)}
+          <button data-element-name="כפתור_page_4"
+            onClick={() => promptDelete('selected')}
             disabled={selectedIds.size === 0 || isDeleting}
-            style={{ 
-              background: selectedIds.size > 0 ? '#dc3545' : '#e9ecef', 
+            style={{
+              background: selectedIds.size > 0 ? '#dc3545' : '#e9ecef',
               color: selectedIds.size > 0 ? 'white' : '#6c757d',
               border: 'none', padding: '0.5rem 1rem', borderRadius: '4px', cursor: selectedIds.size > 0 ? 'pointer' : 'not-allowed'
             }}
           >
             מחק נבחרים ({selectedIds.size})
           </button>
-          
-          <button data-element-name="כפתור_page_5" 
-            onClick={() => promptDelete(true)}
+
+          <button data-element-name="כפתור_page_old"
+            onClick={() => promptDelete('old')}
             disabled={isDeleting || totalOverall === 0}
-            style={{ 
-              background: 'transparent', 
+            title={`מחיקת כל הרשומות שגילן מעל ${OLD_RECORDS_DAYS} יום`}
+            style={{
+              background: 'transparent',
+              color: '#d97706',
+              border: '1px solid #d97706', padding: '0.5rem 1rem', borderRadius: '4px', cursor: totalOverall > 0 ? 'pointer' : 'not-allowed'
+            }}
+          >
+            🕒 מחק ישן מ-{OLD_RECORDS_DAYS} יום
+          </button>
+
+          <button data-element-name="כפתור_page_5"
+            onClick={() => promptDelete('all')}
+            disabled={isDeleting || totalOverall === 0}
+            style={{
+              background: 'transparent',
               color: '#dc3545',
               border: '1px solid #dc3545', padding: '0.5rem 1rem', borderRadius: '4px', cursor: totalOverall > 0 ? 'pointer' : 'not-allowed'
             }}
@@ -478,8 +494,10 @@ export default function HistoryPage() {
           <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '400px', boxShadow: '0 4px 6px rgba(0,0,0,0.1)' }}>
             <h3 style={{ marginTop: 0, marginBottom: '1rem', color: 'var(--primary-color)' }}>אישור מחיקה</h3>
             <p style={{ marginBottom: '1.5rem', color: 'var(--text-muted)' }}>
-              {deleteModal.isDeleteAll 
-                ? 'האם אתה בטוח שברצונך למחוק את כל ההיסטוריה לחלוטין?' 
+              {deleteModal.mode === 'all'
+                ? 'האם אתה בטוח שברצונך למחוק את כל ההיסטוריה לחלוטין?'
+                : deleteModal.mode === 'old'
+                ? `האם למחוק את כל הרשומות שגילן מעל ${OLD_RECORDS_DAYS} יום? רשומות מ-${OLD_RECORDS_DAYS} הימים האחרונים לא יימחקו.`
                 : `האם למחוק ${selectedIds.size} רשומות שנבחרו?`}
               <br/><br/>
               <strong>למחיקה דרוש שם משתמש וסיסמא בדרגת ניהול.</strong>
@@ -518,7 +536,7 @@ export default function HistoryPage() {
                 <button data-element-name="כפתור_page_21" type="submit" disabled={isDeleting} className="btn btn-primary" style={{ flex: 1, padding: '0.75rem', background: '#dc3545', borderColor: '#dc3545' }}>
                   {isDeleting ? 'מוחק...' : 'אשר מחיקה'}
                 </button>
-                <button data-element-name="כפתור_page_22" type="button" onClick={() => setDeleteModal({ open: false, isDeleteAll: false, username: '', password: '', error: '' })} disabled={isDeleting} className="btn btn-outline" style={{ flex: 1, padding: '0.75rem' }}>
+                <button data-element-name="כפתור_page_22" type="button" onClick={() => setDeleteModal({ open: false, mode: 'selected', username: '', password: '', error: '' })} disabled={isDeleting} className="btn btn-outline" style={{ flex: 1, padding: '0.75rem' }}>
                   ביטול
                 </button>
               </div>

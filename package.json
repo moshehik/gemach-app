@@ -1,31 +1,34 @@
 {
   "name": "gemach-app",
-  "version": "0.1.116",
+  "version": "0.1.129",
   "lastUpdated": "2026-07-27",
   "private": true,
+  "engines": {
+    "node": "^22.17.0 || >=24.0.0"
+  },
   "scripts": {
     "dev": "next dev --webpack",
     "build": "prisma generate && next build --webpack",
     "start": "next start",
     "lint": "eslint",
     "backup:prod": "node scripts/backup_prod_db.js",
+    "cleanup:logs": "node scripts/cleanup_old_logs.js",
     "generate:offline": "prisma generate --schema=prisma/schema.local.prisma",
     "offline:db-push": "prisma db push --schema=prisma/schema.local.prisma"
   },
   "dependencies": {
     "@hebcal/core": "^6.6.0",
     "@prisma/client": "^5.22.0",
+    "@sparticuz/chromium": "^149.0.0",
+    "bcryptjs": "^3.0.3",
     "hebcal": "^2.3.2",
-    "html-to-image": "^1.11.13",
-    "html2pdf.js": "^0.14.0",
-    "jspdf": "^4.2.1",
     "lucide-react": "^1.23.0",
     "next": "16.2.10",
     "pg": "^8.22.0",
     "prisma": "^5.22.0",
+    "puppeteer-core": "^25.5.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "react-to-pdf": "^3.2.2",
     "recharts": "^3.9.2",
     "xlsx": "^0.18.5"
   },

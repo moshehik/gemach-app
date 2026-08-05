@@ -29,6 +29,7 @@ export default function ModernOrderCard({
   onTabChange,
   totalRequired,
   totalPaid,
+  openedDebt,
   saving,
   saveMessage,
   hasUnsavedChanges,
@@ -69,6 +70,11 @@ export default function ModernOrderCard({
 
   const activeItems = (items || []).filter(i => !i.isDeleted);
   const debt = totalRequired - totalPaid;
+  // שמירה לא תבקש אישור מנהל אם החוב זהה לזה שהיה כשהכרטיס נטען (ר' handleSave) - התג
+  // מציג את אותה הבחנה כדי לא להבהיל על אישור שלא באמת ידרש בלחיצה על שמירה.
+  const debtUnchangedSinceOpen = openedDebt !== undefined && openedDebt !== null
+    && Math.round(debt * 100) === Math.round(openedDebt * 100);
+  const saveNeedsApproval = debt > 0 && !debtUnchangedSinceOpen;
 
   const orderStatus = calculateOrderStatus(order);
   const statusColor = getStatusColor(orderStatus);
@@ -105,6 +111,11 @@ export default function ModernOrderCard({
 
   return (
     <div className="moc moc-page-overlay">
+      {/* כפתור סגירה על רקע החלון (מחוץ לכרטיס הלבן/הסיידבר הזהב), פינה ימנית-עליונה של
+          המסך כולו - לבקשת הבעלים, ולא מוטמע בין שאר האייקונים בסיידבר כמו קודם. */}
+      <button className="moc-page-close-btn" title="סגור כרטיס וחזור" onClick={() => onExit()}>
+        <X size={20} />
+      </button>
       <div className="moc-page-wrap">
       <div className="moc-top-strip">
         <div className="moc-breadcrumb">
@@ -117,9 +128,6 @@ export default function ModernOrderCard({
         <aside className="moc-sidebar">
           <div>
             <div className="moc-sidebar-top-row">
-              <button className="moc-icon-btn-ghost" title="סגור כרטיס וחזור" onClick={() => onExit()}>
-                <X size={16} />
-              </button>
               <div className="moc-order-id-group">
                 <span className="moc-order-num">הזמנה #{order.orderId}</span>
                 <span className="moc-v-divider" />
@@ -249,19 +257,20 @@ export default function ModernOrderCard({
               <div className="moc-topbar-sep" />
 
               {/* שני מצבים ברורים: שמירה רגילה מול שמירה שתעצור לבקשת אישור מנהל בגלל יתרת
-                  חוב חדשה (ר' handleSave - הבדיקה totalRequired-totalPaid>0). needs-approval
-                  משנה את גוון האייקון, מוסיף תג מגן ותג-סכום כדי שהמשתמש ידע מראש, בלי
-                  לשנות שום דבר בלוגיקת האישור עצמה. */}
+                  חוב חדשה/שהשתנתה (ר' handleSave - saveNeedsApproval, מושווה מול openedDebt).
+                  הזמנה שכבר הייתה בחוב לפני פתיחת הכרטיס ולא נעשה בה שינוי שמשפיע על הסכום
+                  לא מסומנת כדורשת אישור, כי השמירה בפועל לא תבקש אחד. needs-approval משנה
+                  את גוון האייקון, מוסיף תג מגן ותג-סכום כדי שהמשתמש ידע מראש. */}
               <button
-                className={`moc-icon-btn-soft primary save-btn ${debt > 0 ? 'needs-approval' : ''}`}
-                title={debt > 0
+                className={`moc-icon-btn-soft primary save-btn ${saveNeedsApproval ? 'needs-approval' : ''}`}
+                title={saveNeedsApproval
                   ? `שמירה עם יתרת חוב של ₪${debt.toLocaleString('he-IL')} תדרוש אישור מנהל`
                   : 'שמור שינויים'}
                 onClick={() => onSave()}
                 disabled={saving}
               >
                 {saving ? <span className="moc-spinner" /> : <Save size={18} />}
-                {!saving && debt > 0 && (
+                {!saving && saveNeedsApproval && (
                   <>
                     <span className="moc-mini-badge"><ShieldAlert size={9} /></span>
                     <span className="moc-amt-badge">₪{debt.toLocaleString('he-IL')}</span>

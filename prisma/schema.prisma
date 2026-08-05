@@ -72,7 +72,9 @@ model Employee {
   notes              String? // הערות
   emailSuffix        String? // סיומת_מייל
   roleId             Int? // מס_מחלקה
-  password           String? // סיסמא
+  password           String? // סיסמא - bcrypt hash (one-way). Historically stored plaintext; migrated in place, see scripts/migrate_hash_passwords.js
+  pinHash            String? // bcrypt hash of the last 4 characters of the real password - only usable together with a valid TrustedDevice cookie, never on its own
+  mustResetPassword  Boolean        @default(false) // true right after a forgot-password temp password is issued; forces a real password change on next successful login
   isActive           Boolean        @default(true) // לא_פעיל
   hourlyWage         Float? // שכר_שעה
   paymentMethod      String? // אופן_תשלום
@@ -97,6 +99,23 @@ model Employee {
 
   @@index([phone1])
   @@index([fullName])
+}
+
+// A shared physical computer at the gemach that a manager has explicitly marked as
+// trusted, letting whoever is logged into that browser log in with just the last 4
+// digits of their real password (see lib/passwordAuth.js / lib/trustedDevice.js).
+// The trust boundary is this row + the random token in the httpOnly cookie, NOT the
+// 4-digit PIN itself - the PIN alone (without the matching cookie) authenticates no one.
+model TrustedDevice {
+  id          String    @id @default(uuid())
+  tokenHash   String    @unique // sha256 of the random token stored in the trusted_device cookie - only the hash is persisted
+  label       String? // optional manager-given name, e.g. "עמדה קדמית"
+  createdById String? // Employee.id of the manager who marked this computer trusted
+  createdAt   DateTime  @default(now())
+  lastUsedAt  DateTime?
+  revokedAt   DateTime? // soft-revoke: keeps history instead of deleting the row
+
+  @@index([revokedAt])
 }
 
 model Notification {

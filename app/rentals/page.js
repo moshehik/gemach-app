@@ -13,6 +13,9 @@ import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import { List, ShoppingBag, Clock, CheckCircle, RotateCcw } from 'lucide-react';
 import useDebounce from '@/hooks/useDebounce';
 
+// שמור על 50 רשומות בטעינה - עקבי עם app/orders/page.js ו-app/refunds/page.js.
+const PAGE_SIZE = 50;
+
 export default function RentalsPage() {
   const { getLabel } = useLabels();
   const [orders, setOrders] = useState([]);
@@ -45,6 +48,12 @@ export default function RentalsPage() {
   const [sort, setSort] = useState('orderId');
   const [order, setOrder] = useState('desc');
 
+  // Pagination ("load more") - matches the PAGE_SIZE + hasMore + loadMore convention
+  // already used in app/orders/page.js and app/refunds/page.js.
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+
   const handleSort = (column) => {
     if (sort === column) {
       setOrder(order === 'asc' ? 'desc' : 'asc');
@@ -71,12 +80,12 @@ export default function RentalsPage() {
     }
   }, []);
 
-  const fetchOrders = async () => {
-    setLoading(true);
+  const fetchOrders = async (targetPage = 1, { append = false } = {}) => {
+    if (append) setLoadingMore(true); else setLoading(true);
     try {
       const hasAdvFilters = Object.values(advFilters).some(v => v !== '');
 
-      const queryParams = new URLSearchParams({ search: debouncedSearch, sort, order, limit: '200', forRentals: 'true' });
+      const queryParams = new URLSearchParams({ search: debouncedSearch, sort, order, page: String(targetPage), limit: String(PAGE_SIZE), forRentals: 'true' });
 
       if (!debouncedSearch && !hasAdvFilters) {
         if (viewMode === 'rented') queryParams.append('activeOnly', 'true');
@@ -94,17 +103,25 @@ export default function RentalsPage() {
 
       const res = await fetch(`/api/orders?${queryParams.toString()}`, { cache: 'no-store' });
       const data = await res.json();
-      setOrders(data.data || []);
+      const rows = data.data || [];
+      setOrders(prev => append ? [...prev, ...rows] : rows);
+      setPage(targetPage);
+      setHasMore(targetPage < (data.totalPages || 1));
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (append) setLoadingMore(false); else setLoading(false);
     }
+  };
+
+  const loadMoreOrders = () => {
+    if (loadingMore || !hasMore) return;
+    fetchOrders(page + 1, { append: true });
   };
 
   useEffect(() => {
     if (!isAiModeActive) {
-      fetchOrders();
+      fetchOrders(1);
     }
   }, [debouncedSearch, viewMode, advFilters, isAiModeActive, sort, order]);
 
@@ -495,6 +512,17 @@ export default function RentalsPage() {
           })}
           </table>
         </div>
+        {!loading && hasMore && (
+          <div style={{ display: 'flex', justifyContent: 'center', padding: '1.25rem' }}>
+            <button
+              onClick={loadMoreOrders}
+              disabled={loadingMore}
+              style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', border: '1px solid var(--element-border)', background: 'var(--card-bg)', color: 'var(--primary-color)', fontWeight: '600', cursor: loadingMore ? 'default' : 'pointer' }}
+            >
+              {loadingMore ? 'טוען...' : 'טען עוד'}
+            </button>
+          </div>
+        )}
       </div>
 
       {/* סיכום הרשומות — מוצמד תמיד לתחתית המסך */}
@@ -508,7 +536,7 @@ export default function RentalsPage() {
         <RentalReturnModal data-element-name="רכיב_page_19"
           orderId={selectedOrderId}
           onClose={() => setSelectedOrderId(null)}
-          onUpdate={fetchOrders}
+          onUpdate={() => fetchOrders(1)}
         />
       )}
 

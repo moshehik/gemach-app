@@ -112,8 +112,8 @@ IMPORTANT: You are directly talking to the user. Output ONLY the exact final ans
       const { cookies } = await import('next/headers');
       const cookieStore = await cookies();
       const token = cookieStore.get('auth_token');
-      const employeeId = token ? parseInt(token.value, 10) : null;
-      if (employeeId && !isNaN(employeeId)) {
+      const employeeId = token?.value || null;
+      if (employeeId) {
         await prisma.aIChatSession.create({
           data: {
             employeeId,
