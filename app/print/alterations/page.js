@@ -10,6 +10,7 @@ export default function PrintAlterationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [enableAlterations, setEnableAlterations] = useState(true);
+  const [printSettings, setPrintSettings] = useState(null);
 
   const reportType = searchParams.get('reportType') || 'alterations_pending';
   const dateMode = searchParams.get('dateMode') || 'today';
@@ -78,6 +79,13 @@ export default function PrintAlterationsPage() {
 
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json();
+        // Letterhead details - same settings keys print/order reads for its header
+        setPrintSettings({
+          gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ״ח שמלות',
+          gmachAddress: settingsData.find(s => s.key === 'gmach_address')?.value || '',
+          gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
+          gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || ''
+        });
         const altSetting = settingsData.find(s => s.key === 'enable_alterations');
         if (altSetting && altSetting.value === 'false') {
           setEnableAlterations(false);
@@ -215,20 +223,30 @@ export default function PrintAlterationsPage() {
       style={{ padding: '20px', direction: 'rtl' }}
     >
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Helvetica+Neue:wght@300;400;500;600;700&display=swap');
-        
+        @import url('https://fonts.googleapis.com/css2?family=David+Libre:wght@400;500;600;700&family=Frank+Ruhl+Libre:wght@500;700;900&display=swap');
+
         body {
           background-color: #fafafa !important;
-          font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
         }
 
         /* Hide global layout elements on screen */
-        nav.navbar, 
-        .global-sidebar-container, 
-        .ai-floating-widget, 
-        [class*="sidebar"], 
+        nav.navbar,
+        .global-sidebar-container,
+        .ai-floating-widget,
+        [class*="sidebar"],
         [id*="sidebar"] {
           display: none !important;
+        }
+
+        .print-container {
+          background: #fff;
+          max-width: 1100px;
+          margin: 0 auto;
+          padding: 45px 50px !important;
+          border: 1px solid #efefef;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.03);
+          font-family: 'David Libre', 'Times New Roman', Georgia, serif;
+          color: #444;
         }
 
         @media print {
@@ -240,21 +258,24 @@ export default function PrintAlterationsPage() {
             background: white !important;
             height: auto !important;
             overflow: visible !important;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
           }
-          nav.navbar, 
-          .dev-env-container, 
+          nav.navbar,
+          .dev-env-container,
           .offline-indicator,
           .ai-floating-widget {
             display: none !important;
           }
           .print-container {
             width: 100%;
+            max-width: 100% !important;
             height: auto !important;
             overflow: visible !important;
             margin: 0;
             padding: 0 !important;
             display: block !important;
-            color: #333 !important;
+            color: #444 !important;
             border: none !important;
             box-shadow: none !important;
           }
@@ -265,89 +286,202 @@ export default function PrintAlterationsPage() {
             break-inside: avoid;
             page-break-inside: avoid;
           }
-          .group-title, .print-header {
+          .group-title, .print-header, .report-title-block {
             break-after: avoid-page;
             page-break-after: avoid;
           }
         }
-        
-        .print-container {
-          background: #fff;
-          max-width: 1100px;
-          margin: 0 auto;
-          padding: 40px !important;
-          border: 1px solid #efefef;
-          box-shadow: 0 2px 10px rgba(0,0,0,0.02);
-          color: #555;
+
+        .bsd {
+          text-align: right;
+          font-size: 13px;
+          font-weight: 600;
+          color: #999;
+          margin-bottom: 6px;
+          letter-spacing: 0.5px;
         }
-        
+        /* Letterhead - mirrors print/order */
+        .print-header {
+          text-align: center;
+          border-bottom: 1px solid #eaeaea;
+          padding-bottom: 20px;
+          margin-bottom: 22px;
+        }
+        .print-header h1 {
+          margin: 0 0 6px 0;
+          font-family: 'Frank Ruhl Libre', 'David Libre', serif;
+          font-size: 28px;
+          color: #262626;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+        }
+        .company-details {
+          color: #999;
+          font-size: 13px;
+          margin-top: 6px;
+        }
+        .report-title-block {
+          text-align: center;
+          margin-bottom: 30px;
+        }
+        .report-title-block h2 {
+          margin: 0 0 7px 0;
+          font-family: 'Frank Ruhl Libre', 'David Libre', serif;
+          font-size: 21px;
+          color: #262626;
+          font-weight: 700;
+          letter-spacing: 0.3px;
+        }
+        .report-title-block h3 {
+          margin: 0;
+          font-size: 14.5px;
+          color: #888;
+          font-weight: 500;
+        }
+
         .print-table {
           width: 100%;
           border-collapse: collapse;
-          margin-top: 10px;
+          margin-top: 8px;
+          border: 1px solid #e5e5e5;
         }
         .print-table th, .print-table td {
           border-bottom: 1px solid #eee;
-          padding: 10px 12px;
+          padding: 9px 12px;
           text-align: right;
-          font-size: 13px;
+          font-size: 13.5px;
         }
+        /* globals.css has a global sticky-header rule (table thead tr th {...!important})
+           meant for on-screen data tables - it forces position:sticky, a white/themed
+           background and a gold border-bottom on every <th>. It has no class scope, so it
+           also matches this print table; override every property it sets with !important
+           so the print header keeps its own plain design. */
         .print-table th {
-          background-color: #f8f9fa;
-          border-bottom: 2px solid #ddd;
-          color: #444;
+          position: static !important;
+          top: auto !important;
+          z-index: auto !important;
+          background-color: #f4f4f4 !important;
+          background-image: none !important;
+          box-shadow: none !important;
+          border-bottom: 1px solid #eee !important;
+          color: #333;
           font-weight: 600;
+          letter-spacing: 0.3px;
+        }
+        .print-table tbody tr:nth-child(even) {
+          background-color: #fbfbfb;
         }
         .print-table tbody tr:last-child td {
           border-bottom: none;
         }
-        .print-header {
-          text-align: center;
-          margin-bottom: 30px;
-        }
-        .print-header h1 {
-          margin: 0; font-size: 26px; color: #555; font-weight: 300; letter-spacing: 1px; margin-bottom: 10px;
-        }
-        .print-header h3 {
-          margin: 0; font-size: 15px; color: #777; font-weight: normal;
-        }
-        .date-group {
-          margin-bottom: 40px;
-        }
+
         .group-title {
-          border-bottom: 2px solid #ddd;
-          padding-bottom: 8px;
-          margin-bottom: 20px;
-          color: #444;
+          font-family: 'Frank Ruhl Libre', 'David Libre', serif;
+          border-bottom: 1px solid #e5e5e5;
+          padding-bottom: 7px;
+          margin-bottom: 16px;
+          color: #262626;
           font-size: 18px;
-          font-weight: 600;
+          font-weight: 700;
+          letter-spacing: 0.3px;
         }
         .order-block {
-          margin-bottom: 25px;
-          background: #fafafa;
-          border: 1px solid #eee;
-          padding: 15px;
-          border-radius: 6px;
+          margin-bottom: 22px;
+          background: #fff;
+          border: 1px solid #e5e5e5;
+          padding: 14px 16px;
         }
         .order-header {
-          font-size: 14px;
-          color: #333;
-          margin-bottom: 8px;
+          font-size: 14.5px;
+          color: #555;
+          margin-bottom: 6px;
+        }
+        .order-header strong {
+          color: #262626;
+          font-weight: 700;
+          font-size: 15px;
         }
         .order-notes {
           font-size: 13px;
-          color: #666;
-          margin-bottom: 10px;
+          color: #888;
+          margin-bottom: 8px;
         }
         .date-summary {
-          margin-top: 15px;
-          padding: 10px 15px;
-          border: 1px solid #ddd;
-          background: #f8f9fa;
+          margin-top: 4px;
+          margin-bottom: 12px;
+          padding: 9px 16px;
+          border: 1px solid #e5e5e5;
+          background: #f4f4f4;
           display: inline-block;
           font-weight: 600;
+          font-size: 13.5px;
           color: #444;
-          border-radius: 4px;
+        }
+
+        /* Seamstress label cards - physical tags, so the key fields stay large */
+        .label-card {
+          position: relative;
+          border: 1px solid #e5e5e5;
+          padding: 18px 14px 14px;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          align-items: center;
+          text-align: center;
+          min-height: 150px;
+          page-break-inside: avoid;
+          break-inside: avoid;
+          background: #fff;
+          box-shadow: 0 1px 4px rgba(0,0,0,0.03);
+          color: #444;
+        }
+        .label-card .label-bsd {
+          position: absolute;
+          top: 6px;
+          right: 10px;
+          font-size: 11px;
+          font-weight: 600;
+          color: #999;
+        }
+        .label-card .label-customer {
+          font-family: 'Frank Ruhl Libre', 'David Libre', serif;
+          font-size: 19px;
+          font-weight: 700;
+          color: #262626;
+          margin-bottom: 9px;
+        }
+        .label-card .label-line {
+          font-size: 15px;
+          color: #555;
+          margin-bottom: 5px;
+        }
+        .label-card .label-line strong {
+          color: #262626;
+          font-size: 16px;
+        }
+        .label-card .label-alterations {
+          font-size: 14.5px;
+          font-weight: 700;
+          border-top: 1px dashed #ddd;
+          padding-top: 9px;
+          margin-top: 9px;
+          width: 100%;
+          color: #555;
+        }
+        .label-card .label-alterations .label-details {
+          font-weight: 400;
+          margin-top: 5px;
+          font-size: 13px;
+          color: #888;
+        }
+
+        .print-footer {
+          margin-top: 40px;
+          text-align: center;
+          font-size: 11px;
+          color: #aaa;
+          border-top: 1px solid #eee;
+          padding-top: 12px;
         }
       `}</style>
 
@@ -355,9 +489,27 @@ export default function PrintAlterationsPage() {
         <thead style={{ display: 'table-header-group' }}>
           <tr>
             <td style={{ border: 'none', padding: 0 }}>
-              <div style={{ textAlign: 'right', fontWeight: '600', fontSize: '13px', color: '#333', marginBottom: '5px' }}>בס"ד</div>
+              <div className="bsd">בס&quot;ד</div>
               <div className="print-header">
-                <h1>{getReportTitle()}</h1>
+                {/* הלוגו מוגש מ-/api/logo (הגדרת BRAND_LOGO); כשאין לוגו מוגדר הנתיב
+                    מחזיר 404 - onError מסתיר את התמונה והכותרת נשארת טקסטואלית בלבד. */}
+                <img
+                  src="/api/logo"
+                  alt=""
+                  style={{ height: '64px', objectFit: 'contain', marginBottom: '10px' }}
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                />
+                <h1>{printSettings?.gmachName || 'גמ"ח שמלות'}</h1>
+                <div className="company-details">
+                  {[
+                    printSettings?.gmachAddress,
+                    printSettings?.gmachPhone && `טלפון: ${printSettings.gmachPhone}`,
+                    printSettings?.gmachEmail && `דוא"ל: ${printSettings.gmachEmail}`
+                  ].filter(Boolean).join(' | ')}
+                </div>
+              </div>
+              <div className="report-title-block">
+                <h2>{getReportTitle()}</h2>
                 <h3>
                   {dateMode === 'today'
                     ? `תאריך: ${getHebrewDateString(new Date().toISOString())}`
@@ -412,41 +564,25 @@ export default function PrintAlterationsPage() {
                   </h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
                     {group.items.map(item => (
-                      <div key={item.id} style={{
-                        position: 'relative',
-                        border: '1px solid #e8e8e8',
-                        padding: '15px',
-                        borderRadius: '8px',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        alignItems: 'center',
-                        textAlign: 'center',
-                        minHeight: '150px',
-                        pageBreakInside: 'avoid',
-                        breakInside: 'avoid',
-                        background: '#fff',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.03)',
-                        color: '#444'
-                      }}>
-                        <div style={{ position: 'absolute', top: '5px', right: '10px', fontSize: '12px', fontWeight: 'bold' }}>בס"ד</div>
-                        <div style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: '10px' }}>
+                      <div key={item.id} className="label-card">
+                        <div className="label-bsd">בס&quot;ד</div>
+                        <div className="label-customer">
                           {customerNameOf(item) || '-'}
                         </div>
-                        <div style={{ fontSize: '15px', marginBottom: '6px' }}>
+                        <div className="label-line">
                           דגם: <strong>{dressLabelOf(item)}</strong>
                         </div>
-                        <div style={{ fontSize: '16px', marginBottom: '15px' }}>
+                        <div className="label-line">
                           מידה: <strong>{sizeLabelOf(item)}</strong>
                         </div>
-                        <div style={{ fontSize: '15px', fontWeight: 'bold', borderTop: '1px dashed #e8e8e8', paddingTop: '10px', width: '100%', color: '#666' }}>
+                        <div className="label-alterations">
                           {[
                             item.neckAlteration > 0 ? `צוואר: הצרה ${item.neckAlteration}` : null,
                             item.sleeveAlteration > 0 ? `שרוול: הארכה ${item.sleeveAlteration}` : null,
                             lengthAltOf(item) ? `אורך: ${lengthAltOf(item)}` : null
                           ].filter(Boolean).join(' | ')}
                           {item.alterationDetails && (
-                            <div style={{ fontWeight: 'normal', marginTop: '6px' }}>
+                            <div className="label-details">
                               פירוט: {item.alterationDetails}
                             </div>
                           )}
@@ -552,8 +688,8 @@ export default function PrintAlterationsPage() {
         </tbody>
       </table>
       
-      <div style={{ marginTop: '40px', textAlign: 'center', fontSize: '11px', color: '#999', borderTop: '1px solid #eee', paddingTop: '10px' }}>
-        הופק על ידי מערכת גמ"ח שמלות בתאריך: {getHebrewDateString(new Date())}
+      <div className="print-footer">
+        הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(new Date())}
       </div>
     </div>
   );

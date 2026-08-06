@@ -80,6 +80,12 @@ export async function POST(request) {
     });
   } catch (err) {
     console.error('PDF generation failed:', err);
-    return NextResponse.json({ error: 'יצירת ה-PDF נכשלה' }, { status: 500 });
+    // detail is intentionally included: Vercel function logs aren't reachable from the
+    // owner's usual workflow, and this authed endpoint's launch errors (Chromium binary /
+    // bundling issues) are otherwise invisible. Message only - no stack.
+    return NextResponse.json(
+      { error: 'יצירת ה-PDF נכשלה', detail: String(err?.message || err) },
+      { status: 500 }
+    );
   }
 }

@@ -452,6 +452,14 @@ export default function PrintOrderPage() {
                   <div className="bsd">בס&quot;ד</div>
                   <div className="print-header">
                     <div className="print-header-content">
+                      {/* הלוגו מוגש מ-/api/logo (הגדרת BRAND_LOGO); כשאין לוגו מוגדר הנתיב
+                          מחזיר 404 - onError מסתיר את התמונה והכותרת נשארת טקסטואלית בלבד. */}
+                      <img
+                        src="/api/logo"
+                        alt=""
+                        style={{ height: '64px', objectFit: 'contain', marginBottom: '10px' }}
+                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                      />
                       <h1>{printSettings?.gmachName || 'גמ"ח שמלות'}</h1>
                       <div className="company-details">
                         {[

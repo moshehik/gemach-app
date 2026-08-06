@@ -20,6 +20,11 @@ export default function ErrorReportButton() {
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
 
+  // אין משתמש מחובר (עמדת לקוחות, דפי הדפסה) - הבקשה תמיד תחזיר 401, אז אחרי
+  // הפעם הראשונה מפסיקים לגמרי כדי לא להציף את הקונסול כל 30 שניות. התחברות
+  // ממילא טוענת את העמוד מחדש, כך שהרענון יחזור לפעול אחריה.
+  const authFailedRef = useRef(false);
+
   // Auto-refresh interval
   useEffect(() => {
     let intervalId;
@@ -65,9 +70,14 @@ export default function ErrorReportButton() {
     }
   }, [isOpen, activeTab]);
 
-  const fetchReports = async () => {
+  async function fetchReports() {
+    if (authFailedRef.current) return;
     try {
       const res = await fetch('/api/error-report');
+      if (res.status === 401) {
+        authFailedRef.current = true;
+        return;
+      }
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
