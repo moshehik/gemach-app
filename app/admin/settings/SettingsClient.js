@@ -11,6 +11,7 @@ import {
 import FullEmailListModal from '@/components/FullEmailListModal';
 import NeonUsageCard from './NeonUsageCard';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
+import { NUMBER_FIELD_LIMITS, validateNumericSetting } from '@/app/lib/settingsValidation';
 
 const categoryConfig = {
   'מיילים': { icon: Mail },
@@ -24,6 +25,7 @@ const categoryConfig = {
   'יומן': { icon: Calendar },
   'הדפסה': { icon: Printer },
   'בינה מלאכותית': { icon: Sparkles },
+  'לא בשימוש': { icon: Info },
   'default': { icon: LayoutGrid }
 };
 
@@ -610,7 +612,13 @@ export default function SettingsClient() {
 
   const handleSave = async () => {
     if (Object.keys(modified).length === 0) return;
-    
+
+    const invalidEntry = Object.entries(modified).find(([key, value]) => validateNumericSetting(key, value) !== null);
+    if (invalidEntry) {
+      setError(`${HEBREW_NAMES[invalidEntry[0]] || invalidEntry[0]}: ${validateNumericSetting(invalidEntry[0], invalidEntry[1])}`);
+      return;
+    }
+
     setSaving(true);
     setSaveMessage(null);
     setError(null);
@@ -690,6 +698,9 @@ export default function SettingsClient() {
 
   const activeSettings = settings.filter(s => s.category === activeTab);
   const hasChanges = Object.keys(modified).length > 0;
+  const hasValidationErrors = Object.entries(modified).some(
+    ([key, value]) => validateNumericSetting(key, value) !== null
+  );
   
   const currentConfig = categoryConfig[activeTab] || categoryConfig['default'];
   const CurrentIcon = currentConfig.icon;
@@ -744,22 +755,23 @@ export default function SettingsClient() {
               רשימת מיילים מלאה
             </button>
 
-            <button 
+            <button
               data-element-name="כפתור_SettingsClient_6"
               onClick={handleSave}
-              disabled={saving || !hasChanges}
-              style={{ 
-                display: 'flex', alignItems: 'center', gap: '0.5rem', 
-                background: hasChanges ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#cbd5e1', 
-                color: hasChanges ? 'white' : '#94a3b8', border: 'none', padding: '0.75rem 1.5rem', 
+              disabled={saving || !hasChanges || hasValidationErrors}
+              title={hasValidationErrors ? 'יש לתקן ערכים לא תקינים לפני השמירה' : undefined}
+              style={{
+                display: 'flex', alignItems: 'center', gap: '0.5rem',
+                background: hasValidationErrors ? '#fecaca' : hasChanges ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#cbd5e1',
+                color: hasValidationErrors ? '#991b1b' : hasChanges ? 'white' : '#94a3b8', border: 'none', padding: '0.75rem 1.5rem',
                 borderRadius: '12px', fontWeight: '600', fontSize: '1rem',
-                cursor: hasChanges ? 'pointer' : 'not-allowed', 
-                boxShadow: hasChanges ? '0 4px 6px -1px rgba(37, 99, 235, 0.3)' : 'none',
+                cursor: (hasChanges && !hasValidationErrors) ? 'pointer' : 'not-allowed',
+                boxShadow: (hasChanges && !hasValidationErrors) ? '0 4px 6px -1px rgba(37, 99, 235, 0.3)' : 'none',
                 transition: 'transform 0.2s, box-shadow 0.2s'
               }}
             >
               {saving ? <Loader2 size={18} data-element-name="רכיב_SettingsClient_7" className="animate-spin" /> : <Save size={18} data-element-name="רכיב_SettingsClient_8" />}
-              {saving ? 'שומר...' : hasChanges ? 'שמור שינויים' : 'אין שינויים'}
+              {saving ? 'שומר...' : hasValidationErrors ? 'יש לתקן שגיאות' : hasChanges ? 'שמור שינויים' : 'אין שינויים'}
             </button>
           </div>
         </div>
@@ -900,6 +912,8 @@ export default function SettingsClient() {
                   'CANCELLATION_CREDIT_MINUTES'
                 ].includes(setting.key);
                 const isNumber = setting.type === 'number' || isNumberKey;
+                const numberLimit = NUMBER_FIELD_LIMITS[setting.key];
+                const numberError = (isNumber && !isBoolean) ? validateNumericSetting(setting.key, rawValue) : null;
 
                 const isHideSetting = setting.key.startsWith('hide_');
                 
@@ -1040,25 +1054,34 @@ export default function SettingsClient() {
                           placeholder="הקלד ערך..."
                         />
                       ) : (
-                        <input
-                          type={isNumber ? 'number' : 'text'}
-                          value={rawValue || ''}
-                          data-element-name="שדה_SettingsClient_21"
-                          onChange={(e) => {
-                            if (isNumber) {
-                              const cleaned = e.target.value.replace(/[^0-9.]/g, '');
-                              handleChange(setting.key, cleaned);
-                            } else {
-                              handleChange(setting.key, e.target.value);
-                            }
-                          }}
-                          style={{ 
-                            width: '100%', padding: '0.65rem 1rem', borderRadius: '12px', 
-                            border: '2px solid #cbd5e1', background: 'white', color: '#0f172a', 
-                            fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s' 
-                          }}
-                          placeholder={isNumber ? 'הזן מספר בלבד...' : 'הקלד ערך...'}
-                        />
+                        <div style={{ width: '100%' }}>
+                          <input
+                            type={isNumber ? 'number' : 'text'}
+                            value={rawValue || ''}
+                            data-element-name="שדה_SettingsClient_21"
+                            min={isNumber ? numberLimit?.min : undefined}
+                            max={isNumber ? numberLimit?.max : undefined}
+                            step={isNumber ? (numberLimit?.allowDecimal ? '0.1' : '1') : undefined}
+                            onChange={(e) => {
+                              if (isNumber) {
+                                const pattern = numberLimit?.allowDecimal ? /[^0-9.]/g : /[^0-9]/g;
+                                const cleaned = e.target.value.replace(pattern, '');
+                                handleChange(setting.key, cleaned);
+                              } else {
+                                handleChange(setting.key, e.target.value);
+                              }
+                            }}
+                            style={{
+                              width: '100%', padding: '0.65rem 1rem', borderRadius: '12px',
+                              border: numberError ? '2px solid #ef4444' : '2px solid #cbd5e1', background: 'white', color: '#0f172a',
+                              fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s'
+                            }}
+                            placeholder={isNumber ? (numberLimit ? `מספר בין ${numberLimit.min} ל-${numberLimit.max}...` : 'הזן מספר בלבד...') : 'הקלד ערך...'}
+                          />
+                          {numberError && (
+                            <p style={{ margin: '0.4rem 0 0 0', color: '#dc2626', fontSize: '0.82rem', fontWeight: '600' }}>{numberError}</p>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>

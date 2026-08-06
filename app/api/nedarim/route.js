@@ -8,7 +8,12 @@ export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const data = await request.json();
-    
+
+    const enabledSetting = await prisma.systemSetting.findUnique({ where: { key: 'nedarim_plus_enabled' } });
+    if (enabledSetting && enabledSetting.value === 'false') {
+      return NextResponse.json({ success: false, error: 'סליקת אשראי בנדרים פלוס מושבתת בהגדרות המערכת.' }, { status: 400 });
+    }
+
     // Attempt to fetch mosadId from settings or env
     // For now, we will use a fallback or require it from frontend/env
     let mosadId = process.env.NEDARIM_MOSAD_ID;

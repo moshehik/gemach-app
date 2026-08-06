@@ -654,9 +654,11 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         <div className="moc-table-toolbar">
           <h3 style={{ color: '#166534' }}>תשלומים</h3>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <button className="moc-btn moc-btn-gold moc-btn-sm" onClick={handleOpenCreditModal} title="תשלום בכרטיס אשראי (נדרים פלוס)">
-              <CreditCard size={15} /> תשלום בכרטיס אשראי (נדרים פלוס)
-            </button>
+            {settings.nedarim_plus_enabled !== 'false' && (
+              <button className="moc-btn moc-btn-gold moc-btn-sm" onClick={handleOpenCreditModal} title="תשלום בכרטיס אשראי (נדרים פלוס)">
+                <CreditCard size={15} /> תשלום בכרטיס אשראי (נדרים פלוס)
+              </button>
+            )}
             <button className="moc-btn moc-btn-outline moc-btn-sm" onClick={handleOpenRefundModal} title="בקשת זיכוי ללקוח">
               <RefreshCcw size={15} /> בקשת זיכוי ללקוח
             </button>

@@ -56,6 +56,23 @@ model AuditLog {
   @@index([employeeId])
 }
 
+// One row per /audit-system slash command run (see .claude/commands/audit-system.md).
+// Written by scripts/insert_audit_report.js via a raw PrismaClient, never through the
+// app's own request/response cycle - not part of the AuditLog auto-logging extension.
+model AuditReport {
+  id            String   @id @default(uuid())
+  runAt         DateTime @default(now())
+  agentSlugs    String // comma-separated slugs that ran, e.g. "audit-bugs,audit-orders"
+  totalFindings Int      @default(0)
+  highCount     Int      @default(0)
+  mediumCount   Int      @default(0)
+  lowCount      Int      @default(0)
+  resultsJson   String // JSON: { agents: [{ slug, label, status, findings: [{severity,description,location,recommendation}] }] }
+  createdAt     DateTime @default(now())
+
+  @@index([runAt])
+}
+
 model Employee {
   id                 String         @id @default(uuid())
   legacyId           Int?           @unique

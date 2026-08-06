@@ -12,7 +12,9 @@ import {
   Search,
   Activity,
   ScrollText,
-  ShieldCheck
+  ShieldCheck,
+  Bug,
+  Download
 } from 'lucide-react';
 
 const categories = [
@@ -41,6 +43,7 @@ const categories = [
       { href: '/admin/refund-policy', icon: ScrollText, label: 'מדיניות זיכויים', subLabel: 'תיעוד חוקי ביטול' },
       { href: '/admin/labels', icon: Settings, label: 'שינוי שמות', subLabel: 'כיתובים וטקסטים' },
       { href: '/admin/trusted-devices', icon: ShieldCheck, label: 'מחשבי מערכת מהימנים', subLabel: 'כניסה מהירה ב-4 ספרות' },
+      { href: '/admin/audit-system', icon: Bug, label: 'מערכת ביקורת (11 סוכנים)', subLabel: 'תיעוד סוכני הבדיקה האוטומטיים' },
     ]
   },
   {
@@ -51,6 +54,7 @@ const categories = [
     items: [
       { href: '/admin/data-explorer', icon: Search, label: 'סייר נתונים', subLabel: 'שאילתות SQL' },
       { href: '/admin/access-import', icon: DatabaseBackup, label: 'ייבוא מאקסס', subLabel: 'תיעוד תהליך הייבוא' },
+      { href: '/admin/setup-new-machine', icon: Download, label: 'התקנה על מחשב חדש', subLabel: 'סקריפט התקנה + תיעוד' },
       { href: '/admin/data-history', icon: History, label: 'היסטוריית נתונים', subLabel: 'תיעוד שינויים' },
       { href: '/management/database', icon: DatabaseBackup, label: 'גיבוי נתונים', subLabel: 'החלפה מ-JSON' },
       { href: '/management/history', icon: Activity, label: 'היסטוריית גלישה', subLabel: 'דפים ושגיאות' },

@@ -703,14 +703,16 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
           )}
 
           <div style={{ display: 'flex', gap: '0.5rem', flex: '1 0 auto', minWidth: '220px', flexWrap: 'wrap' }}>
-              <button data-agy-id="orderpaymentsmanager_button_10" 
-                onClick={handleOpenCreditModal} 
-                style={{ flex: '1 1 auto', padding: '0.7rem 1rem', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
-                onMouseOver={e => e.currentTarget.style.opacity=0.9} onMouseOut={e => e.currentTarget.style.opacity=1}
-                title="תשלום בכרטיס אשראי (נדרים פלוס)"
-              >
-                💳 סליקת אשראי
-              </button>
+              {settings.nedarim_plus_enabled !== 'false' && (
+                <button data-agy-id="orderpaymentsmanager_button_10"
+                  onClick={handleOpenCreditModal}
+                  style={{ flex: '1 1 auto', padding: '0.7rem 1rem', background: 'linear-gradient(135deg, #3b82f6, #2563eb)', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '0.4rem', fontWeight: 'bold', transition: 'opacity 0.2s' }}
+                  onMouseOver={e => e.currentTarget.style.opacity=0.9} onMouseOut={e => e.currentTarget.style.opacity=1}
+                  title="תשלום בכרטיס אשראי (נדרים פלוס)"
+                >
+                  💳 סליקת אשראי
+                </button>
+              )}
 
               <button data-agy-id="orderpaymentsmanager_button_refund" 
                 onClick={handleOpenRefundModal} 

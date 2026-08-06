@@ -363,9 +363,33 @@ export default function NewOrderPage() {
     }
   };
 
+  // מפתחות השדות הזמינים בטופס הלקוח המהיר כאן, מול הכינויים שנשמרים בהגדרת mandatory_fields
+  // (אותם כינויים שמוצגים ב-CustomerFieldsCheckboxPicker במסך ההגדרות).
+  const CUSTOMER_FIELD_ALIASES = {
+    firstName: ['firstname', 'שם פרטי', 'שם_פרטי'],
+    lastName: ['lastname', 'שם משפחה', 'שם_משפחה'],
+    phone1: ['phone1', 'טלפון ראשי (נייד)', 'טלפון_1'],
+    email: ['email', 'אימייל'],
+    city: ['city', 'עיר'],
+    street: ['street', 'רחוב'],
+    houseNum: ['housenum', 'מספר בית', 'מספר_בית']
+  };
+  const CUSTOMER_FIELD_LABELS = {
+    firstName: 'שם פרטי', lastName: 'שם משפחה', phone1: 'טלפון', email: 'אימייל', city: 'עיר', street: 'רחוב', houseNum: 'מספר בית'
+  };
+
   const handleSaveNewCustomerAndProceed = async (skipDuplicateCheck = false) => {
-    if (!newCustomer.firstName || !newCustomer.lastName || !newCustomer.phone1) {
-       alert('יש למלא שם פרטי, משפחה וטלפון');
+    const configuredMandatory = (settings.mandatory_fields || '')
+      .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+
+    const missingFields = Object.keys(CUSTOMER_FIELD_ALIASES).filter((key) => {
+      const alwaysRequired = key === 'firstName' || key === 'lastName' || key === 'phone1';
+      const isRequired = alwaysRequired || CUSTOMER_FIELD_ALIASES[key].some(alias => configuredMandatory.includes(alias.toLowerCase()));
+      return isRequired && !String(newCustomer[key] || '').trim();
+    });
+
+    if (missingFields.length > 0) {
+       alert(`יש למלא: ${missingFields.map(k => CUSTOMER_FIELD_LABELS[k]).join(', ')}`);
        return;
     }
 
@@ -1734,19 +1758,21 @@ export default function NewOrderPage() {
                     <button type="submit" className="noc-btn line" style={{ flex: 1, minWidth: '150px' }} disabled={busy}>
                       <Plus size={16} /> פצל / הוסף תשלום
                     </button>
-                    <button
-                      type="button"
-                      className="noc-btn gold"
-                      style={{ flex: 1, minWidth: '150px' }}
-                      disabled={busy}
-                      onClick={() => {
-                        setCreditCardData({ cardNumber: '', tokef: '', installments: 1, notes: payment.notes, amount: payment.amount });
-                        setCreditError('');
-                        setShowCreditModal(true);
-                      }}
-                    >
-                      <CreditCard size={16} /> חיוב אשראי
-                    </button>
+                    {settings.nedarim_plus_enabled !== 'false' && (
+                      <button
+                        type="button"
+                        className="noc-btn gold"
+                        style={{ flex: 1, minWidth: '150px' }}
+                        disabled={busy}
+                        onClick={() => {
+                          setCreditCardData({ cardNumber: '', tokef: '', installments: 1, notes: payment.notes, amount: payment.amount });
+                          setCreditError('');
+                          setShowCreditModal(true);
+                        }}
+                      >
+                        <CreditCard size={16} /> חיוב אשראי
+                      </button>
+                    )}
                   </div>
                 </form>
               </div>

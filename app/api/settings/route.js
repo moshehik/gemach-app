@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { validateNumericSetting } from '../../lib/settingsValidation';
 
 export const dynamic = 'force-dynamic';
 
@@ -37,6 +38,14 @@ export async function POST(request) {
     
     if (!Array.isArray(data)) {
       return NextResponse.json({ error: 'Invalid data format, expected array' }, { status: 400 });
+    }
+
+    for (const item of data) {
+      if (!item.key) continue;
+      const validationError = validateNumericSetting(item.key, item.value);
+      if (validationError) {
+        return NextResponse.json({ error: `${item.key}: ${validationError}` }, { status: 400 });
+      }
     }
 
     const updatePromises = data.map(item => {
