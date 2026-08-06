@@ -102,6 +102,33 @@ export async function POST(request, { params }) {
 
     const colCount = enableAlterations ? 5 : 4;
 
+    // פריטים ללא תיאור וללא פריט פיזי מקושר (בעיקר מהמיגרציה מאקסס) נושאים רק
+    // barcodePrefix - GET /api/orders/[id] מתרגם עבורם קידומת->שם דגם לפני שדף
+    // ההדפסה מציג אותם, אבל כאן שולפים ישירות מהמסד, אז בלי אותה העשרה המייל
+    // הראה "-" בעמודת הדגם עבור בדיוק אותם פריטים שמודפסים תקין באפליקציה.
+    const activeItemsForEmail = (order.items || []).filter(i => !i.isDeleted);
+    const unresolvedPrefixes = new Set();
+    for (const i of activeItemsForEmail) {
+      const linkedName = i.dressItem?.dress?.name;
+      const prefix = i.dressItem?.dress?.barcodePrefix ?? i.dressItem?.barcodePrefix ?? i.barcodePrefix;
+      if (!linkedName && prefix !== null && prefix !== undefined) {
+        const numPfx = parseInt(prefix, 10);
+        if (!isNaN(numPfx)) unresolvedPrefixes.add(numPfx);
+      }
+    }
+    const prefixNameMap = new Map();
+    if (unresolvedPrefixes.size > 0) {
+      const models = await prisma.dressModel.findMany({
+        where: { barcodePrefix: { in: Array.from(unresolvedPrefixes) } },
+        select: { barcodePrefix: true, name: true }
+      });
+      models.forEach(m => {
+        if (m.barcodePrefix !== null && m.barcodePrefix !== undefined) {
+          prefixNameMap.set(Number(m.barcodePrefix), m.name);
+        }
+      });
+    }
+
     const itemsHtml = (!order.items || order.items.filter(i => !i.isDeleted).length === 0)
       ? `<tr><td colspan="${colCount}" style="text-align: center; padding: 30px; color: #999;">אין פריטים פעילים בהזמנה זו</td></tr>`
       : order.items.filter(i => !i.isDeleted).map(item => {
@@ -113,9 +140,27 @@ export async function POST(request, { params }) {
             <td>${renderRepairChipsHtml(item)}</td>
           ` : '';
 
-          // Same field precedence as app/print/order/page.js, so the emailed report never
-          // shows less than what the in-app print view shows for the same order.
-          const modelName = stripCodeLabel(item.description || item.dressItem?.dress?.name || item.dressItem?.dressName) || '-';
+          // Faithful port of GET /api/orders/[id]'s description enrichment (which the
+          // in-app print view receives ready-made): resolve the model name through the
+          // linked dressItem or the barcodePrefix->DressModel map, use it when the
+          // description is empty/'פריט כללי', and PREPEND it when the description
+          // exists but doesn't already contain the model name - so the emailed report
+          // never shows less than the in-app print view.
+          const itemPrefix = item.dressItem?.dress?.barcodePrefix ?? item.dressItem?.barcodePrefix ?? item.barcodePrefix;
+          const dressName = item.dressItem?.dress?.name || prefixNameMap.get(Number(itemPrefix));
+          let finalDescription = item.description;
+          if (!finalDescription || finalDescription === 'פריט כללי') {
+            if (dressName) {
+              finalDescription = `${dressName}${itemPrefix !== null && itemPrefix !== undefined ? ` (קוד: ${itemPrefix})` : ''}`;
+            } else if (item.dressItem?.dressName) {
+              finalDescription = item.dressItem.dressName;
+            } else {
+              finalDescription = 'פריט כללי';
+            }
+          } else if (dressName && !finalDescription.includes(dressName)) {
+            finalDescription = `${dressName}${itemPrefix !== null && itemPrefix !== undefined ? ` (קוד: ${itemPrefix})` : ''} - ${finalDescription}`;
+          }
+          const modelName = stripCodeLabel(finalDescription) || '-';
           const sizeText = item.sizeText || item.dressItem?.sizeText || '-';
           const barcode = (item.isTaken && (item.barcode || item.dressItem?.dressBarcode)) || '-';
 
@@ -374,7 +419,7 @@ export async function POST(request, { params }) {
       subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
       htmlBody: htmlBody,
       bodyText: `מצורף כרטיס הזמנה/השכרה עבור אירוע בתאריך ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : '')}.`,
-      fileName: `order_${order.orderId}.pdf`,
+      fileName: `הזמנה ${order.orderId}.pdf`,
       
       // Keep old parameters for backwards compatibility just in case the old script is used
       body: pdfBase64 ? 'מצורף כרטיס הזמנה/השכרה.' : htmlBody,
@@ -418,7 +463,7 @@ export async function POST(request, { params }) {
         cc: null,
         subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
         body: 'HTML body sent to App Script for PDF conversion',
-        fileName: `order_${order.orderId}.pdf`,
+        fileName: `הזמנה ${order.orderId}.pdf`,
         status: isSuccess ? 'success' : 'error',
         errorMessage: isSuccess ? null : (result.message || 'Unknown error'),
         customerId: order.customerId,
