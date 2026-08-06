@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, CheckCircle, XCircle, Download, CreditCard, Coins, Mail, RotateCcw, ExternalLink, AlertCircle, Calendar, ArrowUpRight, ShieldCheck, BadgeCheck } from 'lucide-react';
+import { Search, CheckCircle, XCircle, Download, CreditCard, Coins, Mail, RotateCcw, ExternalLink, AlertCircle, Calendar, ArrowUpRight, ShieldCheck } from 'lucide-react';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { verifyPin } from '@/components/orders/modern/mocAuth';
 import { cacheNamespace } from '@/app/lib/pageCache';
@@ -43,14 +43,12 @@ function ApprovalCell({ orderId, approval, onUndo, isBusy }) {
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.7rem', borderRadius: '20px', fontSize: '0.78rem', fontWeight: 'bold', background: '#dcfce7', color: '#166534' }}>
-        <BadgeCheck size={13} /> מאושר לתשלום
-      </span>
+      <span className="status-dot c-green">מאושר לתשלום</span>
       <button
         onClick={() => onUndo(orderId)}
         disabled={isBusy}
         title="בטל אישור"
-        style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '0.3rem 0.6rem', borderRadius: '8px', cursor: isBusy ? 'default' : 'pointer', fontSize: '0.75rem', display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}
+        style={{ background: 'none', border: 'none', color: '#d97706', padding: 0, cursor: isBusy ? 'default' : 'pointer', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', opacity: isBusy ? 0.5 : 1 }}
       >
         <RotateCcw size={12} /> בטל אישור
       </button>
@@ -84,7 +82,8 @@ function DebtsTable({
           <button
             onClick={() => onOpenApproveModal(list)}
             disabled={isBusy}
-            style={{ padding: '0.65rem 1.3rem', borderRadius: '12px', border: 'none', background: 'linear-gradient(135deg, #10b981, #059669)', color: 'white', fontWeight: '600', cursor: isBusy ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 12px rgba(16, 185, 129, 0.3)', whiteSpace: 'nowrap' }}
+            className="icon-btn icon-btn-primary c-approve"
+            style={{ whiteSpace: 'nowrap' }}
           >
             <ShieldCheck size={17} /> אשר תשלום שנבחרו ({selectedIds.size})
           </button>
@@ -131,7 +130,7 @@ function DebtsTable({
                   const approval = approvals[order.orderId];
                   const hebrewDate = hebrewDateFor(order);
                   return (
-                    <tr key={order.orderId} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                    <tr key={order.orderId} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
                         {approval?.isApproved ? (
                           <CheckCircle size={18} color="#16a34a" />

@@ -445,9 +445,9 @@ export default function HistoryViewer({ entityType, entityId }) {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {logs.map((log) => {
                 const actionLabel = ACTION_TRANSLATIONS[log.action] || log.action;
-          const actionColorStyle = log.action === 'CREATE' ? { background: '#e8f5e9', color: '#2e7d32' } :
-                               log.action === 'DELETE' ? { background: '#ffebee', color: '#c62828' } :
-                               { background: '#e8eaf6', color: '#283593' };
+          const actionDotClass = log.action === 'CREATE' ? 'c-green' :
+                               log.action === 'DELETE' ? 'c-red' :
+                               'c-blue';
 
           return (
             <div key={log.id} style={{ position: 'relative', paddingRight: '16px' }}>
@@ -469,7 +469,7 @@ export default function HistoryViewer({ entityType, entityId }) {
                       second: '2-digit'
                     })}
                   </span>
-                  <span style={{ ...actionColorStyle, padding: '4px 12px', borderRadius: '16px', fontWeight: 'bold', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                  <span className={`status-dot ${actionDotClass}`}>
                     {actionLabel}
                   </span>
                 </div>

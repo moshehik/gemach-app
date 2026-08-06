@@ -350,6 +350,18 @@ body.hide-global-nav .navbar {
   color: var(--btn-primary-text);
 }
 
+/* גרסת "אישור"/"פעולה חיובית" של הכפתור הראשי — אותה צורה, צבע ירוק סמנטי */
+.icon-btn-primary.c-approve {
+  background: linear-gradient(135deg, #10b981, #059669);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+}
+
+.icon-btn-primary.c-approve:hover {
+  background: linear-gradient(135deg, #059669, #047857);
+  color: #fff;
+}
+
 .icon-nav-link {
   transition: opacity 0.3s ease, color 0.3s ease, transform 0.2s ease;
   opacity: 0.85;
@@ -2022,6 +2034,62 @@ table.items-table thead tr th,
   border-color: var(--primary-color);
   color: var(--primary-hover);
   background: var(--primary-light);
+}
+
+/*
+  מצב "חיפוש חכם" (AI) בשורת החיפוש — נשאר בזהות הצבע הסגול-ורודה הייחודית
+  לתכונות AI באפליקציה (כמו פאנל הצ'אט בעמוד הבית), רק עם ביצוע נקי ומודרני
+  יותר במקום גרדיאנט-גבול קשיח.
+*/
+.ai-search-input-magic {
+  width: 100%;
+  height: 45px;
+  padding: 0 3rem 0 1rem;
+  border-radius: 24px;
+  border: 1.5px solid rgba(236, 72, 153, 0.35);
+  background: var(--input-bg);
+  color: var(--text-main);
+  box-shadow: 0 3px 12px rgba(236, 72, 153, 0.12);
+  outline: none;
+  font-size: 1rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  text-align: right;
+  direction: rtl;
+}
+
+.ai-search-input-magic::placeholder {
+  color: var(--text-muted);
+}
+
+.ai-search-input-magic:focus {
+  border-color: #ec4899;
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.15);
+}
+
+.ai-search-submit-magic {
+  border-radius: 24px;
+  padding: 0 1.5rem;
+  height: 45px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border: none;
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+  transition: filter 0.2s ease;
+  box-shadow: 0 3px 12px rgba(236, 72, 153, 0.3);
+}
+
+.ai-search-submit-magic:hover {
+  filter: brightness(1.06);
+}
+
+.ai-search-submit-magic:disabled {
+  opacity: 0.6;
+  cursor: default;
 }
 
 /* נקודת-סטטוס: טקסט + נקודה צבעונית, במקום "כדור" עם רקע מלא */

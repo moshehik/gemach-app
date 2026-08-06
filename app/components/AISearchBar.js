@@ -64,25 +64,13 @@ export default function AISearchBar({
       ) : (
         <form onSubmit={handleAiSubmit} style={{ display: 'flex', gap: '0.5rem', flex: 1, position: 'relative' }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <input data-element-name="שדה_AISearchBar_5" 
-              type="text" 
+            <input data-element-name="שדה_AISearchBar_5"
+              type="text"
               placeholder="בקש מה-AI למצוא נתונים (למשל: 'הזמנות של משפחת שיינועטר')..."
               value={aiInput}
               onChange={(e) => setAiInput(e.target.value)}
               disabled={loading}
-              style={{ 
-                width: '100%', height: '45px',
-                padding: '0 3rem 0 1rem', 
-                borderRadius: '24px', 
-                border: '2px solid transparent',
-                background: 'linear-gradient(white, white) padding-box, linear-gradient(45deg, #a855f7, #ec4899, #f59e0b) border-box',
-                boxShadow: '0 4px 15px rgba(236, 72, 153, 0.15)',
-                outline: 'none',
-                fontSize: '1rem',
-                transition: 'all 0.3s ease',
-                textAlign: 'right',
-                direction: 'rtl'
-              }}
+              className="ai-search-input-magic"
             />
             {aiInput && !loading && (
               <button data-element-name="כפתור_AISearchBar_6" 
@@ -100,22 +88,10 @@ export default function AISearchBar({
               </div>
             )}
           </div>
-          <button data-element-name="כפתור_AISearchBar_9" 
-            type="submit" 
+          <button data-element-name="כפתור_AISearchBar_9"
+            type="submit"
             disabled={loading}
-            style={{ 
-              borderRadius: '24px', 
-              padding: '0 1.5rem', height: '45px', 
-              background: 'linear-gradient(45deg, #a855f7, #ec4899)',
-              color: 'white',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: 'bold',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.5rem'
-            }}
+            className="ai-search-submit-magic"
           >
             {loading ? 'מייצר שאילתה...' : 'חפש בחכמה'}
           </button>
