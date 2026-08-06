@@ -39,23 +39,12 @@ export default function AISearchBar({
       {!isAiMode ? (
         <form onSubmit={handleRegularSubmit} style={{ display: 'flex', gap: '0.5rem', flex: 1, position: 'relative' }}>
           <div style={{ position: 'relative', flex: 1 }}>
-            <input data-element-name="שדה_AISearchBar_1" 
-              type="text" 
+            <input data-element-name="שדה_AISearchBar_1"
+              type="text"
               placeholder={placeholder}
               value={value}
               onChange={onChange}
-              style={{ 
-                width: '100%', height: '45px',
-                padding: '0 3rem 0 1rem', 
-                borderRadius: '24px', 
-                border: '1px solid #ddd',
-                boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
-                outline: 'none',
-                fontSize: '1rem',
-                transition: 'all 0.3s ease',
-                textAlign: 'right',
-                direction: 'rtl'
-              }}
+              className="ai-search-input"
             />
             {value && (
               <button data-element-name="כפתור_AISearchBar_2" 
@@ -68,7 +57,7 @@ export default function AISearchBar({
               </button>
             )}
           </div>
-          <button data-element-name="כפתור_AISearchBar_4" type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0 1.5rem', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <button data-element-name="כפתור_AISearchBar_4" type="submit" className="ai-search-submit">
             חיפוש
           </button>
         </form>
@@ -134,8 +123,8 @@ export default function AISearchBar({
       )}
 
       {/* AI Toggle Button */}
-      <button data-element-name="כפתור_AISearchBar_10" 
-        className="ai-feature-element"
+      <button data-element-name="כפתור_AISearchBar_10"
+        className="ai-feature-element ai-search-circle-btn"
         onClick={() => {
           if (!isAiMode) {
             setAiInput(value || '');
@@ -146,21 +135,12 @@ export default function AISearchBar({
           }
           setIsAiMode(!isAiMode);
         }}
-        style={{ 
-          borderRadius: '50%', 
-          width: '45px', 
-          height: '45px', 
-          padding: 0, 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          background: isAiMode ? '#fdf2f8' : 'var(--card-bg)',
-          border: isAiMode ? '2px solid #ec4899' : '1px solid #ddd',
-          color: isAiMode ? '#ec4899' : 'var(--text-main)',
-          cursor: 'pointer',
-          transition: 'all 0.2s',
-          boxShadow: isAiMode ? '0 0 10px rgba(236, 72, 153, 0.2)' : 'none'
-        }}
+        style={isAiMode ? {
+          background: '#fdf2f8',
+          border: '2px solid #ec4899',
+          color: '#ec4899',
+          boxShadow: '0 0 10px rgba(236, 72, 153, 0.2)'
+        } : undefined}
         title="חיפוש חכם (AI)"
       >
         <Sparkles data-element-name="רכיב_AISearchBar_11" size={20} />
@@ -168,23 +148,10 @@ export default function AISearchBar({
 
       {/* Statistics Toggle Button */}
       {onStatistics && (
-        <button data-element-name="כפתור_AISearchBar_12" 
-          className="ai-feature-element"
+        <button data-element-name="כפתור_AISearchBar_12"
+          className="ai-feature-element ai-search-circle-btn"
           onClick={(e) => onStatistics(e)}
-          style={{ 
-            borderRadius: '50%', 
-            width: '45px', 
-            height: '45px', 
-            padding: 0, 
-            display: 'flex', 
-            justifyContent: 'center', 
-            alignItems: 'center',
-            background: 'var(--card-bg)',
-            border: '1px solid #ddd',
-            color: '#10b981',
-            cursor: 'pointer',
-            transition: 'all 0.2s'
-          }}
+          style={{ color: '#10b981' }}
           title="שאלות סטטיסטיקה"
         >
           <BarChart3 data-element-name="רכיב_AISearchBar_13" size={20} />
