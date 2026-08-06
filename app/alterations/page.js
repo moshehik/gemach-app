@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { Calendar, CalendarPlus, Scissors, Printer, Info, CheckCircle, Search, X, Check, FileText } from 'lucide-react';
+import { Calendar, CalendarPlus, Printer, Info, CheckCircle, Search, X, Check, FileText, List, Clock } from 'lucide-react';
 import PrintWizardModal from '../components/PrintWizardModal';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import HebrewDateRangePicker from '../../components/HebrewDateRangePicker';
@@ -255,80 +255,80 @@ export default function AlterationsPage() {
   return (
     <main data-agy-id="alterations-page-main" className="container animate-fade-in page-shell">
       <div className="page-scroll">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Scissors data-element-name="רכיב_page_1" size={26} />
-          ניהול תפירות ותיקונים
+      {/* סרגל אחד: כותרת + טווח תאריכים + חיפוש + פילטרים + פעולות */}
+      <div className="toolbar-row">
+        <h1 className="toolbar-title">
+          <strong>תפירות ותיקונים</strong>
         </h1>
 
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 'none', maxWidth: '340px' }}>
+          <Calendar data-element-name="רכיב_page_5" size={18} color="var(--text-muted)" />
+          <HebrewDateRangePicker
+            data-element-name="רכיב_page_6"
+            startDate={startDate}
+            endDate={endDate}
+            onChange={(start, end) => {
+              setStartDate(start);
+              setEndDate(end);
+            }}
+            placeholderStart="בחר תאריך התחלה"
+            placeholderEnd="בחר תאריך סיום"
+          />
+        </div>
+
+        <AISearchBar data-element-name="רכיב_page_15"
+          placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onSearch={handleSearch}
+          onClear={handleClearSearch}
+          onAiSearch={handleAiSearch}
+          onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+          loading={aiLoading}
+        />
+
         <div className="status-filters">
-          <button data-element-name="כפתור_page_2" data-agy-id="alterations_page_button_1" onClick={() => { setFilterStatus('all'); }} className={`status-filter c-blue${filterStatus === 'all' ? ' active' : ''}`} title="הצג הכל">
-            הכל
+          <button data-element-name="כפתור_page_2" data-agy-id="alterations_page_button_1" onClick={() => { setFilterStatus('all'); }} className={filterStatus === 'all' ? 'status-filter active c-blue' : 'status-filter'} title="הצג הכל">
+            <List data-element-name="רכיב_page_filter_all" size={16} /> <span>הכל</span>
           </button>
-          <button data-element-name="כפתור_page_3" data-agy-id="alterations_page_button_2" onClick={() => { setFilterStatus('pending'); }} className={`status-filter c-amber${filterStatus === 'pending' ? ' active' : ''}`} title="ממתינים">
-            ממתינים
+          <button data-element-name="כפתור_page_3" data-agy-id="alterations_page_button_2" onClick={() => { setFilterStatus('pending'); }} className={filterStatus === 'pending' ? 'status-filter active c-amber' : 'status-filter'} title="ממתינים">
+            <Clock data-element-name="רכיב_page_filter_pending" size={16} /> <span>ממתינים</span>
           </button>
-          <button data-element-name="כפתור_page_4" data-agy-id="alterations_page_button_3" onClick={() => { setFilterStatus('done'); }} className={`status-filter c-green${filterStatus === 'done' ? ' active' : ''}`} title="בוצע">
-            בוצע
+          <button data-element-name="כפתור_page_4" data-agy-id="alterations_page_button_3" onClick={() => { setFilterStatus('done'); }} className={filterStatus === 'done' ? 'status-filter active c-green' : 'status-filter'} title="בוצע">
+            <CheckCircle data-element-name="רכיב_page_filter_done" size={16} /> <span>בוצע</span>
           </button>
         </div>
-      </div>
 
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '1.5rem',
-        marginBottom: '2rem',
-        background: 'var(--card-bg)',
-        padding: '1rem 1.5rem',
-        borderRadius: '16px',
-        boxShadow: 'var(--shadow-sm)',
-        border: '1px solid var(--border-color)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flex: 1, minWidth: '300px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', width: '100%', maxWidth: '350px' }}>
-              <Calendar data-element-name="רכיב_page_5" size={18} color="var(--text-muted)" />
-              <HebrewDateRangePicker
-                data-element-name="רכיב_page_6"
-                startDate={startDate}
-                endDate={endDate}
-                onChange={(start, end) => {
-                  setStartDate(start);
-                  setEndDate(end);
-                }}
-                placeholderStart="בחר תאריך התחלה"
-                placeholderEnd="בחר תאריך סיום"
-              />
-            </div>
-            
-            <div style={{ display: 'flex', gap: '0.5rem', width: '100%', maxWidth: '500px' }}>
-              <AISearchBar data-element-name="רכיב_page_15" 
-                placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                onSearch={handleSearch}
-                onClear={handleClearSearch}
-                onAiSearch={handleAiSearch}
-                onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-                loading={aiLoading}
-              />
-            </div>
-          </div>
-
-          <div className="icon-toolbar">
+        <div className="icon-toolbar">
             <button
               data-element-name="כפתור_page_7"
               data-agy-id="mark-all-done-button"
               onClick={markAllDone}
               disabled={!startDate}
-              className="icon-btn icon-btn-primary"
+              className="icon-btn icon-btn-primary c-approve"
+              title="סמן את כל התפירות של היום שנבחר כבוצעו"
             >
               <CheckCircle data-element-name="רכיב_page_8" size={16} /> סמן יום כבוצע
             </button>
 
             <span className="icon-sep"></span>
+
+            <button data-element-name="כפתור_page_3"
+              data-agy-id="print-wizard-button"
+              onClick={() => setIsPrintWizardOpen(true)}
+              className="icon-btn"
+              title="אשף הדפסה"
+            >
+              <Printer data-element-name="רכיב_page_4" size={20} />
+            </button>
+            <button data-element-name="כפתור_page_5"
+              data-agy-id="legend-button"
+              onClick={() => setIsLegendOpen(true)}
+              className="icon-btn"
+              title="מקרא"
+            >
+              <Info data-element-name="רכיב_page_6" size={20} />
+            </button>
 
             <ExportButtons data-element-name="רכיב_page_2"
               data={items.map(item => ({
@@ -370,7 +370,6 @@ export default function AlterationsPage() {
               <Info data-element-name="רכיב_page_6" size={20} />
             </button>
           </div>
-        </div>
       </div>
 
       {loading ? (
