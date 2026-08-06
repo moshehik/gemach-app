@@ -367,7 +367,7 @@ export default function HistoryPage() {
                     </td>
                     <td style={{ padding: '0.4rem 0.5rem', maxWidth: '340px' }} dir="rtl">
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
-                        <span style={{ fontWeight: '600', color: log.pageUrl.includes('/api/') ? '#4f46e5' : 'inherit' }}>
+                        <span className={`status-dot ${log.pageUrl.includes('/api/') ? 'c-purple' : 'c-teal'}`}>
                           {formatPageName(log.pageUrl)}
                         </span>
                         <span style={{ fontSize: '0.8em', color: 'var(--text-muted)', wordBreak: 'break-all' }} dir="ltr">
@@ -415,8 +415,10 @@ export default function HistoryPage() {
                     <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }} dir="ltr">
                       {log.executionTime ? `${log.executionTime} ms` : '-'}
                     </td>
-                    <td style={{ padding: '0.4rem 0.5rem', color: log.loadingError ? '#dc3545' : 'inherit' }}>
-                      {log.loadingError || 'תקין (200 OK)'}
+                    <td style={{ padding: '0.4rem 0.5rem' }}>
+                      <span className={`status-dot ${log.loadingError ? 'c-red' : 'c-green'}`}>
+                        {log.loadingError || 'תקין (200 OK)'}
+                      </span>
                     </td>
                   </tr>
                 ))}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { Calendar, CalendarPlus, Scissors, Printer, Info, CheckCircle, Search, X, Check, Clock, FileText } from 'lucide-react';
+import { Calendar, CalendarPlus, Scissors, Printer, Info, CheckCircle, Search, X, Check, FileText } from 'lucide-react';
 import PrintWizardModal from '../components/PrintWizardModal';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import HebrewDateRangePicker from '../../components/HebrewDateRangePicker';
@@ -442,7 +442,7 @@ export default function AlterationsPage() {
                           : (item.description || item.dressItem?.dressName)}
                       </td>
                       <td style={{ padding: '0.4rem 0.5rem' }}>
-                        <span style={{ background: 'var(--bg-color)', border: '1px solid #ddd', padding: '0.2rem 0.6rem', borderRadius: '12px', fontSize: '0.9rem', fontWeight: '500' }}>
+                        <span style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.9rem', fontWeight: '500' }}>
                           {item.sizeText || item.size}
                         </span>
                       </td>
@@ -456,22 +456,11 @@ export default function AlterationsPage() {
                         </div>
                       </td>
                       <td style={{ padding: '0.4rem 0.5rem' }}>
-                        <span style={{ 
-                          display: 'inline-block',
-                          padding: '0.4rem 1rem',
-                          borderRadius: '20px',
-                          fontSize: '0.85rem',
-                          fontWeight: '600',
-                          background: item.alterationDone ? 'rgba(67, 160, 71, 0.1)' : 'rgba(229, 57, 53, 0.1)',
-                          color: item.alterationDone ? '#2e7d32' : '#c62828',
-                          border: `1px solid ${item.alterationDone ? 'rgba(67, 160, 71, 0.2)' : 'rgba(229, 57, 53, 0.2)'}`
-                        }}>
-                          {item.alterationDone ? (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CheckCircle data-element-name="רכיב_page_16" size={14} /> בוצע</span>
-                          ) : (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Clock data-element-name="רכיב_page_17" size={14} /> ממתין</span>
-                          )}
-                        </span>
+                        {item.alterationDone ? (
+                          <span className="status-dot c-green">בוצע</span>
+                        ) : (
+                          <span className="status-dot c-amber">ממתין</span>
+                        )}
                       </td>
                       <td style={{ padding: '0.4rem 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
                           <Link data-element-name="רכיב_page_18" 

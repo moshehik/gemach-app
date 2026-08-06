@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import './rentals.css';
-import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
+import { calculateOrderStatus } from '../../lib/orderStatus';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
@@ -21,6 +21,18 @@ const PAGE_SIZE = 50;
 // מטמון SWR משותף — ראה app/lib/pageCache.js; בניית ה-query עברה ל-prefetchRoutes.js
 // כדי שה-prefetch מדפים אחרים ייצר את אותו מפתח בדיוק.
 const rentalsCache = cacheNamespace('rentals');
+
+// צבעי נקודת-הסטטוס בטבלה — עקבי עם הצבעים של כפתורי הסינון (.status-filters) מעל הטבלה.
+const STATUS_DOT_COLORS = {
+  'הושכר': 'c-amber',
+  'הושכר חלקי': 'c-purple',
+  'הוחזר': 'c-green',
+  'הוחזר חלקי': 'c-teal',
+  'מחוק': 'c-red',
+  'טיוטה': 'c-gray',
+  'עבר': 'c-gray',
+  'בקרוב': 'c-blue',
+};
 
 export default function RentalsPage() {
   const { getLabel } = useLabels();
@@ -358,7 +370,7 @@ export default function RentalsPage() {
             </tbody>
           ) : orders.map(order => {
             const statusLabel = calculateOrderStatus(order);
-            const statusColors = getStatusColor(statusLabel);
+            const statusDotColor = STATUS_DOT_COLORS[statusLabel] || 'c-gray';
             const totalItems = order.items?.filter(i => !i.isDeleted).length || 0;
             const rentedItems = order.items?.filter(i => i.isTaken && !i.isReturned && !i.isDeleted).length || 0;
             const returnedItems = order.items?.filter(i => i.isReturned && !i.isDeleted).length || 0;
@@ -404,21 +416,13 @@ export default function RentalsPage() {
                     <div><strong>{order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין תאריך')}</strong></div>
                   </td>
                   <td>
-                    <span style={{ 
-                      padding: '0.3rem 0.8rem', 
-                      borderRadius: '20px', 
-                      fontSize: '0.85rem',
-                      fontWeight: 'bold',
-                      background: statusColors.bg,
-                      color: statusColors.text,
-                      display: 'inline-block'
-                    }}>{statusLabel}</span>
+                    <span className={`status-dot ${statusDotColor}`}>{statusLabel}</span>
                   </td>
                   <td>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
                       <span style={{ fontWeight: 'bold' }}>סה"כ: {totalItems}</span>
-                      {rentedItems > 0 && <span style={{ color: '#e65100', fontSize: '0.9em', background: '#fff3e0', padding: '2px 6px', borderRadius: '4px' }}>מושכרים: {rentedItems}</span>}
-                      {returnedItems > 0 && <span style={{ color: '#2e7d32', fontSize: '0.9em', background: '#e8f5e9', padding: '2px 6px', borderRadius: '4px' }}>הוחזרו: {returnedItems}</span>}
+                      {rentedItems > 0 && <span className="status-dot c-amber" style={{ fontSize: '0.9em' }}>מושכרים: {rentedItems}</span>}
+                      {returnedItems > 0 && <span className="status-dot c-green" style={{ fontSize: '0.9em' }}>הוחזרו: {returnedItems}</span>}
                       <button data-element-name="כפתור_page_18" 
                         onClick={(e) => {
                           e.stopPropagation();
@@ -445,11 +449,11 @@ export default function RentalsPage() {
                               <strong style={{ color: 'var(--primary-color)' }}>{item.description}</strong> {item.barcode && <span style={{ color: 'var(--text-muted)', fontSize: '0.9em' }}>({item.barcode})</span>}
                               <div style={{ marginTop: '0.2rem' }}>
                                 {item.isReturned ? (
-                                  <span style={{ color: '#2e7d32', fontSize: '0.85em', background: '#e8f5e9', padding: '2px 6px', borderRadius: '4px' }}>✓ הוחזר</span>
+                                  <span className="status-dot c-green" style={{ fontSize: '0.85em' }}>הוחזר</span>
                                 ) : item.isTaken ? (
-                                  <span style={{ color: '#e65100', fontSize: '0.85em', background: '#fff3e0', padding: '2px 6px', borderRadius: '4px' }}>⚠ מושכר</span>
+                                  <span className="status-dot c-amber" style={{ fontSize: '0.85em' }}>מושכר</span>
                                 ) : (
-                                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85em', background: 'var(--element-bg)', padding: '2px 6px', borderRadius: '4px' }}>טרם נלקח</span>
+                                  <span className="status-dot c-gray" style={{ fontSize: '0.85em' }}>טרם נלקח</span>
                                 )}
                               </div>
                             </li>

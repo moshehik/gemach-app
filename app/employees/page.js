@@ -332,13 +332,7 @@ export default function EmployeesPage() {
                         <td style={{ padding: '0.4rem 0.5rem' }}>{employee.department ? employee.department.name : (employee.roleId || 'עובד')}</td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>{employee.phone1 || '-'}</td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>
-                          <span style={{ 
-                            padding: '0.3rem 0.8rem', 
-                            borderRadius: '20px', 
-                            fontSize: '0.85rem',
-                            background: employee.isActive ? 'rgba(76, 175, 80, 0.1)' : 'rgba(158, 158, 158, 0.1)',
-                            color: employee.isActive ? '#2e7d32' : '#616161'
-                          }}>
+                          <span className={employee.isActive ? 'status-dot c-green' : 'status-dot c-gray'}>
                             {employee.isActive ? 'פעיל' : 'לא פעיל'}
                           </span>
                         </td>

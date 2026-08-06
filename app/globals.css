@@ -1563,16 +1563,16 @@ thead th, th {
   position: sticky;
   top: -1px;
   z-index: 20;
-  background-color: #f8fafc;
+  background-color: var(--sticky-header-bg, #f8fafc);
   background-clip: padding-box;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 -2px 0 #f8fafc;
-  outline: 1px solid #f8fafc;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 -2px 0 var(--sticky-header-bg, #f8fafc);
+  outline: 1px solid var(--sticky-header-bg, #f8fafc);
 }
 
 [data-theme="dark"] thead th, [data-theme="dark"] th {
-  background-color: #1e1e1e;
-  box-shadow: 0 2px 4px rgba(255,255,255,0.05), 0 -2px 0 #1e1e1e;
-  outline: 1px solid #1e1e1e;
+  background-color: var(--sticky-header-bg, #221f18);
+  box-shadow: 0 2px 4px rgba(255,255,255,0.05), 0 -2px 0 var(--sticky-header-bg, #221f18);
+  outline: 1px solid var(--sticky-header-bg, #221f18);
 }
 
 /* Hide Gregorian Calendar Setting */
@@ -1757,11 +1757,11 @@ body.hide-ai-features .ai-feature-element { display: none !important; }
    ========================================================== */
 :root {
   --navbar-height: 72px;
-  --sticky-header-bg: #ffffff;
+  --sticky-header-bg: #faf8f2;
 }
 
 [data-theme="dark"] {
-  --sticky-header-bg: #1e1e1e;
+  --sticky-header-bg: #221f18;
 }
 
 body.hide-global-nav {
@@ -1926,6 +1926,46 @@ table.items-table thead tr th,
 .page-shell .page-scroll > * {
   min-height: 0;
 }
+
+/*
+  ריענון עדין של גוף הטבלאות ברחבי האפליקציה — תוסף בלבד, לא נוגע במבנה/גלילה/
+  sticky שמוגדרים למעלה. td מקבל ריפוד נדיב יותר ורקע-ריחוף חם; לא נוגע ב-thead.
+*/
+.page-shell .page-scroll table tbody td,
+.modal-content table tbody td {
+  padding-block: 0.7rem;
+}
+
+.page-shell .page-scroll table tbody tr:hover td {
+  background-color: var(--primary-light);
+}
+
+/* נקודת-סטטוס: טקסט + נקודה צבעונית, במקום "כדור" עם רקע מלא */
+.status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.status-dot::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex: none;
+}
+
+.status-dot.c-amber  { color: #d97706; }
+.status-dot.c-purple { color: #7c3aed; }
+.status-dot.c-gray   { color: #64748b; }
+.status-dot.c-red    { color: #dc2626; }
+.status-dot.c-green  { color: #059669; }
+.status-dot.c-blue   { color: #2563eb; }
+.status-dot.c-teal   { color: #0d9488; }
 
 /* בהדפסה — בלי שלד ובלי כותרות דביקות, שהכל יזרום על פני העמודים */
 @media print {

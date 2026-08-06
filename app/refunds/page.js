@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, CheckCircle, XCircle, Download, CreditCard, Coins, Mail, Info, RotateCcw, ExternalLink, AlertCircle, Calendar, ArrowUpRight, ShieldCheck, BadgeCheck } from 'lucide-react';
+import { Search, CheckCircle, XCircle, Download, CreditCard, Coins, Mail, RotateCcw, ExternalLink, AlertCircle, Calendar, ArrowUpRight, ShieldCheck, BadgeCheck } from 'lucide-react';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { verifyPin } from '@/components/orders/modern/mocAuth';
 import { cacheNamespace } from '@/app/lib/pageCache';
@@ -712,18 +712,7 @@ export default function RefundsPage() {
                       ) : <span style={{ color: '#94a3b8' }}>-</span>}
                     </td>
                     <td style={{ padding: '0.4rem 0.5rem' }}>
-                      <span style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '0.4rem',
-                        padding: '0.4rem 0.8rem',
-                        borderRadius: '20px',
-                        fontSize: '0.85rem',
-                        fontWeight: 'bold',
-                        background: refund.isExecuted ? '#dcfce7' : '#fef08a',
-                        color: refund.isExecuted ? '#166534' : '#854d0e'
-                      }}>
-                        {refund.isExecuted ? <CheckCircle data-element-name="רכיב_page_13" size={14}/> : <Info data-element-name="רכיב_page_14" size={14}/>}
+                      <span className={refund.isExecuted ? 'status-dot c-green' : 'status-dot c-amber'}>
                         {refund.isExecuted ? 'בוצע' : 'ממתין לביצוע'}
                       </span>
                     </td>

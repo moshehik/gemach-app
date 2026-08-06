@@ -334,7 +334,7 @@ export default function HomeDashboard() {
       {/* Global Search Results Area */}
       {searchResults && aiMessages.length === 0 && (
         <div className="animate-fade-in" style={{ marginBottom: '3rem' }}>
-          <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-color)' }}>תוצאות חיפוש ל: "{searchInput}"</h2>
+          <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-main)' }}>תוצאות חיפוש ל: "{searchInput}"</h2>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
             
             {/* Customers */}

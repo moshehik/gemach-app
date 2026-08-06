@@ -5,7 +5,7 @@ import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Pencil, Shirt, CalendarSearch, Plus, X, List, Trash2, Archive, CalendarDays, AlertCircle, AlertTriangle, Info, Phone, Calendar as CalendarIcon2, CreditCard, CheckCircle2, Filter, Search, Printer, Clock } from 'lucide-react';
-import { calculateOrderStatus, getStatusColor, calculatePaymentStatus, getPaymentStatusColor } from '../../lib/orderStatus';
+import { calculateOrderStatus, calculatePaymentStatus } from '../../lib/orderStatus';
 import CapacitySearchModal from '../../components/CapacitySearchModal';
 import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
@@ -18,6 +18,43 @@ import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import PrintWizardModal from '../components/PrintWizardModal';
 import { fetchSharedJson, readCache, subscribe, TTL } from '../../lib/apiCache';
 import { buildOrdersListParams, defaultOrdersAdvFilters } from '@/app/lib/prefetchRoutes';
+
+// מיפוי סטטוס טקסטואלי (calculateOrderStatus/calculatePaymentStatus ב-lib/orderStatus.js, משותף
+// לכמה עמודים) אל מחלקת הצבע של .status-dot כאן בעמוד ההזמנות בלבד — לא נוגעים בעוזר המשותף עצמו.
+const getStatusDotClass = (status) => {
+  switch (status) {
+    case 'הוחזר':
+    case 'הוחזר חלקי':
+      return 'c-green';
+    case 'הושכר':
+    case 'הושכר חלקי':
+      return 'c-blue';
+    case 'בקרוב':
+      return 'c-amber';
+    case 'עבר':
+      return 'c-purple';
+    case 'מחוק':
+      return 'c-gray';
+    case 'טיוטה':
+      return 'c-green';
+    default:
+      return 'c-gray';
+  }
+};
+
+const getPaymentStatusDotClass = (status) => {
+  switch (status) {
+    case 'שולם':
+      return 'c-green';
+    case 'שולם חלקי':
+      return 'c-amber';
+    case 'ממתין לזיכוי':
+      return 'c-purple';
+    case 'לא שולם':
+    default:
+      return 'c-red';
+  }
+};
 
 const PendingTimer = ({ cartStatusDate, holdMinutes = 15 }) => {
   const [timeLeft, setTimeLeft] = useState('');
@@ -679,29 +716,11 @@ export default function OrdersPage() {
                           ₪{order.totalPaid}
                         </td>
                         <td style={{ padding: '1rem' }}>
-                          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', alignItems: 'center' }}>
-                            <span style={{
-                              padding: '0.3rem 0.8rem',
-                              borderRadius: '20px',
-                              fontSize: '0.85rem',
-                              fontWeight: '600',
-                              whiteSpace: 'nowrap',
-                              background: getStatusColor(calculateOrderStatus(order)).bg,
-                              color: getStatusColor(calculateOrderStatus(order)).text,
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                            }}>
+                          <div style={{ display: 'flex', gap: '0.9rem', flexWrap: 'nowrap', alignItems: 'center' }}>
+                            <span className={`status-dot ${getStatusDotClass(calculateOrderStatus(order))}`}>
                               {calculateOrderStatus(order)}
                             </span>
-                            <span style={{
-                              padding: '0.3rem 0.8rem',
-                              borderRadius: '20px',
-                              fontSize: '0.85rem',
-                              fontWeight: '600',
-                              whiteSpace: 'nowrap',
-                              background: getPaymentStatusColor(calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0)).bg,
-                              color: getPaymentStatusColor(calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0)).text,
-                              boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-                            }}>
+                            <span className={`status-dot ${getPaymentStatusDotClass(calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0))}`}>
                               {calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0)}
                             </span>
                           </div>
@@ -818,7 +837,7 @@ export default function OrdersPage() {
           {hoveredOrder.customSpacing !== null && hoveredOrder.customSpacing !== undefined && (
             <div className="global-popoverRow">
               <span><AlertTriangle data-element-name="רכיב_page_76" size={14} /> ציפוף ימים:</span>
-              <span style={{ color: '#854d0e', background: '#fef9c3', padding: '2px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+              <span style={{ color: '#d97706', fontWeight: 'bold' }}>
                 {hoveredOrder.customSpacing} {hoveredOrder.customSpacing === 1 ? 'יום' : 'ימים'}
               </span>
             </div>
@@ -844,13 +863,13 @@ export default function OrdersPage() {
           </div>
           <div className="global-popoverRow">
             <span>סטטוס פריטים:</span>
-            <span style={{ color: getStatusColor(calculateOrderStatus(hoveredOrder)).text, background: getStatusColor(calculateOrderStatus(hoveredOrder)).bg, padding: '2px 6px', borderRadius: '4px' }}>
+            <span className={`status-dot ${getStatusDotClass(calculateOrderStatus(hoveredOrder))}`}>
               {calculateOrderStatus(hoveredOrder)}
             </span>
           </div>
           <div className="global-popoverRow">
             <span>סטטוס תשלום:</span>
-            <span style={{ color: getPaymentStatusColor(calculatePaymentStatus(hoveredOrder.totalAmount || 0, hoveredOrder.totalPaid || 0)).text, background: getPaymentStatusColor(calculatePaymentStatus(hoveredOrder.totalAmount || 0, hoveredOrder.totalPaid || 0)).bg, padding: '2px 6px', borderRadius: '4px' }}>
+            <span className={`status-dot ${getPaymentStatusDotClass(calculatePaymentStatus(hoveredOrder.totalAmount || 0, hoveredOrder.totalPaid || 0))}`}>
               {calculatePaymentStatus(hoveredOrder.totalAmount || 0, hoveredOrder.totalPaid || 0)}
             </span>
           </div>
