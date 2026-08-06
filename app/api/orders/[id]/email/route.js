@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
 import { getHebrewDateString } from '../../../../../lib/hebrewDate';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
+import { renderGenericEmailHtml } from '../../../../../lib/emailTemplates';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
 const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
@@ -411,14 +412,25 @@ export async function POST(request, { params }) {
 
     const { pdfBase64 } = body;
 
+    // הגוף המלווה של המייל (מה שרואים בתיבת הדואר; הדוח המלא מצורף כ-PDF) - עטוף
+    // בתבנית המעוצבת המשותפת. סקריפט ה-Apps Script מעביר את bodyText כ-htmlBody של
+    // ההודעה, כך שהוא יכול לשאת HTML מלא.
+    const accompanyingText = `מצורף כרטיס ${printType === 'rental' ? 'השכרה' : 'הזמנה'} עבור אירוע בתאריך ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : '')}.`;
+    const accompanyingHtml = renderGenericEmailHtml({
+      title: `${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}`,
+      bodyText: accompanyingText,
+      gmachName: printSettings.gmachName,
+      subtitle: 'המסמך המלא מצורף כקובץ PDF'
+    });
+
     // Use the generic email script OR our new PDF generator action
     const googlePayload = {
-      action: "sendGemachOrderEmail", 
+      action: "sendGemachOrderEmail",
       to: email,
       cc: '',
       subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
       htmlBody: htmlBody,
-      bodyText: `מצורף כרטיס הזמנה/השכרה עבור אירוע בתאריך ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : '')}.`,
+      bodyText: accompanyingHtml,
       fileName: `הזמנה ${order.orderId}.pdf`,
       
       // Keep old parameters for backwards compatibility just in case the old script is used
