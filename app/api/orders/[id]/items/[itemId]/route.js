@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma, { auditAs } from '../../../../../lib/prisma';
+import { checkAuth } from '../../../../../../lib/auth';
 import { recalculateOrderObligations } from '../../../../../../lib/pricingEngine';
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../../lib/inventory';
 import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES } from '../../../../../../lib/orderItemEditWindow';
@@ -51,6 +52,7 @@ const diffFields = (item, updateData) => {
 };
 
 export async function PUT(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const { id, itemId } = resolvedParams;

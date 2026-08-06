@@ -46,9 +46,38 @@
  *    links, notes, etc.) for BOTH brand-new orders and pre-existing ones, so
  *    edits made in Access to an existing order's header do get picked up.
  *  - OrderItem, Payment, PaymentObligation: INSERT-ONLY, and only for orders
- *    that are brand new in this run (orderId not already present in the DB
- *    before this run started). See LIMITATION below for why pre-existing
- *    orders' sub-records are NOT touched.
+ *    whose sub-records are ENTIRELY MISSING going into this run - i.e. zero
+ *    OrderItem AND zero Payment AND zero PaymentObligation rows exist for
+ *    that orderId (checked live against the DB every run, not inferred from
+ *    "is this order new to the Order table"). This is a strict superset of
+ *    "brand new this run": it also includes orders the Order-upsert step
+ *    already committed on some EARLIER run whose sub-records insert then
+ *    never happened (crash, kill, network drop between the two steps - see
+ *    CRASH-SAFETY FIX below). An order with ANY existing sub-record row of
+ *    any of the three types is left completely untouched, same as always.
+ *    See LIMITATION below for why orders with sub-records already present
+ *    pre-dating this tool are NOT reconciled/touched.
+ *
+ *    CRASH-SAFETY FIX (2026-08-06): the original design computed "new orders"
+ *    purely from a pre-run snapshot of Order.orderId, and processOrders()
+ *    commits Order rows durably (chunked bulkUpsert) well before
+ *    processOrderSubRecords() runs afterward. If the process died in between
+ *    (crash, killed terminal, machine sleep, etc.), the just-inserted Order
+ *    rows survived but their sub-records did not - and on the NEXT run those
+ *    same orders were no longer "new" (they were already in the DB), so they
+ *    were silently and PERMANENTLY excluded from ever getting sub-records,
+ *    with no error or flag anywhere. This happened for real: see
+ *    scratch/compute_payment_gap_v2.js and the 2,035-order manual backfill
+ *    documented in app/admin/access-import/page.js. Fixed by replacing the
+ *    "is this order new" check with a live existence check (does this
+ *    orderId have ANY OrderItem/Payment/PaymentObligation row right now?) -
+ *    see processOrders()'s `orderIdsWithAnySubRecords` set and
+ *    `needsSubRecordIds` result. This makes processOrderSubRecords() safely
+ *    re-runnable for ANY order (new or old) with zero sub-records, without
+ *    reopening the deliberate "never touch an order that already has
+ *    sub-records" rule below (an order the owner has since hand-edited
+ *    sub-records for in the live app is still left alone, because it has
+ *    at least one existing row of one of the three types).
  *  - Shift (עובדים_נוכחות, employee attendance/punch-clock): full upsert keyed
  *    on legacyId <-> קוד (verified 2026-08-06: this join is reliable, unlike
  *    the synthetic-junk-polluted OrderItem/Payment/PaymentObligation legacyIds
@@ -84,10 +113,14 @@
  *    behavior (dressItemId left null) and is out of scope here; a separate,
  *    existing reconciliation pass (see scratch/link_order_items.js /
  *    scratch/fix_barcode_prefixes.js precedent) is responsible for that.
- *  - IMPORTANT KNOWN GAP: OrderItem/Payment/PaymentObligation rows are only
- *    inserted for orders that are brand-new to the DB in a given run. If a
- *    payment or item is added in Access to an order that ALREADY existed in
- *    the DB before this tool's first run, this tool will NOT pick it up.
+ *  - IMPORTANT KNOWN LIMITATION (narrower than it used to be - see
+ *    CRASH-SAFETY FIX above, which closed the "entirely missing sub-records"
+ *    case): OrderItem/Payment/PaymentObligation rows are only inserted for
+ *    an order when it has ZERO rows of all three types. If a payment or item
+ *    is added in Access to an order that ALREADY has at least one sub-record
+ *    row of any of the three types in the DB (the normal case for basically
+ *    every order that predates this tool, and for any order this tool has
+ *    already successfully populated), this tool will NOT pick it up.
  *    Why: the DB's legacyId on these three tables was populated with
  *    SYNTHETIC, sequential junk numbers by the original SQLite -> Postgres
  *    UUID migration (confirmed 2026-08-05: contiguous range with no gaps,
@@ -641,14 +674,36 @@ async function processOrders() {
   const employees = await prisma.employee.findMany({ where: { legacyId: { not: null } }, select: { id: true, legacyId: true } });
   const employeeByLegacyId = new Map(employees.map(e => [e.legacyId, e.id]));
 
+  // CRASH-SAFETY FIX (2026-08-06, see header comment): live existence check, not a
+  // "new to Order this run" guess. An order qualifies for (re-)insertion of its
+  // sub-records only if it currently has ZERO rows across ALL THREE of
+  // OrderItem/Payment/PaymentObligation. This is deliberately a UNION (any one of the
+  // three existing is enough to exclude the order) - an order with items but no
+  // payments yet (a perfectly normal "not paid" state) must NOT be treated as missing
+  // sub-records just because Payment is empty for it.
+  const [itemOrderRows, paymentOrderRows, obligationOrderRows] = await Promise.all([
+    prisma.orderItem.findMany({ where: { orderId: { not: null } }, distinct: ['orderId'], select: { orderId: true } }),
+    prisma.payment.findMany({ where: { orderId: { not: null } }, distinct: ['orderId'], select: { orderId: true } }),
+    prisma.paymentObligation.findMany({ distinct: ['orderId'], select: { orderId: true } }),
+  ]);
+  const orderIdsWithAnySubRecords = new Set([
+    ...itemOrderRows.map(r => r.orderId),
+    ...paymentOrderRows.map(r => r.orderId),
+    ...obligationOrderRows.map(r => r.orderId),
+  ]);
+
   let toCreate = 0, toUpdate = 0, custUnresolved = 0, empUnresolved = 0;
   const dbRows = [];
-  const newOrderIds = new Set();
+  // Orders whose sub-records processOrderSubRecords() should (re-)insert for - a strict
+  // superset of "brand new to Order this run" (see above). Renamed from the old
+  // `newOrderIds` to make clear it's no longer purely about order novelty.
+  const needsSubRecordIds = new Set();
   for (const o of rows) {
     const orderId = toInt(o['\u05e7\u05d5\u05d3_\u05d4\u05d6\u05de\u05e0\u05d4']); // קוד_הזמנה
     if (!orderId) continue;
     const isNew = !existingOrderIdSet.has(orderId);
-    if (isNew) { toCreate++; newOrderIds.add(orderId); } else toUpdate++;
+    if (isNew) toCreate++; else toUpdate++;
+    if (!orderIdsWithAnySubRecords.has(orderId)) needsSubRecordIds.add(orderId);
 
     const custLegacy = toInt(o['\u05e7\u05d5\u05d3_\u05dc\u05e7\u05d5\u05d7']); // קוד_לקוח
     const customerId = custLegacy != null ? (customerByLegacyId.get(custLegacy) || null) : null;
@@ -690,12 +745,17 @@ async function processOrders() {
     rows: dbRows,
   });
 
-  return { accessCount: rows.length, toCreate, toUpdate, custUnresolved, empUnresolved, newOrderIds, ...result };
+  return { accessCount: rows.length, toCreate, toUpdate, custUnresolved, empUnresolved, needsSubRecordIds, ...result };
 }
 
-/** OrderItem/Payment/PaymentObligation - insert-only, new orders only. See header LIMITATION. */
-async function processOrderSubRecords(newOrderIds) {
-  console.log('\n--- OrderItem / Payment / PaymentObligation (new orders only - see LIMITATION in header) ---');
+/**
+ * OrderItem/Payment/PaymentObligation - insert-only, for orders whose sub-records are
+ * entirely missing (zero rows of all three types) as of THIS run - not just orders new
+ * to Order this run. See the CRASH-SAFETY FIX in the header comment and processOrders()'s
+ * `orderIdsWithAnySubRecords` check, which computes `needsSubRecordIds`.
+ */
+async function processOrderSubRecords(needsSubRecordIds) {
+  console.log('\n--- OrderItem / Payment / PaymentObligation (orders with entirely missing sub-records - see header) ---');
 
   const [items, obligations, payments] = await Promise.all([
     accessQuery(`SELECT * FROM [\u05d4\u05d6\u05de\u05e0\u05d5\u05ea_\u05e4\u05e8\u05d8\u05d9\u05dd]`),      // הזמנות_פרטים
@@ -703,11 +763,11 @@ async function processOrderSubRecords(newOrderIds) {
     accessQuery(`SELECT * FROM [\u05d4\u05d6\u05de\u05e0\u05d5\u05ea_\u05ea\u05e9\u05dc\u05d5\u05dd_\u05d1\u05d9\u05e6\u05d5\u05e2]`), // הזמנות_תשלום_ביצוע
   ]);
 
-  const relevantItems = applyLimit(items.filter(i => newOrderIds.has(toInt(i['\u05e7\u05d5\u05d3_\u05d4\u05d6\u05de\u05e0\u05d4']))));
-  const relevantObligations = applyLimit(obligations.filter(p => newOrderIds.has(toInt(p['\u05e7\u05d5\u05d3_\u05d4\u05d6\u05de\u05e0\u05d4']))));
-  const relevantPayments = applyLimit(payments.filter(p => newOrderIds.has(toInt(p['\u05e7\u05d5\u05d3_\u05d4\u05d6\u05de\u05e0\u05d4']))));
+  const relevantItems = applyLimit(items.filter(i => needsSubRecordIds.has(toInt(i['\u05e7\u05d5\u05d3_\u05d4\u05d6\u05de\u05e0\u05d4']))));
+  const relevantObligations = applyLimit(obligations.filter(p => needsSubRecordIds.has(toInt(p['\u05e7\u05d5\u05d3_\u05d4\u05d6\u05de\u05e0\u05d4']))));
+  const relevantPayments = applyLimit(payments.filter(p => needsSubRecordIds.has(toInt(p['\u05e7\u05d5\u05d3_\u05d4\u05d6\u05de\u05e0\u05d4']))));
 
-  console.log(`  New orders this run: ${newOrderIds.size}`);
+  console.log(`  Orders needing sub-records (missing entirely) this run: ${needsSubRecordIds.size}`);
   console.log(`  OrderItem rows to insert: ${relevantItems.length} (of ${items.length} total in Access)`);
   console.log(`  PaymentObligation rows to insert: ${relevantObligations.length} (of ${obligations.length} total in Access)`);
   console.log(`  Payment rows to insert: ${relevantPayments.length} (of ${payments.length} total in Access)`);
@@ -763,7 +823,7 @@ async function processOrderSubRecords(newOrderIds) {
   if (itemResult.written === undefined && !WRITE) { /* dry run, nothing to do */ }
 
   // --- Payment (actual payments, הזמנות_תשלום_ביצוע) ---
-  const orderCustomerMap = await getOrderCustomerMap(newOrderIds);
+  const orderCustomerMap = await getOrderCustomerMap(needsSubRecordIds);
   const paymentRows = [];
   for (const p of relevantPayments) {
     const legacyId = toInt(p['\u05e7\u05d5\u05d3']); // קוד
@@ -1052,7 +1112,7 @@ async function main() {
   summary.dressModel = await processDressModels();
   summary.dressItem = await processDressItems();
   summary.order = await processOrders();
-  summary.subRecords = await processOrderSubRecords(summary.order.newOrderIds);
+  summary.subRecords = await processOrderSubRecords(summary.order.needsSubRecordIds);
   summary.shift = await processShifts();
   summary.systemSetting = await processSystemSettings();
 
@@ -1089,6 +1149,44 @@ async function main() {
     if (r.failed && r.failed.length) {
       console.log(`\n${name} failed rows:`);
       for (const f of r.failed.slice(0, 20)) console.log(`  ${JSON.stringify(f.row)} -> ${f.error}`);
+    }
+  }
+
+  // Persist unparsedDates/failed rows to a timestamped JSON file on every --write run, so
+  // this doesn't rely on a human catching it in scrollback (that's exactly how the
+  // 2,035-order sub-records gap went unnoticed for a while - see header CRASH-SAFETY FIX).
+  // Written under backups/import-logs/ (gitignored, same as backups/ - see .gitignore),
+  // not scratch/, since this is operationally meaningful data-quality output from a
+  // PERMANENT tool, not a throwaway one-off script result.
+  if (WRITE) {
+    try {
+      const logDir = path.resolve(__dirname, '../backups/import-logs');
+      fs.mkdirSync(logDir, { recursive: true });
+      const stamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const logPath = path.join(logDir, `import-log-${stamp}.json`);
+
+      const failedByTable = {};
+      for (const key of ['customer', 'employee', 'dressModel', 'dressItem', 'order', 'shift', 'systemSetting']) {
+        if (summary[key].failed && summary[key].failed.length) failedByTable[key] = summary[key].failed;
+      }
+      if (sr.item.failed && sr.item.failed.length) failedByTable.orderItem = sr.item.failed;
+      if (sr.payment.failed && sr.payment.failed.length) failedByTable.payment = sr.payment.failed;
+      if (sr.obligation.failed && sr.obligation.failed.length) failedByTable.paymentObligation = sr.obligation.failed;
+
+      fs.writeFileSync(logPath, JSON.stringify({
+        ranAt: new Date().toISOString(),
+        accessSource: ACCESS_PATH,
+        unparsedDatesCount: unparsedDates.length,
+        unparsedDates,
+        failedRowCounts: Object.fromEntries(Object.entries(failedByTable).map(([k, v]) => [k, v.length])),
+        failed: failedByTable,
+      }, null, 2));
+
+      console.log(`\nWrote unparsed-dates/failed-rows log to ${logPath}`);
+    } catch (e) {
+      // Never let log-writing itself fail the run - the import already succeeded/failed on
+      // its own merits by this point, this is just a convenience artifact.
+      console.error('WARNING: could not write import log file:', e.message);
     }
   }
 

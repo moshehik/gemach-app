@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
+import { checkAuth } from '../../../../lib/auth';
 
 export const dynamic = 'force-dynamic';
 import { recalculateOrderObligations, computeOrderObligations } from '../../../../lib/pricingEngine';
@@ -18,6 +19,7 @@ const RECALC_SETTING_KEYS = [
 ];
 
 export async function GET(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const { id } = resolvedParams;
@@ -205,10 +207,11 @@ function parseSafeDate(val) {
 }
 
 export async function PUT(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const { id } = resolvedParams;
-    
+
     let parsedOrderId;
     let existingOrder;
 
@@ -778,10 +781,11 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const { id } = resolvedParams;
-    
+
     let parsedOrderId;
     let order;
 

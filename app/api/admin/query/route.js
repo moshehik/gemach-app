@@ -29,8 +29,12 @@ export async function POST(request) {
       return NextResponse.json({ error: 'Query is required' }, { status: 400 });
     }
 
-    // Execute raw SQL query. 
+    // Execute raw SQL query.
     // Notice: $queryRawUnsafe is used because the query string is fully dynamic.
+    // Deliberately NOT run through lib/sqlGuard's read-only check: this route is the
+    // intentional arbitrary-SQL admin console, gated by checkAuth('מנהל') above, not an
+    // AI-generated-SQL endpoint. Unlike app/api/ai/*, trusted admins are expected to run
+    // writes/DDL here, so it's intentionally left unrestricted.
     const result = await prisma.$queryRawUnsafe(query, ...params);
     
     // Log success
