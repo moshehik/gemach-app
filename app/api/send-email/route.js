@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { verifyEmployeeCredentials } from '../../../lib/employeeAuth';
+import { renderGenericEmailHtml } from '../../../lib/emailTemplates';
 
 export async function POST(request) {
   try {
@@ -28,27 +29,29 @@ export async function POST(request) {
 
     // 2. Prepare payload for Google Script
     // If no file was provided, send a tiny dummy text file because the script requires base64
-    const finalFileName = fileName || 'message.txt';
+    const finalFileName = fileName || 'הודעה.txt';
     const finalFileContent = fileContent || Buffer.from('נשלח ממערכת הגמ"ח').toString('base64');
+
+    // 3. Call Google Apps Script - Get URL from settings
+    const settings = await prisma.systemSetting.findMany({
+      where: {
+        key: { in: ['email_link_a', 'email_link_b', 'email_routing_strategy', 'gmach_name'] }
+      }
+    });
+    const linkA = settings.find(s => s.key === 'email_link_a')?.value;
+    const linkB = settings.find(s => s.key === 'email_link_b')?.value;
+    const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
+    const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
 
     const googlePayload = {
       to,
       cc: cc || '',
       subject: subject || 'הודעה חדשה',
       body: emailBody || '',
+      htmlBody: renderGenericEmailHtml({ title: subject, bodyText: emailBody, gmachName }),
       fileName: finalFileName,
       fileContent: finalFileContent
     };
-
-    // 3. Call Google Apps Script - Get URL from settings
-    const settings = await prisma.systemSetting.findMany({
-      where: {
-        key: { in: ['email_link_a', 'email_link_b', 'email_routing_strategy'] }
-      }
-    });
-    const linkA = settings.find(s => s.key === 'email_link_a')?.value;
-    const linkB = settings.find(s => s.key === 'email_link_b')?.value;
-    const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
 
     let scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
     

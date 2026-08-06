@@ -2,6 +2,7 @@ import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { hashSecret, last4Of, generateTempPassword } from '@/lib/passwordAuth';
 import { sendSystemEmail } from '@/lib/mailer';
+import { renderPasswordResetEmailHtml } from '@/lib/emailTemplates';
 
 // Self-service "forgot password", reachable from the login screen without being logged in.
 // Generates a temporary password, hashes it in place of the real one, emails it to the
@@ -48,10 +49,23 @@ export async function POST(request) {
       }
     });
 
+    const settings = await prisma.systemSetting.findMany({
+      where: { key: { in: ['gmach_name', 'gmach_phone'] } }
+    });
+    const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
+    const gmachPhone = settings.find(s => s.key === 'gmach_phone')?.value || '';
+
     const emailResult = await sendSystemEmail({
       to: employee.email,
       subject: 'איפוס סיסמה - מערכת הגמ"ח',
-      body: `שלום ${employee.firstName || ''},\n\nביקשת לאפס את סיסמתך למערכת הגמ"ח.\nסיסמה זמנית: ${tempPassword}\n\nיש להתחבר עם הסיסמה הזמנית ולהגדיר סיסמה חדשה בהתחברות הבאה.\nאם לא ביקשת איפוס סיסמה, אפשר להתעלם מהודעה זו ולפנות למנהל המערכת.`
+      body: `שלום ${employee.firstName || ''},\n\nביקשת לאפס את סיסמתך למערכת הגמ"ח.\nסיסמה זמנית: ${tempPassword}\n\nיש להתחבר עם הסיסמה הזמנית ולהגדיר סיסמה חדשה בהתחברות הבאה.\nאם לא ביקשת איפוס סיסמה, אפשר להתעלם מהודעה זו ולפנות למנהל המערכת.`,
+      html: renderPasswordResetEmailHtml({
+        firstName: employee.firstName,
+        tempPassword,
+        triggeredByManager: false,
+        gmachName,
+        gmachPhone
+      })
     });
 
     if (!emailResult.success) {

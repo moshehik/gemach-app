@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
+import { renderErrorReportEmailHtml } from '../../../lib/emailTemplates';
 
 export async function GET(request) {
   try {
@@ -89,12 +90,13 @@ export async function POST(request) {
       // Determine Script URL from settings
       const settings = await prisma.systemSetting.findMany({
         where: {
-          key: { in: ['email_link_a', 'email_link_b', 'email_routing_strategy'] }
+          key: { in: ['email_link_a', 'email_link_b', 'email_routing_strategy', 'gmach_name'] }
         }
       });
       const linkA = settings.find(s => s.key === 'email_link_a')?.value;
       const linkB = settings.find(s => s.key === 'email_link_b')?.value;
       const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
+      const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
 
       let scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
       
@@ -127,6 +129,10 @@ ${hiddenData}
 ---AI_DATA_END---
       `.trim();
 
+      const htmlBody = renderErrorReportEmailHtml({
+        employeeName, time, title, url, userText, lastButtons, gmachName
+      });
+
       for (const prog of programmers) {
         try {
           await fetch(scriptUrl, {
@@ -137,7 +143,8 @@ ${hiddenData}
               cc: '',
               subject: 'דיווח תקלה ממערכת הגמח - לטיפול AI',
               body: emailContent,
-              fileName: 'error_report.txt',
+              htmlBody,
+              fileName: 'דוח שגיאה.txt',
               fileContent: Buffer.from('Error Report').toString('base64')
             })
           });
