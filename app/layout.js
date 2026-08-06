@@ -237,27 +237,27 @@ export default async function RootLayout({ children }) {
                   <NavigationArrows data-element-name="רכיב_layout_10" />
                 </div>
                 <AppNavLinks data-element-name="רכיב_layout_11" enableAlterations={enableAlterations} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
                   {showEmployeesTab && (
-                    <Link data-element-name="רכיב_layout_12" href="/employees" title="עובדים ונוכחות" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
-                      <Users data-element-name="רכיב_layout_13" size={22} />
+                    <Link data-element-name="רכיב_layout_12" href="/employees" title="עובדים ונוכחות" className="icon-nav-link">
+                      <Users data-element-name="רכיב_layout_13" size={20} />
                     </Link>
                   )}
                   {showRefundsTab && (
-                    <Link data-element-name="רכיב_layout_refunds" href="/refunds" title="זיכויים" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
-                      <Coins data-element-name="רכיב_layout_refunds_icon" size={22} />
+                    <Link data-element-name="רכיב_layout_refunds" href="/refunds" title="זיכויים" className="icon-nav-link">
+                      <Coins data-element-name="רכיב_layout_refunds_icon" size={20} />
                     </Link>
                   )}
-                  <Link data-element-name="רכיב_layout_14" href="/dashboard/dresses" title="ניהול קטלוג" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
-                    <Shirt data-element-name="רכיב_layout_15" size={22} />
+                  <Link data-element-name="רכיב_layout_14" href="/dashboard/dresses" title="ניהול קטלוג" className="icon-nav-link">
+                    <Shirt data-element-name="רכיב_layout_15" size={20} />
                   </Link>
                   {showAdminTab && (
-                    <Link data-element-name="רכיב_layout_16" href="/admin" title="אזור ניהול מתקדם" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--primary-color)', textDecoration: 'none' }}>
-                      <Settings data-element-name="רכיב_layout_17" size={22} />
+                    <Link data-element-name="רכיב_layout_16" href="/admin" title="אזור ניהול מתקדם" className="icon-nav-link" style={{ color: 'var(--primary-color)' }}>
+                      <Settings data-element-name="רכיב_layout_17" size={20} />
                     </Link>
                   )}
                   <ThemeToggle data-element-name="רכיב_layout_18" employeeId={authToken?.value} initialTheme={themePreference} />
-                  <div style={{ width: '1px', height: '24px', backgroundColor: 'var(--border-color)', margin: '0 0.25rem' }}></div>
+                  <div className="nav-divider"></div>
                   {isProgrammer && <MessageHistoryButton data-element-name="רכיב_layout_msg_hist" />}
                   {!hideErrorReporting && <ErrorReportButton data-element-name="רכיב_layout_19" />}
                   {authToken?.value && !hideInternalMessaging && <NotificationBell data-element-name="רכיב_layout_20" employeeId={authToken.value} />}

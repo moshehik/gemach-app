@@ -363,9 +363,24 @@ export default function OrdersPage() {
   return (
     <main data-agy-id="orders_page_main_1" className="container animate-fade-in page-shell">
       <div className="page-scroll">
-      <h1 style={{ margin: '0 0 1.25rem', color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול הזמנות</h1>
+      {/* סרגל אחד: כותרת + חיפוש + פילטרים + פעולות */}
+      <div className="toolbar-row" style={{ marginBottom: '1.5rem' }}>
+        <h1 className="toolbar-title">
+          <strong>ניהול הזמנות</strong>
+          <small>סה"כ רשומות: {totalCount}</small>
+        </h1>
 
-      <div className="toolbar-row">
+        <AISearchBar data-element-name="רכיב_page_22"
+          placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onSearch={handleSearch}
+          onClear={handleClearSearch}
+          onAiSearch={handleAiSearch}
+          onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+          loading={aiLoading}
+        />
+
         {/* Status Filter Banner */}
         <div className="status-filters">
           <button data-element-name="כפתור_page_1" data-agy-id="orders_page_button_2" onClick={() => { setFilterStatus('soon'); setPage(1); }} className={filterStatus === 'soon' ? 'status-filter active c-amber' : 'status-filter'} title="בקרוב (החל מהיום ואילך)">
@@ -393,24 +408,6 @@ export default function OrdersPage() {
             <span>הכל</span>
           </button>
         </div>
-        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '500' }}>סה"כ רשומות: {totalCount}</div>
-      </div>
-
-      {/* Search and Action Bar */}
-      <div className="toolbar-row" style={{ marginBottom: '2rem' }}>
-        <div style={{ flex: '1', minWidth: '300px', maxWidth: '600px' }}>
-          <AISearchBar data-element-name="רכיב_page_22"
-            placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onSearch={handleSearch}
-            onClear={handleClearSearch}
-            onAiSearch={handleAiSearch}
-            onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-            loading={aiLoading}
-          />
-        </div>
-
         <div className="icon-toolbar">
           <button data-element-name="כפתור_page_13" data-agy-id="orders_page_button_8"
              onClick={() => setShowAdvSearch(true)}

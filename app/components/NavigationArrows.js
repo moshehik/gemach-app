@@ -1,38 +1,25 @@
-﻿'use client';
+'use client';
 import { useRouter } from 'next/navigation';
+import { ChevronRight, ChevronLeft } from 'lucide-react';
 
 export default function NavigationArrows() {
   const router = useRouter();
 
   return (
-    <div className="nav-arrows" style={{ display: 'flex', gap: '10px', alignItems: 'center', marginLeft: '1rem' }}>
-      <button data-element-name="כפתור_NavigationArrows_1" 
-        onClick={() => router.back()} 
-        style={{ 
-          background: 'transparent', 
-          border: 'none', 
-          fontSize: '1.5rem', 
-          cursor: 'pointer', 
-          color: 'var(--text-main)',
-          padding: '0 5px'
-        }}
+    <div className="nav-arrows" style={{ display: 'flex', gap: '0.15rem', alignItems: 'center', marginLeft: '0.75rem' }}>
+      <button data-element-name="כפתור_NavigationArrows_1"
+        onClick={() => router.back()}
+        className="icon-nav-link"
         title="אחורה"
       >
-        &#8594;
+        <ChevronRight size={20} />
       </button>
-      <button data-element-name="כפתור_NavigationArrows_2" 
-        onClick={() => router.forward()} 
-        style={{ 
-          background: 'transparent', 
-          border: 'none', 
-          fontSize: '1.5rem', 
-          cursor: 'pointer', 
-          color: 'var(--text-main)',
-          padding: '0 5px'
-        }}
+      <button data-element-name="כפתור_NavigationArrows_2"
+        onClick={() => router.forward()}
+        className="icon-nav-link"
         title="קדימה"
       >
-        &#8592;
+        <ChevronLeft size={20} />
       </button>
     </div>
   );

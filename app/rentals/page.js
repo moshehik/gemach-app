@@ -224,7 +224,20 @@ export default function RentalsPage() {
     <main data-agy-id="rentals-page-main" className="container rentals-page page-shell">
       <div className="page-scroll">
       <div className="toolbar-row">
-        <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול השכרות והחזרות</h1>
+        <h1 className="toolbar-title">
+          <strong>השכרות והחזרות</strong>
+        </h1>
+
+        <AISearchBar data-element-name="רכיב_page_14"
+          placeholder="חיפוש חופשי (הזמנה, לקוח, דגם)..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onSearch={(e) => { e.preventDefault(); if(isAiModeActive) setIsAiModeActive(false); }}
+          onClear={handleClearSearch}
+          onAiSearch={handleAiSearch}
+          onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+          loading={aiLoading}
+        />
 
         <div className="status-filters">
           <button data-element-name="כפתור_page_1" data-agy-id="rentals_page_button_1" onClick={() => setViewMode('all')} className={viewMode === 'all' ? 'status-filter active c-blue' : 'status-filter'} title="הצג הכל">
@@ -246,6 +259,37 @@ export default function RentalsPage() {
           <button data-element-name="כפתור_page_5" data-agy-id="rentals_page_button_5" onClick={() => setViewMode('returned_partial')} className={viewMode === 'returned_partial' ? 'status-filter active c-teal' : 'status-filter'} title="הוחזר חלקי">
             <RotateCcw size={16} /> <span>הוחזר חלקי</span>
           </button>
+        </div>
+
+        <div className="icon-toolbar">
+          <button data-element-name="כפתור_page_15"
+            data-agy-id="adv-search-button"
+            onClick={() => setShowAdvSearch(true)}
+            className="icon-btn"
+            title="חיפוש מתקדם"
+          >
+            <SlidersHorizontal size={19} />
+          </button>
+
+          <span className="icon-sep"></span>
+
+          <ExportButtons data-element-name="רכיב_page_16"
+            data={orders.map(o => ({
+              ...o,
+              status: calculateOrderStatus(o),
+              eventDateFormatted: o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : 'לא צוין'),
+              itemsSummary: o.items ? o.items.filter(i => !i.isDeleted).map(i => `${i.description} (${i.barcode || 'ללא ברקוד'})`).join(' | ') : ''
+            }))}
+            filename="השכרות"
+            columns={[
+              { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
+              { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
+              { key: 'eventDateFormatted', label: getLabel('order_eventDate', 'תאריך אירוע') },
+              { key: 'status', label: getLabel('order_status', 'סטטוס') },
+              { key: 'itemsSummary', label: 'פריטים' }
+            ]}
+            iconOnly={true}
+          />
         </div>
       </div>
 
@@ -303,52 +347,6 @@ export default function RentalsPage() {
           </div>
         </div>
       )}
-
-      <div className="toolbar-row">
-        <div style={{ flex: 1, maxWidth: '400px', minWidth: '250px' }}>
-          <AISearchBar data-element-name="רכיב_page_14"
-            placeholder="חיפוש חופשי (הזמנה, לקוח, דגם)..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            onSearch={(e) => { e.preventDefault(); if(isAiModeActive) setIsAiModeActive(false); }}
-            onClear={handleClearSearch}
-            onAiSearch={handleAiSearch}
-            onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-            loading={aiLoading}
-          />
-        </div>
-
-        <div className="icon-toolbar">
-          <button data-element-name="כפתור_page_15"
-            data-agy-id="adv-search-button"
-            onClick={() => setShowAdvSearch(true)}
-            className="icon-btn"
-            title="חיפוש מתקדם"
-          >
-            <SlidersHorizontal size={19} />
-          </button>
-
-          <span className="icon-sep"></span>
-
-          <ExportButtons data-element-name="רכיב_page_16"
-            data={orders.map(o => ({
-              ...o,
-              status: calculateOrderStatus(o),
-              eventDateFormatted: o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : 'לא צוין'),
-              itemsSummary: o.items ? o.items.filter(i => !i.isDeleted).map(i => `${i.description} (${i.barcode || 'ללא ברקוד'})`).join(' | ') : ''
-            }))}
-            filename="השכרות"
-            columns={[
-              { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
-              { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
-              { key: 'eventDateFormatted', label: getLabel('order_eventDate', 'תאריך אירוע') },
-              { key: 'status', label: getLabel('order_status', 'סטטוס') },
-              { key: 'itemsSummary', label: 'פריטים' }
-            ]}
-            iconOnly={true}
-          />
-        </div>
-      </div>
 
       <div style={{ overflow: 'visible', background: 'var(--card-bg)', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', border: '1px solid var(--border-color)' }}>
         <table className="items-table" style={{ margin: 0, minWidth: '800px' }}>

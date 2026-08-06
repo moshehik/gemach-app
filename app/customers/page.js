@@ -195,33 +195,23 @@ export default function CustomersPage() {
     <>
     <main data-agy-id="customers_main_container" className="container animate-fade-in page-shell">
       <div className="page-scroll">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול לקוחות</h1>
-        <div style={{ color: 'var(--text-muted)', fontSize: '1rem', fontWeight: '500' }}>סה"כ רשומות: {totalCount}</div>
-      </div>
-      
-      {/* Search and Filters */}
-      <div className="toolbar-row" style={{
-        background: 'var(--card-bg)',
-        padding: '0.75rem 1.5rem',
-        borderRadius: '16px',
-        boxShadow: 'var(--shadow-sm)',
-        border: '1px solid var(--border-color)'
-      }}>
-        <div style={{ flex: '1', minWidth: '300px', maxWidth: '600px', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <div style={{ flex: 1 }}>
-            <AISearchBar data-element-name="רכיב_page_1"
-              placeholder="חיפוש לקוח (שם, טלפון, עיר)..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              onSearch={handleSearch}
-              onClear={handleClearSearch}
-              onAiSearch={handleAiSearch}
-              onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-              loading={aiLoading}
-            />
-          </div>
-        </div>
+      {/* סרגל אחד: כותרת + חיפוש + פעולות */}
+      <div className="toolbar-row">
+        <h1 className="toolbar-title">
+          <strong>ניהול לקוחות</strong>
+          <small>סה"כ רשומות: {totalCount}</small>
+        </h1>
+
+        <AISearchBar data-element-name="רכיב_page_1"
+          placeholder="חיפוש לקוח (שם, טלפון, עיר)..."
+          value={searchInput}
+          onChange={(e) => setSearchInput(e.target.value)}
+          onSearch={handleSearch}
+          onClear={handleClearSearch}
+          onAiSearch={handleAiSearch}
+          onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+          loading={aiLoading}
+        />
 
         <div className="icon-toolbar">
           <button data-element-name="כפתור_page_2"

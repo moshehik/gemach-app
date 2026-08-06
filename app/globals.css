@@ -1,10 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+/*
+  טיפוגרפיה: Playfair Display (שהיה כאן קודם לכותרות) לא מכיל אותיות עבריות כלל,
+  ולכן כל כותרת בעברית נפלה בפועל ל-serif גנרי של המערכת. הוחלף ב-Frank Ruhl Libre —
+  סריף עברי קלאסי ואלגנטי — ולגוף הטקסט Assistant, סאנס עברי מודרני וקריא.
+*/
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Heebo:wght@300;400;500;600;700&display=swap');
 
 :root {
   --gradient-primary: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
   --primary-light: rgba(212, 175, 55, 0.15);
   --border-main: rgba(0, 0, 0, 0.1);
-  --text-secondary: #64748b;
+  --text-secondary: #8a8371;
   --danger-bg: #fef2f2;
   --danger-text: #ef4444;
   --success-bg: #f0fdf4;
@@ -16,16 +21,17 @@
   --primary-hover: #b5952f;
   --bg-color: #fcfbf9; /* Soft cream/white */
   --text-main: #2c2c2c; /* Deep gray */
-  --text-muted: #737373;
+  /* ניטרלים חמים (קרם/שמנת) במקום אפורים קרים — פלטת העיצוב המוסכמת */
+  --text-muted: #8a8371;
   --card-bg: rgba(255, 255, 255, 0.85);
   --border-color: rgba(212, 175, 55, 0.2);
   --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
   --glass-border: 1px solid rgba(255, 255, 255, 0.5);
-  --element-bg: #f5f5f5;
-  --element-border: #ddd;
-  --image-bg: #f0f0f0;
-  --divider: #eee;
+  --element-bg: #f6f3ea;
+  --element-border: #e5ddc8;
+  --image-bg: #f4f1e9;
+  --divider: #f0ead9;
   --input-bg: white;
   --banner-debts-bg: #fef2f2;
   --banner-debts-border: #fee2e2;
@@ -46,11 +52,11 @@
   --card-bg: rgba(30, 30, 30, 0.85);
   --border-color: rgba(212, 175, 55, 0.3);
   --glass-border: 1px solid rgba(255, 255, 255, 0.08);
-  --element-bg: #2a2a2a;
-  --element-border: #444;
-  --image-bg: #1e1e1e;
-  --divider: #333;
-  --input-bg: #1e1e1e;
+  --element-bg: #2b2820;
+  --element-border: #4a4437;
+  --image-bg: #211e18;
+  --divider: #3a352b;
+  --input-bg: #1e1c17;
   --banner-debts-bg: rgba(239, 68, 68, 0.1);
   --banner-debts-border: rgba(239, 68, 68, 0.2);
   --banner-payments-bg: rgba(16, 185, 129, 0.1);
@@ -89,7 +95,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 body {
-  font-family: 'Heebo', sans-serif;
+  font-family: 'Assistant', 'Heebo', sans-serif;
   background-color: var(--bg-color);
   color: var(--text-main);
   line-height: 1.6;
@@ -101,8 +107,9 @@ body {
 }
 
 h1, h2, h3, h4, h5, h6 {
-  font-family: 'Playfair Display', serif;
-  font-weight: 600;
+  font-family: 'Frank Ruhl Libre', 'Assistant', serif;
+  font-weight: 700;
+  letter-spacing: -0.01em;
   color: var(--text-main);
 }
 
@@ -127,11 +134,13 @@ body.hide-global-nav .navbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 1.5rem 2rem;
+  gap: 1rem;
+  padding: 0.7rem 1.6rem;
   background: var(--card-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border-bottom: var(--border-color);
+  /* היה `border-bottom: var(--border-color)` — הצהרה לא חוקית (בלי עובי/סוג) שלא ציירה כלום */
+  border-bottom: 1px solid var(--divider);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -139,11 +148,44 @@ body.hide-global-nav .navbar {
 }
 
 .navbar-brand {
-  font-family: 'Playfair Display', serif;
-  font-size: 1.8rem;
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 1.45rem;
   font-weight: 700;
   color: var(--primary-color);
-  letter-spacing: 0.5px;
+  letter-spacing: 0.2px;
+}
+
+/* אייקוני הכותרת — אותה שפה של .icon-btn: עיגול נקי, בלי מסגרת, בלי "קפיצה" */
+.icon-nav-link {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: none;
+  padding: 0;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--text-muted) !important;
+  opacity: 1;
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.icon-nav-link:hover {
+  color: var(--primary-hover) !important;
+  background: var(--primary-light);
+  transform: none;
+  opacity: 1;
+}
+
+/* מפריד אנכי עדין בין קבוצות אייקונים בכותרת */
+.navbar .nav-divider {
+  width: 1px;
+  height: 22px;
+  background: var(--divider);
+  flex: none;
 }
 
 .nav-links {
@@ -180,9 +222,33 @@ body.hide-global-nav .navbar {
 .toolbar-row {
   display: flex;
   align-items: center;
-  gap: 1.1rem;
+  gap: 0.9rem;
   flex-wrap: wrap;
   margin-bottom: 1.25rem;
+}
+
+/* כותרת עמוד קומפקטית שיושבת בתוך סרגל הכלים עצמו (שורה אחת, לא שלוש) */
+.toolbar-title {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  line-height: 1.15;
+  white-space: nowrap;
+  margin: 0;
+  flex: none;
+}
+
+.toolbar-title strong {
+  font-family: 'Frank Ruhl Libre', serif;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.toolbar-title small {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: var(--text-muted);
 }
 
 .search-box-modern {
@@ -362,16 +428,7 @@ body.hide-global-nav .navbar {
   color: #fff;
 }
 
-.icon-nav-link {
-  transition: opacity 0.3s ease, color 0.3s ease, transform 0.2s ease;
-  opacity: 0.85;
-}
-
-.icon-nav-link:hover {
-  opacity: 1;
-  color: var(--primary-color) !important;
-  transform: translateY(-2px);
-}
+/* (סגנון .icon-nav-link מוגדר למעלה, יחד עם שאר רכיבי הכותרת) */
 
 /* Hero Section */
 .hero {
@@ -1966,6 +2023,132 @@ table.items-table thead tr th,
   border-radius: 14px;
   box-shadow: var(--shadow-sm);
   border: 1px solid var(--border-color);
+}
+
+/*
+  שורת חיפוש מאוחדת (AISearchBar) — הכל בתוך "גלולה" אחת: אייקון חיפוש, שדה,
+  כפתור ניקוי X, מפריד, כפתורי AI/סטטיסטיקה, וכפתור החיפוש. כך כל סרגל הכלים
+  נשאר בשורה אחת במקום להישבר לשלוש.
+*/
+.ai-search {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  flex: 1;
+  min-width: 260px;
+  max-width: 560px;
+  height: 44px;
+  padding: 0 0.4rem 0 0.4rem;
+  background: var(--input-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 99px;
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.08);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ai-search:focus-within {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+}
+
+.ai-search__icon {
+  flex: none;
+  margin-inline-start: 0.6rem;
+  color: var(--text-muted);
+}
+
+.ai-search__input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--text-main);
+  font-family: inherit;
+  font-size: 0.95rem;
+  text-align: right;
+  direction: rtl;
+}
+
+.ai-search__input::placeholder {
+  color: var(--text-muted);
+}
+
+.ai-search__inline-btn {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--text-muted);
+  transition: color 0.18s ease, background 0.18s ease;
+}
+
+.ai-search__inline-btn:hover {
+  color: var(--primary-hover);
+  background: var(--primary-light);
+}
+
+.ai-search__inline-btn.is-active {
+  color: #ec4899;
+  background: rgba(236, 72, 153, 0.12);
+}
+
+.ai-search__inline-btn.is-stats {
+  color: #10b981;
+}
+
+.ai-search__inline-btn.is-stats:hover {
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.ai-search__sep {
+  flex: none;
+  width: 1px;
+  height: 20px;
+  background: var(--divider);
+  margin: 0 0.1rem;
+}
+
+.ai-search__go {
+  flex: none;
+  height: 34px;
+  padding: 0 1.05rem;
+  border: none;
+  border-radius: 99px;
+  background: linear-gradient(135deg, var(--primary-color), #e8c85a);
+  color: var(--btn-primary-text);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 0.87rem;
+  cursor: pointer;
+  transition: filter 0.2s ease;
+}
+
+.ai-search__go:hover { filter: brightness(1.05); }
+.ai-search__go:disabled { opacity: 0.6; cursor: default; }
+
+/* מצב AI — אותה גלולה, בזהות הצבע הסגול-ורודה של תכונות ה-AI */
+.ai-search.is-magic {
+  border-color: rgba(236, 72, 153, 0.4);
+  box-shadow: 0 2px 10px rgba(236, 72, 153, 0.12);
+}
+
+.ai-search.is-magic:focus-within {
+  border-color: #ec4899;
+  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.15);
+}
+
+.ai-search.is-magic .ai-search__go {
+  background: linear-gradient(135deg, #a855f7, #ec4899);
+  color: #fff;
 }
 
 /* חיפוש (AISearchBar) — משתמש בכל עמודי הרשימה */
