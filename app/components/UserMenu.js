@@ -65,8 +65,9 @@ export default function UserMenu() {
     } catch (err) {
       console.warn('Logout error:', err.message || 'Failed to fetch');
     } finally {
-      router.refresh();
-      setActionLoading(false);
+      // רענון מלא ולא router.refresh — מאותה סיבה כמו בהתחברות: ה-navbar
+      // (שרת) וה-UserMenu (מטמון /api/me בזיכרון) מיושרים רק בטעינת עמוד נקייה.
+      window.location.href = '/';
     }
   };
 

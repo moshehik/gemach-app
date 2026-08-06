@@ -89,12 +89,15 @@ export default function LoginScreen({ isModal = false, onClose }) {
   };
 
   const finishLogin = () => {
+    // רענון מלא ולא router.refresh: ה-navbar מיוצר בשרת לפי תפקיד המשתמש,
+    // ו-UserMenu מציג את /api/me מהמטמון המשותף בזיכרון — שניהם מתעדכנים
+    // לעובד שנכנס רק בטעינת עמוד נקייה. אם העמוד הנוכחי אסור לתפקיד החדש,
+    // ה-guard בשרת ממילא יפנה לדף הבית.
     if (isModal && onClose) {
-      onClose(true);
+      window.location.reload();
     } else {
-      router.push('/');
+      window.location.href = '/';
     }
-    router.refresh();
   };
 
   const handleLogin = async (e) => {
