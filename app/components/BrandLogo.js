@@ -26,30 +26,27 @@ export default function BrandLogo() {
     return () => window.removeEventListener('logoUpdated', handleLogoUpdate);
   }, []);
 
-  const versionText = (
-    <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginTop: '2px', lineHeight: '1' }}>
-      גירסא {versionData.version} | {versionData.date}
-    </div>
-  );
+  // הגירסה עברה ל-tooltip על הלוגו: כשורת טקסט היא הגביהה את עמודת המותג
+  // מעל שורת האייקונים (38px) ונקראה כטקסט דיבאג במעטפת מול לקוחות.
+  const versionText = `גירסא ${versionData.version} | ${versionData.date}`;
 
   if (hasError) {
     return (
-      <div className="navbar-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingRight: '1rem' }}>
+      <div className="navbar-brand" title={versionText} style={{ display: 'flex', alignItems: 'center', height: '38px', paddingRight: '1rem' }}>
         <div>גמ"ח נסיכה</div>
-        {versionText}
       </div>
     );
   }
 
   return (
-    <div className="navbar-brand" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: '1rem' }}>
-      <img 
-        src={logoUrl} 
-        alt="לוגו" 
-        style={{ maxHeight: '40px', objectFit: 'contain' }}
+    <div className="navbar-brand" style={{ display: 'flex', alignItems: 'center', height: '38px', paddingTop: 0, paddingBottom: 0, paddingLeft: 0, paddingRight: '1rem' }}>
+      <img
+        src={logoUrl}
+        alt="לוגו"
+        title={versionText}
+        style={{ maxHeight: '38px', objectFit: 'contain' }}
         onError={() => setHasError(true)}
       />
-      {versionText}
     </div>
   );
 }

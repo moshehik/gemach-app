@@ -17,35 +17,10 @@ export default function MessageHistoryButton({ 'data-element-name': dataElementN
         onClick={() => setIsOpen(true)}
         title="היסטוריית הודעות מערכת"
         className="icon-nav-link"
-        style={{ 
-          background: 'none', 
-          border: 'none', 
-          cursor: 'pointer', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          color: '#8b5cf6',
-          position: 'relative',
-          padding: '0.25rem'
-        }}
       >
-        <MessageSquare size={22} />
+        <MessageSquare size={20} />
         {alertsHistory.length > 0 && (
-          <span style={{
-            position: 'absolute',
-            top: '0',
-            right: '0',
-            background: '#ef4444',
-            color: 'white',
-            borderRadius: '50%',
-            width: '14px',
-            height: '14px',
-            fontSize: '9px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 'bold'
-          }}>
+          <span className="nav-badge">
             {alertsHistory.length > 99 ? '99+' : alertsHistory.length}
           </span>
         )}

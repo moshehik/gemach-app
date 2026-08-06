@@ -64,39 +64,12 @@ export default function NotificationBell({ employeeId }) {
     <div style={{ position: 'relative' }} ref={menuRef}>
       <button data-element-name="כפתור_NotificationBell_1"
         onClick={() => setIsOpen(!isOpen)}
-        style={{
-          background: 'transparent',
-          border: 'none',
-          cursor: 'pointer',
-          position: 'relative',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          width: '36px',
-          height: '36px',
-          borderRadius: '50%',
-          color: 'var(--text-color)',
-          transition: 'background 0.2s'
-        }}
-        className="hover:bg-gray-100 dark:hover:bg-gray-800"
+        title="התראות"
+        className="icon-nav-link"
       >
-        <Bell data-element-name="רכיב_NotificationBell_2" size={22} />
+        <Bell data-element-name="רכיב_NotificationBell_2" size={20} />
         {unreadCount > 0 && (
-          <span style={{
-            position: 'absolute',
-            top: '0',
-            right: '0',
-            background: '#ef4444',
-            color: 'white',
-            fontSize: '0.7rem',
-            fontWeight: 'bold',
-            borderRadius: '50%',
-            width: '16px',
-            height: '16px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center'
-          }}>
+          <span className="nav-badge">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

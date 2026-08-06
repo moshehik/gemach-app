@@ -798,7 +798,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         }
         .rrm-sidebar-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: nowrap; min-width: 0; }
         .rrm-order-id-group { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; overflow: hidden; }
-        .rrm-order-num { font-weight: 700; font-size: 1rem; color: #fff; font-family: 'Playfair Display', serif; margin: 0; }
+        .rrm-order-num { font-weight: 700; font-size: 1rem; color: #fff; font-family: 'Frank Ruhl Libre', serif; margin: 0; }
         .rrm-v-divider { width: 1px; height: 16px; background: rgba(255,255,255,0.3); display: inline-block; }
         .rrm-icon-btn-ghost {
           background: rgba(0,0,0,0.15); color: #fff; border: none; border-radius: 50%;
@@ -832,7 +832,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
           display: flex; justify-content: space-between; align-items: center;
           margin-bottom: 16px; border-bottom: 2px solid var(--divider, #eee); padding-bottom: 14px;
         }
-        .rrm-main-header h3 { margin: 0; font-family: 'Playfair Display', serif; font-size: 1.35rem; color: var(--text-main); }
+        .rrm-main-header h3 { margin: 0; font-family: 'Frank Ruhl Libre', serif; font-size: 1.35rem; color: var(--text-main); }
 
         .rrm-icon-btn {
           background: transparent; border: none; border-radius: 8px; width: 34px; height: 34px;

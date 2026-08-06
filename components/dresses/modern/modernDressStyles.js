@@ -167,7 +167,7 @@ const dressExtras = `
 }
 .moc-size-cube:hover { border-color: var(--moc-border-color); box-shadow: var(--moc-shadow-lg); }
 .moc-size-cube h4 {
-  margin: 0; font-family: 'Playfair Display', 'Heebo', serif; font-size: 1.15rem; color: var(--moc-primary-dark);
+  margin: 0; font-family: 'Frank Ruhl Libre', 'Heebo', serif; font-size: 1.15rem; color: var(--moc-primary-dark);
   border-bottom: 2px solid var(--moc-primary-light); padding-bottom: 8px;
   display: flex; justify-content: space-between; align-items: center; gap: 8px;
 }

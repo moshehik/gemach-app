@@ -2,7 +2,7 @@
 // כל הכללים תחומים תחת ‎.moc כדי שלא ידלפו לשאר האפליקציה (המנהלים הקיימים
 // שמוטמעים בטאבים שומרים על העיצוב הפנימי שלהם).
 const modernOrderCss = `
-@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;1,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Frank+Ruhl+Libre:wght@400;500;700&display=swap');
 
 .moc {
   --moc-primary: #d4af37;
@@ -28,7 +28,7 @@ const modernOrderCss = `
   direction: rtl;
 }
 .moc *, .moc *::before, .moc *::after { box-sizing: border-box; }
-.moc h1, .moc h2, .moc h3, .moc .moc-serif { font-family: 'Playfair Display', 'Heebo', serif; }
+.moc h1, .moc h2, .moc h3, .moc .moc-serif { font-family: 'Frank Ruhl Libre', 'Heebo', serif; }
 
 /* שכבת מסך מלא — הכרטיס עולה מעל המערכת עם רקע נקי (מכסה את הניווט, מתחת למודלים).
    הריווח מימין משאיר את הסרגל המהיר הצף (global-sidebar, z-index 999) גלוי לצד הכרטיס. */
@@ -79,7 +79,7 @@ body:has(.moc-page-overlay) .global-sidebar-icon:hover { color: #b5952f; backgro
 }
 .moc-sidebar-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: nowrap; min-width: 0; }
 .moc-order-id-group { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; overflow: hidden; }
-.moc-order-num { font-weight: 700; font-size: 1rem; color: #fff; font-family: 'Playfair Display', serif; }
+.moc-order-num { font-weight: 700; font-size: 1rem; color: #fff; font-family: 'Frank Ruhl Libre', serif; }
 .moc-v-divider { width: 1px; height: 16px; background: rgba(255,255,255,0.3); display: inline-block; }
 .moc-icon-btn-ghost {
   background: rgba(0,0,0,0.15); color: #fff; border: none; border-radius: 50%;

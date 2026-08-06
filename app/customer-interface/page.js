@@ -477,7 +477,7 @@ export default function CustomerInventoryViewer() {
   };
 
   return (
-    <div data-agy-id="customer_inventory_main_container" className="layout-container" style={{ minHeight: '100vh', background: 'var(--bg-color)', fontFamily: 'system-ui, -apple-system, sans-serif', position: 'relative', direction: 'rtl', width: '100%', maxWidth: '100%', margin: 0, boxSizing: 'border-box' }}>
+    <div data-agy-id="customer_inventory_main_container" className="layout-container kiosk-glass" style={{ minHeight: '100vh', position: 'relative', direction: 'rtl', width: '100%', maxWidth: '100%', margin: 0, boxSizing: 'border-box' }}>
       <style dangerouslySetInnerHTML={{ __html: `
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes slideIn { from { opacity: 0; transform: translateX(20px); } to { opacity: 1; transform: translateX(0); } }
@@ -489,6 +489,95 @@ export default function CustomerInventoryViewer() {
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: var(--border-main); border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* ===== Kiosk "soft glass" skin — scoped to this screen only =====
+           Overrides the app's theme variables inside this container, so every
+           existing var(--card-bg)/var(--primary-color)/... on this page adopts
+           the glass palette without touching each inline style. */
+        .kiosk-glass {
+          --bg-color: transparent;
+          --card-bg: rgba(255, 255, 255, 0.60);
+          --element-bg: rgba(255, 255, 255, 0.45);
+          --input-bg: rgba(255, 255, 255, 0.70);
+          --border-main: rgba(255, 255, 255, 0.75);
+          --border-color: rgba(124, 108, 240, 0.20);
+          --element-border: rgba(255, 255, 255, 0.75);
+          --primary-color: #7c6cf0;
+          --primary-hover: #6455e0;
+          --primary-light: rgba(124, 108, 240, 0.14);
+          --accent-color: #a855f7;
+          --gradient-primary: linear-gradient(135deg, #7c6cf0, #a855f7);
+          --text-main: #1e293b;
+          --text-secondary: #64748b;
+          --text-muted: #64748b;
+          --empty-bg: rgba(255, 255, 255, 0.50);
+          --danger-bg: rgba(254, 226, 226, 0.85);
+          --danger-text: #b91c1c;
+          --success-bg: rgba(220, 252, 231, 0.85);
+          --success-text: #15803d;
+          --banner-rentals-border: rgba(254, 243, 199, 0.9);
+          font-family: 'Assistant', system-ui, -apple-system, sans-serif;
+          background:
+            radial-gradient(circle at 15% 10%, #c7d2fe 0%, transparent 45%),
+            radial-gradient(circle at 85% 20%, #fbcfe8 0%, transparent 40%),
+            radial-gradient(circle at 50% 90%, #a5f3fc 0%, transparent 45%),
+            #eef2ff;
+          background-attachment: fixed;
+        }
+
+        [data-theme="dark"] .kiosk-glass {
+          --card-bg: rgba(30, 32, 46, 0.62);
+          --element-bg: rgba(255, 255, 255, 0.07);
+          --input-bg: rgba(255, 255, 255, 0.08);
+          --border-main: rgba(255, 255, 255, 0.14);
+          --element-border: rgba(255, 255, 255, 0.14);
+          --primary-color: #a78bfa;
+          --primary-hover: #8b6df0;
+          --primary-light: rgba(167, 139, 250, 0.20);
+          --text-main: #f1f5f9;
+          --text-secondary: #a5b0c5;
+          --text-muted: #a5b0c5;
+          --empty-bg: rgba(255, 255, 255, 0.07);
+          --danger-bg: rgba(127, 29, 29, 0.55);
+          --danger-text: #fca5a5;
+          --success-bg: rgba(20, 83, 45, 0.55);
+          --success-text: #86efac;
+          background:
+            radial-gradient(circle at 20% 15%, #312e81 0%, transparent 45%),
+            radial-gradient(circle at 85% 20%, #4a1d4f 0%, transparent 42%),
+            radial-gradient(circle at 55% 90%, #0e4f5e 0%, transparent 45%),
+            #0b1020;
+        }
+
+        /* Frost every surface that sits on the gradient */
+        .kiosk-glass .dress-card,
+        .kiosk-glass [data-agy-id="catalog_sidebar"],
+        .kiosk-glass .glass-panel,
+        .kiosk-glass table {
+          backdrop-filter: blur(16px);
+          -webkit-backdrop-filter: blur(16px);
+        }
+
+        /* Display serif for headings, per the chosen design */
+        .kiosk-glass h1,
+        .kiosk-glass h2,
+        .kiosk-glass h3,
+        .kiosk-glass .dress-title {
+          font-family: 'Frank Ruhl Libre', 'Assistant', serif;
+        }
+
+        /* The catalog title ships a hardcoded near-black gradient that is
+           invisible on the dark skin — retune it to the glass palette. */
+        .kiosk-glass h2 {
+          background: var(--gradient-primary) !important;
+          -webkit-background-clip: text !important;
+          background-clip: text !important;
+          -webkit-text-fill-color: transparent !important;
+        }
+
+        .kiosk-glass .dress-card { border-color: rgba(255, 255, 255, 0.75); }
+        [data-theme="dark"] .kiosk-glass .dress-card { border-color: rgba(255, 255, 255, 0.14); }
+        .kiosk-glass .dress-card:hover { box-shadow: 0 20px 40px rgba(99, 102, 241, 0.18); }
 
         /* Glassmorphism Classes */
         .glass-panel {

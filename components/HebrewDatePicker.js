@@ -236,7 +236,7 @@ export default function HebrewDatePicker({
             >
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 18px', background: "var(--element-bg)", borderBottom: "1px solid var(--border-main)" }}>
-              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontFamily: "'Playfair Display', 'Heebo', serif", fontSize: '1.05rem', color: "var(--text-main)" }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontFamily: "'Frank Ruhl Libre', 'Heebo', serif", fontSize: '1.05rem', color: "var(--text-main)" }}>
                 <Calendar size={18} style={{ color: 'var(--primary-color)' }} /> בחירת חודש ושנה
               </h3>
               <button
@@ -437,7 +437,7 @@ export default function HebrewDatePicker({
             >
             {/* Header */}
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 20px', background: "var(--element-bg)", borderBottom: "1px solid var(--border-main)", flexShrink: 0 }}>
-              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontFamily: "'Playfair Display', 'Heebo', serif", fontSize: '1.05rem', color: "var(--text-main)" }}>
+              <h3 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: '8px', fontFamily: "'Frank Ruhl Libre', 'Heebo', serif", fontSize: '1.05rem', color: "var(--text-main)" }}>
                 <Calendar size={18} style={{ color: 'var(--primary-color)' }} /> בחירת תאריך
               </h3>
               <button

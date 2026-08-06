@@ -95,7 +95,7 @@ export default function OrderModernWorkspace({
             <span style={{ opacity: 0.85, fontSize: '0.9rem', fontWeight: '500' }}>הזמנה #{order?.orderId}</span>
           </div>
           
-          <h2 style={{ margin: '0 0 5px 0', fontSize: '1.6rem', color: '#fff', fontFamily: "'Playfair Display', serif" }}>
+          <h2 style={{ margin: '0 0 5px 0', fontSize: '1.6rem', color: '#fff', fontFamily: "'Frank Ruhl Libre', serif" }}>
             {order?.customer ? `${order.customer.firstName} ${order.customer.lastName}` : 'לקוח לא נבחר'}
           </h2>
           <p style={{ margin: 0, opacity: 0.9, fontSize: '0.95rem' }}>
@@ -212,7 +212,7 @@ export default function OrderModernWorkspace({
             <style dangerouslySetInnerHTML={{__html: `
               @keyframes fadeIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
               .gold-themed-section > div { box-shadow: none !important; border: none !important; padding: 0 !important; background: transparent !important; }
-              .gold-themed-section h2, .gold-themed-section h3 { color: ${theme.primary} !important; font-family: 'Playfair Display', serif !important; }
+              .gold-themed-section h2, .gold-themed-section h3 { color: ${theme.primary} !important; font-family: 'Frank Ruhl Libre', serif !important; }
             `}} />
             <div className="gold-themed-section">
               {sections.find(s => s.id === activeTab)?.node}
@@ -237,7 +237,7 @@ export default function OrderModernWorkspace({
                 overflow: hidden;
               }
               .gold-themed-section > div { box-shadow: none !important; border: none !important; padding: 25px !important; background: transparent !important; }
-              .gold-themed-section h2, .gold-themed-section h3 { color: ${theme.primary} !important; font-family: 'Playfair Display', serif !important; margin-top: 0 !important; }
+              .gold-themed-section h2, .gold-themed-section h3 { color: ${theme.primary} !important; font-family: 'Frank Ruhl Libre', serif !important; margin-top: 0 !important; }
             `}} />
             
             {sections.map(section => (

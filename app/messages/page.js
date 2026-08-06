@@ -27,6 +27,9 @@ export default function MessagesPage() {
   // Tagging state
   const [tagInputs, setTagInputs] = useState({});
 
+  // סינון מקומי בלבד על הרשימות שכבר נטענו (ללא קריאות שרת נוספות)
+  const [searchTerm, setSearchTerm] = useState('');
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -206,9 +209,9 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f8fafc' }}>
-        <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #e2e8f0', borderTop: '4px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-        <p style={{ marginTop: '1rem', color: '#64748b', fontSize: '1.1rem' }}>טוען הודעות...</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', background: 'transparent' }}>
+        <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--element-border)', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '1.05rem' }}>טוען הודעות...</p>
         <style dangerouslySetInnerHTML={{__html: `@keyframes spin { 100% { transform: rotate(360deg); } }`}} />
       </div>
     );
@@ -220,16 +223,16 @@ export default function MessagesPage() {
     
     return (
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem', alignItems: 'center' }}>
-        <Tag data-element-name="רכיב_page_1" size={14} color="#64748b" />
+        <Tag data-element-name="רכיב_page_1" size={14} color="var(--text-muted)" />
         {tags.map((tag, idx) => (
-          <span key={idx} style={{ background: '#e2e8f0', color: '#334155', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+          <span key={idx} style={{ background: 'var(--element-bg)', border: '1px solid var(--element-border)', color: 'var(--text-main)', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
             {tag}
-            <button data-element-name="כפתור_page_2" onClick={() => removeTag(notif, tag)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#64748b' }} title="הסר תגית">
+            <button data-element-name="כפתור_page_2" onClick={() => removeTag(notif, tag)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }} title="הסר תגית">
               <X data-element-name="רכיב_page_3" size={12} />
             </button>
           </span>
         ))}
-        <div style={{ display: 'flex', alignItems: 'center', background: '#f1f5f9', borderRadius: '999px', padding: '0.1rem 0.5rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--element-bg)', border: '1px solid var(--element-border)', borderRadius: '999px', padding: '0.1rem 0.5rem' }}>
           <input data-element-name="שדה_page_4" 
             type="text" 
             placeholder="הוסף תגית..." 
@@ -241,9 +244,9 @@ export default function MessagesPage() {
                 addTag(notif, inputVal);
               }
             }}
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.8rem', width: '80px', color: '#334155' }}
+            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.8rem', width: '80px', color: 'var(--text-main)' }}
           />
-          <button data-element-name="כפתור_page_5" onClick={() => addTag(notif, inputVal)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: '#3b82f6' }} title="שמור תגית">
+          <button data-element-name="כפתור_page_5" onClick={() => addTag(notif, inputVal)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--primary-color)' }} title="שמור תגית">
             <Plus data-element-name="רכיב_page_6" size={14} />
           </button>
         </div>
@@ -251,66 +254,81 @@ export default function MessagesPage() {
     );
   };
 
+  // כפתור פעולה קטן בתוך כרטיס הודעה — טבעת עדינה בגוני הקרם של המערכת
+  const cardActionStyle = {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '0.35rem',
+    background: 'transparent',
+    color: 'var(--text-muted)',
+    border: '1px solid var(--element-border)',
+    padding: '0.32rem 0.7rem',
+    borderRadius: '99px',
+    fontSize: '0.78rem',
+    fontWeight: '600',
+    fontFamily: 'inherit',
+    cursor: 'pointer'
+  };
+
   const renderMessageCard = (notif, type) => {
+    const isUnread = type === 'incoming' && !notif.isRead;
     return (
       <div key={notif.id} style={{
-        background: type === 'incoming' && !notif.isRead ? '#eff6ff' : '#f8fafc',
-        border: `1px solid ${type === 'incoming' && !notif.isRead ? '#bfdbfe' : '#e2e8f0'}`,
+        background: isUnread ? 'var(--primary-light)' : 'var(--element-bg)',
+        border: `1px solid ${isUnread ? 'var(--primary-color)' : 'var(--element-border)'}`,
         borderRadius: '16px',
-        padding: '1.5rem',
-        position: 'relative',
+        padding: '1.25rem 1.4rem',
         transition: 'all 0.3s'
       }}>
-        {type === 'incoming' && !notif.isRead && (
-          <div style={{ position: 'absolute', top: '1.5rem', left: '1.5rem' }}>
-            <button data-element-name="כפתור_page_7"
-              onClick={() => markAsRead(notif.id)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#dbeafe', color: '#2563eb', border: 'none', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}
-            >
-              <Check data-element-name="רכיב_page_8" size={14} /> סמן כנקרא
-            </button>
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
+          <div style={{ width: '44px', height: '44px', flex: 'none', borderRadius: '50%', background: notif.receiverId === null ? 'var(--warning-color)' : 'var(--primary-color)', color: notif.receiverId === null ? '#fff' : 'var(--btn-primary-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.15rem', fontWeight: 'bold' }}>
+            {type === 'outgoing' ? <User data-element-name="רכיב_page_13" size={22} /> : (notif.sender ? notif.sender.firstName.charAt(0) : 'מ')}
           </div>
-        )}
-        <div style={{ position: 'absolute', top: '1.5rem', left: type === 'incoming' && !notif.isRead ? '7rem' : '1.5rem', display: 'flex', gap: '0.5rem' }}>
-          {notif.isArchived ? (
-            <button data-element-name="כפתור_page_9"
-              onClick={() => handleArchive(notif.id, false)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}
-              title="החזר מארכיון"
-            >
-              <Archive data-element-name="רכיב_page_10" size={14} /> שחזר
-            </button>
-          ) : (
-            <button data-element-name="כפתור_page_11"
-              onClick={() => handleArchive(notif.id, true)}
-              style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', padding: '0.4rem 0.8rem', borderRadius: '8px', fontSize: '0.8rem', fontWeight: '600', cursor: 'pointer' }}
-              title="העבר לארכיון"
-            >
-              <Archive data-element-name="רכיב_page_12" size={14} /> ארכיון
-            </button>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', paddingLeft: '6rem' }}>
-          <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: notif.receiverId === null ? '#f59e0b' : '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}>
-            {type === 'outgoing' ? <User data-element-name="רכיב_page_13" size={24} /> : (notif.sender ? notif.sender.firstName.charAt(0) : 'מ')}
-          </div>
-          <div style={{ flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a' }}>
-                {type === 'outgoing' ? 
-                  `אל: ${notif.receiverId === null ? 'כל העובדים' : (notif.receiver ? `${notif.receiver.firstName} ${notif.receiver.lastName}` : 'לא ידוע')}` 
-                  : 
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+              <h3 style={{ margin: 0, fontFamily: "'Frank Ruhl Libre', serif", fontSize: '1.05rem', color: 'var(--text-main)' }}>
+                {type === 'outgoing' ?
+                  `אל: ${notif.receiverId === null ? 'כל העובדים' : (notif.receiver ? `${notif.receiver.firstName} ${notif.receiver.lastName}` : 'לא ידוע')}`
+                  :
                   (notif.sender ? `${notif.sender.firstName} ${notif.sender.lastName}` : 'מערכת הגמ"ח')}
               </h3>
-              <span style={{ fontSize: '0.85rem', color: '#64748b' }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
                 {new Date(notif.createdAt).toLocaleString('he-IL')}
               </span>
               {type === 'incoming' && notif.receiverId === null && (
-                <span style={{ background: '#fef3c7', color: '#d97706', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.75rem', fontWeight: 'bold' }}>הודעה לכולם</span>
+                <span className="status-dot c-amber" style={{ fontSize: '0.78rem' }}>הודעה לכולם</span>
               )}
+
+              <div style={{ display: 'flex', gap: '0.4rem', marginRight: 'auto', flexWrap: 'wrap' }}>
+                {isUnread && (
+                  <button data-element-name="כפתור_page_7"
+                    onClick={() => markAsRead(notif.id)}
+                    style={cardActionStyle}
+                    title="סמן כנקרא"
+                  >
+                    <Check data-element-name="רכיב_page_8" size={14} /> סמן כנקרא
+                  </button>
+                )}
+                {notif.isArchived ? (
+                  <button data-element-name="כפתור_page_9"
+                    onClick={() => handleArchive(notif.id, false)}
+                    style={cardActionStyle}
+                    title="החזר מארכיון"
+                  >
+                    <Archive data-element-name="רכיב_page_10" size={14} /> שחזר
+                  </button>
+                ) : (
+                  <button data-element-name="כפתור_page_11"
+                    onClick={() => handleArchive(notif.id, true)}
+                    style={cardActionStyle}
+                    title="העבר לארכיון"
+                  >
+                    <Archive data-element-name="רכיב_page_12" size={14} /> ארכיון
+                  </button>
+                )}
+              </div>
             </div>
-            <p style={{ margin: 0, color: '#334155', fontSize: '1rem', lineHeight: '1.5', whiteSpace: 'pre-wrap' }}>
+            <p style={{ margin: 0, color: 'var(--text-main)', fontSize: '0.98rem', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
               {notif.content}
             </p>
             {renderTags(notif)}
@@ -320,130 +338,131 @@ export default function MessagesPage() {
     );
   };
 
-  return (
-    <div data-agy-id="messages-page-container" style={{ minHeight: '100vh', background: '#f1f5f9', padding: '2rem', direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ maxWidth: '1000px', margin: '0 auto', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        
-        {/* Header Section */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <h1 style={{ margin: 0, fontSize: '2rem', color: '#0f172a', fontWeight: '800', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Mail data-element-name="רכיב_page_14" size={32} color="#3b82f6" />
-              מרכז הודעות
-            </h1>
-            <p style={{ margin: '0.5rem 0 0 0', color: '#64748b', fontSize: '1.1rem' }}>
-              נהל את ההתראות וההודעות הפנימיות שלך
-            </p>
-          </div>
-          <button data-element-name="כפתור_page_15" 
-            data-agy-id="new-message-button"
-            onClick={() => setActiveTab('compose')}
-            style={{ 
-              display: 'flex', alignItems: 'center', gap: '0.5rem', 
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', 
-              color: 'white', border: 'none', padding: '0.75rem 1.5rem', 
-              borderRadius: '12px', fontWeight: '600', fontSize: '1rem',
-              cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(37, 99, 235, 0.3)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
-            }}
-          >
-            <Send data-element-name="רכיב_page_16" size={18} />
-            הודעה חדשה
-          </button>
-        </div>
+  const searchQuery = searchTerm.trim().toLowerCase();
+  const matchesSearch = (notif) => {
+    if (!searchQuery) return true;
+    const haystack = [
+      notif.content,
+      notif.sender ? `${notif.sender.firstName} ${notif.sender.lastName}` : '',
+      notif.receiver ? `${notif.receiver.firstName} ${notif.receiver.lastName}` : '',
+      ...(notif.personalTags || [])
+    ].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(searchQuery);
+  };
 
-        {/* Main Content Area */}
-        <div style={{ background: 'white', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)', border: '1px solid rgba(255,255,255,0.5)', display: 'flex' }}>
-          
-          {/* Sidebar Tabs */}
-          <div style={{ width: '250px', background: '#f8fafc', borderLeft: '1px solid #e2e8f0', padding: '1.5rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+  const visibleIncoming = incoming.filter(matchesSearch);
+  const visibleOutgoing = outgoing.filter(matchesSearch);
+  const visibleArchived = archived.filter(matchesSearch);
+  const unreadCount = incoming.filter(n => !n.isRead).length;
+  const isListTab = activeTab === 'incoming' || activeTab === 'outgoing' || activeTab === 'archived';
+
+  const emptyStateStyle = { textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' };
+  const paneTitleStyle = { fontFamily: "'Frank Ruhl Libre', serif", fontSize: '1.2rem', color: 'var(--text-main)', margin: '0 0 1.25rem 0' };
+  const panelStyle = { background: 'var(--element-bg)', border: '1px solid var(--element-border)', borderRadius: '18px', padding: '1.75rem' };
+  const fieldLabelStyle = { display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '600' };
+  const fieldStyle = { width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '1rem', outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.2s' };
+
+  return (
+    <main data-agy-id="messages-page-container" className="container animate-fade-in page-shell" style={{ '--page-content-max': '1000px' }}>
+      <div className="page-scroll">
+
+        {/* סרגל אחד: כותרת + חיפוש + טאבים + פעולה ראשית */}
+        <div className="toolbar-row">
+          <Mail data-element-name="רכיב_page_14" size={22} style={{ flex: 'none', color: 'var(--primary-color)', marginInlineEnd: '-0.5rem' }} />
+          <h1 className="toolbar-title">
+            <strong>מרכז הודעות</strong>
+            <small>נהל את ההתראות וההודעות הפנימיות שלך</small>
+          </h1>
+
+          {isListTab && (
+            <div className="search-box-modern">
+              <Search data-element-name="רכיב_page_search" size={16} />
+              <input data-element-name="שדה_page_search"
+                data-agy-id="messages-search-input"
+                type="text"
+                placeholder="חיפוש בהודעות (תוכן, שולח, תגית)..."
+                value={searchTerm}
+                onChange={e => setSearchTerm(e.target.value)}
+              />
+            </div>
+          )}
+
+          <div className="status-filters">
             <button data-element-name="כפתור_page_17"
               data-agy-id="tab-incoming"
               onClick={() => setActiveTab('incoming')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', width: '100%',
-                borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem',
-                background: activeTab === 'incoming' ? '#e0f2fe' : 'transparent',
-                color: activeTab === 'incoming' ? '#0369a1' : '#475569',
-                transition: 'all 0.2s'
-              }}
+              className={activeTab === 'incoming' ? 'status-filter active c-blue' : 'status-filter'}
+              title="דואר נכנס"
             >
-              <Inbox data-element-name="רכיב_page_18" size={20} />
-              נכנסות
-              {incoming.filter(n => !n.isRead).length > 0 && (
-                <span style={{ background: '#ef4444', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.75rem', marginLeft: 'auto' }}>
-                  {incoming.filter(n => !n.isRead).length}
-                </span>
-              )}
+              <Inbox data-element-name="רכיב_page_18" size={16} />
+              <span>נכנסות</span>
+              {unreadCount > 0 && <b>{unreadCount}</b>}
             </button>
 
             <button data-element-name="כפתור_page_19"
               data-agy-id="tab-outgoing"
               onClick={() => setActiveTab('outgoing')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', width: '100%',
-                borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem',
-                background: activeTab === 'outgoing' ? '#e0f2fe' : 'transparent',
-                color: activeTab === 'outgoing' ? '#0369a1' : '#475569',
-                transition: 'all 0.2s'
-              }}
+              className={activeTab === 'outgoing' ? 'status-filter active c-green' : 'status-filter'}
+              title="דואר יוצא"
             >
-              <Send data-element-name="רכיב_page_20" size={20} />
-              יוצאות
+              <Send data-element-name="רכיב_page_20" size={16} />
+              <span>יוצאות</span>
+              {outgoing.length > 0 && <b>{outgoing.length}</b>}
             </button>
 
             <button data-element-name="כפתור_page_21"
               data-agy-id="tab-archived"
               onClick={() => setActiveTab('archived')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', width: '100%',
-                borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem',
-                background: activeTab === 'archived' ? '#e0f2fe' : 'transparent',
-                color: activeTab === 'archived' ? '#0369a1' : '#475569',
-                transition: 'all 0.2s'
-              }}
+              className={activeTab === 'archived' ? 'status-filter active c-gray' : 'status-filter'}
+              title="ארכיון הודעות"
             >
-              <Archive data-element-name="רכיב_page_22" size={20} />
-              ארכיון
-              {archived.length > 0 && (
-                <span style={{ background: '#94a3b8', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '999px', fontSize: '0.75rem', marginLeft: 'auto' }}>
-                  {archived.length}
-                </span>
-              )}
+              <Archive data-element-name="רכיב_page_22" size={16} />
+              <span>ארכיון</span>
+              {archived.length > 0 && <b>{archived.length}</b>}
             </button>
 
             <button data-element-name="כפתור_page_23"
               data-agy-id="tab-settings"
               onClick={() => setActiveTab('settings')}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '1rem', width: '100%',
-                borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem',
-                background: activeTab === 'settings' ? '#e0f2fe' : 'transparent',
-                color: activeTab === 'settings' ? '#0369a1' : '#475569',
-                transition: 'all 0.2s',
-                marginTop: 'auto'
-              }}
+              className={activeTab === 'settings' ? 'status-filter active c-purple' : 'status-filter'}
+              title="הגדרות התראות"
             >
-              <Settings data-element-name="רכיב_page_24" size={20} />
-              הגדרות
+              <Settings data-element-name="רכיב_page_24" size={16} />
+              <span>הגדרות</span>
             </button>
           </div>
 
+          <div className="icon-toolbar">
+            <button data-element-name="כפתור_page_15"
+              data-agy-id="new-message-button"
+              onClick={() => setActiveTab('compose')}
+              className="icon-btn icon-btn-primary"
+              title="הודעה חדשה"
+            >
+              <Send data-element-name="רכיב_page_16" size={18} />
+              הודעה חדשה
+            </button>
+          </div>
+        </div>
+
+        {/* Main Content Area */}
+        <div style={{ background: 'var(--card-bg)', borderRadius: '18px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-color)' }}>
+
           {/* Content Pane */}
-          <div style={{ flex: 1, padding: '2rem', minHeight: '500px' }}>
+          <div style={{ padding: '1.75rem', minHeight: '500px' }}>
             
             {/* INCOMING TAB */}
             {activeTab === 'incoming' && (
               <div>
-                <h2 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '0 0 1.5rem 0' }}>דואר נכנס</h2>
-                {incoming.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '4rem 0', color: '#94a3b8' }}>
-                    <Inbox data-element-name="רכיב_page_25" size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
-                    <p style={{ fontSize: '1.1rem' }}>תיבת הדואר הנכנס ריקה</p>
+                <h2 style={paneTitleStyle}>דואר נכנס</h2>
+                {visibleIncoming.length === 0 ? (
+                  <div style={emptyStateStyle}>
+                    <Inbox data-element-name="רכיב_page_25" size={48} style={{ opacity: 0.25, margin: '0 auto 1rem' }} />
+                    <p style={{ fontSize: '1.05rem' }}>{incoming.length === 0 ? 'תיבת הדואר הנכנס ריקה' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {incoming.map(notif => renderMessageCard(notif, 'incoming'))}
+                    {visibleIncoming.map(notif => renderMessageCard(notif, 'incoming'))}
                   </div>
                 )}
               </div>
@@ -452,15 +471,15 @@ export default function MessagesPage() {
             {/* OUTGOING TAB */}
             {activeTab === 'outgoing' && (
               <div>
-                <h2 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '0 0 1.5rem 0' }}>דואר יוצא</h2>
-                {outgoing.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '4rem 0', color: '#94a3b8' }}>
-                    <Send data-element-name="רכיב_page_26" size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
-                    <p style={{ fontSize: '1.1rem' }}>לא שלחת הודעות עדיין</p>
+                <h2 style={paneTitleStyle}>דואר יוצא</h2>
+                {visibleOutgoing.length === 0 ? (
+                  <div style={emptyStateStyle}>
+                    <Send data-element-name="רכיב_page_26" size={48} style={{ opacity: 0.25, margin: '0 auto 1rem' }} />
+                    <p style={{ fontSize: '1.05rem' }}>{outgoing.length === 0 ? 'לא שלחת הודעות עדיין' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {outgoing.map(notif => renderMessageCard(notif, 'outgoing'))}
+                    {visibleOutgoing.map(notif => renderMessageCard(notif, 'outgoing'))}
                   </div>
                 )}
               </div>
@@ -469,15 +488,15 @@ export default function MessagesPage() {
             {/* ARCHIVED TAB */}
             {activeTab === 'archived' && (
               <div>
-                <h2 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '0 0 1.5rem 0' }}>ארכיון הודעות</h2>
-                {archived.length === 0 ? (
-                  <div style={{ textAlign: 'center', padding: '4rem 0', color: '#94a3b8' }}>
-                    <Archive data-element-name="רכיב_page_27" size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
-                    <p style={{ fontSize: '1.1rem' }}>אין הודעות בארכיון</p>
+                <h2 style={paneTitleStyle}>ארכיון הודעות</h2>
+                {visibleArchived.length === 0 ? (
+                  <div style={emptyStateStyle}>
+                    <Archive data-element-name="רכיב_page_27" size={48} style={{ opacity: 0.25, margin: '0 auto 1rem' }} />
+                    <p style={{ fontSize: '1.05rem' }}>{archived.length === 0 ? 'אין הודעות בארכיון' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {archived.map(notif => renderMessageCard(notif, notif.direction || 'incoming'))}
+                    {visibleArchived.map(notif => renderMessageCard(notif, notif.direction || 'incoming'))}
                   </div>
                 )}
               </div>
@@ -486,72 +505,69 @@ export default function MessagesPage() {
             {/* COMPOSE TAB */}
             {activeTab === 'compose' && (
               <div>
-                <h2 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '0 0 1.5rem 0' }}>כתיבת הודעה חדשה</h2>
-                
+                <h2 style={paneTitleStyle}>כתיבת הודעה חדשה</h2>
+
                 {error && (
-                  <div style={{ background: '#fef2f2', color: '#991b1b', padding: '1rem', borderRadius: '12px', border: '1px solid #fecaca', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', padding: '0.9rem 1rem', borderRadius: '12px', border: '1px solid var(--danger-text)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <AlertCircle data-element-name="רכיב_page_28" size={20} />
                     {error}
                   </div>
                 )}
 
                 {sendSuccess && (
-                  <div style={{ background: '#f0fdf4', color: '#166534', padding: '1rem', borderRadius: '12px', border: '1px solid #bbf7d0', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ background: 'var(--success-bg)', color: 'var(--success-text)', padding: '0.9rem 1rem', borderRadius: '12px', border: '1px solid var(--success-text)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                     <Check data-element-name="רכיב_page_29" size={20} />
                     ההודעה נשלחה בהצלחה!
                   </div>
                 )}
 
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '2rem' }}>
+                <div style={panelStyle}>
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '1rem', color: '#1e293b', fontWeight: '600' }}>שלח אל:</label>
-                    <select data-element-name="בחירה_page_30" 
+                    <label style={fieldLabelStyle}>שלח אל:</label>
+                    <select data-element-name="בחירה_page_30"
                       data-agy-id="select-receiver"
-                      value={receiverId} 
+                      value={receiverId}
                       onChange={e => setReceiverId(e.target.value)}
-                      style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #cbd5e1', background: 'white', color: '#0f172a', fontSize: '1.1rem', outline: 'none', transition: 'border-color 0.2s' }}
+                      style={fieldStyle}
                     >
-                      <option value="all">🌟 כל העובדים במערכת (הודעה כללית)</option>
+                      <option value="all">כל העובדים במערכת (הודעה כללית)</option>
                       {employees.map(emp => (
                         <option key={emp.id} value={emp.id}>
-                          👤 {emp.firstName} {emp.lastName}
+                          {emp.firstName} {emp.lastName}
                         </option>
                       ))}
                     </select>
                   </div>
 
                   <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '1rem', color: '#1e293b', fontWeight: '600' }}>תוכן ההודעה:</label>
+                    <label style={fieldLabelStyle}>תוכן ההודעה:</label>
                     <textarea data-element-name="טקסט_page_31"
                       data-agy-id="textarea-content"
                       value={content}
                       onChange={e => setContent(e.target.value)}
                       placeholder="הקלד את הודעתך כאן..."
-                      style={{ width: '100%', minHeight: '150px', padding: '1rem', borderRadius: '12px', border: '2px solid #cbd5e1', background: 'white', color: '#0f172a', fontSize: '1.1rem', resize: 'vertical', outline: 'none', transition: 'border-color 0.2s' }}
+                      style={{ ...fieldStyle, minHeight: '150px', resize: 'vertical' }}
                     />
                   </div>
 
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '1.5rem', fontSize: '0.95rem', fontWeight: '500' }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '1.5rem', fontSize: '0.92rem', fontWeight: '500', color: 'var(--text-main)' }}>
                     <input data-element-name="שדה_page_32" data-agy-id="checkbox-send-email" type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
                     שלח התראה גם למייל (לעובדים בעלי כתובת מייל מעודכנת)
                   </label>
 
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <button data-element-name="כפתור_page_33" 
+                    <button data-element-name="כפתור_page_33"
                       data-agy-id="send-message-button"
                       onClick={handleSend}
                       disabled={isSending}
-                      style={{ 
-                        display: 'flex', alignItems: 'center', gap: '0.5rem', 
-                        background: 'linear-gradient(135deg, #10b981, #059669)', 
-                        color: 'white', border: 'none', padding: '1rem 2.5rem', 
-                        borderRadius: '12px', fontWeight: '700', fontSize: '1.1rem',
-                        cursor: isSending ? 'not-allowed' : 'pointer', opacity: isSending ? 0.7 : 1,
-                        boxShadow: '0 4px 6px -1px rgba(16, 185, 129, 0.3)',
-                        transition: 'transform 0.2s, box-shadow 0.2s'
+                      className="btn btn-primary"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
+                        padding: '0.7rem 2rem', fontSize: '0.95rem',
+                        cursor: isSending ? 'not-allowed' : 'pointer', opacity: isSending ? 0.7 : 1
                       }}
                     >
-                      {isSending ? 'שולח...' : <><Send data-element-name="רכיב_page_34" size={20} /> שלח הודעה</>}
+                      {isSending ? 'שולח...' : <><Send data-element-name="רכיב_page_34" size={18} /> שלח הודעה</>}
                     </button>
                   </div>
                 </div>
@@ -561,37 +577,37 @@ export default function MessagesPage() {
             {/* SETTINGS TAB */}
             {activeTab === 'settings' && (
               <div>
-                <h2 style={{ fontSize: '1.5rem', color: '#0f172a', margin: '0 0 1.5rem 0' }}>הגדרות התראות</h2>
-                
-                <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '20px', padding: '2rem' }}>
-                  <h3 style={{ fontSize: '1.2rem', color: '#1e293b', marginBottom: '1rem' }}>התראות במייל</h3>
-                  
+                <h2 style={paneTitleStyle}>הגדרות התראות</h2>
+
+                <div style={panelStyle}>
+                  <h3 style={{ fontFamily: "'Frank Ruhl Libre', serif", fontSize: '1.05rem', color: 'var(--text-main)', marginBottom: '1rem' }}>התראות במייל</h3>
+
                   {currentUser ? (
                     <div>
                       {currentUser.email ? (
-                        <p style={{ color: '#64748b', marginBottom: '1.5rem' }}>
+                        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
                           המייל המעודכן שלך במערכת הוא: <strong dir="ltr">{currentUser.email}</strong>
                         </p>
                       ) : (
-                        <p style={{ color: '#ef4444', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <p style={{ color: 'var(--danger-text)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <AlertCircle data-element-name="רכיב_page_35" size={16} /> לא מוגדרת עבורך כתובת מייל במערכת. אנא פנה למנהל לעדכון המייל.
                         </p>
                       )}
 
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '1.1rem', color: '#0f172a', opacity: isSavingSettings ? 0.7 : 1 }}>
-                        <input data-element-name="שדה_page_36" 
-                          type="checkbox" 
-                          checked={currentUser.receiveEmailAlerts || false} 
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '1rem', color: 'var(--text-main)', opacity: isSavingSettings ? 0.7 : 1 }}>
+                        <input data-element-name="שדה_page_36"
+                          type="checkbox"
+                          checked={currentUser.receiveEmailAlerts || false}
                           onChange={(e) => handleSaveSettings(e.target.checked)}
                           disabled={isSavingSettings || !currentUser.email}
                           style={{ width: '20px', height: '20px' }}
                         />
                         קבל התראות למייל על הודעות חדשות
                       </label>
-                      {isSavingSettings && <span style={{ fontSize: '0.9rem', color: '#3b82f6', marginTop: '0.5rem', display: 'block' }}>שומר שינויים...</span>}
+                      {isSavingSettings && <span style={{ fontSize: '0.88rem', color: 'var(--primary-color)', marginTop: '0.5rem', display: 'block' }}>שומר שינויים...</span>}
                     </div>
                   ) : (
-                    <p style={{ color: '#64748b' }}>טוען נתוני עובד...</p>
+                    <p style={{ color: 'var(--text-muted)' }}>טוען נתוני עובד...</p>
                   )}
                 </div>
               </div>
@@ -600,6 +616,6 @@ export default function MessagesPage() {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   );
 }

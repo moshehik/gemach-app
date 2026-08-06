@@ -102,7 +102,7 @@ export default function UserMenu() {
   };
 
   if (loading) {
-    return <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e2e8f0', animation: 'pulse 1.5s infinite' }} />;
+    return <div className="nav-avatar-skeleton" />;
   }
 
   if (!user) {
@@ -110,36 +110,12 @@ export default function UserMenu() {
       <>
         {showLoginModal && <LoginScreen data-element-name="רכיב_UserMenu_1" isModal={true} onClose={() => setShowLoginModal(false)} />}
         <div className="user-menu" style={{ position: 'relative' }} ref={menuRef}>
-        <button data-element-name="כפתור_UserMenu_2" 
+        <button data-element-name="כפתור_UserMenu_2"
           onClick={() => setDropdownOpen(!dropdownOpen)}
-          style={{ 
-            background: 'transparent',
-            border: 'none',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '4px 8px',
-            borderRadius: '24px',
-            cursor: 'pointer'
-          }}
-          className="hover:bg-gray-100 dark:hover:bg-gray-800"
+          title="אורח — התחברות לא פעילה"
+          className="icon-nav-link avatar-nav-link is-guest"
         >
-          <div style={{
-            width: '36px', height: '36px', borderRadius: '50%', 
-            background: '#94a3b8', color: 'white',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontWeight: 'bold', fontSize: '1.1rem'
-          }}>
-            א
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-color)' }}>
-              אורח
-            </span>
-            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>
-              התחברות לא פעילה
-            </span>
-          </div>
+          א
         </button>
 
         {dropdownOpen && (
@@ -153,40 +129,48 @@ export default function UserMenu() {
             boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
             minWidth: '220px',
             zIndex: 100,
-            border: '1px solid #f1f5f9',
+            border: '1px solid var(--divider)',
             overflow: 'hidden'
           }}>
+            {/* שם המשתמש והמצב ירדו מהכותרת לכאן, כדי שהטריגר יישאר אייקון בלבד */}
+            <div style={{ padding: '1rem', borderBottom: '1px solid var(--divider)', background: 'var(--element-bg)' }}>
+              <p style={{ margin: 0, fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-main)' }}>
+                אורח
+              </p>
+              <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                התחברות לא פעילה
+              </p>
+            </div>
             <div style={{ padding: '0.5rem' }}>
-              <button data-element-name="כפתור_UserMenu_3" 
+              <button data-element-name="כפתור_UserMenu_3"
                 onClick={() => {
                   setDropdownOpen(false);
                   setShowLoginModal(true);
                 }}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '0.75rem', background: '#ecfdf5', color: '#059669',
+                  padding: '0.75rem', background: 'var(--btn-light-green-bg)', color: 'var(--success-text)',
                   border: 'none', borderRadius: '8px', cursor: 'pointer',
-                  fontWeight: '500', transition: 'background 0.2s'
+                  fontWeight: '500'
                 }}
-                className="hover:bg-green-100 dark:hover:bg-green-900"
+                className="user-menu-item"
               >
                 <LogIn data-element-name="רכיב_UserMenu_4" size={18} />
                 היכנס למערכת
               </button>
             </div>
-            <div style={{ padding: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
-              <button data-element-name="כפתור_UserMenu_5" 
+            <div style={{ padding: '0.5rem', borderTop: '1px solid var(--divider)' }}>
+              <button data-element-name="כפתור_UserMenu_5"
                 onClick={() => {
                   setDropdownOpen(false);
                   window.dispatchEvent(new Event('show-screensaver'));
                 }}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '0.75rem', background: 'transparent', color: '#64748b',
-                  border: 'none', borderRadius: '8px', cursor: 'pointer',
-                  transition: 'background 0.2s'
+                  padding: '0.75rem', background: 'transparent', color: 'var(--text-muted)',
+                  border: 'none', borderRadius: '8px', cursor: 'pointer'
                 }}
-                className="hover:bg-gray-100 dark:hover:bg-gray-700"
+                className="user-menu-item"
               >
                 <Monitor data-element-name="רכיב_UserMenu_6" size={18} />
                 שומר מסך
@@ -201,39 +185,14 @@ export default function UserMenu() {
 
   return (
     <div className="user-menu" style={{ position: 'relative' }} ref={menuRef}>
-      <button data-element-name="כפתור_UserMenu_7" 
+      <button data-element-name="כפתור_UserMenu_7"
         onClick={() => setDropdownOpen(!dropdownOpen)}
-        style={{ 
-          background: 'transparent',
-          border: 'none',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '8px',
-          cursor: 'pointer',
-          padding: '4px 8px',
-          borderRadius: '24px',
-          transition: 'background 0.2s'
-        }}
-        className="hover:bg-gray-100 dark:hover:bg-gray-800"
+        title={`${user.firstName} ${user.lastName} — ${activeShift ? 'בעבודה' : 'לא בעבודה'}`}
+        className={`icon-nav-link avatar-nav-link${activeShift ? ' is-online' : ''}`}
       >
-        <div style={{
-          width: '36px', height: '36px', borderRadius: '50%', 
-          background: 'var(--primary-color)', color: 'white',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontWeight: 'bold', fontSize: '1.1rem'
-        }}>
-          {user.firstName ? user.firstName.charAt(0) : 'U'}
-        </div>
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          <span style={{ fontSize: '0.9rem', fontWeight: 'bold', color: 'var(--text-color)', display: 'flex', alignItems: 'center', gap: '6px' }}>
-            {user.firstName} {user.lastName}
-            {isGlobalFetching && <div style={{width: '14px', height: '14px', border: '2px solid #3b82f6', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite'}} title="טוען נתונים..." />}
-          </span>
-          <span style={{ fontSize: '0.75rem', color: activeShift ? '#10b981' : '#64748b', display: 'flex', alignItems: 'center', gap: '4px' }}>
-            <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeShift ? '#10b981' : '#cbd5e1' }} />
-            {activeShift ? 'בעבודה' : 'לא בעבודה'}
-          </span>
-        </div>
+        {user.firstName ? user.firstName.charAt(0) : 'U'}
+        <span className="nav-avatar-status" />
+        {isGlobalFetching && <span className="nav-avatar-spinner" title="טוען נתונים..." />}
       </button>
 
       {dropdownOpen && (
@@ -247,15 +206,23 @@ export default function UserMenu() {
           boxShadow: '0 10px 25px rgba(0,0,0,0.1)',
           minWidth: '220px',
           zIndex: 100,
-          border: '1px solid #f1f5f9',
+          border: '1px solid var(--divider)',
           overflow: 'hidden'
         }}>
-          <div style={{ padding: '1rem', borderBottom: '1px solid #f1f5f9', background: '#f8fafc' }}>
-            <p style={{ margin: 0, fontWeight: 'bold', fontSize: '0.9rem', color: '#334155' }}>
+          {/* השם המלא ומצב המשמרת ירדו מהכותרת לכאן — הטריגר עצמו נשאר אווטאר בלבד */}
+          <div style={{ padding: '1rem', borderBottom: '1px solid var(--divider)', background: 'var(--element-bg)' }}>
+            <p style={{ margin: 0, fontWeight: 'bold', fontSize: '0.9rem', color: 'var(--text-main)' }}>
               שלום, {user.firstName}
             </p>
+            <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+              {user.firstName} {user.lastName}
+            </p>
+            <p style={{ margin: '0.25rem 0 0', fontSize: '0.75rem', color: activeShift ? 'var(--success-text)' : 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+              <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: activeShift ? 'var(--success-text)' : 'var(--element-border)' }} />
+              {activeShift ? 'בעבודה' : 'לא בעבודה'}
+            </p>
           </div>
-          
+
           <div style={{ padding: '0.5rem' }}>
             {!activeShift ? (
               <button data-element-name="כפתור_UserMenu_8" 
@@ -263,11 +230,11 @@ export default function UserMenu() {
                 disabled={actionLoading}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '0.75rem', background: '#ecfdf5', color: '#059669',
+                  padding: '0.75rem', background: 'var(--btn-light-green-bg)', color: 'var(--success-text)',
                   border: 'none', borderRadius: '8px', cursor: 'pointer',
-                  fontWeight: '500', transition: 'background 0.2s'
+                  fontWeight: '500'
                 }}
-                className="hover:bg-green-100"
+                className="user-menu-item"
               >
                 <LogIn data-element-name="רכיב_UserMenu_9" size={18} />
                 כניסה לעבודה (שעון נוכחות)
@@ -278,11 +245,11 @@ export default function UserMenu() {
                 disabled={actionLoading}
                 style={{
                   width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                  padding: '0.75rem', background: '#fef2f2', color: '#dc2626',
+                  padding: '0.75rem', background: 'var(--banner-debts-bg)', color: 'var(--danger-text)',
                   border: 'none', borderRadius: '8px', cursor: 'pointer',
-                  fontWeight: '500', transition: 'background 0.2s'
+                  fontWeight: '500'
                 }}
-                className="hover:bg-red-100"
+                className="user-menu-item"
               >
                 <LogOut data-element-name="רכיב_UserMenu_11" size={18} />
                 יציאה ממשמרת
@@ -290,7 +257,7 @@ export default function UserMenu() {
             )}
           </div>
 
-          <div style={{ padding: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
+          <div style={{ padding: '0.5rem', borderTop: '1px solid var(--divider)' }}>
             <button data-element-name="כפתור_UserMenu_profile"
               onClick={() => {
                 setDropdownOpen(false);
@@ -299,11 +266,10 @@ export default function UserMenu() {
               disabled={actionLoading}
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '0.75rem', background: 'transparent', color: '#64748b',
-                border: 'none', borderRadius: '8px', cursor: 'pointer',
-                transition: 'background 0.2s'
+                padding: '0.75rem', background: 'transparent', color: 'var(--text-muted)',
+                border: 'none', borderRadius: '8px', cursor: 'pointer'
               }}
-              className="hover:bg-gray-100"
+              className="user-menu-item"
             >
               <IdCard data-element-name="רכיב_UserMenu_profile_icon" size={18} />
               הפרופיל שלי
@@ -313,11 +279,10 @@ export default function UserMenu() {
               disabled={actionLoading}
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '0.75rem', background: 'transparent', color: '#64748b',
-                border: 'none', borderRadius: '8px', cursor: 'pointer',
-                transition: 'background 0.2s'
+                padding: '0.75rem', background: 'transparent', color: 'var(--text-muted)',
+                border: 'none', borderRadius: '8px', cursor: 'pointer'
               }}
-              className="hover:bg-gray-100"
+              className="user-menu-item"
             >
               <UserCircle data-element-name="רכיב_UserMenu_13" size={18} />
               התנתק / החלף משתמש
@@ -330,12 +295,11 @@ export default function UserMenu() {
               disabled={actionLoading}
               style={{
                 width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
-                padding: '0.75rem', background: 'transparent', color: '#64748b',
+                padding: '0.75rem', background: 'transparent', color: 'var(--text-muted)',
                 border: 'none', borderRadius: '8px', cursor: 'pointer',
-                transition: 'background 0.2s',
                 marginTop: '4px'
               }}
-              className="hover:bg-gray-100 dark:hover:bg-gray-700"
+              className="user-menu-item"
             >
               <Monitor data-element-name="רכיב_UserMenu_15" size={18} />
               שומר מסך

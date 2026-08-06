@@ -35,6 +35,24 @@
   --image-bg: #f4f1e9;
   --divider: #f0ead9;
   --input-bg: white;
+  /* כינוי לאחור: --text-color היה בשימוש ב-24 מקומות בלי שהוגדר מעולם */
+  --text-color: var(--text-main);
+
+  /* צבעי קטגוריות הלוח (app/board) — היו בשימוש כ-var() בלי הגדרה, כך שתמיד
+     נפלו ל-fallback ולא הגיבו כלל למצב כהה. הגוונים הסמנטיים נשמרים. */
+  --cat-empty-bg: #fee2e2;      --cat-empty-border: #fecaca;      --cat-empty-text: #991b1b;
+  --cat-repairs-bg: #fce7f3;    --cat-repairs-border: #fbcfe8;    --cat-repairs-text: #9d174d;
+  --cat-unpaid-bg: #ffedd5;     --cat-unpaid-border: #fed7aa;     --cat-unpaid-text: #c2410c;
+  --cat-returned-bg: #e8f5e9;   --cat-returned-border: #a5d6a7;   --cat-returned-text: #2e7d32;
+  --cat-rented-bg: #e3f2fd;     --cat-rented-border: #90caf9;     --cat-rented-text: #1565c0;
+  --cat-completed-bg: #dcfce7;  --cat-completed-border: #bbf7d0;  --cat-completed-text: #15803d;
+  /* הקטגוריה הנייטרלית עוברת לגוון קרם חם במקום אפור-קר */
+  --cat-other-bg: #f6f3ea;      --cat-other-border: #e5ddc8;      --cat-other-text: #6b6555;
+
+  --day-border: var(--element-border);
+  --day-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  --day-border-hover: var(--primary-color);
+  --day-shadow-hover: 0 6px 16px rgba(212, 175, 55, 0.18);
   --banner-debts-bg: #fef2f2;
   --banner-debts-border: #fee2e2;
   --banner-payments-bg: #ecfdf5;
@@ -59,6 +77,18 @@
   --image-bg: #211e18;
   --divider: #3a352b;
   --input-bg: #1e1c17;
+
+  /* גרסאות כהות לצבעי הלוח — רקע מעומעם + טקסט בהיר, במקום פסטל בהיר על רקע כהה */
+  --cat-empty-bg: rgba(239, 68, 68, 0.16);     --cat-empty-border: rgba(239, 68, 68, 0.35);     --cat-empty-text: #fca5a5;
+  --cat-repairs-bg: rgba(236, 72, 153, 0.16);  --cat-repairs-border: rgba(236, 72, 153, 0.35);  --cat-repairs-text: #f9a8d4;
+  --cat-unpaid-bg: rgba(249, 115, 22, 0.16);   --cat-unpaid-border: rgba(249, 115, 22, 0.35);   --cat-unpaid-text: #fdba74;
+  --cat-returned-bg: rgba(34, 197, 94, 0.16);  --cat-returned-border: rgba(34, 197, 94, 0.35);  --cat-returned-text: #86efac;
+  --cat-rented-bg: rgba(59, 130, 246, 0.16);   --cat-rented-border: rgba(59, 130, 246, 0.35);   --cat-rented-text: #93c5fd;
+  --cat-completed-bg: rgba(21, 128, 61, 0.2);  --cat-completed-border: rgba(21, 128, 61, 0.4);  --cat-completed-text: #86efac;
+  --cat-other-bg: #2b2820;                     --cat-other-border: #4a4437;                     --cat-other-text: #b7ad8f;
+
+  --day-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  --day-shadow-hover: 0 6px 16px rgba(212, 175, 55, 0.25);
   --banner-debts-bg: rgba(239, 68, 68, 0.1);
   --banner-debts-border: rgba(239, 68, 68, 0.2);
   --banner-payments-bg: rgba(16, 185, 129, 0.1);
@@ -162,6 +192,8 @@ body.hide-global-nav .navbar {
   width: 38px;
   height: 38px;
   border-radius: 50%;
+  /* עוגן ל-.nav-badge / .nav-avatar-status שממוקמים אבסולוטית בתוך הכפתור */
+  position: relative;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -188,6 +220,106 @@ body.hide-global-nav .navbar {
   height: 22px;
   background: var(--divider);
   flex: none;
+}
+
+/* תג מונה אחיד לכל אייקוני הכותרת (התראות / היסטוריית הודעות / דיווחי שגיאה).
+   קודם לכן כל רכיב צייר תג משלו — 16px/0.7rem מול 14px/9px. */
+.nav-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 99px;
+  background: var(--danger-text);
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* וריאנט אווטאר של אייקון הכותרת — אותו עיגול 38px, אך מלא ועם ראשי תיבות,
+   כדי שכפתור המשתמש לא יהיה הפריט היחיד עם טקסט בשורת האייקונים. */
+.icon-nav-link.avatar-nav-link {
+  background: var(--primary-color);
+  color: #fff !important;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 1rem;
+  line-height: 1;
+  box-shadow: 0 0 0 0 var(--primary-light);
+  transition: box-shadow 0.18s ease, filter 0.18s ease;
+}
+
+.icon-nav-link.avatar-nav-link:hover {
+  background: var(--primary-color);
+  color: #fff !important;
+  box-shadow: 0 0 0 3px var(--primary-light);
+  filter: brightness(1.08);
+}
+
+/* מצב אורח — אותו אווטאר בגוון ניטרלי */
+.icon-nav-link.avatar-nav-link.is-guest,
+.icon-nav-link.avatar-nav-link.is-guest:hover {
+  background: var(--text-muted);
+}
+
+/* נקודת מצב משמרת על האווטאר — מחליפה את שורת "בעבודה / לא בעבודה" שהייתה בכותרת */
+.nav-avatar-status {
+  position: absolute;
+  bottom: -1px;
+  left: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  box-shadow: 0 0 0 2px var(--card-bg);
+  pointer-events: none;
+}
+
+.avatar-nav-link.is-online .nav-avatar-status {
+  background: var(--success-text);
+}
+
+/* מחוון טעינה גלובלי — טבעת מסתובבת סביב האווטאר במקום ספינר לצד השם */
+.nav-avatar-spinner {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 2px solid var(--primary-light);
+  border-top-color: var(--primary-color);
+  animation: spin 1s linear infinite;
+  pointer-events: none;
+}
+
+/* שלד טעינה של כפתור המשתמש (היה משתמש ב-pulse שלא הוגדר מעולם) */
+.nav-avatar-skeleton {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--element-bg);
+  animation: nav-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes nav-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+/* פריטי התפריט הנפתח של המשתמש — הצללה פנימית מתחשבת ברקע המוטבע של כל פריט,
+   במקום מחלקות Tailwind מתות (אין Tailwind בפרויקט) שלא צבעו כלום. */
+.user-menu-item {
+  transition: box-shadow 0.18s ease;
+}
+
+.user-menu-item:hover {
+  box-shadow: inset 0 0 0 999px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="dark"] .user-menu-item:hover {
+  box-shadow: inset 0 0 0 999px rgba(255, 255, 255, 0.07);
 }
 
 .nav-links {

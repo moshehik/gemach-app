@@ -211,35 +211,10 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
         }}
         title="מערכת דיווחי שגיאות"
         className="icon-nav-link"
-        style={{ 
-          background: 'none', 
-          border: 'none', 
-          cursor: 'pointer', 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center',
-          color: '#6366f1',
-          position: 'relative',
-          padding: '0.25rem'
-        }}
       >
-        <LifeBuoy data-element-name="רכיב_ErrorReportButton_2" size={22} />
+        <LifeBuoy data-element-name="רכיב_ErrorReportButton_2" size={20} />
         {unreadCount > 0 && (
-          <span style={{
-            position: 'absolute',
-            top: '0',
-            right: '0',
-            background: '#ef4444',
-            color: 'white',
-            borderRadius: '50%',
-            width: '14px',
-            height: '14px',
-            fontSize: '9px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontWeight: 'bold'
-          }}>
+          <span className="nav-badge">
             {unreadCount > 99 ? '99+' : unreadCount}
           </span>
         )}

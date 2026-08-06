@@ -2,7 +2,7 @@
 // כל הכללים תחומים תחת ‎.noc כדי שלא ידלפו לשאר האפליקציה, באותה שיטה של
 // components/orders/modern/modernOrderStyles.js לכרטיס ההזמנה הקיימת.
 const newOrderCss = `
-@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700&family=Frank+Ruhl+Libre:wght@400;500;700&display=swap');
 
 .noc {
   --noc-gold: #d4af37;
@@ -25,7 +25,7 @@ const newOrderCss = `
   direction: rtl;
 }
 .noc *, .noc *::before, .noc *::after { box-sizing: border-box; }
-.noc h1, .noc h2, .noc h3 { font-family: 'Playfair Display', 'Heebo', serif; font-weight: 500; margin: 0; }
+.noc h1, .noc h2, .noc h3 { font-family: 'Frank Ruhl Libre', 'Heebo', serif; font-weight: 500; margin: 0; }
 
 /* מצב כהה — אותה זכוכית, על משטח כהה */
 [data-theme="dark"] .noc {
@@ -92,7 +92,7 @@ const newOrderCss = `
   text-shadow: 0 1px 2px rgba(30, 80, 110, 0.18);
   overflow-y: auto;
 }
-.noc-side-title { font-family: 'Playfair Display', serif; font-size: 1.22rem; font-weight: 500; }
+.noc-side-title { font-family: 'Frank Ruhl Libre', serif; font-size: 1.22rem; font-weight: 500; }
 .noc-side-sub { font-size: 0.78rem; color: rgba(255,255,255,0.78); margin-top: 4px; }
 .noc-side-rule { height: 1px; background: rgba(255,255,255,0.28); margin: 22px 0 18px; border: none; }
 
@@ -245,7 +245,7 @@ const newOrderCss = `
 .noc-row .noc-amt { font-weight: 600; white-space: nowrap; }
 .noc-row.total { padding-top: 15px; border-top: 1px solid var(--noc-line); border-bottom: none; }
 .noc-row.total .noc-k { color: var(--noc-text); font-size: 1rem; width: auto; }
-.noc-row.total .noc-amt { font-size: 1.38rem; font-family: 'Playfair Display', serif; font-weight: 500; }
+.noc-row.total .noc-amt { font-size: 1.38rem; font-family: 'Frank Ruhl Libre', serif; font-weight: 500; }
 
 /* כרטיסי בחירה */
 .noc-pick { display: flex; gap: 12px; flex-wrap: wrap; }

@@ -203,79 +203,44 @@ export default function LoginScreen({ isModal = false, onClose }) {
     }
   };
 
-  const inputStyle = {
-    width: '100%',
-    background: 'rgba(15, 23, 42, 0.6)',
-    border: '1px solid rgba(255, 255, 255, 0.1)',
-    color: 'white',
-    padding: '1.1rem 3.2rem 1.1rem 1rem',
-    borderRadius: '14px',
-    fontSize: '1rem',
-    outline: 'none',
-    transition: 'all 0.2s ease'
-  };
-
   const content = (
     <div style={{
       ...(isModal ? {
         position: 'fixed',
         inset: 0,
         zIndex: 9999,
-        background: 'rgba(15, 23, 42, 0.75)',
+        background: 'rgba(44, 38, 20, 0.55)',
         backdropFilter: 'blur(8px)',
         WebkitBackdropFilter: 'blur(8px)'
       } : {
         minHeight: '100vh',
-        background: 'linear-gradient(135deg, #0f172a 0%, #1e293b 100%)',
-        backgroundImage: 'radial-gradient(circle at 50% -20%, #3b82f6 0%, transparent 40%), linear-gradient(135deg, #0f172a 0%, #1e293b 100%)'
+        background: 'var(--bg-color)',
+        backgroundImage: 'radial-gradient(circle at 50% -15%, rgba(212, 175, 55, 0.30) 0%, transparent 45%), radial-gradient(circle at 100% 100%, rgba(212, 175, 55, 0.12) 0%, transparent 45%)'
       }),
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      fontFamily: 'system-ui, -apple-system, sans-serif',
       padding: '2rem'
     }} dir="rtl">
 
-      <div style={{
-        position: 'relative',
-        width: '100%',
-        maxWidth: '440px',
-        background: 'rgba(255, 255, 255, 0.03)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid rgba(255, 255, 255, 0.08)',
-        borderRadius: '24px',
-        padding: '3rem 2.5rem',
-        boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.6), 0 0 40px rgba(59, 130, 246, 0.1)'
-      }}>
+      <div className="ls-card">
         {isModal && onClose && (
-          <button data-element-name="כפתור_LoginScreen_1" onClick={() => onClose(false)} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', background: 'none', border: 'none', color: '#94a3b8', cursor: 'pointer', transition: 'color 0.2s' }} onMouseOver={e => e.currentTarget.style.color='white'} onMouseOut={e => e.currentTarget.style.color='#94a3b8'}>
+          <button data-element-name="כפתור_LoginScreen_1" className="ls-close" onClick={() => onClose(false)}>
              <X data-element-name="רכיב_LoginScreen_2" size={24} />
           </button>
         )}
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
-          <div style={{
-            width: '76px',
-            height: '76px',
-            background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-            borderRadius: '22px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            margin: '0 auto 1.5rem auto',
-            boxShadow: '0 10px 25px rgba(37, 99, 235, 0.4), inset 0 2px 4px rgba(255,255,255,0.3)',
-            transform: 'rotate(-5deg)'
-          }}>
-            <Lock data-element-name="רכיב_LoginScreen_3" size={34} color="white" strokeWidth={2.5} style={{ transform: 'rotate(5deg)' }} />
+          <div className="ls-badge">
+            <Lock data-element-name="רכיב_LoginScreen_3" size={34} strokeWidth={2.5} style={{ transform: 'rotate(5deg)', color: 'var(--btn-primary-text)' }} />
           </div>
-          <h2 style={{ fontSize: '2.1rem', fontWeight: '800', color: 'white', margin: '0 0 0.5rem 0', letterSpacing: '-0.025em' }}>
+          <h2 style={{ fontSize: '2.1rem', color: 'var(--text-main)', margin: '0 0 0.5rem 0', letterSpacing: '-0.015em' }}>
             כניסת עובדים
           </h2>
-          <p style={{ color: '#94a3b8', margin: 0, fontSize: '1.05rem' }}>
+          <p style={{ color: 'var(--text-muted)', margin: 0, fontSize: '1.05rem' }}>
             נא להזדהות על מנת להמשיך למערכת
           </p>
           {deviceTrusted && (
-            <p style={{ color: '#60a5fa', margin: '0.6rem 0 0', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+            <p className="ls-trusted" style={{ margin: '0.6rem 0 0', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
               <ShieldCheck size={15} />
               מחשב זה מוגדר כמערכת מהימנה
             </p>
@@ -285,27 +250,18 @@ export default function LoginScreen({ isModal = false, onClose }) {
         <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
 
           {error && (
-            <div style={{
-              background: 'rgba(239, 68, 68, 0.1)',
-              border: '1px solid rgba(239, 68, 68, 0.2)',
-              color: '#fca5a5',
-              padding: '1rem',
-              borderRadius: '12px',
-              fontSize: '0.95rem',
-              textAlign: 'center',
-              fontWeight: '500',
-              animation: 'shake 0.4s ease-in-out'
-            }}>
+            <div className="ls-alert ls-alert-err ls-alert-shake" style={{ padding: '1rem', textAlign: 'center', fontWeight: '500', fontSize: '0.95rem' }}>
               {error}
             </div>
           )}
 
           <div style={{ position: 'relative' }} ref={dropdownRef}>
-            <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.9rem', fontWeight: '500', marginBottom: '0.5rem' }}>
+            <label className="ls-label">
               שם העובד
             </label>
             <div style={{ position: 'relative' }}>
               <input data-element-name="שדה_LoginScreen_4"
+                className="ls-input"
                 type="text"
                 value={searchTerm}
                 onChange={(e) => {
@@ -315,79 +271,36 @@ export default function LoginScreen({ isModal = false, onClose }) {
                 }}
                 disabled={isFetchingEmployees}
                 placeholder={isFetchingEmployees ? '-- טוען עובדים... --' : 'הקלד או בחר מהרשימה'}
-                style={{
-                  width: '100%',
-                  background: 'rgba(15, 23, 42, 0.6)',
-                  border: '1px solid rgba(255, 255, 255, 0.1)',
-                  color: 'white',
-                  padding: '1.1rem 3.2rem 1.1rem 1rem',
-                  borderRadius: '14px',
-                  fontSize: '1rem',
-                  outline: 'none',
-                  transition: 'all 0.2s ease',
-                }}
-                onFocus={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)';
-                  setIsDropdownOpen(true);
-                }}
-                onBlur={(e) => {
-                  e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)';
-                  e.target.style.boxShadow = 'none';
-                }}
+                onFocus={() => setIsDropdownOpen(true)}
               />
               {isFetchingEmployees ? (
-                <Loader2 data-element-name="רכיב_LoginScreen_5" size={20} color="#3b82f6" style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', animation: 'spin 1s linear infinite' }} />
+                <Loader2 data-element-name="רכיב_LoginScreen_5" size={20} style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', animation: 'spin 1s linear infinite', color: 'var(--primary-color)' }} />
               ) : (
                 <User data-element-name="לחיץ_LoginScreen_6"
                   size={20}
-                  color={selectedEmployee ? '#3b82f6' : '#64748b'}
-                  style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s', cursor: 'pointer' }}
+                  style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s', cursor: 'pointer', color: selectedEmployee ? 'var(--primary-color)' : 'var(--text-muted)' }}
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
                 />
               )}
 
               {isDropdownOpen && !isFetchingEmployees && (
-                <div style={{
-                  position: 'absolute',
-                  top: '100%',
-                  left: 0,
-                  right: 0,
-                  marginTop: '0.5rem',
-                  background: '#fff',
-                  borderRadius: '12px',
-                  boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-                  maxHeight: '200px',
-                  overflowY: 'auto',
-                  zIndex: 50,
-                  border: '1px solid #e2e8f0'
-                }}>
+                <div className="ls-dropdown">
                   {employees.filter(emp => `${emp.firstName} ${emp.lastName}`.includes(searchTerm)).length > 0 ? (
                     employees.filter(emp => `${emp.firstName} ${emp.lastName}`.includes(searchTerm)).map(emp => (
                       <div data-element-name="לחיץ_LoginScreen_7"
                         key={emp.id}
+                        className={`ls-option${selectedEmployee === emp.id ? ' is-selected' : ''}`}
                         onClick={() => {
                           setSelectedEmployee(emp.id);
                           setSearchTerm(`${emp.firstName} ${emp.lastName}`);
                           setIsDropdownOpen(false);
                         }}
-                        style={{
-                          padding: '10px 16px',
-                          cursor: 'pointer',
-                          color: '#0f172a',
-                          borderBottom: '1px solid #f1f5f9',
-                          transition: 'background 0.2s',
-                          background: selectedEmployee === emp.id ? '#e0e7ff' : 'transparent',
-                          fontWeight: selectedEmployee === emp.id ? '600' : '400'
-                        }}
-                        onMouseOver={(e) => { if(selectedEmployee !== emp.id) e.target.style.background = '#f8fafc' }}
-                        onMouseOut={(e) => { if(selectedEmployee !== emp.id) e.target.style.background = 'transparent' }}
                       >
                         {emp.firstName} {emp.lastName}
                       </div>
                     ))
                   ) : (
-                    <div style={{ padding: '10px 16px', color: '#64748b', textAlign: 'center' }}>
+                    <div style={{ padding: '10px 16px', color: 'var(--text-muted)', textAlign: 'center' }}>
                       לא נמצאו עובדים
                     </div>
                   )}
@@ -398,14 +311,14 @@ export default function LoginScreen({ isModal = false, onClose }) {
 
           <div style={{ position: 'relative' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
-              <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.9rem', fontWeight: '500' }}>
+              <label className="ls-label" style={{ marginBottom: 0 }}>
                 {usePinMode ? '4 התווים האחרונים בסיסמה' : 'קוד כניסה'}
               </label>
               {deviceTrusted && (
                 <button
                   type="button"
+                  className="ls-link ls-link-accent"
                   onClick={() => { setUsePinMode(!usePinMode); setError(''); setPassword(''); setPinValue(''); }}
-                  style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: '0.82rem', cursor: 'pointer', padding: 0 }}
                 >
                   {usePinMode ? 'השתמש בסיסמה המלאה' : 'השתמש בקוד מקוצר (4 תווים)'}
                 </button>
@@ -414,33 +327,30 @@ export default function LoginScreen({ isModal = false, onClose }) {
             <div style={{ position: 'relative' }}>
               {usePinMode ? (
                 <input data-element-name="שדה_LoginScreen_pin"
+                  className="ls-input ls-input-pin"
                   type="password"
                   maxLength={4}
                   value={pinValue}
                   onChange={(e) => setPinValue(e.target.value.slice(0, 4))}
                   placeholder="••••"
-                  style={{ ...inputStyle, letterSpacing: '0.6em', textAlign: 'center', fontSize: '1.3rem' }}
-                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)'; }}
-                  onBlur={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.target.style.boxShadow = 'none'; }}
                 />
               ) : (
                 <input data-element-name="שדה_LoginScreen_8"
+                  className="ls-input"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="הזן את הקוד שלך"
-                  style={{ ...inputStyle, letterSpacing: password.length > 0 ? '0.2em' : 'normal' }}
-                  onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)'; }}
-                  onBlur={(e) => { e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'; e.target.style.boxShadow = 'none'; }}
+                  style={{ letterSpacing: password.length > 0 ? '0.2em' : 'normal' }}
                 />
               )}
-              <Lock data-element-name="רכיב_LoginScreen_9" size={20} color={(usePinMode ? pinValue : password) ? '#3b82f6' : '#64748b'} style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s' }} />
+              <Lock data-element-name="רכיב_LoginScreen_9" size={20} style={{ position: 'absolute', right: '1.1rem', top: '50%', transform: 'translateY(-50%)', transition: 'color 0.2s', color: (usePinMode ? pinValue : password) ? 'var(--primary-color)' : 'var(--text-muted)' }} />
             </div>
             <div style={{ textAlign: 'left', marginTop: '0.5rem' }}>
               <button
                 type="button"
+                className="ls-link"
                 onClick={() => { setForgotOpen(true); setForgotResult(null); }}
-                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '0.82rem', cursor: 'pointer', padding: 0 }}
               >
                 שכחתי סיסמה
               </button>
@@ -449,33 +359,11 @@ export default function LoginScreen({ isModal = false, onClose }) {
 
           <button data-element-name="כפתור_LoginScreen_10"
             type="submit"
+            className="ls-btn-gold ls-submit"
             disabled={loading}
-            style={{
-              marginTop: '0.5rem',
-              width: '100%',
-              background: 'linear-gradient(135deg, #3b82f6, #1d4ed8)',
-              color: 'white',
-              border: '1px solid rgba(255,255,255,0.1)',
-              padding: '1.1rem',
-              borderRadius: '14px',
-              fontSize: '1.15rem',
-              fontWeight: '600',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '0.6rem',
-              transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
-              opacity: loading ? 0.8 : 1,
-              boxShadow: '0 8px 20px -6px rgba(37, 99, 235, 0.6)'
-            }}
-            onMouseOver={(e) => { if(!loading) { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 12px 25px -6px rgba(37, 99, 235, 0.7)'; } }}
-            onMouseOut={(e) => { if(!loading) { e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 8px 20px -6px rgba(37, 99, 235, 0.6)'; } }}
-            onMouseDown={(e) => { if(!loading) { e.target.style.transform = 'translateY(1px)'; e.target.style.boxShadow = '0 4px 10px -6px rgba(37, 99, 235, 0.6)'; } }}
-            onMouseUp={(e) => { if(!loading) { e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 12px 25px -6px rgba(37, 99, 235, 0.7)'; } }}
           >
             {loading ? (
-              <span style={{ display: 'inline-block', width: '22px', height: '22px', border: '3px solid rgba(255,255,255,0.3)', borderTopColor: 'white', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
+              <span style={{ display: 'inline-block', width: '22px', height: '22px', border: '3px solid rgba(0,0,0,0.18)', borderTopColor: 'var(--btn-primary-text)', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }}></span>
             ) : (
               <>
                 <LogIn data-element-name="רכיב_LoginScreen_11" size={22} />
@@ -493,35 +381,213 @@ export default function LoginScreen({ isModal = false, onClose }) {
             20%, 40%, 60%, 80% { transform: translateX(4px); }
           }
           * { box-sizing: border-box; }
+
+          /* ---- מסך הכניסה: זהב על קרם, באותה שפה עיצובית של שאר המערכת ---- */
+          .ls-card {
+            position: relative;
+            width: 100%;
+            max-width: 440px;
+            background: var(--card-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border-color);
+            border-radius: 24px;
+            padding: 3rem 2.5rem;
+            box-shadow: var(--shadow-lg), 0 0 40px rgba(212, 175, 55, 0.12);
+          }
+
+          .ls-close {
+            position: absolute;
+            top: 1.5rem;
+            right: 1.5rem;
+            background: none;
+            border: none;
+            padding: 0;
+            line-height: 0;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+          }
+          .ls-close:hover { color: var(--primary-color); }
+
+          .ls-badge {
+            width: 76px;
+            height: 76px;
+            background: linear-gradient(135deg, var(--primary-color), #e8c85a);
+            border-radius: 22px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 1.5rem auto;
+            box-shadow: 0 10px 25px rgba(212, 175, 55, 0.4), inset 0 2px 4px rgba(255, 255, 255, 0.45);
+            transform: rotate(-5deg);
+          }
+
+          .ls-trusted { color: var(--primary-hover); }
+          [data-theme="dark"] .ls-trusted { color: var(--primary-color); }
+
+          .ls-label {
+            display: block;
+            color: var(--text-main);
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+          }
+
+          .ls-input {
+            width: 100%;
+            background: var(--input-bg);
+            border: 1px solid var(--element-border);
+            color: var(--text-main);
+            padding: 1.1rem 3.2rem 1.1rem 1rem;
+            border-radius: 14px;
+            font-family: inherit;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+          }
+          .ls-input::placeholder { color: var(--text-muted); opacity: 1; }
+          .ls-input:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 3px var(--primary-light);
+          }
+          .ls-input:disabled { opacity: 0.7; cursor: not-allowed; }
+          .ls-input-pin { letter-spacing: 0.6em; text-align: center; font-size: 1.3rem; }
+          .ls-input-plain { padding: 0.85rem 1rem; }
+
+          .ls-link {
+            background: none;
+            border: none;
+            padding: 0;
+            font-family: inherit;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+          }
+          .ls-link:hover { color: var(--primary-color); }
+          .ls-link-accent { color: var(--primary-hover); font-weight: 600; }
+          [data-theme="dark"] .ls-link-accent { color: var(--primary-color); }
+          .ls-link-accent:hover { color: var(--primary-color); }
+
+          .ls-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            margin-top: 0.5rem;
+            background: var(--input-bg);
+            border: 1px solid var(--element-border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-lg);
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 50;
+          }
+
+          .ls-option {
+            padding: 10px 16px;
+            cursor: pointer;
+            color: var(--text-main);
+            background: transparent;
+            border-bottom: 1px solid var(--divider);
+            transition: background 0.2s;
+          }
+          .ls-option:last-child { border-bottom: none; }
+          .ls-option:hover { background: var(--element-bg); }
+          .ls-option.is-selected { background: var(--primary-light); font-weight: 600; }
+
+          .ls-btn-gold {
+            background: linear-gradient(135deg, var(--primary-color), #e8c85a);
+            color: var(--btn-primary-text);
+            border: none;
+            font-family: inherit;
+            font-weight: 700;
+            cursor: pointer;
+          }
+          .ls-btn-gold:hover:not(:disabled) {
+            background: linear-gradient(135deg, var(--primary-hover), var(--primary-color));
+          }
+          .ls-btn-gold:disabled { opacity: 0.7; cursor: not-allowed; }
+
+          .ls-btn-ghost {
+            background: transparent;
+            border: 1px solid var(--element-border);
+            color: var(--text-main);
+            font-family: inherit;
+            cursor: pointer;
+            transition: border-color 0.2s, color 0.2s;
+          }
+          .ls-btn-ghost:hover { border-color: var(--primary-color); color: var(--primary-color); }
+
+          .ls-submit {
+            margin-top: 0.5rem;
+            width: 100%;
+            padding: 1.1rem;
+            border-radius: 14px;
+            font-size: 1.15rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.6rem;
+            box-shadow: 0 8px 20px -6px rgba(212, 175, 55, 0.55);
+            transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.2s ease, background 0.2s ease;
+          }
+          .ls-submit:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px -6px rgba(212, 175, 55, 0.7);
+          }
+          .ls-submit:active:not(:disabled) {
+            transform: translateY(1px);
+            box-shadow: 0 4px 10px -6px rgba(212, 175, 55, 0.55);
+          }
+          .ls-submit:disabled { opacity: 0.8; }
+
+          .ls-dialog {
+            width: 100%;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 18px;
+            padding: 2rem;
+            color: var(--text-main);
+            box-shadow: var(--shadow-lg);
+          }
+
+          .ls-alert { padding: 0.75rem 1rem; border-radius: 12px; font-size: 0.88rem; }
+          .ls-alert-err {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.28);
+            color: #b91c1c;
+          }
+          [data-theme="dark"] .ls-alert-err { color: #fca5a5; }
+          .ls-alert-ok {
+            background: rgba(34, 197, 94, 0.12);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #15803d;
+          }
+          [data-theme="dark"] .ls-alert-ok { color: #86efac; }
+          .ls-alert-shake { animation: shake 0.4s ease-in-out; }
         `}} />
       </div>
 
       {forgotOpen && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(15,23,42,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }} onClick={(e) => { if (e.target === e.currentTarget) setForgotOpen(false); }}>
-          <div style={{ width: '100%', maxWidth: '400px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '2rem', color: 'white' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10001, background: 'rgba(44, 38, 20, 0.6)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }} onClick={(e) => { if (e.target === e.currentTarget) setForgotOpen(false); }}>
+          <div className="ls-dialog" style={{ maxWidth: '400px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
-              <KeyRound size={20} color="#60a5fa" />
+              <KeyRound size={20} style={{ color: 'var(--primary-color)' }} />
               <h3 style={{ margin: 0, fontSize: '1.2rem' }}>שכחתי סיסמה</h3>
             </div>
-            <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.2rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.2rem' }}>
               תישלח סיסמה זמנית לכתובת המייל השמורה במערכת עבור העובד שנבחר ({searchTerm || 'לא נבחר עובד'}). לאחר ההתחברות עם הסיסמה הזמנית תתבקש/י להגדיר סיסמה חדשה.
             </p>
             {forgotResult && (
-              <div style={{
-                background: forgotResult.success ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)',
-                border: `1px solid ${forgotResult.success ? 'rgba(34,197,94,0.3)' : 'rgba(239,68,68,0.3)'}`,
-                color: forgotResult.success ? '#86efac' : '#fca5a5',
-                padding: '0.75rem 1rem',
-                borderRadius: '10px',
-                fontSize: '0.88rem',
-                marginBottom: '1rem'
-              }}>
+              <div className={`ls-alert ${forgotResult.success ? 'ls-alert-ok' : 'ls-alert-err'}`} style={{ marginBottom: '1rem' }}>
                 {forgotResult.message}
               </div>
             )}
             <div style={{ display: 'flex', gap: '0.6rem', justifyContent: 'flex-end' }}>
-              <button type="button" onClick={() => setForgotOpen(false)} style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.2)', color: 'white', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: 'pointer' }}>סגור</button>
-              <button type="button" disabled={forgotSending} onClick={handleForgotPassword} style={{ background: '#3b82f6', border: 'none', color: 'white', padding: '0.6rem 1.1rem', borderRadius: '10px', cursor: forgotSending ? 'not-allowed' : 'pointer', opacity: forgotSending ? 0.7 : 1 }}>
+              <button type="button" className="ls-btn-ghost" onClick={() => setForgotOpen(false)} style={{ padding: '0.6rem 1.1rem', borderRadius: '10px' }}>סגור</button>
+              <button type="button" className="ls-btn-gold" disabled={forgotSending} onClick={handleForgotPassword} style={{ padding: '0.6rem 1.1rem', borderRadius: '10px' }}>
                 {forgotSending ? 'שולח...' : 'שלח סיסמה זמנית'}
               </button>
             </div>
@@ -530,30 +596,30 @@ export default function LoginScreen({ isModal = false, onClose }) {
       )}
 
       {resetRequired && (
-        <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'rgba(15,23,42,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
-          <div style={{ width: '100%', maxWidth: '420px', background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '18px', padding: '2rem', color: 'white' }}>
+        <div style={{ position: 'fixed', inset: 0, zIndex: 10002, background: 'rgba(44, 38, 20, 0.7)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}>
+          <div className="ls-dialog" style={{ maxWidth: '420px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '1rem' }}>
-              <ShieldCheck size={20} color="#60a5fa" />
+              <ShieldCheck size={20} style={{ color: 'var(--primary-color)' }} />
               <h3 style={{ margin: 0, fontSize: '1.2rem' }}>יש להגדיר סיסמה חדשה</h3>
             </div>
-            <p style={{ color: '#94a3b8', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.2rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.6, marginBottom: '1.2rem' }}>
               התחברת עם סיסמה זמנית. יש להגדיר סיסמה קבועה חדשה כדי להמשיך.
             </p>
             {resetError && (
-              <div style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.3)', color: '#fca5a5', padding: '0.75rem 1rem', borderRadius: '10px', fontSize: '0.88rem', marginBottom: '1rem' }}>
+              <div className="ls-alert ls-alert-err" style={{ marginBottom: '1rem' }}>
                 {resetError}
               </div>
             )}
             <form onSubmit={handleSetNewPassword} style={{ display: 'flex', flexDirection: 'column', gap: '0.9rem' }}>
               <div>
-                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: '0.4rem' }}>סיסמה חדשה</label>
-                <input type="password" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} style={inputStyle} />
+                <label className="ls-label" style={{ fontSize: '0.85rem', marginBottom: '0.4rem' }}>סיסמה חדשה</label>
+                <input className="ls-input ls-input-plain" type="password" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} />
               </div>
               <div>
-                <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.85rem', marginBottom: '0.4rem' }}>אימות סיסמה חדשה</label>
-                <input type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} style={inputStyle} />
+                <label className="ls-label" style={{ fontSize: '0.85rem', marginBottom: '0.4rem' }}>אימות סיסמה חדשה</label>
+                <input className="ls-input ls-input-plain" type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} />
               </div>
-              <button type="submit" disabled={resetSaving} style={{ marginTop: '0.4rem', background: '#3b82f6', border: 'none', color: 'white', padding: '0.85rem', borderRadius: '12px', cursor: resetSaving ? 'not-allowed' : 'pointer', fontWeight: 600, opacity: resetSaving ? 0.7 : 1 }}>
+              <button type="submit" className="ls-btn-gold" disabled={resetSaving} style={{ marginTop: '0.4rem', padding: '0.85rem', borderRadius: '12px' }}>
                 {resetSaving ? 'שומר...' : 'שמור והמשך'}
               </button>
             </form>
