@@ -203,8 +203,22 @@ export default function PrintOrderPage() {
             break-inside: avoid;
             page-break-inside: avoid;
           }
+          /* The whole summary/payments/terms tail lives in ONE wrapper <tr> - the
+             break-inside:avoid that's right for real data rows (and also arrives from
+             globals.css's print block) must not apply to it: a several-hundred-px row
+             that "can't" break gets pushed wholesale to the next page (half-empty page
+             1, form "cut in the middle"), and when it's taller than a full page Chrome
+             clips it instead of flowing. Let the wrapper fragment; each inner block
+             below keeps its own integrity. */
+          tr.print-flow-row {
+            break-inside: auto !important;
+            page-break-inside: auto !important;
+          }
           .order-details-card,
           .rental-notes-box,
+          .summary-section,
+          .terms,
+          .signatures,
           .print-footer {
             break-inside: avoid;
             page-break-inside: avoid;
@@ -550,7 +564,7 @@ export default function PrintOrderPage() {
               )}
             </tbody>
             <tbody>
-              <tr>
+              <tr className="print-flow-row">
                 <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
                   <div className="summary-section">
                     <table className="summary-table">
