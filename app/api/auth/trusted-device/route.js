@@ -11,7 +11,7 @@ import {
 } from '@/lib/trustedDevice';
 
 // Manager-only management of "trusted system computers" (מחשבי מערכת), the shared
-// front-desk machines employees are allowed to log into with just the last 4 digits of
+// front-desk machines employees are allowed to log into with just the last 4 characters of
 // their real password. See lib/trustedDevice.js for the trust model this rests on.
 
 // List all trusted devices (for the admin UI) + whether THIS browser is currently one of them.

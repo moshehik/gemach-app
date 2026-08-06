@@ -14,7 +14,7 @@ REM ============================================================================
 REM --- 1. Set this to the real URL of the app on the customer-facing machine ---
 REM     Use the deployed/production URL if this machine reaches it over the
 REM     network, or a local dev/start URL if the app runs on this same machine.
-set KIOSK_URL=http://localhost:3000/customer-interface
+set KIOSK_URL=https://gemach-app-uyh4-beryl.vercel.app/customer-interface
 
 REM --- 2. Isolated browser profile for the kiosk session -----------------------
 REM     Keeps this separate from any personal Chrome/Edge profile on the

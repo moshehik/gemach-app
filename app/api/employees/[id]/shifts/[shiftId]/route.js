@@ -2,6 +2,7 @@ import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import { computeShiftTotals } from '@/lib/shiftCalc';
+import { getHebrewDateString } from '@/lib/hebrewDate';
 
 export async function PUT(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -57,7 +58,9 @@ export async function PUT(request, { params }) {
       where: { id: shiftId },
       data: {
         date: body.date ? shiftDate : undefined,
-        hebrewDate: body.hebrewDate !== undefined ? body.hebrewDate : undefined,
+        // כמו בהוספה - אם נשלח תאריך עברי ריק (לא הוזן/נמחק), נחשב ברירת מחדל
+        // מהתאריך הלועזי הסופי של המשמרת במקום לשמור שדה ריק.
+        hebrewDate: body.hebrewDate !== undefined ? (body.hebrewDate || getHebrewDateString(shiftDate)) : undefined,
         entryTime: entryTime,
         exitTime: exitTime,
         totalMinutes,

@@ -2,6 +2,7 @@ import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import { computeShiftTotals } from '@/lib/shiftCalc';
+import { getHebrewDateString } from '@/lib/hebrewDate';
 
 export async function POST(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -69,7 +70,9 @@ export async function POST(request, { params }) {
       data: {
         employeeId,
         date: shiftDate,
-        hebrewDate: body.hebrewDate || null,
+        // אם לא הוזן תאריך עברי ידנית - מחשבים אותו מהתאריך הלועזי של המשמרת
+        // (ברירת המחדל של shiftDate עצמו היא היום, אם גם הוא לא נשלח).
+        hebrewDate: body.hebrewDate || getHebrewDateString(shiftDate),
         entryTime: entryTime,
         exitTime: exitTime,
         totalMinutes,

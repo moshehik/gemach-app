@@ -160,18 +160,18 @@ export default function AttendanceReportPage() {
           חזור לניהול עובדים
         </button>
         
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div className="toolbar-row" style={{ justifyContent: 'space-between', marginBottom: '2rem' }}>
           <div>
             <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>דוח נוכחות חודשי</h1>
             <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 0 0' }}>
               הפקת דוח נוכחות לכלל העובדים ב-PDF או אקסל (כל עובד בעמוד נפרד).
             </p>
           </div>
-          
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+
+          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <select data-element-name="בחירה_page_3" 
-                value={selectedMonth} 
+              <select data-element-name="בחירה_page_3"
+                value={selectedMonth}
                 onChange={e => setSelectedMonth(parseInt(e.target.value))}
                 style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
               >
@@ -179,8 +179,8 @@ export default function AttendanceReportPage() {
                   <option key={i+1} value={i+1}>{getMonthName(i+1)}</option>
                 ))}
               </select>
-              <select data-element-name="בחירה_page_4" 
-                value={selectedYear} 
+              <select data-element-name="בחירה_page_4"
+                value={selectedYear}
                 onChange={e => setSelectedYear(parseInt(e.target.value))}
                 style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
               >
@@ -190,25 +190,25 @@ export default function AttendanceReportPage() {
                 })}
               </select>
             </div>
-            
-            <button data-element-name="כפתור_page_5" 
-              onClick={handlePrint} 
-              className="btn btn-secondary" 
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-              disabled={loading || data.length === 0}
-            >
-              <Printer data-element-name="רכיב_page_6" size={18} />
-              הדפס / PDF
-            </button>
-            <button data-element-name="כפתור_page_7" 
-              onClick={handleExportExcel} 
-              className="btn btn-primary" 
-              style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-              disabled={loading || data.length === 0}
-            >
-              <FileSpreadsheet data-element-name="רכיב_page_8" size={18} />
-              ייצוא לאקסל
-            </button>
+
+            <div className="icon-toolbar" style={{ marginRight: 0 }}>
+              <button data-element-name="כפתור_page_5"
+                onClick={handlePrint}
+                className="icon-btn"
+                title="הדפס / PDF"
+                disabled={loading || data.length === 0}
+              >
+                <Printer data-element-name="רכיב_page_6" size={19} />
+              </button>
+              <button data-element-name="כפתור_page_7"
+                onClick={handleExportExcel}
+                className="icon-btn icon-btn-primary"
+                disabled={loading || data.length === 0}
+              >
+                <FileSpreadsheet data-element-name="רכיב_page_8" size={17} />
+                <span>ייצוא לאקסל</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -248,6 +248,14 @@ export default function AttendanceReportPage() {
 
                   <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem', fontSize: '0.95rem' }}>
                     <thead>
+                      {/* שורה נוספת ב-thead (לא רק כותרות העמודות) - כדי שהחודש/שנה יופיעו מחדש
+                          בראש כל עמוד פיזי כשטבלת המשמרות של עובד נשברת לכמה עמודי הדפסה, בדיוק
+                          כמו שורת כותרות העמודות עצמה חוזרת בזכות table-header-group. */}
+                      <tr>
+                        <th colSpan={5} style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 'bold', fontSize: '1rem', background: '#eef2f7', borderBottom: '1px solid #ddd' }}>
+                          תקופה: {getMonthName(selectedMonth)} {selectedYear}
+                        </th>
+                      </tr>
                       <tr style={{ background: '#f8f9fa' }}>
                         <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'right' }}>תאריך</th>
                         <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>כניסה</th>

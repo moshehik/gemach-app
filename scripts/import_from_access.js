@@ -49,6 +49,26 @@
  *    that are brand new in this run (orderId not already present in the DB
  *    before this run started). See LIMITATION below for why pre-existing
  *    orders' sub-records are NOT touched.
+ *  - Shift (עובדים_נוכחות, employee attendance/punch-clock): full upsert keyed
+ *    on legacyId <-> קוד (verified 2026-08-06: this join is reliable, unlike
+ *    the synthetic-junk-polluted OrderItem/Payment/PaymentObligation legacyIds
+ *    - see LIMITATION below). Access-sourced fields (entry/exit time, Hebrew
+ *    date, the plain shift date) are refreshed every run, even for shifts
+ *    that already exist. The derived pay fields (totalMinutes,
+ *    hourlyWageSnapshot, travelExpensesSnapshot, totalCalculated) are
+ *    computed ONLY when a shift is brand-new to the DB, mirroring
+ *    lib/shiftCalc.js's once-per-day travel-expense dedup - never
+ *    recomputed for an existing shift, so a re-run can't silently drift a
+ *    historical shift's pay if the employee's wage changed since.
+ *  - SystemSetting (הגדרות_ראשי, general app config): INSERT-ONLY, and only
+ *    for a hand-curated list of Access settings confirmed (2026-08-06, full
+ *    67-row audit) to have no live equivalent yet - see the
+ *    SYSTEM_SETTING_BACKFILL comment above processSystemSettings() for the
+ *    full reasoning. Unlike every other table here, existing rows are NEVER
+ *    matched or refreshed by legacyId, because SystemSetting.legacyId in
+ *    PROD turned out to be the OLD SQLITE APP'S autoincrement id (copied in
+ *    by migrate-db.js), not Access's own קוד - so an existing row's
+ *    value/name/category are simply never touched by this tool, full stop.
  *
  * WHAT IT DOES NOT DO
  * --------------------------------------------------------------------------
@@ -85,8 +105,11 @@
  *    duplicates for anything this tool itself inserted, and a scoped
  *    reconciliation pass for the pre-existing backlog can be built later
  *    with a deliberately-chosen matching strategy (out of scope tonight).
- *  - Does not touch Refund, PriceList, PriceRule, SystemSetting, or any
- *    other model - only the 6 tables listed above.
+ *  - Does not touch Refund, PriceList, PriceRule, or any other model - only
+ *    the 10 tables listed above (Customer, Employee, DressModel, DressItem,
+ *    Order, OrderItem, Payment, PaymentObligation, Shift, SystemSetting -
+ *    note this line said "7 tables" before 2026-08-06 and was already stale
+ *    by 2, since Shift had been added without updating the count).
  *
  * DATA-QUALITY GUARDS BUILT IN (see git history / commit message for the
  * concrete investigation numbers behind each of these)
@@ -802,6 +825,213 @@ async function processOrderSubRecords(newOrderIds) {
   };
 }
 
+/**
+ * Shift (עובדים_נוכחות) - full upsert keyed on legacyId <-> קוד. Unlike OrderItem/Payment/
+ * PaymentObligation, this legacyId join was verified reliable (2026-08-06 probe: every one
+ * of 13,807 existing Shift.legacyId values matches a real Access קוד, zero synthetic-junk
+ * collisions), so this is a full reload like Customer/Employee/Order - not insert-only.
+ *
+ * Access-sourced fields (entryTime/exitTime/hebrewDate/date) are refreshed on every run, even
+ * for shifts that already exist, so a correction made in Access (e.g. a mistyped punch time)
+ * flows through. The derived PAY fields (totalMinutes/hourlyWageSnapshot/travelExpensesSnapshot/
+ * totalCalculated) are computed ONLY on first insert and deliberately never recomputed for a
+ * shift that already exists - they're pay-affecting snapshots, and re-deriving them from
+ * *today's* employee.hourlyWage on every re-run would silently drift historical pay if a wage
+ * changed since (the live app has the same no-historical-wage-tracking limitation for brand-new
+ * shifts - see lib/shiftCalc.js - but at least existing rows won't keep changing under repeated
+ * runs of this tool).
+ */
+async function processShifts() {
+  console.log('\n--- Shift (עובדים_נוכחות) ---');
+  const rows = applyLimit(await accessQuery(`SELECT * FROM [עובדים_נוכחות]`));
+
+  const existing = await prisma.shift.findMany({ where: { legacyId: { not: null } }, select: { legacyId: true } });
+  const existingSet = new Set(existing.map(r => r.legacyId));
+
+  const employees = await prisma.employee.findMany({ where: { legacyId: { not: null } }, select: { id: true, legacyId: true, hourlyWage: true, travelExpenses: true } });
+  const employeeByLegacyId = new Map(employees.map(e => [e.legacyId, e]));
+
+  // Days that already carry a travel-expense credit in PROD (from the live app or a prior run of
+  // this tool) - so newly-inserted historical shifts don't double-credit a day already covered.
+  const creditedShifts = await prisma.shift.findMany({
+    where: { travelExpensesSnapshot: { gt: 0 } },
+    select: { employeeId: true, date: true },
+  });
+  const creditedDaySet = new Set(creditedShifts.map(s => `${s.employeeId}|${s.date ? s.date.toISOString().slice(0, 10) : ''}`));
+
+  let toCreate = 0, toUpdate = 0, empUnresolved = 0;
+  const parsed = [];
+  for (const s of rows) {
+    const legacyId = toInt(s['קוד']);
+    if (!legacyId) continue;
+    const empLegacy = toInt(s['קוד_עובד']);
+    const employee = empLegacy != null ? employeeByLegacyId.get(empLegacy) : null;
+    if (!employee) { empUnresolved++; continue; } // Shift.employeeId is a required FK - can't insert/match without it
+
+    const isNew = !existingSet.has(legacyId);
+    if (isNew) toCreate++; else toUpdate++;
+
+    const entryTime = parseTrueDate(s['שעת_כניסה']);
+    const exitTime = parseTrueDate(s['שעת_יציאה']);
+    const hebrewDate = toStr(s['תאריך_עברי']);
+    const dateSource = entryTime || exitTime;
+    const date = dateSource ? new Date(dateSource.getFullYear(), dateSource.getMonth(), dateSource.getDate()) : null;
+
+    parsed.push({ legacyId, employee, entryTime, exitTime, hebrewDate, date, isNew });
+  }
+
+  console.log(`  Access rows: ${rows.length} | will create: ${toCreate} | will update (Access-sourced fields only): ${toUpdate}`);
+  console.log(`  Employee link unresolved (קוד_עובד with no matching Employee.legacyId, row skipped): ${empUnresolved}`);
+
+  // Sort brand-new rows chronologically per employee so the once-per-day travel dedup below
+  // credits the actual earliest shift of the day, not whatever order Access happened to return.
+  const newOnes = parsed.filter(p => p.isNew);
+  newOnes.sort((a, b) => {
+    if (a.employee.id !== b.employee.id) return a.employee.id < b.employee.id ? -1 : 1;
+    const at = a.entryTime ? a.entryTime.getTime() : Infinity;
+    const bt = b.entryTime ? b.entryTime.getTime() : Infinity;
+    return at - bt;
+  });
+
+  const dbRows = [];
+  for (const p of newOnes) {
+    const { legacyId, employee, entryTime, exitTime, hebrewDate, date } = p;
+    const hourlyWageSnapshot = employee.hourlyWage || 0;
+
+    let travelExpensesSnapshot = 0;
+    const travelAmount = typeof employee.travelExpenses === 'number' ? employee.travelExpenses : 0;
+    if (travelAmount > 0 && date) {
+      const dayKey = `${employee.id}|${date.toISOString().slice(0, 10)}`;
+      if (!creditedDaySet.has(dayKey)) {
+        travelExpensesSnapshot = travelAmount;
+        creditedDaySet.add(dayKey);
+      }
+    }
+
+    let totalMinutes = null, totalCalculated = null;
+    if (entryTime && exitTime) {
+      totalMinutes = Math.max(0, Math.floor((exitTime.getTime() - entryTime.getTime()) / 60000));
+      totalCalculated = parseFloat((((totalMinutes / 60) * hourlyWageSnapshot) + travelExpensesSnapshot).toFixed(2));
+    }
+
+    dbRows.push([
+      crypto.randomUUID(), legacyId, employee.id, entryTime, exitTime, hebrewDate, date,
+      totalMinutes, hourlyWageSnapshot, travelExpensesSnapshot, totalCalculated,
+      new Date(),
+    ]);
+  }
+  for (const p of parsed) {
+    if (p.isNew) continue;
+    const { legacyId, employee, entryTime, exitTime, hebrewDate, date } = p;
+    dbRows.push([
+      crypto.randomUUID(), legacyId, employee.id, entryTime, exitTime, hebrewDate, date,
+      null, null, null, null, // pay fields - ignored on conflict (see updateColumns below), placeholder only
+      new Date(),
+    ]);
+  }
+
+  const result = await bulkUpsert({
+    label: 'Shift', table: 'Shift', conflictCol: 'legacyId',
+    columns: ['id', 'legacyId', 'employeeId', 'entryTime', 'exitTime', 'hebrewDate', 'date', 'totalMinutes', 'hourlyWageSnapshot', 'travelExpensesSnapshot', 'totalCalculated', 'updatedAt'],
+    updateColumns: ['entryTime', 'exitTime', 'hebrewDate', 'date', 'updatedAt'],
+    rows: dbRows,
+  });
+
+  return { accessCount: rows.length, toCreate, toUpdate, empUnresolved, ...result };
+}
+
+// ---------------------------------------------------------------------------
+// SystemSetting (הגדרות_ראשי)
+// ---------------------------------------------------------------------------
+// UNLIKE every other table here, SystemSetting.legacyId in PROD is NOT a
+// reliable cross-reference to Access's own קוד column. Investigated 2026-08-06:
+// migrate-db.js (the one-time SQLite -> Postgres migration, see its
+// `newSettings = settings.map(s => ({ ...s, legacyId: s.id, ... }))`) copied
+// the OLD SQLITE APP'S OWN AUTOINCREMENT id into legacyId - a value that
+// reflects row-creation order in a completely different, already-modernized
+// settings table, not Access's קוד. Confirmed empirically: PROD legacyId=13
+// is "max_items_per_order"/100, which is actually Access קוד=59, not קוד=13
+// (Access קוד=13 is "אחוז החזר"/50, a wholly unrelated setting that DOES
+// exist in PROD - just under legacyId=195). This is the same class of
+// synthetic-junk-legacyId problem already documented above for
+// OrderItem/Payment/PaymentObligation, just discovered independently here.
+// So: existing PROD<->Access rows are matched by CONTENT (category+
+// description+value), not by legacyId, and that matching was done by hand
+// (see git history / commit message for the full row-by-row audit of all 67
+// Access rows against PROD's 52). Of the 67:
+//  - 29 already exist in PROD under a different legacyId (or none), matched
+//    by content - left untouched.
+//  - 6 are genuine gaps with no PROD equivalent and no reason to think the
+//    concept was deliberately dropped (rental min/max days, max advance-
+//    booking distance, catalog size range/even-only) - these are the only
+//    ones this function inserts, via BACKFILL below.
+//  - 32 are old Access/desktop-app concepts confirmed superseded or removed
+//    (local backup path/schedule, LAN computer name, "close all users",
+//    plaintext master password, stale one-time skip-date range, a deliveries
+//    feature that was never rebuilt, per-menu-item ACLs replaced by named
+//    permission strings, report toggles for report sections that are now
+//    either hardcoded-on or don't exist) or are blank/junk rows in Access
+//    itself (קוד 57, 71) - never inserted.
+// Going forward, newly-inserted rows DO get legacyId = the real Access קוד
+// (so a future re-run of this tool is a safe no-op for them via the usual
+// ON CONFLICT (legacyId) DO NOTHING), guarded against colliding with one of
+// the pre-existing synthetic legacyIds already occupying that same number.
+const SYSTEM_SETTING_BACKFILL = [
+  { accessCode: 5, key: 'min_rental_days', name: 'מינימום ימי השכרה לשמלה', category: 'הזמנה', type: 'number' },
+  { accessCode: 6, key: 'max_rental_days', name: 'מקסימום ימי השכרה לשמלה', category: 'הזמנה', type: 'number' },
+  { accessCode: 7, key: 'max_order_days_ahead', name: 'מרחק ימים מרבי להזמנה מראש', category: 'הזמנה', type: 'number' },
+  { accessCode: 9, key: 'dress_size_min', name: 'מידה מינימלית במאגר השמלות', category: 'מאגר', type: 'number' },
+  { accessCode: 10, key: 'dress_size_max', name: 'מידה מקסימלית במאגר השמלות', category: 'מאגר', type: 'number' },
+  { accessCode: 11, key: 'dress_size_even_only', name: 'מידות זוגיות בלבד במאגר השמלות', category: 'מאגר', type: 'boolean' },
+];
+
+async function processSystemSettings() {
+  console.log('\n--- SystemSetting (הגדרות_ראשי) ---');
+  const rows = applyLimit(await accessQuery(`SELECT * FROM [הגדרות_ראשי]`));
+
+  const existing = await prisma.systemSetting.findMany({ select: { legacyId: true, key: true } });
+  const existingLegacyIds = new Set(existing.filter(r => r.legacyId != null).map(r => r.legacyId));
+  const existingKeys = new Set(existing.map(r => r.key));
+
+  const byCode = new Map(rows.map(r => [toInt(r['קוד']), r]));
+
+  let toCreate = 0, alreadyExists = 0, legacyIdCollisions = 0;
+  const dbRows = [];
+  for (const def of SYSTEM_SETTING_BACKFILL) {
+    const r = byCode.get(def.accessCode);
+    if (!r) continue; // Access row not present in this run's export - nothing to backfill from
+    if (existingKeys.has(def.key)) { alreadyExists++; continue; } // this tool already inserted it on a prior run
+
+    let legacyId = def.accessCode;
+    if (existingLegacyIds.has(legacyId)) {
+      // Guards against colliding with one of the pre-existing synthetic
+      // (SQLite-era) legacyIds described above - insert without a legacyId
+      // rather than corrupt/skip the row via the unique constraint.
+      legacyIdCollisions++;
+      legacyId = null;
+    }
+
+    const value = toStr(r['תוכן']);
+    const notes = toStr(r['הערות']);
+    toCreate++;
+    dbRows.push([
+      crypto.randomUUID(), legacyId, def.key, value, def.name, def.category, notes, def.type, new Date(),
+    ]);
+  }
+
+  console.log(`  Access rows: ${rows.length} | backfill candidates: ${SYSTEM_SETTING_BACKFILL.length} | will create: ${toCreate} | already inserted by a prior run: ${alreadyExists}` +
+    (legacyIdCollisions ? ` | legacyId collisions (inserted with legacyId=null instead): ${legacyIdCollisions}` : ''));
+
+  const result = await bulkUpsert({
+    label: 'SystemSetting', table: 'SystemSetting', conflictCol: 'legacyId',
+    columns: ['id', 'legacyId', 'key', 'value', 'name', 'category', 'notes', 'type', 'updatedAt'],
+    updateColumns: [], // INSERT-ONLY: never overwrite value/name/category on an existing row - see header docstring.
+    rows: dbRows,
+  });
+
+  return { accessCount: rows.length, toCreate, toUpdate: 0, alreadyExists, legacyIdCollisions, ...result };
+}
+
 async function getOrderCustomerMap(orderIdSet) {
   const orders = await prisma.order.findMany({
     where: { orderId: { in: Array.from(orderIdSet) } },
@@ -823,11 +1053,13 @@ async function main() {
   summary.dressItem = await processDressItems();
   summary.order = await processOrders();
   summary.subRecords = await processOrderSubRecords(summary.order.newOrderIds);
+  summary.shift = await processShifts();
+  summary.systemSetting = await processSystemSettings();
 
   console.log('\n' + '='.repeat(78));
   console.log(`SUMMARY  (mode: ${WRITE ? 'WRITE' : 'DRY RUN'})`);
   console.log('='.repeat(78));
-  for (const key of ['customer', 'employee', 'dressModel', 'dressItem', 'order']) {
+  for (const key of ['customer', 'employee', 'dressModel', 'dressItem', 'order', 'shift', 'systemSetting']) {
     const s = summary[key];
     console.log(`${key.padEnd(12)} access=${s.accessCount}  create=${s.toCreate}  update=${s.toUpdate}` +
       (s.written !== undefined ? `  written=${s.written}` : '') +
@@ -846,7 +1078,7 @@ async function main() {
   }
 
   // Print any per-row failures in full for investigation.
-  for (const key of ['customer', 'employee', 'dressModel', 'dressItem', 'order']) {
+  for (const key of ['customer', 'employee', 'dressModel', 'dressItem', 'order', 'shift', 'systemSetting']) {
     const s = summary[key];
     if (s.failed && s.failed.length) {
       console.log(`\n${key} failed rows:`);

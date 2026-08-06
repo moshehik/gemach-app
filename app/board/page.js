@@ -501,38 +501,36 @@ export default function BoardPage() {
         </div>
 
         <div className={styles.headerBottom}>
-          <div className={styles.searchWrapper}>
-            <div style={{ display: 'flex', gap: '1rem', width: '100%', alignItems: 'center', flexWrap: 'wrap' }}>
-              <div style={{ flexGrow: 1, minWidth: '300px' }}>
-                <AISearchBar data-element-name="רכיב_page_12" 
-                  placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onSearch={handleSearch}
-                  onClear={handleClearSearch}
-                  onAiSearch={handleAiSearch}
-                  onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-                  loading={aiLoading}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <button data-element-name="כפתור_page_13" 
-                  data-agy-id="global-search-button"
-                  onClick={handleGlobalSearch}
-                  className="btn-header-icon"
-                  title="חיפוש בכל החודשים (גלובלי)"
-                >
-                  <Search data-element-name="רכיב_page_14" size={20} />
-                </button>
-                <button data-element-name="כפתור_page_15" 
-                  data-agy-id="adv-search-button"
-                  onClick={() => setShowAdvSearch(true)}
-                  className="btn-header-icon"
-                  title="חיפוש מתקדם"
-                >
-                  <Filter data-element-name="רכיב_page_16" size={20} />
-                </button>
-              </div>
+          <div className={`${styles.searchWrapper} toolbar-row`} style={{ marginBottom: 0 }}>
+            <div style={{ flex: 1, minWidth: '300px' }}>
+              <AISearchBar data-element-name="רכיב_page_12"
+                placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                onSearch={handleSearch}
+                onClear={handleClearSearch}
+                onAiSearch={handleAiSearch}
+                onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+                loading={aiLoading}
+              />
+            </div>
+            <div className="icon-toolbar">
+              <button data-element-name="כפתור_page_13"
+                data-agy-id="global-search-button"
+                onClick={handleGlobalSearch}
+                className="icon-btn"
+                title="חיפוש בכל החודשים (גלובלי)"
+              >
+                <Search data-element-name="רכיב_page_14" size={20} />
+              </button>
+              <button data-element-name="כפתור_page_15"
+                data-agy-id="adv-search-button"
+                onClick={() => setShowAdvSearch(true)}
+                className="icon-btn"
+                title="חיפוש מתקדם"
+              >
+                <Filter data-element-name="רכיב_page_16" size={20} />
+              </button>
             </div>
           </div>
 

@@ -95,16 +95,14 @@ export async function POST(request) {
     const now = new Date();
     // Normalize date to start of day for the 'date' field
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
-    // Find if there is an active shift for today (entry but no exit)
+    // עובד שנכנס לפני חצות ועדיין לא יצא נשאר עם משמרת פתוחה מתוארכת ל"אתמול" -
+    // בדיקת "כבר נכנס" חייבת לחפש משמרת פתוחה בכל תאריך (לא רק היום), אחרת
+    // אחרי חצות הבדיקה לא מוצאת כלום והעובד יכול "להיכנס" שוב ולפתוח משמרת
+    // כפולה/חופפת בזמן שהראשונה נשארת פתוחה לצמיתות.
     let currentShift = await prisma.shift.findFirst({
       where: {
         employeeId: employee.id,
-        date: {
-          gte: todayStart,
-          lte: todayEnd
-        },
         exitTime: null
       },
       orderBy: { id: 'desc' }
@@ -129,18 +127,7 @@ export async function POST(request) {
 
     } else if (action === 'OUT') {
       if (!currentShift) {
-        // Look for the most recent shift without an exit time, even if from a previous day
-        currentShift = await prisma.shift.findFirst({
-           where: {
-             employeeId: employee.id,
-             exitTime: null
-           },
-           orderBy: { id: 'desc' }
-        });
-
-        if (!currentShift) {
-           return NextResponse.json({ error: 'No active shift found to punch out from' }, { status: 400 });
-        }
+        return NextResponse.json({ error: 'No active shift found to punch out from' }, { status: 400 });
       }
 
       const entryTime = new Date(currentShift.entryTime);

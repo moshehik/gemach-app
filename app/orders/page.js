@@ -326,111 +326,43 @@ export default function OrdersPage() {
   return (
     <main data-agy-id="orders_page_main_1" className="container animate-fade-in page-shell">
       <div className="page-scroll">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-        <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול הזמנות</h1>
-        
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          {/* Status Filter Banner */}
-          <div style={{ display: 'flex', gap: '0.5rem', background: '#f8fafc', padding: '0.4rem', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)', flexWrap: 'wrap' }}>
-            <button data-element-name="כפתור_page_1" data-agy-id="orders_page_button_2" onClick={() => { setFilterStatus('soon'); setPage(1); }} style={{ 
-              padding: '0.6rem 1rem', border: 'none', 
-              background: filterStatus === 'soon' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent', 
-              borderRadius: '8px', cursor: 'pointer', 
-              color: filterStatus === 'soon' ? '#fff' : '#64748b', 
-              display: 'flex', alignItems: 'center', gap: '0.5rem', 
-              fontSize: '0.9rem', fontWeight: filterStatus === 'soon' ? '600' : '500',
-              boxShadow: filterStatus === 'soon' ? '0 4px 10px rgba(245, 158, 11, 0.3)' : 'none',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-            }} title="בקרוב (החל מהיום ואילך)">
-              <CalendarDays data-element-name="רכיב_page_2" size={16} />
-              <span>בקרוב</span>
-            </button>
-            <button data-element-name="כפתור_page_3" data-agy-id="orders_page_button_3" onClick={() => { setFilterStatus('archive'); setPage(1); }} style={{ 
-              padding: '0.6rem 1rem', border: 'none', 
-              background: filterStatus === 'archive' ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)' : 'transparent', 
-              borderRadius: '8px', cursor: 'pointer', 
-              color: filterStatus === 'archive' ? '#fff' : '#64748b', 
-              display: 'flex', alignItems: 'center', gap: '0.5rem', 
-              fontSize: '0.9rem', fontWeight: filterStatus === 'archive' ? '600' : '500',
-              boxShadow: filterStatus === 'archive' ? '0 4px 10px rgba(139, 92, 246, 0.3)' : 'none',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-            }} title="ארכיון / עבר">
-              <Archive data-element-name="רכיב_page_4" size={16} />
-              <span>ארכיון/עבר</span>
-            </button>
-            <button data-element-name="כפתור_page_5" data-agy-id="orders_page_button_4" onClick={() => { setFilterStatus('deleted'); setPage(1); }} style={{ 
-              padding: '0.6rem 1rem', border: 'none', 
-              background: filterStatus === 'deleted' ? 'linear-gradient(135deg, #64748b, #475569)' : 'transparent', 
-              borderRadius: '8px', cursor: 'pointer', 
-              color: filterStatus === 'deleted' ? '#fff' : '#64748b', 
-              display: 'flex', alignItems: 'center', gap: '0.5rem', 
-              fontSize: '0.9rem', fontWeight: filterStatus === 'deleted' ? '600' : '500',
-              boxShadow: filterStatus === 'deleted' ? '0 4px 10px rgba(100, 116, 139, 0.3)' : 'none',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-            }} title="מחוקים">
-              <Trash2 data-element-name="רכיב_page_6" size={16} />
-              <span>מחוק</span>
-            </button>
-            <button data-element-name="כפתור_page_7" data-agy-id="orders_page_button_5" onClick={() => { setFilterStatus('unpaid'); setPage(1); }} style={{ 
-              padding: '0.6rem 1rem', border: 'none', 
-              background: filterStatus === 'unpaid' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'transparent', 
-              borderRadius: '8px', cursor: 'pointer', 
-              color: filterStatus === 'unpaid' ? '#fff' : '#64748b', 
-              display: 'flex', alignItems: 'center', gap: '0.5rem', 
-              fontSize: '0.9rem', fontWeight: filterStatus === 'unpaid' ? '600' : '500',
-              boxShadow: filterStatus === 'unpaid' ? '0 4px 10px rgba(239, 68, 68, 0.3)' : 'none',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-            }} title="לא שולם (חודשים אחרונים)">
-              <AlertCircle data-element-name="רכיב_page_8" size={16} />
-              <span>לא שולם</span>
-            </button>
-            <button data-element-name="כפתור_page_drafts" data-agy-id="orders_page_button_drafts" onClick={() => { setFilterStatus('drafts'); setPage(1); }} style={{ 
-              padding: '0.6rem 1rem', border: 'none', 
-              background: filterStatus === 'drafts' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent', 
-              borderRadius: '8px', cursor: 'pointer', 
-              color: filterStatus === 'drafts' ? '#fff' : '#64748b', 
-              display: 'flex', alignItems: 'center', gap: '0.5rem', 
-              fontSize: '0.9rem', fontWeight: filterStatus === 'drafts' ? '600' : '500',
-              boxShadow: filterStatus === 'drafts' ? '0 4px 10px rgba(16, 185, 129, 0.3)' : 'none',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-            }} title="טיוטות">
-              <Pencil data-element-name="רכיב_page_drafts_icon" size={16} />
-              <span>טיוטות</span>
-            </button>
-            <button data-element-name="כפתור_page_11" data-agy-id="orders_page_button_7" onClick={() => { setFilterStatus('all'); setPage(1); }} style={{ 
-              padding: '0.6rem 1rem', border: 'none', 
-              background: filterStatus === 'all' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'transparent', 
-              borderRadius: '8px', cursor: 'pointer', 
-              color: filterStatus === 'all' ? '#fff' : '#64748b', 
-              display: 'flex', alignItems: 'center', gap: '0.5rem', 
-              fontSize: '0.9rem', fontWeight: filterStatus === 'all' ? '600' : '500',
-              boxShadow: filterStatus === 'all' ? '0 4px 10px rgba(59, 130, 246, 0.3)' : 'none',
-              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-            }} title="הצג הכל">
-              <List data-element-name="רכיב_page_12" size={16} />
-              <span>הכל</span>
-            </button>
-          </div>
-          <div style={{ color: 'var(--text-muted)', fontSize: '1rem', fontWeight: '500' }}>סה"כ רשומות: {totalCount}</div>
+      <h1 style={{ margin: '0 0 1.25rem', color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול הזמנות</h1>
+
+      <div className="toolbar-row">
+        {/* Status Filter Banner */}
+        <div className="status-filters">
+          <button data-element-name="כפתור_page_1" data-agy-id="orders_page_button_2" onClick={() => { setFilterStatus('soon'); setPage(1); }} className={filterStatus === 'soon' ? 'status-filter active c-amber' : 'status-filter'} title="בקרוב (החל מהיום ואילך)">
+            <CalendarDays data-element-name="רכיב_page_2" size={16} />
+            <span>בקרוב</span>
+          </button>
+          <button data-element-name="כפתור_page_3" data-agy-id="orders_page_button_3" onClick={() => { setFilterStatus('archive'); setPage(1); }} className={filterStatus === 'archive' ? 'status-filter active c-purple' : 'status-filter'} title="ארכיון / עבר">
+            <Archive data-element-name="רכיב_page_4" size={16} />
+            <span>ארכיון/עבר</span>
+          </button>
+          <button data-element-name="כפתור_page_5" data-agy-id="orders_page_button_4" onClick={() => { setFilterStatus('deleted'); setPage(1); }} className={filterStatus === 'deleted' ? 'status-filter active c-gray' : 'status-filter'} title="מחוקים">
+            <Trash2 data-element-name="רכיב_page_6" size={16} />
+            <span>מחוק</span>
+          </button>
+          <button data-element-name="כפתור_page_7" data-agy-id="orders_page_button_5" onClick={() => { setFilterStatus('unpaid'); setPage(1); }} className={filterStatus === 'unpaid' ? 'status-filter active c-red' : 'status-filter'} title="לא שולם (חודשים אחרונים)">
+            <AlertCircle data-element-name="רכיב_page_8" size={16} />
+            <span>לא שולם</span>
+          </button>
+          <button data-element-name="כפתור_page_drafts" data-agy-id="orders_page_button_drafts" onClick={() => { setFilterStatus('drafts'); setPage(1); }} className={filterStatus === 'drafts' ? 'status-filter active c-green' : 'status-filter'} title="טיוטות">
+            <Pencil data-element-name="רכיב_page_drafts_icon" size={16} />
+            <span>טיוטות</span>
+          </button>
+          <button data-element-name="כפתור_page_11" data-agy-id="orders_page_button_7" onClick={() => { setFilterStatus('all'); setPage(1); }} className={filterStatus === 'all' ? 'status-filter active c-blue' : 'status-filter'} title="הצג הכל">
+            <List data-element-name="רכיב_page_12" size={16} />
+            <span>הכל</span>
+          </button>
         </div>
+        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: '500' }}>סה"כ רשומות: {totalCount}</div>
       </div>
-      
+
       {/* Search and Action Bar */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '2rem',
-        background: 'var(--card-bg)', 
-        padding: '0.75rem 1.5rem', 
-        borderRadius: '16px', 
-        boxShadow: 'var(--shadow-sm)',
-        gap: '1rem',
-        flexWrap: 'wrap',
-        border: '1px solid var(--border-color)'
-      }}>
+      <div className="toolbar-row" style={{ marginBottom: '2rem' }}>
         <div style={{ flex: '1', minWidth: '300px', maxWidth: '600px' }}>
-          <AISearchBar data-element-name="רכיב_page_22" 
+          <AISearchBar data-element-name="רכיב_page_22"
             placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
@@ -442,37 +374,39 @@ export default function OrdersPage() {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button data-element-name="כפתור_page_13" data-agy-id="orders_page_button_8" 
-             onClick={() => setShowAdvSearch(true)} 
-             className="btn-header-icon" 
+        <div className="icon-toolbar">
+          <button data-element-name="כפתור_page_13" data-agy-id="orders_page_button_8"
+             onClick={() => setShowAdvSearch(true)}
+             className="icon-btn"
              title="חיפוש מתקדם"
           >
-            <Filter data-element-name="רכיב_page_14" size={22} />
+            <Filter data-element-name="רכיב_page_14" size={19} />
           </button>
 
-          <button data-element-name="כפתור_page_15" data-agy-id="orders_page_button_9" 
-             onClick={() => setShowCapacitySearch(true)} 
-             className="btn-header-icon" 
+          <button data-element-name="כפתור_page_15" data-agy-id="orders_page_button_9"
+             onClick={() => setShowCapacitySearch(true)}
+             className="icon-btn"
              title="חיפוש תפוסה"
           >
-            <CalendarSearch data-element-name="רכיב_page_16" size={22} />
+            <CalendarSearch data-element-name="רכיב_page_16" size={19} />
           </button>
 
-          <button data-element-name="כפתור_page_17" 
-             onClick={() => setShowPrintWizard(true)} 
-             className="btn-header-icon" 
+          <button data-element-name="כפתור_page_17"
+             onClick={() => setShowPrintWizard(true)}
+             className="icon-btn"
              title="הדפסת דוחות"
           >
-            <Printer data-element-name="רכיב_page_18" size={22} />
+            <Printer data-element-name="רכיב_page_18" size={19} />
           </button>
 
-          <ExportButtons data-element-name="רכיב_page_19" 
+          <span className="icon-sep"></span>
+
+          <ExportButtons data-element-name="רכיב_page_19"
             data={orders.map(o => ({
               ...o,
               status: calculateOrderStatus(o)
-            }))} 
-            filename="הזמנות" 
+            }))}
+            filename="הזמנות"
             columns={[
               { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
               { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
@@ -485,12 +419,15 @@ export default function OrdersPage() {
             onFetchData={fetchOrdersForExport}
           />
 
-          <Link data-element-name="רכיב_page_20" 
-             href="/orders/new" 
-             className="btn-header-icon" 
+          <span className="icon-sep"></span>
+
+          <Link data-element-name="רכיב_page_20"
+             href="/orders/new"
+             className="icon-btn icon-btn-primary"
              title="הזמנה חדשה"
           >
-            <Plus data-element-name="רכיב_page_21" size={22} />
+            <Plus data-element-name="רכיב_page_21" size={17} />
+            <span>הזמנה חדשה</span>
           </Link>
         </div>
       </div>

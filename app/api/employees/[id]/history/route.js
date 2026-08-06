@@ -1,6 +1,7 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
+import { attachEmployeeNames } from '@/app/lib/auditLog';
 
 export async function GET(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -39,7 +40,9 @@ export async function GET(request, { params }) {
       take: 100 // Limit to recent 100 logs
     });
 
-    return NextResponse.json(history);
+    const historyWithNames = await attachEmployeeNames(history);
+
+    return NextResponse.json(historyWithNames);
   } catch (error) {
     console.error('Error fetching employee history:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });

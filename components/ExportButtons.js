@@ -234,7 +234,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
       <button 
         data-agy-id="export_open_modal_btn"
         onClick={() => setIsModalOpen(true)}
-        className={iconOnly ? "btn-header-icon" : "btn btn-primary"}
+        className={iconOnly ? "icon-btn" : "btn btn-primary"}
         title="מערכת הורדה ל-XL ודוחות"
         style={iconOnly 
           ? {}

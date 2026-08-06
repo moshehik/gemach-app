@@ -71,14 +71,13 @@ function DebtsTable({
   return (
     <>
       <div style={{ background: 'var(--card-bg)', padding: '1rem 1.5rem', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: '1', minWidth: '300px' }}>
-          <Search size={20} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+        <div className="search-box-modern" style={{ maxWidth: '420px' }}>
+          <Search size={18} />
           <input
             type="text"
             placeholder={searchPlaceholder}
             value={searchTerm}
             onChange={(e) => onSearchTermChange(e.target.value)}
-            style={{ width: '100%', padding: '0.8rem 2.8rem 0.8rem 1rem', borderRadius: '12px', border: '1px solid var(--element-border)', fontSize: '1rem' }}
           />
         </div>
         {selectedIds.size > 0 && (
@@ -582,92 +581,61 @@ export default function RefundsPage() {
       </div>
 
 
-      <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #e2e8f0', marginBottom: '2rem' }}>
+      <div className="status-filters" style={{ marginBottom: '2rem', gap: '1.75rem' }}>
         <button
           onClick={() => setActiveTab('refunds')}
-          style={{
-            padding: '1rem 2rem',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'refunds' ? '3px solid var(--primary-color)' : '3px solid transparent',
-            color: activeTab === 'refunds' ? 'var(--primary-color)' : '#64748b',
-            fontWeight: activeTab === 'refunds' ? 'bold' : 'normal',
-            fontSize: '1.1rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            transition: 'all 0.2s'
-          }}
+          className={activeTab === 'refunds' ? 'status-filter active' : 'status-filter'}
+          style={activeTab === 'refunds' ? { color: 'var(--primary-color)', fontSize: '1.05rem' } : { fontSize: '1.05rem' }}
         >
-          <Coins size={20} />
-          זיכויים
+          <Coins size={18} />
+          <span>זיכויים</span>
         </button>
         <button
           onClick={() => setActiveTab('debts')}
-          style={{
-            padding: '1rem 2rem',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'debts' ? '3px solid #e11d48' : '3px solid transparent',
-            color: activeTab === 'debts' ? '#e11d48' : '#64748b',
-            fontWeight: activeTab === 'debts' ? 'bold' : 'normal',
-            fontSize: '1.1rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            transition: 'all 0.2s'
-          }}
+          className={activeTab === 'debts' ? 'status-filter active' : 'status-filter'}
+          style={activeTab === 'debts' ? { color: '#e11d48', fontSize: '1.05rem' } : { fontSize: '1.05rem' }}
         >
-          <AlertCircle size={20} />
-          חובות פתוחים
+          <AlertCircle size={18} />
+          <span>חובות פתוחים</span>
         </button>
         <button
           onClick={() => setActiveTab('approved')}
-          style={{
-            padding: '1rem 2rem',
-            background: 'none',
-            border: 'none',
-            borderBottom: activeTab === 'approved' ? '3px solid #d97706' : '3px solid transparent',
-            color: activeTab === 'approved' ? '#d97706' : '#64748b',
-            fontWeight: activeTab === 'approved' ? 'bold' : 'normal',
-            fontSize: '1.1rem',
-            cursor: 'pointer',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            transition: 'all 0.2s'
-          }}
+          className={activeTab === 'approved' ? 'status-filter active' : 'status-filter'}
+          style={activeTab === 'approved' ? { color: '#d97706', fontSize: '1.05rem' } : { fontSize: '1.05rem' }}
         >
-          <ShieldCheck size={20} />
-          הזמנות מאושרות ללא תשלום מלא
+          <ShieldCheck size={18} />
+          <span>הזמנות מאושרות ללא תשלום מלא</span>
         </button>
       </div>
 
       {activeTab === 'refunds' ? (
         <>
-      <div style={{ background: 'var(--card-bg)', padding: '0.75rem 1.5rem', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center', border: '1px solid var(--border-color)' }}>
-        <div style={{ position: 'relative', flex: '1', minWidth: '300px' }}>
-          <Search data-element-name="רכיב_page_4" size={20} style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+      <div className="toolbar-row" style={{ marginBottom: '2rem' }}>
+        <div className="search-box-modern">
+          <Search data-element-name="רכיב_page_4" size={18} />
           <input data-element-name="שדה_page_5" data-agy-id="refunds_search_input"
             type="text"
             placeholder="חיפוש לפי שם לקוח, טלפון, הזמנה או סכום..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            style={{ width: '100%', padding: '0.8rem 2.8rem 0.8rem 1rem', borderRadius: '12px', border: '1px solid var(--element-border)', fontSize: '1rem' }}
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', background: '#f1f5f9', padding: '0.4rem', borderRadius: '12px' }}>
-            <button data-element-name="כפתור_page_6" data-agy-id="filter_all" onClick={() => setFilterStatus('all')} style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', border: filterStatus === 'all' ? 'none' : '1px solid transparent', background: filterStatus === 'all' ? 'linear-gradient(135deg, #4f46e5, #7c3aed)' : 'transparent', color: filterStatus === 'all' ? 'white' : '#64748b', fontWeight: filterStatus === 'all' ? '600' : '500', cursor: 'pointer', boxShadow: filterStatus === 'all' ? '0 4px 12px rgba(99, 102, 241, 0.3)' : 'none', transition: 'all 0.3s ease', transform: filterStatus === 'all' ? 'translateY(-1px)' : 'none' }}>הכל</button>
-            <button data-element-name="כפתור_page_7" data-agy-id="filter_pending" onClick={() => setFilterStatus('pending')} style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', border: filterStatus === 'pending' ? 'none' : '1px solid transparent', background: filterStatus === 'pending' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent', color: filterStatus === 'pending' ? 'white' : '#64748b', fontWeight: filterStatus === 'pending' ? '600' : '500', cursor: 'pointer', boxShadow: filterStatus === 'pending' ? '0 4px 12px rgba(245, 158, 11, 0.3)' : 'none', transition: 'all 0.3s ease', transform: filterStatus === 'pending' ? 'translateY(-1px)' : 'none' }}>ממתינים</button>
-            <button data-element-name="כפתור_page_8" data-agy-id="filter_executed" onClick={() => setFilterStatus('executed')} style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', border: filterStatus === 'executed' ? 'none' : '1px solid transparent', background: filterStatus === 'executed' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent', color: filterStatus === 'executed' ? 'white' : '#64748b', fontWeight: filterStatus === 'executed' ? '600' : '500', cursor: 'pointer', boxShadow: filterStatus === 'executed' ? '0 4px 12px rgba(16, 185, 129, 0.3)' : 'none', transition: 'all 0.3s ease', transform: filterStatus === 'executed' ? 'translateY(-1px)' : 'none' }}>בוצעו</button>
-          </div>
+        <div className="status-filters">
+          <button data-element-name="כפתור_page_6" data-agy-id="filter_all" onClick={() => setFilterStatus('all')} className={filterStatus === 'all' ? 'status-filter active c-blue' : 'status-filter'}>
+            <span>הכל</span>
+          </button>
+          <button data-element-name="כפתור_page_7" data-agy-id="filter_pending" onClick={() => setFilterStatus('pending')} className={filterStatus === 'pending' ? 'status-filter active c-amber' : 'status-filter'}>
+            <span>ממתינים</span>
+          </button>
+          <button data-element-name="כפתור_page_8" data-agy-id="filter_executed" onClick={() => setFilterStatus('executed')} className={filterStatus === 'executed' ? 'status-filter active c-green' : 'status-filter'}>
+            <span>בוצעו</span>
+          </button>
+        </div>
 
-          <button data-element-name="כפתור_page_2" data-agy-id="refunds_export_btn" onClick={exportToCSV} className="btn-header-icon" title="ייצוא לאקסל">
-            <Download data-element-name="רכיב_page_3" size={20} />
+        <div className="icon-toolbar">
+          <button data-element-name="כפתור_page_2" data-agy-id="refunds_export_btn" onClick={exportToCSV} className="icon-btn" title="ייצוא לאקסל">
+            <Download data-element-name="רכיב_page_3" size={19} />
           </button>
         </div>
       </div>

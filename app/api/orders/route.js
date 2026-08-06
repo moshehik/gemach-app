@@ -44,6 +44,13 @@ export async function GET(request) {
     const archiveAndPastOnly = searchParams.get('archiveAndPastOnly') === 'true';
     const filterStatus = searchParams.get('filterStatus') || 'all';
 
+    // מיון ברירת המחדל של טאב ההשכרות: היום → מחר → קדימה עד חלון של כמה ימים,
+    // ואז ממשיך אחורה בעבר (מהאירוע האחרון שהיה ועד הישן ביותר). אירועים עתידיים
+    // שרחוקים מהחלון מוסתרים לגמרי (בכל מצבי הסינון), כי הטאב הזה תפעולי (לקיחה/
+    // החזרה בפועל) ולא ארכיון תכנוני. נשלח רק כשאין חיפוש/סינון מתקדם פעיל (ר' buildRentalsListParams).
+    const isSmartRentalsSort = forRentals && sort === 'eventDateSmart';
+    const RENTALS_SMART_SORT_WINDOW_DAYS = 10;
+
     // 'unpaid' / 'unpaid_all' / 'unpaid_approved' all share the same JS-memory debt
     // calculation below (totalAmount vs. payments can't be filtered in SQL directly).
     // 'unpaid_approved' additionally requires that at least one item was actually
@@ -56,6 +63,9 @@ export async function GET(request) {
 
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    const smartSortCutoff = new Date(today);
+    smartSortCutoff.setDate(smartSortCutoff.getDate() + RENTALS_SMART_SORT_WINDOW_DAYS);
 
     const itemStatuses = [];
     if (pendingOnly) {
@@ -93,6 +103,12 @@ export async function GET(request) {
       } : {}),
       ...(archiveAndPastOnly ? {
         eventDate: { lt: today }
+      } : {}),
+      ...(isSmartRentalsSort ? {
+        OR: [
+          { eventDate: null },
+          { eventDate: { lte: smartSortCutoff } }
+        ]
       } : {}),
       ...(search ? {
         OR: [
@@ -201,15 +217,37 @@ export async function GET(request) {
 
       finalTotalCount = minimalFormatted.length;
       finalOrderIds = minimalFormatted.slice(skip, skip + limit).map(o => o.orderId);
+    } else if (isSmartRentalsSort) {
+      const minimalOrders = await prisma.order.findMany({
+        where,
+        select: { orderId: true, eventDate: true }
+      });
+
+      const todayTime = today.getTime();
+      const upcoming = [];
+      const past = [];
+      const noDate = [];
+      minimalOrders.forEach(o => {
+        if (o.eventDate == null) { noDate.push(o); return; }
+        const eventTime = new Date(o.eventDate).setHours(0, 0, 0, 0);
+        (eventTime >= todayTime ? upcoming : past).push(o);
+      });
+      // קרוב-לרחוק קדימה (היום ראשון), ואז אחורה בעבר (האחרון שהיה ראשון, הישן ביותר אחרון)
+      upcoming.sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate));
+      past.sort((a, b) => new Date(b.eventDate) - new Date(a.eventDate));
+
+      const orderedIds = [...upcoming, ...past, ...noDate].map(o => o.orderId);
+      finalTotalCount = orderedIds.length;
+      finalOrderIds = orderedIds.slice(skip, skip + limit);
     }
 
-    const fullOrdersWhere = isUnpaidQuery
+    const fullOrdersWhere = (isUnpaidQuery || isSmartRentalsSort)
       ? { orderId: { in: finalOrderIds } }
       : where;
 
     // Fetch orders and (for non-unpaid path) count in parallel instead of sequentially
     let orders, totalCountNonUnpaid;
-    if (isUnpaidQuery) {
+    if (isUnpaidQuery || isSmartRentalsSort) {
       orders = await prisma.order.findMany({
         where: fullOrdersWhere,
         select: {
@@ -328,7 +366,7 @@ export async function GET(request) {
           }
         }
       },
-        orderBy: (sort === 'eventDate' ? { eventDate: { sort: order, nulls: 'last' } } :
+        orderBy: (sort === 'eventDate' || sort === 'eventDateSmart' ? { eventDate: { sort: order, nulls: 'last' } } :
           (sort === 'customerName' ? { customer: { firstName: order } } : { [sort]: order })),
         skip, take: limit
         }),
@@ -337,9 +375,9 @@ export async function GET(request) {
       finalTotalCount = totalCountNonUnpaid;
     }
 
-    // Restore the correct sort order for unpaid since the IN clause doesn't guarantee order
+    // Restore the correct sort order for unpaid/smart-rentals since the IN clause doesn't guarantee order
     let sortedOrders = orders;
-    if (isUnpaidQuery) {
+    if (isUnpaidQuery || isSmartRentalsSort) {
       const orderIdIndexMap = new Map(finalOrderIds.map((id, index) => [id, index]));
       sortedOrders = orders.sort((a, b) => orderIdIndexMap.get(a.orderId) - orderIdIndexMap.get(b.orderId));
     }

@@ -10,7 +10,7 @@ import StatisticsModal from '../components/StatisticsModal';
 import { useLabels } from '@/app/components/LabelsContext';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import OrderModelSelector from '../../components/orders/OrderModelSelector';
-import { List, ShoppingBag, Clock, CheckCircle, RotateCcw } from 'lucide-react';
+import { List, ShoppingBag, Clock, CheckCircle, RotateCcw, SlidersHorizontal } from 'lucide-react';
 import useDebounce from '@/hooks/useDebounce';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildRentalsListParams, defaultRentalsAdvFilters } from '@/app/lib/prefetchRoutes';
@@ -48,14 +48,16 @@ export default function RentalsPage() {
   const [aiQueryUsed, setAiQueryUsed] = useState('');
   const [isAiModeActive, setIsAiModeActive] = useState(false);
 
-  const [sort, setSort] = useState('orderId');
+  // ברירת המחדל 'eventDateSmart' היא מיון מיוחד (לא עמודה אמיתית בטבלה): היום →
+  // מחר → עד כשבוע וחצי קדימה, ואז אחורה בעבר. לחיצה על כותרת עמודה (כולל "תאריך
+  // אירוע" עצמה) עוברת למיון עמודה רגיל, ר' handleSort.
+  const [sort, setSort] = useState('eventDateSmart');
   const [order, setOrder] = useState('desc');
 
-  // Pagination ("load more") - matches the PAGE_SIZE + hasMore + loadMore convention
-  // already used in app/orders/page.js and app/refunds/page.js.
+  // עימוד אמיתי (מעבר עמודים) - כמו ב-app/orders/page.js, לא "טען עוד".
   const [page, setPage] = useState(1);
-  const [hasMore, setHasMore] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
 
   const handleSort = (column) => {
     if (sort === column) {
@@ -67,6 +69,9 @@ export default function RentalsPage() {
   };
 
   const SortIcon = ({ column }) => {
+    // 'eventDateSmart' (ברירת המחדל) מוצג ככיוון "עולה" על עמודת תאריך האירוע,
+    // גם שאין ל-sort ערך 'eventDate' ממש - כדי שהעמודה לא תיראה לא-ממוינת.
+    if (sort === 'eventDateSmart' && column === 'eventDate') return <span style={{ marginRight: '4px' }}>↑</span>;
     if (sort !== column) return <span style={{ opacity: 0.3, marginRight: '4px' }}>↕</span>;
     return <span style={{ marginRight: '4px' }}>{order === 'asc' ? '↑' : '↓'}</span>;
   };
@@ -83,8 +88,8 @@ export default function RentalsPage() {
     }
   }, []);
 
-  const fetchOrders = async (targetPage = 1, { append = false } = {}) => {
-    if (append) setLoadingMore(true); else setLoading(true);
+  const fetchOrders = async (targetPage = 1) => {
+    setLoading(true);
     try {
       const queryParams = buildRentalsListParams({
         page: targetPage, limit: PAGE_SIZE, search: debouncedSearch, sort, order, viewMode, advFilters
@@ -92,12 +97,13 @@ export default function RentalsPage() {
 
       const cacheKey = queryParams.toString();
 
-      // SWR: הצגה מיידית מהמטמון; טעינת "טען עוד" מדלגת כדי לא לשכפל שורות.
-      if (!append && rentalsCache.has(cacheKey)) {
+      // SWR: הצגה מיידית מהמטמון, ואז רענון שקט מהשרת.
+      if (rentalsCache.has(cacheKey)) {
         const cached = rentalsCache.get(cacheKey);
         setOrders(cached.data || []);
         setPage(targetPage);
-        setHasMore(targetPage < (cached.totalPages || 1));
+        setTotalPages(cached.totalPages || 1);
+        setTotalCount(cached.total || 0);
         setLoading(false);
       }
 
@@ -106,21 +112,21 @@ export default function RentalsPage() {
 
       const res = await fetch(`/api/orders?${queryParams.toString()}`, { cache: 'no-store' });
       const data = await res.json();
-      if (!append) rentalsCache.set(cacheKey, data);
-      const rows = data.data || [];
-      setOrders(prev => append ? [...prev, ...rows] : rows);
+      rentalsCache.set(cacheKey, data);
+      setOrders(data.data || []);
       setPage(targetPage);
-      setHasMore(targetPage < (data.totalPages || 1));
+      setTotalPages(data.totalPages || 1);
+      setTotalCount(data.total || 0);
     } catch (err) {
       console.error(err);
     } finally {
-      if (append) setLoadingMore(false); else setLoading(false);
+      setLoading(false);
     }
   };
 
-  const loadMoreOrders = () => {
-    if (loadingMore || !hasMore) return;
-    fetchOrders(page + 1, { append: true });
+  const goToPage = (p) => {
+    if (p < 1 || p > totalPages || p === page) return;
+    fetchOrders(p);
   };
 
   useEffect(() => {
@@ -140,6 +146,9 @@ export default function RentalsPage() {
       const result = await res.json();
       if (res.ok) {
         setOrders(result.data || []);
+        setTotalCount(result.data?.length || 0);
+        setTotalPages(1);
+        setPage(1);
         setIsAiModeActive(true);
         setAiQueryUsed(result.query || '');
       } else {
@@ -202,72 +211,27 @@ export default function RentalsPage() {
   return (
     <main data-agy-id="rentals-page-main" className="container rentals-page page-shell">
       <div className="page-scroll">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+      <div className="toolbar-row">
         <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>ניהול השכרות והחזרות</h1>
 
-        <div style={{ display: 'flex', gap: '0.5rem', background: '#f8fafc', padding: '0.4rem', borderRadius: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)', flexWrap: 'wrap' }}>
-          <button data-element-name="כפתור_page_1" data-agy-id="rentals_page_button_1" onClick={() => setViewMode('all')} style={{ 
-            padding: '0.6rem 1rem', border: 'none', 
-            background: viewMode === 'all' ? 'linear-gradient(135deg, #3b82f6, #2563eb)' : 'transparent', 
-            borderRadius: '8px', cursor: 'pointer', 
-            color: viewMode === 'all' ? '#fff' : '#64748b', 
-            display: 'flex', alignItems: 'center', gap: '0.5rem', 
-            fontSize: '0.9rem', fontWeight: viewMode === 'all' ? '600' : '500',
-            boxShadow: viewMode === 'all' ? '0 4px 10px rgba(59, 130, 246, 0.3)' : 'none',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-          }} title="הצג הכל">
+        <div className="status-filters">
+          <button data-element-name="כפתור_page_1" data-agy-id="rentals_page_button_1" onClick={() => setViewMode('all')} className={viewMode === 'all' ? 'status-filter active c-blue' : 'status-filter'} title="הצג הכל">
             <List size={16} /> <span>הכל</span>
           </button>
-          
-          <button data-element-name="כפתור_page_2" data-agy-id="rentals_page_button_2" onClick={() => setViewMode('rented')} style={{ 
-            padding: '0.6rem 1rem', border: 'none', 
-            background: viewMode === 'rented' ? 'linear-gradient(135deg, #10b981, #059669)' : 'transparent', 
-            borderRadius: '8px', cursor: 'pointer', 
-            color: viewMode === 'rented' ? '#fff' : '#64748b', 
-            display: 'flex', alignItems: 'center', gap: '0.5rem', 
-            fontSize: '0.9rem', fontWeight: viewMode === 'rented' ? '600' : '500',
-            boxShadow: viewMode === 'rented' ? '0 4px 10px rgba(16, 185, 129, 0.3)' : 'none',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-          }} title="הושכר">
+
+          <button data-element-name="כפתור_page_2" data-agy-id="rentals_page_button_2" onClick={() => setViewMode('rented')} className={viewMode === 'rented' ? 'status-filter active c-amber' : 'status-filter'} title="הושכר">
             <ShoppingBag size={16} /> <span>הושכר</span>
           </button>
 
-          <button data-element-name="כפתור_page_3" data-agy-id="rentals_page_button_3" onClick={() => setViewMode('rented_partial')} style={{ 
-            padding: '0.6rem 1rem', border: 'none', 
-            background: viewMode === 'rented_partial' ? 'linear-gradient(135deg, #f59e0b, #d97706)' : 'transparent', 
-            borderRadius: '8px', cursor: 'pointer', 
-            color: viewMode === 'rented_partial' ? '#fff' : '#64748b', 
-            display: 'flex', alignItems: 'center', gap: '0.5rem', 
-            fontSize: '0.9rem', fontWeight: viewMode === 'rented_partial' ? '600' : '500',
-            boxShadow: viewMode === 'rented_partial' ? '0 4px 10px rgba(245, 158, 11, 0.3)' : 'none',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-          }} title="הושכר חלקי">
+          <button data-element-name="כפתור_page_3" data-agy-id="rentals_page_button_3" onClick={() => setViewMode('rented_partial')} className={viewMode === 'rented_partial' ? 'status-filter active c-purple' : 'status-filter'} title="הושכר חלקי">
             <Clock size={16} /> <span>הושכר חלקי</span>
           </button>
 
-          <button data-element-name="כפתור_page_4" data-agy-id="rentals_page_button_4" onClick={() => setViewMode('returned')} style={{ 
-            padding: '0.6rem 1rem', border: 'none', 
-            background: viewMode === 'returned' ? 'linear-gradient(135deg, #8b5cf6, #6d28d9)' : 'transparent', 
-            borderRadius: '8px', cursor: 'pointer', 
-            color: viewMode === 'returned' ? '#fff' : '#64748b', 
-            display: 'flex', alignItems: 'center', gap: '0.5rem', 
-            fontSize: '0.9rem', fontWeight: viewMode === 'returned' ? '600' : '500',
-            boxShadow: viewMode === 'returned' ? '0 4px 10px rgba(139, 92, 246, 0.3)' : 'none',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-          }} title="הוחזר">
+          <button data-element-name="כפתור_page_4" data-agy-id="rentals_page_button_4" onClick={() => setViewMode('returned')} className={viewMode === 'returned' ? 'status-filter active c-green' : 'status-filter'} title="הוחזר">
             <CheckCircle size={16} /> <span>הוחזר</span>
           </button>
 
-          <button data-element-name="כפתור_page_5" data-agy-id="rentals_page_button_5" onClick={() => setViewMode('returned_partial')} style={{ 
-            padding: '0.6rem 1rem', border: 'none', 
-            background: viewMode === 'returned_partial' ? 'linear-gradient(135deg, #ef4444, #dc2626)' : 'transparent', 
-            borderRadius: '8px', cursor: 'pointer', 
-            color: viewMode === 'returned_partial' ? '#fff' : '#64748b', 
-            display: 'flex', alignItems: 'center', gap: '0.5rem', 
-            fontSize: '0.9rem', fontWeight: viewMode === 'returned_partial' ? '600' : '500',
-            boxShadow: viewMode === 'returned_partial' ? '0 4px 10px rgba(239, 68, 68, 0.3)' : 'none',
-            transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)' 
-          }} title="הוחזר חלקי">
+          <button data-element-name="כפתור_page_5" data-agy-id="rentals_page_button_5" onClick={() => setViewMode('returned_partial')} className={viewMode === 'returned_partial' ? 'status-filter active c-teal' : 'status-filter'} title="הוחזר חלקי">
             <RotateCcw size={16} /> <span>הוחזר חלקי</span>
           </button>
         </div>
@@ -328,63 +292,49 @@ export default function RentalsPage() {
         </div>
       )}
 
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '2rem',
-        background: 'var(--card-bg)',
-        padding: '0.75rem 1.5rem',
-        borderRadius: '16px',
-        boxShadow: 'var(--shadow-sm)',
-        gap: '1rem',
-        flexWrap: 'wrap',
-        border: '1px solid var(--border-color)'
-      }}>
-        {/* Center/Left side: Search & Actions */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flex: 1, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, maxWidth: '400px', minWidth: '250px' }}>
-            <AISearchBar data-element-name="רכיב_page_14" 
-              placeholder="חיפוש חופשי (הזמנה, לקוח, דגם)..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onSearch={(e) => { e.preventDefault(); if(isAiModeActive) setIsAiModeActive(false); }}
-              onClear={handleClearSearch}
-              onAiSearch={handleAiSearch}
-              onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-              loading={aiLoading}
-            />
-          </div>
-          <button data-element-name="כפתור_page_15" 
+      <div className="toolbar-row">
+        <div style={{ flex: 1, maxWidth: '400px', minWidth: '250px' }}>
+          <AISearchBar data-element-name="רכיב_page_14"
+            placeholder="חיפוש חופשי (הזמנה, לקוח, דגם)..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onSearch={(e) => { e.preventDefault(); if(isAiModeActive) setIsAiModeActive(false); }}
+            onClear={handleClearSearch}
+            onAiSearch={handleAiSearch}
+            onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+            loading={aiLoading}
+          />
+        </div>
+
+        <div className="icon-toolbar">
+          <button data-element-name="כפתור_page_15"
             data-agy-id="adv-search-button"
             onClick={() => setShowAdvSearch(true)}
-            className="btn-header-icon"
+            className="icon-btn"
             title="חיפוש מתקדם"
           >
-            🔍
+            <SlidersHorizontal size={19} />
           </button>
-          
-          <div style={{ width: '1px', height: '30px', background: 'var(--divider)', margin: '0 0.25rem' }}></div>
-          
-          <div style={{ flexShrink: 0 }}>
-            <ExportButtons data-element-name="רכיב_page_16" 
-              data={orders.map(o => ({
-                ...o,
-                status: calculateOrderStatus(o),
-                eventDateFormatted: o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : 'לא צוין'),
-                itemsSummary: o.items ? o.items.filter(i => !i.isDeleted).map(i => `${i.description} (${i.barcode || 'ללא ברקוד'})`).join(' | ') : ''
-              }))} 
-              filename="השכרות" 
-              columns={[
-                { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
-                { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
-                { key: 'eventDateFormatted', label: getLabel('order_eventDate', 'תאריך אירוע') },
-                { key: 'status', label: getLabel('order_status', 'סטטוס') },
-                { key: 'itemsSummary', label: 'פריטים' }
-              ]} 
-              iconOnly={true}
-            />
-          </div>
+
+          <span className="icon-sep"></span>
+
+          <ExportButtons data-element-name="רכיב_page_16"
+            data={orders.map(o => ({
+              ...o,
+              status: calculateOrderStatus(o),
+              eventDateFormatted: o.eventDateHebrew || (o.eventDate ? getHebrewDateString(o.eventDate) : 'לא צוין'),
+              itemsSummary: o.items ? o.items.filter(i => !i.isDeleted).map(i => `${i.description} (${i.barcode || 'ללא ברקוד'})`).join(' | ') : ''
+            }))}
+            filename="השכרות"
+            columns={[
+              { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
+              { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
+              { key: 'eventDateFormatted', label: getLabel('order_eventDate', 'תאריך אירוע') },
+              { key: 'status', label: getLabel('order_status', 'סטטוס') },
+              { key: 'itemsSummary', label: 'פריטים' }
+            ]}
+            iconOnly={true}
+          />
         </div>
       </div>
 
@@ -516,31 +466,28 @@ export default function RentalsPage() {
           })}
           </table>
         </div>
-        {!loading && hasMore && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '1.25rem' }}>
-            <button
-              onClick={loadMoreOrders}
-              disabled={loadingMore}
-              style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', border: '1px solid var(--element-border)', background: 'var(--card-bg)', color: 'var(--primary-color)', fontWeight: '600', cursor: loadingMore ? 'default' : 'pointer' }}
-            >
-              {loadingMore ? 'טוען...' : 'טען עוד'}
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* סיכום הרשומות — מוצמד תמיד לתחתית המסך */}
+      {/* סיכום הרשומות ועימוד — מוצמד תמיד לתחתית המסך */}
       <div className="page-footer-bar">
-        <div className="page-footer-summary" style={{ width: '100%', textAlign: 'center' }}>
-          סה"כ שורות מוצגות: {loading ? '...' : orders.length}
-        </div>
+        <div className="page-footer-summary">סה"כ רשומות: {loading ? '...' : totalCount}</div>
+
+        {totalPages > 1 && (
+          <div className="page-footer-pager">
+            <button data-element-name="כפתור_rentals_page_prev" className="btn btn-outline" disabled={page <= 1} onClick={() => goToPage(page - 1)} style={{ padding: '0.5rem 1rem' }}>&lt; הקודם</button>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              עמוד <input data-element-name="שדה_rentals_page_number" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) goToPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages}
+            </span>
+            <button data-element-name="כפתור_rentals_page_next" className="btn btn-outline" disabled={page >= totalPages} onClick={() => goToPage(page + 1)} style={{ padding: '0.5rem 1rem' }}>הבא &gt;</button>
+          </div>
+        )}
       </div>
 
       {selectedOrderId && (
         <RentalReturnModal data-element-name="רכיב_page_19"
           orderId={selectedOrderId}
           onClose={() => setSelectedOrderId(null)}
-          onUpdate={() => fetchOrders(1)}
+          onUpdate={() => fetchOrders(page)}
         />
       )}
 

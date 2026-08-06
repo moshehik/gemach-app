@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 
@@ -12,6 +13,10 @@ export async function GET(request) {
     const showOnlyPending = searchParams.get('showOnlyPending') === 'true'; // false means show all
     const hideNoAlterations = searchParams.get('hideNoAlterations') === 'true'; // Relevant for print wizard "רשימת הזמנות ללא תיקונים"
     const showAllOrders = searchParams.get('showAllOrders') === 'true'; // Show all orders regardless of alterations
+    // The management screen (/alterations) only cares about items that still
+    // need work before pickup - once the dress was taken or returned the
+    // alteration is no longer actionable. Print reports don't send this flag.
+    const hideTakenReturned = searchParams.get('hideTakenReturned') === 'true';
     const search = searchParams.get('search') || '';
     const page = searchParams.get('page') ? parseInt(searchParams.get('page')) : null;
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')) : 60;
@@ -23,27 +28,32 @@ export async function GET(request) {
       ? orderIdsParam.split(',').map(id => parseInt(id, 10)).filter(id => !isNaN(id))
       : null;
 
-    // Base query for OrderItem
-    const whereClause = {
-      isDeleted: false,
-      order: {
-        isDeleted: false
-      }
-    };
+    // Single joined query instead of Prisma's nested-select (which issues 5
+    // sequential round-trips - OrderItem, Order, Customer, DressItem,
+    // DressModel - each paying ~100-300ms of latency to Neon). The filter
+    // logic below mirrors the previous Prisma whereClause exactly.
+    const conditions = [
+      Prisma.sql`oi."isDeleted" = false`,
+      Prisma.sql`o."isDeleted" = false`
+    ];
 
     if (orderIds) {
-      whereClause.order.orderId = { in: orderIds };
+      if (orderIds.length === 0) {
+        // in: [] matches nothing
+        conditions.push(Prisma.sql`false`);
+      } else {
+        conditions.push(Prisma.sql`o."orderId" IN (${Prisma.join(orderIds)})`);
+      }
     } else if (startDate || endDate) {
-      whereClause.order.eventDate = {};
       if (startDate) {
         // In legacy, it searched events > (date - 1), which means from the start of the date.
-        whereClause.order.eventDate.gte = new Date(startDate);
+        conditions.push(Prisma.sql`o."eventDate" >= ${new Date(startDate)}`);
       }
       if (endDate) {
         // Until the end of the date
         const end = new Date(endDate);
         end.setHours(23, 59, 59, 999);
-        whereClause.order.eventDate.lte = end;
+        conditions.push(Prisma.sql`o."eventDate" <= ${end}`);
       }
     }
 
@@ -52,71 +62,89 @@ export async function GET(request) {
     } else if (hideNoAlterations) {
         // hideNoAlterations == true means we want to see orders WITHOUT alterations.
         // Legacy: AND IIf([תיקון_אורך]>0 Or [תיקון_צוואר] Or [תיקון_שרוול],-1,0)=0
-        whereClause.AND = [
-            { OR: [{ neckAlteration: 0 }, { neckAlteration: null }] },
-            // Legacy migration left some length values as '' / literal 'null' - treat those as "no alteration" too
-            { OR: [{ lengthAlteration: null }, { lengthAlteration: { in: ["", "null", "0"] } }] },
-            { OR: [{ sleeveAlteration: 0 }, { sleeveAlteration: null }] }
-        ];
+        // Legacy migration left some length values as '' / literal 'null' - treat those as "no alteration" too
+        conditions.push(Prisma.sql`(oi."neckAlteration" = 0 OR oi."neckAlteration" IS NULL)`);
+        conditions.push(Prisma.sql`(oi."lengthAlteration" IS NULL OR oi."lengthAlteration" IN ('', 'null', '0'))`);
+        conditions.push(Prisma.sql`(oi."sleeveAlteration" = 0 OR oi."sleeveAlteration" IS NULL)`);
     } else {
-        // Show only items that HAVE alterations
-        whereClause.OR = [
-            { neckAlteration: { gt: 0 } },
-            // notIn with values also excludes NULLs; filters out legacy '' / 'null' / '0' junk
-            { lengthAlteration: { notIn: ["", "null", "0"] } },
-            { sleeveAlteration: { gt: 0 } }
-        ];
-        
+        // Show only items that HAVE alterations; length must be non-NULL and
+        // not legacy '' / 'null' / '0' junk (matches Prisma notIn semantics)
+        conditions.push(Prisma.sql`(
+            oi."neckAlteration" > 0
+            OR (oi."lengthAlteration" IS NOT NULL AND oi."lengthAlteration" NOT IN ('', 'null', '0'))
+            OR oi."sleeveAlteration" > 0
+        )`);
         if (showOnlyPending) {
-            whereClause.alterationDone = false;
+            conditions.push(Prisma.sql`oi."alterationDone" = false`);
         }
     }
 
-    const items = await prisma.orderItem.findMany({
-      where: whereClause,
-      select: {
-        id: true,
-        description: true,
-        quantity: true,
-        sizeText: true,
-        size: true,
-        barcodePrefix: true,
-        neckAlteration: true,
-        lengthAlteration: true,
-        sleeveAlteration: true,
-        alterationDetails: true,
-        alterationDone: true,
-        order: {
-          select: {
-            orderId: true,
-            eventDate: true,
-            eventDateHebrew: true,
-            notes: true,
-            customer: {
-              select: {
-                firstName: true,
-                lastName: true,
-                phone1: true,
-                city: true
-              }
-            }
-          }
-        },
-        dressItem: {
-          select: {
-            sizeText: true,
-            serialNumber: true,
-            dressBarcode: true,
-            dress: {
-              select: {
-                name: true,
-                barcodePrefix: true
-              }
-            }
-          }
-        }
-      }
-    });
+    if (hideTakenReturned) {
+      conditions.push(Prisma.sql`oi."isTaken" = false`);
+      conditions.push(Prisma.sql`oi."isReturned" = false`);
+    }
+
+    const whereSql = conditions.reduce((acc, c) => Prisma.sql`${acc} AND ${c}`);
+
+    const rows = await prisma.$queryRaw`
+      SELECT
+        oi."id", oi."description", oi."quantity", oi."sizeText", oi."size",
+        oi."barcodePrefix", oi."neckAlteration", oi."lengthAlteration",
+        oi."sleeveAlteration", oi."alterationDetails", oi."alterationDone",
+        o."orderId" AS "o_orderId", o."eventDate" AS "o_eventDate",
+        o."eventDateHebrew" AS "o_eventDateHebrew", o."notes" AS "o_notes",
+        (c."id" IS NOT NULL) AS "has_customer",
+        c."firstName" AS "c_firstName", c."lastName" AS "c_lastName",
+        c."phone1" AS "c_phone1", c."city" AS "c_city",
+        (di."id" IS NOT NULL) AS "has_dressItem",
+        di."sizeText" AS "di_sizeText", di."serialNumber" AS "di_serialNumber",
+        di."dressBarcode" AS "di_dressBarcode",
+        (dm."id" IS NOT NULL) AS "has_dress",
+        dm."name" AS "dm_name", dm."barcodePrefix" AS "dm_barcodePrefix"
+      FROM "OrderItem" oi
+      JOIN "Order" o ON o."orderId" = oi."orderId"
+      LEFT JOIN "Customer" c ON c."id" = o."customerId"
+      LEFT JOIN "DressItem" di ON di."id" = oi."dressItemId"
+      LEFT JOIN "DressModel" dm ON dm."id" = di."dressModelId"
+      WHERE ${whereSql}
+    `;
+
+    // Reassemble the exact nested shape the old Prisma select produced -
+    // app/print/alterations/page.js and the orders list consume it as-is.
+    const items = rows.map(r => ({
+      id: r.id,
+      description: r.description,
+      quantity: r.quantity,
+      sizeText: r.sizeText,
+      size: r.size,
+      barcodePrefix: r.barcodePrefix,
+      neckAlteration: r.neckAlteration,
+      lengthAlteration: r.lengthAlteration,
+      sleeveAlteration: r.sleeveAlteration,
+      alterationDetails: r.alterationDetails,
+      alterationDone: r.alterationDone,
+      order: {
+        orderId: r.o_orderId,
+        eventDate: r.o_eventDate,
+        eventDateHebrew: r.o_eventDateHebrew,
+        notes: r.o_notes,
+        customer: r.has_customer ? {
+          firstName: r.c_firstName,
+          lastName: r.c_lastName,
+          phone1: r.c_phone1,
+          city: r.c_city
+        } : null
+      },
+      dressItem: r.has_dressItem ? {
+        sizeText: r.di_sizeText,
+        serialNumber: r.di_serialNumber,
+        dressBarcode: r.di_dressBarcode,
+        dress: r.has_dress ? {
+          name: r.dm_name,
+          barcodePrefix: r.dm_barcodePrefix
+        } : null
+      } : null
+    }));
 
     // Like the legacy Access reports, resolve the dress-model name through the
     // item's barcode prefix (join to שמלות_דגמים) even when no physical

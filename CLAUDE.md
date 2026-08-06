@@ -57,6 +57,13 @@ Core entities and relations:
 ### ID display rule (from AGENTS.md)
 When referencing entities (Orders, Customers, Dress Models, etc.) in code, UI, or communication with the user, always use the human-readable short ID (`orderId`, `legacyId`, `barcodePrefix`), never the internal UUID `id` — except where a route genuinely requires the UUID (e.g. `/customers/[id]` uses the UUID; `/orders/[id]` uses the numeric `orderId`).
 
+## System emails
+All outbound email (password resets, manager-sent messages, order/rental reports, bug
+reports, internal-message alerts) goes through a shared Google Apps Script mailer and a
+shared HTML template in [lib/emailTemplates.js](lib/emailTemplates.js). See
+[EMAILS.md](EMAILS.md) for the full list of send sites, attachment filenames, and how to
+add a new templated email.
+
 ## Backups
 Neon's built-in point-in-time restore (7-day window) is the first line of defense but never leaves Neon. [scripts/backup_prod_db.js](scripts/backup_prod_db.js) adds a second, independent layer — a nightly compressed logical SQL dump written to `backups/` (gitignored), scheduled via a Windows Task Scheduler job (`GemachApp-ProdDbBackup`, daily 03:30). See [BACKUPS.md](BACKUPS.md) for what each layer covers, retention/rotation, the restore command, and how to verify the nightly job actually ran.
 

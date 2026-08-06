@@ -92,7 +92,7 @@ export default function ModernCustomerHistoryTab({ customerId }) {
                 <div style={{ minWidth: 0, flex: 1 }}>
                   <span className="moc-action-tag" style={{ background: tone.bg, color: tone.color }}>{actionLabel}</span>
                   <strong style={{ fontSize: '0.92rem' }}>
-                    {log.employeeId ? `משתמש מערכת (קוד ${log.employeeId})` : 'מערכת'} ביצע/ה {actionLabel}
+                    {log.employeeId ? (log.employeeName || 'עובד שנמחק') : 'מערכת'} ביצע/ה {actionLabel}
                   </strong>
                   <div className="moc-meta">
                     {d.toLocaleDateString('he-IL')} ({getHebrewDateString(d)}) · {d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}

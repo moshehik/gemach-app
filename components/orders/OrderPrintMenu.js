@@ -117,7 +117,7 @@ export default function OrderPrintMenu({
       // client-side html-to-image+jsPDF rasterization - the emailed attachment now has
       // real, selectable text and correct pagination instead of a single embedded image.
       const { fetchPdfBase64 } = await import('@/app/lib/pdfClient');
-      const pdfBase64 = await fetchPdfBase64({ html: htmlData.html, filename: `order_${order.orderId}` });
+      const pdfBase64 = await fetchPdfBase64({ html: htmlData.html, filename: `הזמנה ${order.orderId}` });
 
       const res = await fetch(`/api/orders/${order.orderId}/email`, {
         method: 'POST',

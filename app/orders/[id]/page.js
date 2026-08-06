@@ -580,6 +580,18 @@ export default function OrderDetailsPage({ params }) {
   const createdDate = order.orderDate || order.createdAt;
 
   const handleExit = async (destinationHref) => {
+    // צפייה בלבד — אין שום שינוי לשמור, ולכן יוצאים מיד בלי PUT לשרת (שמריץ חישוב
+    // תמחור מלא, כותב ל-AuditLog ומקפיץ updatedAt על כל יציאה). בקרת החוב ביציאה
+    // רלוונטית רק כשנוצר/השתנה חוב בכרטיס הזה, וזה תמיד עובר דרך שמירה (handleSave
+    // כבר דורש שם אישור מנהל כשהחוב השתנה מאז הפתיחה) או דרך מסלול השמירה שלמטה.
+    if (!hasUnsavedChanges) {
+      if (destinationHref) {
+        router.push(destinationHref);
+      } else {
+        router.back();
+      }
+      return;
+    }
     if (hasUnsavedChanges) {
       const choice = await window.customThreeWayConfirm(
         'ישנם שינויים שלא נשמרו בהזמנה! האם ברצונך לשמור אותם לפני היציאה?',
@@ -669,6 +681,24 @@ export default function OrderDetailsPage({ params }) {
       }
 
       setSaving(false);
+
+      // התראת מידע בלבד (לא חוסמת) - יתרת זכות סימטרית ל"יתרת חוב", אבל בלי שום דבר
+      // לאשר: בקשת הזיכוי האוטומטית כבר נוצרה/עודכנה בצד השרת (syncPendingCreditRefund
+      // רץ בתוך ה-PUT שזה עתה הצליח) - כאן רק מוודאים שהעובד רואה שמגיע ללקוח זיכוי.
+      try {
+        const updatedOrder = await res.clone().json();
+        const freshPaid = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+        const freshRequired = (updatedOrder.totalAmount && updatedOrder.totalAmount > 0)
+          ? updatedOrder.totalAmount
+          : (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
+        const creditNow = Math.round((freshPaid - freshRequired) * 100) / 100;
+        if (creditNow > 0) {
+          alert(`שים לב: ללקוח מגיע זיכוי של ₪${creditNow.toLocaleString('he-IL')} עבור הזמנה זו.\nבקשת זיכוי ממתינה נרשמה אוטומטית בטאב "זיכויים".`);
+        }
+      } catch (e) {
+        console.error('Failed to check credit balance on exit', e);
+      }
+
       if (destinationHref) {
         router.push(destinationHref);
       } else {

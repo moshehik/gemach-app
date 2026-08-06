@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import ExportButtons from '../../components/ExportButtons';
 import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, SlidersHorizontal } from 'lucide-react';
 
 import { useLabels } from '@/app/components/LabelsContext';
 import { cacheNamespace } from '@/app/lib/pageCache';
@@ -201,22 +201,16 @@ export default function CustomersPage() {
       </div>
       
       {/* Search and Filters */}
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '2rem',
-        background: 'var(--card-bg)', 
-        padding: '0.75rem 1.5rem', 
-        borderRadius: '16px', 
+      <div className="toolbar-row" style={{
+        background: 'var(--card-bg)',
+        padding: '0.75rem 1.5rem',
+        borderRadius: '16px',
         boxShadow: 'var(--shadow-sm)',
-        gap: '1rem',
-        flexWrap: 'wrap',
         border: '1px solid var(--border-color)'
       }}>
         <div style={{ flex: '1', minWidth: '300px', maxWidth: '600px', display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <div style={{ flex: 1 }}>
-            <AISearchBar data-element-name="רכיב_page_1" 
+            <AISearchBar data-element-name="רכיב_page_1"
               placeholder="חיפוש לקוח (שם, טלפון, עיר)..."
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
@@ -228,20 +222,22 @@ export default function CustomersPage() {
             />
           </div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-          <button data-element-name="כפתור_page_2" 
+
+        <div className="icon-toolbar">
+          <button data-element-name="כפתור_page_2"
             data-agy-id="advanced_search_btn"
             onClick={() => setShowAdvSearch(true)}
-            className="btn-header-icon"
+            className="icon-btn"
             title="חיפוש מתקדם"
           >
-            🔍
+            <SlidersHorizontal data-element-name="רכיב_page_2_icon" size={18} />
           </button>
-          
-          <ExportButtons data-element-name="רכיב_page_5" 
-            data={customers} 
-            filename="לקוחות" 
+
+          <span className="icon-sep" />
+
+          <ExportButtons data-element-name="רכיב_page_5"
+            data={customers}
+            filename="לקוחות"
             columns={[
               { key: 'id', label: 'קוד לקוח' },
               { key: 'firstName', label: getLabel('customer_firstName', 'שם פרטי') },
@@ -249,18 +245,19 @@ export default function CustomersPage() {
               { key: 'phone1', label: getLabel('customer_phone1', 'טלפון') },
               { key: 'city', label: getLabel('customer_city', 'עיר') },
               { key: 'email', label: getLabel('customer_email', 'דוא"ל') }
-            ]} 
+            ]}
             onFetchData={fetchCustomersForExport}
             iconOnly={true}
           />
 
-          <button data-element-name="כפתור_page_3" 
+          <button data-element-name="כפתור_page_3"
             data-agy-id="new_customer_btn"
-            onClick={() => router.push('/customers/new')} 
-            className="btn-header-icon"
+            onClick={() => router.push('/customers/new')}
+            className="icon-btn icon-btn-primary"
             title="לקוח חדש"
           >
-            <UserPlus data-element-name="רכיב_page_4" size={20} />
+            <UserPlus data-element-name="רכיב_page_4" size={18} />
+            <span>לקוח חדש</span>
           </button>
         </div>
       </div>

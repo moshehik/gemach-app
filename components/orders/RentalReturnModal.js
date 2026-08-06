@@ -9,6 +9,7 @@ import { addHistory } from '../../lib/historyManager';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import OrderPrintMenu from './OrderPrintMenu';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
+import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
 
 export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const { getLabel } = useLabels();
@@ -464,6 +465,67 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     return { text: 'ממתין', tone: 'neutral' };
   };
 
+  // תצוגת ערך בהיסטוריית הפריט: תאריכים תמיד בלוח עברי בלבד (ללא תאריך לועזי),
+  // בוליאנים ככן/לא, ושאר הערכים כפי שהם.
+  const formatHistoryValue = (val) => {
+    if (val === null || val === undefined || val === '') return '-';
+    if (typeof val === 'boolean') return val ? 'כן' : 'לא';
+    if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(val)) {
+      const d = new Date(val);
+      if (!isNaN(d.getTime())) {
+        const time = d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        return `${getHebrewDateString(d)} ${time}`;
+      }
+    }
+    if (typeof val === 'object') return JSON.stringify(val);
+    return String(val);
+  };
+
+  // הופך את ה-changesJson הגולמי (JSON טכני עם שמות שדות באנגלית) לשורת "צ'יפים"
+  // קריאה בעברית: שם שדה מתורגם + ערך ישן (מחוק) → ערך חדש.
+  const renderHistoryChanges = (changesJson) => {
+    let changes;
+    try {
+      changes = typeof changesJson === 'string' ? JSON.parse(changesJson) : changesJson;
+    } catch (e) {
+      return <div className="text-xs text-slate-400 font-mono break-words" dir="ltr">{String(changesJson)}</div>;
+    }
+    if (!changes || typeof changes !== 'object') return null;
+
+    const keys = Object.keys(changes).filter(key => {
+      const c = changes[key];
+      if (c && typeof c === 'object' && ('from' in c || 'to' in c)) {
+        return String(c.from) !== String(c.to);
+      }
+      return c !== null && c !== undefined && c !== '';
+    });
+    if (keys.length === 0) return <div className="text-xs text-slate-400 italic">אין שינויים מהותיים</div>;
+
+    return (
+      <div className="flex flex-wrap gap-1.5">
+        {keys.map(key => {
+          const label = FIELD_TRANSLATIONS[key] || key;
+          const c = changes[key];
+          const isDiff = c && typeof c === 'object' && ('from' in c || 'to' in c);
+          const hasFrom = isDiff && c.from !== null && c.from !== undefined && c.from !== '';
+          return (
+            <span key={key} className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-full px-2.5 py-1 text-xs">
+              <span className="font-semibold text-slate-500">{label}:</span>
+              {isDiff ? (
+                <>
+                  {hasFrom && <span className="line-through text-red-500">{formatHistoryValue(c.from)}</span>}
+                  <span className="text-emerald-600 font-semibold">{formatHistoryValue(c.to)}</span>
+                </>
+              ) : (
+                <span className="text-slate-700 font-semibold">{formatHistoryValue(c)}</span>
+              )}
+            </span>
+          );
+        })}
+      </div>
+    );
+  };
+
   // Rendering
   const modalContent = (
     <div className="modal-overlay" onDoubleClick={attemptCloseCard} style={{ direction: 'rtl', zIndex: 1100, background: 'rgba(15, 23, 42, 0.25)', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
@@ -593,7 +655,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                         <div className="rrm-item-title">
                           {item.description}
                           <span className={`rrm-badge ${status.tone}`}>{status.text}</span>
-                          {enableAlterations && item.repairs && (
+                          {enableAlterations && (item.alterationDetails || item.repairs) && (
                             <span className="rrm-repairs-icon" title="יש תיקונים - לחצו על פרטים לצפייה" onClick={() => showItemDetails(item)}>
                               <Scissors size={14} />
                             </span>
@@ -625,13 +687,9 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                         <div className="rrm-item-sub">
                           {getLabel('item_size', 'מידה')}: {item.sizeText || '-'}
                           {item.barcode && <> · {getLabel('item_barcode', 'ברקוד')}: <span className="rrm-mono">{item.barcode}</span></>}
+                          {item.isTaken && <> · <strong>לקיחה:</strong> {item.takenDate ? getHebrewDateString(item.takenDate) : 'לא ידוע'}</>}
+                          {item.isReturned && <> · <strong>הוחזר:</strong> {item.returnDate ? getHebrewDateString(item.returnDate) : 'לא ידוע'}</>}
                         </div>
-                        {(item.isTaken || item.isReturned) && (
-                          <div className="rrm-item-dates">
-                            {item.isTaken && <div><strong>לקיחה:</strong> {item.takenDate ? getHebrewDateString(item.takenDate) : 'לא ידוע'}</div>}
-                            {item.isReturned && <div><strong>הוחזר:</strong> {item.returnDate ? getHebrewDateString(item.returnDate) : 'לא ידוע'}</div>}
-                          </div>
-                        )}
                       </div>
 
                       <div className="rrm-action-bar">
@@ -835,10 +893,6 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         }
         .rrm-item-sub { font-size: 0.85rem; color: var(--text-muted); }
         .rrm-mono { font-family: monospace; font-weight: 600; color: var(--text-main); }
-        .rrm-item-dates {
-          font-size: 0.82rem; color: var(--text-muted); display: flex; gap: 16px; flex-wrap: wrap;
-          background: var(--element-bg, #f5f5f5); padding: 8px 10px; border-radius: 6px; margin-top: 8px;
-        }
 
         .rrm-action-bar { display: flex; align-items: center; }
         .rrm-hint-text { font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
@@ -915,7 +969,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="text-xs text-slate-500 mb-1">תאריך אירוע</div>
-                  <div className="font-semibold text-slate-700">{selectedOrder?.eventDate ? `${new Date(selectedOrder.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(selectedOrder.eventDate)})` : '-'}</div>
+                  <div className="font-semibold text-slate-700">{selectedOrder?.eventDate ? getHebrewDateString(selectedOrder.eventDate) : '-'}</div>
                 </div>
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
                   <div className="text-xs text-slate-500 mb-1">תאריך לקיחה</div>
@@ -932,7 +986,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                 {enableAlterations && (
                   <div className="col-span-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
                     <div className="text-xs text-slate-500 mb-1">מחרוזת תיקונים</div>
-                    <div className="font-semibold text-slate-700">{itemDetails.item.repairs || '-'}</div>
+                    <div className="font-semibold text-slate-700">{itemDetails.item.alterationDetails || itemDetails.item.repairs || '-'}</div>
                   </div>
                 )}
               </div>
@@ -944,13 +998,11 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                 ) : (
                   itemDetails.history && itemDetails.history.map(log => (
                     <div key={log.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="font-semibold text-blue-600 bg-blue-100 px-2 py-0.5 rounded text-xs">{log.action}</span>
-                        <span className="text-slate-500 text-xs">{new Date(log.createdAt).toLocaleString('he-IL')}</span>
+                      <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
+                        <span className="font-semibold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full text-xs">{ACTION_TRANSLATIONS[log.action] || log.action}</span>
+                        <span className="text-slate-500 text-xs">{getHebrewDateString(log.createdAt)} {new Date(log.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
-                      <div className="text-slate-600 break-words font-mono text-xs bg-white p-2 rounded border border-slate-100" dir="ltr" style={{ textAlign: 'left' }}>
-                        {log.changesJson}
-                      </div>
+                      {renderHistoryChanges(log.changesJson)}
                     </div>
                   ))
                 )}

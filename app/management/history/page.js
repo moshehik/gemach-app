@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { Zap, FileText, Globe, Search } from 'lucide-react';
 
 export default function HistoryPage() {
   const [logs, setLogs] = useState([]);
@@ -207,87 +208,52 @@ export default function HistoryPage() {
       )}
 
       {/* Filter Mode Tabs */}
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '1.25rem' }}>
-        <button
-          onClick={() => { setFilterType('api'); setPage(1); }}
-          style={{
-            padding: '0.6rem 1.25rem',
-            borderRadius: '20px',
-            border: filterType === 'api' ? '2px solid #4f46e5' : '1px solid #cbd5e1',
-            background: filterType === 'api' ? '#4f46e5' : '#f8fafc',
-            color: filterType === 'api' ? 'white' : '#475569',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          ⚡ שאילתות API בלבד
-        </button>
-        <button
-          onClick={() => { setFilterType('pages'); setPage(1); }}
-          style={{
-            padding: '0.6rem 1.25rem',
-            borderRadius: '20px',
-            border: filterType === 'pages' ? '2px solid #4f46e5' : '1px solid #cbd5e1',
-            background: filterType === 'pages' ? '#4f46e5' : '#f8fafc',
-            color: filterType === 'pages' ? 'white' : '#475569',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          📄 ביקורי מסכים בלבד
-        </button>
-        <button
-          onClick={() => { setFilterType(''); setPage(1); }}
-          style={{
-            padding: '0.6rem 1.25rem',
-            borderRadius: '20px',
-            border: filterType === '' ? '2px solid #4f46e5' : '1px solid #cbd5e1',
-            background: filterType === '' ? '#4f46e5' : '#f8fafc',
-            color: filterType === '' ? 'white' : '#475569',
-            fontWeight: 'bold',
-            cursor: 'pointer',
-            fontSize: '0.9rem',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px'
-          }}
-        >
-          🌐 הכל
-        </button>
+      <div className="toolbar-row">
+        <div className="status-filters">
+          <button
+            onClick={() => { setFilterType('api'); setPage(1); }}
+            className={filterType === 'api' ? 'status-filter active c-purple' : 'status-filter'}
+          >
+            <Zap size={16} />
+            <span>שאילתות API בלבד</span>
+          </button>
+          <button
+            onClick={() => { setFilterType('pages'); setPage(1); }}
+            className={filterType === 'pages' ? 'status-filter active c-teal' : 'status-filter'}
+          >
+            <FileText size={16} />
+            <span>ביקורי מסכים בלבד</span>
+          </button>
+          <button
+            onClick={() => { setFilterType(''); setPage(1); }}
+            className={filterType === '' ? 'status-filter active c-blue' : 'status-filter'}
+          >
+            <Globe size={16} />
+            <span>הכל</span>
+          </button>
+        </div>
       </div>
 
       {/* Filters and Search */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', flex: 1, minWidth: '300px' }}>
-          <input data-element-name="שדה_page_1" 
-            type="text" 
-            placeholder="חיפוש נתיב, שאילתת API או שגיאה..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            style={{ 
-              flex: 1, 
-              padding: '0.5rem 1rem', 
-              borderRadius: '24px', 
-              border: '1px solid #ddd',
-              outline: 'none',
-            }}
-          />
+      <div className="toolbar-row" style={{ marginBottom: '1.5rem', justifyContent: 'space-between' }}>
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flex: 1, minWidth: '300px' }}>
+          <div className="search-box-modern">
+            <Search size={16} />
+            <input data-element-name="שדה_page_1"
+              type="text"
+              placeholder="חיפוש נתיב, שאילתת API או שגיאה..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </div>
           <button data-element-name="כפתור_page_2" type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0.5rem 1.5rem' }}>
             חיפוש
           </button>
         </form>
 
         <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-          <select data-element-name="בחירה_page_3" 
-            value={employeeId} 
+          <select data-element-name="בחירה_page_3"
+            value={employeeId}
             onChange={(e) => { setEmployeeId(e.target.value); setPage(1); }}
             style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid #ddd' }}
           >

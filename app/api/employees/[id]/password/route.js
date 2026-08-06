@@ -44,7 +44,7 @@ export async function POST(request, { params }) {
     // Right after a forgot-password/reset temp password is issued, mustResetPassword is
     // true and the employee is forced to set a real password before doing anything else.
     // They just proved knowledge of the temp credential to establish THIS session (either
-    // the full temp password, or its last 4 digits on a trusted device), so re-asking for
+    // the full temp password, or its last 4 characters on a trusted device), so re-asking for
     // the old password a second time here is skipped in that one case. Any other password
     // change (the normal self-service flow) still requires it.
     const skipOldPasswordCheck = employee.mustResetPassword && !oldPassword;

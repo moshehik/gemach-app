@@ -84,6 +84,9 @@ export function buildAlterationsListUrl({
   if (startDate) url += `&startDate=${startDate}`;
   if (endDate) url += `&endDate=${endDate}`;
   if (search) url += `&search=${search}`;
+  // מסך הניהול מציג רק תיקונים לפריטים שטרם נלקחו/הוחזרו — דוחות הדפסה
+  // (PrintWizard / print/alterations) לא עוברים דרך הבונה הזה ולא מסננים.
+  url += '&hideTakenReturned=true';
   return url;
 }
 
@@ -122,15 +125,22 @@ export function defaultRentalsAdvFilters() {
 }
 
 export function buildRentalsListParams({
-  page = 1, limit = 50, search = '', sort = 'orderId', order = 'desc',
+  page = 1, limit = 50, search = '', sort = 'eventDateSmart', order = 'desc',
   viewMode = 'all', advFilters = defaultRentalsAdvFilters()
 } = {}) {
   const hasAdvFilters = Object.values(advFilters).some(v => v !== '');
 
+  // מיון ברירת המחדל החכם (היום → מחר → עד כשבוע וחצי קדימה, ואז אחורה בעבר)
+  // תקף רק בתצוגה הנקייה — חיפוש/סינון מתקדם חוזרים למיון תאריך אירוע רגיל,
+  // כדי שתוצאות חיפוש לא ייחתכו על ידי חלון הימים קדימה של המיון החכם.
+  const smartSortBlocked = sort === 'eventDateSmart' && (!!search || hasAdvFilters);
+  const effectiveSort = smartSortBlocked ? 'eventDate' : sort;
+  const effectiveOrder = smartSortBlocked ? 'desc' : order;
+
   const queryParams = new URLSearchParams({
     search,
-    sort,
-    order,
+    sort: effectiveSort,
+    order: effectiveOrder,
     page: String(page),
     limit: String(limit),
     forRentals: 'true'

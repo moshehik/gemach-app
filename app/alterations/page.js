@@ -201,7 +201,7 @@ export default function AlterationsPage() {
   const fetchForExport = async (exportLimit) => {
     try {
       const showOnlyPending = filterStatus === 'pending';
-      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=1&limit=${exportLimit}`;
+      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=1&limit=${exportLimit}&hideTakenReturned=true`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
       if (search) url += `&search=${search}`;
@@ -237,7 +237,7 @@ export default function AlterationsPage() {
       // unfiltered "current" print can otherwise match tens of thousands of
       // OrderItem rows, and passing that many orderIds in a query string would
       // blow past any sane URL length limit.
-      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=1&limit=2000`;
+      let url = `/api/alterations?showOnlyPending=${showOnlyPending}&page=1&limit=2000&hideTakenReturned=true`;
       if (startDate) url += `&startDate=${startDate}`;
       if (endDate) url += `&endDate=${endDate}`;
       if (search) url += `&search=${search}`;
@@ -261,15 +261,15 @@ export default function AlterationsPage() {
           ניהול תפירות ותיקונים
         </h1>
 
-        <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px' }}>
-          <button data-element-name="כפתור_page_2" data-agy-id="alterations_page_button_1" onClick={() => { setFilterStatus('all'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? 'var(--primary-color)' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
-            <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
+        <div className="status-filters">
+          <button data-element-name="כפתור_page_2" data-agy-id="alterations_page_button_1" onClick={() => { setFilterStatus('all'); }} className={`status-filter c-blue${filterStatus === 'all' ? ' active' : ''}`} title="הצג הכל">
+            הכל
           </button>
-          <button data-element-name="כפתור_page_3" data-agy-id="alterations_page_button_2" onClick={() => { setFilterStatus('pending'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'pending' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'pending' ? '#ef6c00' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="ממתינים">
-            <span style={{ fontWeight: filterStatus === 'pending' ? 'bold' : 'normal' }}>ממתינים</span>
+          <button data-element-name="כפתור_page_3" data-agy-id="alterations_page_button_2" onClick={() => { setFilterStatus('pending'); }} className={`status-filter c-amber${filterStatus === 'pending' ? ' active' : ''}`} title="ממתינים">
+            ממתינים
           </button>
-          <button data-element-name="כפתור_page_4" data-agy-id="alterations_page_button_3" onClick={() => { setFilterStatus('done'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'done' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'done' ? '#2e7d32' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="בוצע">
-            <span style={{ fontWeight: filterStatus === 'done' ? 'bold' : 'normal' }}>בוצע</span>
+          <button data-element-name="כפתור_page_4" data-agy-id="alterations_page_button_3" onClick={() => { setFilterStatus('done'); }} className={`status-filter c-green${filterStatus === 'done' ? ' active' : ''}`} title="בוצע">
+            בוצע
           </button>
         </div>
       </div>
@@ -317,29 +317,20 @@ export default function AlterationsPage() {
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+          <div className="icon-toolbar">
             <button
               data-element-name="כפתור_page_7"
               data-agy-id="mark-all-done-button"
               onClick={markAllDone}
               disabled={!startDate}
-              style={{
-                padding: '0.5rem 1rem', fontSize: '0.9rem', borderRadius: '10px',
-                display: 'flex', alignItems: 'center', gap: '6px', fontWeight: 'bold',
-                background: !startDate ? 'var(--element-bg)' : 'linear-gradient(135deg, #10b981, #059669)',
-                color: !startDate ? 'var(--text-muted)' : 'white',
-                border: !startDate ? '1px solid var(--element-border)' : 'none',
-                boxShadow: !startDate ? 'none' : '0 4px 10px rgba(16, 185, 129, 0.3)',
-                cursor: !startDate ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s', height: '40px'
-              }}
+              className="icon-btn icon-btn-primary"
             >
               <CheckCircle data-element-name="רכיב_page_8" size={16} /> סמן יום כבוצע
             </button>
-            
-            <div style={{ width: '1px', height: '30px', background: 'var(--border-color)', margin: '0 0.5rem' }}></div>
 
-            <ExportButtons data-element-name="רכיב_page_2" 
+            <span className="icon-sep"></span>
+
+            <ExportButtons data-element-name="רכיב_page_2"
               data={items.map(item => ({
                 ...item,
                 orderId: item.order?.orderId,
@@ -362,18 +353,18 @@ export default function AlterationsPage() {
               iconOnly={true}
               onFetchData={fetchForExport}
             />
-            <button data-element-name="כפתור_page_3" 
+            <button data-element-name="כפתור_page_3"
               data-agy-id="print-wizard-button"
               onClick={() => setIsPrintWizardOpen(true)}
-              className="btn-header-icon"
+              className="icon-btn"
               title="אשף הדפסה"
             >
               <Printer data-element-name="רכיב_page_4" size={20} />
             </button>
-            <button data-element-name="כפתור_page_5" 
+            <button data-element-name="כפתור_page_5"
               data-agy-id="legend-button"
               onClick={() => setIsLegendOpen(true)}
-              className="btn-header-icon"
+              className="icon-btn"
               title="מקרא"
             >
               <Info data-element-name="רכיב_page_6" size={20} />

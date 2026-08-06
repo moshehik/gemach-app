@@ -53,7 +53,7 @@ export default function AccessImportPage() {
           ומה בודקים אחרי כל הרצה.
         </p>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.75rem' }}>
-          עודכן לאחרונה: 05.08.2026 · המקור הטכני: <Code>scripts/import_from_access.js</Code> (התיעוד המלא בהערת הכותרת של הקובץ)
+          עודכן לאחרונה: 06.08.2026 · המקור הטכני: <Code>scripts/import_from_access.js</Code> (התיעוד המלא בהערת הכותרת של הקובץ)
         </p>
       </div>
 
@@ -157,11 +157,17 @@ export default function AccessImportPage() {
               <Td><Code>orderId</Code> ↔ קוד_הזמנה</Td>
               <Td>יצירה + עדכון (גם כותרות של הזמנות קיימות)</Td>
             </Tr>
-            <Tr last>
+            <Tr>
               <Td bold>פריטי הזמנה / תשלומים / חיובים<br />(OrderItem / Payment / PaymentObligation)</Td>
               <Td>הזמנות_פרטים / הזמנות_תשלום_ביצוע / הזמנות_תשלום</Td>
               <Td><Code>legacyId</Code> ↔ קוד_פריט / קוד</Td>
               <Td><strong>הכנסה בלבד, ורק להזמנות חדשות</strong> (ר&apos; מגבלה ידועה למטה)</Td>
+            </Tr>
+            <Tr last>
+              <Td bold>נוכחות עובדים (Shift)</Td>
+              <Td>עובדים_נוכחות</Td>
+              <Td><Code>legacyId</Code> ↔ קוד</Td>
+              <Td>יצירה + עדכון (שדות מאקסס בלבד — ר&apos; פירוט למטה)</Td>
             </Tr>
           </tbody>
         </table>
@@ -173,8 +179,30 @@ export default function AccessImportPage() {
           <li><strong>שדות שקיימים רק באפליקציה</strong> (ואין להם עמודה באקסס) לא נדרסים: פרטי בנק של לקוח, צבע ותמונת פרופיל של עובד, תמונת דגם (<Code>imageUrl</Code>) ועוד.</li>
           <li><strong>סיסמת עובד</strong> נקבעת מהאקסס רק כשעובד נוצר לראשונה — לעולם לא נדרסת לעובד קיים (ייתכן שהוחלפה באפליקציה).</li>
           <li><strong>טבלאות שאינן ברשימה למעלה</strong> — זיכויים (Refund), מחירונים, הגדרות מערכת וכו&apos; — לא נגועות כלל.</li>
+          <li>
+            <strong>שדות תשלום מחושבים של משמרת קיימת (Shift).</strong> עבור משמרת שכבר קיימת במסד,
+            הכלי מרענן רק את השדות שמקורם באקסס (שעת כניסה/יציאה, תאריך עברי, תאריך המשמרת) —{' '}
+            <strong>לעולם לא</strong> את <Code>totalMinutes</Code>/<Code>hourlyWageSnapshot</Code>/
+            <Code>travelExpensesSnapshot</Code>/<Code>totalCalculated</Code>. אלה מחושבים רק פעם אחת,
+            כשהמשמרת נוצרת לראשונה — כדי שהרצה חוזרת לא &quot;תסחוף&quot; משמרת היסטורית לפי השכר{' '}
+            <em>הנוכחי</em> של העובד אם השכר השתנה בינתיים.
+          </li>
           <li><strong>קובץ האקסס עצמו</strong> — נפתח לקריאה בלבד.</li>
         </ul>
+      </Section>
+
+      <Section title="דגש חשוב: משמרות היסטוריות בלי סה&quot;כ דקות מחושב">
+        <Callout tone="warn" title="נמצא ותוקן 06.08.2026">
+          כל המשמרות שהועברו מאקסס (ר&apos; סעיף &quot;נוכחות עובדים&quot; למעלה) נשמרו במסד עם שעות
+          כניסה/יציאה אבל <strong>בלי</strong> <Code>totalMinutes</Code>/<Code>totalCalculated</Code> מחושבים
+          — כך שהן הוצגו כ&quot;---&quot; בדוחות הנוכחות. הסיבה: התיקון מ-05.08.2026 שגרם לחישוב אוטומטי
+          (<Code>lib/shiftCalc.js</Code>) חל רק על משמרות שנוצרות/נערכות מעכשיו והלאה; סקריפט ה-backfill
+          החד-פעמי שנכתב אז (<Code>scripts/fix_employee_shifts.js</Code>) לא הורץ בפועל עד 06.08.2026.
+          תוקן: הורץ מול PROD והשלים חישוב ל-12,657 משמרות היסטוריות (כולן, ללא יוצא מן הכלל שנותר).
+          כלי הייבוא (ר&apos; &quot;נוכחות עובדים&quot; למעלה) מחשב סה&quot;כ דקות/תשלום רק למשמרת חדשה
+          שהוא עצמו יוצר — אם אי-פעם תתגלה עוד קבוצת משמרות קיימות בלי חישוב, יש להריץ שוב את אותו סקריפט
+          (<Code>scripts/fix_employee_shifts.js</Code>).
+        </Callout>
       </Section>
 
       <Section title="מגבלה ידועה: תשלומים ופריטים של הזמנות קיימות">
@@ -249,6 +277,8 @@ export default function AccessImportPage() {
             לערכים שליליים; הושלמו 3,640 תשלומים ל-2,035 הזמנות שיובאו ללא תשלומים.</li>
           <li>05.08.2026 — <strong>תוקן:</strong> פריטי הזמנה מיובאים מקבלים <Code>cartStatus=&apos;confirmed&apos;</Code> (ביטול תג &quot;פג תוקף&quot; שגוי).</li>
           <li>05.08.2026 — הושלמה התאמה פרטנית של תשלומים חסרים להזמנות שכבר היו להן תשלומים; מקרים לא-ודאיים תועדו לבדיקה ידנית ולא הוכנסו.</li>
+          <li>06.08.2026 — <strong>תוקן:</strong> הורץ סקריפט ה-backfill ההיסטורי שחיכה מ-05.08.2026 (<Code>scripts/fix_employee_shifts.js</Code>) — השלים <Code>totalMinutes</Code>/<Code>totalCalculated</Code> ל-12,657 משמרות שהועברו מאקסס (אומת: 0 משמרות נותרו בלי חישוב).</li>
+          <li>06.08.2026 — <strong>נוסף:</strong> נוכחות עובדים (Shift, <Code>עובדים_נוכחות</Code>) הצטרפה לרשימת הטבלאות המיובאות — ר&apos; פירוט בטבלה ובסעיף &quot;מה הכלי לעולם לא נוגע בו&quot; למעלה.</li>
         </ul>
       </Section>
     </div>

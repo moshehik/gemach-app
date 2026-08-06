@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { recalculateOrderObligations } from '@/lib/pricingEngine';
+import { syncPendingCreditRefund } from '@/lib/creditRefundSync';
 import { paymentsGrantPermanentHold } from '@/lib/inventoryHold';
 import { checkAuth } from '@/lib/auth';
 
@@ -51,6 +52,10 @@ export async function POST(request) {
 
     // We can also trigger recalculation or update if needed
     // await recalculateOrderObligations(parsedOrderId);
+
+    // תשלום ישיר לא עובר דרך recalculateOrderObligations (שם רץ הסנכרון הרגיל של בקשת
+    // זיכוי אוטומטית) - אם התשלום הזה יצר/הגדיל יתרת זכות, מוודאים שהיא ידועה כאן.
+    await syncPendingCreditRefund(parsedOrderId);
 
     return NextResponse.json(payment);
   } catch (error) {

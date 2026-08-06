@@ -7,7 +7,7 @@ import SendEmailModal from '@/components/SendEmailModal';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
 import ModernEmployeeHistoryTab from '@/components/employees/ModernEmployeeHistoryTab';
 import modernOrderCss from '@/components/orders/modern/modernOrderStyles';
-import { Copy, Mail, History, RotateCcw } from 'lucide-react';
+import { Copy, Mail, History, RotateCcw, Printer, Pencil, Trash2 } from 'lucide-react';
 
 export default function EmployeePage({ params }) {
   const router = useRouter();
@@ -294,30 +294,28 @@ export default function EmployeePage({ params }) {
       </div>
 
       {id !== 'new' && (
-        <div className="no-print" style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid #eee', marginBottom: '2rem' }}>
-          <button data-element-name="כפתור_page_2" 
+        <div className="no-print status-filters" style={{ marginBottom: '2rem' }}>
+          <button data-element-name="כפתור_page_2"
             data-agy-id="tab-employee-details"
-            className={`tab-btn ${activeTab === 'details' ? 'active' : ''}`} 
+            className={activeTab === 'details' ? 'status-filter active c-blue' : 'status-filter'}
             onClick={() => setActiveTab('details')}
-            style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'details' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'details' ? 'bold' : 'normal', color: activeTab === 'details' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s' }}
           >
-            פרטי עובד
+            <span>פרטי עובד</span>
           </button>
-          <button data-element-name="כפתור_page_3" 
+          <button data-element-name="כפתור_page_3"
             data-agy-id="tab-employee-attendance"
-            className={`tab-btn ${activeTab === 'attendance' ? 'active' : ''}`} 
+            className={activeTab === 'attendance' ? 'status-filter active c-blue' : 'status-filter'}
             onClick={() => setActiveTab('attendance')}
-            style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'attendance' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'attendance' ? 'bold' : 'normal', color: activeTab === 'attendance' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s' }}
           >
-            נוכחות וסיכום
+            <span>נוכחות וסיכום</span>
           </button>
-          <button data-element-name="כפתור_page_4" 
+          <button data-element-name="כפתור_page_4"
             data-agy-id="tab-employee-history"
-            className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`} 
+            className={activeTab === 'history' ? 'status-filter active c-blue' : 'status-filter'}
             onClick={() => setActiveTab('history')}
-            style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'history' ? '3px solid var(--primary-color)' : '3px solid transparent', fontWeight: activeTab === 'history' ? 'bold' : 'normal', color: activeTab === 'history' ? 'var(--primary-color)' : 'var(--text-muted)', cursor: 'pointer', fontSize: '1.1rem', transition: 'all 0.3s', display: 'flex', gap: '0.5rem', alignItems: 'center' }}
           >
-            <History data-element-name="רכיב_page_5" size={18} /> היסטוריה
+            <History data-element-name="רכיב_page_5" size={16} />
+            <span>היסטוריה</span>
           </button>
         </div>
       )}
@@ -354,14 +352,14 @@ export default function EmployeePage({ params }) {
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                 <input data-element-name="שדה_page_12" type="email" name="email" value={employee.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
                 {employee.email && (
-                  <>
-                    <button data-element-name="כפתור_page_13" type="button" onClick={() => navigator.clipboard.writeText(employee.email)} title="העתק כתובת מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
-                      <Copy data-element-name="רכיב_page_14" size={20} />
+                  <div className="icon-toolbar" style={{ marginRight: 0 }}>
+                    <button data-element-name="כפתור_page_13" type="button" onClick={() => navigator.clipboard.writeText(employee.email)} title="העתק כתובת מייל" className="icon-btn">
+                      <Copy data-element-name="רכיב_page_14" size={18} />
                     </button>
-                    <button data-element-name="כפתור_page_15" type="button" onClick={() => setEmailModalOpen(true)} title="שלח מייל" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary-color)' }}>
-                      <Mail data-element-name="רכיב_page_16" size={20} />
+                    <button data-element-name="כפתור_page_15" type="button" onClick={() => setEmailModalOpen(true)} title="שלח מייל" className="icon-btn" style={{ color: 'var(--primary-color)' }}>
+                      <Mail data-element-name="רכיב_page_16" size={18} />
                     </button>
-                  </>
+                  </div>
                 )}
               </div>
               {(!employee.email || !employee.email.includes('@')) && (
@@ -597,7 +595,7 @@ export default function EmployeePage({ params }) {
                 ))}
               </select>
               <button data-element-name="כפתור_page_44" className="btn btn-outline" onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                🖨️ הדפס / ייצא PDF
+                <Printer data-element-name="רכיב_page_44_icon" size={16} /> הדפס / ייצא PDF
               </button>
               <button data-element-name="כפתור_page_45" className="btn btn-primary" onClick={startAddShift} disabled={isAddingShift || editingShiftId !== null}>
                 + הוסף משמרת
@@ -607,6 +605,14 @@ export default function EmployeePage({ params }) {
 
           <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', marginBottom: '2rem' }}>
             <thead>
+              {/* שורה נוספת ב-thead (לא רק כותרות העמודות) - כדי שהחודש/שנה יופיעו מחדש
+                  בראש כל עמוד פיזי כשהטבלה נשברת לכמה עמודי הדפסה, בדיוק כמו שורת כותרות
+                  העמודות עצמה שחוזרת בזכות table-header-group. */}
+              <tr>
+                <th colSpan={8} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 'bold' }}>
+                  תקופה: {new Date(filterYear, filterMonth).toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
+                </th>
+              </tr>
               <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
                 <th style={{ padding: '0.4rem 0.5rem' }}>תאריך לועזי</th>
                 <th style={{ padding: '0.4rem 0.5rem' }}>תאריך עברי</th>
@@ -695,15 +701,19 @@ export default function EmployeePage({ params }) {
                       <td style={{ padding: '0.4rem 0.5rem' }}>{shift.totalMinutes || '-'}</td>
                       <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold' }}>{shift.totalCalculated ? `₪${shift.totalCalculated}` : '-'}</td>
                       <td style={{ padding: '0.4rem 0.5rem' }}>{shift.notes || '-'}</td>
-                      <td className="no-print" style={{ padding: '0.4rem 0.5rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+                      <td className="no-print icon-toolbar" style={{ padding: '0.4rem 0.5rem', justifyContent: 'center', marginRight: 0 }}>
                         {!shift.isDeleted ? (
                           <>
-                            <button data-element-name="כפתור_page_63" onClick={() => startEditShift(shift)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', padding: '0.2rem' }} title="ערוך רק כניסה ויציאה">✏️</button>
-                            <button data-element-name="כפתור_page_64" onClick={() => deleteShift(shift.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#d32f2f', padding: '0.2rem' }} title="מחק">🗑️</button>
+                            <button data-element-name="כפתור_page_63" onClick={() => startEditShift(shift)} className="icon-btn" title="ערוך רק כניסה ויציאה">
+                              <Pencil data-element-name="רכיב_page_63_icon" size={16} />
+                            </button>
+                            <button data-element-name="כפתור_page_64" onClick={() => deleteShift(shift.id)} className="icon-btn" style={{ color: '#d32f2f' }} title="מחק">
+                              <Trash2 data-element-name="רכיב_page_64_icon" size={16} />
+                            </button>
                           </>
                         ) : (
-                          <button data-element-name="כפתור_page_65" onClick={() => restoreShift(shift)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem', color: '#2e7d32', padding: '0.2rem' }} title="שחזר">
-                            <RotateCcw data-element-name="רכיב_page_66" size={18} />
+                          <button data-element-name="כפתור_page_65" onClick={() => restoreShift(shift)} className="icon-btn" style={{ color: '#2e7d32' }} title="שחזר">
+                            <RotateCcw data-element-name="רכיב_page_66" size={16} />
                           </button>
                         )}
                       </td>

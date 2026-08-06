@@ -242,21 +242,23 @@ export default function EmployeesPage() {
         </div>
 
         {/* Tabs Navigation */}
-        <div style={{ display: 'flex', gap: '1rem', borderBottom: '2px solid var(--element-border)', marginBottom: '2rem' }}>
-          <button data-element-name="כפתור_page_4" 
+        <div className="nav-links" style={{ marginBottom: '2rem' }}>
+          <button data-element-name="כפתור_page_4"
             data-agy-id="tab-employees-list"
-            onClick={() => setActiveTab('list')} 
-            style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'list' ? '3px solid var(--primary-color)' : '3px solid transparent', color: activeTab === 'list' ? 'var(--primary-color)' : 'var(--text-muted)', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
+            onClick={() => setActiveTab('list')}
+            className={activeTab === 'list' ? 'nav-link active' : 'nav-link'}
+            style={{ border: 'none', background: activeTab === 'list' ? undefined : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
-            <Users data-element-name="רכיב_page_5" size={20} />
+            <Users data-element-name="רכיב_page_5" size={16} />
             רשימת עובדים
           </button>
-          <button data-element-name="כפתור_page_6" 
+          <button data-element-name="כפתור_page_6"
             data-agy-id="tab-attendance"
-            onClick={() => setActiveTab('attendance')} 
-            style={{ padding: '0.75rem 1.5rem', background: 'none', border: 'none', borderBottom: activeTab === 'attendance' ? '3px solid var(--primary-color)' : '3px solid transparent', color: activeTab === 'attendance' ? 'var(--primary-color)' : 'var(--text-muted)', fontWeight: 'bold', fontSize: '1.1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem', transition: 'all 0.2s' }}
+            onClick={() => setActiveTab('attendance')}
+            className={activeTab === 'attendance' ? 'nav-link active' : 'nav-link'}
+            style={{ border: 'none', background: activeTab === 'attendance' ? undefined : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
           >
-            <CalendarClock data-element-name="רכיב_page_7" size={20} />
+            <CalendarClock data-element-name="רכיב_page_7" size={16} />
             נוכחות
           </button>
         </div>
@@ -264,43 +266,44 @@ export default function EmployeesPage() {
         {/* Employees List Tab Content */}
         {activeTab === 'list' && (
           <div className="animate-fade-in">
-            <div style={{ marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-              <div style={{ maxWidth: '600px', flex: 1, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <div style={{ flex: 1 }}>
-                  <AISearchBar data-element-name="רכיב_page_8" 
-                    placeholder="חיפוש עובד (שם, טלפון, קוד)..."
-                    value={searchInput}
-                    onChange={(e) => setSearchInput(e.target.value)}
-                    onSearch={(e) => { e.preventDefault(); setSearch(searchInput); setIsAiModeActive(false); }}
-                    onClear={() => { setSearchInput(''); setSearch(''); setIsAiModeActive(false); }}
-                    onAiSearch={handleAiSearch}
-                    onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-                    loading={aiLoading}
-                  />
-                </div>
+            <div className="toolbar-row">
+              <div style={{ maxWidth: '600px', flex: 1, minWidth: '260px' }}>
+                <AISearchBar data-element-name="רכיב_page_8"
+                  placeholder="חיפוש עובד (שם, טלפון, קוד)..."
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onSearch={(e) => { e.preventDefault(); setSearch(searchInput); setIsAiModeActive(false); }}
+                  onClear={() => { setSearchInput(''); setSearch(''); setIsAiModeActive(false); }}
+                  onAiSearch={handleAiSearch}
+                  onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
+                  loading={aiLoading}
+                />
               </div>
-              <div style={{ display: 'flex', gap: '0.8rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', gap: '0.3rem', background: 'var(--element-bg)', padding: '0.2rem', borderRadius: '8px', marginRight: '1rem' }}>
-                  <button data-element-name="כפתור_page_9" data-agy-id="filter-active-employees" onClick={() => { setFilterStatus('active'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'active' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'active' ? '#10b981' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="עובדים פעילים">
-                    <UserCheck data-element-name="רכיב_page_10" size={20} />
-                    <span style={{ fontWeight: filterStatus === 'active' ? 'bold' : 'normal' }}>פעילים</span>
-                  </button>
-                  <button data-element-name="כפתור_page_11" data-agy-id="filter-inactive-employees" onClick={() => { setFilterStatus('inactive'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'inactive' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'inactive' ? '#ef4444' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="לא פעילים">
-                    <UserMinus data-element-name="רכיב_page_12" size={20} />
-                    <span style={{ fontWeight: filterStatus === 'inactive' ? 'bold' : 'normal' }}>לא פעילים</span>
-                  </button>
-                  <button data-element-name="כפתור_page_13" data-agy-id="filter-all-employees" onClick={() => { setFilterStatus('all'); }} style={{ padding: '0.4rem', border: 'none', background: filterStatus === 'all' ? 'var(--card-bg)' : 'transparent', borderRadius: '6px', cursor: 'pointer', color: filterStatus === 'all' ? '#3b82f6' : 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הצג הכל">
-                    <Users data-element-name="רכיב_page_14" size={20} />
-                    <span style={{ fontWeight: filterStatus === 'all' ? 'bold' : 'normal' }}>הכל</span>
-                  </button>
-                </div>
-                <button data-element-name="כפתור_page_2" 
+
+              <div className="status-filters">
+                <button data-element-name="כפתור_page_9" data-agy-id="filter-active-employees" onClick={() => { setFilterStatus('active'); }} className={filterStatus === 'active' ? 'status-filter active c-green' : 'status-filter'} title="עובדים פעילים">
+                  <UserCheck data-element-name="רכיב_page_10" size={16} />
+                  <span>פעילים</span>
+                </button>
+                <button data-element-name="כפתור_page_11" data-agy-id="filter-inactive-employees" onClick={() => { setFilterStatus('inactive'); }} className={filterStatus === 'inactive' ? 'status-filter active c-gray' : 'status-filter'} title="לא פעילים">
+                  <UserMinus data-element-name="רכיב_page_12" size={16} />
+                  <span>לא פעילים</span>
+                </button>
+                <button data-element-name="כפתור_page_13" data-agy-id="filter-all-employees" onClick={() => { setFilterStatus('all'); }} className={filterStatus === 'all' ? 'status-filter active c-blue' : 'status-filter'} title="הצג הכל">
+                  <Users data-element-name="רכיב_page_14" size={16} />
+                  <span>הכל</span>
+                </button>
+              </div>
+
+              <div className="icon-toolbar">
+                <button data-element-name="כפתור_page_2"
                   data-agy-id="new-employee-button"
-                  onClick={() => router.push('/employees/new')} 
-                  className="btn-header-icon"
+                  onClick={() => router.push('/employees/new')}
+                  className="icon-btn icon-btn-primary"
                   title="עובד חדש"
                 >
-                  <Plus data-element-name="רכיב_page_3" size={20} />
+                  <Plus data-element-name="רכיב_page_3" size={17} />
+                  <span>עובד חדש</span>
                 </button>
               </div>
             </div>
@@ -376,11 +379,11 @@ export default function EmployeesPage() {
                   <button data-element-name="כפתור_page_20"
                     data-agy-id="attendance-print-menu-trigger"
                     onClick={() => setPrintMenuOpen(o => !o)}
-                    className="btn-header-icon"
+                    className="icon-btn"
                     disabled={processedAttendance.length === 0}
                     title="הדפסת נוכחות"
                   >
-                    <Printer data-element-name="רכיב_page_21" size={20} />
+                    <Printer data-element-name="רכיב_page_21" size={19} />
                   </button>
                   {printMenuOpen && (
                     <div className="attendance-print-menu">

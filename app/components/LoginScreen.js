@@ -22,7 +22,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
 
   // Trusted-device fast path: this computer may have been marked trusted by a manager
   // (see /admin/trusted-devices), which lets whoever logs in from it use just the last 4
-  // digits of their real password instead of typing the whole thing every time.
+  // characters of their real password instead of typing the whole thing every time.
   const [deviceTrusted, setDeviceTrusted] = useState(false);
   const [usePinMode, setUsePinMode] = useState(false);
 
@@ -107,7 +107,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
     const credential = usePinMode ? pinValue : password;
 
     if (!finalEmployeeId || !credential) {
-      setError(usePinMode ? 'נא לבחור עובד ולהזין 4 ספרות' : 'נא לבחור עובד ולהזין סיסמה');
+      setError(usePinMode ? 'נא לבחור עובד ולהזין 4 תווים' : 'נא לבחור עובד ולהזין סיסמה');
       return;
     }
 
@@ -399,7 +399,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
           <div style={{ position: 'relative' }}>
             <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: '0.5rem' }}>
               <label style={{ display: 'block', color: '#cbd5e1', fontSize: '0.9rem', fontWeight: '500' }}>
-                {usePinMode ? '4 הספרות האחרונות בסיסמה' : 'קוד כניסה'}
+                {usePinMode ? '4 התווים האחרונים בסיסמה' : 'קוד כניסה'}
               </label>
               {deviceTrusted && (
                 <button
@@ -407,7 +407,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
                   onClick={() => { setUsePinMode(!usePinMode); setError(''); setPassword(''); setPinValue(''); }}
                   style={{ background: 'none', border: 'none', color: '#60a5fa', fontSize: '0.82rem', cursor: 'pointer', padding: 0 }}
                 >
-                  {usePinMode ? 'השתמש בסיסמה המלאה' : 'השתמש בקוד מקוצר (4 ספרות)'}
+                  {usePinMode ? 'השתמש בסיסמה המלאה' : 'השתמש בקוד מקוצר (4 תווים)'}
                 </button>
               )}
             </div>
@@ -415,10 +415,9 @@ export default function LoginScreen({ isModal = false, onClose }) {
               {usePinMode ? (
                 <input data-element-name="שדה_LoginScreen_pin"
                   type="password"
-                  inputMode="numeric"
                   maxLength={4}
                   value={pinValue}
-                  onChange={(e) => setPinValue(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  onChange={(e) => setPinValue(e.target.value.slice(0, 4))}
                   placeholder="••••"
                   style={{ ...inputStyle, letterSpacing: '0.6em', textAlign: 'center', fontSize: '1.3rem' }}
                   onFocus={(e) => { e.target.style.borderColor = '#3b82f6'; e.target.style.boxShadow = '0 0 0 3px rgba(59,130,246,0.25)'; }}

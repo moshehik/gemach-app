@@ -354,22 +354,17 @@ export default function HistoryViewer({ entityType, entityId }) {
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
             
             <form onSubmit={(e) => { e.preventDefault(); setFilterSearch(searchInput); }} style={{ display: 'flex', gap: '8px', flex: '2', minWidth: '250px' }}>
-              <div style={{ position: 'relative', flex: 1 }}>
-                <div style={{ position: 'absolute', right: '12px', top: '10px', color: 'var(--primary-color)' }}>
-                  <Search size={18} />
-                </div>
-                <input 
-                  type="text" 
-                  placeholder="חיפוש חופשי בהיסטוריה..." 
+              <div className="search-box-modern" style={{ flex: 1 }}>
+                <Search size={16} />
+                <input
+                  type="text"
+                  placeholder="חיפוש חופשי בהיסטוריה..."
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
-                  style={{ width: '100%', padding: '8px 32px 8px 8px', borderRadius: '6px', border: '1px solid #cbd5e1', fontSize: '0.95rem', outline: 'none', transition: 'border-color 0.2s', boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}
-                  onFocus={e => e.target.style.borderColor = 'var(--primary-color)'}
-                  onBlur={e => e.target.style.borderColor = '#cbd5e1'}
                 />
               </div>
-              <button 
-                type="submit" 
+              <button
+                type="submit"
                 style={{ background: 'var(--primary-color)', color: '#fff', padding: '0 16px', borderRadius: '6px', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem' }}
               >
                 <Search size={16} />
@@ -485,7 +480,7 @@ export default function HistoryViewer({ entityType, entityId }) {
                       <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '16px', height: '16px' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                       </svg>
-                      משתמש מערכת (קוד {log.employeeId})
+                      {log.employeeName || 'עובד שנמחק'}
                     </span>
                   ) : (
                     <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--text-main)' }}>

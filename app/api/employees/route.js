@@ -15,7 +15,10 @@ export async function GET(request) {
     const employees = await prisma.employee.findMany({
       where: all ? {} : { isActive: true },
       include: { department: true },
-      orderBy: { id: 'asc' }
+      orderBy: [
+        { lastName: { sort: 'asc', nulls: 'last' } },
+        { firstName: { sort: 'asc', nulls: 'last' } }
+      ]
     });
 
     // Never send hashes (password/pinHash) to the client - there's no legitimate reason

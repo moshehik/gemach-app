@@ -1,6 +1,7 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '../../../lib/auth';
+import { attachEmployeeNames } from '@/app/lib/auditLog';
 
 
 export async function GET(request) {
@@ -72,10 +73,12 @@ export async function GET(request) {
       take: limit,
       skip: (page - 1) * limit,
     });
-    
+
+    const logsWithNames = await attachEmployeeNames(logs);
+
     const total = await prisma.auditLog.count({ where });
-    
-    return NextResponse.json({ logs, total });
+
+    return NextResponse.json({ logs: logsWithNames, total });
   } catch (error) {
     console.error('Error fetching audit logs:', error);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
