@@ -6,6 +6,14 @@ const nextConfig = {
   // generation doesn't silently break if that built-in list ever changes.
   serverExternalPackages: ['@prisma/client', 'prisma', 'puppeteer-core', '@sparticuz/chromium'],
 
+  // @sparticuz/chromium loads its brotli-compressed Chromium binary from bin/ with
+  // runtime fs calls, which Vercel's static file tracing can't see - without this the
+  // deployed function is missing /var/task/node_modules/@sparticuz/chromium/bin entirely
+  // and every PDF request 500s with "The input directory ... does not exist".
+  outputFileTracingIncludes: {
+    '/api/pdf': ['./node_modules/@sparticuz/chromium/bin/**/*'],
+  },
+
   // עמדות ברשת המקומית ניגשות לשרת דרך ה-IP של המחשב ולא דרך localhost.
   // בלי זה Next 16 חוסם (403) משאבי dev כמו ה-websocket של רענון חי.
   allowedDevOrigins: ['10.0.0.2', '10.0.0.2:3000', 'localhost:3000', '127.0.0.1', '127.0.0.1:3000'],
