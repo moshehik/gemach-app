@@ -1375,6 +1375,18 @@ div:has(> table) {
   overflow-y: visible;
 }
 
+/*
+  אותה בעיה בדיוק בעמודי הדפסה (app/print/order, app/print/alterations וכו') - .print-container
+  ועטיפות פנימיות כמו .order-block/.payments-section עוטפות טבלה כילד ישיר, אז הכלל הגלובלי
+  שלמעלה הידק אותן ל-75vh עם גלילה פנימית: בתצוגה המקדימה זה הראה פס גלילה בתוך "הדף", ובהדפסה/PDF
+  בפועל זה חתך את התוכן שמעבר לגובה הזה.
+*/
+.print-container,
+.print-container div:has(> table) {
+  max-height: none;
+  overflow-y: visible;
+}
+
 thead th, th {
   position: sticky;
   top: -1px;

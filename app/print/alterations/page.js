@@ -121,6 +121,21 @@ export default function PrintAlterationsPage() {
   };
   const sizeLabelOf = (item) => (item.sizeText || item.size || item.dressItem?.sizeText || '-').toString();
   const customerNameOf = (item) => `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`.trim();
+  // eventDate is stored as Israel-midnight-in-UTC (e.g. ...T21:00:00.000Z for a date
+  // that's actually the next day in Israel) - naively slicing the ISO string's date
+  // part can land on the wrong calendar day depending on the server's timezone. Read
+  // the calendar date the way Israel sees it instead.
+  const toIsraelDateKey = (dateInput) => {
+    if (!dateInput) return null;
+    const d = dateInput instanceof Date ? dateInput : new Date(dateInput);
+    if (isNaN(d.getTime())) return null;
+    return d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' }); // YYYY-MM-DD
+  };
+  // Once we have a plain YYYY-MM-DD calendar key, compute its weekday in UTC (noon,
+  // to dodge any DST edge) so the result can't drift again with the server's local TZ.
+  const weekdayOf = (dateKey) => (
+    new Intl.DateTimeFormat('he-IL', { weekday: 'long', timeZone: 'UTC' }).format(new Date(`${dateKey}T12:00:00Z`))
+  );
   // Legacy migration left some length values as '' / 'null' / '0' - treat as "no alteration"
   const lengthAltOf = (item) => {
     const v = (item.lengthAlteration ?? '').toString().trim();
@@ -156,7 +171,7 @@ export default function PrintAlterationsPage() {
 
     const groups = {};
     sorted.forEach(item => {
-      const dateKey = item.order?.eventDate ? item.order.eventDate.split('T')[0] : 'ללא תאריך';
+      const dateKey = item.order?.eventDate ? (toIsraelDateKey(item.order.eventDate) || 'ללא תאריך') : 'ללא תאריך';
       if (!groups[dateKey]) groups[dateKey] = [];
       groups[dateKey].push(item);
     });
@@ -270,17 +285,23 @@ export default function PrintAlterationsPage() {
           width: 100%;
           border-collapse: collapse;
           margin-top: 10px;
-          border: 2px solid #e8e8e8;
         }
         .print-table th, .print-table td {
-          border: 1px solid #f0f0f0;
+          border-bottom: 1px solid #eee;
           padding: 10px 12px;
           text-align: right;
           font-size: 13px;
         }
         .print-table th {
-          background-color: #fdfdfd;
-            .print-header {
+          background-color: #f8f9fa;
+          border-bottom: 2px solid #ddd;
+          color: #444;
+          font-weight: 600;
+        }
+        .print-table tbody tr:last-child td {
+          border-bottom: none;
+        }
+        .print-header {
           text-align: center;
           margin-bottom: 30px;
         }
@@ -294,7 +315,7 @@ export default function PrintAlterationsPage() {
           margin-bottom: 40px;
         }
         .group-title {
-          border-bottom: 1px solid #e8e8e8;
+          border-bottom: 2px solid #ddd;
           padding-bottom: 8px;
           margin-bottom: 20px;
           color: #444;
@@ -304,7 +325,7 @@ export default function PrintAlterationsPage() {
         .order-block {
           margin-bottom: 25px;
           background: #fafafa;
-          border: 1px solid #f0f0f0;
+          border: 1px solid #eee;
           padding: 15px;
           border-radius: 6px;
         }
@@ -321,11 +342,11 @@ export default function PrintAlterationsPage() {
         .date-summary {
           margin-top: 15px;
           padding: 10px 15px;
-          border: 1px solid #e8e8e8;
-          background: #fdfdfd;
+          border: 1px solid #ddd;
+          background: #f8f9fa;
           display: inline-block;
           font-weight: 600;
-          color: #555;
+          color: #444;
           border-radius: 4px;
         }
       `}</style>
@@ -386,7 +407,7 @@ export default function PrintAlterationsPage() {
             <tr key={group.date}>
               <td style={{ border: 'none', padding: 0 }}>
                 <div style={{ marginTop: groupIdx === 0 ? '20px' : 0, marginBottom: '30px' }}>
-                  <h3 className="group-title" style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '15px', color: 'black' }}>
+                  <h3 className="group-title">
                     תאריך אירוע: {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
                   </h3>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
@@ -447,7 +468,7 @@ export default function PrintAlterationsPage() {
           </tr>
         ) : (
           groupedItems.map(group => {
-            const dayOfWeek = group.date !== 'ללא תאריך' ? new Date(group.date).toLocaleDateString('he-IL', { weekday: 'long' }) : '';
+            const dayOfWeek = group.date !== 'ללא תאריך' ? weekdayOf(group.date) : '';
             const sums = group.items.reduce((acc, item) => {
               const qty = item.quantity || 1;
               if (item.neckAlteration > 0) acc.neck += qty;
@@ -459,7 +480,7 @@ export default function PrintAlterationsPage() {
               <Fragment key={group.date}>
                 <tr>
                   <td style={{ border: 'none', padding: 0 }}>
-                    <h3 className="group-title" style={{ borderBottom: '2px solid black', paddingBottom: '5px', marginBottom: '12px', marginTop: '20px' }}>
+                    <h3 className="group-title" style={{ marginBottom: '12px', marginTop: '20px' }}>
                       {dayOfWeek ? `${dayOfWeek} - ` : ''}{group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
                     </h3>
                   </td>
