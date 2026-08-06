@@ -1,0 +1,248 @@
+/* ==========================================================================
+   שכבת דריסה גלובלית — "העיצוב הישן יורד מהמסך"
+   --------------------------------------------------------------------------
+   למה הקובץ הזה קיים:
+   רוב האפליקציה נכתבה עם style={{...}} inline. סגנון inline גובר על כל כלל
+   CSS רגיל, ולכן כל שינוי ב-globals.css פשוט לא הגיע לחלק גדול מהמסכים —
+   וזו הסיבה שהעיצוב נראה "משתנה רק חלקית".
+   הקובץ הזה תוקף בדיוק את זה: הוא מזהה את הערכים הישנים בתוך תכונת ה-style
+   עצמה (בורר [style*="..."]) ודורס אותם עם !important, כך שכל הצבעים
+   האפורים-הקרים והרכיבים המרובעים הישנים מוחלפים בפלטה החמה החדשה —
+   בכל האפליקציה בבת אחת, בלי לגעת ב-40 קבצי עמודים.
+
+   בטיחות: נדרסים רק צבעים/גבולות/פינות — לא פריסה, לא מיקום, לא גדלים.
+   צבעים סמנטיים (אדום/ירוק/כתום/כחול = שגיאה/הצלחה/אזהרה/מידע) לא נוגעים בהם.
+   כדי לכבות הכל: להסיר את שורת ה-import של הקובץ הזה מ-app/layout.js.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. טיפוגרפיה — דריסת גופנים שנכפו inline
+   חלק מהמסכים כפו fontFamily: 'system-ui' וכדומה, מה שביטל את גופני המערכת.
+   -------------------------------------------------------------------------- */
+body,
+button,
+input,
+select,
+textarea,
+[style*="system-ui"],
+[style*="Segoe UI"],
+[style*="-apple-system"] {
+  font-family: 'Assistant', 'Heebo', sans-serif !important;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Frank Ruhl Libre', 'Assistant', serif !important;
+}
+
+/* --------------------------------------------------------------------------
+   2. רקעים אפורים-קרים → קרם חם
+   הערכים האלה שימשו כמעט תמיד כרקע של כותרות טבלה, פאנלים ושורות.
+   -------------------------------------------------------------------------- */
+[style*="#f8fafc"],
+[style*="#F8FAFC"],
+[style*="#f1f5f9"],
+[style*="#F1F5F9"],
+[style*="#f5f5f5"],
+[style*="#f9f9f9"],
+[style*="#f9fafb"],
+[style*="#f3f4f6"],
+[style*="#fafafa"] {
+  background-color: var(--element-bg) !important;
+}
+
+/* --------------------------------------------------------------------------
+   3. טקסט אפור-קר → אפור-חם
+   -------------------------------------------------------------------------- */
+[style*="#64748b"],
+[style*="#6b7280"],
+[style*="#94a3b8"],
+[style*="#9ca3af"],
+[style*="#737373"],
+[style*="#475569"],
+[style*="#8d867a"] {
+  color: var(--text-muted) !important;
+}
+
+/* טקסט כהה-קר (סלייט) → הטקסט הראשי החם של המערכת */
+[style*="#334155"],
+[style*="#1e293b"],
+[style*="#0f172a"],
+[style*="#111827"],
+[style*="#374151"] {
+  color: var(--text-main) !important;
+}
+
+/* --------------------------------------------------------------------------
+   4. גבולות אפורים-קרים → גבול קרם
+   -------------------------------------------------------------------------- */
+[style*="#e2e8f0"],
+[style*="#cbd5e1"],
+[style*="#e5e7eb"],
+[style*="#ddd"],
+[style*="#DDD"],
+[style*="#eee"],
+[style*="#EEE"],
+[style*="#dee2e6"],
+[style*="#e0e0e0"],
+[style*="#ececec"] {
+  border-color: var(--element-border) !important;
+}
+
+/* --------------------------------------------------------------------------
+   5. שדות קלט — מראה אחיד בכל האפליקציה
+   -------------------------------------------------------------------------- */
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]),
+select,
+textarea {
+  border: 1px solid var(--element-border);
+  border-radius: 10px;
+  background-color: var(--input-bg);
+  color: var(--text-main);
+  transition: border-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus,
+select:focus,
+textarea:focus {
+  border-color: var(--primary-color);
+  box-shadow: 0 0 0 3px var(--primary-light);
+  outline: none;
+}
+
+/* השדה המאוחד של שורת החיפוש מנהל את הגבול שלו בעצמו */
+.ai-search input,
+.search-box-modern input {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   6. כפתור האייקון הישן (btn-header-icon) — מיושר לסגנון .icon-btn החדש
+   -------------------------------------------------------------------------- */
+.btn-header-icon {
+  width: 38px !important;
+  height: 38px !important;
+  border-radius: 50% !important;
+  border: none !important;
+  background: transparent !important;
+  color: var(--text-muted) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  box-shadow: none !important;
+  transition: color 0.18s ease, background 0.18s ease !important;
+}
+
+.btn-header-icon:hover {
+  color: var(--primary-hover) !important;
+  background: var(--primary-light) !important;
+  transform: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   7. מודאלים וכרטיסים — פינות ורקע אחידים, וגם במצב כהה
+   -------------------------------------------------------------------------- */
+.modal-content {
+  background: var(--card-bg) !important;
+  border: 1px solid var(--border-color) !important;
+  border-radius: 16px !important;
+  color: var(--text-main);
+}
+
+.modal-overlay {
+  background: rgba(44, 38, 20, 0.55) !important;
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+}
+
+/* פאנלים שנכפה עליהם רקע לבן קשיח — נשברו לגמרי במצב כהה */
+[style*="background: white"],
+[style*="background:#fff"],
+[style*="background: #fff"],
+[style*="backgroundColor: white"],
+[style*="background-color: white"],
+[style*="background: rgb(255, 255, 255)"] {
+  background-color: var(--card-bg) !important;
+}
+
+/* --------------------------------------------------------------------------
+   8. "כדורי" סטטוס ישנים — מרוככים לצורת התווית החדשה
+   (רק צורה וגודל; הצבע הסמנטי של כל סטטוס נשמר)
+   -------------------------------------------------------------------------- */
+span[style*="border-radius: 20px"],
+span[style*="borderRadius: 20px"],
+span[style*="border-radius: 16px"],
+span[style*="borderRadius: 16px"] {
+  border-radius: 99px !important;
+  font-weight: 700;
+  box-shadow: none !important;
+}
+
+/* --------------------------------------------------------------------------
+   9. טבלאות — קו הפרדה חם וכותרת אחידה בכל טבלה באפליקציה
+   -------------------------------------------------------------------------- */
+table tbody td {
+  border-bottom-color: var(--divider) !important;
+}
+
+table thead th {
+  color: var(--text-muted) !important;
+  font-family: 'Assistant', sans-serif !important;
+  letter-spacing: 0.01em;
+}
+
+/* --------------------------------------------------------------------------
+   10. פסי גלילה בגוון המותג (במקום האפור האפרפר של הדפדפן)
+   -------------------------------------------------------------------------- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--element-border) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--element-border);
+  border-radius: 99px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+  background-clip: content-box;
+}
+
+/* --------------------------------------------------------------------------
+   11. חריגים — מקומות שהדריסה לא אמורה לגעת בהם
+   מסכי הדפסה חייבים להישאר שחור-על-לבן, ומערכות העיצוב הייעודיות
+   (moc-* לכרטיסי הזמנה/לקוח/דגם) מנהלות את הצבעים של עצמן.
+   -------------------------------------------------------------------------- */
+@media print {
+  [style*="#f8fafc"],
+  [style*="#f1f5f9"],
+  [style*="#f5f5f5"],
+  [style*="#64748b"],
+  [style*="#334155"] {
+    background-color: transparent !important;
+    color: #000 !important;
+  }
+
+  table thead th {
+    color: #000 !important;
+  }
+}
+
+.print-container [style],
+.moc [style*="#fff"] {
+  background-color: revert;
+}

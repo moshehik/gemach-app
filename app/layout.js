@@ -1,4 +1,5 @@
 import './globals.css';
+import './design-overrides.css';
 import { cookies } from 'next/headers';
 import prisma from './lib/prisma';
 
