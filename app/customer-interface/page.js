@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { HDate, Sedra, Locale, HebrewCalendar } from '@hebcal/core';
-import { getHebrewDateString, getHebrewMonthYear } from '@/lib/hebrewDate';
-import { RefreshCw, Printer, Lock, Maximize, Bot, Mic, History, Shirt, Crown, Star, Sparkles, Scissors, Gem, Heart, ShoppingBag, Feather, Palette, Camera, Tag, Gift, Sun, Moon, Music, Smile, Search, Calendar, Loader2, LogOut, Plus, Send, ExternalLink, LayoutGrid, List } from 'lucide-react';
+import { getHebrewDateString } from '@/lib/hebrewDate';
+import { RefreshCw, Printer, Lock, Maximize, Shirt, Sparkles, Tag, Search, Calendar, Loader2, LogOut, Plus, Send, ExternalLink, LayoutGrid, List, SlidersHorizontal, Table2, CheckCircle2, AlertTriangle, Ruler, ZoomIn, Eraser } from 'lucide-react';
 import { useLabels } from '@/app/components/LabelsContext';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
 
@@ -23,8 +22,6 @@ export default function CustomerInventoryViewer() {
     today.setHours(0, 0, 0, 0);
     return today;
   });
-  const [selectedModel, setSelectedModel] = useState(null);
-  const [sortAsc, setSortAsc] = useState(true);
   const [isLocked, setIsLocked] = useState(false);
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [employees, setEmployees] = useState([]);
@@ -39,6 +36,17 @@ export default function CustomerInventoryViewer() {
   const [ordersModalLoading, setOrdersModalLoading] = useState(false);
   const [ordersModalOrders, setOrdersModalOrders] = useState([]);
   const [settings, setSettings] = useState({ hide_dress_images: 'false' });
+
+  // Sidebar filters (stage 2)
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [priceCategories, setPriceCategories] = useState([]);
+  const [selectedCategories, setSelectedCategories] = useState([]);
+  // What a successful employee login in the unlock modal should do:
+  // 'unlock' releases the kiosk lock; 'print' only authorizes a one-off print and keeps the lock.
+  const [unlockIntent, setUnlockIntent] = useState('unlock');
+  // True during an employee-authorized print from a locked kiosk, so the
+  // fullscreen exit caused by the print popup doesn't re-open the unlock modal.
+  const suppressRelockRef = useRef(false);
 
   useEffect(() => {
     fetch('/api/settings')
@@ -66,13 +74,17 @@ export default function CustomerInventoryViewer() {
 
   useEffect(() => {
     const handleFullscreenChange = () => {
-      if (isLocked && !document.fullscreenElement) {
+      // Don't touch the modal if it's already open (would overwrite a pending 'print'
+      // intent mid-typing), and don't re-open it for the fullscreen exit that an
+      // employee-authorized print itself causes (suppressRelockRef window).
+      if (isLocked && !document.fullscreenElement && !showUnlockModal && !suppressRelockRef.current) {
+        setUnlockIntent('unlock');
         setShowUnlockModal(true);
       }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-  }, [isLocked]);
+  }, [isLocked, showUnlockModal]);
 
   // Right-click context menu ("Inspect", "View source", etc.) is a bigger escape hole
   // than anything the header buttons offered, so block it entirely while the kiosk is locked.
@@ -85,7 +97,6 @@ export default function CustomerInventoryViewer() {
   }, [isLocked]);
 
   // AI Chat State
-  const [aiChatOpen, setAiChatOpen] = useState(false);
   const [aiInput, setAiInput] = useState('');
   const [aiChats, setAiChats] = useState({
     1: [{ role: 'assistant', content: 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' }],
@@ -95,29 +106,8 @@ export default function CustomerInventoryViewer() {
   const [aiLoading, setAiLoading] = useState(false);
   const [isAiChatVisible, setIsAiChatVisible] = useState(false);
   useEffect(() => { setIsAiChatVisible(false); }, [stage]); // Close chat on stage change
-  const [isListening, setIsListening] = useState(false);
-  const [showAiHistory, setShowAiHistory] = useState(false);
-  const [aiChatSessions, setAiChatSessions] = useState([]);
-  
+
   const chatEndRef = useRef(null);
-  const recognitionRef = useRef(null);
-
-  useEffect(() => {
-    const savedSessions = localStorage.getItem('ai_customer_chat_sessions');
-    if (savedSessions) {
-      try {
-        setAiChatSessions(JSON.parse(savedSessions));
-      } catch (e) {}
-    }
-
-    const saved = localStorage.getItem('ai_customer_chat');
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved);
-        if (parsed.length > 0) setAiMessages(parsed);
-      } catch (e) {}
-    }
-  }, []);
 
   useEffect(() => {
     if (aiMessages.length > 0) {
@@ -125,31 +115,9 @@ export default function CustomerInventoryViewer() {
     }
   }, [aiMessages]);
 
-  const startNewAiChat = () => {
-    if (aiMessages.length > 1) {
-      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...aiMessages] };
-      const updatedSessions = [newSession, ...aiChatSessions].slice(0, 10);
-      setAiChatSessions(updatedSessions);
-      localStorage.setItem('ai_customer_chat_sessions', JSON.stringify(updatedSessions));
-    }
-    setAiChats(prev => ({ ...prev, [stage]: [{ role: 'assistant', content: stage === 1 ? 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' : 'שלום! אני העוזר החכם של הקטלוג. אני יכול לסנן עבורך דגמים ולענות על שאלות. במה אפשר לעזור?' }] }));
-    setShowAiHistory(false);
-  };
-
-  const loadAiSession = (session) => {
-    if (aiMessages.length > 1 && !aiChatSessions.find(s => s.id === session.id)) {
-      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...aiMessages] };
-      const updatedSessions = [newSession, ...aiChatSessions].slice(0, 10);
-      setAiChatSessions(updatedSessions);
-      localStorage.setItem('ai_customer_chat_sessions', JSON.stringify(updatedSessions));
-    }
-    setAiMessages(session.messages);
-    setShowAiHistory(false);
-  };
-
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [aiMessages, aiChatOpen]);
+  }, [aiMessages]);
 
   const handleAiSubmit = async (e) => {
     e.preventDefault();
@@ -190,7 +158,6 @@ export default function CustomerInventoryViewer() {
 
   const fetchInventory = () => {
     setLoading(true);
-    setSelectedModel(null);
     const dateQuery = selectedDate ? `?eventDate=${selectedDate.toISOString()}&limit=10000` : '?limit=10000';
     fetch(`/api/dresses${dateQuery}`)
       .then(res => res.json())
@@ -221,6 +188,15 @@ export default function CustomerInventoryViewer() {
       .catch(err => console.error('Failed to load employees:', err));
   }, []);
 
+  useEffect(() => {
+    fetch('/api/pricelists/categories')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setPriceCategories(data);
+      })
+      .catch(err => console.error('Failed to load price categories:', err));
+  }, []);
+
   const handleUnlock = async (e) => {
     e.preventDefault();
     if (!unlockEmployee) {
@@ -241,12 +217,28 @@ export default function CustomerInventoryViewer() {
       const data = await res.json();
       
       if (res.ok && data.success) {
-        setIsLocked(false);
         setShowUnlockModal(false);
         setUnlockPassword('');
         setUnlockEmployee('');
-        if (document.fullscreenElement && document.exitFullscreen) {
-          document.exitFullscreen().catch(err => console.warn(err));
+        if (unlockIntent === 'print') {
+          // Employee only authorized a print — the kiosk stays locked.
+          setUnlockIntent('unlock');
+          suppressRelockRef.current = true;
+          handleCatalogPrint();
+          setTimeout(() => {
+            suppressRelockRef.current = false;
+            // Best effort to restore fullscreen after the print popup closed;
+            // if the browser rejects it (no user gesture), the next fullscreen
+            // exit event will still re-open the unlock modal as usual.
+            if (!document.fullscreenElement && document.documentElement.requestFullscreen) {
+              document.documentElement.requestFullscreen().catch(() => {});
+            }
+          }, 2500);
+        } else {
+          setIsLocked(false);
+          if (document.fullscreenElement && document.exitFullscreen) {
+            document.exitFullscreen().catch(err => console.warn(err));
+          }
         }
       } else {
         setUnlockError(data.message || 'שם עובד או סיסמא שגויים');
@@ -256,17 +248,6 @@ export default function CustomerInventoryViewer() {
     } finally {
       setUnlockLoading(false);
     }
-  };
-
-  const getModelQuantities = (model) => {
-    let qOther = 0;
-    if (model.items && Array.isArray(model.items)) {
-      model.items.forEach(item => {
-        if (item.inRepair || item.notInUse || item.quantity <= 0) return;
-        qOther += item.quantity || 1;
-      });
-    }
-    return { qOther };
   };
 
   const handleModelDoubleClick = async (model, sizeName = null) => {
@@ -308,15 +289,22 @@ export default function CustomerInventoryViewer() {
 
   const displayDresses = useMemo(() => {
     let list = dresses.filter(d => {
+      if (selectedCategories.length > 0 && !selectedCategories.includes(d.priceCategory)) return false;
+
       const term = search.trim().toLowerCase();
       if (!term) return true;
 
       // Handle explicit size search
+      // Exact size match, excluding unusable items — so the sidebar size chips
+      // ("מידה 40") never pull in "140" / "40-42" or deleted-item-only models.
       const sizeMatch = term.match(/^מידה\s*(.+)$/);
       if (sizeMatch) {
         const cleanTerm = sizeMatch[1].trim();
         if (d.items) {
-          return d.items.some(item => (item.sizeText || 'כללי').toLowerCase().includes(cleanTerm));
+          return d.items.some(item => {
+            if (item.notInUse || item.isDeleted || item.isUnusable) return false;
+            return (item.sizeText || 'כללי').trim().toLowerCase() === cleanTerm;
+          });
         }
         return false;
       }
@@ -332,230 +320,52 @@ export default function CustomerInventoryViewer() {
     list.sort((a, b) => {
       const nameA = (a.name || '').toLowerCase();
       const nameB = (b.name || '').toLowerCase();
-      return sortAsc ? nameA.localeCompare(nameB) : nameB.localeCompare(nameA);
+      return nameA.localeCompare(nameB);
     });
     return list;
-  }, [dresses, search, sortAsc]);
+  }, [dresses, search, selectedCategories]);
 
-  const grandTotalItems = useMemo(() => {
-    return displayDresses.reduce((sum, model) => {
-      const { qOther } = getModelQuantities(model);
-      return sum + qOther;
-    }, 0);
-  }, [displayDresses]);
+  // Distinct sizes across the whole (unfiltered) inventory, for the sidebar quick-filter chips.
+  const sizeChipOptions = useMemo(() => {
+    const set = new Set();
+    dresses.forEach(d => d.items?.forEach(item => {
+      if (item.notInUse || item.isDeleted || item.isUnusable) return;
+      const st = (item.sizeText || '').trim();
+      if (st) set.add(st);
+    }));
+    return Array.from(set).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+  }, [dresses]);
 
-  // Calendar Helpers
-  const changeMonth = (delta) => {
-    try {
-      const hCurrent = new HDate(selectedDate);
-      const current15 = new HDate(15, hCurrent.getMonth(), hCurrent.getFullYear());
-      const nextMonthHDate = new HDate(current15.abs() + (30 * delta));
-      const newMonthFirstDay = new HDate(1, nextMonthHDate.getMonth(), nextMonthHDate.getFullYear());
-      const newDate = newMonthFirstDay.greg();
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (newDate >= today) {
-        setSelectedDate(newDate);
-      }
-    } catch(e) {
-      const d = new Date(selectedDate);
-      d.setMonth(d.getMonth() + delta);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      if (d >= today) {
-        setSelectedDate(d);
-      }
-    }
-  };
-
-  const changeDay = (delta) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + delta);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (d >= today) {
-      setSelectedDate(d);
-    }
-  };
-
-  const renderCalendar = () => {
-    let hCurrent;
-    try {
-      hCurrent = new HDate(selectedDate);
-    } catch(e) {
-      hCurrent = new HDate(new Date());
-    }
-    const hYear = hCurrent.getFullYear();
-    const hMonth = hCurrent.getMonth();
-    
-    const firstDayHDate = new HDate(1, hMonth, hYear);
-    const firstDayOfWeek = firstDayHDate.getDay(); 
-    const daysInHebMonth = hCurrent.daysInMonth();
-    
-    const weeks = [];
-    let currentWeek = [];
-    
-    for (let i = 0; i < firstDayOfWeek; i++) {
-      currentWeek.push(null);
-    }
-    
-    for (let day = 1; day <= daysInHebMonth; day++) {
-      if (currentWeek.length === 7) {
-        weeks.push(currentWeek);
-        currentWeek = [];
-      }
-      currentWeek.push(day);
-    }
-    if (currentWeek.length > 0) {
-      while (currentWeek.length < 7) currentWeek.push(null);
-      weeks.push(currentWeek);
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    return (
-      <table className="cal-table">
-        <thead>
-          <tr>
-            {["א","ב","ג","ד","ה","ו","שבת"].map(d => <th key={d}>{d}</th>)}
-          </tr>
-        </thead>
-        <tbody>
-          {weeks.map((week, i) => (
-            <tr key={i}>
-              {week.map((day, j) => {
-                if (!day) return <td key={j} className="empty"></td>;
-
-                const cellHDate = new HDate(day, hMonth, hYear);
-                const cellGreg = cellHDate.greg();
-
-                const isSelected = cellGreg.toDateString() === selectedDate.toDateString();
-                const isToday = cellGreg.toDateString() === today.toDateString();
-                const isPast = cellGreg < today;
-
-                let hebrewDayStr = day;
-                try {
-                  hebrewDayStr = cellHDate.renderGematriya().split(' ')[0];
-                } catch(e) {}
-                
-                let parashaText = '';
-                if (j === 6) {
-                  try {
-                    const s = new Sedra(hYear, true);
-                    const p = s.lookup(cellHDate);
-                    if (p && p.parsha && p.parsha.length > 0) {
-                      parashaText = p.parsha.map(name => Locale.gettext(name, 'he')).join('-');
-                    }
-                  } catch(e) {}
-                }
-
-                let holidays = [];
-                try {
-                  const evs = HebrewCalendar.getHolidaysOnDate(cellHDate, true) || [];
-                  holidays = evs.filter(e => {
-                    const flags = e.getFlags();
-                    const name = e.render('he');
-                    if (flags & 8192) return false; // Exclude Modern Holidays (Jabotinsky, etc)
-                    if (name.includes('בנות') || name.includes('מעשר בהמה') || name.includes('סליחות')) return false; 
-                    return (flags & 1) || (flags & 524288) || (flags & 2097152) || (flags & 16384) || (flags & 256);
-                  }).map(e => e.render('he'));
-                } catch (e) {}
-
-                return (
-                  <td data-element-name="לחיץ_page_1"
-                    key={j}
-                    className={`${isSelected ? 'selected' : ''} ${isToday ? 'today' : ''} ${isPast ? 'past' : ''}`}
-                    onClick={() => !isPast && setSelectedDate(cellGreg)}
-                    style={{ cursor: isPast ? 'not-allowed' : 'pointer', opacity: isPast ? 0.4 : 1, color: isPast ? '#cbd5e1' : 'inherit' }}
-                  >
-                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'center', alignItems: 'center', lineHeight: '1.2' }}>
-                      <span style={{ fontSize: '10px', color: isPast ? '#cbd5e1' : '#9ca3af' }}>{cellGreg.getDate()}/{cellGreg.getMonth() + 1}</span>
-                      <span style={{ fontWeight: 'bold', color: isPast ? '#cbd5e1' : 'inherit' }}>{hebrewDayStr}</span>
-                      {parashaText && <span style={{ fontSize: '10px', color: isPast ? '#cbd5e1' : '#8b5cf6', marginTop: '2px', fontWeight: 'normal' }}>{parashaText}</span>}
-                      {holidays.map((h, idx) => (
-                        <span key={idx} style={{ fontSize: '9px', color: isPast ? '#cbd5e1' : '#ec4899', marginTop: '1px', fontWeight: 'normal' }}>{h}</span>
-                      ))}
-                    </div>
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    );
-  };
-
-  const renderSizes = () => {
-    if (!selectedModel) {
-      return <div className="empty-state">בחר דגם לצפייה במידות</div>;
-    }
-
-    const sizesMap = {};
-    let totalSizesItems = 0;
-
-    if (selectedModel.items) {
-      selectedModel.items.forEach(item => {
-        if (item.inRepair || item.notInUse) return;
-        const size = item.sizeText || 'כללי';
-        if (!sizesMap[size]) {
-          sizesMap[size] = { name: size, qOther: 0 };
-        }
-        const qty = item.quantity || 0;
-        
-        if (qty > 0) {
-          totalSizesItems += qty;
-          sizesMap[size].qOther += qty;
-        }
-      });
-    }
-
-    const sizesArr = Object.values(sizesMap).sort((a, b) => {
-      const na = parseFloat(a.name);
-      const nb = parseFloat(b.name);
-      if (!isNaN(na) && !isNaN(nb)) return na - nb;
-      return a.name.localeCompare(b.name);
+  const categoryCounts = useMemo(() => {
+    const counts = {};
+    dresses.forEach(d => {
+      if (d.priceCategory) counts[d.priceCategory] = (counts[d.priceCategory] || 0) + 1;
     });
+    return counts;
+  }, [dresses]);
 
-    if (sizesArr.length === 0) {
-      return <div className="empty-state">אין נתונים לדגם זה</div>;
-    }
-
-    return (
-      <div className="sizes-grid" data-total-items={totalSizesItems} data-total-sizes={sizesArr.length}>
-        {sizesArr.map(item => (
-          <div key={item.name} className="size-badge animate-fade-in" onDoubleClick={() => handleModelDoubleClick(selectedModel, item.name)}>
-            <div className="size-name">{item.name}</div>
-            <div style={{ position: 'relative' }}>
-              {item.qOther > 0 ? (
-                <div className="size-qty">{item.qOther}</div>
-              ) : (
-                <div className="size-qty zero">-</div>
-              )}
-              {!isLocked && (
-                <div data-element-name="לחיץ_page_2" 
-                  title="הזמנות של המידה (לחץ כאן או לחיצה כפולה)"
-                  onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(selectedModel, item.name); }}
-                  style={{ 
-                    position: 'absolute', top: '-6px', right: '-6px',
-                    color: 'var(--card-bg)', background: 'var(--primary-color)', cursor: 'pointer', padding: '3px',
-                    borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: '0 2px 4px rgba(0,0,0,0.2)', zIndex: 10,
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.15)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
-                >
-                  <History data-element-name="רכיב_page_3" size={10} strokeWidth={3} />
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+  // Per-model size/quantity breakdown, shared by all three views and the summary line.
+  const getModelSizeInfo = (model) => {
+    const sizeMap = new Map();
+    model.items?.forEach(item => {
+      if (item.notInUse || item.isDeleted || item.isUnusable) return;
+      const st = item.sizeText || 'כללי';
+      if (!sizeMap.has(st)) sizeMap.set(st, { available: 0, total: 0 });
+      const info = sizeMap.get(st);
+      info.total += 1;
+      if (item.quantity > 0) info.available += 1;
+    });
+    const sizesArray = Array.from(sizeMap.entries()).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }));
+    const totalAvailable = sizesArray.reduce((s, [, d]) => s + d.available, 0);
+    const totalUnits = sizesArray.reduce((s, [, d]) => s + d.total, 0);
+    return { sizesArray, totalAvailable, totalUnits };
   };
+
+  // Counted with the same rules as the card summaries and the print view (getModelSizeInfo),
+  // so the header number can never contradict what the cards show.
+  const grandTotalItems = useMemo(() => {
+    return displayDresses.reduce((sum, model) => sum + getModelSizeInfo(model).totalAvailable, 0);
+  }, [displayDresses]);
 
   const handleCatalogPrint = () => {
     const printWindow = window.open('', '_blank');
@@ -1090,14 +900,16 @@ export default function CustomerInventoryViewer() {
                     קטלוג שמלות זמינות
                   </h2>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--card-bg)', padding: '6px', borderRadius: '16px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.02)' }}>
-                    <button data-element-name="כפתור_page_21" data-agy-id="exit_to_system_btn" className="header-btn" onClick={() => { if (isLocked) { setShowUnlockModal(true); return; } router.push('/'); }} title="חזור למערכת" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--danger-text)', background: 'var(--danger-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><LogOut data-element-name="רכיב_page_22" size={18} /></button>
-                    <button data-element-name="כפתור_page_23" data-agy-id="new_search_btn" className="header-btn" onClick={() => { if (isLocked) { setShowUnlockModal(true); return; } setStage(1); }} title="חיפוש חדש" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--primary-color)', background: 'var(--primary-light)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Search data-element-name="רכיב_page_24" size={18} /></button>
+                    <button data-element-name="כפתור_page_21" data-agy-id="exit_to_system_btn" className="header-btn" onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } router.push('/'); }} title="חזור למערכת" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--danger-text)', background: 'var(--danger-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><LogOut data-element-name="רכיב_page_22" size={18} /></button>
+                    <button data-element-name="כפתור_page_23" data-agy-id="new_search_btn" className="header-btn" onClick={() => setStage(1)} title="חיפוש חדש" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--primary-color)', background: 'var(--primary-light)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Search data-element-name="רכיב_page_24" size={18} /></button>
                     <button data-element-name="כפתור_page_25" data-agy-id="refresh_inventory_btn" className="header-btn" onClick={fetchInventory} title="רענון מלאי" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--success-text)', background: 'var(--success-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><RefreshCw data-element-name="רכיב_page_26" size={18} /></button>
-                    <button data-element-name="כפתור_page_27" data-agy-id="print_catalog_btn" className="header-btn" onClick={handleCatalogPrint} title="הדפסה" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--accent-color)', background: 'var(--empty-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Printer data-element-name="רכיב_page_28" size={18} /></button>
+                    <button data-element-name="כפתור_page_27" data-agy-id="print_catalog_btn" className="header-btn" onClick={() => { if (isLocked) { setUnlockIntent('print'); setShowUnlockModal(true); return; } handleCatalogPrint(); }} title={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, color: 'var(--accent-color)', background: 'var(--empty-bg)', borderRadius: '12px', border: 'none', cursor: 'pointer', transition: 'all 0.2s' }}><Printer data-element-name="רכיב_page_28" size={18} /></button>
                     {isLocked ? (
-                      <button data-element-name="כפתור_page_29" data-agy-id="unlock_screen_btn" className="header-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, borderRadius: '12px', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(239,68,68,0.3)' }} onClick={() => setShowUnlockModal(true)} title="שחרור מסך"><Lock data-element-name="רכיב_page_30" size={18} /></button>
+                      <button data-element-name="כפתור_page_29" data-agy-id="unlock_screen_btn" className="header-btn" style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '38px', height: '38px', padding: 0, borderRadius: '12px', border: 'none', cursor: 'pointer', boxShadow: '0 4px 10px rgba(239,68,68,0.3)' }} onClick={() => { setUnlockIntent('unlock'); setShowUnlockModal(true); }} title="שחרור מסך"><Lock data-element-name="רכיב_page_30" size={18} /></button>
                     ) : (
                       <button data-element-name="כפתור_page_31" data-agy-id="lock_screen_btn" className="header-btn" onClick={() => {
+                        // The orders modal links into staff order pages — never leave it up on a locked kiosk.
+                        setShowOrdersModal(false);
                         setIsLocked(true);
                         if (document.documentElement.requestFullscreen) {
                           document.documentElement.requestFullscreen().catch(err => console.warn(err));
@@ -1115,21 +927,19 @@ export default function CustomerInventoryViewer() {
               
             </div>
 
-            {/* Filter Tools */}
+            {/* Toolbar: sidebar toggle + result count + AI */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
-              <div style={{ position: 'relative', flex: '1 1 280px' }}>
-                <Search data-element-name="רכיב_page_34" size={20} color="#94a3b8" style={{ position: 'absolute', right: '18px', top: '50%', transform: 'translateY(-50%)' }} />
-                <input data-element-name="שדה_page_35" 
-                  data-agy-id="catalog_search_input"
-                  type="text" 
-                  placeholder="חיפוש מודל (שם, תחרה, 42)..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                  style={{ width: '100%', padding: '16px 48px 16px 20px', borderRadius: '16px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', fontSize: '1.05rem', outline: 'none', transition: 'all 0.3s', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.01)' }}
-                  onFocus={e => { e.currentTarget.style.borderColor = 'var(--primary-color)'; e.currentTarget.style.boxShadow = '0 0 0 4px var(--border-color)'; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = 'var(--border-main)'; e.currentTarget.style.boxShadow = 'inset 0 2px 4px rgba(0,0,0,0.01)'; }}
-                />
-              </div>
+              <button data-element-name="כפתור_sidebar_toggle" data-agy-id="toggle_sidebar_btn"
+                onClick={() => setSidebarOpen(o => !o)}
+                style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '14px 22px', borderRadius: '16px', border: `1px solid ${(search || selectedCategories.length > 0) ? 'var(--primary-color)' : 'var(--border-main)'}`, background: sidebarOpen ? 'var(--primary-light)' : 'var(--card-bg)', color: sidebarOpen ? 'var(--primary-color)' : 'var(--text-main)', fontSize: '1rem', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}>
+                <SlidersHorizontal data-element-name="רכיב_sidebar_toggle_icon" size={18} />
+                סינון ותצוגה
+                {(search || selectedCategories.length > 0) && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--primary-color)', display: 'inline-block' }} />}
+              </button>
+
+              <span data-agy-id="catalog_results_count" style={{ fontSize: '1rem', color: 'var(--text-secondary)', fontWeight: '600' }}>
+                {displayDresses.length} דגמים · <span style={{ color: 'var(--success-text, #16a34a)' }}>{grandTotalItems} יחידות פנויות</span>
+              </span>
 
               {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && (
                 isAiChatVisible ? (
@@ -1158,45 +968,6 @@ export default function CustomerInventoryViewer() {
                 </div>
               ))}
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'var(--card-bg)', padding: '12px 24px', borderRadius: '16px', border: '1px solid var(--border-main)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                <span style={{ fontSize: '1rem', fontWeight: '700', color: 'var(--text-main)' }}>זום</span>
-                <input data-element-name="שדה_page_40" 
-                  data-agy-id="zoom_range_input"
-                  type="range" 
-                  min="0.5" max="1.5" step="0.1" 
-                  value={zoomLevel} 
-                  onChange={e => setZoomLevel(parseFloat(e.target.value))} 
-                  style={{ cursor: 'pointer', accentColor: 'var(--primary-color)', width: '100px' }}
-                />
-              </div>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: 'var(--card-bg)', padding: '6px', borderRadius: '16px', border: '1px solid var(--border-main)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
-                <button data-element-name="כפתור_page_41" 
-                  data-agy-id="view_grid_btn"
-                  onClick={() => setViewMode('grid')}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', border: 'none', borderRadius: '12px', background: viewMode === 'grid' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'grid' ? 'var(--primary-color)' : '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' }}
-                  title="תצוגת ריבועים"
-                >
-                  <LayoutGrid data-element-name="רכיב_page_42" size={20} />
-                </button>
-                <button data-element-name="כפתור_page_43" 
-                  data-agy-id="view_rows_btn"
-                  onClick={() => setViewMode('rows')}
-                  style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '40px', height: '40px', border: 'none', borderRadius: '12px', background: viewMode === 'rows' ? 'var(--primary-light)' : 'transparent', color: viewMode === 'rows' ? 'var(--primary-color)' : '#94a3b8', cursor: 'pointer', transition: 'all 0.2s' }}
-                  title="תצוגת שורות"
-                >
-                  <List data-element-name="רכיב_page_44" size={20} />
-                </button>
-              </div>
-
-              <div data-element-name="לחיץ_page_45" data-agy-id="toggle_zero_sizes_div" style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none', background: showZeroSizes ? 'var(--primary-light)' : 'var(--card-bg)', padding: '14px 24px', borderRadius: '16px', border: `1px solid ${showZeroSizes ? 'var(--primary-light)' : 'var(--border-main)'}`, transition: 'all 0.3s' }} onClick={() => setShowZeroSizes(!showZeroSizes)}>
-                <div style={{ width: '44px', height: '24px', background: showZeroSizes ? 'var(--primary-color)' : 'var(--element-bg)', borderRadius: '999px', position: 'relative', transition: 'background 0.3s' }}>
-                  <div style={{ width: '20px', height: '20px', background: 'var(--card-bg)', borderRadius: '50%', position: 'absolute', top: '2px', left: showZeroSizes ? '22px' : '2px', transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
-                </div>
-                <span style={{ fontSize: '1rem', fontWeight: '700', color: showZeroSizes ? '#1d4ed8' : '#64748b' }}>
-                  הצג תפוסה מלאה
-                </span>
-              </div>
             </div>
           </div>
           
@@ -1282,90 +1053,269 @@ export default function CustomerInventoryViewer() {
             </div>
           )}
 
-          {loading ? (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 0', color: 'var(--text-secondary)' }}>
-              <Loader2 data-element-name="רכיב_page_55" size={48} className="animate-spin" style={{ color: 'var(--primary-color)', marginBottom: '16px' }} />
-              <span style={{ fontSize: '1.2rem' }}>טוען נתונים...</span>
-            </div>
-          ) : (
-            <>
-              <div className={`modern-${viewMode}`} style={{ zoom: zoomLevel }}>
-                {displayDresses.map(model => {
-                
-                // Group sizes
-                const sizeMap = new Map();
-                model.items?.forEach(item => {
-                  if (item.notInUse || item.isDeleted || item.isUnusable) return;
-                  const st = item.sizeText || 'כללי';
-                  if (!sizeMap.has(st)) sizeMap.set(st, { available: 0, total: 0 });
-                  const info = sizeMap.get(st);
-                  info.total += 1;
-                  if (item.quantity > 0) info.available += 1;
-                });
-                
-                const sizesArray = Array.from(sizeMap.entries()).sort((a,b) => String(a[0]).localeCompare(String(b[0]), undefined, {numeric: true}));
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: '20px', flexWrap: 'wrap' }}>
 
-                return (
-                  <div data-element-name="לחיץ_page_56" key={model.id} className="dress-card" onClick={() => {
-                    handleModelDoubleClick(model);
-                  }}>
-                    <div className="dress-image-placeholder">
-                      {settings.hide_dress_images !== 'true' ? (
-                        model.imageUrl ? (
-                          <img src={model.imageUrl} alt={model.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        ) : (
-                          <Shirt data-element-name="רכיב_page_57" size={48} opacity={0.5} />
-                        )
-                      ) : (
-                        <div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>אין תמונה</div>
-                      )}
+            {/* Sidebar: filters & display settings */}
+            {sidebarOpen && (
+              <aside data-agy-id="catalog_sidebar" style={{ flex: '0 1 290px', minWidth: '250px', position: 'sticky', top: '16px', background: 'var(--card-bg)', backdropFilter: 'blur(20px)', borderRadius: '24px', border: '1px solid var(--border-main)', boxShadow: '0 10px 40px -10px rgba(0,0,0,0.08)', padding: '22px 20px', display: 'flex', flexDirection: 'column', gap: '26px', maxHeight: 'calc(100vh - 32px)', overflowY: 'auto' }}>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '800', color: 'var(--text-main)' }}>
+                    <Search size={16} style={{ color: 'var(--primary-color)' }} /> חיפוש
+                  </div>
+                  <input data-element-name="שדה_page_35"
+                    data-agy-id="catalog_search_input"
+                    type="text"
+                    placeholder="שם דגם, מספר, או מידה..."
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                    style={{ width: '100%', padding: '13px 16px', borderRadius: '14px', border: '1px solid var(--border-main)', background: 'var(--element-bg)', fontSize: '1rem', outline: 'none', color: 'var(--text-main)' }}
+                  />
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: '8px', lineHeight: 1.5 }}>
+                    אפשר לחפש שם שמלה, מספר קטלוגי, או לכתוב "מידה 40"
+                  </div>
+                </div>
+
+                {priceCategories.length > 0 && (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '800', color: 'var(--text-main)' }}>
+                      <Tag size={16} style={{ color: 'var(--primary-color)' }} /> קטגוריה
                     </div>
-                    <div className="dress-content">
-                      <div className="dress-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
-                        <span style={{ fontSize: '1.3rem', fontWeight: '900', color: 'var(--text-main)' }}>דגם: {model.name}</span>
-                        {model.barcodePrefix && <span style={{ fontSize: '0.85rem', background: 'var(--element-bg)', padding: '4px 10px', borderRadius: '999px', color: 'var(--text-secondary)', fontWeight: '600' }}>#{model.barcodePrefix}</span>}
-                      </div>
-
-                      <div style={{ marginBottom: '12px', color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                        <strong>מידות זמינות:</strong>
-                      </div>
-
-                      <div className="sizes-row">
-                        {sizesArray.length === 0 ? (
-                          <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>אין מידות רשומות</span>
-                        ) : (
-                          sizesArray.map(([sName, sData]) => (
-                            <div
-                              key={sName}
-                              className={`size-pill ${sData.available > 0 ? 'available' : ''}`}
-                              title={`${sData.available} מתוך ${sData.total}`}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleModelDoubleClick(model, sName);
-                              }}
-                              style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 14px' }}
-                            >
-                              <span style={{ fontSize: '1.2rem', fontWeight: '800', color: sData.available > 0 ? '#14532d' : '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'inline-block' }}>מידה {sName}</span>
-                              <span style={{ whiteSpace: 'nowrap', fontWeight: 'bold', fontSize: '0.85rem', background: sData.available > 0 ? '#bbf7d0' : 'var(--border-main)', color: sData.available > 0 ? '#166534' : '#64748b', padding: '2px 8px', borderRadius: '12px' }}>{sData.available}/{sData.total}</span>
-                            </div>
-                          ))
-                        )}
-                      </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                      {priceCategories.map(cat => {
+                        const count = categoryCounts[cat] || 0;
+                        const checked = selectedCategories.includes(cat);
+                        return (
+                          <label key={cat} data-agy-id={`category_filter_${cat}`} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 6px', borderRadius: '10px', cursor: 'pointer', opacity: count === 0 && !checked ? 0.5 : 1, background: checked ? 'var(--primary-light)' : 'transparent' }}>
+                            <input type="checkbox" checked={checked}
+                              onChange={() => setSelectedCategories(prev => checked ? prev.filter(c => c !== cat) : [...prev, cat])}
+                              style={{ width: '17px', height: '17px', accentColor: 'var(--primary-color)', cursor: 'pointer' }} />
+                            <span style={{ fontSize: '0.92rem', color: 'var(--text-main)' }}>{cat}</span>
+                            <span style={{ marginInlineStart: 'auto', fontSize: '0.75rem', color: 'var(--text-secondary)', background: 'var(--element-bg)', padding: '2px 8px', borderRadius: '999px' }}>{count}</span>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
-                );
-              })}
-              </div>
-            </>
-          )}
+                )}
+
+                {sizeChipOptions.length > 0 && (
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '800', color: 'var(--text-main)' }}>
+                      <Ruler size={16} style={{ color: 'var(--primary-color)' }} /> סינון מהיר לפי מידה
+                    </div>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '7px' }}>
+                      {sizeChipOptions.map(sz => {
+                        const term = `מידה ${sz}`;
+                        const active = search.trim() === term;
+                        return (
+                          <button key={sz} data-agy-id={`size_chip_${sz}`}
+                            onClick={() => setSearch(active ? '' : term)}
+                            style={{ padding: '8px 14px', borderRadius: '999px', border: '1px solid var(--border-main)', background: active ? 'var(--primary-color)' : 'var(--element-bg)', color: active ? 'white' : 'var(--text-main)', fontSize: '0.88rem', fontWeight: '600', cursor: 'pointer', minWidth: '44px' }}>
+                            {sz}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                <div data-element-name="לחיץ_page_45" data-agy-id="toggle_zero_sizes_div" style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', userSelect: 'none' }} onClick={() => setShowZeroSizes(!showZeroSizes)}>
+                  <div style={{ width: '42px', height: '23px', flexShrink: 0, background: showZeroSizes ? 'var(--primary-color)' : 'var(--element-bg)', borderRadius: '999px', position: 'relative', transition: 'background 0.3s', border: '1px solid var(--border-main)' }}>
+                    <div style={{ width: '17px', height: '17px', background: 'var(--card-bg)', borderRadius: '50%', position: 'absolute', top: '2px', left: showZeroSizes ? '21px' : '2px', transition: 'left 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }} />
+                  </div>
+                  <span style={{ fontSize: '0.88rem', fontWeight: '600', color: showZeroSizes ? 'var(--primary-color)' : 'var(--text-secondary)' }}>
+                    הצג גם מידות ללא מלאי פנוי
+                  </span>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '800', color: 'var(--text-main)' }}>
+                    <LayoutGrid size={16} style={{ color: 'var(--primary-color)' }} /> צורת תצוגה
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '7px' }}>
+                    {[
+                      { key: 'grid', label: 'כרטיסים גדולים', Icon: LayoutGrid, agyId: 'view_grid_btn' },
+                      { key: 'rows', label: 'רשימה מפורטת', Icon: List, agyId: 'view_rows_btn' },
+                      { key: 'table', label: 'טבלה קומפקטית', Icon: Table2, agyId: 'view_table_btn' },
+                    ].map(({ key, label, Icon, agyId }) => (
+                      <button key={key} data-agy-id={agyId}
+                        onClick={() => setViewMode(key)}
+                        style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '11px 14px', borderRadius: '14px', border: `1px solid ${viewMode === key ? 'var(--primary-color)' : 'var(--border-main)'}`, background: viewMode === key ? 'var(--primary-light)' : 'var(--element-bg)', color: viewMode === key ? 'var(--primary-color)' : 'var(--text-main)', fontSize: '0.92rem', fontWeight: viewMode === key ? '800' : '500', cursor: 'pointer', textAlign: 'right', transition: 'all 0.15s' }}>
+                        <Icon size={18} /> {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px', fontWeight: '800', color: 'var(--text-main)' }}>
+                    <ZoomIn size={16} style={{ color: 'var(--primary-color)' }} /> גודל תצוגה
+                  </div>
+                  <input data-element-name="שדה_page_40"
+                    data-agy-id="zoom_range_input"
+                    type="range"
+                    min="0.5" max="1.5" step="0.1"
+                    value={zoomLevel}
+                    onChange={e => setZoomLevel(parseFloat(e.target.value))}
+                    style={{ cursor: 'pointer', accentColor: 'var(--primary-color)', width: '100%' }}
+                  />
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                    <span>קטן</span><span>גדול</span>
+                  </div>
+                </div>
+
+                {(search || selectedCategories.length > 0) && (
+                  <button data-agy-id="clear_all_filters_btn"
+                    onClick={() => { setSearch(''); setSelectedCategories([]); }}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px', borderRadius: '14px', border: 'none', background: 'var(--danger-bg)', color: 'var(--danger-text)', fontSize: '0.9rem', fontWeight: '700', cursor: 'pointer' }}>
+                    <Eraser size={16} /> נקה את כל הסינונים
+                  </button>
+                )}
+              </aside>
+            )}
+
+            {/* Catalog content */}
+            <div style={{ flex: '1 1 400px', minWidth: 0 }}>
+              {loading ? (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '100px 0', color: 'var(--text-secondary)' }}>
+                  <Loader2 data-element-name="רכיב_page_55" size={48} className="animate-spin" style={{ color: 'var(--primary-color)', marginBottom: '16px' }} />
+                  <span style={{ fontSize: '1.2rem' }}>טוען נתונים...</span>
+                </div>
+              ) : displayDresses.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '80px 20px', background: 'var(--card-bg)', borderRadius: '24px', border: '1px solid var(--border-main)' }}>
+                  <Shirt size={52} style={{ color: 'var(--text-secondary)', opacity: 0.4, marginBottom: '16px' }} />
+                  <h3 style={{ margin: '0 0 8px', color: 'var(--text-main)' }}>לא נמצאו דגמים מתאימים</h3>
+                  <p style={{ margin: '0 0 20px', color: 'var(--text-secondary)' }}>נסו לנקות את החיפוש או את סינון הקטגוריה</p>
+                  <button data-agy-id="empty_state_clear_btn" onClick={() => { setSearch(''); setSelectedCategories([]); }}
+                    style={{ padding: '12px 28px', borderRadius: '999px', border: 'none', background: 'var(--primary-color)', color: 'white', fontWeight: '700', cursor: 'pointer' }}>
+                    נקה סינון ונסה שוב
+                  </button>
+                </div>
+              ) : viewMode === 'table' ? (
+                <div style={{ zoom: zoomLevel, background: 'var(--card-bg)', borderRadius: '20px', border: '1px solid var(--border-main)', overflowX: 'auto' }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
+                    <thead>
+                      <tr>
+                        {settings.hide_dress_images !== 'true' && <th style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-main)', fontSize: '0.85rem' }}></th>}
+                        <th style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-main)', fontSize: '0.85rem' }}>שם דגם</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-main)', fontSize: '0.85rem' }}>מק״ט</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-main)', fontSize: '0.85rem' }}>קטגוריה</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-main)', fontSize: '0.85rem' }}>סה״כ פנוי</th>
+                        <th style={{ padding: '12px 16px', textAlign: 'right', color: 'var(--text-secondary)', borderBottom: '1px solid var(--border-main)', fontSize: '0.85rem' }}>פירוט לפי מידה</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayDresses.map(model => {
+                        const { sizesArray, totalAvailable, totalUnits } = getModelSizeInfo(model);
+                        const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
+                        return (
+                          <tr key={model.id} onClick={() => handleModelDoubleClick(model)} style={{ cursor: isLocked ? 'default' : 'pointer' }}>
+                            {settings.hide_dress_images !== 'true' && (
+                              <td style={{ padding: '8px 16px', borderBottom: '1px solid var(--border-main)', width: '58px' }}>
+                                <div style={{ width: '44px', height: '44px', borderRadius: '10px', overflow: 'hidden', background: 'var(--element-bg)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  {model.imageUrl ? <img src={model.imageUrl} alt={model.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <Shirt size={22} opacity={0.4} />}
+                                </div>
+                              </td>
+                            )}
+                            <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-main)', fontWeight: '700', color: 'var(--text-main)' }}>{model.name}</td>
+                            <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-main)', color: 'var(--text-secondary)' }}>{model.barcodePrefix ? `#${model.barcodePrefix}` : '—'}</td>
+                            <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-main)' }}>
+                              {model.priceCategory ? <span style={{ fontSize: '0.78rem', background: 'var(--element-bg)', padding: '3px 10px', borderRadius: '999px', color: 'var(--text-secondary)' }}>{model.priceCategory}</span> : '—'}
+                            </td>
+                            <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-main)', fontWeight: '800', color: totalAvailable > 0 ? '#16a34a' : 'var(--danger-text)' }}>{totalAvailable}/{totalUnits}</td>
+                            <td style={{ padding: '10px 16px', borderBottom: '1px solid var(--border-main)' }}>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                                {visibleSizesArr.length === 0 ? (
+                                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.82rem' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי'}</span>
+                                ) : visibleSizesArr.map(([sName, sData]) => (
+                                  <span key={sName}
+                                    onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model, sName); }}
+                                    title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
+                                    style={{ cursor: isLocked ? 'default' : 'pointer', fontSize: '0.8rem', padding: '3px 9px', borderRadius: '999px', background: sData.available > 0 ? '#dcfce7' : 'var(--element-bg)', color: sData.available > 0 ? '#166534' : 'var(--text-secondary)', fontWeight: '700', whiteSpace: 'nowrap' }}>
+                                    {sName} · {sData.available}/{sData.total}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <div className={`modern-${viewMode}`} style={{ zoom: zoomLevel, padding: 0 }}>
+                  {displayDresses.map(model => {
+                    const { sizesArray, totalAvailable, totalUnits } = getModelSizeInfo(model);
+                    const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
+
+                    return (
+                      <div data-element-name="לחיץ_page_56" key={model.id} className="dress-card" style={{ cursor: isLocked ? 'default' : 'pointer' }} onClick={() => {
+                        handleModelDoubleClick(model);
+                      }}>
+                        <div className="dress-image-placeholder">
+                          {settings.hide_dress_images !== 'true' ? (
+                            model.imageUrl ? (
+                              <img src={model.imageUrl} alt={model.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            ) : (
+                              <Shirt data-element-name="רכיב_page_57" size={48} opacity={0.5} />
+                            )
+                          ) : (
+                            <div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>אין תמונה</div>
+                          )}
+                        </div>
+                        <div className="dress-content">
+                          <div className="dress-title" style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '6px', flexWrap: 'wrap' }}>
+                            <span style={{ fontSize: '1.3rem', fontWeight: '900', color: 'var(--text-main)' }}>{model.name}</span>
+                            {model.barcodePrefix && <span style={{ fontSize: '0.85rem', background: 'var(--element-bg)', padding: '4px 10px', borderRadius: '999px', color: 'var(--text-secondary)', fontWeight: '600' }}>#{model.barcodePrefix}</span>}
+                            {model.priceCategory && model.priceCategory !== 'כללי' && <span style={{ fontSize: '0.75rem', background: 'var(--primary-light)', padding: '3px 10px', borderRadius: '999px', color: 'var(--primary-color)', fontWeight: '700' }}>{model.priceCategory}</span>}
+                          </div>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '12px', fontSize: '0.95rem', fontWeight: '800', color: totalAvailable > 0 ? '#16a34a' : 'var(--danger-text)' }}>
+                            {totalAvailable > 0 ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}
+                            {totalAvailable > 0 ? `${totalAvailable} יחידות פנויות מתוך ${totalUnits}` : 'אין יחידות פנויות לתאריך זה'}
+                          </div>
+
+                          <div className="sizes-row">
+                            {visibleSizesArr.length === 0 ? (
+                              <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי לתאריך זה'}</span>
+                            ) : (
+                              visibleSizesArr.map(([sName, sData]) => (
+                                <div
+                                  key={sName}
+                                  className={`size-pill ${sData.available > 0 ? 'available' : ''}`}
+                                  title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleModelDoubleClick(model, sName);
+                                  }}
+                                  style={{ cursor: isLocked ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 6px 6px 12px' }}
+                                >
+                                  <span style={{ fontSize: '1.25rem', fontWeight: '900', color: sData.available > 0 ? '#14532d' : '#475569', whiteSpace: 'nowrap', display: 'inline-block' }}>{sName}</span>
+                                  <span style={{ whiteSpace: 'nowrap', fontWeight: '700', fontSize: '0.78rem', background: sData.available > 0 ? '#bbf7d0' : 'var(--border-main)', color: sData.available > 0 ? '#166534' : '#64748b', padding: '3px 9px', borderRadius: '10px' }}>
+                                    פנוי {sData.available} מתוך {sData.total}
+                                  </span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
 
       {/* Modals from old interface */}
       {showUnlockModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <form onSubmit={handleUnlock} style={{ background: 'var(--card-bg)', padding: '32px', borderRadius: '24px', width: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
-            <h3 style={{ margin: '0 0 24px 0', fontSize: '1.5rem', textAlign: 'center', color: 'var(--text-main)' }}>שחרור מסך מנעילה</h3>
+          <form onSubmit={handleUnlock} autoComplete="off" style={{ background: 'var(--card-bg)', padding: '32px', borderRadius: '24px', width: '400px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}>
+            <h3 style={{ margin: '0 0 24px 0', fontSize: '1.5rem', textAlign: 'center', color: 'var(--text-main)' }}>{unlockIntent === 'print' ? 'אישור עובד להדפסה' : 'שחרור מסך מנעילה'}</h3>
             <div style={{ marginBottom: '16px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>בחר עובד:</label>
               <select data-element-name="בחירה_page_58" data-agy-id="unlock_employee_select" value={unlockEmployee} onChange={e => setUnlockEmployee(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--element-bg)', color: 'var(--text-main)' }}>
@@ -1377,13 +1327,13 @@ export default function CustomerInventoryViewer() {
             </div>
             <div style={{ marginBottom: '24px' }}>
               <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>קוד גישה:</label>
-              <input data-element-name="שדה_page_59" data-agy-id="unlock_password_input" type="password" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--element-bg)', color: 'var(--text-main)' }} />
+              <input data-element-name="שדה_page_59" data-agy-id="unlock_password_input" type="password" autoComplete="off" value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} style={{ width: '100%', padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--element-bg)', color: 'var(--text-main)' }} />
             </div>
             {unlockError && <div style={{ color: 'var(--danger-text)', marginBottom: '16px', textAlign: 'center' }}>{unlockError}</div>}
             <div style={{ display: 'flex', gap: '12px' }}>
-              <button data-element-name="כפתור_page_60" data-agy-id="cancel_unlock_btn" type="button" onClick={() => setShowUnlockModal(false)} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', color: 'var(--text-main)', cursor: 'pointer' }}>ביטול</button>
+              <button data-element-name="כפתור_page_60" data-agy-id="cancel_unlock_btn" type="button" onClick={() => { setShowUnlockModal(false); setUnlockIntent('unlock'); }} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', color: 'var(--text-main)', cursor: 'pointer' }}>ביטול</button>
               <button data-element-name="כפתור_page_61" data-agy-id="submit_unlock_btn" type="submit" disabled={unlockLoading} style={{ flex: 1, padding: '12px', borderRadius: '12px', border: 'none', background: 'var(--primary-color)', color: 'white', fontWeight: 'bold', cursor: 'pointer' }}>
-                {unlockLoading ? 'בודק...' : 'שחרר'}
+                {unlockLoading ? 'בודק...' : (unlockIntent === 'print' ? 'אשר והדפס' : 'שחרר')}
               </button>
             </div>
           </form>
