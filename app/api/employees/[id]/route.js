@@ -1,12 +1,15 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
-import { checkAuth } from '@/lib/auth';
+import { checkAuth, checkPageAccess } from '@/lib/auth';
 import { hashSecret, last4Of } from '@/lib/passwordAuth';
 
-
+// הרשומה המלאה כוללת שכר, תפקיד ומשמרות — לכן מעבר ל-checkAuth הרגיל, הקריאה
+// והעדכון מוגבלים באותו כלל כמו דפי /employees עצמם (checkPageAccess): כשחובת
+// התחברות פעילה רק מנהל/מתכנת עוברים. עובד רגיל מעדכן את עצמו דרך /api/me/profile.
 
 export async function GET(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkPageAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
@@ -43,6 +46,7 @@ export async function GET(request, { params }) {
 
 export async function PUT(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkPageAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;

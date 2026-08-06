@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { UserCircle, LogOut, Clock, CheckCircle, LogIn, Monitor } from 'lucide-react';
+import { UserCircle, LogOut, Clock, CheckCircle, LogIn, Monitor, IdCard } from 'lucide-react';
 import LoginScreen from './LoginScreen';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
@@ -290,7 +290,24 @@ export default function UserMenu() {
           </div>
 
           <div style={{ padding: '0.5rem', borderTop: '1px solid #f1f5f9' }}>
-            <button data-element-name="כפתור_UserMenu_12" 
+            <button data-element-name="כפתור_UserMenu_profile"
+              onClick={() => {
+                setDropdownOpen(false);
+                router.push('/profile');
+              }}
+              disabled={actionLoading}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', gap: '8px',
+                padding: '0.75rem', background: 'transparent', color: '#64748b',
+                border: 'none', borderRadius: '8px', cursor: 'pointer',
+                transition: 'background 0.2s'
+              }}
+              className="hover:bg-gray-100"
+            >
+              <IdCard data-element-name="רכיב_UserMenu_profile_icon" size={18} />
+              הפרופיל שלי
+            </button>
+            <button data-element-name="כפתור_UserMenu_12"
               onClick={handleLogout}
               disabled={actionLoading}
               style={{

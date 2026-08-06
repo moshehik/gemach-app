@@ -91,7 +91,6 @@ export default async function RootLayout({ children }) {
   const isAuthenticated = !!authToken?.value;
 
   let isManager = false;
-  let isMainManager = false;
   let employeeShowAi = false;
   let isProgrammer = false;
   if (isAuthenticated) {
@@ -109,9 +108,6 @@ export default async function RootLayout({ children }) {
       if (emp && (emp.roleId === 1 || emp.roleId === 2)) {
         isManager = true;
       }
-      if (emp && emp.roleId === 1) {
-        isMainManager = true;
-      }
       if (emp && emp.roleId === 2) {
         isProgrammer = true;
       }
@@ -127,8 +123,11 @@ export default async function RootLayout({ children }) {
     hideAIFeatures = true;
   }
 
-  const showAdminTab = !requireLogin || isMainManager;
-  const showEmployeesTab = !requireLogin || isMainManager;
+  // מחובר — נשפט לפי תפקיד (מנהל/מתכנת בלבד), גם כשההתחברות אופציונלית;
+  // אורח — רואה הכל רק כשחובת התחברות כבויה. אותו כלל כמו checkPageAccess.
+  const showAdminTab = isAuthenticated ? isManager : !requireLogin;
+  const showEmployeesTab = isAuthenticated ? isManager : !requireLogin;
+  const showRefundsTab = isAuthenticated ? isManager : !requireLogin;
 
   const themeCookie = authToken?.value ? cookieStore.get(`theme_${authToken.value}`) : null;
   const themePreference = themeCookie?.value || 'light';
@@ -244,9 +243,11 @@ export default async function RootLayout({ children }) {
                       <Users data-element-name="רכיב_layout_13" size={22} />
                     </Link>
                   )}
-                  <Link data-element-name="רכיב_layout_refunds" href="/refunds" title="זיכויים" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
-                    <Coins data-element-name="רכיב_layout_refunds_icon" size={22} />
-                  </Link>
+                  {showRefundsTab && (
+                    <Link data-element-name="רכיב_layout_refunds" href="/refunds" title="זיכויים" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
+                      <Coins data-element-name="רכיב_layout_refunds_icon" size={22} />
+                    </Link>
+                  )}
                   <Link data-element-name="רכיב_layout_14" href="/dashboard/dresses" title="ניהול קטלוג" className="icon-nav-link" style={{ display: 'flex', alignItems: 'center', color: 'var(--text-color)', textDecoration: 'none' }}>
                     <Shirt data-element-name="רכיב_layout_15" size={22} />
                   </Link>
