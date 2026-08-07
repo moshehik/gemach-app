@@ -1,16 +1,15 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect } from 'react';
 import { useLabels } from '@/app/components/LabelsContext';
-import { Save, Check, RefreshCw } from 'lucide-react';
 
 const CATEGORIES = [
-  { id: 'customers', label: 'לקוחות', keys: ['customer_firstName', 'customer_lastName', 'customer_phone1', 'customer_phone2', 'customer_city', 'customer_street', 'customer_houseNum', 'customer_email', 'customer_notes'] },
-  { id: 'orders', label: 'הזמנות', keys: ['order_id', 'order_customerName', 'order_date', 'order_eventDate', 'order_returnDate', 'order_totalAmount', 'order_paid', 'order_status'] },
-  { id: 'dresses', label: 'דגמים ופריטים', keys: ['dress_name', 'dress_barcodePrefix', 'dress_category', 'dress_price', 'dress_notes', 'dress_itemsCount', 'item_size', 'item_barcode', 'item_location', 'item_status'] },
-  { id: 'rentals', label: 'השכרות', keys: ['rental_customer', 'rental_barcode', 'rental_taken', 'rental_returned', 'rental_returnedOk', 'rental_notes'] },
-  { id: 'customer_availability', label: 'זמינות לקוח', keys: ['ca_title', 'ca_sizes_title', 'ca_total_models', 'ca_total_sizes', 'ca_items'] },
-  { id: 'tabs', label: 'כותרות טאבים', keys: ['tab_customers', 'tab_orders', 'tab_rentals', 'tab_dresses', 'tab_customer_availability'] },
+  { id: 'customers', label: 'לקוחות', icon: 'i-users', keys: ['customer_firstName', 'customer_lastName', 'customer_phone1', 'customer_phone2', 'customer_city', 'customer_street', 'customer_houseNum', 'customer_email', 'customer_notes'] },
+  { id: 'orders', label: 'הזמנות', icon: 'i-bag', keys: ['order_id', 'order_customerName', 'order_date', 'order_eventDate', 'order_returnDate', 'order_totalAmount', 'order_paid', 'order_status'] },
+  { id: 'dresses', label: 'דגמים ופריטים', icon: 'i-box', keys: ['dress_name', 'dress_barcodePrefix', 'dress_category', 'dress_price', 'dress_notes', 'dress_itemsCount', 'item_size', 'item_barcode', 'item_location', 'item_status'] },
+  { id: 'rentals', label: 'השכרות', icon: 'i-truck', keys: ['rental_customer', 'rental_barcode', 'rental_taken', 'rental_returned', 'rental_returnedOk', 'rental_notes'] },
+  { id: 'customer_availability', label: 'זמינות לקוח', icon: 'i-grid', keys: ['ca_title', 'ca_sizes_title', 'ca_total_models', 'ca_total_sizes', 'ca_items'] },
+  { id: 'tabs', label: 'כותרות טאבים', icon: 'i-list', keys: ['tab_customers', 'tab_orders', 'tab_rentals', 'tab_dresses', 'tab_customer_availability'] },
 ];
 
 const DEFAULT_LABELS = {
@@ -122,133 +121,68 @@ export default function LabelsAdminPage() {
   const currentCategory = CATEGORIES.find(c => c.id === activeTab);
 
   return (
-    <div className="container animate-fade-in page-shell">
-      <div className="page-scroll">
-      
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
+    <>
+      <div className="page-head">
         <div>
-          <h1 style={{ fontSize: '2rem', color: 'var(--primary-color)', margin: '0 0 0.5rem 0' }}>שינוי שמות וכיתובים</h1>
-          <p style={{ color: 'var(--text-muted)', margin: 0 }}>
-            ניהול כל כותרות הטבלאות, הטאבים והטקסטים ברחבי המערכת.
-          </p>
+          <h1>שינוי שמות וכיתובים</h1>
+          <div className="page-desc">ניהול כל כותרות הטבלאות, הטאבים והטקסטים ברחבי המערכת.</div>
         </div>
-        
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button data-element-name="כפתור_page_1"
-            onClick={handleResetToDefaults}
-            style={{
-              padding: '0.5rem 1rem',
-              backgroundColor: 'transparent',
-              border: '1px solid var(--border-color)',
-              color: 'var(--text-muted)',
-              borderRadius: '8px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem'
-            }}
-          >
-            <RefreshCw data-element-name="רכיב_page_2" size={18} />
+        <div className="page-actions">
+          <button data-element-name="כפתור_page_1" type="button" className="btn btn-secondary" onClick={handleResetToDefaults}>
+            <svg className="icon"><use href="#i-refresh" /></svg>
             שחזר ברירת מחדל
           </button>
-          
-          <button data-element-name="כפתור_page_3"
-            onClick={handleSave}
-            disabled={isSaving}
-            style={{
-              padding: '0.5rem 1.5rem',
-              backgroundColor: saveSuccess ? '#10b981' : 'var(--primary-color)',
-              color: 'white',
-              border: 'none',
-              borderRadius: '8px',
-              cursor: isSaving ? 'wait' : 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.5rem',
-              fontWeight: 'bold',
-              transition: 'background-color 0.3s'
-            }}
-          >
-            {isSaving ? <RefreshCw data-element-name="רכיב_page_4" size={18} className="animate-spin" /> : 
-             saveSuccess ? <Check data-element-name="רכיב_page_5" size={18} /> : 
-             <Save data-element-name="רכיב_page_6" size={18} />}
+          <button data-element-name="כפתור_page_3" type="button" className="btn btn-primary" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <span className="spinner" data-element-name="רכיב_page_4" />
+            ) : saveSuccess ? (
+              <svg className="icon" data-element-name="רכיב_page_5"><use href="#i-check" /></svg>
+            ) : (
+              <svg className="icon" data-element-name="רכיב_page_6"><use href="#i-check" /></svg>
+            )}
             {isSaving ? 'שומר...' : saveSuccess ? 'נשמר בהצלחה!' : 'שמור שינויים'}
           </button>
         </div>
       </div>
 
-      <div style={{
-        backgroundColor: 'var(--card-bg)',
-        borderRadius: '12px',
-        border: '1px solid var(--border-color)',
-        overflow: 'hidden',
-        boxShadow: 'var(--shadow-sm)'
-      }}>
-        <div style={{ 
-          display: 'flex', 
-          borderBottom: '1px solid var(--border-color)',
-          backgroundColor: 'var(--bg-secondary)',
-          overflowX: 'auto'
-        }}>
-          {CATEGORIES.map(category => (
-            <button data-element-name="כפתור_page_7"
-              key={category.id}
-              onClick={() => setActiveTab(category.id)}
-              style={{
-                padding: '1rem 2rem',
-                backgroundColor: activeTab === category.id ? 'var(--card-bg)' : 'transparent',
-                border: 'none',
-                borderBottom: activeTab === category.id ? '3px solid var(--primary-color)' : '3px solid transparent',
-                color: activeTab === category.id ? 'var(--primary-color)' : 'var(--text-color)',
-                fontWeight: activeTab === category.id ? 'bold' : 'normal',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                whiteSpace: 'nowrap'
-              }}
-            >
-              {category.label}
-            </button>
-          ))}
-        </div>
+      <div className="card">
+        <div className="card-pad">
+          <div className="tabs">
+            {CATEGORIES.map(category => (
+              <button
+                data-element-name="כפתור_page_7"
+                key={category.id}
+                type="button"
+                className={activeTab === category.id ? 'tab active' : 'tab'}
+                onClick={() => setActiveTab(category.id)}
+              >
+                <svg className="icon"><use href={`#${category.icon}`} /></svg>
+                {category.label}
+              </button>
+            ))}
+          </div>
 
-        <div style={{ padding: '2rem' }}>
-          <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-color)', borderBottom: '1px solid var(--border-color)', paddingBottom: '0.5rem' }}>
-            עריכת כיתובים - {currentCategory?.label}
-          </h2>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+          <h2>עריכת כיתובים - {currentCategory?.label}</h2>
+
+          <div className="form-grid cols-3">
             {currentCategory?.keys.map(key => (
-              <div key={key} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                <label style={{ 
-                  fontWeight: '600', 
-                  color: 'var(--text-color)',
-                  fontSize: '0.9rem' 
-                }}>
-                  {DEFAULT_LABELS[key] || key} <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 'normal' }}>({key})</span>
+              <div key={key} className="field">
+                <label htmlFor={`admin-labels-${key}`}>
+                  {DEFAULT_LABELS[key] || key} <span className="hint">({key})</span>
                 </label>
-                <input data-element-name="שדה_page_8"
+                <input
+                  data-element-name="שדה_page_8"
+                  className="input"
                   type="text"
+                  id={`admin-labels-${key}`}
                   value={localLabels[key] || ''}
                   onChange={(e) => handleLabelChange(key, e.target.value)}
-                  style={{
-                    padding: '0.75rem',
-                    borderRadius: '8px',
-                    border: '1px solid var(--element-border)',
-                    backgroundColor: 'var(--input-bg, transparent)',
-                    color: 'var(--text-color)',
-                    fontSize: '1rem',
-                    transition: 'border-color 0.2s'
-                  }}
-                  onFocus={(e) => e.target.style.borderColor = 'var(--primary-color)'}
-                  onBlur={(e) => e.target.style.borderColor = 'var(--element-border)'}
                 />
               </div>
             ))}
           </div>
         </div>
       </div>
-
-      </div>
-    </div>
+    </>
   );
 }

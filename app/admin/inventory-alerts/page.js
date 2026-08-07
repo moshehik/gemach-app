@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 
 function StatusSummary({ summary }) {
@@ -11,57 +12,29 @@ function StatusSummary({ summary }) {
   if (totalInactive === 0) return null;
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block', marginRight: '8px' }}>
-      <button data-element-name="כפתור_page_1" 
+    <div style={{ position: 'relative', display: 'inline-block' }}>
+      <button
+        type="button"
+        className="btn btn-ghost btn-icon-only btn-sm"
         onClick={() => setIsOpen(!isOpen)}
-        style={{
-          background: 'none',
-          border: 'none',
-          cursor: 'pointer',
-          padding: '2px 4px',
-          borderRadius: '4px',
-          backgroundColor: isOpen ? '#e2e8f0' : 'transparent',
-          color: '#64748b',
-          transition: 'all 0.2s',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          outline: 'none'
-        }}
+        style={{ backgroundColor: isOpen ? 'var(--surface-alt)' : 'transparent' }}
         title="סטטוס פריטים שאינם בשימוש"
       >
-        <span style={{ 
-          display: 'inline-block', 
-          transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-          transition: 'transform 0.2s ease'
-        }}>
-          ▼
-        </span>
+        <svg className="icon" style={{ transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease' }}>
+          <use href="#i-chevron-down" />
+        </svg>
       </button>
 
       {isOpen && (
-        <div style={{
-          position: 'absolute',
-          top: '100%',
-          right: 0,
-          marginTop: '4px',
-          backgroundColor: 'var(--card-bg)',
-          border: '1px solid #e2e8f0',
-          borderRadius: '8px',
-          padding: '12px',
-          boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-          zIndex: 50,
-          width: 'max-content',
-          minWidth: '150px'
-        }}>
-          <h4 style={{ margin: '0 0 8px 0', fontSize: '0.9rem', color: '#334155', borderBottom: '1px solid #f1f5f9', paddingBottom: '4px' }}>
-            סה"כ לא פעילים: {totalInactive}
+        <div className="card card-pad" style={{ position: 'absolute', top: '100%', right: 0, marginTop: '4px', zIndex: 50, width: 'max-content', minWidth: '170px' }}>
+          <h4 style={{ margin: '0 0 8px 0', fontSize: '12.5px', borderBottom: '1px solid var(--border)', paddingBottom: '6px' }}>
+            סה&quot;כ לא פעילים: {totalInactive}
           </h4>
-          <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: '0.85rem', color: '#475569' }}>
-            {summary.inRepair > 0 && <li style={{ margin: '4px 0' }}>בתיקון: {summary.inRepair}</li>}
-            {summary.notInUse > 0 && <li style={{ margin: '4px 0' }}>לא בשימוש: {summary.notInUse}</li>}
-            {summary.warehouse > 0 && <li style={{ margin: '4px 0' }}>במחסן: {summary.warehouse}</li>}
-            {summary.reserve > 0 && <li style={{ margin: '4px 0' }}>ברזרבה: {summary.reserve}</li>}
+          <ul style={{ margin: 0, padding: 0, listStyle: 'none', fontSize: '12.5px', color: 'var(--text-2)', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+            {summary.inRepair > 0 && <li>בתיקון: {summary.inRepair}</li>}
+            {summary.notInUse > 0 && <li>לא בשימוש: {summary.notInUse}</li>}
+            {summary.warehouse > 0 && <li>במחסן: {summary.warehouse}</li>}
+            {summary.reserve > 0 && <li>ברזרבה: {summary.reserve}</li>}
           </ul>
         </div>
       )}
@@ -70,52 +43,44 @@ function StatusSummary({ summary }) {
 }
 
 function AlertOrdersModal({ orders, onClose }) {
-  return (
-    <div style={{
-      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-      backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 100,
-      display: 'flex', alignItems: 'center', justifyContent: 'center'
-    }}>
-      <div style={{
-        backgroundColor: 'var(--card-bg)', borderRadius: '12px', padding: '24px',
-        width: '90%', maxWidth: '400px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)'
-      }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-          <h3 style={{ margin: 0, color: '#0f172a' }}>הזמנות מעורבות</h3>
-          <button data-element-name="כפתור_page_2" onClick={onClose} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>×</button>
-        </div>
-        
-        <p style={{ color: '#475569', fontSize: '0.9rem', marginBottom: '16px' }}>
-          ההזמנות הבאות חופפות בתאריכים אלו ויוצרות חריגת מלאי. לחץ על מספר הזמנה כדי לפתוח אותה ולטפל בבעיה.
-        </p>
+  if (typeof document === 'undefined') return null;
 
-        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-          {orders.map(oid => (
-            <Link data-element-name="רכיב_page_3" 
-              key={oid} 
-              href={`/orders/${oid}`} 
-              target="_blank"
-              style={{
-                display: 'block',
-                padding: '12px',
-                marginBottom: '8px',
-                backgroundColor: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                color: '#2563eb',
-                fontWeight: '500',
-                transition: 'background-color 0.2s'
-              }}
-              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f1f5f9'}
-              onMouseLeave={e => e.currentTarget.style.backgroundColor = '#f8fafc'}
-            >
-              הזמנה #{oid} ↗
-            </Link>
-          ))}
+  return createPortal(
+    <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={onClose}>
+      <div className="modal" style={{ maxWidth: '400px', width: '90%', margin: 0 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <strong>
+            <svg className="icon"><use href="#i-alert-circle" /></svg>
+            הזמנות מעורבות
+          </strong>
+          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={onClose}>
+            <svg className="icon"><use href="#i-x" /></svg>
+          </button>
+        </div>
+
+        <div className="modal-body">
+          <p style={{ margin: '0 0 14px', fontSize: '13px', color: 'var(--text-2)' }}>
+            ההזמנות הבאות חופפות בתאריכים אלו ויוצרות חריגת מלאי. לחץ על מספר הזמנה כדי לפתוח אותה ולטפל בבעיה.
+          </p>
+
+          <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {orders.map(oid => (
+              <Link
+                key={oid}
+                href={`/orders/${oid}`}
+                target="_blank"
+                className="list-card"
+                style={{ textDecoration: 'none', color: 'var(--primary-solid)' }}
+              >
+                <div style={{ flex: 1, fontWeight: 700 }}>הזמנה #{oid}</div>
+                <svg className="icon"><use href="#i-chevron-start" /></svg>
+              </Link>
+            ))}
+          </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
@@ -143,84 +108,69 @@ export default function InventoryAlertsPage() {
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', direction: 'rtl' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ color: '#0f172a', margin: 0, fontSize: '2rem' }}>התראות ובדיקות מלאי</h1>
-        <Link data-element-name="רכיב_page_4" 
-          href="/admin" 
-          style={{ 
-            textDecoration: 'none', color: '#64748b', backgroundColor: '#f1f5f9', 
-            padding: '8px 16px', borderRadius: '8px', fontWeight: '500' 
-          }}
-        >
-          חזרה לניהול
-        </Link>
+    <>
+      <div className="page-head">
+        <div>
+          <h1>התראות ובדיקות מלאי</h1>
+          <div className="page-desc">דגמים שהביקוש בהם חורג מהמלאי הפנוי</div>
+        </div>
+        <div className="page-actions">
+          <Link href="/admin" className="btn btn-secondary">
+            <svg className="icon"><use href="#i-chevron-end" /></svg>
+            חזרה לניהול
+          </Link>
+        </div>
       </div>
 
       {loading ? (
-        <div style={{ textAlign: 'center', padding: '4rem', color: '#64748b' }}>טוען נתונים, אנא המתן...</div>
+        <div className="page-loading">
+          <span className="spinner lg" />
+          טוען נתונים, אנא המתן...
+        </div>
       ) : alerts.length === 0 ? (
-        <div style={{ 
-          backgroundColor: '#ecfdf5', border: '1px solid #10b981', color: '#047857', 
-          padding: '2rem', borderRadius: '12px', textAlign: 'center' 
-        }}>
-          <h2 style={{ margin: '0 0 8px 0' }}>המלאי תקין לחלוטין!</h2>
-          <p style={{ margin: 0 }}>לא נמצאו חריגות בהזמנות העתידיות.</p>
+        <div className="empty-state">
+          <svg className="icon"><use href="#i-check-circle" /></svg>
+          <h4>המלאי תקין לחלוטין!</h4>
+          <p>לא נמצאו חריגות בהזמנות העתידיות.</p>
         </div>
       ) : (
-        <div style={{ 
-          backgroundColor: 'var(--card-bg)', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0,0,0,0.1)', 
-          overflow: 'hidden', border: '1px solid #e2e8f0' 
-        }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
-            <thead style={{ backgroundColor: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
               <tr>
-                <th style={{ padding: '16px', color: '#475569', fontWeight: '600' }}>דגם</th>
-                <th style={{ padding: '16px', color: '#475569', fontWeight: '600' }}>מידה</th>
-                <th style={{ padding: '16px', color: '#475569', fontWeight: '600' }}>תאריכי חריגה</th>
-                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center' }}>במלאי</th>
-                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center' }}>ביקוש</th>
-                <th style={{ padding: '16px', color: '#475569', fontWeight: '600', textAlign: 'center' }}>פעולות</th>
+                <th>דגם</th>
+                <th>מידה</th>
+                <th>תאריכי חריגה</th>
+                <th style={{ textAlign: 'center' }}>במלאי</th>
+                <th style={{ textAlign: 'center' }}>ביקוש</th>
+                <th style={{ textAlign: 'center' }}>פעולות</th>
               </tr>
             </thead>
             <tbody>
               {alerts.map((alert, idx) => (
-                <tr key={idx} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--input-bg)'}>
-                  <td style={{ padding: '16px', fontWeight: '500', color: '#0f172a' }}>
+                <tr key={idx}>
+                  <td className="cell-primary">
                     {alert.modelId ? (
-                      <a href={`/dashboard/dresses/${alert.modelId}`} title="פתח כרטיס דגם" style={{ color: 'var(--primary-color)', textDecoration: 'none', fontWeight: '600' }}>
+                      <a href={`/dashboard/dresses/${alert.modelId}`} title="פתח כרטיס דגם" style={{ color: 'var(--primary-solid)', textDecoration: 'none', fontWeight: 700 }}>
                         {alert.dressName}
                       </a>
                     ) : alert.dressName}
                   </td>
-                  <td style={{ padding: '16px', color: '#334155' }}>
-                    <div style={{ display: 'flex', alignItems: 'center' }}>
+                  <td>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       {alert.sizeText}
-                      <StatusSummary data-element-name="רכיב_page_5" summary={alert.statusSummary} />
+                      <StatusSummary summary={alert.statusSummary} />
                     </div>
                   </td>
-                  <td style={{ padding: '16px', color: '#b91c1c', fontWeight: '500' }}>
-                    {formatDate(alert.fromDate)} 
+                  <td style={{ color: 'var(--danger)', fontWeight: 600 }}>
+                    {formatDate(alert.fromDate)}
                     {alert.fromDate !== alert.toDate && ` - ${formatDate(alert.toDate)}`}
                   </td>
-                  <td style={{ padding: '16px', textAlign: 'center', color: '#0f172a', fontWeight: '500' }}>{alert.inStock}</td>
-                  <td style={{ padding: '16px', textAlign: 'center', color: '#b91c1c', fontWeight: 'bold' }}>{alert.demanded}</td>
-                  <td style={{ padding: '16px', textAlign: 'center' }}>
-                    <button data-element-name="כפתור_page_6"
-                      onClick={() => setSelectedOrders(alert.orders)}
-                      style={{
-                        backgroundColor: '#ef4444',
-                        color: 'white',
-                        border: 'none',
-                        padding: '8px 16px',
-                        borderRadius: '6px',
-                        cursor: 'pointer',
-                        fontWeight: '500',
-                        transition: 'background-color 0.2s'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.backgroundColor = '#dc2626'}
-                      onMouseLeave={e => e.currentTarget.style.backgroundColor = '#ef4444'}
-                    >
+                  <td style={{ textAlign: 'center', fontWeight: 600 }}>{alert.inStock}</td>
+                  <td style={{ textAlign: 'center', color: 'var(--danger)', fontWeight: 800 }}>{alert.demanded}</td>
+                  <td style={{ textAlign: 'center' }}>
+                    <button type="button" className="btn btn-danger btn-sm" onClick={() => setSelectedOrders(alert.orders)}>
+                      <svg className="icon"><use href="#i-alert-tri" /></svg>
                       צפה בהזמנות ({alert.orders.length})
                     </button>
                   </td>
@@ -228,12 +178,16 @@ export default function InventoryAlertsPage() {
               ))}
             </tbody>
           </table>
+
+          <div className="table-foot">
+            <span>סה&quot;כ דגמים בחריגה: {alerts.length}</span>
+          </div>
         </div>
       )}
 
       {selectedOrders && (
-        <AlertOrdersModal data-element-name="רכיב_page_7" orders={selectedOrders} onClose={() => setSelectedOrders(null)} />
+        <AlertOrdersModal orders={selectedOrders} onClose={() => setSelectedOrders(null)} />
       )}
-    </div>
+    </>
   );
 }

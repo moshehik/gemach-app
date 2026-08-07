@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState } from 'react';
 import HebrewDatePicker from '../../../components/HebrewDatePicker';
@@ -18,7 +18,7 @@ export default function RecalculationsPage() {
       alert('יש לבחור טווח תאריכים');
       return;
     }
-    
+
     setLoading(true);
     setHasSearched(true);
     try {
@@ -61,7 +61,7 @@ export default function RecalculationsPage() {
       alert('לא נבחרו הזמנות לעדכון');
       return;
     }
-    
+
     if (!(await window.customConfirm(`האם אתה בטוח שברצונך להחיל את השינויים על ${selectedIds.size} הזמנות? פעולה זו תעדכן את מסד הנתונים.`))) {
       return;
     }
@@ -93,22 +93,32 @@ export default function RecalculationsPage() {
   };
 
   return (
-    <div className="container page-shell">
-      <div className="page-scroll">
-      <h1 style={{ marginBottom: '20px' }}>חישובים והתראות</h1>
-      <div className="card" style={{ padding: '20px', marginBottom: '20px' }}>
-        <h2 style={{ fontSize: '1.2rem', marginBottom: '15px' }}>סריקת פערים לפי טווח תאריכים</h2>
-        <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-          <div style={{ flex: 1, minWidth: '250px' }}>
-            <label style={{ display: 'block', marginBottom: '5px' }}>תאריך התחלה (אירוע)</label>
-            <HebrewDatePicker data-element-name="רכיב_page_1" value={startDate} onChange={setStartDate} />
+    <>
+      <div className="page-head">
+        <div>
+          <h1>חישובים והתראות</h1>
+        </div>
+      </div>
+
+      <div className="card" style={{ marginBottom: '20px' }}>
+        <div className="card-head">
+          <div className="card-title-row">
+            <svg className="icon"><use href="#i-search" /></svg>
+            <h2 style={{ fontSize: '15px', margin: 0 }}>סריקת פערים לפי טווח תאריכים</h2>
           </div>
-          <div style={{ flex: 1, minWidth: '250px' }}>
-            <label style={{ display: 'block', marginBottom: '5px' }}>תאריך סיום (אירוע)</label>
-            <HebrewDatePicker data-element-name="רכיב_page_2" value={endDate} onChange={setEndDate} />
-          </div>
-          <div style={{ marginBottom: '5px' }}>
-            <button data-element-name="כפתור_page_3" className="btn btn-primary" onClick={handleSearch} disabled={loading}>
+        </div>
+        <div className="card-pad">
+          <div className="toolbar" style={{ marginBottom: 0 }}>
+            <div className="field" style={{ marginBottom: 0, flex: 1, minWidth: '250px' }}>
+              <label>תאריך התחלה (אירוע)</label>
+              <HebrewDatePicker value={startDate} onChange={setStartDate} />
+            </div>
+            <div className="field" style={{ marginBottom: 0, flex: 1, minWidth: '250px' }}>
+              <label>תאריך סיום (אירוע)</label>
+              <HebrewDatePicker value={endDate} onChange={setEndDate} />
+            </div>
+            <button className="btn btn-primary" style={{ alignSelf: 'flex-end' }} onClick={handleSearch} disabled={loading}>
+              <svg className="icon"><use href="#i-search" /></svg>
               {loading ? 'סורק...' : 'חפש פערים'}
             </button>
           </div>
@@ -116,59 +126,57 @@ export default function RecalculationsPage() {
       </div>
 
       {hasSearched && (
-        <div className="card" style={{ padding: '20px' }}>
-          <h2 style={{ fontSize: '1.2rem', marginBottom: '15px' }}>
-            תוצאות הסריקה ({results.length} הזמנות דורשות עדכון)
-          </h2>
-          
+        <>
+          <h2 className="section-title">תוצאות הסריקה ({results.length} הזמנות דורשות עדכון)</h2>
+
           {results.length > 0 ? (
             <>
-              <div style={{ overflow: 'visible', marginBottom: '20px' }}>
-                <table className="table" style={{ width: '100%', textAlign: 'right' }}>
+              <div className="table-wrap">
+                <table className="data">
                   <thead>
-                    <tr style={{ background: 'var(--element-bg)' }}>
-                      <th style={{ padding: '10px' }}>
-                        <input data-element-name="שדה_page_4" 
-                          type="checkbox" 
+                    <tr>
+                      <th style={{ width: '40px', textAlign: 'center' }}>
+                        <input
+                          type="checkbox"
                           checked={selectedIds.size === results.length && results.length > 0}
                           onChange={handleSelectAll}
                         />
                       </th>
-                      <th style={{ padding: '10px' }}>הזמנה</th>
-                      <th style={{ padding: '10px' }}>לקוח</th>
-                      <th style={{ padding: '10px' }}>תאריך אירוע עברי</th>
-                      <th style={{ padding: '10px' }}>סכום ישן</th>
-                      <th style={{ padding: '10px' }}>סכום מתוקן</th>
-                      <th style={{ padding: '10px' }}>פער</th>
-                      <th style={{ padding: '10px' }}>פעולות</th>
+                      <th>הזמנה</th>
+                      <th>לקוח</th>
+                      <th>תאריך אירוע עברי</th>
+                      <th>סכום ישן</th>
+                      <th>סכום מתוקן</th>
+                      <th>פער</th>
+                      <th>פעולות</th>
                     </tr>
                   </thead>
                   <tbody>
                     {results.map(row => (
-                      <tr key={row.orderId} style={{ borderBottom: '1px solid #eee' }}>
-                        <td style={{ padding: '10px' }}>
-                          <input data-element-name="שדה_page_5" 
-                            type="checkbox" 
+                      <tr key={row.orderId}>
+                        <td style={{ textAlign: 'center' }}>
+                          <input
+                            type="checkbox"
                             checked={selectedIds.has(row.orderId)}
                             onChange={() => toggleSelect(row.orderId)}
                           />
                         </td>
-                        <td style={{ padding: '10px', fontWeight: 'bold' }}>{row.orderId}</td>
-                        <td style={{ padding: '10px' }}>{row.customerName}</td>
-                        <td style={{ padding: '10px' }}>{row.eventDateHebrew || '-'}</td>
-                        <td style={{ padding: '10px', color: 'var(--text-main)' }}>₪{row.oldAmount}</td>
-                        <td style={{ padding: '10px', fontWeight: 'bold', color: '#0056b3' }}>₪{row.newAmount}</td>
-                        <td style={{ padding: '10px', fontWeight: 'bold', color: row.diff > 0 ? 'red' : 'green', direction: 'ltr', textAlign: 'right' }}>
+                        <td className="cell-primary">{row.orderId}</td>
+                        <td>{row.customerName}</td>
+                        <td>{row.eventDateHebrew || '-'}</td>
+                        <td>₪{row.oldAmount}</td>
+                        <td style={{ fontWeight: 700, color: 'var(--info)' }}>₪{row.newAmount}</td>
+                        <td style={{ fontWeight: 800, color: row.diff > 0 ? 'var(--danger)' : 'var(--success)', direction: 'ltr', textAlign: 'right' }}>
                           ₪{row.diff > 0 ? '+' : ''}{row.diff}
                         </td>
-                        <td style={{ padding: '10px' }}>
-                          <a 
-                            href={`/orders/${row.orderId}`} 
-                            target="_blank" 
+                        <td>
+                          <a
+                            href={`/orders/${row.orderId}`}
+                            target="_blank"
                             rel="noopener noreferrer"
-                            className="btn btn-outline"
-                            style={{ padding: '4px 8px', fontSize: '0.9rem', textDecoration: 'none' }}
+                            className="btn btn-secondary btn-sm"
                           >
+                            <svg className="icon"><use href="#i-link" /></svg>
                             עיין בהזמנה
                           </a>
                         </td>
@@ -176,45 +184,49 @@ export default function RecalculationsPage() {
                     ))}
                   </tbody>
                 </table>
-              </div>
-              
-              <div style={{ background: '#f8f9fa', padding: '15px', borderRadius: '8px', border: '1px solid #ddd' }}>
-                <h3 style={{ fontSize: '1.1rem', marginBottom: '10px' }}>החלת שינויים</h3>
-                <div style={{ display: 'flex', gap: '15px', alignItems: 'flex-end' }}>
-                  <div style={{ flex: 1, maxWidth: '400px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px' }}>הערה מיוחדת לצירוף לשורות החיוב</label>
-                    <input data-element-name="שדה_page_6" 
-                      type="text" 
-                      className="form-control"
+
+                <div className="bulk-bar" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <strong>החלת שינויים</strong>
+                  <div className="field" style={{ margin: 0, flex: 1, minWidth: '240px' }}>
+                    <label>הערה מיוחדת לצירוף לשורות החיוב</label>
+                    <input
+                      type="text"
+                      className="input"
                       value={customNote}
                       onChange={e => setCustomNote(e.target.value)}
                       placeholder="לדוגמה: תיקון חישוב מחירון"
                     />
                   </div>
-                  <div>
-                    <button data-element-name="כפתור_page_7" 
-                      className="btn btn-primary" 
-                      onClick={handleApply} 
-                      disabled={applying || selectedIds.size === 0}
-                      style={{ background: 'var(--primary-color)', color: 'white', fontWeight: 'bold' }}
-                    >
-                      {applying ? 'מחיל שינויים...' : `החל על ${selectedIds.size} הזמנות`}
-                    </button>
-                  </div>
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleApply}
+                    disabled={applying || selectedIds.size === 0}
+                  >
+                    <svg className="icon"><use href="#i-check" /></svg>
+                    {applying ? 'מחיל שינויים...' : `החל על ${selectedIds.size} הזמנות`}
+                  </button>
                 </div>
-                <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', marginTop: '10px' }}>
-                  המערכת תריץ את מנוע התשלומים מחדש על ההזמנות הנבחרות ותעדכן את היתרות במסד הנתונים.
-                </p>
+
+                <div className="table-foot">
+                  <span>סה&quot;כ {results.length} הזמנות דורשות עדכון</span>
+                </div>
+              </div>
+
+              <div className="callout callout-info" style={{ marginTop: '14px' }}>
+                <svg className="icon"><use href="#i-info" /></svg>
+                המערכת תריץ את מנוע התשלומים מחדש על ההזמנות הנבחרות ותעדכן את היתרות במסד הנתונים.
               </div>
             </>
           ) : (
-            <p style={{ textAlign: 'center', padding: '30px', color: 'var(--text-main)' }}>
-              לא נמצאו פערים בטווח התאריכים הנבחר. כל ההזמנות תקינות ומעודכנות!
-            </p>
+            <div className="table-wrap">
+              <div className="empty-state">
+                <svg className="icon"><use href="#i-check-circle" /></svg>
+                <h4>לא נמצאו פערים בטווח התאריכים הנבחר. כל ההזמנות תקינות ומעודכנות!</h4>
+              </div>
+            </div>
           )}
-        </div>
+        </>
       )}
-      </div>
-    </div>
+    </>
   );
 }
