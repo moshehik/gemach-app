@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
@@ -6,17 +6,17 @@ import Link from 'next/link';
 export default function EmailLogsPage() {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // Data state
   const [totalCount, setTotalCount] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
-  
+
   // Filters & Pagination
   const [page, setPage] = useState(1);
   const [limit] = useState(50);
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
-  
+
   const fetchLogs = useCallback(async () => {
     setLoading(true);
     try {
@@ -50,123 +50,134 @@ export default function EmailLogsPage() {
   };
 
   return (
-    <main className="container animate-fade-in page-shell">
-      <div className="page-scroll">
-      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <Link data-element-name="רכיב_page_1" href="/management" className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-          →
-        </Link>
-        <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>ניהול לוגים של שליחת מיילים</h1>
+    <>
+      <div className="page-head">
+        <div>
+          <h1>ניהול לוגים של שליחת מיילים</h1>
+          <div className="page-desc">נמצאו {totalCount} רשומות (מציג {limit} לעמוד)</div>
+        </div>
+        <div className="page-actions">
+          <Link href="/management" className="btn btn-secondary">
+            <svg className="icon"><use href="#i-arrow-end" /></svg>
+            חזרה
+          </Link>
+        </div>
       </div>
 
       {/* Filters and Search */}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem', alignItems: 'center', justifyContent: 'space-between' }}>
-        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '0.5rem', flex: 1, minWidth: '300px' }}>
-          <input data-element-name="שדה_page_2" 
-            type="text" 
-            placeholder="חיפוש נמען, נושא או תוכן..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            style={{ 
-              flex: 1, 
-              padding: '0.5rem 1rem', 
-              borderRadius: '24px', 
-              border: '1px solid #ddd',
-              outline: 'none',
-            }}
-          />
-          <button data-element-name="כפתור_page_3" type="submit" className="btn btn-primary" style={{ borderRadius: '24px', padding: '0.5rem 1.5rem' }}>
-            חיפוש
-          </button>
+      <div className="toolbar">
+        <form onSubmit={handleSearch} style={{ display: 'flex', gap: '8px', flex: 1, minWidth: '300px' }}>
+          <div className="input-icon-wrap" style={{ flex: 1 }}>
+            <svg className="icon"><use href="#i-search" /></svg>
+            <input
+              type="text"
+              className="input"
+              placeholder="חיפוש נמען, נושא או תוכן..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </div>
+          <button type="submit" className="btn btn-primary">חיפוש</button>
         </form>
       </div>
 
-      <div style={{ marginBottom: '1rem', color: 'var(--text-muted)' }}>
-        נמצאו {totalCount} רשומות (מציג {limit} לעמוד)
-      </div>
-
       {/* Data Table */}
-      <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)', overflow: 'visible' }}>
+      <div className="table-wrap">
         {loading && logs.length === 0 ? (
-          <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
+          <div className="page-loading">
+            <span className="spinner lg" />
+            טוען נתונים...
+          </div>
         ) : logs.length === 0 ? (
-          <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>לא נמצאו מיילים במערכת.</div>
+          <div className="empty-state">
+            <svg className="icon"><use href="#i-mail" /></svg>
+            <p>לא נמצאו מיילים במערכת.</p>
+          </div>
         ) : (
-          <>
-            <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #eee', color: 'var(--text-muted)' }}>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>זמן נשלח</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>נמען (To)</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>נושא</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>קובץ מצורף</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>סטטוס</th>
-                  <th style={{ padding: '0.4rem 0.5rem' }}>שגיאות</th>
+          <table className="data">
+            <thead>
+              <tr>
+                <th>זמן נשלח</th>
+                <th>נמען (To)</th>
+                <th>נושא</th>
+                <th>קובץ מצורף</th>
+                <th>סטטוס</th>
+                <th>שגיאות</th>
+              </tr>
+            </thead>
+            <tbody>
+              {logs.map(log => (
+                <tr key={log.id}>
+                  <td className="cell-muted" dir="ltr">{formatDate(log.sentAt)}</td>
+                  <td>
+                    <span dir="ltr">{log.to}</span>
+                    {log.cc && <div className="cell-muted" style={{ fontSize: '12.5px' }} dir="ltr">CC: {log.cc}</div>}
+                  </td>
+                  <td>
+                    <div style={{ fontWeight: 600 }}>{log.subject || '-'}</div>
+                    <div className="cell-muted" style={{ fontSize: '12.5px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '280px' }}>
+                      {log.body}
+                    </div>
+                  </td>
+                  <td>
+                    {log.fileName ? (
+                      <span className="badge badge-neutral">
+                        <svg className="icon"><use href="#i-file" /></svg>
+                        {log.fileName}
+                      </span>
+                    ) : '-'}
+                  </td>
+                  <td>
+                    {log.status === 'success' ? (
+                      <span className="badge badge-success">
+                        <svg className="icon"><use href="#i-check-circle" /></svg>
+                        הצלחה
+                      </span>
+                    ) : (
+                      <span className="badge badge-danger">
+                        <svg className="icon"><use href="#i-x-circle" /></svg>
+                        שגיאה
+                      </span>
+                    )}
+                  </td>
+                  <td style={{ color: log.errorMessage ? 'var(--danger)' : undefined, maxWidth: '200px' }}>
+                    {log.errorMessage || '-'}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {logs.map(log => (
-                  <tr key={log.id} style={{ borderBottom: '1px solid #eee' }}>
-                    <td style={{ padding: '0.4rem 0.5rem', whiteSpace: 'nowrap' }} dir="ltr">{formatDate(log.sentAt)}</td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>
-                      <span dir="ltr">{log.to}</span>
-                      {log.cc && <div style={{ fontSize: '0.85em', color: 'var(--text-muted)' }} dir="ltr">CC: {log.cc}</div>}
-                    </td>
-                    <td style={{ padding: '0.4rem 0.5rem', maxWidth: '300px' }}>
-                      <div style={{ fontWeight: '500' }}>{log.subject || '-'}</div>
-                      <div style={{ fontSize: '0.85em', color: 'var(--text-main)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {log.body}
-                      </div>
-                    </td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>
-                      {log.fileName ? <span style={{ background: 'var(--element-bg)', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.85em' }}>{log.fileName}</span> : '-'}
-                    </td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>
-                      {log.status === 'success' ? (
-                        <span style={{ color: '#155724', background: '#d4edda', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.85em', fontWeight: 'bold' }}>הצלחה</span>
-                      ) : (
-                        <span style={{ color: '#721c24', background: '#f8d7da', padding: '0.2rem 0.5rem', borderRadius: '4px', fontSize: '0.85em', fontWeight: 'bold' }}>שגיאה</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '0.4rem 0.5rem', color: log.errorMessage ? '#dc3545' : 'inherit', maxWidth: '200px' }}>
-                      {log.errorMessage || '-'}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-          </>
+              ))}
+            </tbody>
+          </table>
         )}
-      </div>
-      </div>
 
-      {/* סיכום הרשומות ועימוד — מוצמד תמיד לתחתית המסך */}
-      <div className="page-footer-bar">
-        <div className="page-footer-summary">סה"כ שורות מוצגות: {logs.length} מתוך {totalCount}</div>
-
-        <div className="page-footer-pager">
-          <button data-element-name="כפתור_page_4"
-            className="btn btn-outline"
-            disabled={page >= totalPages}
-            onClick={() => setPage(p => p + 1)}
-            style={{ padding: '0.5rem 1rem' }}
-          >
-            הבא
-          </button>
-          <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            עמוד <input data-element-name="שדה_page_5" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)' }}  /> מתוך {totalPages}
-          </span>
-          <button data-element-name="כפתור_page_6"
-            className="btn btn-outline"
-            disabled={page <= 1}
-            onClick={() => setPage(p => p - 1)}
-            style={{ padding: '0.5rem 1rem' }}
-          >
-            הקודם
-          </button>
+        {/* סיכום הרשומות ועימוד */}
+        <div className="table-foot">
+          <span>סה&quot;כ שורות מוצגות: {logs.length} מתוך {totalCount}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <button type="button" className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} title="עמוד קודם">
+              <svg className="icon"><use href="#i-chevron-end" /></svg>
+              הקודם
+            </button>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <label htmlFor="emailLogsPageNum">עמוד</label>
+              <input
+                id="emailLogsPageNum"
+                type="number"
+                className="input"
+                min={1}
+                max={totalPages || 1}
+                value={page}
+                onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }}
+                style={{ width: '52px', padding: '4px 6px', textAlign: 'center', display: 'inline-block' }}
+              />
+              מתוך {totalPages}
+            </span>
+            <button type="button" className="btn btn-secondary btn-sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} title="עמוד הבא">
+              הבא
+              <svg className="icon"><use href="#i-chevron-start" /></svg>
+            </button>
+          </div>
         </div>
       </div>
-    </main>
+    </>
   );
 }

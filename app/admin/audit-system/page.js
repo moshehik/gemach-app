@@ -1,34 +1,34 @@
 import AuditReportsPanel from './AuditReportsPanel';
 
 const Section = ({ title, children, id }) => (
-  <section id={id} style={{ marginBottom: '2.5rem' }}>
-    <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--primary-color)', marginBottom: '0.9rem', borderBottom: '2px solid var(--border-color, #e2e8f0)', paddingBottom: '0.5rem' }}>
-      {title}
-    </h2>
+  <section id={id} style={{ marginBottom: '32px' }}>
+    <h2>{title}</h2>
     {children}
   </section>
 );
 
+const CALLOUT_META = {
+  info: { className: 'callout-info', icon: 'i-info' },
+  warn: { className: 'callout-warning', icon: 'i-alert-tri' },
+  danger: { className: 'callout-danger', icon: 'i-x-circle' },
+  ok: { className: 'callout-success', icon: 'i-check-circle' }
+};
+
 const Callout = ({ tone = 'info', title, children }) => {
-  const tones = {
-    info: { bg: '#eff6ff15', border: '#3b82f6', text: '#3b82f6' },
-    warn: { bg: '#f59e0b15', border: '#f59e0b', text: '#b45309' },
-    danger: { bg: '#ef444415', border: '#ef4444', text: '#b91c1c' },
-    ok: { bg: '#10b98115', border: '#10b981', text: '#047857' }
-  };
-  const t = tones[tone];
+  const meta = CALLOUT_META[tone];
   return (
-    <div style={{ background: t.bg, borderRight: `4px solid ${t.border}`, borderRadius: '8px', padding: '1rem 1.25rem', marginBottom: '1rem' }}>
-      {title && <div style={{ fontWeight: 800, color: t.text, marginBottom: '0.35rem' }}>{title}</div>}
-      <div style={{ color: 'var(--foreground)', lineHeight: 1.7, fontSize: '0.95rem' }}>{children}</div>
+    <div className={`callout ${meta.className}`}>
+      <svg className="icon"><use href={`#${meta.icon}`} /></svg>
+      <span>
+        {title && <strong style={{ display: 'block', color: 'var(--text)', marginBottom: '2px' }}>{title}</strong>}
+        {children}
+      </span>
     </div>
   );
 };
 
 const Code = ({ children }) => (
-  <code style={{ background: 'var(--element-bg, #f1f5f9)', padding: '0.15rem 0.4rem', borderRadius: '4px', fontSize: '0.88em', direction: 'ltr', display: 'inline-block' }}>
-    {children}
-  </code>
+  <code>{children}</code>
 );
 
 const agents = [
@@ -49,25 +49,25 @@ export const metadata = { title: 'מערכת ביקורת (11 סוכנים)' };
 
 export default function AuditSystemDocsPage() {
   return (
-    <div className="container animate-fade-in" style={{ paddingTop: '2.5rem', paddingBottom: '4rem', maxWidth: '860px', margin: '0 auto' }}>
-      <div style={{ marginBottom: '2.5rem' }}>
-        <h1 style={{ fontSize: '2rem', fontWeight: 800, color: 'var(--primary-color)', marginBottom: '0.4rem' }}>
-          מערכת ביקורת אוטומטית (11 סוכנים)
-        </h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem' }}>
-          תיעוד למערכת שסורקת גם את קוד המקור וגם את הנתונים בפועל, ומאתרת באגים, בעיות אבטחה,
-          הזמנות פגומות, חריגות נוכחות ומלאי ועוד — לפני שהן הופכות לתקלה אצל משתמש.
-        </p>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.75rem' }}>
-          עודכן לאחרונה: 06.08.2026 · המקור הטכני: <Code>.claude/agents/audit-*.md</Code> ו-
-          <Code>.claude/commands/audit-system.md</Code>
-        </p>
+    <>
+      <div className="page-head">
+        <div>
+          <h1>מערכת ביקורת אוטומטית (11 סוכנים)</h1>
+          <p className="page-desc">
+            תיעוד למערכת שסורקת גם את קוד המקור וגם את הנתונים בפועל, ומאתרת באגים, בעיות אבטחה,
+            הזמנות פגומות, חריגות נוכחות ומלאי ועוד — לפני שהן הופכות לתקלה אצל משתמש.
+          </p>
+          <p className="page-desc">
+            עודכן לאחרונה: 06.08.2026 · המקור הטכני: <Code>.claude/agents/audit-*.md</Code> ו-
+            <Code>.claude/commands/audit-system.md</Code>
+          </p>
+        </div>
       </div>
 
       <AuditReportsPanel />
 
       <Section title="מה זה בפועל">
-        <p style={{ lineHeight: 1.8 }}>
+        <p className="page-desc">
           זהו <strong>כלי פיתוח</strong>, לא כפתור בממשק — הוא רץ מתוך Claude Code (לא דורש שהמשתמש
           יריץ אותו בעצמו). מפעילים אותו בפקודה <Code>/audit-system</Code>, והיא מפעילה 11 סוכנים
           קבועים במקביל, כל אחד אחראי על תחום אחד. חמישה מהם קוראים <strong>קוד</strong> בלבד
@@ -79,24 +79,26 @@ export default function AuditSystemDocsPage() {
       </Section>
 
       <Section title="11 תחומי הביקורת">
-        <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '1rem' }}>
-          <thead>
-            <tr style={{ borderBottom: '2px solid var(--border-color, #e2e8f0)' }}>
-              <th style={{ textAlign: 'right', padding: '0.5rem' }}>#</th>
-              <th style={{ textAlign: 'right', padding: '0.5rem' }}>תחום</th>
-              <th style={{ textAlign: 'right', padding: '0.5rem' }}>מה הוא בודק</th>
-            </tr>
-          </thead>
-          <tbody>
-            {agents.map((a, i) => (
-              <tr key={a.slug} style={{ borderBottom: '1px solid var(--border-color, #e2e8f0)' }}>
-                <td style={{ padding: '0.6rem 0.5rem', color: 'var(--text-muted)' }}>{i + 1}</td>
-                <td style={{ padding: '0.6rem 0.5rem', fontWeight: 700, whiteSpace: 'nowrap' }}>{a.label}</td>
-                <td style={{ padding: '0.6rem 0.5rem', lineHeight: 1.6 }}>{a.desc}</td>
+        <div className="table-wrap" style={{ marginBottom: '16px' }}>
+          <table className="data">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>תחום</th>
+                <th>מה הוא בודק</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {agents.map((a, i) => (
+                <tr key={a.slug}>
+                  <td className="cell-muted">{i + 1}</td>
+                  <td className="cell-primary">{a.label}</td>
+                  <td>{a.desc}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
         <Callout tone="info" title="שמות הסוכנים">
           כל תחום הוא קובץ עצמאי תחת <Code>.claude/agents/&lt;slug&gt;.md</Code> (העמודה &quot;תחום&quot;
           למעלה תואמת ל-slug בלי הקידומת <Code>audit-</Code>, למשל &quot;הזמנות פגומות&quot; = <Code>audit-orders</Code>).
@@ -104,10 +106,10 @@ export default function AuditSystemDocsPage() {
       </Section>
 
       <Section title="איך מפעילים">
-        <p style={{ lineHeight: 1.8, marginBottom: '0.75rem' }}>
+        <p className="page-desc" style={{ marginBottom: '0.75rem' }}>
           מתוך סשן Claude Code שספריית העבודה שלו היא בתוך <Code>gemach-app/</Code> (או worktree שלו):
         </p>
-        <ul style={{ lineHeight: 1.9, paddingRight: '1.2rem' }}>
+        <ul className="page-desc" style={{ paddingInlineStart: '20px', marginBottom: '16px' }}>
           <li><Code>/audit-system</Code> — מריץ את כל 11 הסוכנים.</li>
           <li><Code>/audit-system orders,inventory</Code> — מריץ רק תחומים נבחרים (רשימה מופרדת בפסיקים).</li>
         </ul>
@@ -119,7 +121,7 @@ export default function AuditSystemDocsPage() {
       </Section>
 
       <Section title="הדוח שמופק">
-        <p style={{ lineHeight: 1.8 }}>
+        <p className="page-desc">
           כל הרצה נשמרת כרשומה בטבלת <Code>AuditReport</Code> בבסיס הנתונים של האפליקציה (לא קובץ) —
           ומופיעה מיד ב&quot;דוחות אחרונים&quot; למעלה, בתצוגה מתקפלת עם כל הממצאים לפי תחום וחומרה.
           ההכנסה עצמה מתבצעת דרך <Code>scripts/insert_audit_report.js</Code> (הכתיבה היחידה בכל
@@ -129,12 +131,12 @@ export default function AuditSystemDocsPage() {
       </Section>
 
       <Section title="יומן שינויים">
-        <ul style={{ lineHeight: 1.9, paddingRight: '1.2rem', fontSize: '0.92rem' }}>
+        <ul className="page-desc" style={{ paddingInlineStart: '20px', fontSize: '0.92rem' }}>
           <li>06.08.2026 — נוצרה המערכת: 10 קובצי agent, פקודת <Code>/audit-system</Code>, ועמוד תיעוד זה.</li>
           <li>06.08.2026 — נוסף סוכן 11: <Code>audit-backups-history</Code> (רישום היסטוריה + בדיקת גיבויים בענן ומקומית).</li>
           <li>06.08.2026 — הדוחות עברו מקובץ Markdown (<Code>audit-reports/</Code>) לרשומות בטבלת <Code>AuditReport</Code>, עם תצוגה מתקפלת בעמוד זה (&quot;דוחות אחרונים&quot;).</li>
         </ul>
       </Section>
-    </div>
+    </>
   );
 }
