@@ -8,6 +8,7 @@ export default function PunchClockPage() {
   const [statusMessage, setStatusMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -50,73 +51,98 @@ export default function PunchClockPage() {
     }
   };
 
+  const isError = statusMessage.includes('שגיאה');
+
   return (
-    <div data-agy-id="punch-clock-container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'linear-gradient(135deg, #fdfbfb 0%, #ebedee 100%)', fontFamily: 'sans-serif' }}>
-      <div data-agy-id="punch-clock-card" style={{ background: 'var(--card-bg)', padding: '3rem', borderRadius: '24px', boxShadow: '0 10px 30px rgba(0,0,0,0.1)', textAlign: 'center', maxWidth: '400px', width: '100%' }}>
-        <h1 style={{ color: 'var(--primary-color)', marginBottom: '0.5rem', fontSize: '2rem' }}>שעון נוכחות</h1>
-        <div style={{ fontSize: '3rem', fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '2rem', letterSpacing: '2px' }}>
-          {currentTime || '...'}
+    <>
+      <div className="page-head">
+        <div>
+          <h1>שעון נוכחות</h1>
+          <div className="page-desc">הזנת קוד עובד וסיסמא לרישום כניסה או יציאה מהעבודה</div>
         </div>
-
-        <div className="form-group" style={{ marginBottom: '1.5rem', textAlign: 'right' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-muted)' }}>קוד עובד</label>
-          <input data-element-name="שדה_page_1" 
-            data-agy-id="input-employee-id"
-            type="number" 
-            dir="auto"
-            value={employeeId} 
-            onChange={(e) => setEmployeeId(e.target.value)} 
-            placeholder="הזן קוד עובד"
-            style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #eee', fontSize: '1.1rem', textAlign: 'center', transition: 'border-color 0.3s', outline: 'none' }} 
-            onFocus={(e) => e.target.style.borderColor = 'var(--primary-color)'}
-            onBlur={(e) => e.target.style.borderColor = '#eee'}
-          />
-        </div>
-
-        <div className="form-group" style={{ marginBottom: '2rem', textAlign: 'right' }}>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500', color: 'var(--text-muted)' }}>סיסמא</label>
-          <input data-element-name="שדה_page_2" 
-            data-agy-id="input-password"
-            type="password" 
-            dir="auto"
-            value={password} 
-            onChange={(e) => setPassword(e.target.value)} 
-            placeholder="הזן סיסמא"
-            style={{ width: '100%', padding: '1rem', borderRadius: '12px', border: '2px solid #eee', fontSize: '1.1rem', textAlign: 'center', transition: 'border-color 0.3s', outline: 'none' }} 
-            onFocus={(e) => e.target.style.borderColor = 'var(--primary-color)'}
-            onBlur={(e) => e.target.style.borderColor = '#eee'}
-          />
-        </div>
-
-        <div style={{ display: 'flex', gap: '1rem' }}>
-          <button data-element-name="כפתור_page_3" 
-            data-agy-id="punch-in-button"
-            onClick={() => handlePunch('IN')} 
-            disabled={isLoading}
-            style={{ flex: 1, padding: '1.2rem', borderRadius: '12px', border: 'none', background: '#4CAF50', color: 'white', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(76,175,80,0.3)', transition: 'transform 0.1s' }}
-            onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
-            onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
-          >
-            כניסה
-          </button>
-          <button data-element-name="כפתור_page_4" 
-            data-agy-id="punch-out-button"
-            onClick={() => handlePunch('OUT')} 
-            disabled={isLoading}
-            style={{ flex: 1, padding: '1.2rem', borderRadius: '12px', border: 'none', background: '#f44336', color: 'white', fontSize: '1.2rem', fontWeight: 'bold', cursor: 'pointer', boxShadow: '0 4px 15px rgba(244,67,54,0.3)', transition: 'transform 0.1s' }}
-            onMouseDown={(e) => e.target.style.transform = 'scale(0.95)'}
-            onMouseUp={(e) => e.target.style.transform = 'scale(1)'}
-          >
-            יציאה
-          </button>
-        </div>
-
-        {statusMessage && (
-          <div style={{ marginTop: '1.5rem', padding: '1rem', borderRadius: '8px', background: statusMessage.includes('שגיאה') ? '#ffebee' : '#e8f5e9', color: statusMessage.includes('שגיאה') ? '#c62828' : '#2e7d32', fontWeight: 'bold' }}>
-            {statusMessage}
-          </div>
-        )}
       </div>
-    </div>
+
+      <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div className="card card-pad" style={{ maxWidth: '420px', width: '100%' }}>
+
+          <div style={{ textAlign: 'center', marginBottom: '22px' }}>
+            <div className="kpi-icon" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)', margin: '0 auto 10px' }}>
+              <svg className="icon"><use href="#i-clock" /></svg>
+            </div>
+            <div className="kpi-value" style={{ fontSize: '40px' }}>{currentTime || '...'}</div>
+            <div className="kpi-label">השעה כעת</div>
+          </div>
+
+          <div className="field">
+            <label htmlFor="punch-clock-employeeId">קוד עובד</label>
+            <input
+              data-element-name="שדה_punch-clock_1"
+              className="input"
+              id="punch-clock-employeeId"
+              type="number"
+              inputMode="numeric"
+              dir="auto"
+              value={employeeId}
+              onChange={(e) => setEmployeeId(e.target.value)}
+              placeholder="הזן קוד עובד"
+              style={{ textAlign: 'center' }}
+            />
+          </div>
+
+          <div className="field">
+            <label htmlFor="punch-clock-password">סיסמא</label>
+            <div className="password-field">
+              <svg className="icon lead-icon"><use href="#i-lock" /></svg>
+              <input
+                data-element-name="שדה_punch-clock_2"
+                className="input"
+                id="punch-clock-password"
+                type={showPassword ? 'text' : 'password'}
+                dir="auto"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="הזן סיסמא"
+              />
+              <button type="button" className="toggle-visibility" title="הצג סיסמה" onClick={() => setShowPassword(v => !v)}>
+                <svg className="icon"><use href="#i-eye" /></svg>
+              </button>
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '10px', marginTop: '8px' }}>
+            <button
+              data-element-name="כפתור_punch-clock_3"
+              type="button"
+              onClick={() => handlePunch('IN')}
+              disabled={isLoading}
+              className="btn btn-primary btn-lg"
+              style={{ flex: 1 }}
+            >
+              {isLoading ? <span className="spinner" /> : <svg className="icon"><use href="#i-check-circle" /></svg>}
+              כניסה
+            </button>
+            <button
+              data-element-name="כפתור_punch-clock_4"
+              type="button"
+              onClick={() => handlePunch('OUT')}
+              disabled={isLoading}
+              className="btn btn-danger btn-lg"
+              style={{ flex: 1 }}
+            >
+              {isLoading ? <span className="spinner" /> : <svg className="icon"><use href="#i-logout" /></svg>}
+              יציאה
+            </button>
+          </div>
+
+          {statusMessage && (
+            <div className={`callout ${isError ? 'callout-danger' : 'callout-success'}`} style={{ marginTop: '18px' }}>
+              <svg className="icon"><use href={isError ? '#i-alert-circle' : '#i-check-circle'} /></svg>
+              <div>{statusMessage}</div>
+            </div>
+          )}
+
+        </div>
+      </div>
+    </>
   );
 }

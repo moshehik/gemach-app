@@ -2,18 +2,16 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, UserCheck, UserMinus, Plus, FileSpreadsheet, ChevronRight, ChevronLeft, CalendarClock, Printer, AlertTriangle, Loader2, FileText, Table2 } from 'lucide-react';
-import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
 import ExportButtons from '../../components/ExportButtons';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
 
 export default function EmployeesPage() {
   const router = useRouter();
-  
+
   // Tab State
   const [activeTab, setActiveTab] = useState('list'); // 'list' or 'attendance'
-  
+
   // Employees List State
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +21,21 @@ export default function EmployeesPage() {
   const [isAiModeActive, setIsAiModeActive] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
-  
+
+  // מצב תצוגת סרגל החיפוש (חיפוש רגיל / חכם AI) — מחליף את המצב הפנימי שהיה
+  // חבוי בתוך רכיב AISearchBar הישן; ההתנהגות זהה, רק המבנה/הסגנון עברו לעיצוב החדש.
+  const [aiInputMode, setAiInputMode] = useState(false);
+  const [aiInputText, setAiInputText] = useState('');
+
+  // ה-state הזה חי ברמת הדף (לא ברכיב AISearchBar הישן שהתפרק בכל מעבר טאב),
+  // אז צריך לאפס אותו ידנית ביציאה מהטאב "רשימה" כדי לשמר את אותה התנהגות בדיוק.
+  useEffect(() => {
+    if (activeTab !== 'list') {
+      setAiInputMode(false);
+      setAiInputText('');
+    }
+  }, [activeTab]);
+
   // Attendance State
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
@@ -105,13 +117,41 @@ export default function EmployeesPage() {
   const filteredEmployees = employees.filter(e => {
     if (filterStatus === 'active' && !e.isActive) return false;
     if (filterStatus === 'inactive' && e.isActive) return false;
-    
+
     if (isAiModeActive) return true; // AI already filtered the data
 
     const term = search.toLowerCase();
     const fullName = `${e.firstName || ''} ${e.lastName || ''}`.toLowerCase();
     return fullName.includes(term) || (e.phone1 && e.phone1.includes(term)) || String(e.id).includes(term) || String(e.legacyId || '').includes(term);
   });
+
+  const handleSearch = (e) => {
+    if (e) e.preventDefault();
+    setSearch(searchInput);
+    setIsAiModeActive(false);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setSearch('');
+    setIsAiModeActive(false);
+  };
+
+  // סרגל החיפוש: מצב רגיל מול מצב AI — מחליף את הלוגיקה הפנימית שהייתה ברכיב AISearchBar
+  const toggleAiInputMode = () => {
+    if (!aiInputMode) {
+      setAiInputText(searchInput || '');
+    } else {
+      setSearchInput(aiInputText || '');
+    }
+    setAiInputMode(v => !v);
+  };
+
+  const handleAiInputSubmit = (e) => {
+    e.preventDefault();
+    if (!aiInputText.trim()) return;
+    handleAiSearch(aiInputText);
+  };
 
   // Attendance Handlers
   const handlePrevMonth = () => {
@@ -185,8 +225,7 @@ export default function EmployeesPage() {
   }).filter(e => e.daysCount > 0);
 
   return (
-    <main data-agy-id="employees-page-main" className="container animate-fade-in page-shell">
-      
+    <>
       <style dangerouslySetInnerHTML={{__html: `
         #print-area { display: none; }
         @media print {
@@ -211,128 +250,137 @@ export default function EmployeesPage() {
           .summary-print-table thead { display: table-header-group; }
           .summary-print-table tr { break-inside: avoid; page-break-inside: avoid; }
         }
-
-        .attendance-print-menu {
-          position: absolute; top: 100%; right: 0; margin-top: 8px;
-          background: var(--card-bg, #fff); border-radius: 12px;
-          box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.06);
-          z-index: 1050; min-width: 240px; overflow: hidden; padding: 6px;
-          border: 1px solid var(--element-border, #e5e7eb);
-          animation: attendance-print-menu-in 0.15s ease-out forwards;
-        }
-        @keyframes attendance-print-menu-in {
-          from { opacity: 0; transform: translateY(-6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .attendance-print-menu-item {
-          width: 100%; display: flex; align-items: center; gap: 10px;
-          padding: 10px 12px; border: none; background: transparent; cursor: pointer;
-          border-radius: 8px; font-weight: 600; font-size: 0.88rem; color: var(--text-main, #334155);
-          transition: background-color 0.15s ease; text-align: right;
-        }
-        .attendance-print-menu-item:hover { background: var(--element-bg, #f8fafc); }
       `}} />
 
-      <div className="page-scroll">
       <div className="no-print">
-        {showStatistics && <StatisticsModal data-element-name="רכיב_page_1" isOpen={!!showStatistics} onClose={() => setShowStatistics(false)} pageContext="employees" position={typeof showStatistics === 'object' ? showStatistics : null} />}
-        
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-          <h1 style={{ color: 'var(--primary-color)', margin: 0, fontSize: '2rem', fontWeight: 'bold' }}>ניהול עובדים ונוכחות</h1>
+        {showStatistics && <StatisticsModal isOpen={!!showStatistics} onClose={() => setShowStatistics(false)} pageContext="employees" position={typeof showStatistics === 'object' ? showStatistics : null} />}
+
+        <div className="page-head">
+          <div>
+            <h1>ניהול עובדים ונוכחות</h1>
+          </div>
         </div>
 
         {/* Tabs Navigation */}
-        <div className="nav-links" style={{ marginBottom: '2rem' }}>
-          <button data-element-name="כפתור_page_4"
-            data-agy-id="tab-employees-list"
-            onClick={() => setActiveTab('list')}
-            className={activeTab === 'list' ? 'nav-link active' : 'nav-link'}
-            style={{ border: 'none', background: activeTab === 'list' ? undefined : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            <Users data-element-name="רכיב_page_5" size={16} />
+        <div className="tabs">
+          <button type="button" className={activeTab === 'list' ? 'tab active' : 'tab'} onClick={() => setActiveTab('list')}>
+            <svg className="icon"><use href="#i-users" /></svg>
             רשימת עובדים
           </button>
-          <button data-element-name="כפתור_page_6"
-            data-agy-id="tab-attendance"
-            onClick={() => setActiveTab('attendance')}
-            className={activeTab === 'attendance' ? 'nav-link active' : 'nav-link'}
-            style={{ border: 'none', background: activeTab === 'attendance' ? undefined : 'transparent', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            <CalendarClock data-element-name="רכיב_page_7" size={16} />
+          <button type="button" className={activeTab === 'attendance' ? 'tab active' : 'tab'} onClick={() => setActiveTab('attendance')}>
+            <svg className="icon"><use href="#i-clock" /></svg>
             נוכחות
           </button>
         </div>
 
         {/* Employees List Tab Content */}
         {activeTab === 'list' && (
-          <div className="animate-fade-in">
-            <div className="toolbar-row">
-              <div style={{ maxWidth: '600px', flex: 1, minWidth: '260px' }}>
-                <AISearchBar data-element-name="רכיב_page_8"
-                  placeholder="חיפוש עובד (שם, טלפון, קוד)..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  onSearch={(e) => { e.preventDefault(); setSearch(searchInput); setIsAiModeActive(false); }}
-                  onClear={() => { setSearchInput(''); setSearch(''); setIsAiModeActive(false); }}
-                  onAiSearch={handleAiSearch}
-                  onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-                  loading={aiLoading}
-                />
+          <div>
+            <div className="toolbar">
+              {aiInputMode ? (
+                <form onSubmit={handleAiInputSubmit} className="search-toolbar">
+                  {aiLoading
+                    ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
+                    : <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>}
+                  <input
+                    type="text"
+                    value={aiInputText}
+                    onChange={(e) => setAiInputText(e.target.value)}
+                    placeholder="בקש מה-AI למצוא נתונים (למשל: 'הזמנות של משפחת שיינועטר')..."
+                    disabled={aiLoading}
+                  />
+                  <div className="search-toolbar-actions">
+                    {aiInputText && !aiLoading && (
+                      <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה" onClick={() => setAiInputText('')}>
+                        <svg className="icon"><use href="#i-x" /></svg>
+                      </button>
+                    )}
+                    <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" style={{ color: 'var(--accent)', background: 'var(--accent-tint)' }} onClick={toggleAiInputMode}>
+                      <svg className="icon"><use href="#i-star" /></svg>
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
+                      <svg className="icon"><use href="#i-activity" /></svg>
+                    </button>
+                    <button type="submit" className="btn btn-primary btn-sm" disabled={aiLoading}>
+                      {aiLoading ? 'מייצר שאילתה...' : 'חפש בחכמה'}
+                    </button>
+                  </div>
+                </form>
+              ) : (
+                <form onSubmit={handleSearch} className="search-toolbar">
+                  <svg className="icon"><use href="#i-search" /></svg>
+                  <input
+                    type="text"
+                    value={searchInput}
+                    onChange={(e) => setSearchInput(e.target.value)}
+                    placeholder="חיפוש עובד (שם, טלפון, קוד)..."
+                  />
+                  <div className="search-toolbar-actions">
+                    {searchInput && (
+                      <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ניקוי חיפוש" onClick={handleClearSearch}>
+                        <svg className="icon"><use href="#i-x" /></svg>
+                      </button>
+                    )}
+                    <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" onClick={toggleAiInputMode}>
+                      <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
+                      <svg className="icon"><use href="#i-activity" /></svg>
+                    </button>
+                    <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
+                  </div>
+                </form>
+              )}
+
+              <div className="spacer"></div>
+
+              <div className="pill-tabs">
+                <button type="button" onClick={() => setFilterStatus('active')} className={filterStatus === 'active' ? 'pill-tab active' : 'pill-tab'} title="עובדים פעילים">
+                  <svg className="icon"><use href="#i-user-check" /></svg>
+                  פעילים
+                </button>
+                <button type="button" onClick={() => setFilterStatus('inactive')} className={filterStatus === 'inactive' ? 'pill-tab active' : 'pill-tab'} title="לא פעילים">
+                  <svg className="icon"><use href="#i-user" /></svg>
+                  לא פעילים
+                </button>
+                <button type="button" onClick={() => setFilterStatus('all')} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
+                  <svg className="icon"><use href="#i-users" /></svg>
+                  הכל
+                </button>
               </div>
 
-              <div className="status-filters">
-                <button data-element-name="כפתור_page_9" data-agy-id="filter-active-employees" onClick={() => { setFilterStatus('active'); }} className={filterStatus === 'active' ? 'status-filter active c-green' : 'status-filter'} title="עובדים פעילים">
-                  <UserCheck data-element-name="רכיב_page_10" size={16} />
-                  <span>פעילים</span>
-                </button>
-                <button data-element-name="כפתור_page_11" data-agy-id="filter-inactive-employees" onClick={() => { setFilterStatus('inactive'); }} className={filterStatus === 'inactive' ? 'status-filter active c-gray' : 'status-filter'} title="לא פעילים">
-                  <UserMinus data-element-name="רכיב_page_12" size={16} />
-                  <span>לא פעילים</span>
-                </button>
-                <button data-element-name="כפתור_page_13" data-agy-id="filter-all-employees" onClick={() => { setFilterStatus('all'); }} className={filterStatus === 'all' ? 'status-filter active c-blue' : 'status-filter'} title="הצג הכל">
-                  <Users data-element-name="רכיב_page_14" size={16} />
-                  <span>הכל</span>
-                </button>
-              </div>
-
-              <div className="icon-toolbar">
-                <button data-element-name="כפתור_page_2"
-                  data-agy-id="new-employee-button"
-                  onClick={() => router.push('/employees/new')}
-                  className="icon-btn icon-btn-primary"
-                  title="עובד חדש"
-                >
-                  <Plus data-element-name="רכיב_page_3" size={17} />
-                  <span>עובד חדש</span>
-                </button>
-              </div>
+              <button type="button" onClick={() => router.push('/employees/new')} className="btn btn-primary" title="עובד חדש">
+                <svg className="icon"><use href="#i-plus" /></svg>
+                עובד חדש
+              </button>
             </div>
 
-            <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)' }}>
+            <div className="table-wrap">
               {loading ? (
-                <div style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>
+                <div className="page-loading">
+                  <span className="spinner lg" />
+                  טוען נתונים...
+                </div>
               ) : (
-                <>
-                <div style={{ overflow: 'visible', minHeight: '50vh' }}>
-                <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
+                <table className="data">
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
-                      <th style={{ padding: '0.4rem 0.5rem' }}>קוד עובד</th>
-                      <th style={{ padding: '0.4rem 0.5rem' }}>שם מלא</th>
-                      <th style={{ padding: '0.4rem 0.5rem' }}>תפקיד</th>
-                      <th style={{ padding: '0.4rem 0.5rem' }}>טלפון</th>
-                      <th style={{ padding: '0.4rem 0.5rem' }}>סטטוס</th>
+                    <tr>
+                      <th>קוד עובד</th>
+                      <th>שם מלא</th>
+                      <th>תפקיד</th>
+                      <th>טלפון</th>
+                      <th>סטטוס</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredEmployees.map(employee => (
-                      <tr data-element-name="לחיץ_page_15" data-agy-id={`employee-row-${employee.id}`} key={employee.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/employees/${employee.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
-                        <td style={{ padding: '0.4rem 0.5rem' }}>{employee.legacyId || employee.id.substring(0, 5)}</td>
-                        <td style={{ padding: '0.4rem 0.5rem', fontWeight: '500' }}>{employee.firstName} {employee.lastName}</td>
-                        <td style={{ padding: '0.4rem 0.5rem' }}>{employee.department ? employee.department.name : (employee.roleId || 'עובד')}</td>
-                        <td style={{ padding: '0.4rem 0.5rem' }}>{employee.phone1 || '-'}</td>
-                        <td style={{ padding: '0.4rem 0.5rem' }}>
-                          <span className={employee.isActive ? 'status-dot c-green' : 'status-dot c-gray'}>
+                      <tr key={employee.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/employees/${employee.id}`)}>
+                        <td className="cell-primary">{employee.legacyId || employee.id.substring(0, 5)}</td>
+                        <td className="cell-primary">{employee.firstName} {employee.lastName}</td>
+                        <td>{employee.department ? employee.department.name : (employee.roleId || 'עובד')}</td>
+                        <td>{employee.phone1 || '-'}</td>
+                        <td>
+                          <span className={employee.isActive ? 'badge badge-success' : 'badge badge-neutral'}>
                             {employee.isActive ? 'פעיל' : 'לא פעיל'}
                           </span>
                         </td>
@@ -340,126 +388,122 @@ export default function EmployeesPage() {
                     ))}
                     {filteredEmployees.length === 0 && (
                       <tr>
-                        <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>לא נמצאו עובדים התואמים את החיפוש.</td>
+                        <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>לא נמצאו עובדים התואמים את החיפוש.</td>
                       </tr>
                     )}
                   </tbody>
                 </table>
-                </div>
-                </>
               )}
+              <div className="table-foot">
+                <span>סה&quot;כ שורות מוצגות: {loading ? '...' : filteredEmployees.length}</span>
+              </div>
             </div>
           </div>
         )}
 
         {/* Attendance Tab Content */}
         {activeTab === 'attendance' && (
-          <div className="animate-fade-in">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--card-bg)', padding: '0.5rem 1rem', borderRadius: '24px', boxShadow: 'var(--shadow-sm)' }}>
-                <button data-element-name="כפתור_page_16" onClick={handlePrevMonth} className="btn btn-ghost" style={{ padding: '0.5rem', borderRadius: '50%', color: 'var(--text-main)' }}>
-                  <ChevronRight data-element-name="רכיב_page_17" size={20} />
+          <div>
+            <div className="toolbar">
+              <button type="button" onClick={handlePrevMonth} className="btn btn-ghost btn-icon-only" title="חודש קודם">
+                <svg className="icon"><use href="#i-chevron-end" /></svg>
+              </button>
+              <strong style={{ minWidth: '110px', textAlign: 'center', color: 'var(--primary)' }}>
+                {getMonthName(selectedMonth)} {selectedYear}
+              </strong>
+              <button type="button" onClick={handleNextMonth} className="btn btn-ghost btn-icon-only" title="חודש הבא">
+                <svg className="icon"><use href="#i-chevron-start" /></svg>
+              </button>
+
+              <div className="spacer"></div>
+
+              <div ref={printMenuRef} style={{ position: 'relative' }}>
+                <button
+                  type="button"
+                  onClick={() => setPrintMenuOpen(o => !o)}
+                  className="btn btn-secondary btn-icon-only"
+                  disabled={processedAttendance.length === 0}
+                  title="הדפסת נוכחות"
+                >
+                  <svg className="icon"><use href="#i-printer" /></svg>
                 </button>
-                <span style={{ fontSize: '1.2rem', fontWeight: 'bold', color: 'var(--primary-color)', minWidth: '130px', textAlign: 'center' }}>
-                  {getMonthName(selectedMonth)} {selectedYear}
-                </span>
-                <button data-element-name="כפתור_page_18" onClick={handleNextMonth} className="btn btn-ghost" style={{ padding: '0.5rem', borderRadius: '50%', color: 'var(--text-main)' }}>
-                  <ChevronLeft data-element-name="רכיב_page_19" size={20} />
-                </button>
+                {printMenuOpen && (
+                  <div className="card" style={{ position: 'absolute', top: 'calc(100% + 6px)', insetInlineEnd: 0, minWidth: '250px', padding: '6px', zIndex: 20 }}>
+                    <button type="button" className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => handlePrintPdfs(null, 'full')}>
+                      <svg className="icon"><use href="#i-file" /></svg>
+                      דוחות מלאים לכל עובד
+                    </button>
+                    <button type="button" className="btn btn-ghost" style={{ width: '100%', justifyContent: 'flex-start' }} onClick={() => handlePrintPdfs(null, 'summary')}>
+                      <svg className="icon"><use href="#i-list" /></svg>
+                      טבלת סיכום בלבד ({getMonthName(selectedMonth)} {selectedYear})
+                    </button>
+                  </div>
+                )}
               </div>
-              
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                <div ref={printMenuRef} style={{ position: 'relative' }}>
-                  <button data-element-name="כפתור_page_20"
-                    data-agy-id="attendance-print-menu-trigger"
-                    onClick={() => setPrintMenuOpen(o => !o)}
-                    className="icon-btn"
-                    disabled={processedAttendance.length === 0}
-                    title="הדפסת נוכחות"
-                  >
-                    <Printer data-element-name="רכיב_page_21" size={19} />
-                  </button>
-                  {printMenuOpen && (
-                    <div className="attendance-print-menu">
-                      <button type="button" className="attendance-print-menu-item" onClick={() => handlePrintPdfs(null, 'full')}>
-                        <FileText size={16} /> דוחות מלאים לכל עובד
-                      </button>
-                      <button type="button" className="attendance-print-menu-item" onClick={() => handlePrintPdfs(null, 'summary')}>
-                        <Table2 size={16} /> טבלת סיכום בלבד ({getMonthName(selectedMonth)} {selectedYear})
-                      </button>
-                    </div>
-                  )}
-                </div>
-                <ExportButtons data-element-name="רכיב_page_22"
-                  data={processedAttendance} 
-                  filename={`נוכחות_${selectedMonth}_${selectedYear}`}
-                  columns={[
-                    { key: 'fullName', label: 'שם' },
-                    { key: 'timeStr', label: 'ס"ה דקות' },
-                    { key: 'daysCount', label: 'כמות ימים' },
-                    { key: 'issues', label: 'תקלות' },
-                    { key: 'totalCalculated', label: 'ס"ה' },
-                    { key: 'hasTravels', label: 'נסיעות' }
-                  ]}
-                  iconOnly={true}
-                />
-              </div>
+              <ExportButtons
+                data={processedAttendance}
+                filename={`נוכחות_${selectedMonth}_${selectedYear}`}
+                columns={[
+                  { key: 'fullName', label: 'שם' },
+                  { key: 'timeStr', label: 'ס"ה דקות' },
+                  { key: 'daysCount', label: 'כמות ימים' },
+                  { key: 'issues', label: 'תקלות' },
+                  { key: 'totalCalculated', label: 'ס"ה' },
+                  { key: 'hasTravels', label: 'נסיעות' }
+                ]}
+                iconOnly={true}
+              />
             </div>
 
-            <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)' }}>
-              <div style={{ overflow: 'visible', minHeight: '50vh' }}>
-              <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
+            <div className="table-wrap">
+              <table className="data">
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #ddd', color: 'var(--text-muted)' }}>
-                    <th style={{ padding: '0.4rem 0.5rem' }}>שם</th>
-                    <th style={{ padding: '0.4rem 0.5rem' }}>ס"ה דקות</th>
-                    <th style={{ padding: '0.4rem 0.5rem' }}>כמות ימים</th>
-                    <th style={{ padding: '0.4rem 0.5rem' }}>תקלות</th>
-                    <th style={{ padding: '0.4rem 0.5rem' }}>ס"ה</th>
-                    <th style={{ padding: '0.4rem 0.5rem' }}>נסיעות</th>
-                    <th className="no-print" style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>פעולות</th>
+                  <tr>
+                    <th>שם</th>
+                    <th>ס&quot;ה דקות</th>
+                    <th>כמות ימים</th>
+                    <th>תקלות</th>
+                    <th>ס&quot;ה</th>
+                    <th>נסיעות</th>
+                    <th className="no-print" style={{ textAlign: 'center' }}>פעולות</th>
                   </tr>
                 </thead>
                 <tbody>
                   {loadingAttendance ? (
                     <tr>
                       <td colSpan="6" style={{ padding: '4rem', textAlign: 'center' }}>
-                        <Loader2 data-element-name="רכיב_page_23" className="animate-spin" size={40} style={{ color: 'var(--primary-color)', margin: '0 auto' }} />
+                        <span className="spinner lg" style={{ margin: '0 auto' }} />
                       </td>
                     </tr>
                   ) : processedAttendance.length === 0 ? (
                     <tr>
-                      <td colSpan="6" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      <td colSpan="6" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>
                         לא נמצאו נתוני נוכחות לחודש זה.
                       </td>
                     </tr>
                   ) : (
                     processedAttendance.map(emp => (
-                      <tr key={emp.id} style={{
-                        borderBottom: '1px solid #eee',
-                        background: emp.issues > 0 ? '#ffeb3b4a' : 'transparent',
-                        transition: 'background 0.2s',
-                        cursor: 'pointer'
-                      }}
-                      onClick={() => router.push(`/employees/${emp.id}`)}
-                      onMouseEnter={e => e.currentTarget.style.background = emp.issues > 0 ? '#ffeb3b70' : 'var(--element-bg)'}
-                      onMouseLeave={e => e.currentTarget.style.background = emp.issues > 0 ? '#ffeb3b4a' : 'transparent'}
+                      <tr
+                        key={emp.id}
+                        className={emp.issues > 0 ? 'row-flag' : undefined}
+                        style={{ cursor: 'pointer' }}
+                        onClick={() => router.push(`/employees/${emp.id}`)}
                       >
-                        <td style={{ padding: '0.4rem 0.5rem', fontWeight: '500' }}>{emp.fullName}</td>
-                        <td style={{ padding: '0.4rem 0.5rem' }}>{emp.timeStr}</td>
-                        <td style={{ padding: '0.4rem 0.5rem' }}>{emp.daysCount}</td>
-                        <td style={{ padding: '0.4rem 0.5rem' }}>
+                        <td className="cell-primary">{emp.fullName}</td>
+                        <td>{emp.timeStr}</td>
+                        <td>{emp.daysCount}</td>
+                        <td>
                           {emp.issues > 0 && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#b71c1c', fontWeight: 'bold' }}>
-                              {emp.issues} <AlertTriangle data-element-name="רכיב_page_24" size={16} />
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--danger)', fontWeight: 700 }}>
+                              {emp.issues} <svg className="icon"><use href="#i-alert-tri" /></svg>
                             </span>
                           )}
                         </td>
-                        <td style={{ padding: '0.4rem 0.5rem', fontWeight: '500' }}>{emp.totalCalculated.toFixed(2)}</td>
-                        <td style={{ padding: '0.4rem 0.5rem' }}>{emp.hasTravels}</td>
-                        <td className="no-print" style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
-                          <button data-element-name="כפתור_page_25" onClick={(e) => { e.stopPropagation(); handlePrintPdfs(emp.id); }} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.85rem' }} title="הדפס דוח אישי לעובד זה">
-                            <Printer data-element-name="רכיב_page_26" size={16} />
+                        <td className="cell-primary">{emp.totalCalculated.toFixed(2)}</td>
+                        <td>{emp.hasTravels}</td>
+                        <td className="no-print" style={{ textAlign: 'center' }}>
+                          <button type="button" onClick={(e) => { e.stopPropagation(); handlePrintPdfs(emp.id); }} className="btn btn-secondary btn-sm" title="הדפס דוח אישי לעובד זה">
+                            <svg className="icon"><use href="#i-printer" /></svg>
                             הדפס
                           </button>
                         </td>
@@ -468,6 +512,8 @@ export default function EmployeesPage() {
                   )}
                 </tbody>
               </table>
+              <div className="table-foot">
+                <span>סה&quot;כ שורות מוצגות: {loadingAttendance ? '...' : processedAttendance.length}</span>
               </div>
             </div>
           </div>
@@ -477,7 +523,7 @@ export default function EmployeesPage() {
       {/* Hidden Print Area for Individual PDF Reports */}
       {activeTab === 'attendance' && (
         <div id="print-area">
-          <div className="bsd-header" style={{ display: 'none' }}>בס"ד</div>
+          <div className="bsd-header" style={{ display: 'none' }}>בס&quot;ד</div>
 
           {printMode === 'summary' && !loadingAttendance && (
             <div style={{ background: '#fff', color: '#000', padding: '2rem', borderRadius: '12px' }}>
@@ -489,10 +535,10 @@ export default function EmployeesPage() {
                 <thead>
                   <tr style={{ background: '#f8f9fa' }}>
                     <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'right' }}>שם</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה"כ שעות</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה&quot;כ שעות</th>
                     <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>כמות ימים</th>
                     <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>תקלות</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה"כ לתשלום</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה&quot;כ לתשלום</th>
                     <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>נסיעות</th>
                   </tr>
                 </thead>
@@ -534,8 +580,8 @@ export default function EmployeesPage() {
                       <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'right' }}>תאריך</th>
                       <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>כניסה</th>
                       <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>יציאה</th>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה"כ שעות</th>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'left' }}>סה"כ לתשלום</th>
+                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה&quot;כ שעות</th>
+                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'left' }}>סה&quot;כ לתשלום</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -563,15 +609,15 @@ export default function EmployeesPage() {
 
                 <div style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
                   <div>
-                    <span style={{ color: '#666', marginRight: '0.5rem' }}>סה"כ משמרות:</span>
+                    <span style={{ color: '#666', marginRight: '0.5rem' }}>סה&quot;כ משמרות:</span>
                     <strong style={{ fontSize: '1.2rem' }}>{emp.daysCount}</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#666', marginRight: '0.5rem' }}>סה"כ שעות:</span>
+                    <span style={{ color: '#666', marginRight: '0.5rem' }}>סה&quot;כ שעות:</span>
                     <strong style={{ fontSize: '1.2rem' }}>{totalHours}</strong>
                   </div>
                   <div>
-                    <span style={{ color: '#666', marginRight: '0.5rem' }}>סה"כ לתשלום:</span>
+                    <span style={{ color: '#666', marginRight: '0.5rem' }}>סה&quot;כ לתשלום:</span>
                     <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>₪{emp.totalCalculated.toFixed(2)}</strong>
                   </div>
                 </div>
@@ -580,16 +626,6 @@ export default function EmployeesPage() {
           })}
         </div>
       )}
-      </div>
-
-      {/* סיכום הרשומות — מוצמד תמיד לתחתית המסך */}
-      <div className="page-footer-bar no-print">
-        <div className="page-footer-summary" style={{ width: '100%', textAlign: 'center' }}>
-          {activeTab === 'list'
-            ? `סה"כ שורות מוצגות: ${loading ? '...' : filteredEmployees.length}`
-            : `סה"כ שורות מוצגות: ${loadingAttendance ? '...' : processedAttendance.length}`}
-        </div>
-      </div>
-    </main>
+    </>
   );
 }

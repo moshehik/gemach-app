@@ -3,13 +3,11 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { Calendar, CalendarPlus, Printer, Info, CheckCircle, Search, X, Check, FileText, List, Clock } from 'lucide-react';
 import PrintWizardModal from '../components/PrintWizardModal';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import HebrewDateRangePicker from '../../components/HebrewDateRangePicker';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
-import AISearchBar from '../components/AISearchBar';
 import StatisticsModal from '../components/StatisticsModal';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildAlterationsListUrl } from '@/app/lib/prefetchRoutes';
@@ -21,7 +19,7 @@ export default function AlterationsPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Pagination & Search
   const [search, setSearch] = useState('');
   const [searchInput, setSearchInput] = useState('');
@@ -29,7 +27,7 @@ export default function AlterationsPage() {
   const limit = 60;
   const [totalPages, setTotalPages] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
-  
+
   // Filters
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -43,6 +41,12 @@ export default function AlterationsPage() {
   const [aiQueryUsed, setAiQueryUsed] = useState('');
   const [isAiModeActive, setIsAiModeActive] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // מצב תצוגת סרגל החיפוש (חיפוש רגיל / חכם AI) — תואם לתבנית שנקבעה ב-app/orders/page.js:
+  // מחליף את הלוגיקה הפנימית שהייתה חבויה ברכיב AISearchBar הישן; ההתנהגות זהה (אותם
+  // handleSearch/handleAiSearch/handleClearSearch למטה), רק המבנה/הסגנון עברו לעיצוב החדש.
+  const [aiInputMode, setAiInputMode] = useState(false);
+  const [aiInputText, setAiInputText] = useState('');
 
   useEffect(() => setMounted(true), []);
 
@@ -58,7 +62,7 @@ export default function AlterationsPage() {
       });
 
       const cacheKey = url;
-      
+
       // SWR: Instant Cache Hit
       if (!isPrefetch && alterationsCache.has(cacheKey)) {
         const cachedData = alterationsCache.get(cacheKey);
@@ -71,7 +75,7 @@ export default function AlterationsPage() {
       const res = await fetch(url);
       if (!res.ok) throw new Error('Failed to fetch alterations');
       const data = await res.json();
-      
+
       // Update Cache silently
       alterationsCache.set(cacheKey, data);
 
@@ -128,7 +132,7 @@ export default function AlterationsPage() {
     const hebrewDateStr = startDate ? getHebrewDateString(startDate) : '';
     const displayDate = hebrewDateStr ? hebrewDateStr : startDate;
     if (!(await window.customConfirm(`בטוח שבוצעו כל התיקונים לתאריך ${displayDate}?`))) return;
-    
+
     try {
       const res = await fetch('/api/alterations/mark-done', {
         method: 'POST',
@@ -198,6 +202,22 @@ export default function AlterationsPage() {
     }
   };
 
+  // סרגל החיפוש: מצב רגיל מול מצב AI — מחליף את הלוגיקה הפנימית שהייתה ברכיב AISearchBar
+  const toggleAiInputMode = () => {
+    if (!aiInputMode) {
+      setAiInputText(searchInput || '');
+    } else {
+      setSearchInput(aiInputText || '');
+    }
+    setAiInputMode(v => !v);
+  };
+
+  const handleAiInputSubmit = (e) => {
+    e.preventDefault();
+    if (!aiInputText.trim()) return;
+    handleAiSearch(aiInputText);
+  };
+
   const fetchForExport = async (exportLimit) => {
     try {
       const showOnlyPending = filterStatus === 'pending';
@@ -211,7 +231,7 @@ export default function AlterationsPage() {
         ...item,
         orderId: item.order?.orderId,
         customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
-        dressName: item.dressItem?.dress?.name 
+        dressName: item.dressItem?.dress?.name
           ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
           : (item.description || item.dressItem?.dressName),
         eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
@@ -253,18 +273,60 @@ export default function AlterationsPage() {
   };
 
   return (
-    <main data-agy-id="alterations-page-main" className="container animate-fade-in page-shell">
-      <div className="page-scroll">
-      {/* סרגל אחד: כותרת + טווח תאריכים + חיפוש + פילטרים + פעולות */}
-      <div className="toolbar-row">
-        <h1 className="toolbar-title">
-          <strong>תפירות ותיקונים</strong>
-        </h1>
+    <>
+      <div className="page-head">
+        <div>
+          <h1>תפירות ותיקונים</h1>
+          <div className="page-desc">סה&quot;כ תיקונים תואמים: {totalCount}</div>
+        </div>
+        <div className="page-actions">
+          <button
+            type="button"
+            onClick={markAllDone}
+            disabled={!startDate}
+            className="btn btn-primary"
+            title="סמן את כל התפירות של היום שנבחר כבוצעו"
+          >
+            <svg className="icon"><use href="#i-check-circle" /></svg>
+            סמן יום כבוצע
+          </button>
+          <button type="button" className="btn btn-secondary btn-icon-only" title="אשף הדפסה" onClick={() => setIsPrintWizardOpen(true)}>
+            <svg className="icon"><use href="#i-printer" /></svg>
+          </button>
+          <button type="button" className="btn btn-secondary btn-icon-only" title="מקרא" onClick={() => setIsLegendOpen(true)}>
+            <svg className="icon"><use href="#i-info" /></svg>
+          </button>
+          <ExportButtons
+            data={items.map(item => ({
+              ...item,
+              orderId: item.order?.orderId,
+              customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
+              dressName: item.dressItem?.dress?.name
+                ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                : (item.description || item.dressItem?.dressName),
+              eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
+              alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין'
+            }))}
+            filename="תפירות"
+            columns={[
+              { key: 'orderId', label: 'קוד הזמנה' },
+              { key: 'customerName', label: 'לקוח' },
+              { key: 'dressName', label: 'שמלה' },
+              { key: 'sizeText', label: 'מידה' },
+              { key: 'eventDate', label: 'תאריך אירוע' },
+              { key: 'alterationStatus', label: 'סטטוס' }
+            ]}
+            iconOnly={true}
+            onFetchData={fetchForExport}
+          />
+        </div>
+      </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: 'none', maxWidth: '340px' }}>
-          <Calendar data-element-name="רכיב_page_5" size={18} color="var(--text-muted)" />
+      {/* טווח תאריכי אירוע + חיפוש (רגיל / חכם) + שאלות סטטיסטיקה */}
+      <div className="toolbar">
+        <div className="field" style={{ marginBottom: 0, minWidth: '260px' }}>
+          <label>טווח תאריכי אירוע</label>
           <HebrewDateRangePicker
-            data-element-name="רכיב_page_6"
             startDate={startDate}
             endDate={endDate}
             onChange={(start, end) => {
@@ -276,237 +338,224 @@ export default function AlterationsPage() {
           />
         </div>
 
-        <AISearchBar data-element-name="רכיב_page_15"
-          placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
-          value={searchInput}
-          onChange={(e) => setSearchInput(e.target.value)}
-          onSearch={handleSearch}
-          onClear={handleClearSearch}
-          onAiSearch={handleAiSearch}
-          onStatistics={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}
-          loading={aiLoading}
-        />
-
-        <div className="status-filters">
-          <button data-element-name="כפתור_page_2" data-agy-id="alterations_page_button_1" onClick={() => { setFilterStatus('all'); }} className={filterStatus === 'all' ? 'status-filter active c-blue' : 'status-filter'} title="הצג הכל">
-            <List data-element-name="רכיב_page_filter_all" size={16} /> <span>הכל</span>
-          </button>
-          <button data-element-name="כפתור_page_3" data-agy-id="alterations_page_button_2" onClick={() => { setFilterStatus('pending'); }} className={filterStatus === 'pending' ? 'status-filter active c-amber' : 'status-filter'} title="ממתינים">
-            <Clock data-element-name="רכיב_page_filter_pending" size={16} /> <span>ממתינים</span>
-          </button>
-          <button data-element-name="כפתור_page_4" data-agy-id="alterations_page_button_3" onClick={() => { setFilterStatus('done'); }} className={filterStatus === 'done' ? 'status-filter active c-green' : 'status-filter'} title="בוצע">
-            <CheckCircle data-element-name="רכיב_page_filter_done" size={16} /> <span>בוצע</span>
-          </button>
-        </div>
-
-        <div className="icon-toolbar">
-            <button
-              data-element-name="כפתור_page_7"
-              data-agy-id="mark-all-done-button"
-              onClick={markAllDone}
-              disabled={!startDate}
-              className="icon-btn icon-btn-primary c-approve"
-              title="סמן את כל התפירות של היום שנבחר כבוצעו"
-            >
-              <CheckCircle data-element-name="רכיב_page_8" size={16} /> סמן יום כבוצע
-            </button>
-
-            <span className="icon-sep"></span>
-
-            <button data-element-name="כפתור_page_3"
-              data-agy-id="print-wizard-button"
-              onClick={() => setIsPrintWizardOpen(true)}
-              className="icon-btn"
-              title="אשף הדפסה"
-            >
-              <Printer data-element-name="רכיב_page_4" size={20} />
-            </button>
-            <button data-element-name="כפתור_page_5"
-              data-agy-id="legend-button"
-              onClick={() => setIsLegendOpen(true)}
-              className="icon-btn"
-              title="מקרא"
-            >
-              <Info data-element-name="רכיב_page_6" size={20} />
-            </button>
-
-            <ExportButtons data-element-name="רכיב_page_2"
-              data={items.map(item => ({
-                ...item,
-                orderId: item.order?.orderId,
-                customerName: `${item.order?.customer?.firstName || ''} ${item.order?.customer?.lastName || ''}`,
-                dressName: item.dressItem?.dress?.name 
-                  ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-                  : (item.description || item.dressItem?.dressName),
-                eventDate: item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-'),
-                alterationStatus: item.alterationDone ? 'בוצע' : 'ממתין'
-              }))}
-              filename="תפירות"
-              columns={[
-                { key: 'orderId', label: 'קוד הזמנה' },
-                { key: 'customerName', label: 'לקוח' },
-                { key: 'dressName', label: 'שמלה' },
-                { key: 'sizeText', label: 'מידה' },
-                { key: 'eventDate', label: 'תאריך אירוע' },
-                { key: 'alterationStatus', label: 'סטטוס' }
-              ]}
-              iconOnly={true}
-              onFetchData={fetchForExport}
+        {aiInputMode ? (
+          <form onSubmit={handleAiInputSubmit} className="search-toolbar">
+            {aiLoading
+              ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
+              : <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>}
+            <input
+              type="text"
+              value={aiInputText}
+              onChange={(e) => setAiInputText(e.target.value)}
+              placeholder="בקש מה-AI למצוא נתונים..."
+              disabled={aiLoading}
             />
-            <button data-element-name="כפתור_page_3"
-              data-agy-id="print-wizard-button"
-              onClick={() => setIsPrintWizardOpen(true)}
-              className="icon-btn"
-              title="אשף הדפסה"
-            >
-              <Printer data-element-name="רכיב_page_4" size={20} />
-            </button>
-            <button data-element-name="כפתור_page_5"
-              data-agy-id="legend-button"
-              onClick={() => setIsLegendOpen(true)}
-              className="icon-btn"
-              title="מקרא"
-            >
-              <Info data-element-name="רכיב_page_6" size={20} />
-            </button>
-          </div>
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: '4rem', color: 'var(--text-muted)' }}>
-          <div style={{ fontSize: '3rem', marginBottom: '1rem', animation: 'fadeIn 1.5s infinite alternate' }}>⏳</div>
-          <h2>טוען נתונים...</h2>
-        </div>
-      ) : error ? (
-        <div className="dress-card" style={{ padding: '2rem', textAlign: 'center', color: '#e53935', borderRight: '5px solid #e53935' }}>
-          <h3>שגיאה בטעינת נתונים</h3>
-          <p>{error}</p>
-        </div>
-      ) : (
-        <div style={{ padding: 0, overflow: 'visible', background: 'var(--card-bg)', borderRadius: '16px', border: 'var(--glass-border)', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ overflow: 'visible', minHeight: '50vh' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right' }}>
-              <thead>
-                <tr style={{ background: 'var(--sticky-header-bg, #ffffff)', borderBottom: '2px solid var(--border-color)' }}>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך אירוע</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>דגם שמלה</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>מידה</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פירוט תיקונים</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סטטוס</th>
-                  <th style={{ padding: '1.2rem 1rem', fontWeight: '600', color: 'var(--text-main)', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פעולות</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.length === 0 ? (
-                  <tr>
-                    <td colSpan="10" style={{ textAlign: 'center', padding: '4rem 2rem', color: 'var(--text-muted)' }}>
-                      <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>👗</div>
-                      <p style={{ fontSize: '1.2rem' }}>לא נמצאו תיקונים העונים לחתך החיפוש</p>
-                    </td>
-                  </tr>
-                ) : (
-                  items.map((item, index) => {
-                    let rowBg = 'transparent';
-                    let rowBorder = 'none';
-                    if (item.alterationDone) {
-                      // בוצע - ירוק
-                      rowBg = 'rgba(46, 125, 50, 0.08)';
-                      rowBorder = '4px solid #2e7d32';
-                    } else {
-                      // ממתין - כתום
-                      rowBg = 'rgba(239, 108, 0, 0.08)';
-                      rowBorder = '4px solid #ef6c00';
-                    }
-
-                    return (
-                    <tr
-                      key={item.id}
-                      style={{
-                        borderBottom: '1px solid #eee',
-                        background: rowBg,
-                        borderRight: rowBorder,
-                        transition: 'background 0.3s ease'
-                      }}
-                      onMouseEnter={e => e.currentTarget.style.background = rowBg}
-                      onMouseLeave={e => e.currentTarget.style.background = rowBg}
-                    >
-                      <td style={{ padding: '0.4rem 0.5rem' }}>
-                        <div style={{ fontWeight: 'bold' }}>{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</div>
-                      </td>
-                      <td style={{ padding: '0.4rem 0.5rem', fontWeight: '600' }}>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
-                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--primary-color)' }}>
-                        {item.dressItem?.dress?.name 
-                          ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-                          : (item.description || item.dressItem?.dressName)}
-                      </td>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>
-                        <span style={{ background: 'var(--bg-color)', border: '1px solid var(--border-color)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.9rem', fontWeight: '500' }}>
-                          {item.sizeText || item.size}
-                        </span>
-                      </td>
-                      <td style={{ padding: '0.4rem 0.5rem', maxWidth: '350px' }}>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                          {item.neckAlteration > 0 && <span style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--primary-color)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>צוואר: הצרה {item.neckAlteration}</span>}
-                          {item.sleeveAlteration > 0 && <span style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--primary-color)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>שרוול: הארכה {item.sleeveAlteration}</span>}
-                          {item.lengthAlteration && <span style={{ background: 'rgba(212,175,55,0.1)', color: 'var(--primary-color)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.85rem', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}>אורך: {item.lengthAlteration}</span>}
-                          {item.alterationDetails && <span style={{ background: 'rgba(0,0,0,0.05)', color: 'var(--text-main)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '4px' }}>{item.alterationDetails}</span>}
-                          {!item.neckAlteration && !item.sleeveAlteration && !item.lengthAlteration && !item.alterationDetails && <span style={{ color: 'var(--text-muted)' }}>-</span>}
-                        </div>
-                      </td>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>
-                        {item.alterationDone ? (
-                          <span className="status-dot c-green">בוצע</span>
-                        ) : (
-                          <span className="status-dot c-amber">ממתין</span>
-                        )}
-                      </td>
-                      <td style={{ padding: '0.4rem 0.5rem', display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
-                          <Link data-element-name="רכיב_page_18" 
-                            href={`/orders/${item.order?.orderId}`} 
-                            className="btn btn-outline" 
-                            style={{ padding: '0.5rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px' }}
-                            title="כרטיס הזמנה"
-                          >
-                            <FileText data-element-name="רכיב_page_19" size={18} />
-                          </Link>
-                        {!item.alterationDone && (
-                          <button data-element-name="כפתור_page_20" 
-                            className="btn btn-primary" 
-                            style={{ padding: '0.5rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', width: '38px', height: '38px', border: 'none', cursor: 'pointer', backgroundColor: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}
-                            onClick={() => markDone(item.id)}
-                            title="סמן שבוצע"
-                          >
-                            <CheckCircle data-element-name="רכיב_page_21" size={18} />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-      </div>
-
-      {/* סיכום הרשומות ועימוד — מוצמד תמיד לתחתית המסך */}
-      <div className="page-footer-bar">
-        <div className="page-footer-summary">סה"כ מוצג בעמוד: {items.length} | סה"כ תיקונים תואמים: {totalCount}</div>
-
-        {totalPages > 1 && (
-          <div className="page-footer-pager">
-            <button data-element-name="כפתור_page_22" className="btn btn-outline" disabled={page <= 1 } onClick={() => setPage(p => p - 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>&lt; הקודם</button>
-            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.9rem' }}>עמוד <input data-element-name="שדה_page_23" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '50px', padding: '0.2rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages}</span>
-            <button data-element-name="כפתור_page_24" className="btn btn-outline" disabled={page >= totalPages } onClick={() => setPage(p => p + 1)} style={{ padding: '0.4rem 0.8rem', borderRadius: '8px' }}>הבא &gt;</button>
-          </div>
+            <div className="search-toolbar-actions">
+              {aiInputText && !aiLoading && (
+                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה" onClick={() => setAiInputText('')}>
+                  <svg className="icon"><use href="#i-x" /></svg>
+                </button>
+              )}
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" style={{ color: 'var(--accent)', background: 'var(--accent-tint)' }} onClick={toggleAiInputMode}>
+                <svg className="icon"><use href="#i-star" /></svg>
+              </button>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
+                <svg className="icon"><use href="#i-activity" /></svg>
+              </button>
+              <button type="submit" className="btn btn-primary btn-sm" disabled={aiLoading}>
+                {aiLoading ? 'מייצר שאילתה...' : 'חפש בחכמה'}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <form onSubmit={handleSearch} className="search-toolbar">
+            <svg className="icon"><use href="#i-search" /></svg>
+            <input
+              type="text"
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              placeholder="חיפוש (מספר הזמנה, שם לקוח, דגם שמלה)..."
+            />
+            <div className="search-toolbar-actions">
+              {searchInput && (
+                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ניקוי חיפוש" onClick={handleClearSearch}>
+                  <svg className="icon"><use href="#i-x" /></svg>
+                </button>
+              )}
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" onClick={toggleAiInputMode}>
+                <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
+              </button>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
+                <svg className="icon"><use href="#i-activity" /></svg>
+              </button>
+              <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
+            </div>
+          </form>
         )}
       </div>
 
+      {/* סינון סטטוס תיקון: הכל / ממתינים / בוצע */}
+      <div className="pill-tabs" style={{ marginBottom: '20px' }}>
+        <button type="button" onClick={() => { setFilterStatus('all'); }} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
+          <svg className="icon"><use href="#i-list" /></svg>
+          הכל
+        </button>
+        <button type="button" onClick={() => { setFilterStatus('pending'); }} className={filterStatus === 'pending' ? 'pill-tab active' : 'pill-tab'} title="ממתינים">
+          <svg className="icon"><use href="#i-clock" /></svg>
+          ממתינים
+        </button>
+        <button type="button" onClick={() => { setFilterStatus('done'); }} className={filterStatus === 'done' ? 'pill-tab active' : 'pill-tab'} title="בוצע">
+          <svg className="icon"><use href="#i-check-circle" /></svg>
+          בוצע
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="page-loading">
+          <span className="spinner lg" />
+          טוען נתונים...
+        </div>
+      ) : error ? (
+        <div className="callout callout-danger">
+          <svg className="icon"><use href="#i-alert-circle" /></svg>
+          <div>
+            <strong>שגיאה בטעינת נתונים</strong>
+            <div>{error}</div>
+          </div>
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                <th>תאריך אירוע</th>
+                <th>לקוח</th>
+                <th>דגם שמלה</th>
+                <th>מידה</th>
+                <th>פירוט תיקונים</th>
+                <th>סטטוס</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.length === 0 ? (
+                <tr>
+                  <td colSpan="7">
+                    <div className="empty-state">
+                      <svg className="icon"><use href="#i-search" /></svg>
+                      <p>לא נמצאו תיקונים העונים לחתך החיפוש</p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                items.map((item) => {
+                  const isDone = item.alterationDone;
+                  const rowStyle = {
+                    background: isDone ? 'var(--success-tint)' : 'var(--warning-tint)',
+                    borderRight: isDone ? '4px solid var(--success)' : '4px solid var(--warning)'
+                  };
+
+                  return (
+                    <tr
+                      key={item.id}
+                      style={rowStyle}
+                      onMouseEnter={e => e.currentTarget.style.background = rowStyle.background}
+                      onMouseLeave={e => e.currentTarget.style.background = rowStyle.background}
+                    >
+                      <td className="cell-primary">{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</td>
+                      <td>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
+                      <td>
+                        {item.dressItem?.dress?.name
+                          ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                          : (item.description || item.dressItem?.dressName)}
+                      </td>
+                      <td>
+                        <span className="badge badge-neutral">{item.sizeText || item.size}</span>
+                      </td>
+                      <td style={{ maxWidth: '350px' }}>
+                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                          {item.neckAlteration > 0 && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>צוואר: הצרה {item.neckAlteration}</span>}
+                          {item.sleeveAlteration > 0 && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>שרוול: הארכה {item.sleeveAlteration}</span>}
+                          {item.lengthAlteration && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>אורך: {item.lengthAlteration}</span>}
+                          {item.alterationDetails && <span className="chip">{item.alterationDetails}</span>}
+                          {!item.neckAlteration && !item.sleeveAlteration && !item.lengthAlteration && !item.alterationDetails && <span className="cell-muted">-</span>}
+                        </div>
+                      </td>
+                      <td>
+                        {isDone ? (
+                          <span className="badge badge-success">בוצע</span>
+                        ) : (
+                          <span className="badge badge-warning">ממתין</span>
+                        )}
+                      </td>
+                      <td>
+                        <div className="row-actions">
+                          <Link
+                            href={`/orders/${item.order?.orderId}`}
+                            className="btn btn-ghost btn-icon-only btn-sm"
+                            title="כרטיס הזמנה"
+                          >
+                            <svg className="icon"><use href="#i-file" /></svg>
+                          </Link>
+                          {isDone ? (
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ visibility: 'hidden' }} tabIndex={-1} aria-hidden="true">
+                              <svg className="icon"><use href="#i-check-circle" /></svg>
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-icon-only btn-sm"
+                              style={{ color: 'var(--success)' }}
+                              onClick={() => markDone(item.id)}
+                              title="סמן שבוצע"
+                            >
+                              <svg className="icon"><use href="#i-check-circle" /></svg>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+
+          {/* סיכום הרשומות ועימוד */}
+          <div className="table-foot">
+            <span>סה&quot;כ מוצג בעמוד: {items.length} &nbsp;·&nbsp; סה&quot;כ תיקונים תואמים: {totalCount}</span>
+            {totalPages > 1 && (
+              <div className="pager">
+                <button type="button" className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => setPage(p => p - 1)} title="עמוד קודם">
+                  <svg className="icon"><use href="#i-chevron-end" /></svg>
+                  הקודם
+                </button>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <label htmlFor="alterationsListPageNum">עמוד</label>
+                  <input
+                    id="alterationsListPageNum"
+                    type="number"
+                    className="input"
+                    min={1}
+                    max={totalPages || 1}
+                    value={page}
+                    onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }}
+                    style={{ width: '52px', padding: '4px 6px', textAlign: 'center', display: 'inline-block' }}
+                  />
+                  מתוך {totalPages}
+                </span>
+                <button type="button" className="btn btn-secondary btn-sm" disabled={page >= totalPages} onClick={() => setPage(p => p + 1)} title="עמוד הבא">
+                  הבא
+                  <svg className="icon"><use href="#i-chevron-start" /></svg>
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {isPrintWizardOpen && (
-        <PrintWizardModal data-element-name="רכיב_page_25"
+        <PrintWizardModal
           onClose={() => setIsPrintWizardOpen(false)}
           defaultStartDate={startDate}
           defaultEndDate={endDate}
@@ -515,55 +564,43 @@ export default function AlterationsPage() {
       )}
 
       {isLegendOpen && mounted && createPortal(
-        <div data-element-name="לחיץ_page_26" style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.4)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999
-        }} onClick={() => setIsLegendOpen(false)}>
-          <div data-element-name="לחיץ_page_27" style={{
-            background: 'var(--card-bg)',
-            padding: '2rem',
-            borderRadius: '16px',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
-            maxWidth: '400px',
-            width: '100%',
-            position: 'relative'
-          }} onClick={e => e.stopPropagation()}>
-            <button data-element-name="כפתור_page_28" 
-              onClick={() => setIsLegendOpen(false)}
-              style={{ position: 'absolute', top: '15px', right: '15px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
-            >
-              <X data-element-name="רכיב_page_29" size={20} />
-            </button>
-            <h3 style={{ marginTop: 0, marginBottom: '1.5rem', color: 'var(--primary-color)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Info data-element-name="רכיב_page_30" size={24} /> מקרא צבעים
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(239, 108, 0, 0.1)', border: '4px solid #ef6c00' }}></div>
-                <span><strong>כתום / ממתין:</strong> התיקון טרם בוצע.</span>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <div style={{ width: '20px', height: '20px', borderRadius: '4px', background: 'rgba(46, 125, 50, 0.1)', border: '4px solid #2e7d32' }}></div>
-                <span><strong>ירוק / בוצע:</strong> התיקון בוצע בהצלחה.</span>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setIsLegendOpen(false)}>
+          <div className="modal" style={{ maxWidth: '400px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <strong>
+                <svg className="icon"><use href="#i-info" /></svg>
+                מקרא צבעים
+              </strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setIsLegendOpen(false)}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className="badge badge-warning">ממתין</span>
+                  <span><strong>כתום / ממתין:</strong> התיקון טרם בוצע.</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                  <span className="badge badge-success">בוצע</span>
+                  <span><strong>ירוק / בוצע:</strong> התיקון בוצע בהצלחה.</span>
+                </div>
               </div>
             </div>
-            <div style={{ marginTop: '2rem', textAlign: 'center' }}>
-              <button data-element-name="כפתור_page_31" className="btn btn-primary" onClick={() => setIsLegendOpen(false)}>הבנתי</button>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-primary" onClick={() => setIsLegendOpen(false)}>הבנתי</button>
             </div>
           </div>
         </div>, document.body
       )}
 
-      <StatisticsModal data-element-name="רכיב_page_32" 
-        isOpen={!!showStatistics} 
-        onClose={() => setShowStatistics(false)} 
+      <StatisticsModal
+        isOpen={!!showStatistics}
+        onClose={() => setShowStatistics(false)}
         pageContext="alterations"
         contextQuery={aiQueryUsed}
         position={typeof showStatistics === 'object' ? showStatistics : null}
       />
-    </main>
+    </>
   );
 }

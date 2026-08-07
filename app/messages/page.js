@@ -1,12 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Send, Inbox, Mail, Check, AlertCircle, Search, User, Archive, Tag, X, Plus, Settings } from 'lucide-react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 export default function MessagesPage() {
-  const router = useRouter();
   const [activeTab, setActiveTab] = useState('incoming'); // 'incoming', 'outgoing', 'archived', 'compose'
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
@@ -16,7 +12,7 @@ export default function MessagesPage() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Compose state
   const [receiverId, setReceiverId] = useState('all');
   const [content, setContent] = useState('');
@@ -30,10 +26,6 @@ export default function MessagesPage() {
   // סינון מקומי בלבד על הרשימות שכבר נטענו (ללא קריאות שרת נוספות)
   const [searchTerm, setSearchTerm] = useState('');
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
   const fetchData = async () => {
     setLoading(true);
     try {
@@ -42,7 +34,7 @@ export default function MessagesPage() {
         fetch('/api/employees'),
         fetch('/api/me')
       ]);
-      
+
       const notifData = await notifRes.json();
       const empData = await empRes.json();
       const meData = await meRes.json();
@@ -54,7 +46,7 @@ export default function MessagesPage() {
       if (notifData.success) {
         const inc = notifData.notifications || [];
         const out = notifData.outgoing || [];
-        
+
         const allArchived = [];
         const filteredInc = [];
         const filteredOut = [];
@@ -68,8 +60,8 @@ export default function MessagesPage() {
           if (n.isArchived) allArchived.push({ ...n, direction: 'outgoing' });
           else filteredOut.push(n);
         });
-        
-        allArchived.sort((a,b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        allArchived.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
         setIncoming(filteredInc);
         setOutgoing(filteredOut);
@@ -86,6 +78,10 @@ export default function MessagesPage() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const markAsRead = async (id) => {
     try {
@@ -155,10 +151,10 @@ export default function MessagesPage() {
       setError('יש להזין תוכן להודעה');
       return;
     }
-    
+
     setIsSending(true);
     setError('');
-    
+
     try {
       const res = await fetch('/api/notifications', {
         method: 'POST',
@@ -209,33 +205,42 @@ export default function MessagesPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '60vh', background: 'transparent' }}>
-        <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--element-border)', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-        <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '1.05rem' }}>טוען הודעות...</p>
-        <style dangerouslySetInnerHTML={{__html: `@keyframes spin { 100% { transform: rotate(360deg); } }`}} />
+      <div className="page-loading">
+        <span className="spinner lg" />
+        טוען הודעות...
       </div>
     );
   }
 
+  // כפתור טאב: מאפס את סגנון ה-<button> הדפדפן המובנה (רקע/מסגרת),
+  // ומשאיר את קו התחתית וצבע הפעיל להיקבע ע"י מחלקת ה-tab עצמה.
+  const tabResetStyle = { background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' };
+  const paneTitleStyle = { fontSize: '17px', marginBottom: '14px' };
+
   const renderTags = (notif) => {
     const tags = notif.personalTags || [];
     const inputVal = tagInputs[notif.id] || '';
-    
+
     return (
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginTop: '1rem', alignItems: 'center' }}>
-        <Tag data-element-name="רכיב_page_1" size={14} color="var(--text-muted)" />
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', alignItems: 'center', marginTop: '12px' }}>
+        <svg className="icon" style={{ width: '13px', height: '13px', color: 'var(--text-3)' }}><use href="#i-tag" /></svg>
         {tags.map((tag, idx) => (
-          <span key={idx} style={{ background: 'var(--element-bg)', border: '1px solid var(--element-border)', color: 'var(--text-main)', padding: '0.2rem 0.6rem', borderRadius: '999px', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.3rem' }}>
+          <span key={idx} className="chip">
             {tag}
-            <button data-element-name="כפתור_page_2" onClick={() => removeTag(notif, tag)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--text-muted)' }} title="הסר תגית">
-              <X data-element-name="רכיב_page_3" size={12} />
+            <button
+              type="button"
+              onClick={() => removeTag(notif, tag)}
+              title="הסר תגית"
+              style={{ background: 'none', border: 'none', padding: 0, marginInlineStart: '4px', cursor: 'pointer', color: 'var(--text-3)', display: 'inline-flex' }}
+            >
+              <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-x" /></svg>
             </button>
           </span>
         ))}
-        <div style={{ display: 'flex', alignItems: 'center', background: 'var(--element-bg)', border: '1px solid var(--element-border)', borderRadius: '999px', padding: '0.1rem 0.5rem' }}>
-          <input data-element-name="שדה_page_4" 
-            type="text" 
-            placeholder="הוסף תגית..." 
+        <span className="chip" style={{ gap: '4px', paddingInlineEnd: '4px' }}>
+          <input
+            type="text"
+            placeholder="הוסף תגית..."
             value={inputVal}
             onChange={e => setTagInputs(prev => ({ ...prev, [notif.id]: e.target.value }))}
             onKeyDown={e => {
@@ -244,91 +249,69 @@ export default function MessagesPage() {
                 addTag(notif, inputVal);
               }
             }}
-            style={{ border: 'none', background: 'transparent', outline: 'none', fontSize: '0.8rem', width: '80px', color: 'var(--text-main)' }}
+            style={{ border: 'none', background: 'transparent', outline: 'none', font: 'inherit', fontSize: '12px', width: '70px', color: 'var(--text)' }}
           />
-          <button data-element-name="כפתור_page_5" onClick={() => addTag(notif, inputVal)} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', display: 'flex', alignItems: 'center', color: 'var(--primary-color)' }} title="שמור תגית">
-            <Plus data-element-name="רכיב_page_6" size={14} />
+          <button
+            type="button"
+            onClick={() => addTag(notif, inputVal)}
+            title="שמור תגית"
+            style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--primary-solid)', display: 'inline-flex' }}
+          >
+            <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-plus" /></svg>
           </button>
-        </div>
+        </span>
       </div>
     );
   };
 
-  // כפתור פעולה קטן בתוך כרטיס הודעה — טבעת עדינה בגוני הקרם של המערכת
-  const cardActionStyle = {
-    display: 'flex',
-    alignItems: 'center',
-    gap: '0.35rem',
-    background: 'transparent',
-    color: 'var(--text-muted)',
-    border: '1px solid var(--element-border)',
-    padding: '0.32rem 0.7rem',
-    borderRadius: '99px',
-    fontSize: '0.78rem',
-    fontWeight: '600',
-    fontFamily: 'inherit',
-    cursor: 'pointer'
-  };
-
   const renderMessageCard = (notif, type) => {
     const isUnread = type === 'incoming' && !notif.isRead;
+    const isBroadcast = notif.receiverId === null;
     return (
-      <div key={notif.id} style={{
-        background: isUnread ? 'var(--primary-light)' : 'var(--element-bg)',
-        border: `1px solid ${isUnread ? 'var(--primary-color)' : 'var(--element-border)'}`,
-        borderRadius: '16px',
-        padding: '1.25rem 1.4rem',
-        transition: 'all 0.3s'
-      }}>
-        <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-          <div style={{ width: '44px', height: '44px', flex: 'none', borderRadius: '50%', background: notif.receiverId === null ? 'var(--warning-color)' : 'var(--primary-color)', color: notif.receiverId === null ? '#fff' : 'var(--btn-primary-text)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.15rem', fontWeight: 'bold' }}>
-            {type === 'outgoing' ? <User data-element-name="רכיב_page_13" size={22} /> : (notif.sender ? notif.sender.firstName.charAt(0) : 'מ')}
+      <div
+        key={notif.id}
+        className="card card-pad"
+        style={isUnread ? { background: 'var(--primary-tint)', borderColor: 'var(--primary)' } : undefined}
+      >
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+          <div className="avatar" style={isBroadcast ? { background: 'var(--warning-tint)', color: 'var(--warning)' } : undefined}>
+            {type === 'outgoing'
+              ? <svg className="icon"><use href="#i-user" /></svg>
+              : (notif.sender ? notif.sender.firstName.charAt(0) : 'מ')}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.7rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
-              <h3 style={{ margin: 0, fontFamily: "'Frank Ruhl Libre', serif", fontSize: '1.05rem', color: 'var(--text-main)' }}>
-                {type === 'outgoing' ?
-                  `אל: ${notif.receiverId === null ? 'כל העובדים' : (notif.receiver ? `${notif.receiver.firstName} ${notif.receiver.lastName}` : 'לא ידוע')}`
-                  :
-                  (notif.sender ? `${notif.sender.firstName} ${notif.sender.lastName}` : 'מערכת הגמ"ח')}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: '14.5px', margin: 0 }}>
+                {type === 'outgoing'
+                  ? `אל: ${notif.receiverId === null ? 'כל העובדים' : (notif.receiver ? `${notif.receiver.firstName} ${notif.receiver.lastName}` : 'לא ידוע')}`
+                  : (notif.sender ? `${notif.sender.firstName} ${notif.sender.lastName}` : 'מערכת הגמ"ח')}
               </h3>
-              <span style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>
+              <span className="hint" style={{ color: 'var(--text-3)' }}>
                 {new Date(notif.createdAt).toLocaleString('he-IL')}
               </span>
-              {type === 'incoming' && notif.receiverId === null && (
-                <span className="status-dot c-amber" style={{ fontSize: '0.78rem' }}>הודעה לכולם</span>
-              )}
+              {isBroadcast && <span className="badge badge-warning">הודעה לכולם</span>}
 
-              <div style={{ display: 'flex', gap: '0.4rem', marginRight: 'auto', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '6px', marginInlineStart: 'auto', flexWrap: 'wrap' }}>
                 {isUnread && (
-                  <button data-element-name="כפתור_page_7"
-                    onClick={() => markAsRead(notif.id)}
-                    style={cardActionStyle}
-                    title="סמן כנקרא"
-                  >
-                    <Check data-element-name="רכיב_page_8" size={14} /> סמן כנקרא
+                  <button type="button" className="btn btn-secondary btn-sm" title="סמן כנקרא" onClick={() => markAsRead(notif.id)}>
+                    <svg className="icon"><use href="#i-check" /></svg>
+                    סמן כנקרא
                   </button>
                 )}
                 {notif.isArchived ? (
-                  <button data-element-name="כפתור_page_9"
-                    onClick={() => handleArchive(notif.id, false)}
-                    style={cardActionStyle}
-                    title="החזר מארכיון"
-                  >
-                    <Archive data-element-name="רכיב_page_10" size={14} /> שחזר
+                  <button type="button" className="btn btn-secondary btn-sm" title="החזר מארכיון" onClick={() => handleArchive(notif.id, false)}>
+                    <svg className="icon"><use href="#i-refresh" /></svg>
+                    שחזר
                   </button>
                 ) : (
-                  <button data-element-name="כפתור_page_11"
-                    onClick={() => handleArchive(notif.id, true)}
-                    style={cardActionStyle}
-                    title="העבר לארכיון"
-                  >
-                    <Archive data-element-name="רכיב_page_12" size={14} /> ארכיון
+                  <button type="button" className="btn btn-secondary btn-sm" title="העבר לארכיון" onClick={() => handleArchive(notif.id, true)}>
+                    <svg className="icon"><use href="#i-folder" /></svg>
+                    ארכיון
                   </button>
                 )}
               </div>
             </div>
-            <p style={{ margin: 0, color: 'var(--text-main)', fontSize: '0.98rem', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
+            <p style={{ margin: '10px 0 0', color: 'var(--text)', fontSize: '13.5px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>
               {notif.content}
             </p>
             {renderTags(notif)}
@@ -354,268 +337,241 @@ export default function MessagesPage() {
   const visibleOutgoing = outgoing.filter(matchesSearch);
   const visibleArchived = archived.filter(matchesSearch);
   const unreadCount = incoming.filter(n => !n.isRead).length;
-  const isListTab = activeTab === 'incoming' || activeTab === 'outgoing' || activeTab === 'archived';
-
-  const emptyStateStyle = { textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' };
-  const paneTitleStyle = { fontFamily: "'Frank Ruhl Libre', serif", fontSize: '1.2rem', color: 'var(--text-main)', margin: '0 0 1.25rem 0' };
-  const panelStyle = { background: 'var(--element-bg)', border: '1px solid var(--element-border)', borderRadius: '18px', padding: '1.75rem' };
-  const fieldLabelStyle = { display: 'block', marginBottom: '0.5rem', fontSize: '0.9rem', color: 'var(--text-main)', fontWeight: '600' };
-  const fieldStyle = { width: '100%', padding: '0.8rem 1rem', borderRadius: '12px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)', fontSize: '1rem', outline: 'none', fontFamily: 'inherit', transition: 'border-color 0.2s' };
 
   return (
-    <main data-agy-id="messages-page-container" className="container animate-fade-in page-shell" style={{ '--page-content-max': '1000px' }}>
-      <div className="page-scroll">
+    <>
+      <div className="page-head">
+        <div>
+          <h1>מרכז הודעות</h1>
+          <div className="page-desc">נהל את ההתראות וההודעות הפנימיות שלך</div>
+        </div>
+      </div>
 
-        {/* סרגל אחד: כותרת + חיפוש + טאבים + פעולה ראשית */}
-        <div className="toolbar-row">
-          <Mail data-element-name="רכיב_page_14" size={22} style={{ flex: 'none', color: 'var(--primary-color)', marginInlineEnd: '-0.5rem' }} />
-          <h1 className="toolbar-title">
-            <strong>מרכז הודעות</strong>
-            <small>נהל את ההתראות וההודעות הפנימיות שלך</small>
-          </h1>
+      <div className="tabs">
+        <button type="button" className={activeTab === 'incoming' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('incoming')} title="דואר נכנס">
+          <svg className="icon"><use href="#i-mail" /></svg>
+          נכנסות
+          {unreadCount > 0 && <span className="badge badge-danger" style={{ marginInlineStart: '4px' }}>{unreadCount}</span>}
+        </button>
+        <button type="button" className={activeTab === 'outgoing' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('outgoing')} title="דואר יוצא">
+          <svg className="icon"><use href="#i-message" /></svg>
+          יוצאות
+          {outgoing.length > 0 && <span className="badge badge-neutral" style={{ marginInlineStart: '4px' }}>{outgoing.length}</span>}
+        </button>
+        <button type="button" className={activeTab === 'archived' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('archived')} title="ארכיון הודעות">
+          <svg className="icon"><use href="#i-folder" /></svg>
+          ארכיון
+          {archived.length > 0 && <span className="badge badge-neutral" style={{ marginInlineStart: '4px' }}>{archived.length}</span>}
+        </button>
+        <button type="button" className={activeTab === 'settings' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('settings')} title="הגדרות התראות">
+          <svg className="icon"><use href="#i-settings" /></svg>
+          הגדרות
+        </button>
+        <button type="button" className={activeTab === 'compose' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('compose')} title="הודעה חדשה">
+          <svg className="icon"><use href="#i-plus" /></svg>
+          הודעה חדשה
+        </button>
+      </div>
 
-          {isListTab && (
-            <div className="search-box-modern">
-              <Search data-element-name="רכיב_page_search" size={16} />
-              <input data-element-name="שדה_page_search"
-                data-agy-id="messages-search-input"
-                type="text"
-                placeholder="חיפוש בהודעות (תוכן, שולח, תגית)..."
-                value={searchTerm}
-                onChange={e => setSearchTerm(e.target.value)}
-              />
+      {/* INCOMING TAB */}
+      {activeTab === 'incoming' && (
+        <div>
+          <h2 style={paneTitleStyle}>דואר נכנס</h2>
+          <div className="input-icon-wrap" style={{ maxWidth: '420px', marginBottom: '18px' }}>
+            <svg className="icon"><use href="#i-search" /></svg>
+            <input
+              type="text"
+              className="input"
+              placeholder="חיפוש בהודעות (תוכן, שולח, תגית)..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          {visibleIncoming.length === 0 ? (
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-mail" /></svg>
+              <p>{incoming.length === 0 ? 'תיבת הדואר הנכנס ריקה' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {visibleIncoming.map(notif => renderMessageCard(notif, 'incoming'))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* OUTGOING TAB */}
+      {activeTab === 'outgoing' && (
+        <div>
+          <h2 style={paneTitleStyle}>דואר יוצא</h2>
+          <div className="input-icon-wrap" style={{ maxWidth: '420px', marginBottom: '18px' }}>
+            <svg className="icon"><use href="#i-search" /></svg>
+            <input
+              type="text"
+              className="input"
+              placeholder="חיפוש בהודעות (תוכן, שולח, תגית)..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          {visibleOutgoing.length === 0 ? (
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-message" /></svg>
+              <p>{outgoing.length === 0 ? 'לא שלחת הודעות עדיין' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {visibleOutgoing.map(notif => renderMessageCard(notif, 'outgoing'))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ARCHIVED TAB */}
+      {activeTab === 'archived' && (
+        <div>
+          <h2 style={paneTitleStyle}>ארכיון הודעות</h2>
+          <div className="input-icon-wrap" style={{ maxWidth: '420px', marginBottom: '18px' }}>
+            <svg className="icon"><use href="#i-search" /></svg>
+            <input
+              type="text"
+              className="input"
+              placeholder="חיפוש בהודעות (תוכן, שולח, תגית)..."
+              value={searchTerm}
+              onChange={e => setSearchTerm(e.target.value)}
+            />
+          </div>
+          {visibleArchived.length === 0 ? (
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-folder" /></svg>
+              <p>{archived.length === 0 ? 'אין הודעות בארכיון' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {visibleArchived.map(notif => renderMessageCard(notif, notif.direction || 'incoming'))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* COMPOSE TAB */}
+      {activeTab === 'compose' && (
+        <div>
+          <h2 style={paneTitleStyle}>כתיבת הודעה חדשה</h2>
+
+          {error && (
+            <div className="callout callout-danger" style={{ marginBottom: '20px', maxWidth: '560px' }}>
+              <svg className="icon"><use href="#i-alert-circle" /></svg>
+              {error}
             </div>
           )}
 
-          <div className="status-filters">
-            <button data-element-name="כפתור_page_17"
-              data-agy-id="tab-incoming"
-              onClick={() => setActiveTab('incoming')}
-              className={activeTab === 'incoming' ? 'status-filter active c-blue' : 'status-filter'}
-              title="דואר נכנס"
-            >
-              <Inbox data-element-name="רכיב_page_18" size={16} />
-              <span>נכנסות</span>
-              {unreadCount > 0 && <b>{unreadCount}</b>}
-            </button>
+          {sendSuccess && (
+            <div className="callout callout-success" style={{ marginBottom: '20px', maxWidth: '560px' }}>
+              <svg className="icon"><use href="#i-check-circle" /></svg>
+              ההודעה נשלחה בהצלחה!
+            </div>
+          )}
 
-            <button data-element-name="כפתור_page_19"
-              data-agy-id="tab-outgoing"
-              onClick={() => setActiveTab('outgoing')}
-              className={activeTab === 'outgoing' ? 'status-filter active c-green' : 'status-filter'}
-              title="דואר יוצא"
-            >
-              <Send data-element-name="רכיב_page_20" size={16} />
-              <span>יוצאות</span>
-              {outgoing.length > 0 && <b>{outgoing.length}</b>}
-            </button>
+          <div className="card card-pad" style={{ maxWidth: '560px' }}>
+            <div className="field">
+              <label htmlFor="messages-receiver">שלח אל:</label>
+              <select
+                id="messages-receiver"
+                className="select"
+                value={receiverId}
+                onChange={e => setReceiverId(e.target.value)}
+              >
+                <option value="all">כל העובדים במערכת (הודעה כללית)</option>
+                {employees.map(emp => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.firstName} {emp.lastName}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-            <button data-element-name="כפתור_page_21"
-              data-agy-id="tab-archived"
-              onClick={() => setActiveTab('archived')}
-              className={activeTab === 'archived' ? 'status-filter active c-gray' : 'status-filter'}
-              title="ארכיון הודעות"
-            >
-              <Archive data-element-name="רכיב_page_22" size={16} />
-              <span>ארכיון</span>
-              {archived.length > 0 && <b>{archived.length}</b>}
-            </button>
+            <div className="field">
+              <label htmlFor="messages-content">תוכן ההודעה:</label>
+              <textarea
+                id="messages-content"
+                className="textarea"
+                value={content}
+                onChange={e => setContent(e.target.value)}
+                placeholder="הקלד את הודעתך כאן..."
+                style={{ minHeight: '150px' }}
+              />
+            </div>
 
-            <button data-element-name="כפתור_page_23"
-              data-agy-id="tab-settings"
-              onClick={() => setActiveTab('settings')}
-              className={activeTab === 'settings' ? 'status-filter active c-purple' : 'status-filter'}
-              title="הגדרות התראות"
-            >
-              <Settings data-element-name="רכיב_page_24" size={16} />
-              <span>הגדרות</span>
-            </button>
-          </div>
+            <div className="checkbox-row" style={{ marginBottom: '20px' }}>
+              <input
+                type="checkbox"
+                id="messages-send-email"
+                checked={sendEmail}
+                onChange={e => setSendEmail(e.target.checked)}
+                style={{ width: '16px', height: '16px', accentColor: 'var(--primary-solid)' }}
+              />
+              <label htmlFor="messages-send-email">שלח התראה גם למייל (לעובדים בעלי כתובת מייל מעודכנת)</label>
+            </div>
 
-          <div className="icon-toolbar">
-            <button data-element-name="כפתור_page_15"
-              data-agy-id="new-message-button"
-              onClick={() => setActiveTab('compose')}
-              className="icon-btn icon-btn-primary"
-              title="הודעה חדשה"
-            >
-              <Send data-element-name="רכיב_page_16" size={18} />
-              הודעה חדשה
-            </button>
-          </div>
-        </div>
-
-        {/* Main Content Area */}
-        <div style={{ background: 'var(--card-bg)', borderRadius: '18px', boxShadow: 'var(--shadow-md)', border: '1px solid var(--border-color)' }}>
-
-          {/* Content Pane */}
-          <div style={{ padding: '1.75rem', minHeight: '500px' }}>
-            
-            {/* INCOMING TAB */}
-            {activeTab === 'incoming' && (
-              <div>
-                <h2 style={paneTitleStyle}>דואר נכנס</h2>
-                {visibleIncoming.length === 0 ? (
-                  <div style={emptyStateStyle}>
-                    <Inbox data-element-name="רכיב_page_25" size={48} style={{ opacity: 0.25, margin: '0 auto 1rem' }} />
-                    <p style={{ fontSize: '1.05rem' }}>{incoming.length === 0 ? 'תיבת הדואר הנכנס ריקה' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {visibleIncoming.map(notif => renderMessageCard(notif, 'incoming'))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* OUTGOING TAB */}
-            {activeTab === 'outgoing' && (
-              <div>
-                <h2 style={paneTitleStyle}>דואר יוצא</h2>
-                {visibleOutgoing.length === 0 ? (
-                  <div style={emptyStateStyle}>
-                    <Send data-element-name="רכיב_page_26" size={48} style={{ opacity: 0.25, margin: '0 auto 1rem' }} />
-                    <p style={{ fontSize: '1.05rem' }}>{outgoing.length === 0 ? 'לא שלחת הודעות עדיין' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {visibleOutgoing.map(notif => renderMessageCard(notif, 'outgoing'))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* ARCHIVED TAB */}
-            {activeTab === 'archived' && (
-              <div>
-                <h2 style={paneTitleStyle}>ארכיון הודעות</h2>
-                {visibleArchived.length === 0 ? (
-                  <div style={emptyStateStyle}>
-                    <Archive data-element-name="רכיב_page_27" size={48} style={{ opacity: 0.25, margin: '0 auto 1rem' }} />
-                    <p style={{ fontSize: '1.05rem' }}>{archived.length === 0 ? 'אין הודעות בארכיון' : 'לא נמצאו הודעות תואמות לחיפוש'}</p>
-                  </div>
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                    {visibleArchived.map(notif => renderMessageCard(notif, notif.direction || 'incoming'))}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* COMPOSE TAB */}
-            {activeTab === 'compose' && (
-              <div>
-                <h2 style={paneTitleStyle}>כתיבת הודעה חדשה</h2>
-
-                {error && (
-                  <div style={{ background: 'var(--danger-bg)', color: 'var(--danger-text)', padding: '0.9rem 1rem', borderRadius: '12px', border: '1px solid var(--danger-text)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <AlertCircle data-element-name="רכיב_page_28" size={20} />
-                    {error}
-                  </div>
-                )}
-
-                {sendSuccess && (
-                  <div style={{ background: 'var(--success-bg)', color: 'var(--success-text)', padding: '0.9rem 1rem', borderRadius: '12px', border: '1px solid var(--success-text)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Check data-element-name="רכיב_page_29" size={20} />
-                    ההודעה נשלחה בהצלחה!
-                  </div>
-                )}
-
-                <div style={panelStyle}>
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={fieldLabelStyle}>שלח אל:</label>
-                    <select data-element-name="בחירה_page_30"
-                      data-agy-id="select-receiver"
-                      value={receiverId}
-                      onChange={e => setReceiverId(e.target.value)}
-                      style={fieldStyle}
-                    >
-                      <option value="all">כל העובדים במערכת (הודעה כללית)</option>
-                      {employees.map(emp => (
-                        <option key={emp.id} value={emp.id}>
-                          {emp.firstName} {emp.lastName}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div style={{ marginBottom: '1.5rem' }}>
-                    <label style={fieldLabelStyle}>תוכן ההודעה:</label>
-                    <textarea data-element-name="טקסט_page_31"
-                      data-agy-id="textarea-content"
-                      value={content}
-                      onChange={e => setContent(e.target.value)}
-                      placeholder="הקלד את הודעתך כאן..."
-                      style={{ ...fieldStyle, minHeight: '150px', resize: 'vertical' }}
-                    />
-                  </div>
-
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '1.5rem', fontSize: '0.92rem', fontWeight: '500', color: 'var(--text-main)' }}>
-                    <input data-element-name="שדה_page_32" data-agy-id="checkbox-send-email" type="checkbox" checked={sendEmail} onChange={e => setSendEmail(e.target.checked)} />
-                    שלח התראה גם למייל (לעובדים בעלי כתובת מייל מעודכנת)
-                  </label>
-
-                  <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <button data-element-name="כפתור_page_33"
-                      data-agy-id="send-message-button"
-                      onClick={handleSend}
-                      disabled={isSending}
-                      className="btn btn-primary"
-                      style={{
-                        display: 'inline-flex', alignItems: 'center', gap: '0.5rem',
-                        padding: '0.7rem 2rem', fontSize: '0.95rem',
-                        cursor: isSending ? 'not-allowed' : 'pointer', opacity: isSending ? 0.7 : 1
-                      }}
-                    >
-                      {isSending ? 'שולח...' : <><Send data-element-name="רכיב_page_34" size={18} /> שלח הודעה</>}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* SETTINGS TAB */}
-            {activeTab === 'settings' && (
-              <div>
-                <h2 style={paneTitleStyle}>הגדרות התראות</h2>
-
-                <div style={panelStyle}>
-                  <h3 style={{ fontFamily: "'Frank Ruhl Libre', serif", fontSize: '1.05rem', color: 'var(--text-main)', marginBottom: '1rem' }}>התראות במייל</h3>
-
-                  {currentUser ? (
-                    <div>
-                      {currentUser.email ? (
-                        <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
-                          המייל המעודכן שלך במערכת הוא: <strong dir="ltr">{currentUser.email}</strong>
-                        </p>
-                      ) : (
-                        <p style={{ color: 'var(--danger-text)', marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                          <AlertCircle data-element-name="רכיב_page_35" size={16} /> לא מוגדרת עבורך כתובת מייל במערכת. אנא פנה למנהל לעדכון המייל.
-                        </p>
-                      )}
-
-                      <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer', fontSize: '1rem', color: 'var(--text-main)', opacity: isSavingSettings ? 0.7 : 1 }}>
-                        <input data-element-name="שדה_page_36"
-                          type="checkbox"
-                          checked={currentUser.receiveEmailAlerts || false}
-                          onChange={(e) => handleSaveSettings(e.target.checked)}
-                          disabled={isSavingSettings || !currentUser.email}
-                          style={{ width: '20px', height: '20px' }}
-                        />
-                        קבל התראות למייל על הודעות חדשות
-                      </label>
-                      {isSavingSettings && <span style={{ fontSize: '0.88rem', color: 'var(--primary-color)', marginTop: '0.5rem', display: 'block' }}>שומר שינויים...</span>}
-                    </div>
-                  ) : (
-                    <p style={{ color: 'var(--text-muted)' }}>טוען נתוני עובד...</p>
-                  )}
-                </div>
-              </div>
-            )}
-
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={handleSend}
+                disabled={isSending}
+                title="שלח הודעה"
+              >
+                {isSending ? 'שולח...' : (<><svg className="icon"><use href="#i-mail" /></svg>שלח הודעה</>)}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
-    </main>
+      )}
+
+      {/* SETTINGS TAB */}
+      {activeTab === 'settings' && (
+        <div>
+          <h2 style={paneTitleStyle}>הגדרות התראות</h2>
+
+          <div className="card card-pad" style={{ maxWidth: '560px' }}>
+            <div className="card-title-row" style={{ marginBottom: '14px' }}>
+              <svg className="icon"><use href="#i-mail" /></svg>
+              <h3 style={{ margin: 0 }}>התראות במייל</h3>
+            </div>
+
+            {currentUser ? (
+              <div>
+                {currentUser.email ? (
+                  <p style={{ color: 'var(--text-2)', fontSize: '13.5px', marginBottom: '18px' }}>
+                    המייל המעודכן שלך במערכת הוא: <strong dir="ltr" style={{ color: 'var(--text)' }}>{currentUser.email}</strong>
+                  </p>
+                ) : (
+                  <p style={{ color: 'var(--danger)', fontSize: '13.5px', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg className="icon"><use href="#i-alert-circle" /></svg>
+                    לא מוגדרת עבורך כתובת מייל במערכת. אנא פנה למנהל לעדכון המייל.
+                  </p>
+                )}
+
+                <div className="checkbox-row">
+                  <input
+                    type="checkbox"
+                    id="messages-receive-alerts"
+                    checked={currentUser.receiveEmailAlerts || false}
+                    onChange={(e) => handleSaveSettings(e.target.checked)}
+                    disabled={isSavingSettings || !currentUser.email}
+                    style={{ width: '18px', height: '18px', accentColor: 'var(--primary-solid)' }}
+                  />
+                  <label htmlFor="messages-receive-alerts">קבל התראות למייל על הודעות חדשות</label>
+                </div>
+                {isSavingSettings && <span style={{ fontSize: '12.5px', color: 'var(--primary-solid)', marginTop: '8px', display: 'block' }}>שומר שינויים...</span>}
+              </div>
+            ) : (
+              <p style={{ color: 'var(--text-2)' }}>טוען נתוני עובד...</p>
+            )}
+          </div>
+        </div>
+      )}
+    </>
   );
 }
