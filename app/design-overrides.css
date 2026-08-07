@@ -111,7 +111,9 @@ textarea:focus {
 
 /* השדה המאוחד של שורת החיפוש מנהל את הגבול שלו בעצמו */
 .ai-search input,
-.search-box-modern input {
+.search-box-modern input,
+.search-toolbar input,
+.search-box input {
   border: none !important;
   border-radius: 0 !important;
   background: transparent !important;

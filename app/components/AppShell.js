@@ -89,11 +89,14 @@ export default function AppShell({
           <button type="button" className="icon-btn menu-toggle" id="menuToggle" title="תפריט" onClick={handleMenuToggle}>
             <svg className="icon"><use href="#i-menu" /></svg>
           </button>
+          {/* RTL: "back" (previous) points right like the pagination convention elsewhere
+              in this design system, "forward" (next) points left — not the LTR-mirrored
+              assumption of back=left/forward=right. */}
           <button type="button" className="icon-btn" title="אחורה" onClick={() => router.back()}>
-            <svg className="icon"><use href="#i-chevron-start" /></svg>
+            <svg className="icon"><use href="#i-chevron-end" /></svg>
           </button>
           <button type="button" className="icon-btn" title="קדימה" onClick={() => router.forward()}>
-            <svg className="icon"><use href="#i-chevron-end" /></svg>
+            <svg className="icon"><use href="#i-chevron-start" /></svg>
           </button>
           {activeMeta && (
             <div className="crumb">
