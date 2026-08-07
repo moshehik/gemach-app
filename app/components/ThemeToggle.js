@@ -1,16 +1,17 @@
-﻿'use client';
+'use client';
 
 import React, { useEffect, useState } from 'react';
+// The "אריג" icon sprite has no sun/moon glyph (the mockup handles theme via a
+// settings page, not a topbar icon) — kept as the only lucide icon in the shell
+// since this real toggle predates the sprite and dropping it isn't an option.
 import { Sun, Moon } from 'lucide-react';
 
 export default function ThemeToggle({ employeeId, initialTheme }) {
   const [theme, setTheme] = useState(initialTheme || 'light');
 
-  // When theme state changes, apply it to document and save to cookie
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
     if (employeeId) {
-      // Save cookie for 1 year
       document.cookie = `theme_${employeeId}=${theme}; path=/; max-age=31536000; SameSite=Lax`;
     }
   }, [theme, employeeId]);
@@ -20,12 +21,13 @@ export default function ThemeToggle({ employeeId, initialTheme }) {
   };
 
   return (
-    <button data-element-name="כפתור_ThemeToggle_1"
+    <button
+      type="button"
+      className="icon-btn"
       onClick={toggleTheme}
       title={theme === 'light' ? 'עבור למצב כהה' : 'עבור למצב בהיר'}
-      className="icon-nav-link"
     >
-      {theme === 'light' ? <Moon data-element-name="רכיב_ThemeToggle_2" size={20} /> : <Sun data-element-name="רכיב_ThemeToggle_3" size={20} />}
+      {theme === 'light' ? <Moon size={17} /> : <Sun size={17} />}
     </button>
   );
 }

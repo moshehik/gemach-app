@@ -1,6 +1,5 @@
-﻿'use client';
+'use client';
 import { useState, useEffect, useRef } from 'react';
-import { Bell, Check, MessageSquare, Plus, Mail } from 'lucide-react';
 import Link from 'next/link';
 
 export default function NotificationBell({ employeeId }) {
@@ -22,7 +21,6 @@ export default function NotificationBell({ employeeId }) {
 
   useEffect(() => {
     fetchNotifications();
-    // Poll every minute
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, [employeeId]);
@@ -33,8 +31,15 @@ export default function NotificationBell({ employeeId }) {
         setIsOpen(false);
       }
     }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    function handleEscape(event) {
+      if (event.key === 'Escape') setIsOpen(false);
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
   }, [menuRef]);
 
   const markAsRead = async (id) => {
@@ -42,7 +47,7 @@ export default function NotificationBell({ employeeId }) {
       const res = await fetch('/api/notifications/read', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ notificationId: id })
+        body: JSON.stringify({ notificationId: id }),
       });
       if (res.ok) {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
@@ -54,93 +59,60 @@ export default function NotificationBell({ employeeId }) {
 
   if (!employeeId) return null;
 
-  // Mirror /messages's fetchData filtering: archived messages (personal isArchived,
-  // or broadcast messages already in this employee's archivedBy) shouldn't inflate
-  // the bell badge/dropdown.
+  // Mirror /messages's fetchData filtering: archived messages shouldn't inflate the badge/dropdown.
   const activeNotifications = notifications.filter(n => !n.isArchived);
   const unreadCount = activeNotifications.filter(n => !n.isRead).length;
 
   return (
     <div style={{ position: 'relative' }} ref={menuRef}>
-      <button data-element-name="כפתור_NotificationBell_1"
-        onClick={() => setIsOpen(!isOpen)}
-        title="התראות"
-        className="icon-nav-link"
-      >
-        <Bell data-element-name="רכיב_NotificationBell_2" size={20} />
-        {unreadCount > 0 && (
-          <span className="nav-badge">
-            {unreadCount > 9 ? '9+' : unreadCount}
-          </span>
-        )}
+      <button type="button" className="icon-btn" onClick={() => setIsOpen(!isOpen)} title="התראות">
+        <svg className="icon"><use href="#i-bell" /></svg>
+        {unreadCount > 0 && <span className="dot" />}
       </button>
 
       {isOpen && (
-        <div style={{
-          position: 'absolute',
-          top: 'calc(100% + 8px)',
-          left: 0,
-          width: '350px',
-          background: 'var(--card-bg)',
-          borderRadius: '16px',
-          boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1)',
-          border: '1px solid var(--border-color)',
-          overflow: 'hidden',
-          zIndex: 50,
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <div style={{ padding: '1rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem', color: 'var(--text-color)' }}>התראות ({unreadCount})</h3>
-            <Link data-element-name="לחיץ_NotificationBell_3" 
-              href="/messages"
-              onClick={() => setIsOpen(false)}
-              style={{ background: '#eff6ff', color: '#2563eb', border: 'none', padding: '0.4rem 0.6rem', borderRadius: '6px', fontSize: '0.8rem', fontWeight: '500', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.3rem', textDecoration: 'none' }}
-            >
-              <Mail data-element-name="רכיב_NotificationBell_4" size={14} /> פתח מרכז הודעות
+        <div className="user-menu-dropdown" style={{ minWidth: 340, maxWidth: 380, padding: 0, display: 'block' }}>
+          <div className="modal-head" style={{ padding: '12px 16px' }}>
+            <strong>התראות ({unreadCount})</strong>
+            <Link href="/messages" onClick={() => setIsOpen(false)} className="btn btn-secondary btn-sm">
+              <svg className="icon"><use href="#i-mail" /></svg>
+              פתח מרכז הודעות
             </Link>
           </div>
-          
-          <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+
+          <div style={{ maxHeight: 350, overflowY: 'auto' }}>
             {activeNotifications.length === 0 ? (
-              <div style={{ padding: '2rem', textAlign: 'center', color: '#64748b', fontSize: '0.9rem' }}>
-                <MessageSquare data-element-name="רכיב_NotificationBell_5" size={32} style={{ opacity: 0.2, margin: '0 auto 0.5rem' }} />
-                אין הודעות חדשות
+              <div className="empty-state">
+                <svg className="icon"><use href="#i-message" /></svg>
+                <p>אין הודעות חדשות</p>
               </div>
             ) : (
               activeNotifications.map((notif) => (
-                <div key={notif.id} style={{
-                  padding: '1rem',
-                  borderBottom: '1px solid var(--border-color)',
-                  background: notif.isRead ? 'transparent' : 'rgba(59, 130, 246, 0.05)',
-                  display: 'flex',
-                  gap: '0.75rem',
-                  transition: 'background 0.2s'
-                }}>
-                  <div style={{
-                    width: '32px', height: '32px', borderRadius: '50%', background: notif.receiverId ? '#2563eb' : '#10b981', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '0.8rem'
-                  }}>
+                <div
+                  key={notif.id}
+                  className="skeleton-row"
+                  style={{ background: notif.isRead ? 'transparent' : 'var(--primary-tint)', alignItems: 'flex-start' }}
+                >
+                  <div className="avatar" style={{ background: notif.receiverId ? 'var(--info-tint)' : 'var(--success-tint)', color: notif.receiverId ? 'var(--info)' : 'var(--success)' }}>
                     {notif.sender ? notif.sender.firstName.charAt(0) : 'מ'}
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.25rem' }}>
-                      <span style={{ fontWeight: '600', fontSize: '0.9rem', color: 'var(--text-color)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 4 }}>
+                      <span style={{ fontWeight: 700, fontSize: '13px' }}>
                         {notif.sender ? `${notif.sender.firstName} ${notif.sender.lastName}` : 'מערכת'}
-                        {notif.receiverId === null && <span style={{ background: '#f1f5f9', color: '#64748b', fontSize: '0.7rem', padding: '0.1rem 0.4rem', borderRadius: '4px', marginRight: '0.5rem' }}>לכולם</span>}
+                        {notif.receiverId === null && <span className="badge badge-neutral" style={{ marginInlineStart: 6 }}>לכולם</span>}
                       </span>
-                      <span style={{ fontSize: '0.75rem', color: '#94a3b8' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
                         {new Date(notif.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
-                    <div style={{ fontSize: '0.85rem', color: 'var(--text-color)', marginBottom: '0.5rem', whiteSpace: 'pre-wrap' }}>
+                    <div style={{ fontSize: '12.5px', color: 'var(--text-2)', marginBottom: 6, whiteSpace: 'pre-wrap' }}>
                       {notif.content}
                     </div>
                     {!notif.isRead && (
-                      <button data-element-name="כפתור_NotificationBell_6"
-                        onClick={() => markAsRead(notif.id)}
-                        style={{ background: 'transparent', border: 'none', color: '#3b82f6', fontSize: '0.8rem', display: 'flex', alignItems: 'center', gap: '0.25rem', cursor: 'pointer', padding: 0 }}
-                      >
-                        <Check data-element-name="רכיב_NotificationBell_7" size={14} /> סמן כנקרא
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => markAsRead(notif.id)} style={{ padding: '2px 6px' }}>
+                        <svg className="icon"><use href="#i-check" /></svg>
+                        סמן כנקרא
                       </button>
                     )}
                   </div>

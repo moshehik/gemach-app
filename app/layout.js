@@ -1,5 +1,6 @@
 import './globals.css';
 import './design-overrides.css';
+import './design-system.css';
 import { cookies } from 'next/headers';
 import prisma from './lib/prisma';
 
@@ -8,29 +9,21 @@ export const metadata = {
   description: 'מערכת לניהול וצפייה במלאי הגמ"ח - קטלוג דגמים, זמינות לפי מידות',
 };
 
-import BrandLogo from './components/BrandLogo';
-import NavigationArrows from './components/NavigationArrows';
-import UserMenu from './components/UserMenu';
-import NotificationBell from './components/NotificationBell';
+import IconSprite from './components/IconSprite';
+import AppShell from './components/AppShell';
+import { buildNavGroups } from './components/navConfig';
 import LoginScreen from './components/LoginScreen';
 import PageTracker from './components/PageTracker';
 import AIFloatingWidget from './components/AIFloatingWidget';
 import DevEnvBanner from './components/DevEnvBanner';
-import ThemeToggle from './components/ThemeToggle';
-import GlobalSidebar from './components/GlobalSidebar';
-import Link from 'next/link';
 import { Suspense } from 'react';
 import { PopupProvider } from './components/PopupProvider';
 import { LabelsProvider } from './components/LabelsContext';
-import { Users, Shirt, Settings, Coins } from 'lucide-react';
 import { UniqueNamesProvider } from './components/UniqueNamesContext';
 
-import AppNavLinks from './components/AppNavLinks';
 import PrefetchManager from './components/PrefetchManager';
 import OfflineIndicator from './components/OfflineIndicator';
-import ErrorReportButton from './components/ErrorReportButton';
 import ClipboardDebugger from '../components/ClipboardDebugger';
-import MessageHistoryButton from './components/MessageHistoryButton';
 import LandingPage from './components/LandingPage';
 import StickyTableHeaders from './components/StickyTableHeaders';
 
@@ -130,6 +123,14 @@ export default async function RootLayout({ children }) {
   const showEmployeesTab = isAuthenticated ? isManager : !requireLogin;
   const showRefundsTab = isAuthenticated ? isManager : !requireLogin;
 
+  const navGroups = buildNavGroups({
+    showAdminTab,
+    showEmployeesTab,
+    showRefundsTab,
+    enableAlterations,
+    showMessages: !hideInternalMessaging,
+  });
+
   const themeCookie = authToken?.value ? cookieStore.get(`theme_${authToken.value}`) : null;
   const themePreference = themeCookie?.value || 'light';
 
@@ -217,6 +218,7 @@ export default async function RootLayout({ children }) {
         />
       </head>
       <body className={bodyClassName}>
+        <IconSprite />
         <UniqueNamesProvider data-element-name="רכיב_layout_1">
           <ClipboardDebugger data-element-name="רכיב_layout_2" />
           <DevEnvBanner data-element-name="רכיב_layout_3" />
@@ -232,42 +234,17 @@ export default async function RootLayout({ children }) {
         ) : (
           <LabelsProvider data-element-name="רכיב_layout_8">
             <PopupProvider data-element-name="רכיב_layout_22">
-              <nav className="navbar">
-                <div style={{ display: 'flex', alignItems: 'center' }}>
-                  <BrandLogo data-element-name="רכיב_layout_9" />
-                  <NavigationArrows data-element-name="רכיב_layout_10" />
-                </div>
-                <AppNavLinks data-element-name="רכיב_layout_11" enableAlterations={enableAlterations} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.15rem' }}>
-                  {showEmployeesTab && (
-                    <Link data-element-name="רכיב_layout_12" href="/employees" title="עובדים ונוכחות" className="icon-nav-link">
-                      <Users data-element-name="רכיב_layout_13" size={20} />
-                    </Link>
-                  )}
-                  {showRefundsTab && (
-                    <Link data-element-name="רכיב_layout_refunds" href="/refunds" title="זיכויים" className="icon-nav-link">
-                      <Coins data-element-name="רכיב_layout_refunds_icon" size={20} />
-                    </Link>
-                  )}
-                  <Link data-element-name="רכיב_layout_14" href="/dashboard/dresses" title="ניהול קטלוג" className="icon-nav-link">
-                    <Shirt data-element-name="רכיב_layout_15" size={20} />
-                  </Link>
-                  {showAdminTab && (
-                    <Link data-element-name="רכיב_layout_16" href="/admin" title="אזור ניהול מתקדם" className="icon-nav-link" style={{ color: 'var(--primary-color)' }}>
-                      <Settings data-element-name="רכיב_layout_17" size={20} />
-                    </Link>
-                  )}
-                  <ThemeToggle data-element-name="רכיב_layout_18" employeeId={authToken?.value} initialTheme={themePreference} />
-                  <div className="nav-divider"></div>
-                  {isProgrammer && <MessageHistoryButton data-element-name="רכיב_layout_msg_hist" />}
-                  {!hideErrorReporting && <ErrorReportButton data-element-name="רכיב_layout_19" />}
-                  {authToken?.value && !hideInternalMessaging && <NotificationBell data-element-name="רכיב_layout_20" employeeId={authToken.value} />}
-                  <UserMenu data-element-name="רכיב_layout_21" />
-                </div>
-              </nav>
-              {children}
+              <AppShell
+                navGroups={navGroups}
+                isProgrammer={isProgrammer}
+                hideErrorReporting={hideErrorReporting}
+                hideInternalMessaging={hideInternalMessaging}
+                authToken={authToken?.value}
+                themePreference={themePreference}
+              >
+                {children}
+              </AppShell>
               <PrefetchManager />
-              <GlobalSidebar />
               {!hideAIFeatures && <AIFloatingWidget data-element-name="רכיב_layout_23" hideAIFeatures={hideAIFeatures} />}
             </PopupProvider>
           </LabelsProvider>

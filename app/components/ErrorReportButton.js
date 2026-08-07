@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { LifeBuoy, X, Send, MessageSquare, Copy, AlertCircle, Info, User, Check, RefreshCw } from 'lucide-react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 
 export default function ErrorReportButton() {
@@ -11,25 +10,21 @@ export default function ErrorReportButton() {
   const [userText, setUserText] = useState('');
   const [toast, setToast] = useState(null);
   const [mounted, setMounted] = useState(false);
-  
+
   const [reports, setReports] = useState([]);
   const [isProgrammer, setIsProgrammer] = useState(false);
-  const [loading, setLoading] = useState(false);
-  
+
   const [selectedReport, setSelectedReport] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
 
   // אין משתמש מחובר (עמדת לקוחות, דפי הדפסה) - הבקשה תמיד תחזיר 401, אז אחרי
-  // הפעם הראשונה מפסיקים לגמרי כדי לא להציף את הקונסול כל 30 שניות. התחברות
-  // ממילא טוענת את העמוד מחדש, כך שהרענון יחזור לפעול אחריה.
+  // הפעם הראשונה מפסיקים לגמרי כדי לא להציף את הקונסול כל 30 שניות.
   const authFailedRef = useRef(false);
 
-  // Auto-refresh interval
   useEffect(() => {
     let intervalId;
     if (mounted && !isOpen) {
-      // Refresh badge every 30 seconds when closed
       intervalId = setInterval(fetchReports, 30000);
     }
     return () => clearInterval(intervalId);
@@ -63,7 +58,7 @@ export default function ErrorReportButton() {
       document.removeEventListener('click', handleGlobalClick);
     };
   }, []);
-  
+
   useEffect(() => {
     if (isOpen && activeTab === 'list') {
       fetchReports();
@@ -88,7 +83,7 @@ export default function ErrorReportButton() {
     } catch (err) {
       console.error('Error fetching reports:', err);
     }
-  };
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -105,14 +100,14 @@ export default function ErrorReportButton() {
       title: document.title,
       time: getHebrewDateString(new Date()) + ' ' + new Date().toLocaleTimeString('he-IL'),
       queryParams: window.location.search || 'אין',
-      lastButtons: window.__lastButtons || []
+      lastButtons: window.__lastButtons || [],
     };
 
     try {
       const res = await fetch('/api/error-report', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (res.ok && data.success) {
@@ -127,30 +122,23 @@ export default function ErrorReportButton() {
       showToast('שגיאת תקשורת', 'error');
     }
   };
-  
+
   const handleReply = async (e) => {
     e.preventDefault();
     if (!replyText.trim() || !selectedReport) return;
-    
+
     setIsReplying(true);
     try {
       const res = await fetch('/api/error-report/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          reportId: selectedReport.id,
-          text: replyText
-        })
+        body: JSON.stringify({ reportId: selectedReport.id, text: replyText }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setReplyText('');
-        // Update local state to show new reply instantly
-        setSelectedReport(prev => ({
-          ...prev,
-          replies: [...prev.replies, data.reply]
-        }));
-        fetchReports(); // refresh list behind the scenes
+        setSelectedReport(prev => ({ ...prev, replies: [...prev.replies, data.reply] }));
+        fetchReports();
       } else {
         showToast(data.error || 'שגיאה בשליחת תגובה', 'error');
       }
@@ -172,9 +160,9 @@ export default function ErrorReportButton() {
 ${report.userText}
 
 לחצנים אחרונים:
-${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.parse(report.lastButtons).map((b,i)=>`${i+1}. ${b}`).join('\n') : report.lastButtons) : 'אין מידע'}
+${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.parse(report.lastButtons).map((b, i) => `${i + 1}. ${b}`).join('\n') : report.lastButtons) : 'אין מידע'}
     `.trim();
-    
+
     navigator.clipboard.writeText(details).then(() => {
       showToast('הפרטים הועתקו ללוח!', 'success');
     });
@@ -184,262 +172,188 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
-  
+
   const openThread = (report) => {
     setSelectedReport(report);
     setActiveTab('thread');
-    
-    // Mark as read locally immediately if needed
     if ((isProgrammer && !report.isReadByProgrammer) || (!isProgrammer && !report.isReadByUser)) {
-      setReports(prev => prev.map(r => r.id === report.id ? { 
-        ...r, 
+      setReports(prev => prev.map(r => r.id === report.id ? {
+        ...r,
         isReadByProgrammer: isProgrammer ? true : r.isReadByProgrammer,
-        isReadByUser: !isProgrammer ? true : r.isReadByUser
+        isReadByUser: !isProgrammer ? true : r.isReadByUser,
       } : r));
     }
   };
-  
+
   const unreadCount = reports.filter(r => (isProgrammer && !r.isReadByProgrammer) || (!isProgrammer && !r.isReadByUser)).length;
 
   return (
     <>
-      <button data-element-name="כפתור_ErrorReportButton_1" 
-        onClick={() => {
-          setIsOpen(true);
-          setActiveTab('list');
-          fetchReports();
-        }}
+      <button
+        type="button"
+        className="icon-btn"
+        onClick={() => { setIsOpen(true); setActiveTab('list'); fetchReports(); }}
         title="מערכת דיווחי שגיאות"
-        className="icon-nav-link"
       >
-        <LifeBuoy data-element-name="רכיב_ErrorReportButton_2" size={20} />
-        {unreadCount > 0 && (
-          <span className="nav-badge">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </span>
-        )}
+        <svg className="icon"><use href="#i-alert-circle" /></svg>
+        {unreadCount > 0 && <span className="dot" />}
       </button>
 
       {isOpen && mounted && createPortal(
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)',
-          zIndex: 999999,
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          direction: 'rtl',
-          fontFamily: 'system-ui, -apple-system, sans-serif'
-        }}>
-          <div style={{
-            background: 'var(--card-bg, #ffffff)',
-            width: '90%',
-            maxWidth: '600px',
-            maxHeight: '85vh',
-            borderRadius: '20px',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-            display: 'flex',
-            flexDirection: 'column',
-            overflow: 'hidden'
-          }}>
-            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color, #e5e7eb)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#eef2ff' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700' }}>
-                  <LifeBuoy data-element-name="רכיב_ErrorReportButton_3" size={22} /> מערכת תמיכה ושגיאות
-                </h3>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 999999 }}>
+          <div className="modal" style={{ maxWidth: 600, width: '90%', maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-head">
+              <strong><svg className="icon"><use href="#i-info" /></svg> מערכת תמיכה ושגיאות</strong>
+              <div style={{ display: 'flex', gap: 6 }}>
                 {activeTab === 'list' && (
-                  <button onClick={fetchReports} title="רענן" style={{ background: 'white', border: '1px solid #c7d2fe', borderRadius: '8px', padding: '0.4rem', cursor: 'pointer', color: '#4338ca', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <RefreshCw size={16} />
+                  <button type="button" className="btn btn-secondary btn-icon-only btn-sm" title="רענן" onClick={fetchReports}>
+                    <svg className="icon"><use href="#i-refresh" /></svg>
                   </button>
                 )}
-                <button data-element-name="כפתור_ErrorReportButton_4" onClick={() => setIsOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#6366f1', display: 'flex', alignItems: 'center' }}>
-                  <X data-element-name="רכיב_ErrorReportButton_5" size={24} />
+                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setIsOpen(false)}>
+                  <svg className="icon"><use href="#i-x" /></svg>
                 </button>
               </div>
             </div>
-            
-            {/* Header Tabs */}
+
             {activeTab !== 'thread' && (
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color, #e5e7eb)' }}>
-                <button 
-                  onClick={() => setActiveTab('list')}
-                  style={{ flex: 1, padding: '1rem', background: activeTab === 'list' ? 'transparent' : '#f8fafc', border: 'none', borderBottom: activeTab === 'list' ? '2px solid #6366f1' : '2px solid transparent', color: activeTab === 'list' ? '#6366f1' : '#64748b', fontWeight: '600', cursor: 'pointer', fontSize: '1rem' }}
-                >
+              <div className="tabs" style={{ margin: '0 22px' }}>
+                <button type="button" className={`tab${activeTab === 'list' ? ' active' : ''}`} onClick={() => setActiveTab('list')}>
                   פניות שלי {isProgrammer ? '(כל הדיווחים)' : ''}
                 </button>
-                <button 
-                  onClick={() => setActiveTab('new')}
-                  style={{ flex: 1, padding: '1rem', background: activeTab === 'new' ? 'transparent' : '#f8fafc', border: 'none', borderBottom: activeTab === 'new' ? '2px solid #6366f1' : '2px solid transparent', color: activeTab === 'new' ? '#6366f1' : '#64748b', fontWeight: '600', cursor: 'pointer', fontSize: '1rem' }}
-                >
+                <button type="button" className={`tab${activeTab === 'new' ? ' active' : ''}`} onClick={() => setActiveTab('new')}>
                   דיווח על תקלה חדשה
                 </button>
               </div>
             )}
-            
-            {/* THREAD VIEW */}
+
             {activeTab === 'thread' && selectedReport && (
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                <div style={{ padding: '0.75rem 1.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <button onClick={() => { setActiveTab('list'); fetchReports(); }} style={{ background: 'white', border: '1px solid #cbd5e1', padding: '0.3rem 0.8rem', borderRadius: '8px', cursor: 'pointer', color: '#475569', fontWeight: '600', fontSize: '0.85rem' }}>
-                    חזור לרשימה
-                  </button>
+                <div style={{ padding: '10px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setActiveTab('list'); fetchReports(); }}>חזור לרשימה</button>
                   {isProgrammer && (
-                    <button onClick={() => copyDetails(selectedReport)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.3rem 0.8rem', borderRadius: '8px', cursor: 'pointer', color: '#0f172a', fontWeight: '600', fontSize: '0.85rem' }}>
-                      <Copy size={14} /> העתק פרטי מערכת
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => copyDetails(selectedReport)}>
+                      <svg className="icon"><use href="#i-link" /></svg>
+                      העתק פרטי מערכת
                     </button>
                   )}
                 </div>
-                
-                <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f1f5f9' }}>
-                  {/* Original Report */}
-                  <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', alignSelf: 'flex-start', maxWidth: '85%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#64748b', fontSize: '0.85rem' }}>
-                      <User size={14} /> <strong>{selectedReport.employee ? selectedReport.employee.firstName + ' ' + selectedReport.employee.lastName : 'משתמש'}</strong>
-                      <span>•</span>
-                      <span>{getHebrewDateString(selectedReport.createdAt)} {new Date(selectedReport.createdAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}</span>
+
+                <div style={{ flex: 1, overflowY: 'auto', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  <div className="card card-pad" style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: 'var(--text-3)', fontSize: 12.5 }}>
+                      <svg className="icon"><use href="#i-user" /></svg>
+                      <strong>{selectedReport.employee ? selectedReport.employee.firstName + ' ' + selectedReport.employee.lastName : 'משתמש'}</strong>
+                      <span>{getHebrewDateString(selectedReport.createdAt)} {new Date(selectedReport.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
-                    <p style={{ margin: 0, color: '#0f172a', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
-                      {selectedReport.userText}
-                    </p>
+                    <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{selectedReport.userText}</p>
                   </div>
-                  
-                  {/* Replies */}
+
                   {selectedReport.replies && selectedReport.replies.map(reply => {
                     const isMe = (isProgrammer && reply.isProgrammer) || (!isProgrammer && !reply.isProgrammer);
                     return (
-                      <div key={reply.id} style={{ 
-                        background: reply.isProgrammer ? '#eef2ff' : 'white', 
-                        padding: '1rem', 
-                        borderRadius: '12px', 
-                        border: `1px solid ${reply.isProgrammer ? '#c7d2fe' : '#e2e8f0'}`, 
-                        alignSelf: isMe ? 'flex-end' : 'flex-start',
-                        maxWidth: '85%' 
-                      }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: reply.isProgrammer ? '#4338ca' : '#64748b', fontSize: '0.85rem' }}>
-                          <User size={14} /> <strong>{reply.isProgrammer ? 'מתכנת מערכת' : (reply.employee ? reply.employee.firstName + ' ' + reply.employee.lastName : 'משתמש')}</strong>
-                          <span>•</span>
-                          <span>{getHebrewDateString(reply.createdAt)} {new Date(reply.createdAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}</span>
+                      <div
+                        key={reply.id}
+                        className="card card-pad"
+                        style={{
+                          background: reply.isProgrammer ? 'var(--primary-tint)' : 'var(--surface)',
+                          alignSelf: isMe ? 'flex-end' : 'flex-start',
+                          maxWidth: '85%',
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: reply.isProgrammer ? 'var(--primary-solid)' : 'var(--text-3)', fontSize: 12.5 }}>
+                          <svg className="icon"><use href="#i-user" /></svg>
+                          <strong>{reply.isProgrammer ? 'מתכנת מערכת' : (reply.employee ? reply.employee.firstName + ' ' + reply.employee.lastName : 'משתמש')}</strong>
+                          <span>{getHebrewDateString(reply.createdAt)} {new Date(reply.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
-                        <p style={{ margin: 0, color: '#0f172a', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
-                          {reply.text}
-                        </p>
+                        <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{reply.text}</p>
                       </div>
                     );
                   })}
                 </div>
-                
-                {/* Reply Form */}
-                <form onSubmit={handleReply} style={{ padding: '1rem', background: 'white', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.75rem' }}>
-                  <input 
-                    type="text" 
+
+                <form onSubmit={handleReply} style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 10 }}>
+                  <input
+                    type="text"
+                    className="input"
                     value={replyText}
                     onChange={e => setReplyText(e.target.value)}
                     placeholder="הקלד תגובה..."
-                    style={{ flex: 1, padding: '0.75rem 1rem', borderRadius: '999px', border: '1px solid #cbd5e1', outline: 'none', background: '#f8fafc', fontSize: '0.95rem' }}
                     required
                   />
-                  <button 
-                    type="submit"
-                    disabled={isReplying}
-                    style={{ background: '#6366f1', color: 'white', border: 'none', width: '45px', height: '45px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: isReplying ? 'not-allowed' : 'pointer', opacity: isReplying ? 0.7 : 1 }}
-                  >
-                    <Send size={18} style={{ transform: 'rotate(180deg) translateX(2px)' }} />
+                  <button type="submit" className="btn btn-primary btn-icon-only" disabled={isReplying}>
+                    <svg className="icon"><use href="#i-arrow-end" /></svg>
                   </button>
                 </form>
               </div>
             )}
-            
-            {/* LIST VIEW */}
+
             {activeTab === 'list' && (
-              <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f1f5f9' }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {reports.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: '#94a3b8', padding: '3rem 0' }}>
-                    <MessageSquare size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
-                    <p style={{ fontSize: '1.1rem' }}>אין דיווחים קיימים</p>
+                  <div className="empty-state">
+                    <svg className="icon"><use href="#i-message" /></svg>
+                    <p>אין דיווחים קיימים</p>
                   </div>
                 ) : (
                   reports.map(report => {
                     const isUnread = (isProgrammer && !report.isReadByProgrammer) || (!isProgrammer && !report.isReadByUser);
                     return (
-                      <div key={report.id} onClick={() => openThread(report)} style={{
-                        background: isUnread ? '#eef2ff' : 'white',
-                        border: `1px solid ${isUnread ? '#c7d2fe' : '#e2e8f0'}`,
-                        borderRadius: '12px',
-                        padding: '1.25rem',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s',
-                        boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
-                      }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                          <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                            {isUnread && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', display: 'inline-block' }} />}
+                      <div
+                        key={report.id}
+                        className="list-card"
+                        onClick={() => openThread(report)}
+                        style={{ cursor: 'pointer', flexDirection: 'column', alignItems: 'stretch', background: isUnread ? 'var(--primary-tint)' : 'var(--surface)' }}
+                      >
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
+                          <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {isUnread && <span className="dot-badge" />}
                             {report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'משתמש'}
-                          </h4>
-                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
-                            {getHebrewDateString(report.updatedAt)} {new Date(report.updatedAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}
+                          </strong>
+                          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                            {getHebrewDateString(report.updatedAt)} {new Date(report.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <p style={{ margin: '0 0 0.75rem 0', color: '#475569', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                          {report.userText}
-                        </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#64748b' }}>
-                          <MessageSquare size={14} />
+                        <p style={{ margin: '0 0 8px', color: 'var(--text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{report.userText}</p>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-3)' }}>
+                          <svg className="icon"><use href="#i-message" /></svg>
                           <span>{report.replies?.length || 0} תגובות</span>
-                          {isProgrammer && (
-                            <>
-                              <span style={{ margin: '0 0.5rem' }}>|</span>
-                              <span>מסך: {report.title || 'לא ידוע'}</span>
-                            </>
-                          )}
+                          {isProgrammer && <span>· מסך: {report.title || 'לא ידוע'}</span>}
                         </div>
                       </div>
-                    )
+                    );
                   })
                 )}
               </div>
             )}
-            
-            {/* NEW REPORT VIEW */}
+
             {activeTab === 'new' && (
-              <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f8fafc', flex: 1, overflowY: 'auto' }}>
-                <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '0.9rem', color: '#475569', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
-                  <Info color="#6366f1" size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
+              <form onSubmit={handleSubmit} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14, flex: 1, overflowY: 'auto' }}>
+                <div className="callout callout-info">
+                  <svg className="icon"><use href="#i-info" /></svg>
                   <div>
-                    <strong style={{ display: 'block', color: '#0f172a', marginBottom: '0.25rem' }}>הנתונים הבאים יישלחו למתכנת אוטומטית ברקע:</strong>
+                    <strong style={{ display: 'block', color: 'var(--text)', marginBottom: 4 }}>הנתונים הבאים יישלחו למתכנת אוטומטית ברקע:</strong>
                     שעת הדיווח, כתובת המסך (URL), שם המסך, ו-5 הלחצנים האחרונים עליהם לחצת לפני שדיווחת.
                   </div>
                 </div>
 
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#0f172a', fontWeight: '600' }}>
-                    תאר את התקלה בצורה המפורטת ביותר (מה ניסית לעשות, ומה קרה?):
-                  </label>
-                  <textarea data-element-name="טקסט_ErrorReportButton_6"
+                <div className="field">
+                  <label>תאר את התקלה בצורה המפורטת ביותר (מה ניסית לעשות, ומה קרה?):</label>
+                  <textarea
+                    className="textarea"
                     value={userText}
                     onChange={e => setUserText(e.target.value)}
-                    className="form-control"
                     placeholder="לדוגמה: לחצתי על כפתור השמירה, הופיעה שגיאה אדומה והדף קפא..."
-                    style={{ width: '100%', height: '140px', padding: '1rem', borderRadius: '12px', border: '1px solid #cbd5e1', background: 'white', color: '#0f172a', resize: 'none', fontSize: '1rem' }}
+                    style={{ height: 140 }}
                     required
                   />
                 </div>
 
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', marginTop: 'auto', paddingTop: '1rem' }}>
-                  <button data-element-name="כפתור_ErrorReportButton_7" 
-                    type="button"
-                    onClick={() => setActiveTab('list')}
-                    style={{ background: 'transparent', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.6rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
-                  >
-                    ביטול
-                  </button>
-                  <button data-element-name="כפתור_ErrorReportButton_8" 
-                    type="submit"
-                    style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#6366f1', color: 'white', border: 'none', padding: '0.6rem 1.5rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer', boxShadow: '0 4px 6px -1px rgba(99, 102, 241, 0.3)' }}
-                  >
-                    <Send data-element-name="רכיב_ErrorReportButton_9" size={16} /> שליחה למתכנת
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 'auto', paddingTop: 10 }}>
+                  <button type="button" className="btn btn-secondary" onClick={() => setActiveTab('list')}>ביטול</button>
+                  <button type="submit" className="btn btn-primary">
+                    <svg className="icon"><use href="#i-arrow-end" /></svg>
+                    שליחה למתכנת
                   </button>
                 </div>
               </form>
@@ -450,24 +364,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
       )}
 
       {toast && mounted && createPortal(
-        <div style={{
-          position: 'fixed',
-          top: '20px',
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 9999999,
-          background: toast.type === 'error' ? '#ef4444' : toast.type === 'success' ? '#10b981' : '#3b82f6',
-          color: 'white',
-          padding: '0.75rem 1.5rem',
-          borderRadius: '8px',
-          boxShadow: '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '0.5rem',
-          fontWeight: '500',
-          direction: 'rtl',
-          animation: 'fadeInDown 0.3s ease-out'
-        }}>
+        <div className={`toast ${toast.type}`} style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 9999999 }}>
           {toast.message}
         </div>,
         document.body
