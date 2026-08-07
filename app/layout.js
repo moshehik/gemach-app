@@ -143,7 +143,7 @@ export default async function RootLayout({ children }) {
   bodyClassName = bodyClassName.trim();
 
   return (
-    <html lang="he" dir="rtl" data-theme={!showLogin ? themePreference : 'light'}>
+    <html lang="he" dir="rtl" data-theme={!showLogin ? themePreference : 'light'} suppressHydrationWarning>
       <head>
         <meta charSet="utf-8" />
         <script
@@ -212,6 +212,36 @@ export default async function RootLayout({ children }) {
     }
     return response;
   };
+})();
+`
+          }}
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+(function() {
+  try {
+    if (typeof window === 'undefined') return;
+    var root = document.documentElement;
+    var saved = {};
+    try { saved = JSON.parse(localStorage.getItem('gemachDesignPrefs') || '{}'); } catch (e) { saved = {}; }
+    function setAttr(attr, val, offVals) {
+      if (!val || offVals.indexOf(val) !== -1) root.removeAttribute(attr);
+      else root.setAttribute(attr, val);
+    }
+    setAttr('data-palette', saved.palette, ['wine']);
+    setAttr('data-font', saved.font, ['default']);
+    setAttr('data-density', saved.density, ['comfortable']);
+    setAttr('data-text-scale', saved.textScale, ['normal']);
+    // data-theme is normally set server-side from the theme_<employeeId> cookie
+    // (see RootLayout below) — only override it here when the user picked an
+    // explicit mode on /display-settings; leave 'auto'/unset alone so the
+    // cookie-based value (and its 'auto' fallback there) keeps winning.
+    var mode = saved.mode;
+    if (mode === 'dark' || mode === 'light' || mode === 'contrast') {
+      root.setAttribute('data-theme', mode);
+    }
+  } catch (e) {}
 })();
 `
           }}

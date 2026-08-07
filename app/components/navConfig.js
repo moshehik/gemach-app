@@ -14,6 +14,7 @@ export const NAV_GROUPS = [
       { href: '/messages', label: 'הודעות', icon: 'i-message', gate: 'showMessages' },
       { href: '/profile', label: 'הפרופיל שלי', icon: 'i-user' },
       { href: '/punch-clock', label: 'שעון נוכחות', icon: 'i-clock' },
+      { href: '/display-settings', label: 'עיצוב ותצוגה', icon: 'i-settings' },
     ],
   },
   {
