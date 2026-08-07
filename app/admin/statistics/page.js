@@ -1,18 +1,17 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
-import { 
-  getDailyStatistics, 
-  getStatisticsByModel, 
-  getStatisticsBySize, 
-  getSeamstressWork, 
-  getPaymentStatistics, 
+import {
+  getDailyStatistics,
+  getStatisticsByModel,
+  getStatisticsBySize,
+  getSeamstressWork,
+  getPaymentStatistics,
   getDressConsumptionStats,
   getMaxConcurrentEmployees,
   getOrderSummaryStats,
   getAlterationsSetting
 } from './actions';
-import { FileDown } from 'lucide-react';
 
 export default function StatisticsPage() {
   const [activeTab, setActiveTab] = useState('daily');
@@ -35,10 +34,6 @@ export default function StatisticsPage() {
     }
     loadSummary();
   }, []);
-
-  useEffect(() => {
-    fetchData();
-  }, [activeTab]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -72,287 +67,292 @@ export default function StatisticsPage() {
     }
   };
 
+  useEffect(() => {
+    fetchData();
+  }, [activeTab]);
+
   const tabs = [
-    { id: 'daily', label: 'יומי (הזמנות)' },
-    { id: 'inventory', label: 'חריגות וספירת מלאי' },
-    { id: 'model', label: 'לפי דגם' },
-    { id: 'size', label: 'לפי מידה' },
-    ...(enableAlterations ? [{ id: 'seamstress', label: 'עומס תופרות' }] : []),
-    { id: 'payments', label: 'חובות ותשלומים' },
+    { id: 'daily', label: 'יומי (הזמנות)', icon: 'i-calendar' },
+    { id: 'inventory', label: 'חריגות וספירת מלאי', icon: 'i-box' },
+    { id: 'model', label: 'לפי דגם', icon: 'i-tag' },
+    { id: 'size', label: 'לפי מידה', icon: 'i-category' },
+    ...(enableAlterations ? [{ id: 'seamstress', label: 'עומס תופרות', icon: 'i-scissors' }] : []),
+    { id: 'payments', label: 'חובות ותשלומים', icon: 'i-wallet' },
   ];
 
   return (
-    <div className="container animate-fade-in page-shell">
-      <div className="page-scroll">
-      <style>{`
-        .stats-table { width: 100%; border-collapse: collapse; }
-        .stats-table th { background-color: var(--primary-color, #1e40af); color: white; padding: 1rem; text-align: right; }
-        .stats-table td { padding: 1rem; border-bottom: 1px solid #eee; text-align: right; }
-        .stats-table tr:hover { background-color: #f8fafc; }
-      `}</style>
-      
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <h1 style={{ margin: 0, color: 'var(--primary-color)', fontSize: '2rem', fontWeight: 'bold' }}>
-          מרכז נתונים ופילוח
-        </h1>
-        <a 
-          href="/migration_report.html" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            backgroundColor: '#10b981',
-            color: 'white',
-            padding: '0.75rem 1.5rem',
-            borderRadius: '8px',
-            textDecoration: 'none',
-            fontWeight: 'bold',
-            boxShadow: '0 4px 6px rgba(16, 185, 129, 0.2)',
-            transition: 'all 0.2s'
-          }}
-          onMouseOver={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-          onMouseOut={(e) => e.currentTarget.style.transform = 'translateY(0)'}
-        >
-          <FileDown data-element-name="רכיב_page_1" size={20} />
-          דוח הגירת נתונים מאקסס
-        </a>
-      </div>
-      
-      <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', backgroundColor: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+    <>
+      <div className="page-head">
         <div>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-color)' }}>מתאריך אירוע / התחלה</label>
-          <input data-element-name="שדה_page_2" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="form-input" style={{ width: '200px' }} />
+          <h1>מרכז נתונים ופילוח</h1>
         </div>
-        <div>
-          <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: 'bold', color: 'var(--text-color)' }}>עד תאריך אירוע / סיום</label>
-          <input data-element-name="שדה_page_3" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="form-input" style={{ width: '200px' }} />
+        <div className="page-actions">
+          <a href="/migration_report.html" target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+            <svg className="icon"><use href="#i-download" /></svg>
+            דוח הגירת נתונים מאקסס
+          </a>
         </div>
-        <button data-element-name="כפתור_page_4" onClick={fetchData} className="btn-primary" style={{ height: '42px', padding: '0 2rem' }}>
-          החל סינון
-        </button>
       </div>
 
-      <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '2rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
+      <div className="card" style={{ marginBottom: '20px' }}>
+        <div className="card-pad" style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+          <div className="field" style={{ marginBottom: 0, width: '200px' }}>
+            <label htmlFor="admin-statistics-start-date">מתאריך אירוע / התחלה</label>
+            <input id="admin-statistics-start-date" type="date" value={startDate} onChange={e => setStartDate(e.target.value)} className="input" />
+          </div>
+          <div className="field" style={{ marginBottom: 0, width: '200px' }}>
+            <label htmlFor="admin-statistics-end-date">עד תאריך אירוע / סיום</label>
+            <input id="admin-statistics-end-date" type="date" value={endDate} onChange={e => setEndDate(e.target.value)} className="input" />
+          </div>
+          <button type="button" onClick={fetchData} className="btn btn-primary">
+            החל סינון
+          </button>
+        </div>
+      </div>
+
+      <div className="tabs">
         {tabs.map(t => (
-          <button data-element-name="כפתור_page_5" 
-            key={t.id} 
+          <button
+            type="button"
+            key={t.id}
+            className={activeTab === t.id ? 'tab active' : 'tab'}
             onClick={() => setActiveTab(t.id)}
-            style={{
-              padding: '0.75rem 1.5rem',
-              borderRadius: '999px',
-              border: 'none',
-              cursor: 'pointer',
-              fontWeight: activeTab === t.id ? 'bold' : 'normal',
-              backgroundColor: activeTab === t.id ? 'var(--primary-color, #1e40af)' : '#e2e8f0',
-              color: activeTab === t.id ? 'white' : '#475569',
-              transition: 'all 0.2s',
-              whiteSpace: 'nowrap'
-            }}>
+          >
+            <svg className="icon"><use href={`#${t.icon}`} /></svg>
             {t.label}
           </button>
         ))}
       </div>
 
-      <div style={{ backgroundColor: 'var(--card-bg)', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', overflow: 'hidden' }}>
-        {loading ? (
-          <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>טוען נתונים...</div>
-        ) : (
-          <div style={{ overflow: 'visible' }}>
-            {activeTab === 'daily' && <DailyTable data-element-name="רכיב_page_6" data={data} />}
-            {activeTab === 'model' && <ModelSizeTable data-element-name="רכיב_page_7" data={data} type="דגם" showAlterations={enableAlterations} />}
-            {activeTab === 'size' && <ModelSizeTable data-element-name="רכיב_page_8" data={data} type="מידה" showAlterations={enableAlterations} />}
-            {activeTab === 'seamstress' && <SeamstressTable data-element-name="רכיב_page_9" data={data} />}
-            {activeTab === 'payments' && <PaymentsTable data-element-name="רכיב_page_10" data={data} />}
-            {activeTab === 'inventory' && <InventoryTable data-element-name="רכיב_page_11" data={data} />}
-          </div>
-        )}
-      </div>
+      {loading ? (
+        <div className="page-loading">
+          <span className="spinner lg" />
+          טוען נתונים...
+        </div>
+      ) : (
+        <>
+          {activeTab === 'daily' && <DailyTable data={data} />}
+          {activeTab === 'model' && <ModelSizeTable data={data} type="דגם" showAlterations={enableAlterations} />}
+          {activeTab === 'size' && <ModelSizeTable data={data} type="מידה" showAlterations={enableAlterations} />}
+          {activeTab === 'seamstress' && <SeamstressTable data={data} />}
+          {activeTab === 'payments' && <PaymentsTable data={data} />}
+          {activeTab === 'inventory' && <InventoryTable data={data} />}
+        </>
+      )}
 
       {summaryData && (
-         <div style={{ marginTop: '4rem' }}>
-            <h3 style={{ borderBottom: '2px solid #eee', paddingBottom: '0.5rem', color: 'var(--text-color)' }}>מידע כללי נוסף</h3>
-            <div className="dress-card" style={{ padding: '2rem', marginTop: '1rem', background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)', display: 'inline-block', minWidth: '300px' }}>
-              <h4 style={{ margin: 0, color: 'var(--text-color)' }}>שיא עובדים בו-זמנית בחנות</h4>
-              <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-muted)' }}>
-                זמן השיא: {summaryData.maxEmp?.peakTime ? new Date(summaryData.maxEmp.peakTime).toLocaleString('he-IL') : 'אין נתונים'}
-              </p>
-              <div style={{ fontSize: '3rem', fontWeight: '900', color: '#475569', marginTop: '1rem' }}>
-                {summaryData.maxEmp?.maxEmployees || 0} עובדים
+        <>
+          <h2 className="section-title">מידע כללי נוסף</h2>
+          <div className="card" style={{ maxWidth: '340px' }}>
+            <div className="card-head">
+              <div className="card-title-row">
+                <svg className="icon"><use href="#i-user-check" /></svg>
+                <h3>שיא עובדים בו-זמנית בחנות</h3>
               </div>
             </div>
-         </div>
+            <div className="card-pad">
+              <div className="kpi-value">{summaryData.maxEmp?.maxEmployees || 0} עובדים</div>
+              <div className="hint" style={{ color: 'var(--text-3)', marginTop: '6px' }}>
+                זמן השיא: {summaryData.maxEmp?.peakTime ? new Date(summaryData.maxEmp.peakTime).toLocaleString('he-IL') : 'אין נתונים'}
+              </div>
+            </div>
+          </div>
+        </>
       )}
-      </div>
-    </div>
+    </>
   );
 }
 
 function DailyTable({ data }) {
-  if (!data || data.length === 0) return <EmptyState data-element-name="רכיב_page_12" />;
+  if (!data || data.length === 0) return <EmptyState />;
   return (
-    <table className="stats-table">
-      <thead>
-        <tr>
-          <th>תאריך</th>
-          <th>הזמנות שבוצעו</th>
-          <th>הכנסות (שולמו)</th>
-          <th>פריטים הושכרו</th>
-          <th>פריטים הוחזרו</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(r => (
-          <tr key={r.date}>
-            <td style={{ fontWeight: 'bold' }}>{new Date(r.date).toLocaleDateString('he-IL')}</td>
-            <td>{r.newOrders}</td>
-            <td style={{ color: 'var(--primary-color, #1e40af)', fontWeight: 'bold' }}>₪{r.revenue.toLocaleString()}</td>
-            <td>{r.itemsRented}</td>
-            <td>{r.itemsReturned}</td>
+    <div className="table-wrap">
+      <table className="data">
+        <thead>
+          <tr>
+            <th>תאריך</th>
+            <th>הזמנות שבוצעו</th>
+            <th>הכנסות (שולמו)</th>
+            <th>פריטים הושכרו</th>
+            <th>פריטים הוחזרו</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {data.map(r => (
+            <tr key={r.date}>
+              <td className="cell-primary">{new Date(r.date).toLocaleDateString('he-IL')}</td>
+              <td>{r.newOrders}</td>
+              <td style={{ color: 'var(--success)', fontWeight: 700 }}>₪{r.revenue.toLocaleString()}</td>
+              <td>{r.itemsRented}</td>
+              <td>{r.itemsReturned}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 function ModelSizeTable({ data, type, showAlterations }) {
-  if (!data || data.length === 0) return <EmptyState data-element-name="רכיב_page_13" />;
+  if (!data || data.length === 0) return <EmptyState />;
   return (
-    <table className="stats-table">
-      <thead>
-        <tr>
-          <th>{type}</th>
-          <th>כמות השכרות סה"כ</th>
-          {showAlterations && (
-            <>
-              <th>תיקוני צוואר</th>
-              <th>תיקוני אורך</th>
-              <th>תיקוני שרוול</th>
-            </>
-          )}
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((r, idx) => (
-          <tr key={idx}>
-            <td style={{ fontWeight: 'bold' }}>{r.name || r.size}</td>
-            <td style={{ fontWeight: 'bold', color: 'var(--primary-color, #1e40af)' }}>{r.count}</td>
+    <div className="table-wrap">
+      <table className="data">
+        <thead>
+          <tr>
+            <th>{type}</th>
+            <th>כמות השכרות סה"כ</th>
             {showAlterations && (
               <>
-                <td>{r.neck}</td>
-                <td>{r.length}</td>
-                <td>{r.sleeve}</td>
+                <th>תיקוני צוואר</th>
+                <th>תיקוני אורך</th>
+                <th>תיקוני שרוול</th>
               </>
             )}
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {data.map((r, idx) => (
+            <tr key={idx}>
+              <td className="cell-primary">{r.name || r.size}</td>
+              <td className="cell-primary" style={{ color: 'var(--primary)' }}>{r.count}</td>
+              {showAlterations && (
+                <>
+                  <td>{r.neck}</td>
+                  <td>{r.length}</td>
+                  <td>{r.sleeve}</td>
+                </>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 function SeamstressTable({ data }) {
-  if (!data || data.length === 0) return <EmptyState data-element-name="רכיב_page_14" />;
+  if (!data || data.length === 0) return <EmptyState />;
   return (
-    <table className="stats-table">
-      <thead>
-        <tr>
-          <th>תאריך אירוע (יעד)</th>
-          <th>מספר פריטים לתיקון</th>
-          <th>תיקוני צוואר</th>
-          <th>תיקוני אורך</th>
-          <th>תיקוני שרוול</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((r, i) => (
-          <tr key={`${r.date}-${i}`}>
-            <td style={{ fontWeight: 'bold' }}>{new Date(r.date).toLocaleDateString('he-IL')}</td>
-            <td style={{ fontWeight: 'bold', color: '#b45309' }}>{r.itemsCount}</td>
-            <td>{r.neck}</td>
-            <td>{r.length}</td>
-            <td>{r.sleeve}</td>
+    <div className="table-wrap">
+      <table className="data">
+        <thead>
+          <tr>
+            <th>תאריך אירוע (יעד)</th>
+            <th>מספר פריטים לתיקון</th>
+            <th>תיקוני צוואר</th>
+            <th>תיקוני אורך</th>
+            <th>תיקוני שרוול</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {data.map((r, i) => (
+            <tr key={`${r.date}-${i}`}>
+              <td className="cell-primary">{new Date(r.date).toLocaleDateString('he-IL')}</td>
+              <td style={{ fontWeight: 700, color: 'var(--warning)' }}>{r.itemsCount}</td>
+              <td>{r.neck}</td>
+              <td>{r.length}</td>
+              <td>{r.sleeve}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 function PaymentsTable({ data }) {
-  if (!data || data.length === 0) return <EmptyState data-element-name="רכיב_page_15" />;
+  if (!data || data.length === 0) return <EmptyState />;
   return (
-    <table className="stats-table">
-      <thead>
-        <tr>
-          <th>מספר הזמנה</th>
-          <th>לקוח</th>
-          <th>תאריך הזמנה</th>
-          <th>סך הכל חויב</th>
-          <th>סך הכל שולם</th>
-          <th>יתרת חובה</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map(r => (
-          <tr key={r.orderId} style={{ backgroundColor: r.debt > 0 ? '#fef2f2' : 'var(--card-bg)' }}>
-            <td style={{ fontWeight: 'bold' }}>{r.orderId}</td>
-            <td>{r.customerName}</td>
-            <td>{r.orderDate ? new Date(r.orderDate).toLocaleDateString('he-IL') : ''}</td>
-            <td>₪{r.expectedTotal.toLocaleString()}</td>
-            <td style={{ color: '#166534' }}>₪{r.actualPaid.toLocaleString()}</td>
-            <td style={{ color: r.debt > 0 ? '#dc2626' : 'var(--text-muted)', fontWeight: r.debt > 0 ? 'bold' : 'normal' }}>
-              ₪{r.debt.toLocaleString()}
-            </td>
+    <div className="table-wrap">
+      <table className="data">
+        <thead>
+          <tr>
+            <th>מספר הזמנה</th>
+            <th>לקוח</th>
+            <th>תאריך הזמנה</th>
+            <th>סך הכל חויב</th>
+            <th>סך הכל שולם</th>
+            <th>יתרת חובה</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {data.map(r => (
+            <tr key={r.orderId} className={r.debt > 0 ? 'row-flag' : ''}>
+              <td className="cell-primary">{r.orderId}</td>
+              <td>{r.customerName}</td>
+              <td className="cell-muted">{r.orderDate ? new Date(r.orderDate).toLocaleDateString('he-IL') : ''}</td>
+              <td>₪{r.expectedTotal.toLocaleString()}</td>
+              <td style={{ color: 'var(--success)' }}>₪{r.actualPaid.toLocaleString()}</td>
+              <td
+                className={r.debt > 0 ? '' : 'cell-muted'}
+                style={r.debt > 0 ? { fontWeight: 700, color: 'var(--danger)' } : undefined}
+              >
+                ₪{r.debt.toLocaleString()}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 function InventoryTable({ data }) {
-  if (!data || data.length === 0) return <EmptyState data-element-name="רכיב_page_16" />;
+  if (!data || data.length === 0) return <EmptyState />;
   return (
-    <table className="stats-table">
-      <thead>
-        <tr>
-          <th>דגם השמלה</th>
-          <th>מידה</th>
-          <th>סה"כ במלאי הפיזי</th>
-          <th>שיא השכרות חופפות</th>
-          <th>תאריכי שיא</th>
-          <th>סטטוס</th>
-        </tr>
-      </thead>
-      <tbody>
-        {data.map((r, idx) => (
-          <tr key={idx} style={{ backgroundColor: r.hasShortage ? '#fef2f2' : 'var(--card-bg)' }}>
-            <td style={{ fontWeight: 'bold' }}>{r.modelName}</td>
-            <td>{r.sizeText}</td>
-            <td style={{ fontSize: '1.1rem' }}>{r.totalStock}</td>
-            <td style={{ fontSize: '1.1rem', fontWeight: 'bold', color: r.hasShortage ? '#dc2626' : '#166534' }}>
-              {r.maxRented}
-            </td>
-            <td style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-              {r.peakDates ? r.peakDates.split(', ').map(d => d ? new Date(d).toLocaleDateString('he-IL') : '').join(', ') : ''}
-            </td>
-            <td>
-              {r.hasShortage ? (
-                <span style={{ backgroundColor: '#fee2e2', color: '#991b1b', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>חוסר במלאי!</span>
-              ) : (
-                <span style={{ backgroundColor: '#dcfce7', color: '#166534', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}>תקין</span>
-              )}
-            </td>
+    <div className="table-wrap">
+      <table className="data">
+        <thead>
+          <tr>
+            <th>דגם השמלה</th>
+            <th>מידה</th>
+            <th>סה"כ במלאי הפיזי</th>
+            <th>שיא השכרות חופפות</th>
+            <th>תאריכי שיא</th>
+            <th>סטטוס</th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {data.map((r, idx) => (
+            <tr key={idx} className={r.hasShortage ? 'row-flag' : ''}>
+              <td className="cell-primary">{r.modelName}</td>
+              <td>{r.sizeText}</td>
+              <td>{r.totalStock}</td>
+              <td style={{ fontWeight: 700, color: r.hasShortage ? 'var(--danger)' : 'var(--success)' }}>
+                {r.maxRented}
+              </td>
+              <td className="cell-muted">
+                {r.peakDates ? r.peakDates.split(', ').map(d => d ? new Date(d).toLocaleDateString('he-IL') : '').join(', ') : ''}
+              </td>
+              <td>
+                {r.hasShortage ? (
+                  <span className="badge badge-danger">
+                    <svg className="icon"><use href="#i-alert-circle" /></svg>
+                    חוסר במלאי!
+                  </span>
+                ) : (
+                  <span className="badge badge-success">
+                    <svg className="icon"><use href="#i-check" /></svg>
+                    תקין
+                  </span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
 function EmptyState() {
-  return <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>אין נתונים להצגה בטווח התאריכים הנבחר.</div>;
+  return (
+    <div className="table-wrap">
+      <div className="empty-state">
+        <svg className="icon"><use href="#i-search" /></svg>
+        <p>אין נתונים להצגה בטווח התאריכים הנבחר.</p>
+      </div>
+    </div>
+  );
 }

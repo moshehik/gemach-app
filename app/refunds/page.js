@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, CheckCircle, XCircle, Download, CreditCard, Coins, Mail, RotateCcw, ExternalLink, AlertCircle, Calendar, ArrowUpRight, ShieldCheck } from 'lucide-react';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { verifyPin } from '@/components/orders/modern/mocAuth';
 import { cacheNamespace } from '@/app/lib/pageCache';
@@ -39,18 +38,24 @@ async function fetchDebtOrdersPage(filterStatus, page, searchTerm) {
 /** מציג את הסטטוס האחרון (DEBT_APPROVED/CANCEL_DEBT_APPROVAL) עבור הזמנה אחת בטבלת חובות. */
 function ApprovalCell({ orderId, approval, onUndo, isBusy }) {
   if (!approval || !approval.isApproved) {
-    return <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>לא אושר</span>;
+    return <span className="cell-muted" style={{ fontSize: '12.5px' }}>לא אושר</span>;
   }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
-      <span className="status-dot c-green">מאושר לתשלום</span>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'flex-start' }}>
+      <span className="badge badge-success">
+        <svg className="icon"><use href="#i-check" /></svg>
+        מאושר לתשלום
+      </span>
       <button
+        type="button"
+        className="btn btn-ghost btn-sm"
         onClick={() => onUndo(orderId)}
         disabled={isBusy}
         title="בטל אישור"
-        style={{ background: 'none', border: 'none', color: '#d97706', padding: 0, cursor: isBusy ? 'default' : 'pointer', fontSize: '0.75rem', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '0.3rem', opacity: isBusy ? 0.5 : 1 }}
+        style={{ color: 'var(--warning)', padding: 0, height: 'auto' }}
       >
-        <RotateCcw size={12} /> בטל אישור
+        <svg className="icon"><use href="#i-refresh" /></svg>
+        בטל אישור
       </button>
     </div>
   );
@@ -61,137 +66,138 @@ function ApprovalCell({ orderId, approval, onUndo, isBusy }) {
 function DebtsTable({
   accentColor, list, loading, hasMore, loadingMore, onLoadMore,
   searchTerm, onSearchTermChange, searchPlaceholder, emptyText,
-  approvals, selectedIds, onToggleSelect, onToggleSelectAll, onOpenApproveModal, onUndoApproval, isBusy
+  approvals, selectedIds, onToggleSelect, onToggleSelectAll, onClearSelection, onOpenApproveModal, onUndoApproval, isBusy
 }) {
   const selectableIds = list.filter(o => !approvals[o.orderId]?.isApproved).map(o => o.orderId);
   const allSelected = selectableIds.length > 0 && selectableIds.every(id => selectedIds.has(id));
 
   return (
     <>
-      <div style={{ background: 'var(--card-bg)', padding: '1rem 1.5rem', borderRadius: '16px', boxShadow: 'var(--shadow-sm)', marginBottom: '1.5rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <div className="search-box-modern" style={{ maxWidth: '420px' }}>
-          <Search size={18} />
+      <div className="toolbar">
+        <div className="input-icon-wrap" style={{ flex: 1, maxWidth: '420px' }}>
+          <svg className="icon"><use href="#i-search" /></svg>
           <input
+            className="input"
             type="text"
             placeholder={searchPlaceholder}
             value={searchTerm}
             onChange={(e) => onSearchTermChange(e.target.value)}
           />
         </div>
-        {selectedIds.size > 0 && (
-          <button
-            onClick={() => onOpenApproveModal(list)}
-            disabled={isBusy}
-            className="icon-btn icon-btn-primary c-approve"
-            style={{ whiteSpace: 'nowrap' }}
-          >
-            <ShieldCheck size={17} /> אשר תשלום שנבחרו ({selectedIds.size})
-          </button>
-        )}
       </div>
 
-      <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: 'var(--shadow-md)', overflow: 'visible' }}>
-        {loading ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-            <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: `4px solid ${accentColor}`, borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem auto' }} />
-            טוען נתונים...
-          </div>
-        ) : list.length === 0 ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '1.2rem' }}>
-            {emptyText}
-          </div>
-        ) : (
-          <div style={{ overflow: 'visible' }}>
-            <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
-              <thead>
-                <tr style={{ background: 'var(--sticky-header-bg, #ffffff)', color: accentColor, borderBottom: `2px solid ${accentColor}33` }}>
-                  <th style={{ padding: '0.6rem 0.5rem', textAlign: 'center', width: '40px', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>
-                    <input
-                      type="checkbox"
-                      checked={allSelected}
-                      disabled={selectableIds.length === 0}
-                      onChange={() => onToggleSelectAll(selectableIds)}
-                      style={{ cursor: selectableIds.length === 0 ? 'default' : 'pointer', width: '17px', height: '17px' }}
-                      title="בחר הכל"
-                    />
-                  </th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך אירוע</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>הזמנה</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סה"כ להזמנה</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>שולם</th>
-                  <th style={{ padding: '0.6rem 0.75rem', color: accentColor, position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>יתרת חוב</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סטטוס אישור</th>
+      {loading ? (
+        <div className="page-loading">
+          <span className="spinner lg" />
+          טוען נתונים...
+        </div>
+      ) : (
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                <th style={{ width: '40px', textAlign: 'center' }}>
+                  <input
+                    type="checkbox"
+                    checked={allSelected}
+                    disabled={selectableIds.length === 0}
+                    onChange={() => onToggleSelectAll(selectableIds)}
+                    title="בחר הכל"
+                  />
+                </th>
+                <th>תאריך אירוע</th>
+                <th>לקוח</th>
+                <th>הזמנה</th>
+                <th>סה&quot;כ להזמנה</th>
+                <th>שולם</th>
+                <th style={{ color: accentColor }}>יתרת חוב</th>
+                <th>סטטוס אישור</th>
+              </tr>
+            </thead>
+            <tbody>
+              {list.length === 0 ? (
+                <tr>
+                  <td colSpan="8">
+                    <div className="empty-state">
+                      <svg className="icon"><use href="#i-alert-circle" /></svg>
+                      <p>{emptyText}</p>
+                    </div>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {list.map(order => {
+              ) : (
+                list.map(order => {
                   const debtAmount = (order.totalAmount || 0) - (order.totalPaid || 0);
                   const approval = approvals[order.orderId];
                   const hebrewDate = hebrewDateFor(order);
                   return (
-                    <tr key={order.orderId} style={{ borderBottom: '1px solid #f1f5f9' }}>
-                      <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
+                    <tr key={order.orderId}>
+                      <td style={{ textAlign: 'center' }}>
                         {approval?.isApproved ? (
-                          <CheckCircle size={18} color="#16a34a" />
+                          <svg className="icon" style={{ color: 'var(--success)' }}><use href="#i-check-circle" /></svg>
                         ) : (
                           <input
                             type="checkbox"
                             checked={selectedIds.has(order.orderId)}
                             onChange={() => onToggleSelect(order.orderId)}
-                            style={{ cursor: 'pointer', width: '17px', height: '17px' }}
+                            title={`בחר הזמנה #${order.orderId}`}
                           />
                         )}
                       </td>
-                      <td style={{ padding: '0.4rem 0.5rem', color: '#64748b' }}>
-                        <div style={{ fontWeight: '500', color: '#334155' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'ללא תאריך'}</div>
-                        {hebrewDate && <div style={{ fontSize: '0.8rem' }}>{hebrewDate}</div>}
+                      <td className="cell-muted">
+                        <div style={{ fontWeight: 500, color: 'var(--text)' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'ללא תאריך'}</div>
+                        {hebrewDate && <div style={{ fontSize: '11.5px' }}>{hebrewDate}</div>}
                       </td>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>
-                        <div style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
-                          <Link href={`/customers/${order.customerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                      <td>
+                        <div style={{ fontWeight: 700, color: 'var(--primary-solid)' }}>
+                          <Link href={`/customers/${order.customerId}`} style={{ color: 'inherit', textDecoration: 'none' }}>
                             {order.customerName || 'לקוח לא ידוע'}
                           </Link>
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{order.customerPhone || ''}</div>
+                        <div className="hint" style={{ color: 'var(--text-3)' }}>{order.customerPhone || ''}</div>
                       </td>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>
-                        <Link href={`/orders/${order.orderId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#0ea5e9', textDecoration: 'none', fontWeight: 'bold', background: '#e0f2fe', padding: '0.4rem 0.8rem', borderRadius: '8px', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = '#bae6fd'} onMouseOut={(e) => e.currentTarget.style.background = '#e0f2fe'}>
+                      <td>
+                        <Link href={`/orders/${order.orderId}`} className="badge badge-info">
                           #{order.orderId}
-                          <ArrowUpRight size={14} />
+                          <svg className="icon"><use href="#i-link" /></svg>
                         </Link>
                       </td>
-                      <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: '#334155' }}>
-                        ₪{order.totalAmount}
-                      </td>
-                      <td style={{ padding: '0.4rem 0.5rem', color: '#16a34a' }}>
-                        ₪{order.totalPaid}
-                      </td>
-                      <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: accentColor, fontSize: '1.1rem' }}>
-                        ₪{debtAmount}
-                      </td>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>
+                      <td className="cell-primary">₪{order.totalAmount}</td>
+                      <td style={{ color: 'var(--success)' }}>₪{order.totalPaid}</td>
+                      <td style={{ fontWeight: 800, color: accentColor, fontSize: '15px' }}>₪{debtAmount}</td>
+                      <td>
                         <ApprovalCell orderId={order.orderId} approval={approval} onUndo={onUndoApproval} isBusy={isBusy} />
                       </td>
                     </tr>
                   );
-                })}
-              </tbody>
-            </table>
+                })
+              )}
+            </tbody>
+          </table>
+
+          {/* סרגל פעולה קבוצתית — מופיע כאשר נבחרו הזמנות לאישור תשלום */}
+          {selectedIds.size > 0 && (
+            <div className="bulk-bar">
+              <strong>{selectedIds.size} {selectedIds.size === 1 ? 'הזמנה נבחרה' : 'הזמנות נבחרו'}</strong>
+              <span className="spacer" style={{ flex: 1 }} />
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onClearSelection}>ביטול בחירה</button>
+              <button type="button" className="btn btn-primary btn-sm" disabled={isBusy} onClick={() => onOpenApproveModal(list)}>
+                <svg className="icon"><use href="#i-shield" /></svg>
+                אשר תשלום שנבחרו ({selectedIds.size})
+              </button>
+            </div>
+          )}
+
+          <div className="table-foot">
+            <span>סה&quot;כ שורות מוצגות: {list.length}</span>
+            {hasMore && (
+              <button type="button" className="btn btn-secondary btn-sm" disabled={loadingMore} onClick={onLoadMore}>
+                {loadingMore ? 'טוען...' : 'טען עוד'}
+                <svg className="icon"><use href="#i-chevron-start" /></svg>
+              </button>
+            )}
           </div>
-        )}
-        {!loading && hasMore && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '1.25rem' }}>
-            <button
-              onClick={onLoadMore}
-              disabled={loadingMore}
-              style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', border: '1px solid var(--element-border)', background: 'var(--card-bg)', color: accentColor, fontWeight: '600', cursor: loadingMore ? 'default' : 'pointer' }}
-            >
-              {loadingMore ? 'טוען...' : 'טען עוד'}
-            </button>
-          </div>
-        )}
-      </div>
+        </div>
+      )}
     </>
   );
 }
@@ -324,6 +330,8 @@ export default function RefundsPage() {
       return allSelected ? new Set() : new Set(ids);
     });
   };
+
+  const clearSelection = () => setSelectedIds(new Set());
 
   const openApproveModal = (list) => {
     const rows = list.filter(o => selectedIds.has(o.orderId));
@@ -566,216 +574,185 @@ export default function RefundsPage() {
     return matchesSearch;
   });
 
-  const tabTitle = activeTab === 'refunds' ? 'ניהול זיכויים' : activeTab === 'debts' ? 'ניהול חובות' : 'הזמנות מאושרות ללא תשלום מלא';
-  const tabColor = activeTab === 'refunds' ? 'var(--primary-color)' : activeTab === 'debts' ? '#e11d48' : '#d97706';
-
   return (
-    <main data-agy-id="refunds_page_main" className="container animate-fade-in page-shell" style={{ '--page-content-max': '1200px', paddingRight: '120px', maxWidth: 'calc(100% - 120px)' }}>
-      <div className="page-scroll">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ color: tabColor, margin: 0, display: 'flex', alignItems: 'center', gap: '0.8rem', fontSize: '2rem', fontWeight: 'bold' }}>
-          {activeTab === 'refunds' ? <Coins data-element-name="רכיב_page_1" size={32} /> : activeTab === 'debts' ? <AlertCircle size={32} /> : <ShieldCheck size={32} />}
-          {tabTitle}
-        </h1>
-      </div>
-
-
-      <div className="status-filters" style={{ marginBottom: '2rem', gap: '1.75rem' }}>
-        <button
-          onClick={() => setActiveTab('refunds')}
-          className={activeTab === 'refunds' ? 'status-filter active' : 'status-filter'}
-          style={activeTab === 'refunds' ? { color: 'var(--primary-color)', fontSize: '1.05rem' } : { fontSize: '1.05rem' }}
-        >
-          <Coins size={18} />
-          <span>זיכויים</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('debts')}
-          className={activeTab === 'debts' ? 'status-filter active' : 'status-filter'}
-          style={activeTab === 'debts' ? { color: '#e11d48', fontSize: '1.05rem' } : { fontSize: '1.05rem' }}
-        >
-          <AlertCircle size={18} />
-          <span>חובות פתוחים</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('approved')}
-          className={activeTab === 'approved' ? 'status-filter active' : 'status-filter'}
-          style={activeTab === 'approved' ? { color: '#d97706', fontSize: '1.05rem' } : { fontSize: '1.05rem' }}
-        >
-          <ShieldCheck size={18} />
-          <span>הזמנות מאושרות ללא תשלום מלא</span>
-        </button>
-      </div>
-
-      {activeTab === 'refunds' ? (
-        <>
-      <div className="toolbar-row" style={{ marginBottom: '2rem' }}>
-        <div className="search-box-modern">
-          <Search data-element-name="רכיב_page_4" size={18} />
-          <input data-element-name="שדה_page_5" data-agy-id="refunds_search_input"
-            type="text"
-            placeholder="חיפוש לפי שם לקוח, טלפון, הזמנה או סכום..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+    <>
+      <div className="page-head">
+        <div>
+          <h1>זיכויים וחובות</h1>
+          <div className="page-desc">ניהול זיכויים ומעקב חובות פתוחים</div>
         </div>
-
-        <div className="status-filters">
-          <button data-element-name="כפתור_page_6" data-agy-id="filter_all" onClick={() => setFilterStatus('all')} className={filterStatus === 'all' ? 'status-filter active c-blue' : 'status-filter'}>
-            <span>הכל</span>
-          </button>
-          <button data-element-name="כפתור_page_7" data-agy-id="filter_pending" onClick={() => setFilterStatus('pending')} className={filterStatus === 'pending' ? 'status-filter active c-amber' : 'status-filter'}>
-            <span>ממתינים</span>
-          </button>
-          <button data-element-name="כפתור_page_8" data-agy-id="filter_executed" onClick={() => setFilterStatus('executed')} className={filterStatus === 'executed' ? 'status-filter active c-green' : 'status-filter'}>
-            <span>בוצעו</span>
-          </button>
-        </div>
-
-        <div className="icon-toolbar">
-          <button data-element-name="כפתור_page_2" data-agy-id="refunds_export_btn" onClick={exportToCSV} className="icon-btn" title="ייצוא לאקסל">
-            <Download data-element-name="רכיב_page_3" size={19} />
-          </button>
-        </div>
-      </div>
-
-      <div style={{ background: 'var(--card-bg)', borderRadius: '16px', boxShadow: 'var(--shadow-md)', overflow: 'visible' }}>
-        {loading ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)' }}>
-             <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite', margin: '0 auto 1rem auto' }} />
-             טוען נתונים...
-          </div>
-        ) : filteredRefunds.length === 0 ? (
-          <div style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '1.2rem' }}>
-            לא נמצאו זיכויים תואמים.
-          </div>
-        ) : (
-          <div style={{ overflow: 'visible' }}>
-            <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
-              <thead>
-                <tr style={{ background: 'var(--sticky-header-bg, #ffffff)', color: 'var(--text-main)', borderBottom: '2px solid var(--border-color)' }}>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>תאריך</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>לקוח</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>הזמנה</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סכום</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פרטי בנק</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>אשראי מקורי</th>
-                  <th style={{ padding: '0.6rem 0.75rem', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>סטטוס</th>
-                  <th style={{ padding: '0.6rem 0.75rem', textAlign: 'center', position: 'sticky', top: 0, zIndex: 35, background: 'var(--sticky-header-bg, #ffffff)', boxShadow: '0 4px 10px -2px rgba(0,0,0,0.08)' }}>פעולות</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredRefunds.map(refund => (
-                  <tr key={refund.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                    <td style={{ padding: '0.4rem 0.5rem', color: '#64748b' }}>
-                      <div style={{ fontWeight: '500', color: '#334155' }}>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</div>
-                      {refund.isExecuted && <div style={{ fontSize: '0.8rem' }}>בוצע: {new Date(refund.executionDate).toLocaleDateString('he-IL')}</div>}
-                    </td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>
-                      <div style={{ fontWeight: 'bold', color: 'var(--primary-color)' }}>
-                        <Link data-element-name="רכיב_page_9" href={`/customers/${refund.customerId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-                          {refund.customer ? `${refund.customer.firstName || ''} ${refund.customer.lastName || ''}`.trim() : 'לקוח לא ידוע'}
-                        </Link>
-                      </div>
-                      <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{refund.customer?.phone1}</div>
-                      {refund.email && <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Mail data-element-name="רכיב_page_10" size={12}/> {refund.email}</div>}
-                    </td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>
-                      {refund.orderId ? (
-                        <Link data-element-name="רכיב_page_11" href={`/orders/${refund.orderId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#0ea5e9', textDecoration: 'none', fontWeight: 'bold', background: '#e0f2fe', padding: '0.4rem 0.8rem', borderRadius: '8px', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = '#bae6fd'} onMouseOut={(e) => e.currentTarget.style.background = '#e0f2fe'}>
-                          #{refund.orderId}
-                          <ArrowUpRight size={14} />
-                        </Link>
-                      ) : '-'}
-                    </td>
-                    <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: '#ef4444', fontSize: '1.1rem' }}>
-                      ₪{refund.amount}
-                      {refund.reason && <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 'normal' }}>{refund.reason}</div>}
-                    </td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>
-                      {refund.bankName || refund.bankAccount ? (
-                        <div style={{ fontSize: '0.9rem', color: '#334155' }}>
-                          <div>{refund.bankName || 'בנק חסר'} {refund.bankBranch ? `(סניף ${refund.bankBranch})` : ''}</div>
-                          <div style={{ fontWeight: '600' }}>{refund.bankAccount || 'חשבון חסר'}</div>
-                          {refund.bankAccountName && <div style={{ color: '#64748b', fontSize: '0.8rem' }}>{refund.bankAccountName}</div>}
-                        </div>
-                      ) : (
-                        <span style={{ color: '#94a3b8' }}>לא הוזנו</span>
-                      )}
-                    </td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>
-                      {refund.paymentDetails ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#334155', fontSize: '0.9rem' }}>
-                          <CreditCard data-element-name="רכיב_page_12" size={14} /> {refund.paymentDetails}
-                        </div>
-                      ) : <span style={{ color: '#94a3b8' }}>-</span>}
-                    </td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>
-                      <span className={refund.isExecuted ? 'status-dot c-green' : 'status-dot c-amber'}>
-                        {refund.isExecuted ? 'בוצע' : 'ממתין לביצוע'}
-                      </span>
-                    </td>
-                    <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                        {!refund.isExecuted && (
-                          <button data-element-name="כפתור_page_15" data-agy-id={`execute_btn_${refund.id}`}
-                            onClick={() => executeRefund(refund.id)}
-                            disabled={isProcessing}
-                            title="סמן כבוצע"
-                            style={{ background: '#dcfce7', color: '#16a34a', border: '1px solid #bbf7d0', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#bbf7d0'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#dcfce7'}
-                          >
-                            <CheckCircle data-element-name="רכיב_page_16" size={18} />
-                          </button>
-                        )}
-                        {refund.isExecuted && (
-                          <button data-element-name="כפתור_page_undo" data-agy-id={`undo_execute_btn_${refund.id}`}
-                            onClick={() => undoExecuteRefund(refund.id)}
-                            disabled={isProcessing}
-                            title="בטל ביצוע"
-                            style={{ background: '#fef3c7', color: '#d97706', border: '1px solid #fde68a', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                            onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fde68a'}
-                            onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fef3c7'}
-                          >
-                            <RotateCcw data-element-name="רכיב_page_undo_icon" size={18} />
-                          </button>
-                        )}
-                        <button data-element-name="כפתור_page_17" data-agy-id={`cancel_btn_${refund.id}`}
-                          onClick={() => cancelRefund(refund.id)}
-                          disabled={isProcessing}
-                          title="בטל בקשה"
-                          style={{ background: '#fee2e2', color: '#dc2626', border: '1px solid #fecaca', padding: '0.5rem', borderRadius: '8px', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#fecaca'}
-                          onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#fee2e2'}
-                        >
-                          <XCircle data-element-name="רכיב_page_18" size={18} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {!loading && refundsHasMore && (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '1.25rem' }}>
-            <button
-              onClick={loadMoreRefunds}
-              disabled={loadingMoreRefunds}
-              style={{ padding: '0.6rem 1.5rem', borderRadius: '12px', border: '1px solid var(--element-border)', background: 'var(--card-bg)', color: 'var(--primary-color)', fontWeight: '600', cursor: loadingMoreRefunds ? 'default' : 'pointer' }}
-            >
-              {loadingMoreRefunds ? 'טוען...' : 'טען זיכויים ישנים יותר'}
+        <div className="page-actions">
+          {activeTab === 'refunds' && (
+            <button type="button" className="btn btn-secondary btn-icon-only" title="ייצוא זיכויים לאקסל" onClick={exportToCSV}>
+              <svg className="icon"><use href="#i-download" /></svg>
             </button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
+      <div className="tabs">
+        <button type="button" className={activeTab === 'refunds' ? 'tab active' : 'tab'} onClick={() => setActiveTab('refunds')}>
+          <svg className="icon"><use href="#i-coin" /></svg>
+          זיכויים
+        </button>
+        <button type="button" className={activeTab === 'debts' ? 'tab active' : 'tab'} onClick={() => setActiveTab('debts')}>
+          <svg className="icon"><use href="#i-alert-circle" /></svg>
+          חובות פתוחים
+        </button>
+        <button type="button" className={activeTab === 'approved' ? 'tab active' : 'tab'} onClick={() => setActiveTab('approved')}>
+          <svg className="icon"><use href="#i-shield" /></svg>
+          הזמנות מאושרות ללא תשלום מלא
+        </button>
+      </div>
+
+      {activeTab === 'refunds' && (
+        <>
+          <div className="toolbar">
+            <div className="input-icon-wrap" style={{ flex: 1, maxWidth: '420px' }}>
+              <svg className="icon"><use href="#i-search" /></svg>
+              <input
+                className="input"
+                type="text"
+                placeholder="חיפוש לפי שם לקוח, טלפון, הזמנה או סכום..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="pill-tabs">
+              <button type="button" onClick={() => setFilterStatus('all')} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'}>הכל</button>
+              <button type="button" onClick={() => setFilterStatus('pending')} className={filterStatus === 'pending' ? 'pill-tab active' : 'pill-tab'}>ממתינים</button>
+              <button type="button" onClick={() => setFilterStatus('executed')} className={filterStatus === 'executed' ? 'pill-tab active' : 'pill-tab'}>בוצעו</button>
+            </div>
+            <span className="spacer" />
+          </div>
+
+          {loading ? (
+            <div className="page-loading">
+              <span className="spinner lg" />
+              טוען נתונים...
+            </div>
+          ) : (
+            <div className="table-wrap">
+              <table className="data">
+                <thead>
+                  <tr>
+                    <th>תאריך</th>
+                    <th>לקוח</th>
+                    <th>הזמנה</th>
+                    <th>סכום</th>
+                    <th>פרטי בנק</th>
+                    <th>אשראי מקורי</th>
+                    <th>סטטוס</th>
+                    <th style={{ textAlign: 'center' }}></th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredRefunds.length === 0 ? (
+                    <tr>
+                      <td colSpan="8">
+                        <div className="empty-state">
+                          <svg className="icon"><use href="#i-search" /></svg>
+                          <p>לא נמצאו זיכויים תואמים.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredRefunds.map(refund => (
+                      <tr key={refund.id}>
+                        <td className="cell-muted">
+                          <div style={{ fontWeight: 500, color: 'var(--text)' }}>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</div>
+                          {refund.isExecuted && <div style={{ fontSize: '11.5px' }}>בוצע: {new Date(refund.executionDate).toLocaleDateString('he-IL')}</div>}
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 700, color: 'var(--primary-solid)' }}>
+                            <Link href={`/customers/${refund.customerId}`} style={{ color: 'inherit', textDecoration: 'none' }}>
+                              {refund.customer ? `${refund.customer.firstName || ''} ${refund.customer.lastName || ''}`.trim() : 'לקוח לא ידוע'}
+                            </Link>
+                          </div>
+                          <div className="hint" style={{ color: 'var(--text-3)' }}>{refund.customer?.phone1}</div>
+                          {refund.email && (
+                            <div className="hint" style={{ color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                              <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-mail" /></svg>
+                              {refund.email}
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          {refund.orderId ? (
+                            <Link href={`/orders/${refund.orderId}`} className="badge badge-info">
+                              #{refund.orderId}
+                              <svg className="icon"><use href="#i-link" /></svg>
+                            </Link>
+                          ) : '-'}
+                        </td>
+                        <td>
+                          <span style={{ fontWeight: 700, color: 'var(--danger)', fontSize: '15px' }}>₪{refund.amount}</span>
+                          {refund.reason && <div className="hint" style={{ color: 'var(--text-3)' }}>{refund.reason}</div>}
+                        </td>
+                        <td>
+                          {refund.bankName || refund.bankAccount ? (
+                            <div style={{ fontSize: '12.5px' }}>
+                              <div>{refund.bankName || 'בנק חסר'} {refund.bankBranch ? `(סניף ${refund.bankBranch})` : ''}</div>
+                              <div style={{ fontWeight: 600 }}>{refund.bankAccount || 'חשבון חסר'}</div>
+                              {refund.bankAccountName && <div className="hint" style={{ color: 'var(--text-3)' }}>{refund.bankAccountName}</div>}
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--text-3)' }}>לא הוזנו</span>
+                          )}
+                        </td>
+                        <td>
+                          {refund.paymentDetails ? (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px' }}>
+                              <svg className="icon" style={{ width: '14px', height: '14px', color: 'var(--text-3)' }}><use href="#i-card" /></svg>
+                              {refund.paymentDetails}
+                            </div>
+                          ) : <span style={{ color: 'var(--text-3)' }}>-</span>}
+                        </td>
+                        <td>
+                          <span className={refund.isExecuted ? 'badge badge-success' : 'badge badge-warning'}>
+                            <svg className="icon"><use href={refund.isExecuted ? '#i-check-circle' : '#i-clock'} /></svg>
+                            {refund.isExecuted ? 'בוצע' : 'ממתין לביצוע'}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="row-actions" style={{ justifyContent: 'center' }}>
+                            {!refund.isExecuted && (
+                              <button type="button" className="btn btn-secondary btn-icon-only btn-sm" onClick={() => executeRefund(refund.id)} disabled={isProcessing} title="סמן כבוצע">
+                                <svg className="icon"><use href="#i-check-circle" /></svg>
+                              </button>
+                            )}
+                            {refund.isExecuted && (
+                              <button type="button" className="btn btn-secondary btn-icon-only btn-sm" onClick={() => undoExecuteRefund(refund.id)} disabled={isProcessing} title="בטל ביצוע">
+                                <svg className="icon"><use href="#i-refresh" /></svg>
+                              </button>
+                            )}
+                            <button type="button" className="btn btn-danger-ghost btn-icon-only btn-sm" onClick={() => cancelRefund(refund.id)} disabled={isProcessing} title="בטל בקשה">
+                              <svg className="icon"><use href="#i-x-circle" /></svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+              <div className="table-foot">
+                <span>סה&quot;כ שורות מוצגות: {filteredRefunds.length}</span>
+                {refundsHasMore && (
+                  <button type="button" className="btn btn-secondary btn-sm" disabled={loadingMoreRefunds} onClick={loadMoreRefunds}>
+                    {loadingMoreRefunds ? 'טוען...' : 'טען זיכויים ישנים יותר'}
+                    <svg className="icon"><use href="#i-chevron-start" /></svg>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
         </>
-      ) : activeTab === 'debts' ? (
+      )}
+
+      {activeTab === 'debts' && (
         <DebtsTable
-          accentColor="#e11d48"
+          accentColor="var(--danger)"
           list={debts}
           loading={debtsLoading}
           hasMore={debtsHasMore}
@@ -789,17 +766,21 @@ export default function RefundsPage() {
           selectedIds={selectedIds}
           onToggleSelect={toggleSelect}
           onToggleSelectAll={toggleSelectAll}
+          onClearSelection={clearSelection}
           onOpenApproveModal={openApproveModal}
           onUndoApproval={undoDebtApproval}
           isBusy={isApproving}
         />
-      ) : (
+      )}
+
+      {activeTab === 'approved' && (
         <>
-          <div style={{ background: '#fffbeb', border: '1px solid #fde68a', color: '#92400e', padding: '0.9rem 1.25rem', borderRadius: '12px', marginBottom: '1.5rem', fontSize: '0.9rem', lineHeight: 1.6 }}>
-            הזמנות שכבר יצאו בפועל (לפחות פריט אחד נמסר ללקוח) ועדיין נותרת בהן יתרת חוב פתוחה - להבדיל מטאב "חובות פתוחים" שמציג גם הזמנות עתידיות שטרם יצאו.
+          <div className="callout callout-warning" style={{ marginBottom: '18px' }}>
+            <svg className="icon"><use href="#i-alert-tri" /></svg>
+            <div>הזמנות שכבר יצאו בפועל (לפחות פריט אחד נמסר ללקוח) ועדיין נותרת בהן יתרת חוב פתוחה - להבדיל מטאב &quot;חובות פתוחים&quot; שמציג גם הזמנות עתידיות שטרם יצאו.</div>
           </div>
           <DebtsTable
-            accentColor="#d97706"
+            accentColor="var(--warning)"
             list={approvedDebts}
             loading={approvedLoading}
             hasMore={approvedHasMore}
@@ -813,53 +794,52 @@ export default function RefundsPage() {
             selectedIds={selectedIds}
             onToggleSelect={toggleSelect}
             onToggleSelectAll={toggleSelectAll}
+            onClearSelection={clearSelection}
             onOpenApproveModal={openApproveModal}
             onUndoApproval={undoDebtApproval}
             isBusy={isApproving}
           />
         </>
       )}
-      </div>
 
-      {/* סיכום הרשומות — מוצמד תמיד לתחתית המסך */}
-      <div className="page-footer-bar">
-        <div className="page-footer-summary">
-          {activeTab === 'refunds'
-            ? `סה"כ שורות מוצגות: ${loading ? '...' : filteredRefunds.length}`
-            : activeTab === 'debts'
-            ? `סה"כ שורות מוצגות: ${debtsLoading ? '...' : debts.length}`
-            : `סה"כ שורות מוצגות: ${approvedLoading ? '...' : approvedDebts.length}`}
-        </div>
-      </div>
-
-      {/* מודל אישור תשלום לחובות שנבחרו - עיצוב moc אחיד עם שאר האפליקציה */}
+      {/* מודל אישור תשלום לחובות שנבחרו */}
       {confirmModal.open && (
-        <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && !isApproving) setConfirmModal({ open: false, orderIds: [], totalAmount: 0 }); }}>
-          <div className="moc moc-modal-box" style={{ maxWidth: '440px', textAlign: 'center' }}>
-            <div className="moc-modal-body" style={{ paddingTop: '28px' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', background: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)' }}>
-                <ShieldCheck size={26} />
-              </div>
-              <h3 style={{ margin: '0 0 10px', fontSize: '1.2rem' }}>אישור יתרת חוב לתשלום</h3>
-              <p style={{ color: 'var(--moc-text-muted)', margin: 0, lineHeight: 1.6 }}>
-                מסמן {confirmModal.orderIds.length} {confirmModal.orderIds.length === 1 ? 'הזמנה' : 'הזמנות'} בסך כולל של{' '}
-                <strong>₪{confirmModal.totalAmount.toLocaleString()}</strong> כמאושרות לתשלום ע״י מנהל.
-              </p>
-              <p style={{ color: 'var(--moc-text-muted)', fontSize: '0.85rem', marginTop: '10px', lineHeight: 1.6 }}>
-                הפעולה מתעדת אישור מנהל ליתרת החוב ותופיע בהיסטוריית ההזמנה (כמו כל אישור מנהל אחר במערכת). היא אינה יוצרת תשלום בפועל בכרטיס ההזמנה, וניתן לבטל אותה בכל עת.
-              </p>
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget && !isApproving) setConfirmModal({ open: false, orderIds: [], totalAmount: 0 }); }}
+        >
+          <div className="modal confirm-modal">
+            <div className="modal-icon-circle" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
+              <svg className="icon"><use href="#i-shield" /></svg>
             </div>
-            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
-              <button className="moc-btn moc-btn-outline" disabled={isApproving} onClick={() => setConfirmModal({ open: false, orderIds: [], totalAmount: 0 })}>ביטול</button>
-              <button className="moc-btn moc-btn-gold" disabled={isApproving} onClick={confirmApproveSelected}>
-                {isApproving ? <><span className="moc-spinner" /> מאשר...</> : <><ShieldCheck size={15} /> אשר תשלום</>}
+            <h3>אישור יתרת חוב לתשלום</h3>
+            <p>
+              מסמן {confirmModal.orderIds.length} {confirmModal.orderIds.length === 1 ? 'הזמנה' : 'הזמנות'} בסך כולל של{' '}
+              <strong>₪{confirmModal.totalAmount.toLocaleString()}</strong> כמאושרות לתשלום ע״י מנהל.
+            </p>
+            <p style={{ fontSize: '11.5px' }}>
+              הפעולה מתעדת אישור מנהל ליתרת החוב ותופיע בהיסטוריית ההזמנה (כמו כל אישור מנהל אחר במערכת). היא אינה יוצרת תשלום בפועל בכרטיס ההזמנה, וניתן לבטל אותה בכל עת.
+            </p>
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-secondary" disabled={isApproving} onClick={() => setConfirmModal({ open: false, orderIds: [], totalAmount: 0 })}>ביטול</button>
+              <button type="button" className="btn btn-primary" disabled={isApproving} onClick={confirmApproveSelected}>
+                {isApproving ? (
+                  <>
+                    <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
+                    מאשר...
+                  </>
+                ) : (
+                  <>
+                    <svg className="icon"><use href="#i-shield" /></svg>
+                    אשר תשלום
+                  </>
+                )}
               </button>
             </div>
           </div>
         </div>
       )}
-
-      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-    </main>
+    </>
   );
 }

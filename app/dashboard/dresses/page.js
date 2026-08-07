@@ -4,8 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
-import { RefreshCw, Trash2, CheckCircle, XCircle, List, ArrowUp, ArrowDown, ArrowUpDown, Filter, Plus } from 'lucide-react';
-import AISearchBar from '@/app/components/AISearchBar';
 import { useLabels } from '@/app/components/LabelsContext';
 import { fetchSharedJson, readCache, TTL } from '@/lib/apiCache';
 import { buildDressesListParams } from '@/app/lib/prefetchRoutes';
@@ -94,7 +92,7 @@ export default function DressesManagement() {
     } else {
       Object.assign(settingsObj, data);
     }
-    
+
     setSettings(settingsObj);
   };
 
@@ -105,14 +103,14 @@ export default function DressesManagement() {
   useEffect(() => {
     const handler = setTimeout(() => {
       fetchDresses(false, page);
-      
+
       // Background Prefetching for the next page
       const prefetchTimer = setTimeout(() => {
         if (page < totalPages) {
           fetchDresses(true, page + 1);
         }
       }, 1500);
-      
+
     }, 400); // Debounce API calls
     return () => clearTimeout(handler);
   }, [page, limit, filterStatus, catalogSearch, catalogSort, advancedFilters, totalPages]);
@@ -124,7 +122,7 @@ export default function DressesManagement() {
 
   const handleDeleteModel = async (id) => {
     if (!await window.customConfirm('האם אתה בטוח שברצונך למחוק דגם זה? לא ניתן למחוק אם יש פריטים מקושרים.')) return;
-    
+
     try {
       const res = await fetch(`/api/dresses/${id}`, { method: 'DELETE' });
       const data = await res.json();
@@ -162,7 +160,7 @@ export default function DressesManagement() {
 
   const handleReturnToActivity = async (dress) => {
     if (!await window.customConfirm(`האם אתה בטוח שברצונך להחזיר לפעילות את הדגם ${dress.barcodePrefix || dress.name}?`)) return;
-    
+
     // Check if the reason it's inactive is because of items
     const hasActiveItems = dress.items && dress.items.length > 0 && dress.items.some(i => !i.notInUse && !i.isDeleted);
     if (!hasActiveItems) {
@@ -213,166 +211,253 @@ export default function DressesManagement() {
     setCatalogSort({ key, direction });
   };
 
+  const renderCatalogSortIcon = (key) => {
+    if (catalogSort.key !== key) {
+      return <svg className="icon"><use href="#i-sort" /></svg>;
+    }
+    return (
+      <svg className="icon" style={{ opacity: 1, color: 'var(--primary-solid)', transform: catalogSort.direction === 'desc' ? 'rotate(180deg)' : 'none' }}>
+        <use href="#i-chevron-down" />
+      </svg>
+    );
+  };
+
   const useModelNames = settings.useModelNames !== 'false';
+  const showImageColumn = settings.hide_dress_images !== 'true';
+  const emptyStateColSpan = 4 + (showImageColumn ? 1 : 0) + (useModelNames ? 1 : 0);
 
   return (
     <>
-      <main className="container animate-fade-in page-shell">
-        <div className="page-scroll">
-        {/* סרגל אחד: כותרת + חיפוש + פילטרים + פעולות */}
-        <div className="toolbar-row" style={{ marginBottom: '1.5rem' }}>
-          <h1 className="toolbar-title">
-            <strong>מאגר שמלות - קטלוג ראשי</strong>
-            <small>סה"כ רשומות: {totalDresses}</small>
-          </h1>
+      <div className="page-head">
+        <div>
+          <h1>מאגר שמלות - קטלוג ראשי</h1>
+          <div className="page-desc">סה"כ רשומות: {totalDresses}</div>
+        </div>
+        <div className="page-actions">
+          <button
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className="btn btn-secondary btn-icon-only"
+            title="סינון מתקדם"
+            style={showAdvancedFilters ? { color: 'var(--primary-solid)', borderColor: 'var(--primary-solid)' } : undefined}
+          >
+            <svg className="icon"><use href="#i-list" /></svg>
+          </button>
+          <button
+            onClick={() => router.push('/dashboard/dresses/new')}
+            className="btn btn-primary"
+          >
+            <svg className="icon"><use href="#i-plus" /></svg>
+            דגם חדש
+          </button>
+        </div>
+      </div>
 
-          <AISearchBar data-element-name="שדה_page_1"
+      {/* סרגל חיפוש: מקביל להתנהגות ה-AISearchBar הישן על הדף הזה — חיפוש טקסט חופשי בלבד
+          (ללא חיפוש AI/סטטיסטיקה מחוברים בפועל בדף המקורי), עם ניקוי מיידי */}
+      <div className="toolbar">
+        <div className="search-toolbar">
+          <svg className="icon"><use href="#i-search" /></svg>
+          <input
+            type="text"
             placeholder="חיפוש טקסט חופשי (שם, מקט, מידה)..."
             value={catalogSearch}
             onChange={e => setCatalogSearch(e.target.value)}
-            onClear={() => setCatalogSearch('')}
           />
-
-          <div className="status-filters">
-            <button data-element-name="כפתור_page_4" onClick={() => setFilterStatus('active')} className={filterStatus === 'active' ? 'status-filter active c-green' : 'status-filter'} title="דגמים פעילים">
-              <CheckCircle data-element-name="רכיב_page_5" size={16} />
-              <span>פעילים</span>
-            </button>
-            <button data-element-name="כפתור_page_6" onClick={() => setFilterStatus('inactive')} className={filterStatus === 'inactive' ? 'status-filter active c-amber' : 'status-filter'} title="לא פעילים">
-              <XCircle data-element-name="רכיב_page_7" size={16} />
-              <span>לא פעילים</span>
-            </button>
-            <button data-element-name="כפתור_page_8" onClick={() => setFilterStatus('deleted')} className={filterStatus === 'deleted' ? 'status-filter active c-red' : 'status-filter'} title="מחוקים">
-              <Trash2 data-element-name="רכיב_page_9" size={16} />
-              <span>מחוקים</span>
-            </button>
-            <button data-element-name="כפתור_page_10" onClick={() => setFilterStatus('all')} className={filterStatus === 'all' ? 'status-filter active c-blue' : 'status-filter'} title="הצג הכל">
-              <List data-element-name="רכיב_page_11" size={16} />
-              <span>הכל</span>
-            </button>
-          </div>
-
-          <div className="icon-toolbar">
-            <button data-element-name="כפתור_page_3"
-              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-              className="icon-btn"
-              title="סינון מתקדם"
-              style={showAdvancedFilters ? { color: 'var(--primary-color)' } : undefined}
-            >
-              <Filter data-element-name="רכיב_filter_icon" size={19} />
-            </button>
-
-            <span className="icon-sep"></span>
-
-            <button data-element-name="כפתור_page_12"
-              onClick={() => router.push('/dashboard/dresses/new')}
-              className="icon-btn icon-btn-primary"
-              title="הוסף דגם חדש"
-            >
-              <Plus data-element-name="רכיב_plus_icon" size={17} />
-              <span>דגם חדש</span>
-            </button>
+          <div className="search-toolbar-actions">
+            {catalogSearch && (
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה חיפוש" onClick={() => setCatalogSearch('')}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
+            )}
           </div>
         </div>
+      </div>
 
-        {showAdvancedFilters && (
-          <div style={{ background: 'var(--element-bg)', padding: '1rem', borderRadius: '12px', marginBottom: '1.5rem', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.05)', border: '1px solid var(--element-border)', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <div style={{ fontWeight: 'bold', color: 'var(--primary-color)', width: '100%' }}>סינון מתקדם:</div>
-            
-            <input data-element-name="שדה_page_13" type="text" placeholder="שם דגם / קידומת" value={advancedFilters.name} onChange={e => setAdvancedFilters({...advancedFilters, name: e.target.value})} className="filter-select" style={{ minWidth: '150px' }} />
-            <input data-element-name="שדה_page_14" type="text" placeholder="מידה" value={advancedFilters.size} onChange={e => setAdvancedFilters({...advancedFilters, size: e.target.value})} className="filter-select" style={{ width: '80px' }} />
-            <input data-element-name="שדה_page_15" type="number" placeholder="מס' סידורי" value={advancedFilters.serialNumber} onChange={e => setAdvancedFilters({...advancedFilters, serialNumber: e.target.value})} className="filter-select" style={{ width: '100px' }} />
-            <input data-element-name="שדה_page_16" type="number" placeholder="השכרות מינימום" value={advancedFilters.rentalsCountMin} onChange={e => setAdvancedFilters({...advancedFilters, rentalsCountMin: e.target.value})} className="filter-select" style={{ width: '140px' }} />
-            
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'var(--card-bg)', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid var(--element-border)' }}>
-              <input data-element-name="שדה_page_17" type="checkbox" checked={advancedFilters.notInUse} onChange={e => setAdvancedFilters({...advancedFilters, notInUse: e.target.checked})} />
-              לא בשימוש (פריט)
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'var(--card-bg)', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid var(--element-border)' }}>
-              <input data-element-name="שדה_page_18" type="checkbox" checked={advancedFilters.inRepair} onChange={e => setAdvancedFilters({...advancedFilters, inRepair: e.target.checked})} />
-              בתיקון
-            </label>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer', background: 'var(--card-bg)', padding: '0.4rem 0.8rem', borderRadius: '20px', border: '1px solid var(--element-border)' }}>
-              <input data-element-name="שדה_page_19" type="checkbox" checked={advancedFilters.itemDeleted} onChange={e => setAdvancedFilters({...advancedFilters, itemDeleted: e.target.checked})} />
-              פריט מחוק
-            </label>
-            
-            <button data-element-name="כפתור_page_20" onClick={() => setAdvancedFilters({name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false})} className="btn" style={{ background: 'var(--element-bg)', color: 'var(--text-main)', border: 'none', padding: '0.4rem 1rem' }}>
-              נקה סינונים
-            </button>
+      {/* סינון סטטוס: פעילים / לא פעילים / מחוקים / הכל */}
+      <div className="pill-tabs" style={{ marginBottom: '20px' }}>
+        <button onClick={() => setFilterStatus('active')} className={filterStatus === 'active' ? 'pill-tab active' : 'pill-tab'} title="דגמים פעילים">
+          <svg className="icon"><use href="#i-check-circle" /></svg>
+          פעילים
+        </button>
+        <button onClick={() => setFilterStatus('inactive')} className={filterStatus === 'inactive' ? 'pill-tab active' : 'pill-tab'} title="לא פעילים">
+          <svg className="icon"><use href="#i-x-circle" /></svg>
+          לא פעילים
+        </button>
+        <button onClick={() => setFilterStatus('deleted')} className={filterStatus === 'deleted' ? 'pill-tab active' : 'pill-tab'} title="מחוקים">
+          <svg className="icon"><use href="#i-trash" /></svg>
+          מחוקים
+        </button>
+        <button onClick={() => setFilterStatus('all')} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
+          <svg className="icon"><use href="#i-list" /></svg>
+          הכל
+        </button>
+      </div>
+
+      {showAdvancedFilters && (
+        <div className="card card-pad" style={{ marginBottom: '20px' }}>
+          <h2 style={{ fontSize: '14.5px', marginBottom: '14px' }}>סינון מתקדם:</h2>
+
+          <div className="form-grid cols-3">
+            <div className="field">
+              <label htmlFor="dresses-filter-name">שם דגם / קידומת</label>
+              <input id="dresses-filter-name" type="text" className="input" value={advancedFilters.name} onChange={e => setAdvancedFilters({ ...advancedFilters, name: e.target.value })} />
+            </div>
+            <div className="field">
+              <label htmlFor="dresses-filter-size">מידה</label>
+              <input id="dresses-filter-size" type="text" className="input" value={advancedFilters.size} onChange={e => setAdvancedFilters({ ...advancedFilters, size: e.target.value })} />
+            </div>
+            <div className="field">
+              <label htmlFor="dresses-filter-serial">מס' סידורי</label>
+              <input id="dresses-filter-serial" type="number" className="input" value={advancedFilters.serialNumber} onChange={e => setAdvancedFilters({ ...advancedFilters, serialNumber: e.target.value })} />
+            </div>
           </div>
-        )}
-        
-        {loading ? (
-          <div style={{ textAlign: 'center', padding: '3rem' }}>טוען נתונים...</div>
-        ) : (
-          <div style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '1rem', boxShadow: 'var(--shadow-sm)' }}>
-            <div style={{ overflow: 'visible', minHeight: '50vh' }}>
-              <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--element-border)', background: 'var(--element-bg)' }}>
-                  {settings.hide_dress_images !== 'true' && <th style={{ padding: '0.4rem 0.5rem' }}>תמונה</th>}
-                  <th data-element-name="לחיץ_page_21" style={{ padding: '0.4rem 0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('barcodePrefix')}>{getLabel('item_barcode', 'קוד')} {catalogSort.key === 'barcodePrefix' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_22" size={14}/> : <ArrowDown data-element-name="רכיב_page_23" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_24" size={14} color="var(--text-muted)" />}</th>
-                  {useModelNames && <th data-element-name="לחיץ_page_25" style={{ padding: '0.4rem 0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('name')}>{getLabel('item_modelName', 'שם דגם')} {catalogSort.key === 'name' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_26" size={14}/> : <ArrowDown data-element-name="רכיב_page_27" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_28" size={14} color="var(--text-muted)" />}</th>}
-                  <th data-element-name="לחיץ_page_29" style={{ padding: '0.4rem 0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('entryDateToRepo')}>תאריך כניסה {catalogSort.key === 'entryDateToRepo' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_30" size={14}/> : <ArrowDown data-element-name="רכיב_page_31" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_32" size={14} color="var(--text-muted)" />}</th>
-                  <th data-element-name="לחיץ_page_33" style={{ padding: '0.4rem 0.5rem', cursor: 'pointer', whiteSpace: 'nowrap' }} onClick={() => handleCatalogSort('itemsCount')}>כמות פריטים {catalogSort.key === 'itemsCount' ? (catalogSort.direction === 'asc' ? <ArrowUp data-element-name="רכיב_page_34" size={14}/> : <ArrowDown data-element-name="רכיב_page_35" size={14}/>) : <ArrowUpDown data-element-name="רכיב_page_36" size={14} color="var(--text-muted)" />}</th>
-                  <th style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>פעולות</th>
+          <div className="form-grid cols-3">
+            <div className="field">
+              <label htmlFor="dresses-filter-rentals-min">השכרות מינימום</label>
+              <input id="dresses-filter-rentals-min" type="number" className="input" value={advancedFilters.rentalsCountMin} onChange={e => setAdvancedFilters({ ...advancedFilters, rentalsCountMin: e.target.value })} />
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '14px' }}>
+            <div className="checkbox-row">
+              <input id="dresses-filter-not-in-use" type="checkbox" checked={advancedFilters.notInUse} onChange={e => setAdvancedFilters({ ...advancedFilters, notInUse: e.target.checked })} />
+              <label htmlFor="dresses-filter-not-in-use">לא בשימוש (פריט)</label>
+            </div>
+            <div className="checkbox-row">
+              <input id="dresses-filter-in-repair" type="checkbox" checked={advancedFilters.inRepair} onChange={e => setAdvancedFilters({ ...advancedFilters, inRepair: e.target.checked })} />
+              <label htmlFor="dresses-filter-in-repair">בתיקון</label>
+            </div>
+            <div className="checkbox-row">
+              <input id="dresses-filter-item-deleted" type="checkbox" checked={advancedFilters.itemDeleted} onChange={e => setAdvancedFilters({ ...advancedFilters, itemDeleted: e.target.checked })} />
+              <label htmlFor="dresses-filter-item-deleted">פריט מחוק</label>
+            </div>
+          </div>
+
+          <button className="btn btn-secondary btn-sm" onClick={() => setAdvancedFilters({ name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false })}>
+            נקה סינונים
+          </button>
+        </div>
+      )}
+
+      {loading ? (
+        <div className="loading-inline"><span className="spinner" /> טוען נתונים...</div>
+      ) : (
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                {showImageColumn && <th>תמונה</th>}
+                <th className={catalogSort.key === 'barcodePrefix' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('barcodePrefix')}>
+                  {getLabel('item_barcode', 'קוד')} {renderCatalogSortIcon('barcodePrefix')}
+                </th>
+                {useModelNames && (
+                  <th className={catalogSort.key === 'name' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('name')}>
+                    {getLabel('item_modelName', 'שם דגם')} {renderCatalogSortIcon('name')}
+                  </th>
+                )}
+                <th className={catalogSort.key === 'entryDateToRepo' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('entryDateToRepo')}>
+                  תאריך כניסה {renderCatalogSortIcon('entryDateToRepo')}
+                </th>
+                <th className={catalogSort.key === 'itemsCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('itemsCount')}>
+                  כמות פריטים {renderCatalogSortIcon('itemsCount')}
+                </th>
+                <th style={{ textAlign: 'center' }}>פעולות</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredDresses.length === 0 ? (
+                <tr>
+                  <td colSpan={emptyStateColSpan} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)', fontSize: '1.2rem' }}>
+                    לא נמצאו דגמים. נסה לשנות את הסינון או הוסף דגם חדש.
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {filteredDresses.length === 0 ? (
-                  <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', fontSize: '1.2rem' }}>
-                      לא נמצאו דגמים. נסה לשנות את הסינון או הוסף דגם חדש.
-                    </td>
-                  </tr>
-                ) : filteredDresses.map(dress => (
-                  <tr key={dress.id} style={{ borderBottom: '1px solid var(--element-border)', background: dress.isDeleted ? 'var(--deleted-bg, rgba(220, 38, 38, 0.08))' : ((!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo ? 'var(--inactive-bg, rgba(217, 119, 6, 0.07))' : 'transparent') }}>
-                    {settings.hide_dress_images !== 'true' && (
-                      <td style={{ padding: '0.4rem 0.5rem' }}>
-                        {getImageSource(dress) ? (
-                          <img src={getImageSource(dress)} alt={dress.name} onError={(e) => {e.target.style.display='none'; e.target.nextSibling.style.display='flex';}} style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }} />
-                        ) : null}
-                        <div style={{ display: getImageSource(dress) ? 'none' : 'flex', width: '50px', height: '50px', background: 'var(--element-bg)', borderRadius: '4px', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>אין</div>
+              ) : filteredDresses.map(dress => {
+                const isInactive = (!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo;
+                const imgSrc = getImageSource(dress);
+                return (
+                  <tr key={dress.id} className={dress.isDeleted ? 'row-flag' : undefined} style={!dress.isDeleted && isInactive ? { background: 'var(--warning-tint)' } : undefined}>
+                    {showImageColumn && (
+                      <td>
+                        {imgSrc && (
+                          <img
+                            src={imgSrc}
+                            alt={dress.name}
+                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
+                            style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
+                          />
+                        )}
+                        <div
+                          className="file-icon"
+                          style={{
+                            display: imgSrc ? 'none' : 'flex', width: '44px', height: '44px', alignItems: 'center', justifyContent: 'center',
+                            borderRadius: 'var(--radius-sm)', background: 'var(--surface-alt)', color: 'var(--text-3)', fontSize: '10.5px'
+                          }}
+                        >
+                          אין
+                        </div>
                       </td>
                     )}
-                    <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: 'var(--primary-color)' }}>{dress.barcodePrefix || '-'}</td>
-                    {useModelNames && <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold' }}>{dress.name}</td>}
-                    <td style={{ padding: '0.4rem 0.5rem' }}>{formatHebrewDate(dress.entryDateToRepo)}</td>
-                    <td style={{ padding: '0.4rem 0.5rem' }}>{dress.items?.filter(i => !i.isDeleted).length || 0}</td>
-                    <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
-                      <Link data-element-name="כפתור_page_37" href={`/dashboard/dresses/${dress.id}`} className="btn btn-primary" style={{ padding: '0.3rem 0.8rem', fontSize: '0.9rem', marginLeft: '0.5rem', textDecoration: 'none', display: 'inline-block' }}>כרטיס שמלה</Link>
-                      {dress.isDeleted ? (
-                        <button data-element-name="כפתור_page_38" onClick={() => handleRestoreModel(dress)} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.9rem', borderColor: 'var(--success-text)', color: 'var(--success-text)' }} title="שחזר"><RefreshCw data-element-name="רכיב_page_39" size={18} /></button>
-                      ) : ((!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo) ? (
-                        <button data-element-name="כפתור_page_40" onClick={() => handleReturnToActivity(dress)} className="btn btn-outline" style={{ padding: '0.3rem 0.8rem', fontSize: '0.9rem', borderColor: 'var(--warning-color)', color: 'var(--warning-color)' }}>החזר לפעילות</button>
-                      ) : (
-                        <button data-element-name="כפתור_page_41" onClick={() => handleDeleteModel(dress.id)} className="btn btn-outline" style={{ padding: '0.3rem 0.6rem', fontSize: '0.9rem', borderColor: 'var(--danger-text)', color: 'var(--danger-text)' }} title="מחק"><Trash2 data-element-name="רכיב_page_42" size={18} /></button>
-                      )}
+                    <td className={dress.isDeleted ? 'cell-primary cell-muted' : 'cell-primary'}>{dress.barcodePrefix || '-'}</td>
+                    {useModelNames && (
+                      <td className={dress.isDeleted ? 'cell-primary cell-muted' : 'cell-primary'}>
+                        {dress.name}
+                      </td>
+                    )}
+                    <td className={dress.isDeleted ? 'cell-muted' : undefined}>{formatHebrewDate(dress.entryDateToRepo)}</td>
+                    <td className={dress.isDeleted ? 'cell-muted' : undefined}>{dress.items?.filter(i => !i.isDeleted).length || 0}</td>
+                    <td>
+                      <div className="row-actions">
+                        <Link href={`/dashboard/dresses/${dress.id}`} className="btn btn-primary btn-sm">כרטיס שמלה</Link>
+                        {dress.isDeleted ? (
+                          <button onClick={() => handleRestoreModel(dress)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר">
+                            <svg className="icon"><use href="#i-refresh" /></svg>
+                          </button>
+                        ) : isInactive ? (
+                          <button onClick={() => handleReturnToActivity(dress)} className="btn btn-secondary btn-sm" style={{ color: 'var(--warning)' }} title="החזר לפעילות">
+                            החזר לפעילות
+                          </button>
+                        ) : (
+                          <button onClick={() => handleDeleteModel(dress.id)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="מחק">
+                            <svg className="icon"><use href="#i-trash" /></svg>
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-            </div>
+                );
+              })}
+            </tbody>
+          </table>
+
+          <div className="table-foot">
+            <span>סה"כ שורות מוצגות: {loading ? '...' : filteredDresses.length}</span>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} title="עמוד קודם">
+                  <svg className="icon"><use href="#i-chevron-end" /></svg>הקודם
+                </button>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <label htmlFor="dresses-page-num">עמוד</label>
+                  <input
+                    id="dresses-page-num"
+                    type="number"
+                    className="input"
+                    min={1}
+                    max={totalPages || 1}
+                    value={page}
+                    onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }}
+                    style={{ width: '60px', padding: '4px 6px', textAlign: 'center', display: 'inline-block' }}
+                  />
+                  מתוך {totalPages} (סה"כ {totalDresses} תוצאות)
+                </span>
+                <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} title="עמוד הבא">
+                  הבא<svg className="icon"><use href="#i-chevron-start" /></svg>
+                </button>
+              </div>
+            )}
           </div>
-        )}
         </div>
-
-        {/* סיכום הרשומות ועימוד — מוצמד תמיד לתחתית המסך */}
-        <div className="page-footer-bar">
-          <div className="page-footer-summary">סה"כ שורות מוצגות: {loading ? '...' : filteredDresses.length}</div>
-
-          {totalPages > 1 && (
-            <div className="page-footer-pager">
-              <button data-element-name="כפתור_page_43" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>&lt; הקודם</button>
-              <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: 'bold' }}>עמוד <input data-element-name="שדה_page_44" type="number" min={1} max={totalPages || 1} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} style={{ width: '60px', padding: '0.3rem', textAlign: 'center', borderRadius: '6px', border: '1px solid var(--element-border)', background: 'var(--input-bg)', color: 'var(--text-main)' }} /> מתוך {totalPages} (סה"כ {totalDresses} תוצאות)</span>
-              <button data-element-name="כפתור_page_45" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="btn btn-outline" style={{ padding: '0.4rem 1rem' }}>הבא &gt;</button>
-            </div>
-          )}
-        </div>
-      </main>
-
+      )}
     </>
   );
 }

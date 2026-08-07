@@ -1,6 +1,7 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 
 export default function AIPage() {
   const [threads, setThreads] = useState([]);
@@ -9,8 +10,19 @@ export default function AIPage() {
   const [loading, setLoading] = useState(false);
   const [showTableModal, setShowTableModal] = useState(false);
   const [modalTableData, setModalTableData] = useState(null);
-  
+
   const chatEndRef = useRef(null);
+
+  const startNewChat = () => {
+    const newId = Date.now().toString();
+    const newThread = {
+      id: newId,
+      title: 'שיחה חדשה',
+      messages: [{ role: 'assistant', content: 'שלום! אני מערכת ה-AI של הגמ"ח. כיצד אוכל לעזור לך היום?' }]
+    };
+    setThreads(prev => [newThread, ...prev]);
+    setActiveThreadId(newId);
+  };
 
   // Load from local storage on mount
   useEffect(() => {
@@ -44,17 +56,6 @@ export default function AIPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [threads, activeThreadId]);
 
-  const startNewChat = () => {
-    const newId = Date.now().toString();
-    const newThread = {
-      id: newId,
-      title: 'שיחה חדשה',
-      messages: [{ role: 'assistant', content: 'שלום! אני מערכת ה-AI של הגמ"ח. כיצד אוכל לעזור לך היום?' }]
-    };
-    setThreads(prev => [newThread, ...prev]);
-    setActiveThreadId(newId);
-  };
-
   const activeThread = threads.find(t => t.id === activeThreadId) || { messages: [] };
 
   const sendMessage = async (e) => {
@@ -63,13 +64,13 @@ export default function AIPage() {
 
     const userMessageContent = input.trim();
     setInput('');
-    
+
     const currentThreadId = activeThreadId;
     const currentThread = threads.find(t => t.id === currentThreadId);
     if (!currentThread) return;
 
     const userMessage = { role: 'user', content: userMessageContent };
-    
+
     // Update thread with user message
     setThreads(prev => prev.map(t => {
       if (t.id === currentThreadId) {
@@ -79,25 +80,25 @@ export default function AIPage() {
       }
       return t;
     }));
-    
+
     setLoading(true);
 
     try {
       const historyContext = currentThread.messages.map(m => ({ role: m.role, content: m.content }));
-      
+
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt: userMessageContent, 
+        body: JSON.stringify({
+          prompt: userMessageContent,
           history: historyContext,
           context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. אתה נמצא בממשק המנהל, ענה על כל שאלה סטטיסטית, פיננסית או ניהולית שהמנהל מבקש, כולל נתונים מדויקים מהמסד.`
         }),
       });
 
       const data = await res.json();
-      
-      const assistantMessage = res.ok 
+
+      const assistantMessage = res.ok
         ? { role: 'assistant', content: data.response, tableData: data.tableData }
         : { role: 'assistant', content: 'מצטער, חלה שגיאה בחיבור למערכת ה-AI.' };
 
@@ -133,255 +134,156 @@ export default function AIPage() {
 
   const renderTable = (tableData) => {
     if (!tableData || tableData.length === 0) return null;
-    
+
     return (
-      <div style={{ marginTop: '1rem' }}>
-        <button data-element-name="כפתור_page_1" 
+      <div style={{ marginTop: '10px' }}>
+        <button data-element-name="כפתור_page_1"
           type="button"
+          className="btn btn-secondary btn-sm"
           onClick={() => { setModalTableData(tableData); setShowTableModal(true); }}
-          style={{
-            padding: '0.6rem 1.2rem',
-            backgroundColor: '#059669',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontWeight: 'bold',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            fontSize: '1rem',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            transition: 'background-color 0.2s'
-          }}
-          onMouseOver={(e) => e.target.style.backgroundColor = '#047857'}
-          onMouseOut={(e) => e.target.style.backgroundColor = '#059669'}
         >
-          <span style={{ fontSize: '1.2rem' }}>📊</span> תצוגת נתונים
+          <svg className="icon"><use href="#i-grid" /></svg>
+          תצוגת נתונים
         </button>
       </div>
     );
   };
 
   return (
-    <div className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1000px' }}>
-      <h1 style={{ marginBottom: '1.5rem', textAlign: 'center', color: 'var(--primary-color)' }}>עוזר AI למנהל</h1>
-      
-      <div style={{
-        backgroundColor: 'rgba(255, 255, 255, 0.9)',
-        borderRadius: '16px',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.1)',
-        backdropFilter: 'blur(10px)',
-        border: '1px solid rgba(255,255,255,0.2)',
-        display: 'flex',
-        flexDirection: 'row',
-        height: '70vh',
-        overflow: 'hidden'
-      }}>
-        
-        {/* Sidebar */}
-        <div style={{
-          width: '250px',
-          backgroundColor: '#f8f9fa',
-          borderLeft: '1px solid #eee',
-          display: 'flex',
-          flexDirection: 'column'
-        }}>
-          <div style={{ padding: '1rem', borderBottom: '1px solid #eee' }}>
-            <button data-element-name="כפתור_page_2" 
+    <>
+      <div className="page-head">
+        <div>
+          <h1>עוזר AI למנהל</h1>
+          <div className="page-desc">שאל שאלות על נתוני המערכת בשפה חופשית</div>
+        </div>
+      </div>
+
+      <div className="card" style={{ display: 'flex', overflow: 'hidden', height: '70vh' }}>
+
+        {/* Threads sidebar */}
+        <div style={{ width: '260px', flex: '0 0 auto', borderInlineStart: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '14px', borderBottom: '1px solid var(--border)' }}>
+            <button data-element-name="כפתור_page_2"
+              type="button"
+              className="btn btn-primary"
+              style={{ width: '100%' }}
               onClick={startNewChat}
-              style={{
-                width: '100%',
-                padding: '0.8rem',
-                backgroundColor: 'var(--primary-color)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: '0.5rem'
-              }}
             >
-              <span>+</span> שיחה חדשה
+              <svg className="icon"><use href="#i-plus" /></svg>
+              שיחה חדשה
             </button>
           </div>
-          <div style={{ flex: 1, overflowY: 'auto' }}>
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px' }}>
             {threads.map(t => (
-              <div data-element-name="לחיץ_page_3" 
+              <div data-element-name="לחיץ_page_3"
                 key={t.id}
-                onClick={() => setActiveThreadId(t.id)}
+                className="list-card"
                 style={{
-                  padding: '1rem',
-                  borderBottom: '1px solid #eee',
                   cursor: 'pointer',
-                  backgroundColor: activeThreadId === t.id ? '#e9ecef' : 'transparent',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  transition: 'background-color 0.2s'
+                  ...(activeThreadId === t.id ? { background: 'var(--primary-tint)', borderColor: 'var(--primary-tint-2)' } : {})
                 }}
+                onClick={() => setActiveThreadId(t.id)}
               >
-                <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '0.9rem', flex: 1 }}>
+                <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontSize: '13px' }}>
                   {t.title}
                 </span>
-                <button data-element-name="כפתור_page_4" 
-                  onClick={(e) => deleteThread(e, t.id)}
-                  style={{ background: 'none', border: 'none', color: '#dc3545', cursor: 'pointer', padding: '0 5px' }}
+                <button data-element-name="כפתור_page_4"
+                  type="button"
+                  className="icon-btn btn-sm"
                   title="מחק שיחה"
+                  onClick={(e) => deleteThread(e, t.id)}
                 >
-                  ×
+                  <svg className="icon"><use href="#i-trash" /></svg>
                 </button>
               </div>
             ))}
           </div>
         </div>
 
-        {/* Chat Area */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-          {/* Chat Messages */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        {/* Chat area */}
+        <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+          <div className="chat-thread" style={{ flex: 1, overflowY: 'auto', padding: '20px', marginBottom: 0 }}>
             {activeThread.messages.map((msg, idx) => (
-              <div key={idx} style={{
-                alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end',
-                backgroundColor: msg.role === 'user' ? 'var(--primary-color)' : '#f1f1f1',
-                color: msg.role === 'user' ? 'white' : 'var(--text-color)',
-                padding: '1rem',
-                borderRadius: '12px',
-                maxWidth: '85%',
-                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
-                borderBottomRightRadius: msg.role === 'user' ? '0' : '12px',
-                borderBottomLeftRadius: msg.role === 'assistant' ? '0' : '12px'
-              }}>
+              <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
                 <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
                 {msg.tableData && renderTable(msg.tableData)}
               </div>
             ))}
             {loading && (
-              <div style={{
-                alignSelf: 'flex-end',
-                backgroundColor: '#f1f1f1',
-                padding: '1rem',
-                borderRadius: '12px',
-                borderBottomLeftRadius: '0',
-                fontStyle: 'italic',
-                color: 'var(--text-muted)'
-              }}>
-                המערכת מעבדת את הנתונים...
+              <div className="bubble assistant" style={{ padding: 0 }}>
+                <div className="typing-indicator"><span></span><span></span><span></span></div>
               </div>
             )}
             <div ref={chatEndRef} />
           </div>
 
-          {/* Input Area */}
-          <form onSubmit={sendMessage} style={{
-            display: 'flex',
-            padding: '1rem',
-            borderTop: '1px solid #eee',
-            backgroundColor: '#fafafa',
-            gap: '1rem'
-          }}>
-            <button data-element-name="כפתור_page_5" 
-              type="submit" 
-              disabled={loading || !activeThreadId}
-              style={{
-                padding: '0.8rem 1.5rem',
-                borderRadius: '8px',
-                border: 'none',
-                backgroundColor: 'var(--primary-color)',
-                color: 'white',
-                cursor: 'pointer',
-                fontWeight: 'bold',
-                transition: 'background-color 0.2s',
-                opacity: (loading || !activeThreadId) ? 0.7 : 1
-              }}>
-              שלח
-            </button>
-            <input data-element-name="שדה_page_6" 
-              type="text" 
+          <form onSubmit={sendMessage} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '16px', borderTop: '1px solid var(--border)', background: 'var(--surface-alt)' }}>
+            <label htmlFor="admin-ai-message" style={{ position: 'absolute', width: '1px', height: '1px', padding: 0, margin: '-1px', overflow: 'hidden', clip: 'rect(0,0,0,0)', whiteSpace: 'nowrap', border: 0 }}>שאלה ל-AI</label>
+            <input data-element-name="שדה_page_6"
+              id="admin-ai-message"
+              type="text"
               autoFocus
+              className="input"
+              style={{ flex: 1 }}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               placeholder="שאל אותי על סטטיסטיקות או מידע מהמערכת (לדוגמה: כמה הזמנות יש בשנת 2024?)..."
               disabled={!activeThreadId}
-              style={{
-                flex: 1,
-                padding: '0.8rem 1rem',
-                borderRadius: '8px',
-                border: '1px solid #ddd',
-                outline: 'none',
-                fontSize: '1rem'
-              }}
             />
+            <button data-element-name="כפתור_page_5"
+              type="submit"
+              className="btn btn-primary btn-icon-only"
+              title="שלח"
+              disabled={loading || !activeThreadId}
+            >
+              <svg className="icon"><use href="#i-arrow-end" /></svg>
+            </button>
           </form>
         </div>
+
       </div>
 
       {/* Table Modal */}
-      {showTableModal && modalTableData && (
-        <div style={{
-          position: 'fixed',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0,0,0,0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 1000,
-          backdropFilter: 'blur(4px)'
-        }}>
-          <div style={{
-            backgroundColor: 'var(--card-bg)',
-            borderRadius: '16px',
-            padding: '2rem',
-            width: '90%',
-            maxWidth: '1200px',
-            maxHeight: '90vh',
-            display: 'flex',
-            flexDirection: 'column',
-            boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
-          }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>תצוגת נתונים ({modalTableData.length} שורות)</h2>
-              <button data-element-name="כפתור_page_7" 
+      {showTableModal && modalTableData && typeof document !== 'undefined' && createPortal(
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowTableModal(false)}>
+          <div className="modal" style={{ maxWidth: '1100px', width: '90%', margin: 0, maxHeight: '90vh', display: 'flex', flexDirection: 'column' }} onClick={e => e.stopPropagation()}>
+            <div className="modal-head">
+              <strong>תצוגת נתונים ({modalTableData.length} שורות)</strong>
+              <button data-element-name="כפתור_page_7"
+                type="button"
+                className="icon-btn btn-sm"
+                title="סגירה"
                 onClick={() => setShowTableModal(false)}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '2rem',
-                  cursor: 'pointer',
-                  color: 'var(--text-main)',
-                  lineHeight: 1
-                }}
               >
-                &times;
+                <svg className="icon"><use href="#i-x" /></svg>
               </button>
             </div>
-            
-            <div style={{ overflowX: 'auto', overflowY: 'auto', flex: 1, borderRadius: '8px', border: '1px solid #eee' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
-                <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--primary-color)', color: 'white', zIndex: 1 }}>
-                  <tr>
-                    {Object.keys(modalTableData[0]).map(h => (
-                      <th key={h} style={{ padding: '12px 16px', textAlign: 'right', borderBottom: '2px solid #ddd' }}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {modalTableData.map((row, i) => (
-                    <tr key={i} style={{ borderBottom: '1px solid #eee', backgroundColor: i % 2 === 0 ? 'var(--card-bg)' : 'var(--element-bg)' }}>
+            <div className="modal-body" style={{ overflow: 'auto' }}>
+              <div className="table-wrap">
+                <table className="data">
+                  <thead>
+                    <tr>
                       {Object.keys(modalTableData[0]).map(h => (
-                        <td key={h} style={{ padding: '10px 16px' }}>{row[h]}</td>
+                        <th key={h}>{h}</th>
                       ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {modalTableData.map((row, i) => (
+                      <tr key={i}>
+                        {Object.keys(modalTableData[0]).map(h => (
+                          <td key={h}>{row[h]}</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }

@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Printer, FileSpreadsheet, ArrowRight, Loader2 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
@@ -10,14 +9,10 @@ export default function AttendanceReportPage() {
   const router = useRouter();
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
-
-  useEffect(() => {
-    fetchData(selectedMonth, selectedYear);
-  }, [selectedMonth, selectedYear]);
 
   const fetchData = async (month, year) => {
     setLoading(true);
@@ -37,22 +32,26 @@ export default function AttendanceReportPage() {
     }
   };
 
+  useEffect(() => {
+    fetchData(selectedMonth, selectedYear);
+  }, [selectedMonth, selectedYear]);
+
   const handlePrint = () => {
     window.print();
   };
 
   const handleExportExcel = () => {
     const wb = XLSX.utils.book_new();
-    
+
     // Sort employees to have them in order
     const sortedData = [...data].sort((a, b) => (a.firstName || '').localeCompare(b.firstName || ''));
-    
+
     // Add summary sheet
     const summaryData = sortedData.map(emp => {
       const totalMinutes = emp.shifts.reduce((sum, shift) => sum + (shift.totalMinutes || 0), 0);
       const totalHours = (totalMinutes / 60).toFixed(2);
       const totalCalculated = emp.shifts.reduce((sum, shift) => sum + (shift.totalCalculated || 0), 0);
-      
+
       return {
         'מזהה עובד': emp.id,
         'שם העובד': `${emp.firstName || ''} ${emp.lastName || ''}`,
@@ -61,16 +60,16 @@ export default function AttendanceReportPage() {
         'סה"כ תשלום': totalCalculated.toFixed(2)
       };
     });
-    
+
     const wsSummary = XLSX.utils.json_to_sheet(summaryData);
     XLSX.utils.book_append_sheet(wb, wsSummary, 'ריכוז נתונים');
 
     // Add a sheet for each employee
     sortedData.forEach(emp => {
       if (emp.shifts.length === 0) return; // Skip empty
-      
+
       const sheetName = `${emp.firstName || 'עובד'} ${emp.lastName || ''}`.substring(0, 31).trim() || 'ללא שם';
-      
+
       const empData = emp.shifts.map(shift => {
         return {
           'תאריך': shift.date ? getHebrewDateString(shift.date) : '',
@@ -83,9 +82,9 @@ export default function AttendanceReportPage() {
           'הערות': shift.notes || ''
         };
       });
-      
+
       const ws = XLSX.utils.json_to_sheet(empData);
-      
+
       // We wrap appending in try-catch in case of duplicate sheet names (max 31 chars)
       try {
         XLSX.utils.book_append_sheet(wb, ws, sheetName);
@@ -105,8 +104,7 @@ export default function AttendanceReportPage() {
   };
 
   return (
-    <div className="container animate-fade-in page-shell">
-      <div className="page-scroll">
+    <>
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * {
@@ -124,6 +122,14 @@ export default function AttendanceReportPage() {
             width: 100%;
             direction: rtl;
             overflow: visible !important;
+          }
+          #print-area .card {
+            background: #fff !important;
+            box-shadow: none !important;
+          }
+          #print-area table.data thead th,
+          #print-area .table-foot {
+            background: #fff !important;
           }
           .no-print {
             display: none !important;
@@ -151,38 +157,37 @@ export default function AttendanceReportPage() {
       `}} />
 
       <div className="no-print">
-        <button data-element-name="כפתור_page_1" 
-          onClick={() => router.push('/employees')}
-          className="btn btn-ghost" 
-          style={{ marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-        >
-          <ArrowRight data-element-name="רכיב_page_2" size={20} />
+        <button type="button" onClick={() => router.push('/employees')} className="btn btn-ghost" style={{ marginBottom: '16px' }}>
+          <svg className="icon"><use href="#i-arrow-end" /></svg>
           חזור לניהול עובדים
         </button>
-        
-        <div className="toolbar-row" style={{ justifyContent: 'space-between', marginBottom: '2rem' }}>
-          <div>
-            <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>דוח נוכחות חודשי</h1>
-            <p style={{ color: 'var(--text-secondary)', margin: '0.5rem 0 0 0' }}>
-              הפקת דוח נוכחות לכלל העובדים ב-PDF או אקסל (כל עובד בעמוד נפרד).
-            </p>
-          </div>
 
-          <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <select data-element-name="בחירה_page_3"
+        <div className="page-head">
+          <div>
+            <h1>דוח נוכחות חודשי</h1>
+            <div className="page-desc">הפקת דוח נוכחות לכלל העובדים ב-PDF או אקסל (כל עובד בעמוד נפרד).</div>
+          </div>
+          <div className="page-actions" style={{ alignItems: 'flex-end' }}>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label htmlFor="employees-report-month">חודש</label>
+              <select
+                id="employees-report-month"
+                className="select"
                 value={selectedMonth}
                 onChange={e => setSelectedMonth(parseInt(e.target.value))}
-                style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
               >
                 {[...Array(12)].map((_, i) => (
-                  <option key={i+1} value={i+1}>{getMonthName(i+1)}</option>
+                  <option key={i + 1} value={i + 1}>{getMonthName(i + 1)}</option>
                 ))}
               </select>
-              <select data-element-name="בחירה_page_4"
+            </div>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label htmlFor="employees-report-year">שנה</label>
+              <select
+                id="employees-report-year"
+                className="select"
                 value={selectedYear}
                 onChange={e => setSelectedYear(parseInt(e.target.value))}
-                style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--border-color)', background: 'var(--input-bg)', color: 'var(--text-main)' }}
               >
                 {[...Array(5)].map((_, i) => {
                   const y = currentDate.getFullYear() - i;
@@ -190,116 +195,104 @@ export default function AttendanceReportPage() {
                 })}
               </select>
             </div>
-
-            <div className="icon-toolbar" style={{ marginRight: 0 }}>
-              <button data-element-name="כפתור_page_5"
-                onClick={handlePrint}
-                className="icon-btn"
-                title="הדפס / PDF"
-                disabled={loading || data.length === 0}
-              >
-                <Printer data-element-name="רכיב_page_6" size={19} />
-              </button>
-              <button data-element-name="כפתור_page_7"
-                onClick={handleExportExcel}
-                className="icon-btn icon-btn-primary"
-                disabled={loading || data.length === 0}
-              >
-                <FileSpreadsheet data-element-name="רכיב_page_8" size={17} />
-                <span>ייצוא לאקסל</span>
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={handlePrint}
+              className="btn btn-secondary btn-icon-only"
+              title="הדפס / PDF"
+              disabled={loading || data.length === 0}
+            >
+              <svg className="icon"><use href="#i-printer" /></svg>
+            </button>
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              className="btn btn-primary"
+              disabled={loading || data.length === 0}
+            >
+              <svg className="icon"><use href="#i-download" /></svg>
+              ייצוא לאקסל
+            </button>
           </div>
         </div>
       </div>
 
       <div id="print-area">
-        <div className="bsd-header" style={{ display: 'none' }}>בס"ד</div>
+        <div className="bsd-header" style={{ display: 'none' }}>בס&quot;ד</div>
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem' }}>
-            <Loader2 data-element-name="רכיב_page_9" className="animate-spin" size={40} style={{ color: 'var(--primary-color)' }} />
+          <div className="page-loading">
+            <span className="spinner lg" />
           </div>
         ) : data.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '4rem', background: 'var(--card-bg)', borderRadius: '12px' }}>
-            לא נמצאו נתוני נוכחות לחודש המבוקש.
+          <div className="empty-state">
+            <svg className="icon"><use href="#i-calendar" /></svg>
+            <p>לא נמצאו נתוני נוכחות לחודש המבוקש.</p>
           </div>
         ) : (
           <div>
             {data.map((employee) => {
               if (employee.shifts.length === 0) return null; // Skip employees with no shifts
-              
+
               const totalMinutes = employee.shifts.reduce((sum, s) => sum + (s.totalMinutes || 0), 0);
               const totalHours = (totalMinutes / 60).toFixed(2);
               const totalAmount = employee.shifts.reduce((sum, s) => sum + (s.totalCalculated || 0), 0);
+              const initials = `${(employee.firstName || '').charAt(0)}${(employee.lastName || '').charAt(0)}`;
 
               return (
-                <div key={employee.id} className="employee-page" style={{ background: '#fff', color: '#000', padding: '2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                  <div style={{ borderBottom: '2px solid #eee', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div>
-                      <h2 style={{ margin: '0 0 0.5rem 0' }}>דוח נוכחות עובד: {employee.firstName} {employee.lastName}</h2>
-                      <div style={{ fontSize: '1.1rem', color: '#555' }}>
-                        תקופה: {getMonthName(selectedMonth)} {selectedYear}
+                <div key={employee.id} className="card employee-page" style={{ marginBottom: '20px' }}>
+                  <div className="card-head">
+                    <div className="card-title-row">
+                      <div className="avatar">{initials}</div>
+                      <div>
+                        <h2 style={{ fontSize: '15px', margin: 0 }}>דוח נוכחות עובד: {employee.firstName} {employee.lastName}</h2>
+                        <div className="hint" style={{ color: 'var(--text-3)' }}>תקופה: {getMonthName(selectedMonth)} {selectedYear}</div>
                       </div>
                     </div>
-                    <div style={{ textAlign: 'left' }}>
-                      {employee.department && <div style={{ fontSize: '1rem', color: '#666' }}>מחלקה: {employee.department.name}</div>}
-                    </div>
+                    {employee.department && (
+                      <span className="badge badge-neutral">
+                        <svg className="icon"><use href="#i-category" /></svg>
+                        מחלקה: {employee.department.name}
+                      </span>
+                    )}
                   </div>
 
-                  <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem', fontSize: '0.95rem' }}>
-                    <thead>
-                      {/* שורה נוספת ב-thead (לא רק כותרות העמודות) - כדי שהחודש/שנה יופיעו מחדש
-                          בראש כל עמוד פיזי כשטבלת המשמרות של עובד נשברת לכמה עמודי הדפסה, בדיוק
-                          כמו שורת כותרות העמודות עצמה חוזרת בזכות table-header-group. */}
-                      <tr>
-                        <th colSpan={5} style={{ padding: '0.5rem 0.75rem', textAlign: 'center', fontWeight: 'bold', fontSize: '1rem', background: '#eef2f7', borderBottom: '1px solid #ddd' }}>
-                          תקופה: {getMonthName(selectedMonth)} {selectedYear}
-                        </th>
-                      </tr>
-                      <tr style={{ background: '#f8f9fa' }}>
-                        <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'right' }}>תאריך</th>
-                        <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>כניסה</th>
-                        <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>יציאה</th>
-                        <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה"כ שעות</th>
-                        <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'left' }}>סה"כ לתשלום</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {employee.shifts.map((shift) => (
-                        <tr key={shift.id}>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee' }}>
-                            {shift.date ? getHebrewDateString(shift.date) : '-'}
-                          </td>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-                            {shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                          </td>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-                            {shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                          </td>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>
-                            {shift.totalMinutes ? (shift.totalMinutes / 60).toFixed(2) : '0.00'}
-                          </td>
-                          <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'left', fontWeight: '500' }}>
-                            ₪{shift.totalCalculated ? shift.totalCalculated.toFixed(2) : '0.00'}
-                          </td>
+                  <div className="table-wrap" style={{ border: 'none', borderRadius: 0, boxShadow: 'none' }}>
+                    <table className="data">
+                      <thead>
+                        {/* שורה נוספת ב-thead (לא רק כותרות העמודות) - כדי שהחודש/שנה יופיעו מחדש
+                            בראש כל עמוד פיזי כשטבלת המשמרות של עובד נשברת לכמה עמודי הדפסה, בדיוק
+                            כמו שורת כותרות העמודות עצמה חוזרת בזכות table-header-group. */}
+                        <tr>
+                          <th colSpan={5} style={{ textAlign: 'center' }}>
+                            תקופה: {getMonthName(selectedMonth)} {selectedYear}
+                          </th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                        <tr>
+                          <th>תאריך</th>
+                          <th>כניסה</th>
+                          <th>יציאה</th>
+                          <th>סה&quot;כ שעות</th>
+                          <th>סה&quot;כ לתשלום</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {employee.shifts.map((shift) => (
+                          <tr key={shift.id}>
+                            <td>{shift.date ? getHebrewDateString(shift.date) : '-'}</td>
+                            <td>{shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                            <td>{shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                            <td>{shift.totalMinutes ? (shift.totalMinutes / 60).toFixed(2) : '0.00'}</td>
+                            <td className="cell-primary">₪{shift.totalCalculated ? shift.totalCalculated.toFixed(2) : '0.00'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
 
-                  <div style={{ background: '#f8f9fa', padding: '1.5rem', borderRadius: '8px', display: 'flex', justifyContent: 'space-between' }}>
-                    <div>
-                      <span style={{ color: '#666', marginRight: '0.5rem' }}>סה"כ משמרות:</span>
-                      <strong style={{ fontSize: '1.2rem' }}>{employee.shifts.length}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: '#666', marginRight: '0.5rem' }}>סה"כ שעות:</span>
-                      <strong style={{ fontSize: '1.2rem' }}>{totalHours}</strong>
-                    </div>
-                    <div>
-                      <span style={{ color: '#666', marginRight: '0.5rem' }}>סה"כ לתשלום:</span>
-                      <strong style={{ fontSize: '1.2rem', color: '#10b981' }}>₪{totalAmount.toFixed(2)}</strong>
-                    </div>
+                  <div className="table-foot">
+                    <span>סה&quot;כ משמרות: <strong>{employee.shifts.length}</strong></span>
+                    <span>סה&quot;כ שעות: <strong>{totalHours}</strong></span>
+                    <span>סה&quot;כ לתשלום: <strong style={{ color: 'var(--success)' }}>₪{totalAmount.toFixed(2)}</strong></span>
                   </div>
                 </div>
               );
@@ -307,7 +300,6 @@ export default function AttendanceReportPage() {
           </div>
         )}
       </div>
-      </div>
-    </div>
+    </>
   );
 }
