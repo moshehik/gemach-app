@@ -28,6 +28,7 @@ export default function IconSprite() {
         <symbol id="i-chevron-end" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6" /></symbol>
         <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 10a6 6 0 0 1 12 0c0 4.5 1.5 6 1.5 6h-15S6 14.5 6 10Z" /><path d="M10 19a2 2 0 0 0 4 0" /></symbol>
         <symbol id="i-message" viewBox="0 0 24 24"><path d="M4 5.5h16v11H9l-4 3.5v-3.5H4Z" /></symbol>
+        <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="3.5" width="6" height="11" rx="3" /><path d="M6 11a6 6 0 0 0 12 0" /><path d="M12 17v3.5M9 20.5h6" /></symbol>
         <symbol id="i-alert-tri" viewBox="0 0 24 24"><path d="M12 4.5 21 19H3Z" /><path d="M12 10v4M12 16.5v.1" /></symbol>
         <symbol id="i-alert-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3" /><path d="M12 7.5v5.5M12 16v.1" /></symbol>
         <symbol id="i-check-circle" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3" /><path d="m8.3 12.3 2.6 2.6 4.8-5.6" /></symbol>

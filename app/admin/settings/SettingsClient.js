@@ -679,15 +679,19 @@ export default function SettingsClient() {
             const isActive = activeTab === cat;
 
             return (
-              <div
+              <button
                 key={cat}
+                type="button"
                 className={isActive ? 'tab settings-cat active' : 'tab settings-cat'}
-                style={{ marginInlineEnd: 0 }}
+                style={{
+                  marginInlineEnd: 0, width: '100%', textAlign: 'start',
+                  appearance: 'none', WebkitAppearance: 'none', background: isActive ? undefined : 'none', font: 'inherit', borderTop: 'none'
+                }}
                 onClick={() => setActiveTab(cat)}
               >
                 <svg className="icon"><use href={`#${iconName}`} /></svg>
                 {cat}
-              </div>
+              </button>
             );
           })}
         </div>

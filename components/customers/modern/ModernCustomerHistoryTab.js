@@ -3,17 +3,32 @@
 import React, { useState, useEffect } from 'react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { ACTION_TRANSLATIONS } from '../../HistoryViewer';
-import { ChangesChips, ACTION_TONES } from '../../modern/ChangesChips';
+import { ChangesChips } from '../../modern/ChangesChips';
 
-// ACTION_TONES (משותף עם טאב "מידע" של כרטיס ההזמנה) מגדיר צבע per-action בשפת
-// ה-moc הישנה; כאן רק ממפים אותו למחלקת badge של מערכת העיצוב "אריג" לפי זהות
-// הצבע, בלי לשכפל את רשימת הפעולות עצמה.
-const badgeClassForTone = (tone) => {
-  if (!tone) return 'badge-primary';
-  if (tone.bg === 'var(--moc-danger-bg)') return 'badge-danger';
-  if (tone.bg === 'var(--moc-success-bg)') return 'badge-success';
-  return 'badge-primary';
+// מיפוי מקומי (עיצוב "אריג" בלבד) מפעולת יומן ל-badge סמנטי — אותה קיבוץ סמנטי
+// כמו ACTION_TONES ב-components/modern/ChangesChips.js (משותף, מחוץ לאשכול הזה),
+// ראו גם ModernDressInfoTab.js שמשתמש באותה תבנית.
+const ACTION_BADGE_CLASS = {
+  CREATE: 'badge-success',
+  DELETE: 'badge-danger',
+  UPDATE: 'badge-primary',
+  CANCEL_RENTAL: 'badge-danger',
+  CANCEL_RETURN: 'badge-danger',
+  CANCEL_SCAN: 'badge-danger',
+  CANCEL_ITEM: 'badge-danger',
+  CANCEL_OBLIGATION: 'badge-danger',
+  CANCEL_PAYMENT: 'badge-danger',
+  CANCEL_ORDER: 'badge-danger',
+  CANCEL_CHANGES: 'badge-danger',
+  RESTORE_ITEM: 'badge-success',
+  RESTORE_OBLIGATION: 'badge-success',
+  RESTORE_PAYMENT: 'badge-success',
+  CONFIRM_RENTAL: 'badge-success',
+  RETURN_RENTAL: 'badge-success',
+  DEBT_APPROVED: 'badge-success',
+  CANCEL_DEBT_APPROVAL: 'badge-danger'
 };
+const badgeClassFor = (action) => ACTION_BADGE_CLASS[action] || 'badge-neutral';
 
 /**
  * טאב "היסטוריה" עבור כרטיס לקוח — אותה שיטת עיצוב כמו טאב "מידע" בכרטיס
@@ -91,12 +106,11 @@ export default function ModernCustomerHistoryTab({ customerId }) {
         ) : (
           logs.map((log) => {
             const actionLabel = ACTION_TRANSLATIONS[log.action] || log.action;
-            const tone = ACTION_TONES[log.action] || ACTION_TONES.UPDATE;
             const d = new Date(log.createdAt);
             return (
               <div key={log.id} className="select-row" style={{ alignItems: 'flex-start' }}>
                 <div style={{ minWidth: 0, flex: 1 }}>
-                  <span className={`badge ${badgeClassForTone(tone)}`}>{actionLabel}</span>
+                  <span className={`badge ${badgeClassFor(log.action)}`}>{actionLabel}</span>
                   <strong style={{ fontSize: '13px', marginInlineStart: '6px' }}>
                     {log.employeeId ? (log.employeeName || 'עובד שנמחק') : 'מערכת'} ביצע/ה {actionLabel}
                   </strong>

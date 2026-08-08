@@ -1,15 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { DEFAULT_CUSTOM_COLORS, applyCustomPaletteStyle } from '../lib/customPalette';
 
 // Real "עיצוב ותצוגה" settings page — ports the live palette/font/theme-mode/
 // density/text-scale switcher that used to exist only as a standalone mockup
 // (scratch/design-v2/assets/app.js, section 6 "Display-preferences panel").
 // Everything here reads/writes the same localStorage blob (`gemachDesignPrefs`,
-// shape { palette, font, mode, density, textScale }) and applies the matching
-// data-* attribute on <html> immediately, exactly like the mockup's vanilla JS
-// did — so the no-FOUC bootstrap script added in app/layout.js picks up
-// whatever is chosen here on the next full page load.
+// shape { palette, font, mode, density, textScale, customColors }) and applies
+// the matching data-* attribute on <html> immediately, exactly like the
+// mockup's vanilla JS did — so the no-FOUC bootstrap script added in
+// app/layout.js picks up whatever is chosen here on the next full page load.
+//
+// The one preset that isn't a fixed hue is `palette: 'custom'` — its colors
+// live in `customColors: { primary, accent }` alongside the rest of this
+// blob, and app/lib/customPalette.js derives the full --primary-*/--accent-*
+// variable set (light + dark) from just those two hex values, applied via a
+// real <style id="custom-palette-style"> tag scoped to
+// [data-palette="custom"] — see that file's header comment for why.
 
 const STORAGE_KEY = 'gemachDesignPrefs';
 
@@ -150,6 +158,7 @@ function applyMode(mode) {
 
 export default function DisplaySettingsPage() {
   const [prefs, setPrefs] = useState(DEFAULT_PREFS);
+  const [customColors, setCustomColors] = useState(DEFAULT_CUSTOM_COLORS);
 
   // Sync UI state from whatever is actually saved (the no-FOUC script in
   // layout.js has already applied it to <html> before this component mounts;
@@ -168,6 +177,18 @@ export default function DisplaySettingsPage() {
       density: saved.density || DEFAULT_PREFS.density,
       textScale: saved.textScale || DEFAULT_PREFS.textScale,
     });
+    const savedCustomColors = {
+      primary: (saved.customColors && saved.customColors.primary) || DEFAULT_CUSTOM_COLORS.primary,
+      accent: (saved.customColors && saved.customColors.accent) || DEFAULT_CUSTOM_COLORS.accent,
+    };
+    setCustomColors(savedCustomColors);
+    // Defensive re-apply: guarantees the <style id="custom-palette-style">
+    // tag matches these colors even if this page was reached via client-side
+    // navigation from a session where it was never created (e.g. localStorage
+    // was edited directly, or the palette was set to 'custom' on another tab).
+    if (saved.palette === 'custom') {
+      applyCustomPaletteStyle(savedCustomColors);
+    }
   }, []);
 
   function updatePref(key, value) {
@@ -209,6 +230,50 @@ export default function DisplaySettingsPage() {
     setPrefs((prev) => ({ ...prev, [key]: value }));
   }
 
+  // Selects the "custom" palette slot — reusing whatever colors were saved
+  // from a previous edit (or the built-in default the first time). Kept
+  // separate from updatePref() because, unlike the fixed presets, activating
+  // "custom" also needs the derived <style> tag created/refreshed.
+  function selectCustomPalette() {
+    let raw = {};
+    try {
+      raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    } catch (e) {
+      raw = {};
+    }
+    const colors = (raw.customColors && raw.customColors.primary && raw.customColors.accent)
+      ? raw.customColors
+      : customColors;
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...raw, palette: 'custom', customColors: colors }));
+    } catch (e) {}
+    applyAttr('data-palette', 'custom', ['wine']);
+    applyCustomPaletteStyle(colors);
+    setCustomColors(colors);
+    setPrefs((prev) => ({ ...prev, palette: 'custom' }));
+  }
+
+  // Live-updates one channel (primary/accent) of the custom palette: persists
+  // it, re-derives the full light+dark variable set, and rewrites the
+  // <style id="custom-palette-style"> tag so the change previews immediately
+  // — same instant-apply feel as clicking a preset swatch.
+  function updateCustomColor(channel, hexValue) {
+    const next = { ...customColors, [channel]: hexValue };
+    setCustomColors(next);
+    let raw = {};
+    try {
+      raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+    } catch (e) {
+      raw = {};
+    }
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...raw, palette: 'custom', customColors: next }));
+    } catch (e) {}
+    applyAttr('data-palette', 'custom', ['wine']);
+    applyCustomPaletteStyle(next);
+    setPrefs((prev) => ({ ...prev, palette: 'custom' }));
+  }
+
   const selectFontValue = QUICK_FONT_KEYS.includes(prefs.font) ? '' : (prefs.font || '');
 
   return (
@@ -236,7 +301,50 @@ export default function DisplaySettingsPage() {
               onClick={() => updatePref('palette', p.key)}
             />
           ))}
+          <button
+            type="button"
+            className={`swatch-btn swatch-btn-custom${prefs.palette === 'custom' ? ' active' : ''}`}
+            style={{ background: `linear-gradient(135deg, ${customColors.primary}, ${customColors.accent})` }}
+            title="פלטה מותאמת אישית"
+            aria-label="פלטה מותאמת אישית"
+            onClick={selectCustomPalette}
+          >
+            <svg className="icon"><use href="#i-edit" /></svg>
+          </button>
         </div>
+        {prefs.palette === 'custom' && (
+          <div className="custom-palette-editor">
+            <div className="form-grid">
+              <div className="field">
+                <label htmlFor="custom-palette-primary">צבע ראשי</label>
+                <div className="color-field-row">
+                  <input
+                    id="custom-palette-primary"
+                    type="color"
+                    className="color-swatch-input"
+                    value={customColors.primary}
+                    onChange={(e) => updateCustomColor('primary', e.target.value)}
+                  />
+                  <span className="color-field-hex">{customColors.primary.toUpperCase()}</span>
+                </div>
+              </div>
+              <div className="field">
+                <label htmlFor="custom-palette-accent">צבע משני</label>
+                <div className="color-field-row">
+                  <input
+                    id="custom-palette-accent"
+                    type="color"
+                    className="color-swatch-input"
+                    value={customColors.accent}
+                    onChange={(e) => updateCustomColor('accent', e.target.value)}
+                  />
+                  <span className="color-field-hex">{customColors.accent.toUpperCase()}</span>
+                </div>
+              </div>
+            </div>
+            <div className="hint">הגוונים הבהירים, הכהים ומצב התצוגה הכהה נגזרים אוטומטית משני הצבעים שנבחרו.</div>
+          </div>
+        )}
       </div>
 
       <div className="card card-pad" style={{ marginBottom: 16 }}>

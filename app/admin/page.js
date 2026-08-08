@@ -25,6 +25,7 @@ const categories = [
       { href: '/admin/inventory-alerts', icon: 'i-alert-tri', label: 'התראות מלאי', subLabel: 'בדיקת Overbooking' },
       { href: '/admin/recalculations', icon: 'i-coin', label: 'חישובים', subLabel: 'פערי תשלומים' },
       { href: '/admin/settings', icon: 'i-settings', label: 'הגדרות', subLabel: 'תצורה ולוגו' },
+      { href: '/admin/settings/preview', icon: 'i-eye', label: 'תצוגה מקדימה', subLabel: 'בדיקת מסך לפני שמירה' },
       { href: '/admin/refund-policy', icon: 'i-receipt', label: 'מדיניות זיכויים', subLabel: 'תיעוד חוקי ביטול' },
       { href: '/admin/labels', icon: 'i-tag', label: 'שינוי שמות', subLabel: 'כיתובים וטקסטים' },
       { href: '/admin/trusted-devices', icon: 'i-shield', label: 'מחשבי מערכת מהימנים', subLabel: 'כניסה מהירה ב-4 ספרות' },
@@ -39,10 +40,13 @@ const categories = [
     fg: 'var(--success)',
     items: [
       { href: '/admin/data-explorer', icon: 'i-search', label: 'סייר נתונים', subLabel: 'שאילתות SQL' },
+      { href: '/admin/data-explorer/full-view', icon: 'i-database', label: 'תצוגה מלאה', subLabel: 'כל הטבלאות במסך אחד' },
       { href: '/admin/access-import', icon: 'i-database', label: 'ייבוא מאקסס', subLabel: 'תיעוד תהליך הייבוא' },
       { href: '/admin/setup-new-machine', icon: 'i-download', label: 'התקנה על מחשב חדש', subLabel: 'סקריפט התקנה + תיעוד' },
       { href: '/admin/data-history', icon: 'i-history', label: 'היסטוריית נתונים', subLabel: 'תיעוד שינויים' },
-      { href: '/management/database', icon: 'i-database', label: 'גיבוי נתונים', subLabel: 'החלפה מ-JSON' },
+      { href: '/admin/database', icon: 'i-database', label: 'גיבוי בסיס נתונים', subLabel: 'גיבוי ושחזור' },
+      { href: '/management/database', icon: 'i-database', label: 'איפוס נתונים', subLabel: 'החלפה מ-JSON' },
+      { href: '/management/email-logs', icon: 'i-mail', label: 'יומן מיילים', subLabel: 'כל המיילים שנשלחו' },
       { href: '/management/history', icon: 'i-activity', label: 'היסטוריית גלישה', subLabel: 'דפים ושגיאות' },
     ]
   }

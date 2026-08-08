@@ -96,15 +96,20 @@ export default function ModernCustomerCard({
 
       <div className="tabs">
         {TABS.map(tab => (
-          <div
+          <button
             key={tab.id}
-            className={`tab ${activeTab === tab.id ? 'active' : ''}`}
+            type="button"
+            className={`tab${activeTab === tab.id ? ' active' : ''}`}
+            style={{
+              appearance: 'none', WebkitAppearance: 'none', background: 'none', font: 'inherit',
+              borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none'
+            }}
             onClick={() => onTabChange(tab.id)}
           >
             <svg className="icon"><use href={`#${tab.icon}`} /></svg>
             {tab.label}
             {tab.withCount && <span className="badge badge-neutral">{ordersCount}</span>}
-          </div>
+          </button>
         ))}
       </div>
 

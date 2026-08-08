@@ -33,7 +33,7 @@ export default function ModernDressCard({
   const availableItems = activeItems.filter(i => !i.inRepair && !i.notInUse);
   const attentionCount = activeItems.filter(i => i.inRepair || i.notInUse).length;
 
-  // "לא פעיل" נגזר גם מתאריך יציאה מפורש וגם ממצב שבו לא נותר אף פריט זמין —
+  // "לא פעיל" נגזר גם מתאריך יציאה מפורש וגם ממצב שבו לא נותר אף פריט זמין —
   // בדיוק כמו הצביעה בקטלוג הראשי, כדי ששתי המסכים יספרו אותו סיפור.
   const hasExitDate = !!dress.exitDateFromRepo;
   const isInactive = hasExitDate || (activeItems.length > 0 && availableItems.length === 0);

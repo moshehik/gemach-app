@@ -771,6 +771,18 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
 .swatch-row{display:flex; gap:8px; flex-wrap:wrap}
 .swatch-btn{width:32px;height:32px;border-radius:50%;border:2px solid var(--border);cursor:pointer;padding:0}
 .swatch-btn.active{border-color:var(--text); box-shadow:0 0 0 2px var(--surface), 0 0 0 4px var(--text)}
+/* "custom" swatch — same base look as a preset, plus a small edit-pencil
+   glyph so it reads as "create/edit your own" rather than a 15th preset */
+.swatch-btn-custom{display:flex; align-items:center; justify-content:center}
+.swatch-btn-custom .icon{width:13px;height:13px; color:#fff; filter:drop-shadow(0 0 1px rgba(0,0,0,.55))}
+.custom-palette-editor{margin-top:14px; padding-top:14px; border-top:1px solid var(--border)}
+.custom-palette-editor .hint{font-size:11.5px; color:var(--text-3); margin-top:2px}
+.color-field-row{display:flex; align-items:center; gap:10px}
+.color-swatch-input{width:40px; height:40px; padding:0; border:1px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); cursor:pointer; flex:0 0 auto}
+.color-swatch-input::-webkit-color-swatch-wrapper{padding:3px}
+.color-swatch-input::-webkit-color-swatch{border:none; border-radius:6px}
+.color-swatch-input::-moz-color-swatch{border:none; border-radius:6px}
+.color-field-hex{font-size:12.5px; color:var(--text-2); font-family:Consolas, monospace; direction:ltr; text-align:start}
 .font-btn-row{display:flex; flex-direction:column; gap:5px}
 .font-opt{padding:8px 10px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface); cursor:pointer; font-size:13px; text-align:start; color:var(--text)}
 .font-opt.active{border-color:var(--primary-solid); background:var(--primary-tint); color:var(--primary-solid); font-weight:700}

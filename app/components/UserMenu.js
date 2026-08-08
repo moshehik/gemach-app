@@ -106,7 +106,7 @@ export default function UserMenu() {
     return (
       <>
         {showLoginModal && <LoginScreen isModal={true} onClose={() => setShowLoginModal(false)} />}
-        <div className="user-menu" ref={menuRef}>
+        <div className={`user-menu${dropdownOpen ? ' open' : ''}`} ref={menuRef}>
           <div
             className="user-chip"
             onClick={() => setDropdownOpen(!dropdownOpen)}
@@ -148,7 +148,7 @@ export default function UserMenu() {
   }
 
   return (
-    <div className="user-menu" id="userMenu" ref={menuRef}>
+    <div className={`user-menu${dropdownOpen ? ' open' : ''}`} id="userMenu" ref={menuRef}>
       <div
         className="user-chip"
         id="userMenuToggle"
@@ -197,6 +197,15 @@ export default function UserMenu() {
           >
             <svg className="icon"><use href="#i-id" /></svg>
             הפרופיל שלי
+          </button>
+          <button
+            type="button"
+            className="user-menu-item"
+            disabled={actionLoading}
+            onClick={() => { setDropdownOpen(false); router.push('/messages'); }}
+          >
+            <svg className="icon"><use href="#i-message" /></svg>
+            הודעות
           </button>
           <button
             type="button"

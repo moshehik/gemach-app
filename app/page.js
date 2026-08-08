@@ -7,6 +7,20 @@ import Link from 'next/link';
 import * as XLSX from 'xlsx';
 import { HDate } from '@hebcal/core';
 
+// דפים שהוצאו מהתפריט הצדדי (2026-08-08, צומצם ל-11 הפריטים שהיו בתפריט
+// הראשי הישן) אבל אינם קשורי-ניהול — קיצורי דרך אליהם כאן במקום זאת, בטקסט/
+// אייקון החדשים כמו ב-navConfig.js. תתי-הדפים של אזור הניהול עברו ל-/admin.
+const QUICK_LINKS = [
+  { href: '/dashboard', label: 'לוח בקרה', icon: 'i-grid' },
+  { href: '/orders/new', label: 'הזמנה חדשה', icon: 'i-plus' },
+  { href: '/dashboard/pricelist', label: 'מחירון', icon: 'i-coin' },
+  { href: '/employees/report', label: 'דוח נוכחות', icon: 'i-activity' },
+  { href: '/messages', label: 'הודעות', icon: 'i-message' },
+  { href: '/profile', label: 'הפרופיל שלי', icon: 'i-user' },
+  { href: '/punch-clock', label: 'שעון נוכחות', icon: 'i-clock' },
+  { href: '/display-settings', label: 'עיצוב ותצוגה', icon: 'i-settings' },
+];
+
 export default function HomeDashboard() {
   const router = useRouter();
   const chatEndRef = useRef(null);
@@ -305,6 +319,21 @@ export default function HomeDashboard() {
         </div>
       </div>
 
+      {/* Quick Links */}
+      {isInitialState && (
+        <div style={{ maxWidth: '800px', width: '100%', margin: '0 auto 32px' }}>
+          <div className="section-title">קישורים מהירים</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
+            {QUICK_LINKS.map((link) => (
+              <Link key={link.href} href={link.href} className="list-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+                <svg className="icon" style={{ color: 'var(--text-3)' }}><use href={`#${link.icon}`} /></svg>
+                <span style={{ fontWeight: 600, fontSize: '13px' }}>{link.label}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* AI Response Area */}
       {aiMessages.length > 0 && (
         <div className="card card-pad" style={{ maxWidth: '800px', width: '100%', margin: '0 auto 32px', borderColor: 'var(--primary-tint-2)' }}>
@@ -390,7 +419,7 @@ export default function HomeDashboard() {
             disabled={aiLoading}
           />
           <button type="button" className="btn btn-primary btn-icon-only" title="שלח" onClick={() => handleAiSearch(aiReplyInput, true)} disabled={aiLoading || !aiReplyInput.trim()}>
-            <svg className="icon"><use href="#i-arrow-end" /></svg>
+            <svg className="icon"><use href="#i-chevron-start" /></svg>
           </button>
           <button type="button" className="btn btn-ghost btn-icon-only" title="סגור צ&apos;אט" onClick={clearAiChat}>
             <svg className="icon"><use href="#i-x" /></svg>

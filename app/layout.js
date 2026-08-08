@@ -233,6 +233,94 @@ export default async function RootLayout({ children }) {
     setAttr('data-font', saved.font, ['default']);
     setAttr('data-density', saved.density, ['comfortable']);
     setAttr('data-text-scale', saved.textScale, ['normal']);
+    // "custom" is the one palette that isn't a fixed hue in design-system.css
+    // — its colors live in saved.customColors ({ primary, accent }) and the
+    // full --primary-*/--accent-* set (light + dark) has to be derived here,
+    // before paint, exactly like app/lib/customPalette.js does for the
+    // /display-settings page itself (that module can't be imported into this
+    // raw inline script, so the same HSL math is duplicated below — keep the
+    // two in sync, function-for-function, if the derivation ever changes).
+    // It's written as a real <style> tag scoped to [data-palette="custom"],
+    // not an inline style= on <html>, so it still composes correctly with
+    // the [data-theme="dark"] attribute selector below (an inline style
+    // override would always win and block the dark-mode block from ever
+    // applying).
+    if (saved.palette === 'custom' && saved.customColors && saved.customColors.primary && saved.customColors.accent) {
+      try {
+        var hexRe = /^#?([0-9a-f]{6})$/i;
+        function clamp(n, lo, hi) { return Math.min(hi, Math.max(lo, n)); }
+        function hexToHsl(hex) {
+          var m = hexRe.exec(hex || '');
+          var clean = m ? m[1] : '7c2e4d';
+          var r = parseInt(clean.slice(0, 2), 16) / 255;
+          var g = parseInt(clean.slice(2, 4), 16) / 255;
+          var b = parseInt(clean.slice(4, 6), 16) / 255;
+          var max = Math.max(r, g, b), min = Math.min(r, g, b);
+          var h = 0, s = 0, l = (max + min) / 2, d = max - min;
+          if (d !== 0) {
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            if (max === r) h = ((g - b) / d) + (g < b ? 6 : 0);
+            else if (max === g) h = ((b - r) / d) + 2;
+            else h = ((r - g) / d) + 4;
+            h *= 60;
+          }
+          return { h: h, s: s * 100, l: l * 100 };
+        }
+        function hslToHex(h, s, l) {
+          var hue = ((h % 360) + 360) % 360;
+          var sat = clamp(s, 0, 100) / 100;
+          var light = clamp(l, 0, 100) / 100;
+          var c = (1 - Math.abs((2 * light) - 1)) * sat;
+          var x = c * (1 - Math.abs(((hue / 60) % 2) - 1));
+          var m = light - (c / 2);
+          var r = 0, g = 0, b = 0;
+          if (hue < 60) { r = c; g = x; b = 0; }
+          else if (hue < 120) { r = x; g = c; b = 0; }
+          else if (hue < 180) { r = 0; g = c; b = x; }
+          else if (hue < 240) { r = 0; g = x; b = c; }
+          else if (hue < 300) { r = x; g = 0; b = c; }
+          else { r = c; g = 0; b = x; }
+          function toHex(v) {
+            var n = clamp(Math.round((v + m) * 255), 0, 255).toString(16);
+            return n.length === 1 ? '0' + n : n;
+          }
+          return '#' + toHex(r) + toHex(g) + toHex(b);
+        }
+        var p = hexToHsl(saved.customColors.primary);
+        var a = hexToHsl(saved.customColors.accent);
+        var lp = hslToHex(p.h, p.s, p.l);
+        var lpHover = hslToHex(p.h, clamp(p.s + 4, 0, 95), clamp(p.l - 8, 6, 94));
+        var lpTint = hslToHex(p.h, clamp(p.s * 0.5, 12, 34), 93);
+        var lpTint2 = hslToHex(p.h, clamp(p.s * 0.6, 16, 40), 83);
+        var la = hslToHex(a.h, a.s, a.l);
+        var laTint = hslToHex(a.h, clamp(a.s * 0.5, 12, 34), 91);
+        var dp = hslToHex(p.h, clamp(p.s * 0.7, 30, 72), clamp(p.l + 38, 60, 82));
+        var dpHover = hslToHex(p.h, clamp(p.s * 0.65, 26, 66), clamp(p.l + 48, 70, 88));
+        var dpSolid = hslToHex(p.h, clamp(p.s * 0.85, 35, 82), clamp((p.l * 0.85) + 10, 30, 52));
+        var dpTint = hslToHex(p.h, clamp(p.s * 0.55, 18, 52), clamp((p.l * 0.22) + 6, 11, 24));
+        var dpTint2 = hslToHex(p.h, clamp(p.s * 0.6, 20, 55), clamp((p.l * 0.3) + 7, 15, 30));
+        var da = hslToHex(a.h, clamp(a.s * 0.65, 28, 68), clamp(a.l + 36, 58, 80));
+        var daSolid = hslToHex(a.h, clamp(a.s * 0.8, 32, 78), clamp((a.l * 0.85) + 9, 28, 48));
+        var daTint = hslToHex(a.h, clamp(a.s * 0.55, 18, 50), clamp((a.l * 0.24) + 6, 11, 24));
+        var css = ':root[data-palette="custom"]{'
+          + '--primary:' + lp + ';--primary-hover:' + lpHover + ';--primary-solid:' + lp + ';'
+          + '--primary-tint:' + lpTint + ';--primary-tint-2:' + lpTint2 + ';'
+          + '--accent:' + la + ';--accent-solid:' + la + ';--accent-tint:' + laTint + ';'
+          + '}'
+          + ':root[data-palette="custom"][data-theme="dark"]{'
+          + '--primary:' + dp + ';--primary-hover:' + dpHover + ';--primary-solid:' + dpSolid + ';'
+          + '--primary-tint:' + dpTint + ';--primary-tint-2:' + dpTint2 + ';'
+          + '--accent:' + da + ';--accent-solid:' + daSolid + ';--accent-tint:' + daTint + ';'
+          + '}';
+        var styleEl = document.getElementById('custom-palette-style');
+        if (!styleEl) {
+          styleEl = document.createElement('style');
+          styleEl.id = 'custom-palette-style';
+          document.head.appendChild(styleEl);
+        }
+        styleEl.textContent = css;
+      } catch (e) {}
+    }
     // data-theme is normally set server-side from the theme_<employeeId> cookie
     // (see RootLayout below) — only override it here when the user picked an
     // explicit mode on /display-settings; leave 'auto'/unset alone so the
