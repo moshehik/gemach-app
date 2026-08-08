@@ -219,7 +219,7 @@ a{color:inherit; text-decoration:none}
 .search-box input::placeholder{color:var(--text-3)}
 .search-box input:focus{outline:none}
 .topbar-search-panel{
-  position:absolute; top:calc(100% + 10px); inset-inline-end:0; width:340px; max-width:calc(100vw - 32px); z-index:30;
+  position:absolute; top:calc(100% + 10px); inset-inline-end:0; width:340px; max-width:calc(100vw - 32px); z-index:40;
   background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg);
   padding:14px; display:none;
 }
@@ -255,7 +255,7 @@ a{color:inherit; text-decoration:none}
 .user-chip{display:flex; align-items:center; gap:9px; cursor:pointer; position:relative}
 .user-menu{position:relative}
 .user-menu-dropdown{
-  position:absolute; top:calc(100% + 10px); inset-inline-end:0; min-width:220px; z-index:30;
+  position:absolute; top:calc(100% + 10px); inset-inline-end:0; min-width:220px; z-index:40;
   background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg);
   padding:6px; display:none;
 }
