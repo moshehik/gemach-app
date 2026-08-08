@@ -1,6 +1,5 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Mail, Search, Copy, Download, X, Check, ExternalLink, RefreshCw, UserCheck, ChevronRight, ChevronLeft } from 'lucide-react';
 import Link from 'next/link';
 
 export default function FullEmailListModal({ isOpen, onClose }) {
@@ -27,6 +26,10 @@ export default function FullEmailListModal({ isOpen, onClose }) {
     }
   }, [isOpen]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search]);
+
   if (!isOpen) return null;
 
   const filteredEmails = emails.filter(item => {
@@ -39,10 +42,6 @@ export default function FullEmailListModal({ isOpen, onClose }) {
       item.city.toLowerCase().includes(q)
     );
   });
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search]);
 
   const totalPages = Math.ceil(filteredEmails.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
@@ -70,7 +69,7 @@ export default function FullEmailListModal({ isOpen, onClose }) {
       `"${i.city.replace(/"/g, '""')}"`
     ]);
 
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const csvContent = '﻿' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -82,322 +81,178 @@ export default function FullEmailListModal({ isOpen, onClose }) {
   };
 
   return (
-    <div 
-      style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(15, 23, 42, 0.65)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 9999,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: '1.5rem',
-        direction: 'rtl'
-      }}
+    <div
+      className="modal-backdrop"
+      style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div 
-        style={{
-          background: '#ffffff',
-          borderRadius: '24px',
-          width: '100%',
-          maxWidth: '1000px',
-          maxHeight: '90vh',
-          display: 'flex',
-          flexDirection: 'column',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          overflow: 'hidden',
-          animation: 'fadeIn 0.2s ease-out'
-        }}
+      <div
+        className="modal"
+        style={{ maxWidth: '1000px', width: '100%', maxHeight: '90vh', margin: 0, display: 'flex', flexDirection: 'column' }}
+        onClick={(e) => e.stopPropagation()}
       >
         {/* Modal Header */}
-        <div 
-          style={{
-            padding: '1.5rem 2rem',
-            background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)',
-            color: 'white',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            <div 
-              style={{
-                width: '48px',
-                height: '48px',
-                borderRadius: '14px',
-                background: 'rgba(255, 255, 255, 0.2)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-            >
-              <Mail size={26} color="white" />
-            </div>
-            <div>
-              <h2 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '800', color: 'white' }}>
-                רשימת מיילים מלאה של הלקוחות
-              </h2>
-              <p style={{ margin: '0.2rem 0 0 0', opacity: 0.9, fontSize: '0.95rem' }}>
-                סה"כ {emails.length} כתובות דוא"ל פעילות במערכת
-              </p>
+        <div className="modal-head">
+          <div>
+            <strong>
+              <svg className="icon"><use href="#i-mail" /></svg>
+              רשימת מיילים מלאה של הלקוחות
+            </strong>
+            <div style={{ fontSize: '12.5px', color: 'var(--text-3)', marginTop: '4px' }}>
+              סה&quot;כ {emails.length} כתובות דוא&quot;ל פעילות במערכת
             </div>
           </div>
 
-          <button 
-            onClick={onClose}
-            style={{
-              background: 'rgba(255, 255, 255, 0.15)',
-              border: 'none',
-              borderRadius: '50%',
-              width: '40px',
-              height: '40px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              color: 'white',
-              cursor: 'pointer',
-              transition: 'background 0.2s'
-            }}
-            onMouseOver={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.3)'}
-            onMouseOut={(e) => e.currentTarget.style.background = 'rgba(255, 255, 255, 0.15)'}
-          >
-            <X size={22} />
+          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={onClose}>
+            <svg className="icon"><use href="#i-x" /></svg>
           </button>
         </div>
 
         {/* Toolbar Section */}
-        <div 
+        <div
           style={{
-            padding: '1.25rem 2rem',
-            background: '#f8fafc',
-            borderBottom: '1px solid #e2e8f0',
+            padding: '14px 22px',
+            background: 'var(--surface-alt)',
+            borderBottom: '1px solid var(--border)',
             display: 'flex',
             flexWrap: 'wrap',
-            gap: '1rem',
+            gap: '12px',
             alignItems: 'center',
             justifyContent: 'space-between'
           }}
         >
           {/* Search Box */}
-          <div style={{ position: 'relative', flex: 1, minWidth: '280px' }}>
-            <Search 
-              size={18} 
-              style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} 
-            />
-            <input 
+          <div className="search-toolbar" style={{ flex: 1, minWidth: '280px' }}>
+            <svg className="icon"><use href="#i-search" /></svg>
+            <input
               type="text"
               placeholder="חיפוש לפי שם, אימייל, טלפון או עיר..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              style={{
-                width: '100%',
-                padding: '0.65rem 2.8rem 0.65rem 1rem',
-                borderRadius: '12px',
-                border: '1px solid #cbd5e1',
-                outline: 'none',
-                fontSize: '0.95rem',
-                boxSizing: 'border-box'
-              }}
             />
           </div>
 
           {/* Action Buttons */}
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
             <button
+              type="button"
               onClick={handleCopyAll}
               disabled={filteredEmails.length === 0}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.65rem 1.25rem',
-                background: copiedAll ? '#16a34a' : '#2563eb',
-                color: 'white',
-                border: 'none',
-                borderRadius: '12px',
-                fontWeight: '600',
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                boxShadow: '0 2px 4px rgba(37, 99, 235, 0.2)'
-              }}
+              className="btn btn-primary btn-sm"
+              style={copiedAll ? { background: 'var(--success-solid)', boxShadow: 'none' } : undefined}
             >
-              {copiedAll ? <Check size={18} /> : <Copy size={18} />}
+              <svg className="icon"><use href={copiedAll ? '#i-check' : '#i-link'} /></svg>
               {copiedAll ? `הועתקו ${filteredEmails.length} מיילים!` : `העתק את כל המיילים (${filteredEmails.length})`}
             </button>
 
             <button
+              type="button"
               onClick={handleExportCSV}
               disabled={filteredEmails.length === 0}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem',
-                padding: '0.65rem 1.25rem',
-                background: 'white',
-                color: '#0f172a',
-                border: '1px solid #cbd5e1',
-                borderRadius: '12px',
-                fontWeight: '600',
-                fontSize: '0.95rem',
-                cursor: 'pointer',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
-              onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+              className="btn btn-secondary btn-sm"
             >
-              <Download size={18} color="#2563eb" />
+              <svg className="icon" style={{ color: 'var(--primary-solid)' }}><use href="#i-download" /></svg>
               ייצא ל-CSV
             </button>
           </div>
         </div>
 
         {/* Content Body - Table */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 2rem' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 22px' }}>
           {loading ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-              <RefreshCw size={32} className="animate-spin" style={{ margin: '0 auto 1rem auto', color: '#2563eb' }} />
-              <div>טוען רשימת מיילים...</div>
-            </div>
+            <div className="loading-inline"><span className="spinner" /> טוען רשימת מיילים...</div>
           ) : filteredEmails.length === 0 ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
-              לא נמצאו מיילים התואמים לחיפוש.
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-search" /></svg>
+              <p>לא נמצאו מיילים התואמים לחיפוש.</p>
             </div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.95rem' }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
-                  <th style={{ padding: '0.75rem 1rem' }}>#</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>שם לקוח</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>כתובת דוא"ל</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>טלפון</th>
-                  <th style={{ padding: '0.75rem 1rem' }}>עיר</th>
-                  <th style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>פעולות</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedEmails.map((item, idx) => (
-                  <tr 
-                    key={item.id || idx}
-                    style={{
-                      borderBottom: '1px solid #f1f5f9',
-                      transition: 'background 0.15s'
-                    }}
-                    onMouseOver={(e) => e.currentTarget.style.background = '#f8fafc'}
-                    onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <td style={{ padding: '0.75rem 1rem', color: '#94a3b8', fontSize: '0.85rem' }}>{startIndex + idx + 1}</td>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: '600', color: '#0f172a' }}>{item.name}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#2563eb', fontWeight: '500', direction: 'ltr', textAlign: 'right' }}>
-                      {item.email}
-                    </td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#475569' }}>{item.phone || '-'}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#475569' }}>{item.city || '-'}</td>
-                    <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                        <button
-                          onClick={() => handleCopySingle(item.email, item.id)}
-                          title="העתק מייל"
-                          style={{
-                            background: copiedSingle === item.id ? '#f0fdf4' : '#f1f5f9',
-                            color: copiedSingle === item.id ? '#16a34a' : '#475569',
-                            border: '1px solid #e2e8f0',
-                            borderRadius: '8px',
-                            padding: '0.4rem 0.6rem',
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: '0.3rem',
-                            fontSize: '0.85rem',
-                            fontWeight: '600'
-                          }}
-                        >
-                          {copiedSingle === item.id ? <Check size={14} /> : <Copy size={14} />}
-                          {copiedSingle === item.id ? 'הועתק!' : 'העתק'}
-                        </button>
-                        <Link 
-                          href={`/customers/${item.id}`}
-                          target="_blank"
-                          title="פתח כרטיס לקוח"
-                          style={{
-                            background: '#eff6ff',
-                            color: '#2563eb',
-                            border: '1px solid #bfdbfe',
-                            borderRadius: '8px',
-                            padding: '0.4rem 0.6rem',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            textDecoration: 'none'
-                          }}
-                        >
-                          <ExternalLink size={14} />
-                        </Link>
-                      </div>
-                    </td>
+            <div className="table-wrap">
+              <table className="data">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>שם לקוח</th>
+                    <th>כתובת דוא&quot;ל</th>
+                    <th>טלפון</th>
+                    <th>עיר</th>
+                    <th style={{ textAlign: 'center' }}>פעולות</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {paginatedEmails.map((item, idx) => (
+                    <tr key={item.id || idx}>
+                      <td className="cell-muted">{startIndex + idx + 1}</td>
+                      <td className="cell-primary">{item.name}</td>
+                      <td style={{ direction: 'ltr', textAlign: 'start', color: 'var(--primary-solid)', fontWeight: 500 }}>
+                        {item.email}
+                      </td>
+                      <td>{item.phone || '-'}</td>
+                      <td>{item.city || '-'}</td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                          <button
+                            type="button"
+                            onClick={() => handleCopySingle(item.email, item.id)}
+                            title="העתק מייל"
+                            className="btn btn-sm btn-icon-only"
+                            style={
+                              copiedSingle === item.id
+                                ? { background: 'var(--success-tint)', color: 'var(--success)', border: '1px solid transparent' }
+                                : { background: 'var(--surface-alt)', color: 'var(--text-2)', border: '1px solid var(--border)' }
+                            }
+                          >
+                            <svg className="icon"><use href={copiedSingle === item.id ? '#i-check' : '#i-link'} /></svg>
+                          </button>
+                          <Link
+                            href={`/customers/${item.id}`}
+                            target="_blank"
+                            title="פתח כרטיס לקוח"
+                            className="btn btn-sm btn-icon-only"
+                            style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)', border: '1px solid var(--primary-tint-2)' }}
+                          >
+                            <svg className="icon"><use href="#i-expand" /></svg>
+                          </Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
 
         {/* Footer - Pagination and Summary */}
         {!loading && filteredEmails.length > 0 && (
-          <div 
-            style={{
-              padding: '1rem 2rem',
-              background: '#f8fafc',
-              borderTop: '1px solid #e2e8f0',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center'
-            }}
-          >
-            <div style={{ color: '#475569', fontSize: '0.95rem' }}>
+          <div className="table-foot" style={{ position: 'static', borderRadius: 0 }}>
+            <div>
               מציג <strong>{startIndex + 1}</strong> עד <strong>{Math.min(startIndex + itemsPerPage, filteredEmails.length)}</strong> מתוך <strong>{filteredEmails.length}</strong> רשומות
             </div>
-            
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
               <button
+                type="button"
                 onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: '36px', height: '36px', borderRadius: '8px',
-                  background: currentPage === 1 ? '#e2e8f0' : 'white',
-                  color: currentPage === 1 ? '#94a3b8' : '#0f172a',
-                  border: '1px solid #cbd5e1',
-                  cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s'
-                }}
+                className="btn btn-secondary btn-icon-only btn-sm"
+                title="עמוד קודם"
               >
-                <ChevronRight size={18} />
+                <svg className="icon"><use href="#i-chevron-end" /></svg>
               </button>
-              
-              <span style={{ fontSize: '0.95rem', fontWeight: '600', color: '#0f172a', margin: '0 0.5rem' }}>
+
+              <span style={{ fontWeight: 600, color: 'var(--text)', margin: '0 8px' }}>
                 עמוד {currentPage} מתוך {totalPages}
               </span>
-              
+
               <button
+                type="button"
                 onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                 disabled={currentPage === totalPages}
-                style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: '36px', height: '36px', borderRadius: '8px',
-                  background: currentPage === totalPages ? '#e2e8f0' : 'white',
-                  color: currentPage === totalPages ? '#94a3b8' : '#0f172a',
-                  border: '1px solid #cbd5e1',
-                  cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s'
-                }}
+                className="btn btn-secondary btn-icon-only btn-sm"
+                title="עמוד הבא"
               >
-                <ChevronLeft size={18} />
+                <svg className="icon"><use href="#i-chevron-start" /></svg>
               </button>
             </div>
           </div>

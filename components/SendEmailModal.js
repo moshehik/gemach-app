@@ -1,7 +1,6 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Send } from 'lucide-react';
 
 import { normalizeEmail } from '@/lib/emailUtils';
 
@@ -38,7 +37,7 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
       .catch(console.error);
   }, []);
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
   const handleChange = (e) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -112,87 +111,98 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
     }
   };
 
-  const inputStyle = {
-    width: '100%', 
-    padding: '0.75rem', 
-    borderRadius: '8px', 
-    border: '1px solid var(--element-border)',
-    outline: 'none',
-    fontFamily: 'inherit'
-  };
+  return createPortal(
+    <div
+      className="modal-backdrop"
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
+    >
+      <div className="modal" style={{ maxWidth: '500px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <strong>
+            <svg className="icon"><use href="#i-mail" /></svg>
+            שליחת מייל
+          </strong>
+          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => !loading && onClose()}>
+            <svg className="icon"><use href="#i-x" /></svg>
+          </button>
+        </div>
 
-  const content = (
-    <div data-agy-id="send_email_modal_backdrop" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} dir="rtl">
-      <div data-agy-id="send_email_modal_container" style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', width: '100%', maxWidth: '500px', boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: '90vh', overflowY: 'auto' }}>
-        <h2 style={{ marginTop: 0, color: 'var(--primary-color)', marginBottom: '1.5rem', borderBottom: '2px solid #eee', paddingBottom: '0.5rem' }}>שליחת מייל</h2>
-        
         {success ? (
-          <div style={{ background: '#d4edda', color: '#155724', padding: '1rem', borderRadius: '8px', textAlign: 'center', fontWeight: 'bold' }}>
-            {success}
+          <div className="modal-body">
+            <div className="callout callout-success">
+              <svg className="icon"><use href="#i-check-circle" /></svg>
+              {success}
+            </div>
           </div>
         ) : (
-          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            
-            {error && <div style={{ background: '#f8d7da', color: '#721c24', padding: '0.75rem', borderRadius: '8px', fontSize: '0.9rem' }}>{error}</div>}
-            
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', fontSize: '0.9rem' }}>אל (To):</label>
-              <input data-agy-id="send_email_to_input" type="email" name="to" value={formData.to} onChange={handleChange} required style={inputStyle} dir="ltr" />
-            </div>
+          <form onSubmit={handleSubmit}>
+            <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              {error && (
+                <div className="callout callout-danger">
+                  <svg className="icon"><use href="#i-alert-circle" /></svg>
+                  {error}
+                </div>
+              )}
 
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', fontSize: '0.9rem' }}>עותק (CC):</label>
-              <input data-agy-id="send_email_cc_input" type="email" name="cc" value={formData.cc} onChange={handleChange} style={inputStyle} dir="ltr" />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', fontSize: '0.9rem' }}>נושא:</label>
-              <input data-agy-id="send_email_subject_input" type="text" name="subject" value={formData.subject} onChange={handleChange} required style={inputStyle} />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', fontSize: '0.9rem' }}>תוכן:</label>
-              <textarea data-agy-id="send_email_body_textarea" name="body" value={formData.body} onChange={handleChange} required style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} />
-            </div>
-
-            <div>
-              <label style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 'bold', fontSize: '0.9rem' }}>קובץ מצורף:</label>
-              <input data-agy-id="send_email_file_input" type="file" onChange={handleFileChange} style={inputStyle} />
-            </div>
-
-            <div style={{ background: '#f8f9fa', padding: '1rem', borderRadius: '8px', border: '1px solid #e9ecef', marginTop: '0.5rem' }}>
-              <p style={{ margin: '0 0 1rem 0', fontWeight: 'bold', color: '#495057', fontSize: '0.95rem' }}>אימות מנהל לשליחה:</p>
-              
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem' }}>שם משתמש (מנהל):</label>
-                <select data-agy-id="send_email_admin_select" name="username" value={formData.username} onChange={handleChange} required style={inputStyle}>
-                  <option value="">-- בחר מנהל/מתכנת --</option>
-                  {admins.map(admin => (
-                    <option key={admin.id} value={admin.id}>{admin.firstName} {admin.lastName || ''}</option>
-                  ))}
-                </select>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label>אל (To)</label>
+                <input type="email" name="to" className="input" value={formData.to} onChange={handleChange} required dir="ltr" disabled={loading} />
               </div>
 
-              <div>
-                <label style={{ display: 'block', marginBottom: '0.25rem', fontSize: '0.85rem' }}>סיסמה:</label>
-                <input data-agy-id="send_email_password_input" type="password" name="password" value={formData.password} onChange={handleChange} required style={inputStyle} />
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label>עותק (CC)</label>
+                <input type="email" name="cc" className="input" value={formData.cc} onChange={handleChange} dir="ltr" disabled={loading} />
+              </div>
+
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label>נושא</label>
+                <input type="text" name="subject" className="input" value={formData.subject} onChange={handleChange} required disabled={loading} />
+              </div>
+
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label>תוכן</label>
+                <textarea name="body" className="textarea" value={formData.body} onChange={handleChange} rows={6} required disabled={loading} />
+              </div>
+
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label>קובץ מצורף</label>
+                <input type="file" className="input" onChange={handleFileChange} disabled={loading} />
+              </div>
+
+              <div style={{ background: 'var(--surface-alt)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>
+                <div className="hint" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px', fontWeight: 700, color: 'var(--text-2)' }}>
+                  <svg className="icon"><use href="#i-lock" /></svg>
+                  אימות מנהל לשליחה
+                </div>
+
+                <div className="field" style={{ marginBottom: '12px' }}>
+                  <label>שם משתמש (מנהל)</label>
+                  <select name="username" className="select" value={formData.username} onChange={handleChange} required disabled={loading}>
+                    <option value="">-- בחר מנהל/מתכנת --</option>
+                    {admins.map(admin => (
+                      <option key={admin.id} value={admin.id}>{admin.firstName} {admin.lastName || ''}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>סיסמה</label>
+                  <input type="password" name="password" className="input" value={formData.password} onChange={handleChange} required disabled={loading} />
+                </div>
               </div>
             </div>
-
-            <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
-              <button data-agy-id="send_email_submit_btn" type="submit" disabled={loading} className="btn btn-primary" style={{ flex: 1, padding: '0.75rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                <Send size={18} />
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>ביטול</button>
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                {loading ? <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-mail" /></svg>}
                 {loading ? 'שולח...' : 'שלח מייל'}
-              </button>
-              <button data-agy-id="send_email_cancel_btn" type="button" onClick={onClose} disabled={loading} className="btn btn-outline" style={{ flex: 1, padding: '0.75rem' }}>
-                ביטול
               </button>
             </div>
           </form>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
-
-  return typeof document !== 'undefined' ? createPortal(content, document.body) : content;
 }
