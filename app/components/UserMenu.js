@@ -131,15 +131,6 @@ export default function UserMenu() {
                 <svg className="icon"><use href="#i-logout" /></svg>
                 היכנס למערכת
               </button>
-              <div className="user-menu-divider" />
-              <button
-                type="button"
-                className="user-menu-item"
-                onClick={() => { setDropdownOpen(false); window.dispatchEvent(new Event('show-screensaver')); }}
-              >
-                <svg className="icon"><use href="#i-eye" /></svg>
-                שומר מסך
-              </button>
             </div>
           )}
         </div>
@@ -206,15 +197,6 @@ export default function UserMenu() {
           >
             <svg className="icon"><use href="#i-message" /></svg>
             הודעות
-          </button>
-          <button
-            type="button"
-            className="user-menu-item"
-            disabled={actionLoading}
-            onClick={() => { setDropdownOpen(false); window.dispatchEvent(new Event('show-screensaver')); }}
-          >
-            <svg className="icon"><use href="#i-eye" /></svg>
-            שומר מסך
           </button>
           <button type="button" className="user-menu-item danger" onClick={handleLogout} disabled={actionLoading}>
             <svg className="icon"><use href="#i-logout" /></svg>

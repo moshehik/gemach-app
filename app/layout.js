@@ -25,7 +25,6 @@ import { UniqueNamesProvider } from './components/UniqueNamesContext';
 import PrefetchManager from './components/PrefetchManager';
 import OfflineIndicator from './components/OfflineIndicator';
 import ClipboardDebugger from '../components/ClipboardDebugger';
-import LandingPage from './components/LandingPage';
 import StickyTableHeaders from './components/StickyTableHeaders';
 
 export default async function RootLayout({ children }) {
@@ -429,7 +428,6 @@ export default async function RootLayout({ children }) {
             </PopupProvider>
           </LabelsProvider>
         )}
-        <LandingPage data-element-name="רכיב_layout_24" />
         </UniqueNamesProvider>
       </body>
     </html>
