@@ -116,6 +116,7 @@ export default function StatisticsPage() {
             type="button"
             key={t.id}
             className={activeTab === t.id ? 'tab active' : 'tab'}
+            style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
             onClick={() => setActiveTab(t.id)}
           >
             <svg className="icon"><use href={`#${t.icon}`} /></svg>

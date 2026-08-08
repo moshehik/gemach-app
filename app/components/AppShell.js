@@ -11,6 +11,11 @@ import ThemeToggle from './ThemeToggle';
 import ErrorReportButton from './ErrorReportButton';
 import MessageHistoryButton from './MessageHistoryButton';
 
+// Personal pinned-shortcuts prefs: a single shared, browser-wide localStorage key
+// (not per-employee/cookie-scoped like /display-settings) — this is a convenience
+// feature, not security-sensitive, so no server round-trip is warranted.
+const PINNED_NAV_KEY = 'gemachPinnedNav';
+
 // New "אריג" app shell: right-side sidebar (RTL) + topbar, replacing the old
 // horizontal navbar + floating GlobalSidebar widget. Real navigation/role-gating
 // logic is computed server-side in layout.js and passed in as `navGroups`; this
@@ -29,6 +34,7 @@ export default function AppShell({
   const router = useRouter();
   const [sidebarState, setSidebarState] = useState('expanded'); // expanded | collapsed | hidden
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [pinned, setPinned] = useState([]); // [{href,label,icon}] — pinned sidebar shortcuts shown in the topbar
 
   useEffect(() => {
     try {
@@ -40,6 +46,54 @@ export default function AppShell({
   useEffect(() => {
     document.documentElement.setAttribute('data-sidebar', sidebarState);
   }, [sidebarState]);
+
+  // Load pinned shortcuts on mount, and stay in sync across tabs/windows sharing
+  // the same browser profile (e.g. two monitors) via the storage event — cheap
+  // to add and matches the robustness of the sidebar-state prefs above.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(PINNED_NAV_KEY);
+      if (saved) setPinned(JSON.parse(saved));
+    } catch (e) {}
+  }, []);
+
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key !== PINNED_NAV_KEY) return;
+      try {
+        setPinned(e.newValue ? JSON.parse(e.newValue) : []);
+      } catch (err) {}
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const persistPinned = (next) => {
+    setPinned(next);
+    try { localStorage.setItem(PINNED_NAV_KEY, JSON.stringify(next)); } catch (e) {}
+  };
+
+  const isPinned = (href) => pinned.some((p) => p.href === href);
+
+  // Sidebar pin toggle: adds/removes a denormalized {href,label,icon} copy so the
+  // topbar row can render without needing the full navGroups tree.
+  const togglePin = (e, item) => {
+    e.preventDefault();
+    e.stopPropagation();
+    persistPinned(
+      isPinned(item.href)
+        ? pinned.filter((p) => p.href !== item.href)
+        : [...pinned, { href: item.href, label: item.label, icon: item.icon }]
+    );
+  };
+
+  // Topbar "×" unpin — stops the click from bubbling into the pinned icon's own
+  // <Link> (it would otherwise also navigate).
+  const unpin = (e, href) => {
+    e.preventDefault();
+    e.stopPropagation();
+    persistPinned(pinned.filter((p) => p.href !== href));
+  };
 
   const handleMenuToggle = () => {
     if (typeof window !== 'undefined' && window.innerWidth <= 900) {
@@ -78,6 +132,14 @@ export default function AppShell({
               >
                 <svg className="icon"><use href={`#${item.icon}`} /></svg>
                 <span className="nav-label">{item.label}</span>
+                <button
+                  type="button"
+                  className={`nav-pin-btn${isPinned(item.href) ? ' pinned' : ''}`}
+                  title={isPinned(item.href) ? 'הסרה מהתפריט העליון' : 'הצמדה לתפריט העליון'}
+                  onClick={(e) => togglePin(e, item)}
+                >
+                  <svg className="icon"><use href="#i-thumbtack" /></svg>
+                </button>
               </Link>
             ))}
           </div>
@@ -102,6 +164,29 @@ export default function AppShell({
             <div className="crumb">
               <svg className="icon"><use href={`#${activeMeta.icon}`} /></svg>
               <span>{activeMeta.groupLabel} / {activeMeta.label}</span>
+            </div>
+          )}
+
+          {pinned.length > 0 && (
+            <div className="topbar-pins">
+              {pinned.map((item) => (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={`icon-btn topbar-pin-icon${isActive(item.href) ? ' active' : ''}`}
+                  title={item.label}
+                >
+                  <svg className="icon"><use href={`#${item.icon}`} /></svg>
+                  <button
+                    type="button"
+                    className="topbar-pin-remove"
+                    title="הסרה מהתפריט העליון"
+                    onClick={(e) => unpin(e, item.href)}
+                  >
+                    <svg className="icon"><use href="#i-x" /></svg>
+                  </button>
+                </Link>
+              ))}
             </div>
           )}
 

@@ -591,15 +591,15 @@ export default function RefundsPage() {
       </div>
 
       <div className="tabs">
-        <button type="button" className={activeTab === 'refunds' ? 'tab active' : 'tab'} onClick={() => setActiveTab('refunds')}>
+        <button type="button" className={activeTab === 'refunds' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('refunds')}>
           <svg className="icon"><use href="#i-coin" /></svg>
           זיכויים
         </button>
-        <button type="button" className={activeTab === 'debts' ? 'tab active' : 'tab'} onClick={() => setActiveTab('debts')}>
+        <button type="button" className={activeTab === 'debts' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('debts')}>
           <svg className="icon"><use href="#i-alert-circle" /></svg>
           חובות פתוחים
         </button>
-        <button type="button" className={activeTab === 'approved' ? 'tab active' : 'tab'} onClick={() => setActiveTab('approved')}>
+        <button type="button" className={activeTab === 'approved' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('approved')}>
           <svg className="icon"><use href="#i-shield" /></svg>
           הזמנות מאושרות ללא תשלום מלא
         </button>

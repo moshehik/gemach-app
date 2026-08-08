@@ -218,10 +218,10 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
 
             {activeTab !== 'thread' && (
               <div className="tabs" style={{ margin: '0 22px' }}>
-                <button type="button" className={`tab${activeTab === 'list' ? ' active' : ''}`} onClick={() => setActiveTab('list')}>
+                <button type="button" className={`tab${activeTab === 'list' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('list')}>
                   פניות שלי {isProgrammer ? '(כל הדיווחים)' : ''}
                 </button>
-                <button type="button" className={`tab${activeTab === 'new' ? ' active' : ''}`} onClick={() => setActiveTab('new')}>
+                <button type="button" className={`tab${activeTab === 'new' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('new')}>
                   דיווח על תקלה חדשה
                 </button>
               </div>

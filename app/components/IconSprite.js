@@ -45,6 +45,7 @@ export default function IconSprite() {
         <symbol id="i-phone" viewBox="0 0 24 24"><path d="M6 3.5h3l1.5 4-2 1.5a12 12 0 0 0 5.5 5.5l1.5-2 4 1.5v3a1.5 1.5 0 0 1-1.6 1.5A16 16 0 0 1 4.5 5.1 1.5 1.5 0 0 1 6 3.5Z" /></symbol>
         <symbol id="i-mail" viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2" /><path d="m4 6.5 8 6.5 8-6.5" /></symbol>
         <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-6.5 7-12a7 7 0 0 0-14 0c0 5.5 7 12 7 12Z" /><circle cx="12" cy="9" r="2.4" /></symbol>
+        <symbol id="i-thumbtack" viewBox="0 0 24 24"><path d="M9 4h6M9 4v3.3c0 1-.9 1.4-1.4 2.3C6.9 11 6.5 12.4 6.5 13.5h11c0-1.1-.4-2.5-1.1-3.9-.5-.9-1.4-1.3-1.4-2.3V4" /><path d="M12 13.5V21" /></symbol>
         <symbol id="i-star" viewBox="0 0 24 24"><path d="m12 4 2.5 5.4 5.8.6-4.4 4 1.3 5.8L12 16.9 6.8 19.8l1.3-5.8-4.4-4 5.8-.6Z" /></symbol>
         <symbol id="i-sort" viewBox="0 0 24 24"><path d="M7 4.5v15M4 7.5l3-3 3 3" /><path d="M17 19.5v-15M14 16.5l3 3 3-3" /></symbol>
         <symbol id="i-more" viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.4" /><circle cx="12" cy="12" r="1.4" /><circle cx="18.5" cy="12" r="1.4" /></symbol>

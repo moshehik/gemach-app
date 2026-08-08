@@ -154,6 +154,7 @@ export default function LabelsAdminPage() {
                 key={category.id}
                 type="button"
                 className={activeTab === category.id ? 'tab active' : 'tab'}
+                style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
                 onClick={() => setActiveTab(category.id)}
               >
                 <svg className="icon"><use href={`#${category.icon}`} /></svg>

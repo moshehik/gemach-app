@@ -297,13 +297,13 @@ export default function EmployeePage({ params }) {
 
       {id !== 'new' && (
         <div className="tabs no-print">
-          <button data-agy-id="tab-employee-details" data-element-name="כפתור_page_2" type="button" className={activeTab === 'details' ? 'tab active' : 'tab'} onClick={() => setActiveTab('details')}>
+          <button data-agy-id="tab-employee-details" data-element-name="כפתור_page_2" type="button" className={activeTab === 'details' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('details')}>
             <svg className="icon"><use href="#i-id" /></svg>פרטי עובד
           </button>
-          <button data-agy-id="tab-employee-attendance" data-element-name="כפתור_page_3" type="button" className={activeTab === 'attendance' ? 'tab active' : 'tab'} onClick={() => setActiveTab('attendance')}>
+          <button data-agy-id="tab-employee-attendance" data-element-name="כפתור_page_3" type="button" className={activeTab === 'attendance' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('attendance')}>
             <svg className="icon"><use href="#i-clock" /></svg>נוכחות וסיכום
           </button>
-          <button data-agy-id="tab-employee-history" data-element-name="כפתור_page_4" type="button" className={activeTab === 'history' ? 'tab active' : 'tab'} onClick={() => setActiveTab('history')}>
+          <button data-agy-id="tab-employee-history" data-element-name="כפתור_page_4" type="button" className={activeTab === 'history' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('history')}>
             <svg data-element-name="רכיב_page_5" className="icon"><use href="#i-history" /></svg>היסטוריה
           </button>
         </div>

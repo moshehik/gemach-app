@@ -263,11 +263,11 @@ export default function EmployeesPage() {
 
         {/* Tabs Navigation */}
         <div className="tabs">
-          <button type="button" className={activeTab === 'list' ? 'tab active' : 'tab'} onClick={() => setActiveTab('list')}>
+          <button type="button" className={activeTab === 'list' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('list')}>
             <svg className="icon"><use href="#i-users" /></svg>
             רשימת עובדים
           </button>
-          <button type="button" className={activeTab === 'attendance' ? 'tab active' : 'tab'} onClick={() => setActiveTab('attendance')}>
+          <button type="button" className={activeTab === 'attendance' ? 'tab active' : 'tab'} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('attendance')}>
             <svg className="icon"><use href="#i-clock" /></svg>
             נוכחות
           </button>
