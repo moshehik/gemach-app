@@ -2,7 +2,6 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Printer, FileText, ClipboardList, Mail, Loader2 } from 'lucide-react';
 
 /**
  * Reusable "print / email order" control: a floating menu with the same 4
@@ -165,29 +164,36 @@ export default function OrderPrintMenu({
     <>
       <div ref={containerRef} style={{ position: 'relative' }}>
         <button type="button" className={triggerClassName} title={triggerTitle} onClick={handleTriggerClick} disabled={sending}>
-          {sending ? <Loader2 size={triggerIconSize} className="opm-spin" /> : <Printer size={triggerIconSize} />}
+          {sending ? (
+            <span className="spinner" style={{ width: `${triggerIconSize}px`, height: `${triggerIconSize}px`, borderWidth: '2px' }} />
+          ) : (
+            <svg className="icon" style={{ width: `${triggerIconSize}px`, height: `${triggerIconSize}px` }}><use href="#i-printer" /></svg>
+          )}
         </button>
         {open && (
           <div className="opm-menu">
-            <button type="button" className="opm-menu-item" onClick={() => openPrint('order')}><FileText size={16} /> הזמנה</button>
-            <button type="button" className="opm-menu-item" onClick={() => openPrint('rental')}><ClipboardList size={16} /> השכרה</button>
-            <button type="button" className="opm-menu-item" onClick={() => handleSendEmail('order')}><Mail size={16} /> מייל הזמנה</button>
-            <button type="button" className="opm-menu-item" onClick={() => handleSendEmail('rental')}><Mail size={16} /> מייל השכרה</button>
+            <button type="button" className="opm-menu-item" onClick={() => openPrint('order')}><svg className="icon"><use href="#i-file" /></svg> הזמנה</button>
+            <button type="button" className="opm-menu-item" onClick={() => openPrint('rental')}><svg className="icon"><use href="#i-list" /></svg> השכרה</button>
+            <button type="button" className="opm-menu-item" onClick={() => handleSendEmail('order')}><svg className="icon"><use href="#i-mail" /></svg> מייל הזמנה</button>
+            <button type="button" className="opm-menu-item" onClick={() => handleSendEmail('rental')}><svg className="icon"><use href="#i-mail" /></svg> מייל השכרה</button>
           </div>
         )}
       </div>
 
       {showRegulationsModal && typeof document !== 'undefined' && createPortal(
-        <div className="modal-overlay" style={{ zIndex: 2000 }} onClick={cancelSignatureConfirm}>
-          <div className="opm-modal" onClick={e => e.stopPropagation()}>
-            <h2 className="opm-modal-title">חתימה על תקנון</h2>
-            <p className="opm-modal-text">האם הלקוח חתם על התקנון?</p>
-            <div className="opm-modal-actions">
-              <button type="button" className="btn btn-primary" onClick={confirmSigned} disabled={confirmingSigned} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                {confirmingSigned && <Loader2 size={16} className="opm-spin" />}
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={cancelSignatureConfirm}>
+          <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-icon-circle" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
+              <svg className="icon"><use href="#i-edit" /></svg>
+            </div>
+            <h3>חתימה על תקנון</h3>
+            <p>האם הלקוח חתם על התקנון?</p>
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-primary" onClick={confirmSigned} disabled={confirmingSigned}>
+                {confirmingSigned && <span className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }} />}
                 כן, חתם
               </button>
-              <button type="button" className="btn btn-outline" onClick={cancelSignatureConfirm}>לא (ביטול)</button>
+              <button type="button" className="btn btn-secondary" onClick={cancelSignatureConfirm}>לא (ביטול)</button>
             </div>
           </div>
         </div>,
@@ -195,23 +201,27 @@ export default function OrderPrintMenu({
       )}
 
       {showEmailPrompt && typeof document !== 'undefined' && createPortal(
-        <div className="modal-overlay" style={{ zIndex: 2000 }} onClick={() => setShowEmailPrompt(false)}>
-          <div className="opm-modal" onClick={e => e.stopPropagation()}>
-            <h2 className="opm-modal-title">כתובת מייל חסרה</h2>
-            <p className="opm-modal-text">ללקוח זה לא מעודכנת כתובת מייל במערכת. אנא הזן כתובת מייל (תישמר אוטומטית בכרטיס הלקוח).</p>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowEmailPrompt(false)}>
+          <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-icon-circle" style={{ background: 'var(--info-tint)', color: 'var(--info)' }}>
+              <svg className="icon"><use href="#i-mail" /></svg>
+            </div>
+            <h3>כתובת מייל חסרה</h3>
+            <p>ללקוח זה לא מעודכנת כתובת מייל במערכת. אנא הזן כתובת מייל (תישמר אוטומטית בכרטיס הלקוח).</p>
             <input
               type="email"
+              className="input"
               value={emailInput}
               onChange={(e) => setEmailInput(e.target.value)}
               placeholder="example@gmail.com"
               dir="ltr"
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleEmailSubmit(); }}
-              className="opm-email-input"
+              style={{ marginBottom: '18px', textAlign: 'start' }}
             />
-            <div className="opm-modal-actions">
+            <div className="confirm-actions">
               <button type="button" className="btn btn-primary" onClick={handleEmailSubmit}>שלח</button>
-              <button type="button" className="btn btn-outline" onClick={() => setShowEmailPrompt(false)}>ביטול</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowEmailPrompt(false)}>ביטול</button>
             </div>
           </div>
         </div>,
@@ -220,15 +230,12 @@ export default function OrderPrintMenu({
 
       <style dangerouslySetInnerHTML={{
         __html: `
-        @keyframes opm-spin { to { transform: rotate(360deg); } }
-        .opm-spin { animation: opm-spin 0.8s linear infinite; }
-
         .opm-menu {
-          position: absolute; top: 100%; right: 0; margin-top: 8px;
-          background: var(--card-bg, #fff); border-radius: 12px;
-          box-shadow: 0 10px 25px -5px rgba(0,0,0,0.15), 0 8px 10px -6px rgba(0,0,0,0.06);
+          position: absolute; top: 100%; inset-inline-end: 0; margin-top: 8px;
+          background: var(--surface); border-radius: var(--radius-md);
+          box-shadow: var(--shadow-lg);
           z-index: 1050; min-width: 170px; overflow: hidden; padding: 6px;
-          border: 1px solid var(--element-border, #e5e7eb);
+          border: 1px solid var(--border);
           animation: opm-slide-in 0.15s ease-out forwards;
         }
         @keyframes opm-slide-in {
@@ -238,24 +245,11 @@ export default function OrderPrintMenu({
         .opm-menu-item {
           width: 100%; display: flex; align-items: center; gap: 10px;
           padding: 10px 12px; border: none; background: transparent; cursor: pointer;
-          border-radius: 8px; font-weight: 600; font-size: 0.88rem; color: var(--text-main, #334155);
+          border-radius: var(--radius-sm); font-weight: 600; font-size: 0.88rem; color: var(--text);
           transition: background-color 0.15s ease;
         }
-        .opm-menu-item:hover { background: var(--element-bg, #f8fafc); }
-
-        .opm-modal {
-          background: var(--card-bg, #fff); padding: 2rem; border-radius: 16px;
-          width: 100%; max-width: 420px; box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-          border: 1px solid var(--element-border, #e2e8f0); text-align: center;
-        }
-        .opm-modal-title { color: var(--primary-color, #d4af37); margin: 0 0 1rem 0; font-size: 1.35rem; font-weight: bold; }
-        .opm-modal-text { font-size: 1rem; margin-bottom: 1.5rem; color: var(--text-main); line-height: 1.5; }
-        .opm-modal-actions { display: flex; gap: 1rem; justify-content: center; }
-        .opm-email-input {
-          width: 100%; padding: 0.7rem 1rem; font-size: 1rem; border-radius: 10px;
-          border: 2px solid var(--element-border, #cbd5e1); margin-bottom: 1.25rem;
-          text-align: left; outline: none; background: var(--input-bg, #fff); color: var(--text-main);
-        }
+        .opm-menu-item .icon { width: 16px; height: 16px; color: var(--text-3); }
+        .opm-menu-item:hover { background: var(--surface-alt); }
       `}} />
     </>
   );

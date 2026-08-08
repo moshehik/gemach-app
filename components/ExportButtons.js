@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, FileSpreadsheet, Download, Sparkles, X, Loader2, FileDown } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
 export default function ExportButtons({ data = [], filename = 'export', columns = [], iconOnly = false, onFetchData = null }) {
@@ -16,7 +15,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
       setHideAi(document.body.classList.contains('hide-ai-features'));
     }
   }, []);
-  
+
   const [exportLimit, setExportLimit] = useState(100);
   const [adminPin, setAdminPin] = useState('');
   const [showAdminPrompt, setShowAdminPrompt] = useState(false);
@@ -24,7 +23,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
   const [pendingAction, setPendingAction] = useState(null);
 
   const processDataForExport = (dataToProcess) => {
-    return columns.length > 0 
+    return columns.length > 0
       ? dataToProcess.map(item => {
           const row = {};
           columns.forEach(col => {
@@ -64,7 +63,10 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
 
   // Opens a popup with a self-contained, print-ready document (A4, repeating
   // table headers on every page, rows kept whole across page breaks) and
-  // triggers the browser's print dialog.
+  // triggers the browser's print dialog. This HTML is a standalone printed
+  // document rendered in its own window, not part of the app UI — it
+  // intentionally uses static print-safe colors instead of app theme
+  // variables (per project convention for print surfaces).
   const openPrintDocument = (innerHtml) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
@@ -157,11 +159,11 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ data: processDataForExport(dataToExport), prompt: aiPrompt, columns: columns.map(c => c.label), format: exportFormat })
         });
-        
+
         if (!response.ok) throw new Error('שגיאה ביצירת הדוח בשרת');
-        
+
         const { processedData } = await response.json();
-        
+
         if (exportFormat === 'excel') {
           const worksheet = XLSX.utils.json_to_sheet(processedData);
           const workbook = XLSX.utils.book_new();
@@ -178,7 +180,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
             return;
           }
         }
-        
+
         setIsModalOpen(false);
         setAiPrompt('');
       } catch (error) {
@@ -231,166 +233,190 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
 
   return (
     <>
-      <button 
+      <button
         data-agy-id="export_open_modal_btn"
+        type="button"
         onClick={() => setIsModalOpen(true)}
-        className={iconOnly ? "icon-btn" : "btn btn-primary"}
+        className={iconOnly ? "btn btn-secondary btn-icon-only" : "btn btn-primary"}
         title="מערכת הורדה ל-XL ודוחות"
-        style={iconOnly 
-          ? {}
-          : { padding: '0.5rem 1rem', display: 'flex', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: 'var(--primary-color)', color: 'white', border: 'none', cursor: 'pointer' }}
       >
-        <FileDown size={iconOnly ? 20 : 18} />
+        <svg className="icon"><use href="#i-download" /></svg>
         {!iconOnly && <span>ייצוא ודוחות</span>}
       </button>
 
       {isModalOpen && typeof document !== 'undefined' && createPortal(
-        <div data-agy-id="export_modal_backdrop" style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, 
-          backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1000,
-          display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
-          paddingTop: '10vh', paddingBottom: '10vh'
-        }}>
-          <div data-agy-id="export_modal_container" style={{
-            background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px',
-            width: '90%', maxWidth: '500px', position: 'relative',
-            boxShadow: '0 4px 20px rgba(0,0,0,0.15)', direction: 'rtl',
-            maxHeight: '80vh', overflowY: 'auto'
-          }}>
-            <button 
-              data-agy-id="export_modal_close_btn"              onClick={() => setIsModalOpen(false)}
-              style={{ position: 'absolute', top: '15px', left: '15px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-main)' }}
-            >
-              <X size={24} />
-            </button>
-            
-            <h2 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', color: 'var(--text-main)' }}>
-              <FileDown size={24} color="var(--primary-color)" />
-              מערכת דוחות וייצוא נתונים
-            </h2>
+        <div
+          data-agy-id="export_modal_backdrop"
+          className="modal-backdrop"
+          style={{
+            position: 'fixed', inset: 0, zIndex: 1000,
+            display: 'flex', justifyContent: 'center', alignItems: 'flex-start',
+            paddingBlockStart: '10vh', paddingBlockEnd: '10vh'
+          }}
+        >
+          <div
+            data-agy-id="export_modal_container"
+            className="modal animate-fade-in"
+            style={{ width: '90%', maxWidth: '500px', margin: 0, maxHeight: '80vh', overflowY: 'auto' }}
+          >
+            <div className="modal-head">
+              <strong>
+                <svg className="icon"><use href="#i-download" /></svg>
+                מערכת דוחות וייצוא נתונים
+              </strong>
+              <button
+                data-agy-id="export_modal_close_btn"
+                type="button"
+                className="btn btn-ghost btn-icon-only btn-sm"
+                onClick={() => setIsModalOpen(false)}
+                title="סגירה"
+              >
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
+            </div>
 
-            {showAdminPrompt ? (
-              <div style={{ padding: '1rem', background: '#fff3cd', borderRadius: '8px', border: '1px solid #ffe69c', marginBottom: '1.5rem' }}>
-                <h4 style={{ color: '#664d03', marginTop: 0, marginBottom: '0.5rem' }}>נדרש אישור מנהל</h4>
-                <p style={{ fontSize: '0.85rem', color: '#664d03', marginBottom: '1rem' }}>ייצוא של מעל 200 שורות דורש אימות מנהל. אנא הזן סיסמת מנהל:</p>
-                <div style={{ display: 'flex', gap: '0.5rem' }}>
-                  <input 
-                    data-agy-id="export_admin_pin_input"                    type="password" 
-                    value={adminPin}
-                    onChange={(e) => setAdminPin(e.target.value)}
-                    placeholder="סיסמת מנהל"
-                    style={{ flex: 1, padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }}
-                  />
-                  <button 
-                    data-agy-id="export_admin_verify_btn"                    type="button"
-                    onClick={handleAdminVerify}
-                    disabled={isLoading}
-                    style={{ padding: '0.5rem 1rem', background: '#198754', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    {isLoading ? <Loader2 size={18} className="animate-spin" /> : 'אישור'}
-                  </button>
-                  <button 
-                    data-agy-id="export_admin_cancel_btn"                    type="button"
-                    onClick={() => { setShowAdminPrompt(false); setPendingAction(null); }}
-                    style={{ padding: '0.5rem 1rem', background: '#6c757d', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                  >
-                    ביטול
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <>
-                <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', background: '#f8f9fa', padding: '1rem', borderRadius: '8px' }}>
-                  <label style={{ fontWeight: 'bold', color: 'var(--text-muted)' }}>כמות שורות לייצוא:</label>
-                  <input 
-                    data-agy-id="export_limit_input"                    type="number" 
-                    min="1" 
-                    value={exportLimit}
-                    onChange={(e) => {
-                       const val = parseInt(e.target.value);
-                       setExportLimit(isNaN(val) ? 100 : val);
-                       setIsAdminVerified(false); // Reset verification if limit changes
-                    }}
-                    style={{ width: '80px', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }}
-                  />
-                  {exportLimit > 200 && !isAdminVerified && (
-                    <span style={{ fontSize: '0.8rem', color: '#dc3545' }}>(דורש מנהל)</span>
-                  )}
-                  {isAdminVerified && (
-                    <span style={{ fontSize: '0.8rem', color: '#198754' }}>✓ אושר מנהל</span>
-                  )}
-                </div>
-
-                <div style={{ marginBottom: '2rem' }}>
-                  <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: 'var(--text-muted)' }}>דוח מיידי מהנתונים (לפי הסינון הקיים):</h3>
-                  <div style={{ display: 'flex', gap: '1rem' }}>
-                    <button 
-                      data-agy-id="export_excel_btn"                      type="button"
-                      onClick={() => handleActionClick('excel')}
-                      className="btn btn-outline"
-                      style={{ flex: 1, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer', background: '#f9f9f9' }}
+            <div className="modal-body">
+              {showAdminPrompt ? (
+                <div className="callout callout-warning" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                  <h4 style={{ margin: '0 0 6px' }}>נדרש אישור מנהל</h4>
+                  <p style={{ margin: '0 0 12px' }}>ייצוא של מעל 200 שורות דורש אימות מנהל. אנא הזן סיסמת מנהל:</p>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input
+                      data-agy-id="export_admin_pin_input"
+                      className="input"
+                      type="password"
+                      value={adminPin}
+                      onChange={(e) => setAdminPin(e.target.value)}
+                      placeholder="סיסמת מנהל"
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      data-agy-id="export_admin_verify_btn"
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleAdminVerify}
+                      disabled={isLoading}
                     >
-                      <FileSpreadsheet size={24} color="#107c41" />
-                      <span>ייצוא לאקסל</span>
+                      {isLoading ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : 'אישור'}
                     </button>
-                    <button 
-                      data-agy-id="export_pdf_btn"                      type="button"
-                      onClick={() => handleActionClick('pdf')}
-                      className="btn btn-outline"
-                      style={{ flex: 1, padding: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', border: '1px solid #ddd', cursor: 'pointer', background: '#f9f9f9' }}
+                    <button
+                      data-agy-id="export_admin_cancel_btn"
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => { setShowAdminPrompt(false); setPendingAction(null); }}
                     >
-                      <FileText size={24} color="#d32f2f" />
-                      <span>ייצוא ל-PDF</span>
+                      ביטול
                     </button>
                   </div>
                 </div>
+              ) : (
+                <>
+                  <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--surface-alt)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                    <label htmlFor="export-limit-input" style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-2)' }}>כמות שורות לייצוא:</label>
+                    <input
+                      data-agy-id="export_limit_input"
+                      id="export-limit-input"
+                      className="input"
+                      type="number"
+                      min="1"
+                      value={exportLimit}
+                      onChange={(e) => {
+                         const val = parseInt(e.target.value);
+                         setExportLimit(isNaN(val) ? 100 : val);
+                         setIsAdminVerified(false); // Reset verification if limit changes
+                      }}
+                      style={{ width: '80px' }}
+                    />
+                    {exportLimit > 200 && !isAdminVerified && (
+                      <span className="badge badge-danger">דורש מנהל</span>
+                    )}
+                    {isAdminVerified && (
+                      <span className="badge badge-success">
+                        <svg className="icon"><use href="#i-check" /></svg>
+                        אושר מנהל
+                      </span>
+                    )}
+                  </div>
 
-                {!hideAi && (
-                  <>
-                    <hr className="ai-feature-element" style={{ borderTop: '1px solid #eee', marginBottom: '1.5rem' }} />
-
-                    <div className="ai-feature-element">
-                      <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>
-                        <Sparkles size={18} color="#9c27b0" />
-                        דוח מותאם אישית באמצעות AI
-                      </h3>
-                      <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
-                        תאר כיצד תרצה לארגן את הנתונים, למשל: "סדר לפי מחיר וסכם לפי מידות", או "הצג רק דגמים במחיר מעל 100".
-                      </p>
-                      
-                      <textarea
-                        data-agy-id="export_ai_prompt_textarea"                    value={aiPrompt}
-                        onChange={(e) => setAiPrompt(e.target.value)}
-                        placeholder="הכנס את בקשתך לדוח..."
-                        style={{ width: '100%', height: '80px', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', marginBottom: '1rem', fontFamily: 'inherit', resize: 'none' }}
-                        disabled={isLoading}
-                      />
-                      
-                      <div style={{ display: 'flex', gap: '1rem' }}>
-                        <button 
-                          data-agy-id="export_excel_ai_btn"                      type="button"
-                          onClick={() => handleActionClick('excel_ai')}
-                          disabled={isLoading}
-                          style={{ flex: 1, padding: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: '#9c27b0', color: 'white', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
-                        >
-                          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-                          <span>אקסל (AI)</span>
-                        </button>
-                        <button 
-                          data-agy-id="export_pdf_ai_btn"                      type="button"
-                          onClick={() => handleActionClick('pdf_ai')}
-                          disabled={isLoading}
-                          style={{ flex: 1, padding: '0.75rem', display: 'flex', justifyContent: 'center', gap: '0.5rem', alignItems: 'center', borderRadius: '8px', backgroundColor: '#7b1fa2', color: 'white', border: 'none', cursor: isLoading ? 'not-allowed' : 'pointer', opacity: isLoading ? 0.7 : 1 }}
-                        >
-                          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
-                          <span>PDF (AI)</span>
-                        </button>
-                      </div>
+                  <div style={{ marginBottom: '2rem' }}>
+                    <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: 'var(--text-2)' }}>דוח מיידי מהנתונים (לפי הסינון הקיים):</h3>
+                    <div style={{ display: 'flex', gap: '1rem' }}>
+                      <button
+                        data-agy-id="export_excel_btn"
+                        type="button"
+                        onClick={() => handleActionClick('excel')}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, flexDirection: 'column', gap: '0.5rem', padding: '0.75rem' }}
+                      >
+                        <svg className="icon" style={{ width: '24px', height: '24px', color: 'var(--success)' }}><use href="#i-file" /></svg>
+                        <span>ייצוא לאקסל</span>
+                      </button>
+                      <button
+                        data-agy-id="export_pdf_btn"
+                        type="button"
+                        onClick={() => handleActionClick('pdf')}
+                        className="btn btn-secondary"
+                        style={{ flex: 1, flexDirection: 'column', gap: '0.5rem', padding: '0.75rem' }}
+                      >
+                        <svg className="icon" style={{ width: '24px', height: '24px', color: 'var(--danger)' }}><use href="#i-file" /></svg>
+                        <span>ייצוא ל-PDF</span>
+                      </button>
                     </div>
-                  </>
-                )}
-              </>
-            )}
+                  </div>
+
+                  {!hideAi && (
+                    <>
+                      <hr className="ai-feature-element" style={{ border: 'none', borderTop: '1px solid var(--border)', marginBottom: '1.5rem' }} />
+
+                      <div className="ai-feature-element">
+                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-2)' }}>
+                          <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
+                          דוח מותאם אישית באמצעות AI
+                        </h3>
+                        <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', marginBottom: '1rem' }}>
+                          תאר כיצד תרצה לארגן את הנתונים, למשל: "סדר לפי מחיר וסכם לפי מידות", או "הצג רק דגמים במחיר מעל 100".
+                        </p>
+
+                        <textarea
+                          data-agy-id="export_ai_prompt_textarea"
+                          className="textarea"
+                          value={aiPrompt}
+                          onChange={(e) => setAiPrompt(e.target.value)}
+                          placeholder="הכנס את בקשתך לדוח..."
+                          style={{ height: '80px', resize: 'none', marginBottom: '1rem' }}
+                          disabled={isLoading}
+                        />
+
+                        <div style={{ display: 'flex', gap: '1rem' }}>
+                          <button
+                            data-agy-id="export_excel_ai_btn"
+                            type="button"
+                            onClick={() => handleActionClick('excel_ai')}
+                            disabled={isLoading}
+                            className="btn"
+                            style={{ flex: 1, backgroundColor: 'var(--accent-solid)', color: 'var(--text-on-primary)', border: 'none' }}
+                          >
+                            {isLoading ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-star" /></svg>}
+                            <span>אקסל (AI)</span>
+                          </button>
+                          <button
+                            data-agy-id="export_pdf_ai_btn"
+                            type="button"
+                            onClick={() => handleActionClick('pdf_ai')}
+                            disabled={isLoading}
+                            className="btn"
+                            style={{ flex: 1, backgroundColor: 'var(--accent-solid)', color: 'var(--text-on-primary)', border: 'none' }}
+                          >
+                            {isLoading ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-star" /></svg>}
+                            <span>PDF (AI)</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>,
         document.body
@@ -398,4 +424,3 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
     </>
   );
 }
-

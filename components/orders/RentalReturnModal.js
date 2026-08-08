@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useLabels } from '@/app/components/LabelsContext';
-import { X, Info, Save, Ban, Undo2, AlertTriangle, CheckCircle2, PackageX, PackageCheck, MoreVertical, Calendar, ScanLine, Loader2, Scissors, Pencil, User, Phone, Clock, SquareArrowOutUpRight } from 'lucide-react';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import { addHistory } from '../../lib/historyManager';
 import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
@@ -488,7 +487,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     try {
       changes = typeof changesJson === 'string' ? JSON.parse(changesJson) : changesJson;
     } catch (e) {
-      return <div className="text-xs text-slate-400 font-mono break-words" dir="ltr">{String(changesJson)}</div>;
+      return <div style={{ fontSize: '11px', color: 'var(--text-3)', fontFamily: 'monospace', wordBreak: 'break-word' }} dir="ltr">{String(changesJson)}</div>;
     }
     if (!changes || typeof changes !== 'object') return null;
 
@@ -499,25 +498,25 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
       }
       return c !== null && c !== undefined && c !== '';
     });
-    if (keys.length === 0) return <div className="text-xs text-slate-400 italic">אין שינויים מהותיים</div>;
+    if (keys.length === 0) return <div style={{ fontSize: '11px', color: 'var(--text-3)', fontStyle: 'italic' }}>אין שינויים מהותיים</div>;
 
     return (
-      <div className="flex flex-wrap gap-1.5">
+      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
         {keys.map(key => {
           const label = FIELD_TRANSLATIONS[key] || key;
           const c = changes[key];
           const isDiff = c && typeof c === 'object' && ('from' in c || 'to' in c);
           const hasFrom = isDiff && c.from !== null && c.from !== undefined && c.from !== '';
           return (
-            <span key={key} className="inline-flex items-center gap-1 bg-white border border-slate-200 rounded-full px-2.5 py-1 text-xs">
-              <span className="font-semibold text-slate-500">{label}:</span>
+            <span key={key} className="chip">
+              <span style={{ fontWeight: 700, color: 'var(--text-2)' }}>{label}:</span>
               {isDiff ? (
                 <>
-                  {hasFrom && <span className="line-through text-red-500">{formatHistoryValue(c.from)}</span>}
-                  <span className="text-emerald-600 font-semibold">{formatHistoryValue(c.to)}</span>
+                  {hasFrom && <span style={{ textDecoration: 'line-through', color: 'var(--danger)' }}>{formatHistoryValue(c.from)}</span>}
+                  <span style={{ color: 'var(--success)', fontWeight: 700 }}>{formatHistoryValue(c.to)}</span>
                 </>
               ) : (
-                <span className="text-slate-700 font-semibold">{formatHistoryValue(c)}</span>
+                <span style={{ color: 'var(--text)', fontWeight: 700 }}>{formatHistoryValue(c)}</span>
               )}
             </span>
           );
@@ -528,12 +527,12 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
   // Rendering
   const modalContent = (
-    <div className="modal-overlay" onDoubleClick={attemptCloseCard} style={{ direction: 'rtl', zIndex: 1100, background: 'rgba(15, 23, 42, 0.25)', backdropFilter: 'none', WebkitBackdropFilter: 'none' }}>
+    <div className="modal-backdrop" onDoubleClick={attemptCloseCard} style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', direction: 'rtl' }}>
       <div className="rrm-card" onClick={e => e.stopPropagation()}>
 
         {loading || !selectedOrder ? (
           <div className="rrm-loading">
-            <div className="rrm-spinner"></div>
+            <span className="spinner lg" />
             <h2>טוען נתוני השכרה...</h2>
           </div>
         ) : (
@@ -543,31 +542,32 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               <div>
                 <div className="rrm-sidebar-top-row">
                   <button data-agy-id="rentalreturnmodal_button_1" className="rrm-icon-btn-ghost" title="סגור חלון" onClick={attemptCloseCard}>
-                    <X size={16} />
+                    <svg className="icon"><use href="#i-x" /></svg>
                   </button>
                   <div className="rrm-order-id-group">
                     <span className="rrm-order-num">הזמנה #{selectedOrder.orderId}</span>
                     <span className="rrm-v-divider" />
-                    <span className="rrm-badge" style={{ background: overallStatusColor.bg, color: overallStatusColor.text }}>
-                      <Clock size={13} /> {overallStatus}
+                    <span className="badge" style={{ background: overallStatusColor.bg, color: overallStatusColor.text }}>
+                      <svg className="icon"><use href="#i-clock" /></svg>
+                      {overallStatus}
                     </span>
                   </div>
                 </div>
 
                 <div className="rrm-sidebar-info-panel">
                   <div className="rrm-sip-row">
-                    <User size={15} />
+                    <svg className="icon"><use href="#i-user" /></svg>
                     <strong>{selectedOrder.customer ? `${selectedOrder.customer.firstName || ''} ${selectedOrder.customer.lastName || ''}` : 'לא צוין לקוח'}</strong>
                   </div>
                   {selectedOrder.customer?.phone1 && (
                     <div className="rrm-sip-row">
-                      <Phone size={15} />
+                      <svg className="icon"><use href="#i-phone" /></svg>
                       <span style={{ direction: 'ltr' }}>{selectedOrder.customer.phone1}</span>
                     </div>
                   )}
                   {selectedOrder.eventDate && (
                     <div className="rrm-sip-row">
-                      <Calendar size={15} />
+                      <svg className="icon"><use href="#i-calendar" /></svg>
                       <span>
                         {(selectedOrder.isAbroad || selectedOrder.isWeekdayEvent)
                           ? (selectedOrder.fromDate ? `${getHebrewDateString(selectedOrder.fromDate)} — ${getHebrewDateString(selectedOrder.toDate || selectedOrder.returnDate)}` : 'אירוע חו"ל')
@@ -581,7 +581,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               <div>
                 <hr className="rrm-sidebar-divider" />
                 <form data-agy-id="rentalreturnmodal_form_2" className="rrm-search-wrapper" style={{ marginTop: '16px' }} onSubmit={handleGlobalBarcodeScan}>
-                  <ScanLine size={17} />
+                  <svg className="icon"><use href="#i-tag" /></svg>
                   <input data-agy-id="rentalreturnmodal_input_3"
                     ref={modalBarcodeRef}
                     type="text"
@@ -602,7 +602,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                 <h3>השכרה והחזרה</h3>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   {(isProcessing || isConfirming || isBusy) && (
-                    <Loader2 size={18} className="rrm-header-spinner" aria-label="מעבד..." />
+                    <span className="spinner" aria-label="מעבד..." />
                   )}
                   <a
                     href={`/orders/${selectedOrder.orderId}`}
@@ -611,7 +611,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                     className="rrm-icon-btn"
                     title="פתח כרטיס הזמנה בטאב חדש"
                   >
-                    <SquareArrowOutUpRight size={18} />
+                    <svg className="icon"><use href="#i-arrow-end" /></svg>
                   </a>
                   <OrderPrintMenu
                     order={selectedOrder}
@@ -621,17 +621,17 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                     preConfirm={handlePrintPreConfirm}
                   />
                   <button data-agy-id="rentalreturnmodal_button_6" className="rrm-icon-btn primary" onClick={handleHeaderSave} title="שמור וסגור" disabled={isConfirming}>
-                    <Save size={18} />
+                    <svg className="icon"><use href="#i-check" /></svg>
                   </button>
                   <button data-agy-id="rentalreturnmodal_button_7" className="rrm-icon-btn danger" onClick={handleHeaderCancel} title="בטל שינויים שלא אושרו וסגור">
-                    <Ban size={18} />
+                    <svg className="icon"><use href="#i-x-circle" /></svg>
                   </button>
                 </div>
               </div>
 
               {(selectedOrder.orderNotes || selectedOrder.notes) && (
-                <div className="rrm-notes-banner">
-                  <AlertTriangle size={18} style={{ flexShrink: 0, marginTop: '2px' }} />
+                <div className="callout callout-warning" style={{ marginBottom: '16px' }}>
+                  <svg className="icon"><use href="#i-alert-tri" /></svg>
                   <div><strong>הערות להזמנה: </strong>{selectedOrder.orderNotes || selectedOrder.notes}</div>
                 </div>
               )}
@@ -639,7 +639,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               {pendingCount > 0 && (
                 <div className="rrm-pending-banner">
                   <span>{pendingCount} פריטים נסרקו וממתינים לאישור השכרה</span>
-                  <button data-agy-id="rentalreturnmodal_button_8" className="rrm-btn rrm-btn-primary" onClick={confirmRental} disabled={isConfirming || isBusy}>
+                  <button data-agy-id="rentalreturnmodal_button_8" className="btn btn-primary btn-sm" onClick={confirmRental} disabled={isConfirming || isBusy}>
                     {isConfirming ? 'מאשר...' : `אשר הכל (${pendingCount})`}
                   </button>
                 </div>
@@ -654,29 +654,39 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                       <div className="rrm-item-details">
                         <div className="rrm-item-title">
                           {item.description}
-                          <span className={`rrm-badge ${status.tone}`}>{status.text}</span>
+                          <span className={`badge badge-${status.tone}`}>{status.text}</span>
                           {enableAlterations && (item.alterationDetails || item.repairs) && (
                             <span className="rrm-repairs-icon" title="יש תיקונים - לחצו על פרטים לצפייה" onClick={() => showItemDetails(item)}>
-                              <Scissors size={14} />
+                              <svg className="icon"><use href="#i-scissors" /></svg>
                             </span>
                           )}
                           <div className="rrm-item-menu" style={{ position: 'relative' }}>
                             <button data-agy-id="rentalreturnmodal_button_9" className="rrm-icon-btn" onClick={(e) => toggleItemMenu(e, item.id)}>
-                              <MoreVertical size={18} />
+                              <svg className="icon"><use href="#i-more" /></svg>
                             </button>
                             {openMenuId === item.id && (
                               <div className="rrm-floating-menu">
-                                <button data-agy-id="rentalreturnmodal_button_10" className="rrm-menu-item" onClick={() => showItemDetails(item)}><Info size={14} /> פרטים</button>
+                                <button data-agy-id="rentalreturnmodal_button_10" className="rrm-menu-item" onClick={() => showItemDetails(item)}>
+                                  <svg className="icon"><use href="#i-info" /></svg> פרטים
+                                </button>
                                 {item.isTaken && !item.isReturned && (
-                                  <button data-agy-id="rentalreturnmodal_button_11" className="rrm-menu-item danger" disabled={isBusy} onClick={() => { setOpenMenuId(null); undoRental(item.id); }}><Undo2 size={14} /> ביטול השכרה</button>
+                                  <button data-agy-id="rentalreturnmodal_button_11" className="rrm-menu-item danger" disabled={isBusy} onClick={() => { setOpenMenuId(null); undoRental(item.id); }}>
+                                    <svg className="icon"><use href="#i-refresh" /></svg> ביטול השכרה
+                                  </button>
                                 )}
                                 {item.isReturned && (
                                   <>
-                                    <button data-agy-id="rentalreturnmodal_button_12" className="rrm-menu-item danger" disabled={isBusy} onClick={() => { setOpenMenuId(null); undoReturn(item.id); }}><Undo2 size={14} /> ביטול החזרה</button>
+                                    <button data-agy-id="rentalreturnmodal_button_12" className="rrm-menu-item danger" disabled={isBusy} onClick={() => { setOpenMenuId(null); undoReturn(item.id); }}>
+                                      <svg className="icon"><use href="#i-refresh" /></svg> ביטול החזרה
+                                    </button>
                                     {item.returnedOk ? (
-                                      <button data-agy-id="rentalreturnmodal_button_13" className="rrm-menu-item danger" disabled={isBusy} onClick={() => reportIssue(item.id, 'returned-bad')}><PackageX size={14} /> דווח על בעיה</button>
+                                      <button data-agy-id="rentalreturnmodal_button_13" className="rrm-menu-item danger" disabled={isBusy} onClick={() => reportIssue(item.id, 'returned-bad')}>
+                                        <svg className="icon"><use href="#i-alert-tri" /></svg> דווח על בעיה
+                                      </button>
                                     ) : (
-                                      <button data-agy-id="rentalreturnmodal_button_20" className="rrm-menu-item" disabled={isBusy} onClick={() => markReturnGoodAgain(item.id)}><PackageCheck size={14} /> סמן כתקין</button>
+                                      <button data-agy-id="rentalreturnmodal_button_20" className="rrm-menu-item" disabled={isBusy} onClick={() => markReturnGoodAgain(item.id)}>
+                                        <svg className="icon"><use href="#i-check-circle" /></svg> סמן כתקין
+                                      </button>
                                     )}
                                   </>
                                 )}
@@ -704,11 +714,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                                 onChange={(e) => setInlineBarcode(prev => ({ ...prev, [item.id]: e.target.value.replace(/\s+/g, '') }))}
                                 onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmInlineRent(item); } }}
                               />
-                              <button data-agy-id="rentalreturnmodal_button_15" className="rrm-btn rrm-btn-primary rrm-btn-sm" disabled={isBusy} onClick={() => confirmInlineRent(item)}>אשר</button>
-                              <button data-agy-id="rentalreturnmodal_button_16" className="rrm-icon-btn" disabled={isBusy} onClick={() => setRentingItemId(null)}><X size={16} /></button>
+                              <button data-agy-id="rentalreturnmodal_button_15" className="btn btn-primary btn-sm" disabled={isBusy} onClick={() => confirmInlineRent(item)}>אשר</button>
+                              <button data-agy-id="rentalreturnmodal_button_16" className="rrm-icon-btn" disabled={isBusy} onClick={() => setRentingItemId(null)}>
+                                <svg className="icon"><use href="#i-x" /></svg>
+                              </button>
                             </div>
                           ) : (
-                            <button data-agy-id="rentalreturnmodal_button_17" className="rrm-btn rrm-btn-primary" onClick={() => setRentingItemId(item.id)}>השכרה</button>
+                            <button data-agy-id="rentalreturnmodal_button_17" className="btn btn-primary btn-sm" onClick={() => setRentingItemId(item.id)}>השכרה</button>
                           )
                         )}
 
@@ -723,7 +735,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                               onClick={() => handleMarkReturnGood(item)}
                               disabled={item.isReturned || isBusy}
                             >
-                              <CheckCircle2 size={14} /> החזרה תקינה
+                              <svg className="icon"><use href="#i-check-circle" /></svg> החזרה תקינה
                             </button>
                             <div className="rrm-divider-v"></div>
                             <button data-agy-id="rentalreturnmodal_button_19"
@@ -731,7 +743,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                               onClick={() => handleMarkReturnBad(item)}
                               disabled={item.isReturned || isBusy}
                             >
-                              <AlertTriangle size={14} /> לא תקין
+                              <svg className="icon"><use href="#i-alert-tri" /></svg> לא תקין
                             </button>
                           </div>
                         )}
@@ -740,9 +752,9 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                   );
                 })}
                 {activeItems.length === 0 && (
-                  <li className="rrm-empty-state">
-                    <PackageCheck size={40} />
-                    אין פריטים בהזמנה זו
+                  <li className="empty-state">
+                    <svg className="icon"><use href="#i-box" /></svg>
+                    <p>אין פריטים בהזמנה זו</p>
                   </li>
                 )}
               </ul>
@@ -761,191 +773,161 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
           from { opacity: 0; transform: translateY(-6px); }
           to { opacity: 1; transform: translateY(0); }
         }
-        @keyframes rrm-spin {
-          to { transform: rotate(360deg); }
-        }
         .rrm-card {
           display: flex;
-          background: #ffffff;
-          border-radius: 16px;
+          background: var(--surface);
+          border-radius: var(--radius-lg);
           overflow: hidden;
-          box-shadow: var(--shadow-lg, 0 25px 50px -12px rgba(0,0,0,0.25));
+          box-shadow: var(--shadow-lg);
           width: 95%;
           max-width: 1000px;
           max-height: 90vh;
-          border: 1px solid var(--element-border, #e2e8f0);
+          border: 1px solid var(--border);
           animation: rrm-fade-in 0.2s ease-out forwards;
-        }
-        [data-theme="dark"] .rrm-card {
-          background: #1e1e1e;
         }
         .rrm-loading {
           display: flex; flex-direction: column; align-items: center; justify-content: center;
-          padding: 4rem 2rem; width: 100%;
+          padding: 4rem 2rem; width: 100%; gap: 1.5rem;
         }
-        .rrm-spinner {
-          width: 48px; height: 48px; border: 4px solid var(--element-border, #e2e8f0);
-          border-top: 4px solid var(--primary-color, #d4af37); border-radius: 50%;
-          animation: rrm-spin 1s linear infinite; margin-bottom: 1.5rem;
-        }
-        .rrm-loading h2 { font-size: 1.25rem; font-weight: 600; color: var(--text-main); margin: 0; }
+        .rrm-loading h2 { font-size: 1.25rem; font-weight: 600; color: var(--text); margin: 0; }
 
         .rrm-sidebar {
           width: 300px; min-width: 260px; flex-shrink: 0;
-          background: linear-gradient(165deg, #d4af37 0%, #b5952f 100%);
-          color: #fff; padding: 22px 20px; display: flex; flex-direction: column; justify-content: space-between;
+          background: linear-gradient(165deg, var(--primary) 0%, var(--primary-hover) 100%);
+          color: var(--text-on-primary); padding: 22px 20px; display: flex; flex-direction: column; justify-content: space-between;
           overflow-y: auto; overflow-x: hidden;
         }
         .rrm-sidebar-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: nowrap; min-width: 0; }
         .rrm-order-id-group { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; overflow: hidden; }
-        .rrm-order-num { font-weight: 700; font-size: 1rem; color: #fff; font-family: 'Frank Ruhl Libre', serif; margin: 0; }
-        .rrm-v-divider { width: 1px; height: 16px; background: rgba(255,255,255,0.3); display: inline-block; }
+        .rrm-order-num { font-weight: 700; font-size: 1rem; color: var(--text-on-primary); font-family: var(--font-heading); margin: 0; }
+        .rrm-v-divider { width: 1px; height: 16px; background: color-mix(in srgb, var(--text-on-primary) 30%, transparent); display: inline-block; }
         .rrm-icon-btn-ghost {
-          background: rgba(0,0,0,0.15); color: #fff; border: none; border-radius: 50%;
+          background: color-mix(in srgb, black 15%, transparent); color: var(--text-on-primary); border: none; border-radius: 50%;
           width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
           cursor: pointer; transition: background 0.2s; flex-shrink: 0;
         }
-        .rrm-icon-btn-ghost:hover { background: rgba(0,0,0,0.3); }
+        .rrm-icon-btn-ghost .icon { width: 16px; height: 16px; }
+        .rrm-icon-btn-ghost:hover { background: color-mix(in srgb, black 30%, transparent); }
 
         .rrm-sidebar-info-panel {
-          background: rgba(255,255,255,0.1); border-radius: 12px; padding: 14px 16px;
+          background: color-mix(in srgb, var(--text-on-primary) 10%, transparent); border-radius: var(--radius-md); padding: 14px 16px;
           display: flex; flex-direction: column; gap: 11px;
         }
-        .rrm-sip-row { display: flex; align-items: center; gap: 9px; font-size: 0.95rem; color: rgba(255,255,255,0.95); margin: 0; }
-        .rrm-sip-row svg { opacity: 0.75; flex-shrink: 0; }
+        .rrm-sip-row { display: flex; align-items: center; gap: 9px; font-size: 0.95rem; color: color-mix(in srgb, var(--text-on-primary) 95%, transparent); margin: 0; }
+        .rrm-sip-row .icon { width: 15px; height: 15px; opacity: 0.75; flex-shrink: 0; }
         .rrm-sip-row strong { font-weight: 700; font-size: 1.02rem; }
 
         .rrm-search-wrapper { position: relative; width: 100%; }
-        .rrm-search-wrapper svg { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: #9ca3af; pointer-events: none; }
+        .rrm-search-wrapper .icon { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--text-3); pointer-events: none; }
         .rrm-search-input {
-          width: 100%; padding: 11px 42px 11px 16px; border-radius: 20px; border: none; outline: none;
-          background: #fff; color: #2c2c2c; font-size: 0.92rem; transition: all 0.2s;
-          box-shadow: inset 0 1px 3px rgba(0,0,0,0.06); font-family: inherit;
+          width: 100%; padding: 11px 42px 11px 16px; border-radius: var(--radius-full); border: none; outline: none;
+          background: var(--surface); color: var(--text); font-size: 0.92rem; transition: all 0.2s;
+          box-shadow: inset 0 1px 3px color-mix(in srgb, black 6%, transparent); font-family: inherit;
         }
-        .rrm-search-input:focus { box-shadow: inset 0 1px 3px rgba(0,0,0,0.06), 0 0 0 3px rgba(255,255,255,0.35); }
-        .rrm-search-input::placeholder { color: #9c9c9c; }
+        .rrm-search-input:focus { box-shadow: inset 0 1px 3px color-mix(in srgb, black 6%, transparent), 0 0 0 3px color-mix(in srgb, var(--text-on-primary) 35%, transparent); }
+        .rrm-search-input::placeholder { color: var(--text-3); }
 
-        .rrm-sidebar-divider { border: none; border-top: 1px solid rgba(255,255,255,0.18); margin: 18px 0; }
+        .rrm-sidebar-divider { border: none; border-top: 1px solid color-mix(in srgb, var(--text-on-primary) 18%, transparent); margin: 18px 0; }
 
         .rrm-main { padding: 24px 28px; width: 70%; overflow-y: auto; flex: 1; min-width: 0; }
         .rrm-main-header {
           display: flex; justify-content: space-between; align-items: center;
-          margin-bottom: 16px; border-bottom: 2px solid var(--divider, #eee); padding-bottom: 14px;
+          margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 14px;
         }
-        .rrm-main-header h3 { margin: 0; font-family: 'Frank Ruhl Libre', serif; font-size: 1.35rem; color: var(--text-main); }
+        .rrm-main-header h3 { margin: 0; font-family: var(--font-heading); font-size: 1.35rem; color: var(--text); }
 
         .rrm-icon-btn {
-          background: transparent; border: none; border-radius: 8px; width: 34px; height: 34px;
+          background: transparent; border: none; border-radius: var(--radius-sm); width: 34px; height: 34px;
           display: flex; align-items: center; justify-content: center; cursor: pointer;
-          color: var(--text-muted); transition: all 0.2s; padding: 0;
+          color: var(--text-2); transition: all 0.2s; padding: 0;
         }
-        .rrm-icon-btn:hover { background: var(--element-bg, #f5f5f5); color: var(--text-main); }
-        .rrm-icon-btn.primary { color: var(--primary-color); }
-        .rrm-icon-btn.primary:hover { background: var(--primary-color); color: #fff; }
-        .rrm-icon-btn.danger { color: var(--danger-text, #ef4444); }
-        .rrm-icon-btn.danger:hover { background: var(--danger-bg, #fef2f2); }
-        .rrm-icon-btn.info { color: #3b82f6; }
-        .rrm-icon-btn.info:hover { background: #3b82f6; color: #fff; }
+        .rrm-icon-btn .icon { width: 18px; height: 18px; }
+        .rrm-icon-btn:hover { background: var(--surface-alt); color: var(--text); }
+        .rrm-icon-btn.primary { color: var(--primary-solid); }
+        .rrm-icon-btn.primary:hover { background: var(--primary-solid); color: var(--text-on-primary); }
+        .rrm-icon-btn.danger { color: var(--danger); }
+        .rrm-icon-btn.danger:hover { background: var(--danger-tint); }
+        .rrm-icon-btn.info { color: var(--info); }
+        .rrm-icon-btn.info:hover { background: var(--info); color: var(--text-on-primary); }
         .rrm-icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .rrm-header-spinner { color: var(--primary-color, #d4af37); animation: rrm-spin 0.8s linear infinite; }
-
-        .rrm-badge {
-          padding: 4px 10px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: inline-flex;
-          align-items: center; gap: 4px; white-space: nowrap;
-        }
-        .rrm-badge.success { background: var(--success-bg, #f0fdf4); color: var(--success-text, #22c55e); }
-        .rrm-badge.warning { background: rgba(245, 158, 11, 0.14); color: var(--warning-color, #f59e0b); }
-        .rrm-badge.danger { background: var(--danger-bg, #fef2f2); color: var(--danger-text, #ef4444); }
-        .rrm-badge.neutral { background: var(--element-bg, #f0f0f0); color: var(--text-muted, #666); }
 
         .rrm-repairs-icon {
           display: inline-flex; align-items: center; justify-content: center;
           width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
-          color: var(--warning-color, #f59e0b); background: rgba(245, 158, 11, 0.12);
+          color: var(--warning); background: var(--warning-tint);
           transition: all 0.2s;
         }
-        .rrm-repairs-icon:hover { background: rgba(245, 158, 11, 0.25); }
-
-        .rrm-notes-banner {
-          background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.25);
-          border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; display: flex; gap: 10px;
-          font-size: 0.9rem; color: var(--text-main);
-        }
+        .rrm-repairs-icon .icon { width: 14px; height: 14px; }
+        .rrm-repairs-icon:hover { background: color-mix(in srgb, var(--warning) 20%, transparent); }
 
         .rrm-pending-banner {
           display: flex; align-items: center; justify-content: space-between; gap: 12px;
-          background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.3);
-          border-radius: 10px; padding: 12px 16px; margin-bottom: 16px; font-weight: 600;
-          color: var(--text-main); font-size: 0.92rem;
+          background: var(--warning-tint); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+          border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 16px; font-weight: 600;
+          color: var(--text); font-size: 0.92rem;
         }
 
         .rrm-item-list { list-style: none; padding: 0; margin: 0; }
         .rrm-item-list li {
-          padding: 18px 0; border-bottom: 1px solid var(--divider, #eee);
+          padding: 18px 0; border-bottom: 1px solid var(--border);
           display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;
         }
         .rrm-item-list li:last-child { border-bottom: none; }
         .rrm-item-details { flex: 1; min-width: 240px; }
         .rrm-item-title {
           font-size: 1.05rem; font-weight: 600; margin-bottom: 6px; display: flex;
-          align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-main);
+          align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text);
         }
-        .rrm-item-sub { font-size: 0.85rem; color: var(--text-muted); }
-        .rrm-mono { font-family: monospace; font-weight: 600; color: var(--text-main); }
+        .rrm-item-sub { font-size: 0.85rem; color: var(--text-2); }
+        .rrm-mono { font-family: monospace; font-weight: 600; color: var(--text); }
 
         .rrm-action-bar { display: flex; align-items: center; }
-        .rrm-hint-text { font-size: 0.85rem; color: var(--text-muted); font-style: italic; }
-
-        .rrm-btn {
-          padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;
-          transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem;
-        }
-        .rrm-btn-primary { background: var(--primary-color); color: var(--btn-primary-text, #1e293b); }
-        .rrm-btn-primary:hover { background: var(--primary-hover, #b5952f); }
-        .rrm-btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
-        .rrm-btn-sm { padding: 6px 12px; font-size: 0.85rem; }
+        .rrm-hint-text { font-size: 0.85rem; color: var(--text-2); font-style: italic; }
 
         .rrm-inline-barcode { display: flex; align-items: center; gap: 8px; }
         .rrm-inline-barcode input {
-          padding: 6px 10px; border-radius: 6px; border: 1px solid var(--element-border, #ccc);
-          width: 140px; direction: ltr; background: var(--input-bg, #fff); color: var(--text-main);
+          padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
+          width: 140px; direction: ltr; background: var(--surface); color: var(--text);
         }
 
         .rrm-return-banner {
-          display: inline-flex; background: var(--element-bg, #f5f5f5); border-radius: 50px;
-          padding: 4px; border: 1px solid var(--element-border, #e5e5e5);
+          display: inline-flex; background: var(--surface-alt); border-radius: var(--radius-full);
+          padding: 4px; border: 1px solid var(--border);
         }
         .rrm-return-banner button {
-          border: none; background: transparent; padding: 6px 14px; border-radius: 50px;
+          border: none; background: transparent; padding: 6px 14px; border-radius: var(--radius-full);
           font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.2s;
-          display: flex; align-items: center; gap: 6px; color: var(--text-muted);
+          display: flex; align-items: center; gap: 6px; color: var(--text-2);
         }
-        .rrm-return-good.active { background: var(--success-bg, #f0fdf4); color: var(--success-text, #22c55e); }
-        .rrm-return-bad.active { background: var(--danger-bg, #fef2f2); color: var(--danger-text, #ef4444); }
-        .rrm-return-banner button:not(:disabled):hover { color: var(--text-main); }
+        .rrm-return-banner .icon { width: 14px; height: 14px; }
+        .rrm-return-good.active { background: var(--success-tint); color: var(--success); }
+        .rrm-return-bad.active { background: var(--danger-tint); color: var(--danger); }
+        .rrm-return-banner button:not(:disabled):hover { color: var(--text); }
         .rrm-return-banner.readonly button { cursor: default; }
-        .rrm-divider-v { width: 1px; background: var(--element-border, #ddd); margin: 6px 2px; }
+        .rrm-divider-v { width: 1px; background: var(--border); margin: 6px 2px; }
 
         .rrm-item-menu .rrm-floating-menu {
-          position: absolute; top: 100%; right: 0; background: var(--card-bg, #fff);
-          border: 1px solid var(--element-border, #eee); border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; flex-direction: column;
+          position: absolute; top: 100%; inset-inline-end: 0; background: var(--surface);
+          border: 1px solid var(--border); border-radius: var(--radius-md);
+          box-shadow: var(--shadow-md); display: flex; flex-direction: column;
           padding: 4px; z-index: 50; min-width: 160px; animation: rrm-slide-in 0.15s ease-out forwards;
         }
         .rrm-menu-item {
-          background: transparent; border: none; width: 100%; text-align: right; padding: 8px 10px;
-          font-size: 0.85rem; border-radius: 4px; cursor: pointer; color: var(--text-main);
+          background: transparent; border: none; width: 100%; text-align: start; padding: 8px 10px;
+          font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; color: var(--text);
           display: flex; align-items: center; gap: 6px;
         }
-        .rrm-menu-item:hover { background: var(--element-bg, #f9f9f9); }
-        .rrm-menu-item.danger { color: var(--danger-text, #ef4444); }
-        .rrm-menu-item.danger:hover { background: var(--danger-bg, #fef2f2); }
+        .rrm-menu-item .icon { width: 14px; height: 14px; }
+        .rrm-menu-item:hover { background: var(--surface-alt); }
+        .rrm-menu-item.danger { color: var(--danger); }
+        .rrm-menu-item.danger:hover { background: var(--danger-tint); }
 
-        .rrm-empty-state {
-          flex-direction: column; align-items: center; justify-content: center; gap: 10px;
-          color: var(--text-muted); padding: 40px 0 !important; text-align: center;
-        }
+        .rrm-detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
+        .rrm-detail-box { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+        .rrm-detail-label { font-size: 11px; color: var(--text-3); }
+        .rrm-detail-value { font-weight: 600; color: var(--text); font-size: 13px; }
+        .rrm-detail-section-title { font-size: 13.5px; font-weight: 700; color: var(--text); margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+        .rrm-history-item { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; font-size: 13px; }
 
         @media (max-width: 720px) {
           .rrm-card { flex-direction: column; max-height: 95vh; }
@@ -959,48 +941,53 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     <>
       {/* Item Details Modal */}
       {itemDetails && (
-        <div className="modal-overlay" style={{ zIndex: 1200 }}>
-          <div className="modal-content" style={{ maxWidth: '500px', width: '100%', padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div className="bg-slate-50 px-6 py-4 border-b border-slate-200 flex justify-between items-center">
-              <h3 className="font-bold text-lg text-slate-800">פרטי פריט: {itemDetails.item.barcode || itemDetails.item.description}</h3>
-              <button data-agy-id="rentalreturnmodal_button_20" type="button" onClick={() => setItemDetails(null)} className="text-slate-400 hover:text-slate-600 bg-slate-200 hover:bg-slate-300 rounded-full p-1"><X size={20}/></button>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1200, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal" style={{ maxWidth: '520px', width: '100%', margin: 0, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-head">
+              <strong>
+                <svg className="icon"><use href="#i-tag" /></svg>
+                פרטי פריט: {itemDetails.item.barcode || itemDetails.item.description}
+              </strong>
+              <button data-agy-id="rentalreturnmodal_button_20" type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setItemDetails(null)} title="סגירה">
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[70vh]">
-              <div className="grid grid-cols-2 gap-4 mb-6">
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <div className="text-xs text-slate-500 mb-1">תאריך אירוע</div>
-                  <div className="font-semibold text-slate-700">{selectedOrder?.eventDate ? getHebrewDateString(selectedOrder.eventDate) : '-'}</div>
+            <div className="modal-body" style={{ overflowY: 'auto' }}>
+              <div className="rrm-detail-grid">
+                <div className="rrm-detail-box">
+                  <div className="rrm-detail-label">תאריך אירוע</div>
+                  <div className="rrm-detail-value">{selectedOrder?.eventDate ? getHebrewDateString(selectedOrder.eventDate) : '-'}</div>
                 </div>
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <div className="text-xs text-slate-500 mb-1">תאריך לקיחה</div>
-                  <div className="font-semibold text-slate-700">{itemDetails.item.takenDate ? `${getHebrewDateString(itemDetails.item.takenDate)} ${new Date(itemDetails.item.takenDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : (itemDetails.item.isTaken ? 'לא ידוע' : '-')}</div>
+                <div className="rrm-detail-box">
+                  <div className="rrm-detail-label">תאריך לקיחה</div>
+                  <div className="rrm-detail-value">{itemDetails.item.takenDate ? `${getHebrewDateString(itemDetails.item.takenDate)} ${new Date(itemDetails.item.takenDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : (itemDetails.item.isTaken ? 'לא ידוע' : '-')}</div>
                 </div>
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <div className="text-xs text-slate-500 mb-1">תאריך החזרה</div>
-                  <div className="font-semibold text-slate-700">{itemDetails.item.returnDate ? `${getHebrewDateString(itemDetails.item.returnDate)} ${new Date(itemDetails.item.returnDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : (itemDetails.item.isReturned ? 'לא ידוע' : '-')}</div>
+                <div className="rrm-detail-box">
+                  <div className="rrm-detail-label">תאריך החזרה</div>
+                  <div className="rrm-detail-value">{itemDetails.item.returnDate ? `${getHebrewDateString(itemDetails.item.returnDate)} ${new Date(itemDetails.item.returnDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : (itemDetails.item.isReturned ? 'לא ידוע' : '-')}</div>
                 </div>
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                  <div className="text-xs text-slate-500 mb-1">חזר תקין?</div>
-                  <div className="font-semibold text-slate-700">{itemDetails.item.isReturned ? (itemDetails.item.returnedOk ? 'כן' : 'לא') : '-'}</div>
+                <div className="rrm-detail-box">
+                  <div className="rrm-detail-label">חזר תקין?</div>
+                  <div className="rrm-detail-value">{itemDetails.item.isReturned ? (itemDetails.item.returnedOk ? 'כן' : 'לא') : '-'}</div>
                 </div>
                 {enableAlterations && (
-                  <div className="col-span-2 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                    <div className="text-xs text-slate-500 mb-1">מחרוזת תיקונים</div>
-                    <div className="font-semibold text-slate-700">{itemDetails.item.alterationDetails || itemDetails.item.repairs || '-'}</div>
+                  <div className="rrm-detail-box" style={{ gridColumn: '1 / -1' }}>
+                    <div className="rrm-detail-label">מחרוזת תיקונים</div>
+                    <div className="rrm-detail-value">{itemDetails.item.alterationDetails || itemDetails.item.repairs || '-'}</div>
                   </div>
                 )}
               </div>
 
-              <h4 className="font-bold text-slate-700 mb-3 border-b border-slate-200 pb-2">היסטוריית פעולות</h4>
-              <div className="space-y-3">
+              <h4 className="rrm-detail-section-title">היסטוריית פעולות</h4>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {itemDetails.history && itemDetails.history.length === 0 ? (
-                  <p className="text-slate-500 italic text-sm">אין היסטוריה לפריט זה</p>
+                  <p style={{ color: 'var(--text-3)', fontStyle: 'italic', fontSize: '13px' }}>אין היסטוריה לפריט זה</p>
                 ) : (
                   itemDetails.history && itemDetails.history.map(log => (
-                    <div key={log.id} className="bg-slate-50 p-3 rounded-lg border border-slate-100 text-sm">
-                      <div className="flex justify-between items-center mb-2 flex-wrap gap-2">
-                        <span className="font-semibold text-blue-700 bg-blue-100 px-2.5 py-1 rounded-full text-xs">{ACTION_TRANSLATIONS[log.action] || log.action}</span>
-                        <span className="text-slate-500 text-xs">{getHebrewDateString(log.createdAt)} {new Date(log.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
+                    <div key={log.id} className="rrm-history-item">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                        <span className="badge badge-info">{ACTION_TRANSLATIONS[log.action] || log.action}</span>
+                        <span style={{ color: 'var(--text-3)', fontSize: '11.5px' }}>{getHebrewDateString(log.createdAt)} {new Date(log.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       {renderHistoryChanges(log.changesJson)}
                     </div>
@@ -1014,48 +1001,44 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
       {/* Duplicates Modal */}
       {duplicates && (
-        <div className="modal-overlay" style={{ zIndex: 1300 }}>
-          <div className="modal-content" style={{ maxWidth: '800px', width: '100%', padding: '0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <div className="bg-gradient-to-r from-amber-50 to-orange-50 px-6 py-5 border-b border-amber-200 text-center relative">
-              <div className="absolute left-6 top-1/2 -translate-y-1/2">
-                <AlertTriangle size={32} className="text-amber-500 opacity-20" />
-              </div>
-              <h2 className="text-xl font-bold text-amber-800 m-0 flex items-center justify-center gap-2">
-                <AlertTriangle size={24} className="text-amber-500" />
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1300, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal" style={{ maxWidth: '640px', width: '100%', margin: 0, maxHeight: '85vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-head">
+              <strong>
+                <svg className="icon"><use href="#i-alert-tri" /></svg>
                 נמצאו מספר פריטים זהים
-              </h2>
-              <p className="text-amber-700 mt-2 text-sm">בחר לאיזה מהם לשייך את הברקוד שנסרק</p>
+              </strong>
             </div>
-            <div className="p-6 overflow-y-auto max-h-[60vh] bg-slate-50">
-              <div className="grid gap-4">
+            <div className="modal-body" style={{ overflowY: 'auto' }}>
+              <p style={{ color: 'var(--text-2)', fontSize: '13px', marginTop: 0 }}>בחר לאיזה מהם לשייך את הברקוד שנסרק</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {duplicates.map((opt, idx) => (
                   <button data-agy-id="rentalreturnmodal_button_21"
                     type="button"
                     key={opt.id}
                     onClick={() => selectDuplicate(opt.id)}
-                    className="flex items-center gap-4 p-4 bg-white border-2 border-slate-200 hover:border-blue-500 hover:shadow-md rounded-xl transition-all group text-right"
+                    className="list-card"
+                    style={{ width: '100%', textAlign: 'start', cursor: 'pointer', font: 'inherit', appearance: 'none', WebkitAppearance: 'none' }}
                   >
-                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-lg group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                      {idx + 1}
-                    </div>
-                    <div className="flex-1 grid grid-cols-3 gap-2">
+                    <div className="avatar">{idx + 1}</div>
+                    <div style={{ flex: 1, display: 'grid', gridTemplateColumns: enableAlterations ? 'repeat(3, 1fr)' : '1fr', gap: '8px' }}>
                       {enableAlterations ? (
                         <>
-                          <div className="bg-slate-50 p-2 rounded text-sm text-slate-700 border border-slate-100"><strong className="block text-xs text-slate-500">אורך:</strong> {opt.lengthAlteration || 'ללא'}</div>
-                          <div className="bg-slate-50 p-2 rounded text-sm text-slate-700 border border-slate-100"><strong className="block text-xs text-slate-500">צוואר:</strong> {opt.neckAlteration || 'ללא'}</div>
-                          <div className="bg-slate-50 p-2 rounded text-sm text-slate-700 border border-slate-100"><strong className="block text-xs text-slate-500">שרוול:</strong> {opt.sleeveAlteration || 'ללא'}</div>
-                          <div className="col-span-3 bg-slate-50 p-2 rounded text-sm text-slate-700 border border-slate-100"><strong className="block text-xs text-slate-500">פירוט:</strong> {opt.alterationDetails || 'אין פירוט נוסף'}</div>
+                          <div className="rrm-detail-box"><span className="rrm-detail-label">אורך</span><span className="rrm-detail-value">{opt.lengthAlteration || 'ללא'}</span></div>
+                          <div className="rrm-detail-box"><span className="rrm-detail-label">צוואר</span><span className="rrm-detail-value">{opt.neckAlteration || 'ללא'}</span></div>
+                          <div className="rrm-detail-box"><span className="rrm-detail-label">שרוול</span><span className="rrm-detail-value">{opt.sleeveAlteration || 'ללא'}</span></div>
+                          <div className="rrm-detail-box" style={{ gridColumn: '1 / -1' }}><span className="rrm-detail-label">פירוט</span><span className="rrm-detail-value">{opt.alterationDetails || 'אין פירוט נוסף'}</span></div>
                         </>
                       ) : (
-                        <div className="col-span-3 bg-slate-50 p-2 rounded text-sm text-slate-700 border border-slate-100">פריט מס' {idx + 1} במערכת</div>
+                        <div className="rrm-detail-box">פריט מס' {idx + 1} במערכת</div>
                       )}
                     </div>
                   </button>
                 ))}
               </div>
             </div>
-            <div className="bg-slate-100 p-4 flex justify-end border-t border-slate-200">
-               <button data-agy-id="rentalreturnmodal_button_22" type="button" onClick={() => setDuplicates(null)} className="px-6 py-2 rounded-lg text-slate-600 font-semibold hover:bg-slate-200 transition-colors">ביטול</button>
+            <div className="modal-foot">
+              <button data-agy-id="rentalreturnmodal_button_22" type="button" className="btn btn-secondary" onClick={() => setDuplicates(null)}>ביטול</button>
             </div>
           </div>
         </div>

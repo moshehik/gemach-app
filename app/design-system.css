@@ -330,6 +330,15 @@ a{color:inherit; text-decoration:none}
 .password-field .toggle-visibility:hover{background:var(--surface-alt); color:var(--text-2)}
 .password-field .toggle-visibility .icon{width:16px;height:16px}
 
+/* ---- date-trigger field: lead calendar icon + trailing native-date toggle button ---- */
+.date-trigger{position:relative}
+.date-trigger .input{padding-inline-start:36px; padding-inline-end:40px; width:100%}
+.date-trigger .lead-icon{position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%); width:15px;height:15px; color:var(--text-3); pointer-events:none}
+.date-trigger .native-toggle{position:absolute; inset-inline-end:4px; top:50%; transform:translateY(-50%); width:30px;height:30px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; color:var(--text-3); cursor:pointer; overflow:hidden}
+.date-trigger .native-toggle:hover{background:var(--surface-alt); color:var(--text-2)}
+.date-trigger .native-toggle .icon{width:15px;height:15px; pointer-events:none}
+.date-trigger .native-toggle input[type="date"]{position:absolute; inset:0; opacity:0; cursor:pointer; border:none; padding:0}
+
 /* ---- PIN entry (manager/employee authorization) ---- */
 .pin-input{display:flex; gap:8px; direction:ltr}
 .pin-digit{width:42px;height:48px;border:1.5px solid var(--border-strong); border-radius:var(--radius-sm); background:var(--surface); font-size:20px; font-weight:700; text-align:center; color:var(--text); font-family:var(--font)}
@@ -392,8 +401,23 @@ a{color:inherit; text-decoration:none}
 .datepicker-day.today{border-color:var(--primary-solid)}
 .datepicker-day.selected{background:var(--primary-solid); color:#fff}
 .datepicker-day.selected .g-num{color:rgba(255,255,255,.75)}
+.datepicker-day.in-range{background:var(--primary-tint); color:var(--primary-solid); font-weight:700}
 .datepicker-foot{display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:12px}
 .datepicker-foot button{background:none;border:none;color:var(--primary-solid);font-weight:700;font-size:12px;cursor:pointer;font-family:var(--font)}
+
+/* ---- date-range trigger: pill bar with two date segments + trailing calendar icon
+   (popover itself reuses .modal + two .datepicker-* panels, see HebrewDateRangePicker) ---- */
+.date-range-trigger{display:flex; align-items:center; gap:6px; height:41px; width:100%; padding-inline-start:14px; padding-inline-end:4px; border:1px solid var(--border-strong); border-radius:var(--radius-full); background:var(--surface); cursor:pointer; transition:border-color .15s ease, box-shadow .15s ease}
+.date-range-trigger.open{border-color:var(--primary-solid); box-shadow:0 0 0 2px var(--primary-tint-2)}
+.date-range-trigger .seg{display:flex; align-items:center; gap:6px; flex:1; min-width:0; overflow:hidden}
+.date-range-trigger .seg-end{padding-inline-start:10px; border-inline-start:1px solid var(--border)}
+.date-range-trigger .seg-label{font-size:11px; font-weight:700; color:var(--text-3); white-space:nowrap; flex:0 0 auto}
+.date-range-trigger .seg-value{font-size:12.5px; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap}
+.date-range-trigger .seg-value.placeholder{color:var(--text-3)}
+.date-range-trigger .seg-arrow{display:flex; align-items:center; color:var(--text-3); flex:0 0 auto}
+.date-range-trigger .seg-arrow .icon{width:12px;height:12px}
+.date-range-trigger .trigger-icon{width:33px;height:33px;border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--text-3); background:var(--surface-alt); flex:0 0 auto}
+.date-range-trigger .trigger-icon .icon{width:16px;height:16px}
 
 /* ============================================================
    BADGES / STATUS PILLS

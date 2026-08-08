@@ -71,7 +71,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
         if (!cancelled) setIsLoading(false);
       }
     };
-    
+
     const timeoutId = setTimeout(fetchModels, 300);
     return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [query]);
@@ -94,15 +94,16 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
   const dropdownContent = isOpen && models.length > 0 && (
     <div
       ref={dropdownRef}
+      className="combobox-results"
       style={{
+        // Positioned via a portal against a JS-measured viewport rect
+        // (getBoundingClientRect() is always left/top-based, regardless of
+        // page direction), so this uses physical left/top intentionally
+        // instead of logical inset-inline properties.
         position: 'fixed',
         top: dropdownPos.top,
         left: dropdownPos.left,
         width: dropdownPos.width,
-        backgroundColor: 'var(--card-bg, white)',
-        border: '1px solid var(--element-border, #e2e8f0)',
-        borderRadius: '4px',
-        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
         zIndex: 999999,
         maxHeight: '250px',
         overflowY: 'auto'
@@ -112,25 +113,12 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
         <div
           data-agy-id="order_model_selector_dropdown_item"
           key={m.id}
+          className="combobox-option"
           onClick={() => handleSelect(m)}
-          style={{
-            padding: '0.6rem 0.8rem',
-            cursor: 'pointer',
-            borderBottom: '1px solid #f1f5f9',
-            textAlign: 'right',
-            color: '#1e293b',
-            fontWeight: '500'
-          }}
-          onMouseEnter={(e) => {
-            e.currentTarget.style.backgroundColor = '#f8fafc';
-            e.currentTarget.style.color = '#2563eb';
-          }}
-          onMouseLeave={(e) => {
-            e.currentTarget.style.backgroundColor = 'transparent';
-            e.currentTarget.style.color = '#1e293b';
-          }}
         >
-          {m.name} {m.barcodePrefix ? <span style={{ color: '#64748b', fontSize: '0.9em' }}>(קוד: {m.barcodePrefix})</span> : ''}
+          <svg className="icon"><use href="#i-tag" /></svg>
+          <span>{m.name}</span>
+          {m.barcodePrefix && <span className="meta">קוד: {m.barcodePrefix}</span>}
         </div>
       ))}
     </div>
@@ -138,10 +126,16 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
 
   return (
     <div ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
-      <div style={{ position: 'relative' }}>
+      <div className="input-icon-wrap">
+        {isLoading ? (
+          <span className="spinner" style={{ position: 'absolute', insetInlineStart: '12px', top: '50%', transform: 'translateY(-50%)', width: '15px', height: '15px', borderWidth: '2px' }} />
+        ) : (
+          <svg className="icon"><use href="#i-search" /></svg>
+        )}
         <input
           id={inputId}
           data-agy-id="order_model_selector_input"
+          className="input"
           type="text"
           value={query}
           onChange={(e) => {
@@ -150,28 +144,10 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
           }}
           onFocus={() => setIsOpen(true)}
           placeholder={placeholder}
-          style={{
-            width: '100%',
-            height: '42px',
-            padding: '0.5rem 0.8rem',
-            borderRadius: '8px',
-            border: '1px solid #cbd5e1',
-            textAlign: 'right',
-            backgroundColor: 'white',
-            boxSizing: 'border-box',
-            fontSize: '0.95rem',
-            outline: 'none',
-            transition: 'border-color 0.2s'
-          }}
+          style={{ height: '42px' }}
         />
-        {isLoading && (
-          <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-            <div style={{ width: '16px', height: '16px', border: '2px solid #e2e8f0', borderTop: '2px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-            <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-          </div>
-        )}
       </div>
-      
+
       {mounted && createPortal(dropdownContent, document.body)}
     </div>
   );
