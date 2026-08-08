@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { DEFAULT_CUSTOM_COLORS, applyCustomPaletteStyle } from '../lib/customPalette';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 // Real "עיצוב ותצוגה" settings page — ports the live palette/font/theme-mode/
 // density/text-scale switcher that used to exist only as a standalone mockup
@@ -10,7 +11,8 @@ import { DEFAULT_CUSTOM_COLORS, applyCustomPaletteStyle } from '../lib/customPal
 // shape { palette, font, mode, density, textScale, customColors }) and applies
 // the matching data-* attribute on <html> immediately, exactly like the
 // mockup's vanilla JS did — so the no-FOUC bootstrap script added in
-// app/layout.js picks up whatever is chosen here on the next full page load.
+// app/layout.js picks up whatever is chosen here on the next full page load
+// for guests / logged-out sessions.
 //
 // The one preset that isn't a fixed hue is `palette: 'custom'` — its colors
 // live in `customColors: { primary, accent }` alongside the rest of this
@@ -18,8 +20,41 @@ import { DEFAULT_CUSTOM_COLORS, applyCustomPaletteStyle } from '../lib/customPal
 // variable set (light + dark) from just those two hex values, applied via a
 // real <style id="custom-palette-style"> tag scoped to
 // [data-palette="custom"] — see that file's header comment for why.
+//
+// Per-employee scoping: multiple employees share the same front-desk browser
+// profile, so a single browser-wide localStorage key would let whoever last
+// touched this page silently override the next employee's own choices. Every
+// write below is therefore mirrored into a `designPrefs_<employeeId>` cookie
+// (JSON-encoded, mirrors the `theme_<employeeId>` cookie ThemeToggle.js
+// already writes for dark/light mode) — app/layout.js's RootLayout reads that
+// cookie server-side, keyed by the `auth_token` cookie of whoever is actually
+// logged in, and server-renders the correct data-palette/data-font/
+// data-density/data-text-scale attributes (and custom-palette <style> tag) on
+// the very first paint. localStorage is kept alongside it — it's still the
+// only source for guests/logged-out sessions (no employee id to scope a
+// cookie by) and gives this page itself instant local reactivity regardless
+// of login state.
 
 const STORAGE_KEY = 'gemachDesignPrefs';
+
+// Writes the subset of prefs that are meant to be per-employee (mode/theme
+// has its own theme_<employeeId> cookie via ThemeToggle.js, so it's
+// deliberately left out here) into designPrefs_<employeeId>. No-ops for
+// guests (employeeId is null before /api/me resolves, or always for a
+// logged-out session) — localStorage remains their only persistence.
+function writeDesignPrefsCookie(employeeId, raw) {
+  if (typeof document === 'undefined' || !employeeId) return;
+  const payload = {
+    palette: raw.palette,
+    font: raw.font,
+    density: raw.density,
+    textScale: raw.textScale,
+    customColors: raw.customColors,
+  };
+  try {
+    document.cookie = `designPrefs_${employeeId}=${encodeURIComponent(JSON.stringify(payload))}; path=/; max-age=31536000; SameSite=Lax`;
+  } catch (e) {}
+}
 
 const PALETTES = [
   { key: 'wine', label: 'יין (ברירת מחדל)', primary: '#7C2E4D', accent: '#96661F' },
@@ -159,6 +194,23 @@ function applyMode(mode) {
 export default function DisplaySettingsPage() {
   const [prefs, setPrefs] = useState(DEFAULT_PREFS);
   const [customColors, setCustomColors] = useState(DEFAULT_CUSTOM_COLORS);
+  const [employeeId, setEmployeeId] = useState(null);
+
+  // Same shared-cache /api/me lookup UserMenu.js and PopupProvider already
+  // use — by the time this page mounts it's normally already warm (AppShell
+  // renders UserMenu on every page), so this resolves without a fresh
+  // network round-trip. A rejected promise (401 = guest / requireLogin off)
+  // is expected and simply leaves employeeId null, matching the "no employee
+  // id to scope by" guest fallback described above.
+  useEffect(() => {
+    fetchSharedJson('/api/me', { ttl: TTL.STATIC })
+      .then((data) => {
+        if (data && data.success && data.employee?.id) {
+          setEmployeeId(data.employee.id);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   // Sync UI state from whatever is actually saved (the no-FOUC script in
   // layout.js has already applied it to <html> before this component mounts;
@@ -203,9 +255,11 @@ export default function DisplaySettingsPage() {
     } catch (e) {
       raw = {};
     }
+    const nextRaw = { ...raw, [key]: value };
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...raw, [key]: value }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRaw));
     } catch (e) {}
+    writeDesignPrefsCookie(employeeId, nextRaw);
 
     switch (key) {
       case 'palette':
@@ -244,9 +298,11 @@ export default function DisplaySettingsPage() {
     const colors = (raw.customColors && raw.customColors.primary && raw.customColors.accent)
       ? raw.customColors
       : customColors;
+    const nextRaw = { ...raw, palette: 'custom', customColors: colors };
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...raw, palette: 'custom', customColors: colors }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRaw));
     } catch (e) {}
+    writeDesignPrefsCookie(employeeId, nextRaw);
     applyAttr('data-palette', 'custom', ['wine']);
     applyCustomPaletteStyle(colors);
     setCustomColors(colors);
@@ -266,9 +322,11 @@ export default function DisplaySettingsPage() {
     } catch (e) {
       raw = {};
     }
+    const nextRaw = { ...raw, palette: 'custom', customColors: next };
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ...raw, palette: 'custom', customColors: next }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRaw));
     } catch (e) {}
+    writeDesignPrefsCookie(employeeId, nextRaw);
     applyAttr('data-palette', 'custom', ['wine']);
     applyCustomPaletteStyle(next);
     setPrefs((prev) => ({ ...prev, palette: 'custom' }));

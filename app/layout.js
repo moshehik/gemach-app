@@ -3,6 +3,7 @@ import './design-overrides.css';
 import './design-system.css';
 import { cookies } from 'next/headers';
 import prisma from './lib/prisma';
+import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
 
 export const metadata = {
   title: 'גמ"ח שמלות - קטלוג וניהול',
@@ -134,6 +135,40 @@ export default async function RootLayout({ children }) {
   const themeCookie = authToken?.value ? cookieStore.get(`theme_${authToken.value}`) : null;
   const themePreference = themeCookie?.value || 'light';
 
+  // Palette/font/density/textScale/customColors — same per-employee cookie
+  // pattern as themeCookie above, so a shared front-desk browser doesn't let
+  // whichever employee last edited /display-settings silently override the
+  // next employee's own choices (previously these lived only in the
+  // browser-wide `gemachDesignPrefs` localStorage key). Written by
+  // app/display-settings/page.js as `designPrefs_<employeeId>`, JSON-encoded.
+  const designPrefsCookie = authToken?.value ? cookieStore.get(`designPrefs_${authToken.value}`) : null;
+  let employeeDesignPrefs = null;
+  if (designPrefsCookie?.value) {
+    try {
+      employeeDesignPrefs = JSON.parse(decodeURIComponent(designPrefsCookie.value));
+    } catch (e) {
+      employeeDesignPrefs = null;
+    }
+  }
+  // Same "off value = omit the attribute" convention as applyAttr() in
+  // app/display-settings/page.js and the no-FOUC bootstrap script below.
+  const paletteAttr = employeeDesignPrefs?.palette && employeeDesignPrefs.palette !== 'wine' ? employeeDesignPrefs.palette : undefined;
+  const fontAttr = employeeDesignPrefs?.font && employeeDesignPrefs.font !== 'default' ? employeeDesignPrefs.font : undefined;
+  const densityAttr = employeeDesignPrefs?.density && employeeDesignPrefs.density !== 'comfortable' ? employeeDesignPrefs.density : undefined;
+  const textScaleAttr = employeeDesignPrefs?.textScale && employeeDesignPrefs.textScale !== 'normal' ? employeeDesignPrefs.textScale : undefined;
+
+  // "custom" is the one palette that isn't a fixed hue in design-system.css —
+  // derive its --primary-*/--accent-* variable set (light + dark) server-side
+  // from the same app/lib/customPalette.js helpers the /display-settings page
+  // uses, so it's correct in the very first server-rendered response (no
+  // flash of the wrong/no palette while a client script catches up).
+  let customPaletteCss = null;
+  if (paletteAttr === 'custom' && employeeDesignPrefs?.customColors?.primary && employeeDesignPrefs?.customColors?.accent) {
+    customPaletteCss = customPaletteCssText(
+      buildCustomPaletteVars(employeeDesignPrefs.customColors.primary, employeeDesignPrefs.customColors.accent)
+    );
+  }
+
   const showLogin = requireLogin && !isAuthenticated;
 
   let bodyClassName = hideAIFeatures ? 'hide-ai-features ' : '';
@@ -143,7 +178,16 @@ export default async function RootLayout({ children }) {
   bodyClassName = bodyClassName.trim();
 
   return (
-    <html lang="he" dir="rtl" data-theme={!showLogin ? themePreference : 'light'} suppressHydrationWarning>
+    <html
+      lang="he"
+      dir="rtl"
+      data-theme={!showLogin ? themePreference : 'light'}
+      data-palette={!showLogin ? paletteAttr : undefined}
+      data-font={!showLogin ? fontAttr : undefined}
+      data-density={!showLogin ? densityAttr : undefined}
+      data-text-scale={!showLogin ? textScaleAttr : undefined}
+      suppressHydrationWarning
+    >
       <head>
         <meta charSet="utf-8" />
         <script
@@ -229,6 +273,20 @@ export default async function RootLayout({ children }) {
       if (!val || offVals.indexOf(val) !== -1) root.removeAttribute(attr);
       else root.setAttribute(attr, val);
     }
+    // Palette/font/density/text-scale: for a logged-in employee these are
+    // already server-rendered from the designPrefs_<employeeId> cookie (see
+    // RootLayout below) — data-palette/data-font/data-density/data-text-scale
+    // are already correct on <html> and the matching #custom-palette-style
+    // tag (if any) is already in <head> before this script even runs.
+    // localStorage is shared by the whole browser profile, so replaying it
+    // here for an authenticated session would let whichever employee last
+    // touched /display-settings on this shared terminal silently override
+    // the next employee's own prefs — exactly the bug the cookie exists to
+    // fix. Only fall back to localStorage when nobody is logged in to scope
+    // by (guest session / requireLogin off) — same as before this cookie
+    // existed.
+    var hasEmployeeCookie = ${isAuthenticated ? 'true' : 'false'};
+    if (!hasEmployeeCookie) {
     setAttr('data-palette', saved.palette, ['wine']);
     setAttr('data-font', saved.font, ['default']);
     setAttr('data-density', saved.density, ['comfortable']);
@@ -321,6 +379,7 @@ export default async function RootLayout({ children }) {
         styleEl.textContent = css;
       } catch (e) {}
     }
+    }
     // data-theme is normally set server-side from the theme_<employeeId> cookie
     // (see RootLayout below) — only override it here when the user picked an
     // explicit mode on /display-settings; leave 'auto'/unset alone so the
@@ -334,6 +393,9 @@ export default async function RootLayout({ children }) {
 `
           }}
         />
+        {!showLogin && customPaletteCss && (
+          <style id="custom-palette-style" dangerouslySetInnerHTML={{ __html: customPaletteCss }} />
+        )}
       </head>
       <body className={bodyClassName}>
         <IconSprite />
