@@ -1,9 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, Calendar as CalendarIcon, ExternalLink, List } from 'lucide-react';
-import { getHebrewDateString } from '@/lib/hebrewDate';
 import { createPortal } from 'react-dom';
+import { getHebrewDateString } from '@/lib/hebrewDate';
 import { CapacityCalendar } from '@/components/CapacityCalendar';
 
 export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
@@ -13,27 +12,6 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
   const [mounted, setMounted] = useState(false);
   const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
   const [dateRange, setDateRange] = useState({ fromDate: null, toDate: null });
-
-  useEffect(() => {
-    setMounted(true);
-    const hasIdentifier = item && (item.dressModelId || item.dressItem?.dressModelId || item.barcodePrefix || item.dressItem?.barcodePrefix || item.dressItem?.dress?.barcodePrefix);
-    const actualSize = item?.sizeText || item?.size;
-    
-    if (isOpen) {
-      if (!order.eventDate) {
-        setError('לא הוגדר תאריך אירוע להזמנה זו.');
-        setResults(null);
-      } else if (!hasIdentifier) {
-        setError('לא ניתן לבדוק תפוסה לפריט ללא דגם (פריט כללי).');
-        setResults(null);
-      } else if (!actualSize) {
-        setError('לא ניתן לבדוק תפוסה לפריט ללא מידה מוגדרת.');
-        setResults(null);
-      } else {
-        fetchCapacity(actualSize);
-      }
-    }
-  }, [isOpen, item, order]);
 
   async function fetchCapacity(actualSize) {
     setLoading(true);
@@ -71,7 +49,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
       const res = await fetch(`/api/inventory/capacity?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה בטעינת נתונים');
-      
+
       setResults(data);
     } catch (err) {
       setError(err.message);
@@ -80,155 +58,162 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
     }
   };
 
+  useEffect(() => {
+    setMounted(true);
+    const hasIdentifier = item && (item.dressModelId || item.dressItem?.dressModelId || item.barcodePrefix || item.dressItem?.barcodePrefix || item.dressItem?.dress?.barcodePrefix);
+    const actualSize = item?.sizeText || item?.size;
+
+    if (isOpen) {
+      if (!order.eventDate) {
+        setError('לא הוגדר תאריך אירוע להזמנה זו.');
+        setResults(null);
+      } else if (!hasIdentifier) {
+        setError('לא ניתן לבדוק תפוסה לפריט ללא דגם (פריט כללי).');
+        setResults(null);
+      } else if (!actualSize) {
+        setError('לא ניתן לבדוק תפוסה לפריט ללא מידה מוגדרת.');
+        setResults(null);
+      } else {
+        fetchCapacity(actualSize);
+      }
+    }
+  }, [isOpen, item, order]);
+
   if (!isOpen || !mounted) return null;
 
   return createPortal(
-    <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
-      <div className="modal-content animate-fade-in" style={{ width: '95%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '0', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', direction: 'rtl' }}>
-        
+    <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100 }} onClick={onClose}>
+      <div className="modal animate-fade-in" style={{ maxWidth: '760px', width: '95%', maxHeight: '90vh', overflowY: 'auto', margin: 0 }} onClick={e => e.stopPropagation()}>
+
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', background: 'linear-gradient(to right, #f8fafc, #f1f5f9)', borderBottom: '1px solid #e2e8f0', borderTopRightRadius: '16px', borderTopLeftRadius: '16px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <div style={{ background: '#e0f2fe', color: '#0284c7', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <CalendarIcon size={24} />
-            </div>
-            <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem', fontWeight: 'bold' }}>
-              זמינות: {item.dressItem?.dress?.name || item.description || 'פריט'} ({item.sizeText || item.size || 'ללא מידה'})
-            </h2>
-          </div>
-          <button data-agy-id="itemcapacitymodal_button_1" onClick={onClose} style={{ background: 'var(--card-bg)', border: '1px solid #e2e8f0', cursor: 'pointer', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
-            <X size={20} />
+        <div className="modal-head">
+          <strong>
+            <svg className="icon"><use href="#i-calendar" /></svg>
+            זמינות: {item.dressItem?.dress?.name || item.description || 'פריט'} ({item.sizeText || item.size || 'ללא מידה'})
+          </strong>
+          <button data-agy-id="itemcapacitymodal_button_1" type="button" onClick={onClose} className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה">
+            <svg className="icon"><use href="#i-x" /></svg>
           </button>
         </div>
 
-        <div style={{ padding: '2rem' }}>
-            <div style={{ marginBottom: '1.5rem', color: '#475569', fontSize: '1.1rem' }}>
-                <p style={{ margin: '0 0 0.5rem 0' }}><strong>תאריך אירוע:</strong> {new Date(order.eventDate).toLocaleDateString('he-IL')} {getHebrewDateString(order.eventDate)}</p>
-                <p style={{ margin: 0, fontSize: '0.95rem', opacity: 0.8 }}>(מוצג טווח של חודש לפני ואחרי)</p>
+        <div className="modal-body">
+          <p className="hint" style={{ color: 'var(--text-2)', marginBottom: '4px' }}>
+            <strong style={{ color: 'var(--text)' }}>תאריך אירוע:</strong> {new Date(order.eventDate).toLocaleDateString('he-IL')} · {getHebrewDateString(order.eventDate)}
+          </p>
+          <p className="hint" style={{ marginBottom: '18px' }}>(מוצג טווח של חודש לפני ואחרי)</p>
+
+          {loading && (
+            <div className="loading-inline"><span className="spinner" /> טוען נתוני תפוסה...</div>
+          )}
+
+          {error && (
+            <div className="callout callout-danger">
+              <svg className="icon"><use href="#i-alert-circle" /></svg>
+              <span>{error}</span>
             </div>
+          )}
 
-            {loading && (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0', flexDirection: 'column', alignItems: 'center' }}>
-                    <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid #f3f3f3', borderTop: '3px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                    <p style={{ marginTop: '1rem', color: '#64748b' }}>טוען נתוני תפוסה...</p>
-                </div>
-            )}
-            
-            {error && <div style={{ color: '#ef4444', backgroundColor: '#fef2f2', padding: '1rem', borderRadius: '8px', border: '1px solid #fecaca', marginBottom: '1rem', textAlign: 'center' }}>{error}</div>}
-
-            {results && !loading && (
+          {results && !loading && (
             <div className="animate-fade-in">
-                {/* Summary Cards */}
-                <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-                <div style={{ flex: 1, backgroundColor: '#f0f9ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #bae6fd', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                    <h3 style={{ margin: '0 0 0.5rem 0', color: '#0284c7', fontSize: '1.1rem' }}>במלאי</h3>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#0369a1' }}>{results.inStock}</div>
+              {/* Summary Cards */}
+              <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)', marginBottom: '18px' }}>
+                <div className="kpi-card" style={{ textAlign: 'center' }}>
+                  <div className="kpi-label">במלאי</div>
+                  <div className="kpi-value" style={{ color: 'var(--info)' }}>{results.inStock}</div>
                 </div>
-                <div style={{ flex: 1, backgroundColor: '#fef2f2', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #fecaca', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                    <h3 style={{ margin: '0 0 0.5rem 0', color: '#dc2626', fontSize: '1.1rem' }}>בתפוסה מתוכננת</h3>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#b91c1c' }}>{results.occupiedCount}</div>
+                <div className="kpi-card" style={{ textAlign: 'center' }}>
+                  <div className="kpi-label">בתפוסה מתוכננת</div>
+                  <div className="kpi-value" style={{ color: 'var(--danger)' }}>{results.occupiedCount}</div>
                 </div>
-                <div style={{ flex: 1, backgroundColor: '#fdf4ff', padding: '1.5rem', borderRadius: '12px', textAlign: 'center', border: '1px solid #fbcfe8', boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
-                    <h3 style={{ margin: '0 0 0.5rem 0', color: '#c026d3', fontSize: '1.1rem' }}>רזרבה זמינה</h3>
-                    <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: '#a21caf' }}>{results.reserve}</div>
+                <div className="kpi-card" style={{ textAlign: 'center' }}>
+                  <div className="kpi-label">רזרבה זמינה</div>
+                  <div className="kpi-value" style={{ color: 'var(--primary-solid)' }}>{results.reserve}</div>
                 </div>
-                </div>
+              </div>
 
-                {results.occupiedCount > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+              {results.occupiedCount > 0 && (
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+                  <div className="toggle-btn-group">
                     <button
                       data-agy-id="itemcapacitymodal_view_list_btn"
                       type="button"
                       onClick={() => setViewMode('list')}
-                      style={{
-                        padding: '0.5rem 1.5rem',
-                        border: 'none',
-                        borderRadius: '6px',
-                        background: viewMode === 'list' ? 'var(--card-bg)' : 'transparent',
-                        boxShadow: viewMode === 'list' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                        cursor: 'pointer', fontWeight: viewMode === 'list' ? 'bold' : 'normal'
-                      }}
+                      className={viewMode === 'list' ? 'on' : ''}
                     >
-                      <List size={18} /> תצוגת רשימה
+                      <svg className="icon"><use href="#i-list" /></svg> תצוגת רשימה
                     </button>
                     <button
                       data-agy-id="itemcapacitymodal_view_calendar_btn"
                       type="button"
                       onClick={() => setViewMode('calendar')}
-                      style={{
-                        padding: '0.5rem 1.5rem',
-                        border: 'none',
-                        borderRadius: '6px',
-                        background: viewMode === 'calendar' ? 'var(--card-bg)' : 'transparent',
-                        boxShadow: viewMode === 'calendar' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                        display: 'flex', alignItems: 'center', gap: '0.5rem',
-                        cursor: 'pointer', fontWeight: viewMode === 'calendar' ? 'bold' : 'normal'
-                      }}
+                      className={viewMode === 'calendar' ? 'on' : ''}
                     >
-                      <CalendarIcon size={18} /> תצוגת לוח
+                      <svg className="icon"><use href="#i-calendar" /></svg> תצוגת לוח
                     </button>
                   </div>
                 </div>
-                )}
+              )}
 
-                {viewMode === 'calendar' && results.occupiedCount > 0 && dateRange.fromDate && (
-                  <CapacityCalendar
-                    fromDate={dateRange.fromDate}
-                    toDate={dateRange.toDate}
-                    occupiedOrders={results.occupiedOrders}
-                  />
-                )}
+              {viewMode === 'calendar' && results.occupiedCount > 0 && dateRange.fromDate && (
+                <CapacityCalendar
+                  fromDate={dateRange.fromDate}
+                  toDate={dateRange.toDate}
+                  occupiedOrders={results.occupiedOrders}
+                />
+              )}
 
-                {viewMode === 'list' && (results.occupiedCount > 0 ? (
-                <div style={{ background: 'var(--card-bg)', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
-                    <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
+              {viewMode === 'list' && (results.occupiedCount > 0 ? (
+                <div className="table-wrap">
+                  <table className="data">
                     <thead>
-                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>תאריך אירוע</th>
-                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>שם לקוח</th>
-                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>כמות בתפוסה</th>
-                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>הזמנה</th>
-                        </tr>
+                      <tr>
+                        <th>תאריך אירוע</th>
+                        <th>שם לקוח</th>
+                        <th>כמות בתפוסה</th>
+                        <th>הזמנה</th>
+                      </tr>
                     </thead>
                     <tbody>
-                        {[...results.occupiedOrders].sort((a,b) => new Date(a.eventDate) - new Date(b.eventDate)).map(occOrder => (
-                        <tr key={occOrder.id} style={{ borderBottom: '1px solid #f1f5f9', background: occOrder.orderId === order.orderId ? '#eff6ff' : 'transparent', transition: 'background-color 0.2s' }}>
-                            <td style={{ padding: '0.5rem 1rem', fontWeight: occOrder.orderId === order.orderId ? 'bold' : 'normal' }}>
-                                {new Date(occOrder.eventDate).toLocaleDateString('he-IL')} <span style={{ color: '#64748b', fontSize: '0.9em', margin: '0 0.3rem' }}>({getHebrewDateString(occOrder.eventDate)})</span>
-                                {occOrder.orderId === order.orderId && <span style={{ marginRight: '0.5rem', fontSize: '0.8rem', background: '#3b82f6', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '12px' }}>הזמנה נוכחית</span>}
+                      {[...results.occupiedOrders].sort((a,b) => new Date(a.eventDate) - new Date(b.eventDate)).map(occOrder => {
+                        const isCurrent = occOrder.orderId === order.orderId;
+                        return (
+                          <tr key={occOrder.id} style={isCurrent ? { background: 'var(--primary-tint)' } : undefined}>
+                            <td className={isCurrent ? 'cell-primary' : undefined}>
+                              {new Date(occOrder.eventDate).toLocaleDateString('he-IL')} <span className="hint" style={{ color: 'var(--text-3)' }}>({getHebrewDateString(occOrder.eventDate)})</span>
+                              {isCurrent && <span className="badge badge-primary" style={{ marginInlineStart: '8px' }}>הזמנה נוכחית</span>}
                             </td>
-                            <td style={{ padding: '0.5rem 1rem' }}>{occOrder.customerName}</td>
-                            <td style={{ padding: '0.5rem 1rem' }}>
-                                <span style={{ background: '#fee2e2', color: '#ef4444', padding: '0.2rem 0.6rem', borderRadius: '8px', fontWeight: 'bold' }}>{occOrder.quantity}</span>
-                            </td>
-                            <td style={{ padding: '0.5rem 1rem' }}>
-                            <a 
+                            <td>{occOrder.customerName}</td>
+                            <td><span className="badge badge-danger">{occOrder.quantity}</span></td>
+                            <td>
+                              <a
                                 href={`/orders/${occOrder.orderId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{ padding: '0.3rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', background: '#f1f5f9', color: '#3b82f6', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', border: '1px solid #e2e8f0' }}
-                                onMouseOver={e => { e.currentTarget.style.background = '#e2e8f0'; }}
-                                onMouseOut={e => { e.currentTarget.style.background = '#f1f5f9'; }}
-                            >
-                                צפה בהזמנה <ExternalLink size={16} />
-                            </a>
+                                className="btn btn-secondary btn-sm"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                צפה בהזמנה <svg className="icon"><use href="#i-link" /></svg>
+                              </a>
                             </td>
-                        </tr>
-                        ))}
+                          </tr>
+                        );
+                      })}
                     </tbody>
-                    </table>
+                  </table>
                 </div>
-                ) : (
-                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-                    <CalendarIcon size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                    <h3 style={{ margin: '0 0 0.5rem 0', color: '#334155' }}>אין הזמנות תפוסות בטווח התאריכים</h3>
-                    <p style={{ margin: 0 }}>הפריט פנוי לחלוטין בתאריכים אלו.</p>
+              ) : (
+                <div className="empty-state">
+                  <svg className="icon"><use href="#i-calendar" /></svg>
+                  <h4>אין הזמנות תפוסות בטווח התאריכים</h4>
+                  <p>הפריט פנוי לחלוטין בתאריכים אלו.</p>
                 </div>
-                ))}
+              ))}
             </div>
-            )}
+          )}
+        </div>
+
+        <div className="modal-foot">
+          <button type="button" onClick={onClose} className="btn btn-secondary">סגירה</button>
         </div>
       </div>
     </div>,

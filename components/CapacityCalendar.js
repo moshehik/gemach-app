@@ -36,7 +36,7 @@ export function CapacityCalendar({ fromDate, toDate, occupiedOrders }) {
   });
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
       {uniqueMonths.map((month, idx) => (
         <HebrewMonth
           key={idx}
@@ -116,18 +116,22 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
   };
 
   return (
-    <div style={{ border: '1px solid #e2e8f0', borderRadius: '8px', overflow: 'hidden' }}>
-      <div style={{ backgroundColor: '#f8fafc', padding: '1rem', textAlign: 'center', fontWeight: 'bold', borderBottom: '1px solid #e2e8f0' }}>
-        {hMonthName} {hYearString}
+    <div className="datepicker" style={{ width: '100%' }}>
+      <div className="datepicker-head">
+        <strong>{hMonthName} {hYearString}</strong>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '1px', backgroundColor: '#e2e8f0' }}>
-        {['ראשון', 'שני', 'שלישי', 'רביעי', 'חמישי', 'שישי', 'שבת'].map(d => (
-          <div key={d} style={{ padding: '0.5rem', textAlign: 'center', backgroundColor: 'var(--card-bg)', fontWeight: 'bold', fontSize: '0.85rem', color: '#64748b' }}>
-            {d}
-          </div>
-        ))}
+      <div className="datepicker-weekdays">
+        <div>א'</div>
+        <div>ב'</div>
+        <div>ג'</div>
+        <div>ד'</div>
+        <div>ה'</div>
+        <div>ו'</div>
+        <div style={{ color: 'var(--primary-solid)' }}>ש'</div>
+      </div>
+      <div className="datepicker-grid">
         {days.map((hd, i) => {
-          if (!hd) return <div key={`empty-${i}`} style={{ backgroundColor: '#f8fafc' }} />;
+          if (!hd) return <div key={`empty-${i}`} />;
 
           const inRange = isDayInRange(hd);
           const occQty = isDayOccupied(hd);
@@ -145,28 +149,18 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
           } catch (e) {}
 
           return (
-            <div key={i} style={{
-              backgroundColor: inRange ? (occQty > 0 ? '#fee2e2' : '#f0fdf4') : 'var(--card-bg)',
-              padding: '0.5rem',
-              minHeight: '80px',
-              display: 'flex',
-              flexDirection: 'column',
-              opacity: inRange ? 1 : 0.5,
-              position: 'relative'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <span style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#1e293b' }}>{hebrewDay}</span>
-                <span style={{ fontSize: '0.85rem', color: '#64748b' }}>{gregDay}</span>
-              </div>
-              {holidays.length > 0 && (
-                <div style={{ fontSize: '0.75rem', color: '#0369a1', marginTop: '2px', lineHeight: '1.1' }}>
-                  {holidays.join(', ')}
-                </div>
-              )}
+            <div
+              key={i}
+              className={`datepicker-day${!inRange ? ' muted' : ''}`}
+              style={occQty > 0 ? { background: 'var(--danger-tint)' } : undefined}
+              title={holidays.length > 0 ? holidays.join(', ') : undefined}
+            >
+              <span>{hebrewDay}</span>
+              <span className="g-num">{gregDay}{holidays.length > 0 ? ` · ${holidays.join(', ')}` : ''}</span>
               {occQty > 0 && (
-                <div style={{ marginTop: 'auto', backgroundColor: '#ef4444', color: 'white', borderRadius: '4px', padding: '2px 4px', fontSize: '0.75rem', textAlign: 'center', fontWeight: 'bold' }}>
+                <span className="badge badge-danger" style={{ marginTop: '2px', fontSize: '10px', padding: '1px 6px' }}>
                   {occQty} תפוס
-                </div>
+                </span>
               )}
             </div>
           );
