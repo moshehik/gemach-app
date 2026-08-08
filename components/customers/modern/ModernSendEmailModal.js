@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, Send } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 export default function ModernSendEmailModal({ isOpen, onClose, customer, authResult }) {
   const [subject, setSubject] = useState('');
@@ -9,7 +9,7 @@ export default function ModernSendEmailModal({ isOpen, onClose, customer, authRe
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  if (!isOpen) return null;
+  if (!isOpen || typeof document === 'undefined') return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,48 +52,65 @@ export default function ModernSendEmailModal({ isOpen, onClose, customer, authRe
     }
   };
 
-  return (
-    <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}>
-      <div className="moc moc-modal-box wide" style={{ maxWidth: '500px' }}>
-        <div className="moc-modal-head">
-          <h3>שליחת מייל - {customer.firstName} {customer.lastName}</h3>
-          <button className="moc-close-x" onClick={() => !loading && onClose()}><X size={15} /></button>
+  return createPortal(
+    <div
+      className="modal-backdrop"
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={(e) => { if (e.target === e.currentTarget && !loading) onClose(); }}
+    >
+      <div className="modal" style={{ maxWidth: '500px', width: '100%', margin: 0 }} onClick={e => e.stopPropagation()}>
+        <div className="modal-head">
+          <strong>
+            <svg className="icon"><use href="#i-mail" /></svg>
+            שליחת מייל - {customer.firstName} {customer.lastName}
+          </strong>
+          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => !loading && onClose()}>
+            <svg className="icon"><use href="#i-x" /></svg>
+          </button>
         </div>
         <form onSubmit={handleSubmit}>
-          <div className="moc-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-            {error && <div style={{ color: 'var(--moc-danger-text)', background: 'var(--moc-danger-bg)', padding: '10px', borderRadius: '6px', fontSize: '0.9rem' }}>{error}</div>}
-            
-            <div>
-              <span className="moc-field-label">נושא ההודעה</span>
-              <input 
-                type="text" 
-                value={subject} 
-                onChange={e => setSubject(e.target.value)} 
-                required 
+          <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {error && (
+              <div className="callout callout-danger">
+                <svg className="icon"><use href="#i-alert-circle" /></svg>
+                {error}
+              </div>
+            )}
+
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>נושא ההודעה</label>
+              <input
+                type="text"
+                className="input"
+                value={subject}
+                onChange={e => setSubject(e.target.value)}
+                required
                 disabled={loading}
               />
             </div>
-            
-            <div>
-              <span className="moc-field-label">תוכן</span>
-              <textarea 
-                value={body} 
-                onChange={e => setBody(e.target.value)} 
-                rows={6} 
-                style={{ resize: 'vertical' }}
+
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>תוכן</label>
+              <textarea
+                className="textarea"
+                value={body}
+                onChange={e => setBody(e.target.value)}
+                rows={6}
                 required
                 disabled={loading}
               />
             </div>
           </div>
-          <div className="moc-modal-foot">
-            <button type="button" className="moc-btn moc-btn-outline" onClick={onClose} disabled={loading}>ביטול</button>
-            <button type="submit" className="moc-btn moc-btn-gold" disabled={loading}>
-              {loading ? <span className="moc-spinner" /> : <Send size={15} />} {loading ? 'שולח...' : 'שלח'}
+          <div className="modal-foot">
+            <button type="button" className="btn btn-secondary" onClick={onClose} disabled={loading}>ביטול</button>
+            <button type="submit" className="btn btn-primary" disabled={loading}>
+              {loading ? <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
+              {loading ? 'שולח...' : 'שלח'}
             </button>
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

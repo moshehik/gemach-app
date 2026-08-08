@@ -1,32 +1,25 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Settings, Save, Check, Loader2, AlertCircle, Info, 
-  Palette, ShoppingBag, Database, Settings2, Type, 
-  CreditCard, Calendar, Printer, LayoutGrid,
-  MonitorSmartphone, Upload, Image as ImageIcon, Sparkles,
-  ChevronDown, ChevronUp, ShieldCheck, CheckSquare, Mail
-} from 'lucide-react';
 import FullEmailListModal from '@/components/FullEmailListModal';
 import NeonUsageCard from './NeonUsageCard';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { NUMBER_FIELD_LIMITS, validateNumericSetting } from '@/app/lib/settingsValidation';
 
-const categoryConfig = {
-  'מיילים': { icon: Mail },
-  'תצוגה': { icon: Palette },
-  'מסד נתונים': { icon: Database },
-  'הזמנות': { icon: ShoppingBag },
-  'מאגר': { icon: Database },
-  'כללי': { icon: Settings2 },
-  'כותרות': { icon: Type },
-  'תשלומים': { icon: CreditCard },
-  'יומן': { icon: Calendar },
-  'הדפסה': { icon: Printer },
-  'בינה מלאכותית': { icon: Sparkles },
-  'לא בשימוש': { icon: Info },
-  'default': { icon: LayoutGrid }
+const CATEGORY_ICONS = {
+  'מיילים': 'i-mail',
+  'תצוגה': 'i-grid',
+  'מסד נתונים': 'i-database',
+  'הזמנות': 'i-bag',
+  'מאגר': 'i-database',
+  'כללי': 'i-settings',
+  'כותרות': 'i-tag',
+  'תשלומים': 'i-card',
+  'יומן': 'i-calendar',
+  'הדפסה': 'i-printer',
+  'בינה מלאכותית': 'i-star',
+  'לא בשימוש': 'i-info',
+  'default': 'i-grid'
 };
 
 const HEBREW_NAMES = {
@@ -205,7 +198,7 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
     .filter(Boolean);
 
   const isSelected = (field) => {
-    return rawItems.some(item => 
+    return rawItems.some(item =>
       item.toLowerCase() === field.key.toLowerCase() ||
       item === field.name ||
       item === field.alias
@@ -216,7 +209,7 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
     const selected = isSelected(field);
     let nextList;
     if (selected) {
-      nextList = rawItems.filter(item => 
+      nextList = rawItems.filter(item =>
         item.toLowerCase() !== field.key.toLowerCase() &&
         item !== field.name &&
         item !== field.alias
@@ -239,106 +232,74 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
   const count = CUSTOMER_FIELDS.filter(f => isSelected(f)).length;
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      <div 
-        style={{ 
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'white', border: '2px solid #cbd5e1', borderRadius: '12px',
-          padding: '0.35rem 0.65rem', gap: '0.5rem', transition: 'all 0.2s',
-          boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.15)' : 'none',
-          boxSizing: 'border-box', overflow: 'hidden'
-        }}
-      >
-        <input 
-          type="text"
-          value={value || ''}
-          data-element-name={elementName || "שדה_SettingsClient_21"}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="בחר שדות חובה או הקלד ערך..."
-          style={{ 
-            flex: 1, border: 'none', outline: 'none', background: 'transparent',
-            fontSize: '0.95rem', color: '#0f172a', fontWeight: '500', fontFamily: 'inherit',
-            boxSizing: 'border-box'
-          }}
-        />
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', display: 'flex', gap: '8px' }}>
+      <input
+        type="text"
+        className="input"
+        style={{ flex: 1 }}
+        value={value || ''}
+        data-element-name={elementName || 'שדה_SettingsClient_21'}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="בחר שדות חובה או הקלד ערך..."
+      />
 
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          style={{ 
-            display: 'flex', alignItems: 'center', gap: '0.35rem',
-            background: isOpen ? '#2563eb' : 'transparent', 
-            border: 'none', 
-            color: isOpen ? 'white' : '#2563eb', padding: '0.35rem 0.5rem', 
-            borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem',
-            transition: 'all 0.2s', flexShrink: 0
-          }}
-        >
-          <CheckSquare size={15} color={isOpen ? 'white' : '#2563eb'} />
-          <span>שדות חובה ({count})</span>
-          {isOpen ? <ChevronUp size={15} color="white" /> : <ChevronDown size={15} color="#64748b" />}
-        </button>
-      </div>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        style={{ flexShrink: 0 }}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <svg className="icon"><use href="#i-check" /></svg>
+        שדות חובה ({count})
+      </button>
 
       {isOpen && (
-        <div 
-          style={{ 
-            position: 'absolute', top: '105%', right: 0, left: 0,
-            background: 'white', border: '1px solid #cbd5e1', borderRadius: '16px',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.12), 0 10px 10px -5px rgba(0,0,0,0.04)',
-            zIndex: 100, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#1e293b' }}>
+        <div className="card" style={{ position: 'absolute', top: '105%', insetInlineEnd: 0, insetInlineStart: 0, zIndex: 100, padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>
               בחירת שדות חובה
             </span>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                type="button" 
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
                 onClick={selectAll}
-                style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: 'var(--primary-solid)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 בחר הכל
               </button>
-              <span style={{ color: '#cbd5e1' }}>|</span>
-              <button 
-                type="button" 
+              <span style={{ color: 'var(--border-strong)' }}>|</span>
+              <button
+                type="button"
                 onClick={clearAll}
-                style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 נקה הכל
               </button>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '0.5rem', maxHeight: '260px', overflowY: 'auto' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px', maxHeight: '260px', overflowY: 'auto' }}>
             {CUSTOMER_FIELDS.map(field => {
               const active = isSelected(field);
 
               return (
-                <div 
+                <div
                   key={field.key}
                   onClick={() => toggleField(field)}
-                  style={{ 
-                    display: 'flex', alignItems: 'center', gap: '0.6rem',
-                    padding: '0.55rem 0.75rem', borderRadius: '10px',
-                    background: active ? '#eff6ff' : '#f8fafc',
-                    border: active ? '1px solid #93c5fd' : '1px solid #e2e8f0',
-                    cursor: 'pointer', transition: 'all 0.15s'
+                  className="checkbox-row"
+                  style={{
+                    padding: '8px 10px', borderRadius: 'var(--radius-md)',
+                    background: active ? 'var(--primary-tint)' : 'var(--surface-alt)',
+                    border: active ? '1px solid var(--primary-tint-2)' : '1px solid var(--border)',
+                    cursor: 'pointer'
                   }}
                 >
-                  <input 
-                    type="checkbox"
-                    checked={active}
-                    readOnly
-                    style={{ width: '16px', height: '16px', accentColor: '#2563eb', cursor: 'pointer' }}
-                  />
+                  <input type="checkbox" checked={active} readOnly />
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: '600', fontSize: '0.88rem', color: active ? '#1e40af' : '#334155' }}>
+                    <span style={{ fontWeight: 600, fontSize: '12.5px', color: active ? 'var(--primary-solid)' : 'var(--text)' }}>
                       {field.name}
                     </span>
-                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    <span style={{ fontSize: '11px', color: 'var(--text-3)' }}>
                       {field.alias}
                     </span>
                   </div>
@@ -398,118 +359,77 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
   };
 
   return (
-    <div ref={containerRef} style={{ position: 'relative', width: '100%' }}>
-      <div 
-        style={{ 
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'white', border: '2px solid #cbd5e1', borderRadius: '12px',
-          padding: '0.35rem 0.65rem', gap: '0.5rem', transition: 'all 0.2s',
-          boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.15)' : 'none',
-          boxSizing: 'border-box', overflow: 'hidden'
-        }}
-      >
-        <input 
-          type="text"
-          value={value || ''}
-          data-element-name={elementName || "שדה_SettingsClient_21"}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="בחר מחלקות או הקלד ערך..."
-          style={{ 
-            flex: 1, border: 'none', outline: 'none', background: 'transparent',
-            fontSize: '0.95rem', color: '#0f172a', fontWeight: '500', fontFamily: 'inherit',
-            boxSizing: 'border-box'
-          }}
-        />
+    <div ref={containerRef} style={{ position: 'relative', width: '100%', display: 'flex', gap: '8px' }}>
+      <input
+        type="text"
+        className="input"
+        style={{ flex: 1 }}
+        value={value || ''}
+        data-element-name={elementName || 'שדה_SettingsClient_21'}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder="בחר מחלקות או הקלד ערך..."
+      />
 
-        <button
-          type="button"
-          onClick={() => setIsOpen(!isOpen)}
-          style={{ 
-            display: 'flex', alignItems: 'center', gap: '0.35rem',
-            background: isOpen ? '#2563eb' : 'transparent', 
-            border: 'none', 
-            color: isOpen ? 'white' : '#2563eb', padding: '0.35rem 0.5rem', 
-            borderRadius: '6px', cursor: 'pointer', fontWeight: '600', fontSize: '0.85rem',
-            transition: 'all 0.2s', flexShrink: 0
-          }}
-        >
-          <ShieldCheck size={15} color={isOpen ? 'white' : '#2563eb'} />
-          <span>מחלקות ({selectedList.length})</span>
-          {isOpen ? <ChevronUp size={15} color="white" /> : <ChevronDown size={15} color="#64748b" />}
-        </button>
-      </div>
+      <button
+        type="button"
+        className="btn btn-secondary btn-sm"
+        style={{ flexShrink: 0 }}
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <svg className="icon"><use href="#i-shield" /></svg>
+        מחלקות ({selectedList.length})
+      </button>
 
       {isOpen && (
-        <div 
-          style={{ 
-            position: 'absolute', top: '105%', right: 0, left: 0,
-            background: 'white', border: '1px solid #cbd5e1', borderRadius: '16px',
-            boxShadow: '0 20px 25px -5px rgba(0,0,0,0.12), 0 10px 10px -5px rgba(0,0,0,0.04)',
-            zIndex: 100, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem'
-          }}
-        >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#1e293b' }}>
+        <div className="card" style={{ position: 'absolute', top: '105%', insetInlineEnd: 0, insetInlineStart: 0, zIndex: 100, padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>
+            <span style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text)' }}>
               בחירת מחלקות מורשות
             </span>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <button 
-                type="button" 
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
                 onClick={selectAll}
-                style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: 'var(--primary-solid)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 בחר הכל
               </button>
-              <span style={{ color: '#cbd5e1' }}>|</span>
-              <button 
-                type="button" 
+              <span style={{ color: 'var(--border-strong)' }}>|</span>
+              <button
+                type="button"
                 onClick={clearAll}
-                style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '0.8rem', fontWeight: '700', cursor: 'pointer' }}
+                style={{ background: 'none', border: 'none', color: 'var(--danger)', fontSize: '12px', fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
               >
                 נקה הכל
               </button>
             </div>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxHeight: '240px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto' }}>
             {deptList.map(dept => {
               const isActive = selectedList.includes(dept.name);
 
               return (
-                <div 
+                <div
                   key={dept.roleId ?? dept.name}
                   onClick={() => toggleDept(dept.name)}
-                  style={{ 
+                  style={{
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    padding: '0.5rem 0.75rem', borderRadius: '10px',
-                    background: isActive ? '#eff6ff' : '#f8fafc',
-                    border: isActive ? '1px solid #93c5fd' : '1px solid #e2e8f0',
-                    cursor: 'pointer', transition: 'all 0.15s'
+                    padding: '8px 10px', borderRadius: 'var(--radius-md)',
+                    background: isActive ? 'var(--primary-tint)' : 'var(--surface-alt)',
+                    border: isActive ? '1px solid var(--primary-tint-2)' : '1px solid var(--border)',
+                    cursor: 'pointer'
                   }}
                 >
-                  <span style={{ fontWeight: '600', fontSize: '0.9rem', color: isActive ? '#1e40af' : '#334155' }}>
+                  <span style={{ fontWeight: 600, fontSize: '13px', color: isActive ? 'var(--primary-solid)' : 'var(--text)' }}>
                     {dept.name}
                   </span>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: isActive ? '#2563eb' : '#94a3b8' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '12px', fontWeight: 600, color: isActive ? 'var(--primary-solid)' : 'var(--text-3)' }}>
                       {isActive ? 'מורשה' : 'חסום'}
                     </span>
-                    <div 
-                      style={{ 
-                        position: 'relative', width: '44px', height: '24px', borderRadius: '999px',
-                        background: isActive ? '#2563eb' : '#cbd5e1', transition: 'background-color 0.2s',
-                        display: 'flex', alignItems: 'center'
-                      }}
-                    >
-                      <div 
-                        style={{ 
-                          position: 'absolute', width: '18px', height: '18px', borderRadius: '50%',
-                          background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
-                          right: isActive ? '22px' : '3px', transition: 'right 0.2s'
-                        }}
-                      />
-                    </div>
+                    <div className={isActive ? 'switch on' : 'switch'} />
                   </div>
                 </div>
               );
@@ -536,26 +456,8 @@ export default function SettingsClient() {
   const [error, setError] = useState(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
-  
+
   const [modified, setModified] = useState({});
-
-  useEffect(() => {
-    // SWR Cache Hit for Settings
-    if (settingsCache.has('settings')) {
-      const data = settingsCache.get('settings');
-      setSettings(data.settings);
-      setCategories(data.cats);
-      if (data.cats.length > 0 && !activeTab) setActiveTab(data.cats[0]);
-      setLoading(false);
-    }
-    // SWR Cache Hit for Departments
-    if (deptsCache.has('depts')) {
-      setDepartments(deptsCache.get('depts'));
-    }
-
-    fetchSettings(settingsCache.has('settings'));
-    fetchDepartments(deptsCache.has('depts'));
-  }, []);
 
   const fetchDepartments = async (isPrefetch = false) => {
     try {
@@ -576,7 +478,7 @@ export default function SettingsClient() {
       const res = await fetch('/api/settings');
       if (!res.ok) throw new Error('שגיאה בטעינת ההגדרות');
       const data = await res.json();
-      
+
       const cats = [...new Set(data.map(s => s.category).filter(Boolean))];
       if (!cats.includes('תצוגה')) {
         cats.unshift('תצוגה');
@@ -584,9 +486,9 @@ export default function SettingsClient() {
       if (!cats.includes('מסד נתונים')) {
         cats.push('מסד נתונים');
       }
-      
+
       settingsCache.set('settings', { settings: data, cats });
-      
+
       setSettings(data);
       setCategories(cats);
       if (cats.length > 0 && !activeTab) {
@@ -598,6 +500,24 @@ export default function SettingsClient() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // SWR Cache Hit for Settings
+    if (settingsCache.has('settings')) {
+      const data = settingsCache.get('settings');
+      setSettings(data.settings);
+      setCategories(data.cats);
+      if (data.cats.length > 0 && !activeTab) setActiveTab(data.cats[0]);
+      setLoading(false);
+    }
+    // SWR Cache Hit for Departments
+    if (deptsCache.has('depts')) {
+      setDepartments(deptsCache.get('depts'));
+    }
+
+    fetchSettings(settingsCache.has('settings'));
+    fetchDepartments(deptsCache.has('depts'));
+  }, []);
 
   const handleChange = (key, newValue) => {
     setModified(prev => {
@@ -622,7 +542,7 @@ export default function SettingsClient() {
     setSaving(true);
     setSaveMessage(null);
     setError(null);
-    
+
     const payload = Object.entries(modified).map(([key, value]) => ({ key, value }));
 
     try {
@@ -631,7 +551,7 @@ export default function SettingsClient() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
       });
-      
+
       if (!res.ok) throw new Error('שגיאה בשמירת ההגדרות');
 
       // ההגדרות השתנו — מפנים גם את מטמון הדף הזה וגם את מטמון /api/settings
@@ -641,14 +561,14 @@ export default function SettingsClient() {
 
       setSaveMessage('ההגדרות נשמרו בהצלחה במערכת.');
       setModified({});
-      
+
       setSettings(prev => prev.map(s => {
         if (modified[s.key] !== undefined) {
           return { ...s, value: modified[s.key] };
         }
         return s;
       }));
-      
+
       setTimeout(() => setSaveMessage(null), 4000);
     } catch (err) {
       setError(err.message);
@@ -666,15 +586,15 @@ export default function SettingsClient() {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      
+
       const res = await fetch('/api/upload-logo', {
         method: 'POST',
         body: formData,
       });
-      
+
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה בהעלאת הלוגו');
-      
+
       setSaveMessage('הלוגו עודכן בהצלחה! מרענן תצוגה...');
       localStorage.setItem('logo_timestamp', data.timestamp);
       window.dispatchEvent(new CustomEvent('logoUpdated', { detail: data.timestamp }));
@@ -688,10 +608,9 @@ export default function SettingsClient() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f8fafc' }}>
-        <div data-element-name="רכיב_SettingsClient_1" style={{ width: '40px', height: '40px', border: '4px solid #e2e8f0', borderTop: '4px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-        <p style={{ marginTop: '1rem', color: '#64748b', fontSize: '1.1rem' }}>טוען הגדרות...</p>
-        <style dangerouslySetInnerHTML={{__html: `@keyframes spin { 100% { transform: rotate(360deg); } }`}} />
+      <div className="page-loading">
+        <span className="spinner lg" />
+        טוען הגדרות...
       </div>
     );
   }
@@ -701,406 +620,299 @@ export default function SettingsClient() {
   const hasValidationErrors = Object.entries(modified).some(
     ([key, value]) => validateNumericSetting(key, value) !== null
   );
-  
-  const currentConfig = categoryConfig[activeTab] || categoryConfig['default'];
-  const CurrentIcon = currentConfig.icon;
+
+  const currentIcon = CATEGORY_ICONS[activeTab] || CATEGORY_ICONS['default'];
 
   return (
-    <div data-agy-id="settings-page-container" style={{ minHeight: '100vh', background: '#f1f5f9', padding: '2rem', direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        
-        {/* Header Section */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '1.25rem' }}>
-            <div style={{ 
-              display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', 
-              width: '56px', height: '56px', borderRadius: '16px', 
-              background: 'linear-gradient(135deg, #2563eb, #1d4ed8)', 
-              color: 'white', boxShadow: '0 8px 16px -4px rgba(37,99,235,0.2)' 
-            }}>
-              <Settings size={28} data-element-name="רכיב_SettingsClient_2" />
-            </div>
-            <div>
-              <h1 style={{ 
-                margin: 0, fontSize: '2.25rem', fontWeight: '900', 
-                background: 'linear-gradient(135deg, #0f172a, #1e3a8a)',
-                WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
-                display: 'inline-block', letterSpacing: '-0.02em'
-              }}>
-                הגדרות מערכת
-              </h1>
-              <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '1.1rem', fontWeight: '500' }}>
-                ניהול תצורת הגמ״ח, התאמה אישית והעדפות
-              </p>
-            </div>
-          </div>
-          
-          <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
-            <button
-              data-element-name="כפתור_רשימת_מיילים_מלאה"
-              type="button"
-              onClick={() => setIsEmailModalOpen(true)}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                background: 'white', color: '#1e3a8a', border: '1px solid #cbd5e1', padding: '0.75rem 1.25rem',
-                borderRadius: '12px', fontWeight: '700', fontSize: '0.95rem',
-                cursor: 'pointer',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-                transition: 'all 0.2s'
-              }}
-              onMouseOver={(e) => { e.currentTarget.style.borderColor = '#2563eb'; e.currentTarget.style.color = '#2563eb'; }}
-              onMouseOut={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#1e3a8a'; }}
-            >
-              <Mail size={18} color="#2563eb" />
-              רשימת מיילים מלאה
-            </button>
-
-            <button
-              data-element-name="כפתור_SettingsClient_6"
-              onClick={handleSave}
-              disabled={saving || !hasChanges || hasValidationErrors}
-              title={hasValidationErrors ? 'יש לתקן ערכים לא תקינים לפני השמירה' : undefined}
-              style={{
-                display: 'flex', alignItems: 'center', gap: '0.5rem',
-                background: hasValidationErrors ? '#fecaca' : hasChanges ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#cbd5e1',
-                color: hasValidationErrors ? '#991b1b' : hasChanges ? 'white' : '#94a3b8', border: 'none', padding: '0.75rem 1.5rem',
-                borderRadius: '12px', fontWeight: '600', fontSize: '1rem',
-                cursor: (hasChanges && !hasValidationErrors) ? 'pointer' : 'not-allowed',
-                boxShadow: (hasChanges && !hasValidationErrors) ? '0 4px 6px -1px rgba(37, 99, 235, 0.3)' : 'none',
-                transition: 'transform 0.2s, box-shadow 0.2s'
-              }}
-            >
-              {saving ? <Loader2 size={18} data-element-name="רכיב_SettingsClient_7" className="animate-spin" /> : <Save size={18} data-element-name="רכיב_SettingsClient_8" />}
-              {saving ? 'שומר...' : hasValidationErrors ? 'יש לתקן שגיאות' : hasChanges ? 'שמור שינויים' : 'אין שינויים'}
-            </button>
-          </div>
+    <>
+      <div className="page-head">
+        <div>
+          <h1>הגדרות מערכת</h1>
+          <div className="page-desc">ניהול תצורת הגמ״ח, התאמה אישית והעדפות</div>
         </div>
+        <div className="page-actions">
+          <button type="button" className="btn btn-secondary" onClick={() => setIsEmailModalOpen(true)}>
+            <svg className="icon"><use href="#i-mail" /></svg>
+            רשימת מיילים מלאה
+          </button>
 
-        {/* Alerts */}
-        {(error || saveMessage) && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-            {error && (
-              <div style={{ background: '#fef2f2', color: '#991b1b', padding: '1rem', borderRadius: '12px', border: '1px solid #fecaca', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <AlertCircle size={20} data-element-name="רכיב_SettingsClient_11" />
-                {error}
-              </div>
+          <button
+            type="button"
+            className={hasValidationErrors ? 'btn btn-danger-ghost' : 'btn btn-primary'}
+            onClick={handleSave}
+            disabled={saving || !hasChanges || hasValidationErrors}
+            title={hasValidationErrors ? 'יש לתקן ערכים לא תקינים לפני השמירה' : undefined}
+          >
+            {saving ? (
+              <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
+            ) : (
+              <svg className="icon"><use href="#i-check" /></svg>
             )}
-            {saveMessage && (
-              <div style={{ background: '#f0fdf4', color: '#166534', padding: '1rem', borderRadius: '12px', border: '1px solid #bbf7d0', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Check size={20} data-element-name="רכיב_SettingsClient_12" />
-                {saveMessage}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Main Content Area - Split Panel Grid */}
-        <div style={{ display: 'flex', flexDirection: 'row', gap: '1.5rem', minHeight: '600px', background: 'transparent' }}>
-          
-          {/* Sidebar - Floating Card */}
-          <div style={{ 
-            width: '260px', 
-            background: 'white', 
-            borderRadius: '20px', 
-            padding: '1.25rem 0.75rem', 
-            display: 'flex', 
-            flexDirection: 'column', 
-            gap: '0.5rem',
-            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.12), 0 10px 20px -10px rgba(0, 0, 0, 0.04)',
-            height: 'fit-content',
-            position: 'sticky',
-            top: '120px'
-          }}>
-            {categories.map((cat) => {
-              const conf = categoryConfig[cat] || categoryConfig['default'];
-              const IconComp = conf.icon;
-              const isActive = activeTab === cat;
-              
-              return (
-                <button
-                  key={cat}
-                  data-element-name="כפתור_SettingsClient_3"
-                  onClick={() => setActiveTab(cat)}
-                  style={{
-                    display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', width: '100%',
-                    borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem',
-                    background: isActive ? '#e0f2fe' : 'transparent',
-                    color: isActive ? '#0369a1' : '#475569',
-                    textAlign: 'right',
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <IconComp size={20} data-element-name="רכיב_SettingsClient_4" color={isActive ? '#0369a1' : '#64748b'} />
-                  {cat}
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Content Pane - Floating Card */}
-          <div style={{ 
-            flex: 1, 
-            padding: '2.5rem', 
-            background: 'white', 
-            borderRadius: '20px', 
-            boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', color: '#475569' }}>
-                <CurrentIcon size={24} data-element-name="רכיב_SettingsClient_9" />
-              </div>
-              <div>
-                <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a' }}>{activeTab}</h2>
-                <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>ערוך את הגדרות המערכת בקטגוריה זו</p>
-              </div>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-
-              {activeTab === 'מסד נתונים' && <NeonUsageCard data-element-name="רכיב_SettingsClient_neon" />}
-
-              {activeTab === 'תצוגה' && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid #f1f5f9' }}>
-                  <div style={{ flex: 1 }}>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <ImageIcon size={18} color="#64748b" />
-                      לוגו ראשי של הגמ״ח
-                    </h3>
-                    <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem', maxWidth: '450px' }}>
-                      העלה קובץ תמונה (PNG/JPG) שיופיע בראש עמודי המערכת וכן בהדפסות ומסמכים רשמיים.
-                    </p>
-                  </div>
-                  <div>
-                    <label style={{ 
-                      display: 'flex', alignItems: 'center', gap: '0.5rem', 
-                      background: 'white', border: '2px solid #e2e8f0', color: '#3b82f6', 
-                      padding: '0.6rem 1.2rem', borderRadius: '10px', fontWeight: '600', fontSize: '0.95rem',
-                      cursor: 'pointer', transition: 'all 0.2s'
-                    }}>
-                      {uploadingLogo ? <Loader2 size={16} data-element-name="רכיב_SettingsClient_16" className="animate-spin" /> : <Upload size={16} />}
-                      {uploadingLogo ? 'מעלה...' : 'בחר תמונה'}
-                      <input 
-                        type="file" 
-                        accept="image/*" 
-                        data-element-name="שדה_SettingsClient_15"
-                        onChange={handleLogoUpload} 
-                        disabled={uploadingLogo}
-                        style={{ display: 'none' }}
-                      />
-                    </label>
-                  </div>
-                </div>
-              )}
-
-              {activeSettings.map((setting) => {
-                const rawValue = modified[setting.key] !== undefined ? modified[setting.key] : setting.value;
-                const isBooleanKey = [
-                  'require_login', 'enable_alterations', 'allow_alterations', 'allow_free_exchange',
-                  'allow_date_change', 'has_variations', 'has_underskirts', 'useModelNames',
-                  'useFileNamesForImages', 'hide_ai_features', 'enable_ai_specific_employees',
-                  'hide_dress_images', 'hide_gregorian_calendar', 'hide_internal_messaging',
-                  'hide_error_reporting', 'refund_per_item', 'registration_fee', 'nedarim_plus_enabled', 'ENABLE_SET_DISCOUNTS',
-                  'REFUND_REPAIRS', 'inventory_include_warehouse', 'inventory_skip_weekends',
-                  'calendar_filtering'
-                ].includes(setting.key);
-                const isBoolean = setting.type === 'boolean' || setting.type === 'checkbox' || rawValue === 'true' || rawValue === 'false' || isBooleanKey;
-                const isNumberKey = [
-                  'max_items_per_order', 'barcodePrefixLength', 'BUFFER_DAYS',
-                  'barcode_length', 'REFUND_PERCENTAGE', 'REFUND_DAYS',
-                  'NO_REFUND_DAYS_BEFORE_EVENT', 'REFUND_DAYS_FROM_ORDER',
-                  'full_refund_days', 'inventory_buffer_days', 'registration_fee',
-                  'CANCELLATION_CREDIT_MINUTES'
-                ].includes(setting.key);
-                const isNumber = setting.type === 'number' || isNumberKey;
-                const numberLimit = NUMBER_FIELD_LIMITS[setting.key];
-                const numberError = (isNumber && !isBoolean) ? validateNumericSetting(setting.key, rawValue) : null;
-
-                const isHideSetting = setting.key.startsWith('hide_');
-                
-                // Determine current state of toggle shown to user
-                const uiValue = isHideSetting 
-                  ? (rawValue === 'true' ? 'false' : 'true') 
-                  : rawValue;
-
-                // Determine display name in Hebrew
-                let displayName = HEBREW_NAMES[setting.key] || setting.name;
-                if (!displayName || displayName === setting.key || /^[a-zA-Z0-9_\-\s]+$/.test(displayName) || displayName.includes('enable_ai_specific')) {
-                  displayName = HEBREW_NAMES[setting.key] || setting.key;
-                }
-                if (setting.key === 'hide_ai_features') displayName = 'הפעל בינה מלאכותית (AI)';
-                else if (setting.key === 'enable_ai_specific_employees' || setting.name === 'enable_ai_specific_employees') displayName = 'תצוגת AI לעובדים מורשים בלבד';
-                else if (setting.key === 'hide_dress_images') displayName = 'הצג תמונות דגמים במערכת';
-                else if (setting.key === 'hide_gregorian_calendar') displayName = 'אפשר תאריך לועזי ביומן';
-                else if (setting.key === 'hide_internal_messaging') displayName = 'הפעל מערכת הודעות פנימית';
-                else if (setting.key === 'hide_error_reporting') displayName = 'הפעל מערכת דיווחי שגיאות';
-
-                let notes = HEBREW_NOTES[setting.key] || setting.notes || '';
-                if (!notes || /^[a-zA-Z0-9_\-\s]+$/.test(notes)) {
-                  notes = HEBREW_NOTES[setting.key] || '';
-                }
-
-                const handleToggle = () => {
-                  if (isHideSetting) {
-                    const nextDbValue = uiValue === 'true' ? 'true' : 'false';
-                    handleChange(setting.key, nextDbValue);
-                  } else {
-                    const nextDbValue = uiValue === 'true' ? 'false' : 'true';
-                    handleChange(setting.key, nextDbValue);
-                  }
-                };
-                
-                const isMandatoryFieldsSetting = setting.key === 'mandatory_fields';
-                const isSelectSetting = setting.type === 'select' || setting.key === 'email_routing_strategy';
-
-                const isDepartmentSetting = 
-                  setting.key.toLowerCase().includes('permission') ||
-                  setting.key.toLowerCase().includes('department') ||
-                  setting.key === 'cancel_order_permission' ||
-                  setting.key === 'reserve_permission' ||
-                  setting.key === 'enable_ai_specific_employees';
-
-                // Helper to check if it needs a larger multiline textbox
-                const isMultiline = !isBoolean && !isNumber && !isDepartmentSetting && !isMandatoryFieldsSetting && !isSelectSetting && (
-                  setting.key.toLowerCase().includes('print') ||
-                  setting.key.toLowerCase().includes('box') ||
-                  setting.key.toLowerCase().includes('footer') ||
-                  setting.key.toLowerCase().includes('locations') ||
-                  setting.key.toLowerCase().includes('text') ||
-                  String(rawValue || '').includes('\n') ||
-                  String(rawValue || '').length > 40
-                );
-
-                return (
-                  <div key={setting.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '1.5rem 0', borderBottom: '1px solid #f1f5f9' }}>
-                    <div style={{ flex: 1, paddingLeft: '2rem' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: '700' }}>{displayName}</h3>
-                      {notes && (
-                        <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem', lineHeight: '1.4' }}>
-                          {notes}
-                        </p>
-                      )}
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', width: '360px', flexShrink: 0 }}>
-                      {isBoolean ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#64748b', width: '40px', textAlign: 'left' }}>
-                            {uiValue === 'true' ? 'פעיל' : 'כבוי'}
-                          </span>
-                          <button
-                            type="button"
-                            data-element-name="כפתור_SettingsClient_19"
-                            onClick={handleToggle}
-                            style={{
-                              position: 'relative', display: 'inline-flex', height: '28px', width: '52px', 
-                              borderRadius: '999px', border: 'none', cursor: 'pointer', outline: 'none',
-                              background: uiValue === 'true' ? '#2563eb' : '#cbd5e1',
-                              transition: 'background-color 0.2s',
-                              alignItems: 'center', boxSizing: 'border-box', overflow: 'hidden', padding: 0
-                            }}
-                          >
-                            <span
-                              style={{
-                                position: 'absolute',
-                                top: '4px',
-                                height: '20px', width: '20px', borderRadius: '50%',
-                                background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
-                                transition: 'right 0.2s',
-                                right: uiValue === 'true' ? '28px' : '4px'
-                              }}
-                            />
-                          </button>
-                        </div>
-                      ) : isMandatoryFieldsSetting ? (
-                        <CustomerFieldsCheckboxPicker
-                          value={rawValue || ''}
-                          elementName="שדה_SettingsClient_21"
-                          onChange={(val) => handleChange(setting.key, val)}
-                        />
-                      ) : isSelectSetting ? (
-                        <select
-                          value={rawValue || 'all_a'}
-                          data-element-name="שדה_SettingsClient_21"
-                          onChange={(e) => handleChange(setting.key, e.target.value)}
-                          style={{ 
-                            width: '100%', padding: '0.65rem 1rem', borderRadius: '12px', 
-                            border: '2px solid #cbd5e1', background: 'white', color: '#0f172a', 
-                            fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s',
-                            fontFamily: 'inherit'
-                          }}
-                        >
-                          <option value="all_a">שלח הכל מקישור א' (ראשי)</option>
-                          <option value="all_b">שלח הכל מקישור ב' (משני)</option>
-                          <option value="bugs_b_rest_a">דיווחי שגיאות מב', השאר מא'</option>
-                        </select>
-                      ) : isDepartmentSetting ? (
-                        <DepartmentDropdownPicker
-                          value={rawValue || ''}
-                          departments={departments}
-                          elementName="שדה_SettingsClient_21"
-                          onChange={(val) => handleChange(setting.key, val)}
-                        />
-                      ) : isMultiline ? (
-                        <textarea
-                          value={rawValue || ''}
-                          data-element-name="שדה_SettingsClient_21"
-                          onChange={(e) => handleChange(setting.key, e.target.value)}
-                          style={{ 
-                            width: '100%', padding: '0.65rem 1rem', borderRadius: '12px', 
-                            border: '2px solid #cbd5e1', background: 'white', color: '#0f172a', 
-                            fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s',
-                            minHeight: '120px', resize: 'vertical', fontFamily: 'inherit', lineHeight: '1.5'
-                          }}
-                          placeholder="הקלד ערך..."
-                        />
-                      ) : (
-                        <div style={{ width: '100%' }}>
-                          <input
-                            type={isNumber ? 'number' : 'text'}
-                            value={rawValue || ''}
-                            data-element-name="שדה_SettingsClient_21"
-                            min={isNumber ? numberLimit?.min : undefined}
-                            max={isNumber ? numberLimit?.max : undefined}
-                            step={isNumber ? (numberLimit?.allowDecimal ? '0.1' : '1') : undefined}
-                            onChange={(e) => {
-                              if (isNumber) {
-                                const pattern = numberLimit?.allowDecimal ? /[^0-9.]/g : /[^0-9]/g;
-                                const cleaned = e.target.value.replace(pattern, '');
-                                handleChange(setting.key, cleaned);
-                              } else {
-                                handleChange(setting.key, e.target.value);
-                              }
-                            }}
-                            style={{
-                              width: '100%', padding: '0.65rem 1rem', borderRadius: '12px',
-                              border: numberError ? '2px solid #ef4444' : '2px solid #cbd5e1', background: 'white', color: '#0f172a',
-                              fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s'
-                            }}
-                            placeholder={isNumber ? (numberLimit ? `מספר בין ${numberLimit.min} ל-${numberLimit.max}...` : 'הזן מספר בלבד...') : 'הקלד ערך...'}
-                          />
-                          {numberError && (
-                            <p style={{ margin: '0.4rem 0 0 0', color: '#dc2626', fontSize: '0.82rem', fontWeight: '600' }}>{numberError}</p>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-
-              {activeSettings.length === 0 && activeTab !== 'תצוגה' && activeTab !== 'מסד נתונים' && (
-                <div style={{ textAlign: 'center', padding: '4rem 0', color: '#94a3b8' }}>
-                  <p style={{ fontSize: '1.1rem' }}>אין הגדרות בקטגוריה זו</p>
-                </div>
-              )}
-
-            </div>
-          </div>
-
+            {saving ? 'שומר...' : hasValidationErrors ? 'יש לתקן שגיאות' : hasChanges ? 'שמור שינויים' : 'אין שינויים'}
+          </button>
         </div>
       </div>
 
+      {(error || saveMessage) && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '20px' }}>
+          {error && (
+            <div className="callout callout-danger">
+              <svg className="icon"><use href="#i-alert-circle" /></svg>
+              {error}
+            </div>
+          )}
+          {saveMessage && (
+            <div className="callout callout-success">
+              <svg className="icon"><use href="#i-check" /></svg>
+              {saveMessage}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+
+        {/* Category sidebar */}
+        <div className="card card-pad" style={{ width: '250px', flex: '0 0 auto', display: 'flex', flexDirection: 'column', gap: '4px', position: 'sticky', top: '16px' }}>
+          {categories.map((cat) => {
+            const iconName = CATEGORY_ICONS[cat] || CATEGORY_ICONS['default'];
+            const isActive = activeTab === cat;
+
+            return (
+              <div
+                key={cat}
+                className={isActive ? 'tab settings-cat active' : 'tab settings-cat'}
+                style={{ marginInlineEnd: 0 }}
+                onClick={() => setActiveTab(cat)}
+              >
+                <svg className="icon"><use href={`#${iconName}`} /></svg>
+                {cat}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Content pane */}
+        <div className="card card-pad" style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', paddingBottom: '14px', marginBottom: '4px', borderBottom: '1px solid var(--border)' }}>
+            <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-md)', background: 'var(--surface-alt)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-2)' }}>
+              <svg className="icon" style={{ width: '20px', height: '20px' }}><use href={`#${currentIcon}`} /></svg>
+            </div>
+            <div>
+              <h2 style={{ fontSize: '17px', margin: 0 }}>{activeTab}</h2>
+              <p className="hint" style={{ color: 'var(--text-3)', margin: '2px 0 0', fontSize: '12.5px' }}>ערוך את הגדרות המערכת בקטגוריה זו</p>
+            </div>
+          </div>
+
+          {activeTab === 'מסד נתונים' && <NeonUsageCard />}
+
+          {activeTab === 'תצוגה' && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px', padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <h3 style={{ fontSize: '14.5px', margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg className="icon" style={{ width: '16px', height: '16px', color: 'var(--text-3)' }}><use href="#i-image" /></svg>
+                  לוגו ראשי של הגמ״ח
+                </h3>
+                <p className="hint" style={{ color: 'var(--text-3)', margin: 0, maxWidth: '450px', fontSize: '12.5px' }}>
+                  העלה קובץ תמונה (PNG/JPG) שיופיע בראש עמודי המערכת וכן בהדפסות ומסמכים רשמיים.
+                </p>
+              </div>
+              <div style={{ flex: '0 0 auto' }}>
+                <label className="btn btn-secondary btn-sm" style={{ cursor: uploadingLogo ? 'not-allowed' : 'pointer' }}>
+                  {uploadingLogo ? (
+                    <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
+                  ) : (
+                    <svg className="icon"><use href="#i-upload" /></svg>
+                  )}
+                  {uploadingLogo ? 'מעלה...' : 'בחר תמונה'}
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleLogoUpload}
+                    disabled={uploadingLogo}
+                    style={{ display: 'none' }}
+                  />
+                </label>
+              </div>
+            </div>
+          )}
+
+          {activeSettings.map((setting) => {
+            const rawValue = modified[setting.key] !== undefined ? modified[setting.key] : setting.value;
+            const isBooleanKey = [
+              'require_login', 'enable_alterations', 'allow_alterations', 'allow_free_exchange',
+              'allow_date_change', 'has_variations', 'has_underskirts', 'useModelNames',
+              'useFileNamesForImages', 'hide_ai_features', 'enable_ai_specific_employees',
+              'hide_dress_images', 'hide_gregorian_calendar', 'hide_internal_messaging',
+              'hide_error_reporting', 'refund_per_item', 'registration_fee', 'nedarim_plus_enabled', 'ENABLE_SET_DISCOUNTS',
+              'REFUND_REPAIRS', 'inventory_include_warehouse', 'inventory_skip_weekends',
+              'calendar_filtering'
+            ].includes(setting.key);
+            const isBoolean = setting.type === 'boolean' || setting.type === 'checkbox' || rawValue === 'true' || rawValue === 'false' || isBooleanKey;
+            const isNumberKey = [
+              'max_items_per_order', 'barcodePrefixLength', 'BUFFER_DAYS',
+              'barcode_length', 'REFUND_PERCENTAGE', 'REFUND_DAYS',
+              'NO_REFUND_DAYS_BEFORE_EVENT', 'REFUND_DAYS_FROM_ORDER',
+              'full_refund_days', 'inventory_buffer_days', 'registration_fee',
+              'CANCELLATION_CREDIT_MINUTES'
+            ].includes(setting.key);
+            const isNumber = setting.type === 'number' || isNumberKey;
+            const numberLimit = NUMBER_FIELD_LIMITS[setting.key];
+            const numberError = (isNumber && !isBoolean) ? validateNumericSetting(setting.key, rawValue) : null;
+
+            const isHideSetting = setting.key.startsWith('hide_');
+
+            // Determine current state of toggle shown to user
+            const uiValue = isHideSetting
+              ? (rawValue === 'true' ? 'false' : 'true')
+              : rawValue;
+
+            // Determine display name in Hebrew
+            let displayName = HEBREW_NAMES[setting.key] || setting.name;
+            if (!displayName || displayName === setting.key || /^[a-zA-Z0-9_\-\s]+$/.test(displayName) || displayName.includes('enable_ai_specific')) {
+              displayName = HEBREW_NAMES[setting.key] || setting.key;
+            }
+            if (setting.key === 'hide_ai_features') displayName = 'הפעל בינה מלאכותית (AI)';
+            else if (setting.key === 'enable_ai_specific_employees' || setting.name === 'enable_ai_specific_employees') displayName = 'תצוגת AI לעובדים מורשים בלבד';
+            else if (setting.key === 'hide_dress_images') displayName = 'הצג תמונות דגמים במערכת';
+            else if (setting.key === 'hide_gregorian_calendar') displayName = 'אפשר תאריך לועזי ביומן';
+            else if (setting.key === 'hide_internal_messaging') displayName = 'הפעל מערכת הודעות פנימית';
+            else if (setting.key === 'hide_error_reporting') displayName = 'הפעל מערכת דיווחי שגיאות';
+
+            let notes = HEBREW_NOTES[setting.key] || setting.notes || '';
+            if (!notes || /^[a-zA-Z0-9_\-\s]+$/.test(notes)) {
+              notes = HEBREW_NOTES[setting.key] || '';
+            }
+
+            const handleToggle = () => {
+              if (isHideSetting) {
+                const nextDbValue = uiValue === 'true' ? 'true' : 'false';
+                handleChange(setting.key, nextDbValue);
+              } else {
+                const nextDbValue = uiValue === 'true' ? 'false' : 'true';
+                handleChange(setting.key, nextDbValue);
+              }
+            };
+
+            const isMandatoryFieldsSetting = setting.key === 'mandatory_fields';
+            const isSelectSetting = setting.type === 'select' || setting.key === 'email_routing_strategy';
+
+            const isDepartmentSetting =
+              setting.key.toLowerCase().includes('permission') ||
+              setting.key.toLowerCase().includes('department') ||
+              setting.key === 'cancel_order_permission' ||
+              setting.key === 'reserve_permission' ||
+              setting.key === 'enable_ai_specific_employees';
+
+            // Helper to check if it needs a larger multiline textbox
+            const isMultiline = !isBoolean && !isNumber && !isDepartmentSetting && !isMandatoryFieldsSetting && !isSelectSetting && (
+              setting.key.toLowerCase().includes('print') ||
+              setting.key.toLowerCase().includes('box') ||
+              setting.key.toLowerCase().includes('footer') ||
+              setting.key.toLowerCase().includes('locations') ||
+              setting.key.toLowerCase().includes('text') ||
+              String(rawValue || '').includes('\n') ||
+              String(rawValue || '').length > 40
+            );
+
+            return (
+              <div key={setting.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '24px', padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <h3 style={{ fontSize: '14.5px', margin: '0 0 4px' }}>{displayName}</h3>
+                  {notes && (
+                    <p className="hint" style={{ color: 'var(--text-3)', margin: 0, maxWidth: '480px', fontSize: '12.5px', lineHeight: 1.4 }}>
+                      {notes}
+                    </p>
+                  )}
+                </div>
+
+                <div style={{ width: '320px', flex: '0 0 auto', display: 'flex', justifyContent: isBoolean ? 'flex-end' : undefined }}>
+                  {isBoolean ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <span className="hint" style={{ color: 'var(--text-3)' }}>
+                        {uiValue === 'true' ? 'פעיל' : 'כבוי'}
+                      </span>
+                      <button
+                        type="button"
+                        className={uiValue === 'true' ? 'switch on' : 'switch'}
+                        onClick={handleToggle}
+                      />
+                    </div>
+                  ) : isMandatoryFieldsSetting ? (
+                    <CustomerFieldsCheckboxPicker
+                      value={rawValue || ''}
+                      elementName="שדה_SettingsClient_21"
+                      onChange={(val) => handleChange(setting.key, val)}
+                    />
+                  ) : isSelectSetting ? (
+                    <select
+                      className="select"
+                      style={{ width: '100%' }}
+                      value={rawValue || 'all_a'}
+                      onChange={(e) => handleChange(setting.key, e.target.value)}
+                    >
+                      <option value="all_a">שלח הכל מקישור א&apos; (ראשי)</option>
+                      <option value="all_b">שלח הכל מקישור ב&apos; (משני)</option>
+                      <option value="bugs_b_rest_a">דיווחי שגיאות מב&apos;, השאר מא&apos;</option>
+                    </select>
+                  ) : isDepartmentSetting ? (
+                    <DepartmentDropdownPicker
+                      value={rawValue || ''}
+                      departments={departments}
+                      elementName="שדה_SettingsClient_21"
+                      onChange={(val) => handleChange(setting.key, val)}
+                    />
+                  ) : isMultiline ? (
+                    <textarea
+                      className="textarea"
+                      style={{ width: '100%', minHeight: '110px' }}
+                      value={rawValue || ''}
+                      onChange={(e) => handleChange(setting.key, e.target.value)}
+                      placeholder="הקלד ערך..."
+                    />
+                  ) : (
+                    <div style={{ width: '100%' }}>
+                      <input
+                        type={isNumber ? 'number' : 'text'}
+                        className="input"
+                        style={{ width: '100%', borderColor: numberError ? 'var(--danger)' : undefined }}
+                        value={rawValue || ''}
+                        min={isNumber ? numberLimit?.min : undefined}
+                        max={isNumber ? numberLimit?.max : undefined}
+                        step={isNumber ? (numberLimit?.allowDecimal ? '0.1' : '1') : undefined}
+                        onChange={(e) => {
+                          if (isNumber) {
+                            const pattern = numberLimit?.allowDecimal ? /[^0-9.]/g : /[^0-9]/g;
+                            const cleaned = e.target.value.replace(pattern, '');
+                            handleChange(setting.key, cleaned);
+                          } else {
+                            handleChange(setting.key, e.target.value);
+                          }
+                        }}
+                        placeholder={isNumber ? (numberLimit ? `מספר בין ${numberLimit.min} ל-${numberLimit.max}...` : 'הזן מספר בלבד...') : 'הקלד ערך...'}
+                      />
+                      {numberError && (
+                        <p style={{ margin: '4px 0 0', color: 'var(--danger)', fontSize: '11.5px', fontWeight: 600 }}>{numberError}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+
+          {activeSettings.length === 0 && activeTab !== 'תצוגה' && activeTab !== 'מסד נתונים' && (
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-info" /></svg>
+              <p>אין הגדרות בקטגוריה זו</p>
+            </div>
+          )}
+
+        </div>
+
+      </div>
+
       <FullEmailListModal isOpen={isEmailModalOpen} onClose={() => setIsEmailModalOpen(false)} />
-    </div>
+    </>
   );
 }

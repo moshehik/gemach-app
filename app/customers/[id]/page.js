@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import SendEmailModal from '@/components/SendEmailModal';
 import ModernSendEmailModal from '../../../components/customers/modern/ModernSendEmailModal';
 import { verifyPin } from '../../../components/orders/modern/mocAuth';
 import ModernCustomerCard from '../../../components/customers/modern/ModernCustomerCard';
@@ -11,7 +10,6 @@ import ModernCustomerOrdersTab from '../../../components/customers/modern/Modern
 import ModernCustomerPaymentsTab from '../../../components/customers/modern/ModernCustomerPaymentsTab';
 import ModernCustomerRefundsTab from '../../../components/customers/modern/ModernCustomerRefundsTab';
 import ModernCustomerHistoryTab from '../../../components/customers/modern/ModernCustomerHistoryTab';
-import modernOrderCss from '../../../components/orders/modern/modernOrderStyles';
 import { addHistory } from '@/lib/historyManager';
 import { normalizeEmail } from '@/lib/emailUtils';
 
@@ -140,76 +138,93 @@ export default function CustomerPage({ params }) {
 
   const hasUnsavedChanges = originalCustomer && JSON.stringify(customer) !== JSON.stringify(originalCustomer);
 
-  if (loading) return <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>;
+  if (loading) {
+    return (
+      <div className="page-loading">
+        <span className="spinner lg" />
+        טוען נתונים...
+      </div>
+    );
+  }
   if (!customer) return null;
 
   // לקוח חדש — טופס יצירה פשוט, בלי כרטיס טאבים (מקביל ליחס בין /orders/new לבין /orders/[id])
   if (id === 'new') {
     return (
-      <main data-agy-id="customer_profile_main_container" className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1000px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-          <button type="button" onClick={() => router.back()} className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-            →
-          </button>
-          <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>לקוח חדש</h1>
+      <>
+        <div className="page-head">
+          <div>
+            <h1>לקוח חדש</h1>
+          </div>
+          <div className="page-actions">
+            <button type="button" className="btn btn-secondary btn-icon-only" title="חזרה" onClick={() => router.back()}>
+              <svg className="icon"><use href="#i-arrow-end" /></svg>
+            </button>
+          </div>
         </div>
 
-        <form onSubmit={handleSave} style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם פרטי *</label>
-              <input type="text" name="firstName" value={customer.firstName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+        <form onSubmit={handleSave} className="card card-pad">
+          <div className="form-grid">
+            <div className="field">
+              <label>שם פרטי *</label>
+              <input type="text" className="input" name="firstName" value={customer.firstName || ''} onChange={handleChange} required />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם משפחה *</label>
-              <input type="text" name="lastName" value={customer.lastName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label>שם משפחה *</label>
+              <input type="text" className="input" name="lastName" value={customer.lastName || ''} onChange={handleChange} required />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>טלפון נייד *</label>
-              <input type="text" name="phone1" value={customer.phone1 || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label>טלפון נייד *</label>
+              <div className="input-icon-wrap">
+                <svg className="icon"><use href="#i-phone" /></svg>
+                <input type="text" className="input" name="phone1" value={customer.phone1 || ''} onChange={handleChange} required />
+              </div>
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>טלפון נוסף</label>
-              <input type="text" name="phone2" value={customer.phone2 || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label>טלפון נוסף</label>
+              <div className="input-icon-wrap">
+                <svg className="icon"><use href="#i-phone" /></svg>
+                <input type="text" className="input" name="phone2" value={customer.phone2 || ''} onChange={handleChange} />
+              </div>
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>דוא"ל</label>
-              <input type="email" name="email" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label>דוא&quot;ל</label>
+              <div className="input-icon-wrap">
+                <svg className="icon"><use href="#i-mail" /></svg>
+                <input type="email" className="input" name="email" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} />
+              </div>
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>עיר</label>
-              <input type="text" name="city" value={customer.city || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label>עיר</label>
+              <input type="text" className="input" name="city" value={customer.city || ''} onChange={handleChange} />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>רחוב</label>
-              <input type="text" name="street" value={customer.street || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label>רחוב</label>
+              <input type="text" className="input" name="street" value={customer.street || ''} onChange={handleChange} />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>מספר בית</label>
-              <input type="number" name="houseNum" value={customer.houseNum || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label>מספר בית</label>
+              <input type="number" className="input" name="houseNum" value={customer.houseNum || ''} onChange={handleChange} />
             </div>
           </div>
 
-          <div className="form-group" style={{ marginTop: '1.5rem' }}>
-            <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>הערות</label>
-            <textarea name="notes" value={customer.notes || ''} onChange={handleChange} rows={4} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', resize: 'vertical' }} />
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label>הערות</label>
+            <textarea className="textarea" name="notes" value={customer.notes || ''} onChange={handleChange} rows={4} />
           </div>
 
-          <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-            <button type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.75rem 2rem', borderRadius: '24px', fontSize: '1.1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '18px' }}>
+            <button type="submit" className="btn btn-primary btn-lg" disabled={saving}>
               {saving ? 'שומר...' : 'שמור פרטים'}
             </button>
           </div>
         </form>
-      </main>
+      </>
     );
   }
 
   return (
-    <main data-agy-id="customer_profile_main_container" style={{ direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
-      {/* אותו עיצוב "כרטיס מודרני" (moc) שבו מעוצב כרטיס ההזמנה */}
-      <style>{modernOrderCss}</style>
-
+    <>
       <ModernCustomerCard
         customer={customer}
         activeTab={activeTab}
@@ -262,6 +277,6 @@ export default function CustomerPage({ params }) {
         customer={customer}
         authResult={emailAuthResult}
       />
-    </main>
+    </>
   );
 }

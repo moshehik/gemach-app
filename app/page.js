@@ -2,27 +2,26 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Sparkles, X, Loader2, ArrowLeft, CreditCard, Banknote, User, ShoppingBag, Shirt, Download, PlusCircle, Maximize2, Minimize2, CheckCircle, Clock, XCircle, Check, Send, Trash2, ExternalLink, AlertTriangle } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import AISearchBar from './components/AISearchBar';
 import * as XLSX from 'xlsx';
 import { HDate } from '@hebcal/core';
 
 export default function HomeDashboard() {
   const router = useRouter();
   const chatEndRef = useRef(null);
-  
+
   // Search state
   const [searchInput, setSearchInput] = useState('');
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [searchResults, setSearchResults] = useState(null);
-  
+
   // Show More states
   const [showMoreCustomers, setShowMoreCustomers] = useState(false);
   const [showMoreOrders, setShowMoreOrders] = useState(false);
   const [showMoreRentals, setShowMoreRentals] = useState(false);
   const [showPrivacyPolicy, setShowPrivacyPolicy] = useState(false);
-  
+
   // AI Chat state
   const [aiLoading, setAiLoading] = useState(false);
   const [aiMessages, setAiMessages] = useState([]);
@@ -30,6 +29,11 @@ export default function HomeDashboard() {
 
   // Dashboard state
   const [recentSearches, setRecentSearches] = useState([]);
+
+  // מצב תצוגת סרגל החיפוש (חיפוש רגיל / חכם AI) — מחליף את הלוגיקה הפנימית שהייתה
+  // חבויה בתוך רכיב AISearchBar הישן; ההתנהגות זהה, רק המבנה/הסגנון עברו לעיצוב החדש.
+  const [aiInputMode, setAiInputMode] = useState(false);
+  const [aiInputText, setAiInputText] = useState('');
 
   const parseMessageToLinks = (text) => {
     if (!text) return null;
@@ -42,7 +46,8 @@ export default function HomeDashboard() {
             key={i}
             href={`/orders/${match[1]}`}
             target="_blank"
-            style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#ec4899', color: 'white', padding: '2px 8px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', margin: '0 4px', fontSize: '0.9rem' }}
+            className="chip"
+            style={{ background: 'var(--primary-solid)', color: 'var(--text-on-primary)', border: 'none', fontWeight: 'bold', margin: '0 4px' }}
           >
             {part}
           </a>
@@ -55,7 +60,8 @@ export default function HomeDashboard() {
             key={i}
             href={`/customers/${match[1]}`}
             target="_blank"
-            style={{ display: 'inline-flex', alignItems: 'center', backgroundColor: '#ec4899', color: 'white', padding: '2px 8px', borderRadius: '8px', textDecoration: 'none', fontWeight: 'bold', margin: '0 4px', fontSize: '0.9rem' }}
+            className="chip"
+            style={{ background: 'var(--primary-solid)', color: 'var(--text-on-primary)', border: 'none', fontWeight: 'bold', margin: '0 4px' }}
           >
             {part}
           </a>
@@ -71,7 +77,7 @@ export default function HomeDashboard() {
     const savedSearchResults = sessionStorage.getItem('dashboardSearchResults');
     if (savedSearchInput) setSearchInput(savedSearchInput);
     if (savedSearchResults) setSearchResults(JSON.parse(savedSearchResults));
-    
+
     const savedAi = localStorage.getItem('dashboardAiMessages');
     if (savedAi) {
       setAiMessages(JSON.parse(savedAi));
@@ -86,7 +92,7 @@ export default function HomeDashboard() {
   const scrollToBottom = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
-  
+
   useEffect(() => {
     scrollToBottom();
   }, [aiMessages]);
@@ -96,18 +102,18 @@ export default function HomeDashboard() {
   const handleGlobalSearch = async (e) => {
     if (e) e.preventDefault();
     if (!searchInput.trim()) return;
-    
+
     setLoadingSearch(true);
     setAiMessages([]);
     localStorage.removeItem('dashboardAiMessages');
-    
+
     try {
       const res = await fetch(`/api/global-search?q=${encodeURIComponent(searchInput)}`);
       const data = await res.json();
       setSearchResults(data);
       sessionStorage.setItem('dashboardSearchInput', searchInput);
       sessionStorage.setItem('dashboardSearchResults', JSON.stringify(data));
-      
+
       const newRecentSearches = [searchInput, ...recentSearches.filter(s => s !== searchInput)].slice(0, 5);
       setRecentSearches(newRecentSearches);
       localStorage.setItem('dashboardRecentSearches', JSON.stringify(newRecentSearches));
@@ -125,7 +131,7 @@ export default function HomeDashboard() {
   const handleAiSearch = async (query, isReply = false) => {
     if (!query.trim()) return;
     setAiLoading(true);
-    
+
     if (!isReply) {
       setSearchResults(null);
       sessionStorage.removeItem('dashboardSearchResults');
@@ -143,8 +149,8 @@ export default function HomeDashboard() {
       const res = await fetch('/api/ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt: query, 
+        body: JSON.stringify({
+          prompt: query,
           context: 'User is in the general system home dashboard.',
           history: updatedMessages.slice(0, -1).map(m => ({ role: m.role, content: m.content }))
         })
@@ -175,7 +181,7 @@ export default function HomeDashboard() {
     sessionStorage.removeItem('dashboardSearchInput');
     sessionStorage.removeItem('dashboardSearchResults');
   };
-  
+
   const clearAiChat = () => {
     setAiMessages([]);
     localStorage.removeItem('dashboardAiMessages');
@@ -196,94 +202,151 @@ export default function HomeDashboard() {
   };
 
   const renderStatusIcon = (status) => {
-    switch(status) {
-      case 'הוחזר': return <CheckCircle data-element-name="רכיב_page_1" size={16} color="#10b981" title="הוחזר" />;
-      case 'מושכר': return <Shirt data-element-name="רכיב_page_2" size={16} color="#f59e0b" title="מושכר" />;
-      case 'בוטל': return <XCircle data-element-name="רכיב_page_3" size={16} color="#ef4444" title="בוטל" />;
-      case 'שולם': return <Check data-element-name="רכיב_page_4" size={16} color="#3b82f6" title="שולם" />;
-      default: return <Clock data-element-name="רכיב_page_5" size={16} color="#6b7280" title={status || 'פעיל'} />;
+    const map = {
+      'הוחזר': { icon: 'i-check-circle', color: 'var(--success)' },
+      'מושכר': { icon: 'i-tag', color: 'var(--warning)' },
+      'בוטל': { icon: 'i-x-circle', color: 'var(--danger)' },
+      'שולם': { icon: 'i-check', color: 'var(--info)' },
+    };
+    const { icon, color } = map[status] || { icon: 'i-clock', color: 'var(--text-3)' };
+    return (
+      <span title={status || 'פעיל'} style={{ display: 'inline-flex', color, flex: '0 0 auto' }}>
+        <svg className="icon" style={{ width: '14px', height: '14px' }}><use href={`#${icon}`} /></svg>
+      </span>
+    );
+  };
+
+  // מעבר בין מצב חיפוש רגיל למצב חיפוש חכם (AI) בסרגל החיפוש, תוך שמירה
+  // על הטקסט שהוקלד בכל מצב כדי לא לאבד אותו במעבר ביניהם.
+  const toggleAiInputMode = () => {
+    if (!aiInputMode) {
+      setAiInputText(searchInput || '');
+    } else {
+      setSearchInput(aiInputText || '');
     }
+    setAiInputMode(v => !v);
+  };
+
+  const handleAiInputSubmit = (e) => {
+    e.preventDefault();
+    if (!aiInputText.trim()) return;
+    handleAiSearch(aiInputText, false);
   };
 
   const isInitialState = !searchResults && aiMessages.length === 0;
 
   return (
-    <main className="container animate-fade-in" style={{ 
-      paddingTop: isInitialState ? '25vh' : '2rem', 
-      paddingBottom: aiMessages.length > 0 ? '120px' : '4rem', 
-      position: 'relative',
-      minHeight: '80vh',
-      display: 'flex',
-      flexDirection: 'column',
-      transition: 'padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
-    }}>
-      
+    <div
+      style={{
+        paddingTop: isInitialState ? '16vh' : '4px',
+        paddingBottom: aiMessages.length > 0 ? '110px' : '20px',
+        minHeight: '70vh',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'padding-top 0.4s cubic-bezier(0.4, 0, 0.2, 1)'
+      }}
+    >
+
       {/* Header & Search */}
-      <div style={{ marginBottom: '3rem', textAlign: 'center' }}>
-        <h1 style={{ fontSize: '2.5rem', color: 'var(--primary-color)', marginBottom: '1.5rem', fontWeight: '800' }}>
-          ברוכים הבאים למערכת ניהול הגמ"ח
-        </h1>
-        <div style={{ maxWidth: '800px', margin: '0 auto', background: 'var(--card-bg)', padding: '1rem', borderRadius: '16px', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
-          <AISearchBar data-element-name="רכיב_page_6" 
-            placeholder="דוגמא משפחת כהן..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            onSearch={handleGlobalSearch}
-            onClear={clearSearch}
-            onAiSearch={(q) => handleAiSearch(q, false)}
-            loading={loadingSearch || (aiLoading && aiMessages.length === 0)}
-          />
-          {/* Recent searches section removed */}
+      <div style={{ marginBottom: '32px', textAlign: 'center' }}>
+        <h1 style={{ marginBottom: '20px' }}>ברוכים הבאים למערכת ניהול הגמ&quot;ח</h1>
+        <div className="card card-pad" style={{ maxWidth: '800px', margin: '0 auto' }}>
+          {aiInputMode ? (
+            <form onSubmit={handleAiInputSubmit} className="search-toolbar" style={{ maxWidth: 'none' }}>
+              {(aiLoading && aiMessages.length === 0)
+                ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
+                : <svg className="icon" style={{ color: 'var(--primary-solid)' }}><use href="#i-star" /></svg>}
+              <input
+                type="text"
+                value={aiInputText}
+                onChange={(e) => setAiInputText(e.target.value)}
+                placeholder="בקש מה-AI למצוא נתונים (למשל: 'הזמנות של משפחת שיינועטר')..."
+                disabled={aiLoading}
+              />
+              <div className="search-toolbar-actions">
+                {aiInputText && !aiLoading && (
+                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה" onClick={() => setAiInputText('')}>
+                    <svg className="icon"><use href="#i-x" /></svg>
+                  </button>
+                )}
+                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" style={{ color: 'var(--primary-solid)', background: 'var(--primary-tint)' }} onClick={toggleAiInputMode}>
+                  <svg className="icon"><use href="#i-star" /></svg>
+                </button>
+                <button type="submit" className="btn btn-primary btn-sm" disabled={aiLoading}>
+                  {aiLoading ? 'מייצר שאילתה...' : 'חפש בחכמה'}
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleGlobalSearch} className="search-toolbar" style={{ maxWidth: 'none' }}>
+              {loadingSearch
+                ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
+                : <svg className="icon"><use href="#i-search" /></svg>}
+              <input
+                type="text"
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                placeholder="דוגמא משפחת כהן..."
+                disabled={loadingSearch}
+              />
+              <div className="search-toolbar-actions">
+                {searchInput && !loadingSearch && (
+                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה חיפוש" onClick={clearSearch}>
+                    <svg className="icon"><use href="#i-x" /></svg>
+                  </button>
+                )}
+                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" onClick={toggleAiInputMode}>
+                  <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
+                </button>
+                <button type="submit" className="btn btn-primary btn-sm" disabled={loadingSearch}>חיפוש</button>
+              </div>
+            </form>
+          )}
         </div>
       </div>
 
       {/* AI Response Area */}
       {aiMessages.length > 0 && (
-        <div className="animate-fade-in" style={{ maxWidth: '800px', margin: '0 auto 3rem auto', background: 'linear-gradient(135deg, #fdf2f8, #f5f3ff)', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 15px rgba(236, 72, 153, 0.1)', border: '1px solid #fbcfe8', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '600px', overflowY: 'auto' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#ec4899', fontWeight: 'bold' }}>
-              <Sparkles data-element-name="רכיב_page_7" size={24} />
-              <span style={{ fontSize: '1.2rem' }}>צ'אט חכם מבוסס AI:</span>
+        <div className="card card-pad" style={{ maxWidth: '800px', width: '100%', margin: '0 auto 32px', borderColor: 'var(--primary-tint-2)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+            <div className="card-title-row" style={{ color: 'var(--primary-solid)', fontWeight: 800 }}>
+              <svg className="icon" style={{ color: 'var(--primary-solid)' }}><use href="#i-star" /></svg>
+              <span style={{ fontSize: '1.05rem' }}>צ&apos;אט חכם מבוסס AI:</span>
             </div>
-            <button data-element-name="כפתור_page_8" onClick={clearAiChat} title="נקה צ'אט" style={{ background: 'var(--card-bg)', border: '1px solid #fbcfe8', borderRadius: '50%', padding: '0.5rem', cursor: 'pointer', color: '#ec4899', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <X data-element-name="רכיב_page_9" size={18} />
+            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה צ&apos;אט" onClick={clearAiChat}>
+              <svg className="icon"><use href="#i-x" /></svg>
             </button>
           </div>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+
+          <div className="chat-thread" style={{ maxHeight: '600px', overflowY: 'auto' }}>
             {aiMessages.map((msg, idx) => (
-              <div key={idx} style={{ alignSelf: msg.role === 'user' ? 'flex-start' : 'flex-end', background: msg.role === 'user' ? 'var(--card-bg)' : '#fce7f3', padding: '1rem 1.5rem', borderRadius: '12px', maxWidth: '85%', boxShadow: '0 2px 5px rgba(0,0,0,0.05)', border: msg.role === 'user' ? '1px solid var(--element-border)' : '1px solid #fbcfe8' }}>
-                <div style={{ fontWeight: 'bold', marginBottom: '0.5rem', color: msg.role === 'user' ? 'var(--text-main)' : '#ec4899' }}>
-                  {msg.role === 'user' ? 'אתה:' : 'מערכת AI:'}
-                </div>
-                <div style={{ fontSize: '1.1rem', lineHeight: '1.6', color: 'var(--text-main)', whiteSpace: 'pre-wrap' }}>
-                  {parseMessageToLinks(msg.content)}
-                </div>
+              <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(msg.content)}</div>
                 {msg.data && msg.data.length > 0 && (
-                  <div style={{ marginTop: '1rem' }}>
-                    <button data-element-name="כפתור_page_10" onClick={() => exportTableToExcel(msg.data, 'AI_Export')} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', background: '#10b981', color: 'white', padding: '0.5rem 1rem', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '0.9rem', marginBottom: '1rem' }}>
-                      <Download data-element-name="רכיב_page_11" size={16} /> הורד Excel
+                  <div style={{ marginTop: '10px' }}>
+                    <button type="button" className="btn btn-secondary btn-sm" style={{ marginBottom: '10px' }} onClick={() => exportTableToExcel(msg.data, 'AI_Export')}>
+                      <svg className="icon"><use href="#i-download" /></svg> הורד Excel
                     </button>
-                    <div style={{ overflowX: 'auto', background: 'var(--card-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.9rem' }}>
+                    <div className="table-wrap">
+                      <table className="data">
                         <thead>
-                          <tr style={{ background: 'var(--element-bg)' }}>
+                          <tr>
                             {Object.keys(msg.data[0])
                               .filter(k => !k.startsWith('_action'))
-                              .map(k => <th key={k} style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>{k}</th>)}
-                            {msg.data.some(r => r._actionUrl) && <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>פעולות</th>}
+                              .map(k => <th key={k}>{k}</th>)}
+                            {msg.data.some(r => r._actionUrl) && <th>פעולות</th>}
                           </tr>
                         </thead>
                         <tbody>
                           {msg.data.slice(0, 15).map((row, rIdx) => (
-                            <tr key={rIdx} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <tr key={rIdx}>
                               {Object.entries(row)
                                 .filter(([k]) => !k.startsWith('_action'))
-                                .map(([k, val], vIdx) => <td key={vIdx} style={{ padding: '0.5rem' }}>{val}</td>)}
+                                .map(([k, val], vIdx) => <td key={vIdx}>{val}</td>)}
                               {msg.data.some(r => r._actionUrl) && (
-                                <td style={{ padding: '0.5rem' }}>
+                                <td>
                                   {row._actionUrl && row._actionLabel ? (
-                                    <Link data-element-name="רכיב_page_12" href={row._actionUrl} target="_blank" style={{ background: '#ec4899', color: 'white', padding: '0.3rem 0.6rem', borderRadius: '8px', textDecoration: 'none', fontSize: '0.8rem', display: 'inline-block' }}>
+                                    <Link href={row._actionUrl} target="_blank" className="btn btn-secondary btn-sm">
                                       {row._actionLabel}
                                     </Link>
                                   ) : null}
@@ -293,16 +356,19 @@ export default function HomeDashboard() {
                           ))}
                         </tbody>
                       </table>
-                      {msg.data.length > 15 && <div style={{ textAlign: 'center', padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>מציג 15 תוצאות ראשונות (הורד קובץ לצפייה במלא)</div>}
+                      {msg.data.length > 15 && (
+                        <div style={{ textAlign: 'center', padding: '8px', color: 'var(--text-3)', fontStyle: 'italic' }}>
+                          מציג 15 תוצאות ראשונות (הורד קובץ לצפייה במלא)
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
               </div>
             ))}
             {aiLoading && (
-              <div style={{ alignSelf: 'flex-end', color: '#ec4899', fontStyle: 'italic', padding: '1rem' }}>
-                <Loader2 data-element-name="רכיב_page_13" className="animate-spin" size={20} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                ה-AI חושב...
+              <div className="bubble assistant" style={{ padding: 0 }}>
+                <div className="typing-indicator"><span></span><span></span><span></span></div>
               </div>
             )}
             <div ref={chatEndRef} />
@@ -312,124 +378,137 @@ export default function HomeDashboard() {
 
       {/* Floating Chat Input */}
       {aiMessages.length > 0 && (
-        <div style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '800px', background: 'var(--card-bg)', padding: '0.75rem', borderRadius: '24px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)', border: '1px solid #fbcfe8', zIndex: 1000, display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-           <input data-element-name="שדה_page_14" 
-             type="text" 
-             value={aiReplyInput} 
-             onChange={(e) => setAiReplyInput(e.target.value)}
-             onKeyDown={(e) => { if (e.key === 'Enter' && !aiLoading) handleAiSearch(aiReplyInput, true); }}
-             placeholder="שאל שאלת המשך ל-AI..." 
-             style={{ flex: 1, padding: '0.75rem 1.5rem', border: 'none', background: '#fdf2f8', borderRadius: '20px', fontSize: '1rem', color: '#ec4899', outline: 'none' }} 
-             disabled={aiLoading}
-           />
-           <button data-element-name="כפתור_page_15" onClick={() => handleAiSearch(aiReplyInput, true)} disabled={aiLoading || !aiReplyInput.trim()} style={{ background: aiLoading || !aiReplyInput.trim() ? '#f9a8d4' : '#ec4899', color: 'white', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: aiLoading || !aiReplyInput.trim() ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}>
-             <Send data-element-name="רכיב_page_16" size={20} />
-           </button>
-           <button data-element-name="כפתור_page_17" onClick={clearAiChat} title="סגור צ'אט" style={{ background: 'var(--element-bg)', color: '#6b7280', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
-             <X data-element-name="רכיב_page_18" size={20} />
-           </button>
+        <div className="card" style={{ position: 'fixed', bottom: '2rem', left: '50%', transform: 'translateX(-50%)', width: '90%', maxWidth: '800px', padding: '10px', borderRadius: 'var(--radius-full)', borderColor: 'var(--primary-tint-2)', boxShadow: 'var(--shadow-lg)', zIndex: 1000, display: 'flex', gap: '8px', alignItems: 'center' }}>
+          <input
+            type="text"
+            value={aiReplyInput}
+            onChange={(e) => setAiReplyInput(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !aiLoading) handleAiSearch(aiReplyInput, true); }}
+            placeholder="שאל שאלת המשך ל-AI..."
+            className="input"
+            style={{ flex: 1, border: 'none', borderRadius: 'var(--radius-full)', background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}
+            disabled={aiLoading}
+          />
+          <button type="button" className="btn btn-primary btn-icon-only" title="שלח" onClick={() => handleAiSearch(aiReplyInput, true)} disabled={aiLoading || !aiReplyInput.trim()}>
+            <svg className="icon"><use href="#i-arrow-end" /></svg>
+          </button>
+          <button type="button" className="btn btn-ghost btn-icon-only" title="סגור צ&apos;אט" onClick={clearAiChat}>
+            <svg className="icon"><use href="#i-x" /></svg>
+          </button>
         </div>
       )}
 
       {/* Global Search Results Area */}
       {searchResults && aiMessages.length === 0 && (
-        <div className="animate-fade-in" style={{ marginBottom: '3rem' }}>
-          <h2 style={{ marginBottom: '1.5rem', color: 'var(--text-main)' }}>תוצאות חיפוש ל: "{searchInput}"</h2>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '1.5rem' }}>
-            
+        <div>
+          <div className="section-title">תוצאות חיפוש ל: &quot;{searchInput}&quot;</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '18px' }}>
+
             {/* Customers */}
-            <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#3b82f6', marginBottom: '1rem' }}>
-                <User data-element-name="רכיב_page_19" size={20} /> לקוחות ({searchResults.customers?.length || 0})
-              </h3>
+            <div className="card card-pad">
+              <div className="card-title-row" style={{ color: 'var(--info)', marginBottom: '12px', fontWeight: 800 }}>
+                <svg className="icon" style={{ color: 'var(--info)' }}><use href="#i-user" /></svg>
+                <span>לקוחות ({searchResults.customers?.length || 0})</span>
+              </div>
               {searchResults.customers?.length > 0 ? (
                 <>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  <div>
                     {searchResults.customers.slice(0, showMoreCustomers ? undefined : 5).map(c => (
-                      <li key={c.id} style={{ borderBottom: '1px solid #f3f4f6', padding: '0.75rem 0' }}>
-                        <Link data-element-name="רכיב_page_20" href={`/customers/${c.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <div style={{ fontWeight: 'bold' }}>{c.firstName} {c.lastName}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{c.phone1} • {c.city}</div>
-                          </div>
-                          <ArrowLeft data-element-name="רכיב_page_21" size={16} color="#9ca3af" />
-                        </Link>
-                      </li>
+                      <Link key={c.id} href={`/customers/${c.id}`} className="list-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700 }}>{c.firstName} {c.lastName}</div>
+                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)' }}>{c.phone1} • {c.city}</div>
+                        </div>
+                        <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-chevron-start" /></svg>
+                      </Link>
                     ))}
-                  </ul>
+                  </div>
                   {searchResults.customers.length > 5 && (
-                    <button data-element-name="כפתור_page_22" onClick={() => setShowMoreCustomers(!showMoreCustomers)} style={{ width: '100%', background: 'var(--btn-light-blue-bg)', color: '#3b82f6', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
+                    <button type="button" className="btn btn-secondary" style={{ width: '100%', marginTop: '10px' }} onClick={() => setShowMoreCustomers(!showMoreCustomers)}>
                       {showMoreCustomers ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>לא נמצאו לקוחות</div>}
+              ) : (
+                <div className="empty-state" style={{ padding: '24px' }}>
+                  <svg className="icon"><use href="#i-search" /></svg>
+                  <h4>לא נמצאו לקוחות</h4>
+                </div>
+              )}
             </div>
 
             {/* Orders */}
-            <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#10b981', marginBottom: '1rem' }}>
-                <ShoppingBag data-element-name="רכיב_page_23" size={20} /> הזמנות ({searchResults.orders?.length || 0})
-              </h3>
+            <div className="card card-pad">
+              <div className="card-title-row" style={{ color: 'var(--success)', marginBottom: '12px', fontWeight: 800 }}>
+                <svg className="icon" style={{ color: 'var(--success)' }}><use href="#i-bag" /></svg>
+                <span>הזמנות ({searchResults.orders?.length || 0})</span>
+              </div>
               {searchResults.orders?.length > 0 ? (
                 <>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  <div>
                     {searchResults.orders.slice(0, showMoreOrders ? undefined : 5).map(o => (
-                      <li key={o.id} style={{ borderBottom: '1px solid #f3f4f6', padding: '0.75rem 0' }}>
-                        <Link data-element-name="רכיב_page_24" href={`/orders/${o.orderId}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div style={{ flex: 1 }}>
-                            <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#047857', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                              {o.firstName} {o.lastName}
-                              {renderStatusIcon(o.status)}
-                            </div>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>
-                              קוד: <strong>#{o.orderId}</strong> | אירוע: <strong>{o.eventDateHebrew || '-'}</strong>
-                            </div>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.15rem' }}>
-                              סה"כ: <strong>₪{o.totalAmount || 0}</strong> | פריטים: <strong>{o.itemCount || 0}</strong>
-                            </div>
+                      <Link key={o.id} href={`/orders/${o.orderId}`} className="list-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700, fontSize: '15px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            {o.firstName} {o.lastName}
+                            {renderStatusIcon(o.status)}
                           </div>
-                          <ArrowLeft data-element-name="רכיב_page_25" size={16} color="#9ca3af" />
-                        </Link>
-                      </li>
+                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)', marginTop: '2px' }}>
+                            קוד: <strong>#{o.orderId}</strong> | אירוע: <strong>{o.eventDateHebrew || '-'}</strong>
+                          </div>
+                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)', marginTop: '1px' }}>
+                            סה&quot;כ: <strong>₪{o.totalAmount || 0}</strong> | פריטים: <strong>{o.itemCount || 0}</strong>
+                          </div>
+                        </div>
+                        <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-chevron-start" /></svg>
+                      </Link>
                     ))}
-                  </ul>
+                  </div>
                   {searchResults.orders.length > 5 && (
-                    <button data-element-name="כפתור_page_26" onClick={() => setShowMoreOrders(!showMoreOrders)} style={{ width: '100%', background: 'var(--btn-light-green-bg)', color: '#10b981', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
+                    <button type="button" className="btn btn-secondary" style={{ width: '100%', marginTop: '10px' }} onClick={() => setShowMoreOrders(!showMoreOrders)}>
                       {showMoreOrders ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>לא נמצאו הזמנות</div>}
+              ) : (
+                <div className="empty-state" style={{ padding: '24px' }}>
+                  <svg className="icon"><use href="#i-search" /></svg>
+                  <h4>לא נמצאו הזמנות</h4>
+                </div>
+              )}
             </div>
 
             {/* Rentals */}
-            <div style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#f59e0b', marginBottom: '1rem' }}>
-                <Shirt data-element-name="רכיב_page_27" size={20} /> השכרות ({searchResults.rentals?.length || 0})
-              </h3>
+            <div className="card card-pad">
+              <div className="card-title-row" style={{ color: 'var(--warning)', marginBottom: '12px', fontWeight: 800 }}>
+                <svg className="icon" style={{ color: 'var(--warning)' }}><use href="#i-tag" /></svg>
+                <span>השכרות ({searchResults.rentals?.length || 0})</span>
+              </div>
               {searchResults.rentals?.length > 0 ? (
                 <>
-                  <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                  <div>
                     {searchResults.rentals.slice(0, showMoreRentals ? undefined : 5).map(r => (
-                      <li key={r.id} style={{ borderBottom: '1px solid #f3f4f6', padding: '0.75rem 0' }}>
-                        <Link data-element-name="רכיב_page_28" href={`/orders/${r.orderId}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <div>
-                            <div style={{ fontWeight: 'bold' }}>{r.catalogName || r.description}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>ברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}</div>
-                          </div>
-                          <ArrowLeft data-element-name="רכיב_page_29" size={16} color="#9ca3af" />
-                        </Link>
-                      </li>
+                      <Link key={r.id} href={`/orders/${r.orderId}`} className="list-card" style={{ textDecoration: 'none', color: 'inherit' }}>
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontWeight: 700 }}>{r.catalogName || r.description}</div>
+                          <div style={{ fontSize: '12.5px', color: 'var(--text-3)' }}>ברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}</div>
+                        </div>
+                        <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-chevron-start" /></svg>
+                      </Link>
                     ))}
-                  </ul>
+                  </div>
                   {searchResults.rentals.length > 5 && (
-                    <button data-element-name="כפתור_page_30" onClick={() => setShowMoreRentals(!showMoreRentals)} style={{ width: '100%', background: 'var(--element-bg)', color: '#f59e0b', border: 'none', padding: '0.5rem', borderRadius: '8px', marginTop: '1rem', cursor: 'pointer', fontWeight: '500' }}>
+                    <button type="button" className="btn btn-secondary" style={{ width: '100%', marginTop: '10px' }} onClick={() => setShowMoreRentals(!showMoreRentals)}>
                       {showMoreRentals ? 'הצג פחות' : 'הצג עוד'}
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>לא נמצאו השכרות</div>}
+              ) : (
+                <div className="empty-state" style={{ padding: '24px' }}>
+                  <svg className="icon"><use href="#i-search" /></svg>
+                  <h4>לא נמצאו השכרות</h4>
+                </div>
+              )}
             </div>
 
           </div>
@@ -437,38 +516,39 @@ export default function HomeDashboard() {
       )}
 
       {/* Footer / Privacy Policy Link */}
-      <div style={{ marginTop: 'auto', paddingTop: '3rem', textAlign: 'center', paddingBottom: '1rem' }}>
-        <button data-element-name="כפתור_page_privacy_link" onClick={() => setShowPrivacyPolicy(true)} style={{ background: 'none', border: 'none', color: '#6b7280', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}>
+      <div style={{ marginTop: 'auto', paddingTop: '26px', textAlign: 'center' }}>
+        <button type="button" className="btn btn-ghost btn-sm" style={{ textDecoration: 'underline', color: 'var(--text-3)' }} onClick={() => setShowPrivacyPolicy(true)}>
           מדיניות פרטיות
         </button>
       </div>
 
       {/* Privacy Policy Modal */}
-      {showPrivacyPolicy && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="animate-fade-in" style={{ background: 'var(--card-bg)', width: '90%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', borderRadius: '16px', padding: '2rem', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <button data-element-name="כפתור_page_close_privacy" onClick={() => setShowPrivacyPolicy(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}>
-              <X data-element-name="רכיב_page_x_privacy" size={24} />
-            </button>
-            <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem', textAlign: 'center' }}>מדיניות פרטיות</h2>
-            <div style={{ lineHeight: '1.8', color: 'var(--text-color)' }}>
-              <p>טקסט זמני למדיניות פרטיות.</p>
-              <br/>
-              <p>כאן יפורטו התנאים הנוגעים לאיסוף ושמירת מידע של משתמשים ולקוחות.</p>
-              <p><strong>1. איסוף נתונים:</strong> המערכת שומרת פרטים אישיים בסיסיים כגון שם, טלפון וכתובת לצורך יצירת קשר בלבד ולמען תפעול תקין של הגמ"ח.</p>
-              <p><strong>2. אבטחת מידע:</strong> אנו עושים מאמצים לשמור על בטיחות המידע ולא נעביר אותו לצד שלישי ללא אישור מפורש.</p>
-              <br/>
-              <p style={{ color: '#9ca3af', fontSize: '0.9rem', fontStyle: 'italic' }}>* ניתן לערוך טקסט זה בהמשך בקוד המערכת.</p>
-            </div>
-            <div style={{ textAlign: 'center', marginTop: '2rem' }}>
-              <button data-element-name="כפתור_page_confirm_privacy" onClick={() => setShowPrivacyPolicy(false)} style={{ background: 'var(--primary-color)', color: 'white', border: 'none', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>
-                הבנתי
+      {showPrivacyPolicy && typeof document !== 'undefined' && createPortal(
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowPrivacyPolicy(false)}>
+          <div className="modal" style={{ maxWidth: '600px', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <strong>מדיניות פרטיות</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setShowPrivacyPolicy(false)}>
+                <svg className="icon"><use href="#i-x" /></svg>
               </button>
             </div>
+            <div className="modal-body" style={{ overflowY: 'auto' }}>
+              <p>טקסט זמני למדיניות פרטיות.</p>
+              <br />
+              <p>כאן יפורטו התנאים הנוגעים לאיסוף ושמירת מידע של משתמשים ולקוחות.</p>
+              <p><strong>1. איסוף נתונים:</strong> המערכת שומרת פרטים אישיים בסיסיים כגון שם, טלפון וכתובת לצורך יצירת קשר בלבד ולמען תפעול תקין של הגמ&quot;ח.</p>
+              <p><strong>2. אבטחת מידע:</strong> אנו עושים מאמצים לשמור על בטיחות המידע ולא נעביר אותו לצד שלישי ללא אישור מפורש.</p>
+              <br />
+              <p style={{ color: 'var(--text-3)', fontSize: '12.5px', fontStyle: 'italic' }}>* ניתן לערוך טקסט זה בהמשך בקוד המערכת.</p>
+            </div>
+            <div className="modal-foot" style={{ justifyContent: 'center' }}>
+              <button type="button" className="btn btn-primary" onClick={() => setShowPrivacyPolicy(false)}>הבנתי</button>
+            </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-    </main>
+    </div>
   );
 }

@@ -1,12 +1,10 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { ExternalLink, Check, AlertTriangle, Clock, Search, X } from 'lucide-react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 /**
- * טאב "השכרות" — כל ההשכרות של כל פריטי הדגם, עם אריחי סיכום למעלה
- * (אותה שיטה כמו סיכום התשלומים בכרטיס ההזמנה).
+ * טאב "השכרות" — כל ההשכרות של כל פריטי הדגם, עם אריחי סיכום למעלה.
  */
 export default function ModernDressRentalsTab({ dressId, active }) {
   const [data, setData] = useState(null);
@@ -62,75 +60,76 @@ export default function ModernDressRentalsTab({ dressId, active }) {
   }, [visible, page]);
 
   if (loading) {
+    return <div className="loading-inline"><span className="spinner" /> טוען היסטוריית השכרות...</div>;
+  }
+
+  if (error) {
     return (
-      <div style={{ textAlign: 'center', padding: '40px 0' }}>
-        <span className="moc-spinner lg" style={{ margin: '0 auto' }} />
-        <p className="moc-hint" style={{ marginTop: '12px' }}>טוען היסטוריית השכרות...</p>
+      <div className="callout callout-danger">
+        <svg className="icon"><use href="#i-alert-circle" /></svg>
+        {error}
       </div>
     );
   }
 
-  if (error) {
-    return <div style={{ color: 'var(--moc-danger-text)', textAlign: 'center', padding: '24px 0', fontWeight: 700 }}>{error}</div>;
-  }
-
   return (
     <>
-      <div className="moc-stat-tiles">
-        <div className="moc-stat-tile total">
-          <div className="moc-st-label">סה"כ השכרות לדגם</div>
-          <div className="moc-st-value">{stats.total}</div>
+      <div className="kpi-grid">
+        <div className="kpi-card">
+          <div className="kpi-label">סה&quot;כ השכרות לדגם</div>
+          <div className="kpi-value">{stats.total}</div>
         </div>
-        <div className="moc-stat-tile info">
-          <div className="moc-st-label">השכרות בשנה האחרונה</div>
-          <div className="moc-st-value">{stats.lastYear}</div>
+        <div className="kpi-card">
+          <div className="kpi-label">השכרות בשנה האחרונה</div>
+          <div className="kpi-value">{stats.lastYear}</div>
         </div>
-        <div className="moc-stat-tile warn">
-          <div className="moc-st-label">מושכר כרגע</div>
-          <div className="moc-st-value">{stats.outNow}</div>
+        <div className="kpi-card">
+          <div className="kpi-label">מושכר כרגע</div>
+          <div className="kpi-value" style={{ color: 'var(--warning)' }}>{stats.outNow}</div>
         </div>
-        <div className="moc-stat-tile danger">
-          <div className="moc-st-label">ממתין להחזרה (עבר תאריך)</div>
-          <div className="moc-st-value">{stats.overdue}</div>
+        <div className="kpi-card">
+          <div className="kpi-label">ממתין להחזרה (עבר תאריך)</div>
+          <div className="kpi-value" style={{ color: 'var(--danger)' }}>{stats.overdue}</div>
         </div>
       </div>
 
-      <div className="moc-table-toolbar">
-        <div className="moc-filter-chips">
-          <button className={`moc-pill-toggle ${sizeFilter === 'all' ? 'on blue' : ''}`} onClick={() => setSizeFilter('all')}>
+      <div className="toolbar">
+        <div className="pill-tabs">
+          <button type="button" className={`pill-tab${sizeFilter === 'all' ? ' active' : ''}`} onClick={() => setSizeFilter('all')}>
             כל המידות
           </button>
           {sizes.map(s => (
-            <button key={s} className={`moc-pill-toggle ${sizeFilter === s ? 'on blue' : ''}`} onClick={() => setSizeFilter(s)}>
+            <button key={s} type="button" className={`pill-tab${sizeFilter === s ? ' active' : ''}`} onClick={() => setSizeFilter(s)}>
               {s}
             </button>
           ))}
         </div>
-
-        <div className="moc-toolbar-search">
-          <span className="moc-ts-icon"><Search size={15} /></span>
+        <div className="spacer" />
+        <div className="input-icon-wrap" style={{ maxWidth: '260px' }}>
+          <svg className="icon"><use href="#i-search" /></svg>
+          <label htmlFor="dress-rentals-search" className="sr-only">חיפוש השכרות</label>
           <input
+            id="dress-rentals-search"
+            className="input"
             type="text"
             placeholder="חיפוש: מס' הזמנה, לקוח, ברקוד..."
             value={search}
             onChange={e => setSearch(e.target.value)}
           />
-          {search && (
-            <button className="moc-icon-btn-plain moc-ts-clear" title="נקה חיפוש" onClick={() => setSearch('')}>
-              <X size={13} />
-            </button>
-          )}
         </div>
       </div>
 
       {visible.length === 0 ? (
-        <div className="moc-empty-state">לא נמצאו השכרות לדגם זה.</div>
+        <div className="empty-state">
+          <svg className="icon"><use href="#i-refresh" /></svg>
+          <p>לא נמצאו השכרות לדגם זה.</p>
+        </div>
       ) : (
-        <div className="moc-table-scroll">
-          <table className="moc-data-table">
+        <div className="table-wrap">
+          <table className="data">
             <thead>
               <tr>
-                <th>מס' הזמנה</th>
+                <th>מס&apos; הזמנה</th>
                 <th>לקוח</th>
                 <th>פריט</th>
                 <th>תאריך אירוע</th>
@@ -142,11 +141,10 @@ export default function ModernDressRentalsTab({ dressId, active }) {
             <tbody>
               {paginatedRentals.map((r, idx) => (
                 <tr key={idx}>
-                  <td className="moc-mono">{r.orderId}</td>
+                  <td className="cell-primary">{r.orderId}</td>
                   <td>{r.customerName}</td>
                   <td>
-                    <span className="moc-size-pill">{r.sizeText || '—'}</span>{' '}
-                    <span className="moc-mono" style={{ color: 'var(--moc-text-muted)' }}>· {r.dressBarcode || '—'}</span>
+                    {r.sizeText || '—'} <span className="cell-muted">· {r.dressBarcode || '—'}</span>
                   </td>
                   <td>{r.eventDateHebrew || (r.eventDate ? getHebrewDateString(r.eventDate) : '—')}</td>
                   <td>
@@ -158,11 +156,11 @@ export default function ModernDressRentalsTab({ dressId, active }) {
                   </td>
                   <td>
                     {!r.isReturned ? (
-                      <span className="moc-badge on-white warning"><Clock size={12} /> טרם הוחזר</span>
+                      <span className="badge badge-warning"><svg className="icon"><use href="#i-clock" /></svg>טרם הוחזר</span>
                     ) : r.returnedOk === false ? (
-                      <span className="moc-badge on-white danger"><AlertTriangle size={12} /> הוחזר עם בעיה</span>
+                      <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר עם בעיה</span>
                     ) : (
-                      <span className="moc-badge on-white success"><Check size={12} /> הוחזר תקין</span>
+                      <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר תקין</span>
                     )}
                   </td>
                   <td style={{ textAlign: 'center' }}>
@@ -170,35 +168,44 @@ export default function ModernDressRentalsTab({ dressId, active }) {
                       href={`/orders/${r.orderId}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="moc-icon-btn-plain"
-                      style={{ textDecoration: 'none' }}
+                      className="btn btn-ghost btn-icon-only btn-sm"
                       title="פתח כרטיס הזמנה"
                     >
-                      <ExternalLink size={16} />
+                      <svg className="icon"><use href="#i-link" /></svg>
                     </a>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
-        </div>
-      )}
 
-      {/* שורת סך-הכל ועימוד — צמודה לתחתית הכרטיס */}
-      {visible.length > 0 && (
-        <div className="moc-table-footer">
-          <div className="moc-tf-summary">סה"כ השכרות מוצגות: {visible.length}</div>
-          {totalPages > 1 && (
-            <div className="moc-tf-pager">
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="moc-btn moc-btn-outline moc-btn-sm">&lt; הקודם</button>
-              <span className="moc-tf-page-jump">
-                עמוד
-                <input type="number" min={1} max={totalPages} value={page} onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }} />
-                מתוך {totalPages}
-              </span>
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} className="moc-btn moc-btn-outline moc-btn-sm">הבא &gt;</button>
-            </div>
-          )}
+          <div className="table-foot">
+            <span>סה&quot;כ השכרות מוצגות: {visible.length}</span>
+            {totalPages > 1 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} title="עמוד קודם">
+                  <svg className="icon"><use href="#i-chevron-end" /></svg>הקודם
+                </button>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <label htmlFor="dress-rentals-page-num">עמוד</label>
+                  <input
+                    id="dress-rentals-page-num"
+                    type="number"
+                    className="input"
+                    min={1}
+                    max={totalPages}
+                    value={page}
+                    onChange={(e) => { const v = parseInt(e.target.value); if (v >= 1 && v <= totalPages) setPage(v); }}
+                    style={{ width: '60px', padding: '4px 6px', textAlign: 'center', display: 'inline-block' }}
+                  />
+                  מתוך {totalPages}
+                </span>
+                <button className="btn btn-secondary btn-sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} title="עמוד הבא">
+                  הבא<svg className="icon"><use href="#i-chevron-start" /></svg>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
     </>

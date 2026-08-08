@@ -1,12 +1,9 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
-import {
-  Shirt, Power, AlertTriangle, FileText, Edit2, Check, ExternalLink, RefreshCw,
-  Trash2, Save, CheckCircle2, XCircle, Image as ImageIcon, Upload, Calendar
-} from 'lucide-react';
+import React, { useRef } from 'react';
 import Link from 'next/link';
 import HebrewDatePicker from '../../HebrewDatePicker';
+import UploadZone from '../../../app/components/UploadZone';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 const fmtDate = (d) => {
@@ -19,8 +16,8 @@ const fmtDate = (d) => {
 };
 
 /**
- * טאב "פרטי דגם" — אותה שיטה בדיוק כמו ModernGeneralDetails בכרטיס ההזמנה:
- * שורות קומפקטיות (נושא אחד מתחת לשני), ואייקון עריכה שפותח edit-box בתוך השורה.
+ * טאב "פרטי דגם" — זהות הדגם, תמונה, סטטוס פעילות/בדיקה והערות.
+ * כל השדות ערוכים ישירות (ללא מצב "עריכה" נפרד) — כמו שאר מסכי הטופס במערכת.
  */
 export default function ModernDressDetailsTab({
   dress,
@@ -42,279 +39,241 @@ export default function ModernDressDetailsTab({
   onSave,
   saving
 }) {
-  const [editIdentity, setEditIdentity] = useState(isNewModel);
-  const [editNotes, setEditNotes] = useState(false);
   const fileRef = useRef(null);
-
   const hasExitDate = !!dress.exitDateFromRepo;
-  const subLine = [
-    dress.priceCategory ? `קטגוריית מחיר: ${dress.priceCategory}` : 'ללא קטגוריית מחיר',
-    dress.entryDateToRepo ? `נכנס למאגר: ${fmtDate(dress.entryDateToRepo)}` : null
-  ].filter(Boolean).join(' · ');
 
   return (
-    <div className={showImages ? 'moc-grid-detail' : ''}>
-      {/* ===== תמונת הדגם ===== */}
-      {showImages && (
-        <div className="moc-card-panel moc-detail-card" style={{ padding: '16px' }}>
-          <div className="moc-image-frame">
+    <>
+      <div className={showImages ? 'two-col' : undefined}>
+        {showImages && (
+          <div className="card card-pad" style={{ textAlign: 'center' }}>
+            <h3>תמונת הדגם</h3>
+
             {imageSrc ? (
-              <img
-                src={imageSrc}
-                alt={dress.name || 'תמונת דגם'}
-                onError={(e) => { e.currentTarget.style.display = 'none'; }}
-              />
-            ) : (
               <>
-                <ImageIcon size={38} />
-                <span style={{ fontSize: '0.86rem', fontWeight: 600 }}>אין תמונה</span>
+                <div style={{
+                  borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)',
+                  background: 'var(--surface-alt)', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center'
+                }}>
+                  <img
+                    src={imageSrc}
+                    alt={dress.name || 'תמונת דגם'}
+                    style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ flex: 1 }}
+                    disabled={uploading}
+                    onClick={() => fileRef.current?.click()}
+                  >
+                    {uploading ? <><span className="spinner" /> מעלה...</> : <><svg className="icon"><use href="#i-upload" /></svg>החלף תמונה</>}
+                  </button>
+                  <button type="button" className="btn btn-danger-ghost btn-icon-only btn-sm" title="הסר תמונה" onClick={onRemoveImage}>
+                    <svg className="icon"><use href="#i-trash" /></svg>
+                  </button>
+                </div>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) onImageUpload(f); e.target.value = ''; }}
+                />
               </>
+            ) : (
+              <UploadZone
+                id="dress-detail-image"
+                accept="image/*"
+                onFileSelect={onImageUpload}
+                disabled={uploading}
+                label={uploading ? 'מעלה תמונה...' : 'אין תמונה — לחץ להעלאה'}
+                hint="PNG או JPG"
+              />
             )}
+
+            <div className="field" style={{ marginTop: '12px', marginBottom: 0, textAlign: 'right' }}>
+              <label htmlFor="dress-detail-image-url">או הזן כתובת תמונה ידנית</label>
+              <input
+                id="dress-detail-image-url"
+                className="input"
+                type="text"
+                dir="ltr"
+                value={dress.imageUrl || ''}
+                onChange={(e) => onChange({ imageUrl: e.target.value || null })}
+                placeholder={`/images/dresses/${dress.barcodePrefix || '1234'}.jpg`}
+              />
+            </div>
+
+            <p className="hint" style={{ marginTop: '12px', color: 'var(--text-3)', lineHeight: 1.7 }}>
+              כשאין תמונה מועלית, המערכת מחפשת אוטומטית קובץ בשם הקוד ({dress.barcodePrefix || '####'}.jpg) לפי הגדרת &quot;שמות קבצים לתמונות&quot;.
+            </p>
+          </div>
+        )}
+
+        <div className="card card-pad">
+          <h3>זיהוי הדגם</h3>
+          <div className="form-grid">
+            <div className="field">
+              <label htmlFor="dress-detail-code">קוד דגם (קידומת ברקוד) {isNewModel && '*'}</label>
+              <input
+                id="dress-detail-code"
+                className="input"
+                type="number"
+                value={dress.barcodePrefix ?? ''}
+                disabled={!isNewModel}
+                title={isNewModel ? '' : 'לא ניתן לשנות קוד לדגם קיים — הוא מרכיב את ברקודי הפריטים'}
+                onChange={(e) => onChange({ barcodePrefix: e.target.value })}
+              />
+              {isNewModel ? (
+                <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '6px' }} onClick={onAutoCode}>
+                  <svg className="icon"><use href="#i-refresh" /></svg>קוד אוטומטי
+                </button>
+              ) : (
+                <span className="hint">הקוד ננעל לאחר יצירת הדגם — הוא מרכיב את ברקודי הפריטים.</span>
+              )}
+            </div>
+
+            {useModelNames && (
+              <div className="field">
+                <label htmlFor="dress-detail-name">שם דגם *</label>
+                <input
+                  id="dress-detail-name"
+                  className="input"
+                  type="text"
+                  value={dress.name || ''}
+                  onChange={(e) => onChange({ name: e.target.value })}
+                />
+              </div>
+            )}
+
+            <div className="field">
+              <label htmlFor="dress-detail-category">קטגוריית מחיר</label>
+              <select
+                id="dress-detail-category"
+                className="select"
+                value={dress.priceCategory || ''}
+                onChange={(e) => onChange({ priceCategory: e.target.value })}
+              >
+                <option value="">-- בחר קטגוריית מחיר --</option>
+                {(categories || []).map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
+              </select>
+            </div>
+
+            <div className="field">
+              <label htmlFor="dress-detail-entrydate">תאריך כניסה למאגר</label>
+              <HebrewDatePicker value={dress.entryDateToRepo} onChange={(date) => onChange({ entryDateToRepo: date })} />
+            </div>
           </div>
 
-          <input
-            ref={fileRef}
-            type="file"
-            accept="image/*"
-            style={{ display: 'none' }}
-            onChange={onImageUpload}
-          />
+          <Link href="/dashboard/pricelist" target="_blank" className="btn btn-ghost btn-sm">
+            <svg className="icon"><use href="#i-link" /></svg>מעבר למחירון הקטגוריה
+          </Link>
+        </div>
+      </div>
 
-          <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
-            <button
-              className="moc-btn moc-btn-gold moc-btn-sm"
-              style={{ flex: 1, justifyContent: 'center' }}
-              disabled={uploading}
-              onClick={() => fileRef.current?.click()}
-            >
-              {uploading ? <><span className="moc-spinner" /> מעלה...</> : <><Upload size={14} /> {imageSrc ? 'החלף תמונה' : 'העלה תמונה'}</>}
-            </button>
-            {dress.imageUrl && (
-              <button className="moc-btn moc-btn-outline moc-btn-icon" title="הסר תמונה" onClick={onRemoveImage}>
-                <Trash2 size={15} />
+      {!isNewModel && (
+        <div className="card card-pad" style={{ marginTop: '16px' }}>
+          <h3>סטטוס פעילות ובדיקה</h3>
+
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontWeight: 700 }}>{hasExitDate ? 'הדגם לא פעיל' : 'הדגם פעיל'}</div>
+              <div className="hint" style={{ color: 'var(--text-3)' }}>
+                {hasExitDate
+                  ? 'הדגם הוצא מהמאגר — לא ניתן לבחור אותו בהזמנה חדשה'
+                  : 'הדגם זמין להשכרה ומופיע בבחירת דגמים בהזמנה חדשה'}
+              </div>
+            </div>
+            <div className="toggle-btn-group">
+              <button type="button" className={!hasExitDate ? 'on' : undefined} onClick={() => { if (hasExitDate) onReturnToActivity(); }}>
+                <svg className="icon"><use href="#i-check-circle" /></svg>פעיל
               </button>
-            )}
+              <button type="button" className={hasExitDate ? 'off' : undefined} onClick={() => { if (!hasExitDate) onMarkInactive(); }}>
+                <svg className="icon"><use href="#i-x-circle" /></svg>לא פעיל
+              </button>
+            </div>
           </div>
 
-          <p style={{ margin: '10px 0 0', fontSize: '0.76rem', color: 'var(--moc-text-muted)', lineHeight: 1.6 }}>
-            כשאין תמונה מועלית, המערכת מחפשת אוטומטית קובץ בשם הקוד ({dress.barcodePrefix || '####'}.jpg) לפי הגדרת "שמות קבצים לתמונות".
-          </p>
+          {hasExitDate && (
+            <div className="callout callout-danger" style={{ marginTop: '16px', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <svg className="icon"><use href="#i-x-circle" /></svg>
+                <div>
+                  <div style={{ fontWeight: 700 }}>סיבת לא-פעיל: {dress.inactiveReason || 'לא צוינה סיבה'}</div>
+                  <div style={{ fontSize: '11.5px', marginTop: '2px', opacity: 0.85 }}>
+                    תאריך יציאה מהמאגר: {fmtDate(dress.exitDateFromRepo)}
+                  </div>
+                </div>
+              </div>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onMarkInactive}>
+                <svg className="icon"><use href="#i-edit" /></svg>ערוך סיבה ותאריך
+              </button>
+            </div>
+          )}
+
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap',
+            marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--border)'
+          }}>
+            <div>
+              <div style={{ fontWeight: 700 }}>הצג בבדיקה (התראה)</div>
+              <div className="hint" style={{ color: 'var(--text-3)' }}>
+                כשמסומן — הדגם יופיע בהתראות המלאי ובבחירת פריט תוצג אזהרה לעובד
+              </div>
+            </div>
+            <div
+              className={`switch${dress.inInspection ? ' on' : ''}`}
+              role="switch"
+              aria-checked={!!dress.inInspection}
+              tabIndex={0}
+              title={dress.inInspection ? 'הצג בבדיקה — מופעל. לחץ לכיבוי' : 'הצג בבדיקה — כבוי. לחץ להפעלה'}
+              onClick={onToggleInspection}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggleInspection(); } }}
+            />
+          </div>
         </div>
       )}
 
-      {/* ===== שורות קומפקטיות ===== */}
-      <div className="moc-card-panel moc-detail-card" style={{ padding: '6px 20px 16px' }}>
-
-        {/* זיהוי הדגם */}
-        <div className="moc-compact-row">
-          <div className="moc-avatar-chip"><Shirt size={17} /></div>
-          <div className="moc-cr-main">
-            <div className="moc-cr-title">
-              {useModelNames ? (dress.name || 'ללא שם') : `דגם ${dress.barcodePrefix || '—'}`}
-              {useModelNames && (
-                <span style={{ color: 'var(--moc-text-muted)', fontWeight: 600, fontSize: '0.9rem' }}> · קוד {dress.barcodePrefix || '—'}</span>
-              )}
-            </div>
-            <div className="moc-cr-sub" title={subLine}>{subLine}</div>
-          </div>
-          <div className="moc-cr-actions">
-            <Link
-              href="/dashboard/pricelist"
-              target="_blank"
-              className="moc-icon-btn-plain"
-              style={{ textDecoration: 'none' }}
-              title="מעבר למחירון הקטגוריה"
-            >
-              <ExternalLink size={16} />
-            </Link>
-            <button
-              className="moc-icon-btn-plain"
-              title={editIdentity ? 'סיים עריכה' : 'עריכת פרטי הדגם'}
-              onClick={() => setEditIdentity(!editIdentity)}
-            >
-              {editIdentity ? <Check size={16} /> : <Edit2 size={16} />}
-            </button>
-          </div>
-        </div>
-
-        {editIdentity && (
-          <div className="moc-edit-box">
-            <div className="moc-grid-2">
-              <div>
-                <span className="moc-field-label">קוד דגם (קידומת ברקוד) {isNewModel && '*'}</span>
-                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                  <input
-                    type="number"
-                    value={dress.barcodePrefix ?? ''}
-                    disabled={!isNewModel}
-                    title={isNewModel ? '' : 'לא ניתן לשנות קוד לדגם קיים — הוא מרכיב את ברקודי הפריטים'}
-                    onChange={e => onChange({ barcodePrefix: e.target.value })}
-                  />
-                  {isNewModel && (
-                    <button className="moc-btn moc-btn-outline moc-btn-sm" style={{ whiteSpace: 'nowrap' }} onClick={onAutoCode}>
-                      <RefreshCw size={13} /> קוד אוטומטי
-                    </button>
-                  )}
-                </div>
-                {!isNewModel && (
-                  <p style={{ margin: '5px 0 0', fontSize: '0.74rem', color: 'var(--moc-text-muted)' }}>
-                    הקוד ננעל לאחר יצירת הדגם — הוא מרכיב את ברקודי הפריטים.
-                  </p>
-                )}
-              </div>
-
-              {useModelNames && (
-                <div>
-                  <span className="moc-field-label">שם דגם *</span>
-                  <input type="text" value={dress.name || ''} onChange={e => onChange({ name: e.target.value })} />
-                </div>
-              )}
-
-              <div>
-                <span className="moc-field-label">קטגוריית מחיר</span>
-                <select value={dress.priceCategory || ''} onChange={e => onChange({ priceCategory: e.target.value })}>
-                  <option value="">-- בחר קטגוריית מחיר --</option>
-                  {(categories || []).map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
-                </select>
-              </div>
-
-              <div>
-                <span className="moc-field-label">תאריך כניסה למאגר</span>
-                <HebrewDatePicker
-                  value={dress.entryDateToRepo}
-                  onChange={(date) => onChange({ entryDateToRepo: date })}
-                />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* סטטוס פעילות */}
-        {!isNewModel && (
-          <>
-            <div className="moc-compact-row">
-              <div className="moc-avatar-chip"><Power size={17} /></div>
-              <div className="moc-cr-main">
-                <div className="moc-cr-title">סטטוס: {hasExitDate ? 'לא פעיל' : 'פעיל'}</div>
-                <div className="moc-cr-sub" style={{ whiteSpace: 'normal' }}>
-                  {hasExitDate
-                    ? 'הדגם הוצא מהמאגר — לא ניתן לבחור אותו בהזמנה חדשה'
-                    : 'הדגם זמין להשכרה ומופיע בבחירת דגמים בהזמנה חדשה'}
-                </div>
-              </div>
-              <div className="moc-cr-actions">
-                <div className="moc-toggle-pair">
-                  <button
-                    className={`moc-opt ${!hasExitDate ? 'active' : ''}`}
-                    onClick={() => { if (hasExitDate) onReturnToActivity(); }}
-                  >
-                    <CheckCircle2 size={14} /> פעיל
-                  </button>
-                  <button
-                    className={`moc-opt ${hasExitDate ? 'active' : ''}`}
-                    onClick={() => { if (!hasExitDate) onMarkInactive(); }}
-                  >
-                    <XCircle size={14} /> לא פעיל
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {hasExitDate && (
-              <div className="moc-status-note">
-                <div>
-                  <div className="moc-sn-label">
-                    <XCircle size={15} /> סיבת לא-פעיל: {dress.inactiveReason || 'לא צוינה סיבה'}
-                  </div>
-                  <div className="moc-sn-sub">
-                    <Calendar size={12} style={{ verticalAlign: '-2px' }} /> תאריך יציאה מהמאגר: {fmtDate(dress.exitDateFromRepo)}
-                  </div>
-                </div>
-                <button className="moc-btn moc-btn-danger-soft moc-btn-sm" onClick={onMarkInactive}>
-                  <Edit2 size={13} /> ערוך סיבה ותאריך
-                </button>
-              </div>
-            )}
-
-            {/* התראת בדיקה */}
-            <div className="moc-compact-row">
-              <div className="moc-avatar-chip"><AlertTriangle size={17} /></div>
-              <div className="moc-cr-main">
-                <div className="moc-cr-title">הצג בבדיקה (התראה)</div>
-                <div className="moc-cr-sub" style={{ whiteSpace: 'normal' }}>
-                  כשמסומן — הדגם יופיע בהתראות המלאי ובבחירת פריט תוצג אזהרה לעובד
-                </div>
-              </div>
-              <div className="moc-cr-actions">
-                <button
-                  className={`moc-pill-toggle ${dress.inInspection ? 'on orange' : ''}`}
-                  onClick={onToggleInspection}
-                >
-                  {dress.inInspection ? <><Check size={13} /> מופעל</> : 'כבוי'}
-                </button>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* הערות */}
-        <div className="moc-compact-row" style={{ alignItems: 'flex-start' }}>
-          <div className="moc-avatar-chip"><FileText size={17} /></div>
-          <div className="moc-cr-main">
-            <div className="moc-cr-title">הערות לדגם</div>
-            <div className="moc-cr-sub" style={{ whiteSpace: 'normal' }}>
-              {dress.notes || 'אין הערות'}
-            </div>
-          </div>
-          <div className="moc-cr-actions">
-            <button
-              className="moc-icon-btn-plain"
-              title={editNotes ? 'סיים עריכה' : 'עריכת הערות'}
-              onClick={() => setEditNotes(!editNotes)}
-            >
-              {editNotes ? <Check size={16} /> : <Edit2 size={16} />}
-            </button>
-          </div>
-        </div>
-
-        {editNotes && (
-          <div className="moc-edit-box">
-            <textarea
-              rows={3}
-              value={dress.notes || ''}
-              onChange={e => onChange({ notes: e.target.value })}
-              placeholder="הערות כלליות לגבי הדגם..."
-            />
-          </div>
-        )}
-
-        {/* שורת פעולות תחתונה */}
-        <div className="moc-compact-row" style={{ paddingBottom: 0 }}>
-          <div className="moc-cr-main">
-            {!isNewModel && (
-              <div className="moc-cr-sub" style={{ whiteSpace: 'normal' }}>
-                מזהה במערכת הישנה (Access): <strong className="moc-mono" style={{ color: 'var(--moc-text-main)' }}>{dress.legacyId ?? '—'}</strong>
-              </div>
-            )}
-          </div>
-          <div className="moc-cr-actions">
-            {!isNewModel && (
-              dress.isDeleted ? (
-                <button className="moc-btn moc-btn-outline moc-btn-sm" style={{ color: '#16a34a' }} onClick={onRestore}>
-                  <RefreshCw size={14} /> שחזר דגם מחוק
-                </button>
-              ) : (
-                <button className="moc-btn moc-btn-danger-soft moc-btn-sm" onClick={onDelete}>
-                  <Trash2 size={14} /> מחק דגם
-                </button>
-              )
-            )}
-            <button className="moc-btn moc-btn-gold moc-btn-sm" onClick={() => onSave()} disabled={saving}>
-              {saving ? <><span className="moc-spinner" /> שומר...</> : <><Save size={14} /> {isNewModel ? 'שמור וצור דגם' : 'שמור פרטי דגם'}</>}
-            </button>
-          </div>
+      <div className="card card-pad" style={{ marginTop: '16px' }}>
+        <h3>הערות לדגם</h3>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label htmlFor="dress-detail-notes" className="sr-only">הערות לדגם</label>
+          <textarea
+            id="dress-detail-notes"
+            className="textarea"
+            rows={3}
+            value={dress.notes || ''}
+            onChange={(e) => onChange({ notes: e.target.value })}
+            placeholder="הערות כלליות לגבי הדגם..."
+          />
         </div>
       </div>
-    </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', marginTop: '18px' }}>
+        <div className="hint" style={{ color: 'var(--text-3)' }}>
+          {!isNewModel && <>מזהה במערכת הישנה (Access): <strong style={{ color: 'var(--text)' }}>{dress.legacyId ?? '—'}</strong></>}
+        </div>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {!isNewModel && (
+            dress.isDeleted ? (
+              <button type="button" className="btn btn-secondary btn-sm" style={{ color: 'var(--success)' }} onClick={onRestore}>
+                <svg className="icon"><use href="#i-refresh" /></svg>שחזר דגם מחוק
+              </button>
+            ) : (
+              <button type="button" className="btn btn-danger-ghost btn-sm" onClick={onDelete}>
+                <svg className="icon"><use href="#i-trash" /></svg>מחק דגם
+              </button>
+            )
+          )}
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => onSave()} disabled={saving}>
+            {saving ? <><span className="spinner" />שומר...</> : <><svg className="icon"><use href="#i-check" /></svg>{isNewModel ? 'שמור וצור דגם' : 'שמור פרטי דגם'}</>}
+          </button>
+        </div>
+      </div>
+    </>
   );
 }

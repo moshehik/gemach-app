@@ -8,9 +8,8 @@ import ModernDressDetailsTab from '../../../../components/dresses/modern/ModernD
 import ModernDressItemsTab from '../../../../components/dresses/modern/ModernDressItemsTab';
 import ModernDressRentalsTab from '../../../../components/dresses/modern/ModernDressRentalsTab';
 import ModernDressInfoTab from '../../../../components/dresses/modern/ModernDressInfoTab';
-import { ModernInactiveReasonModal, ModernDressImageModal } from '../../../../components/dresses/modern/ModernDressModals';
+import { ModernInactiveReasonModal } from '../../../../components/dresses/modern/ModernDressModals';
 import ModernNewDressWizard from '../../../../components/dresses/modern/ModernNewDressWizard';
-import modernDressCss from '../../../../components/dresses/modern/modernDressStyles';
 import { addHistory } from '../../../../lib/historyManager';
 import { cacheNamespace, getSettingsCached } from '@/app/lib/pageCache';
 
@@ -63,7 +62,6 @@ export default function DressCardPage({ params }) {
   const [locations, setLocations] = useState(['חנות', 'רזרבה', 'מחסן']);
 
   const [showReasonModal, setShowReasonModal] = useState(false);
-  const [showImageModal, setShowImageModal] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [itemsFilter, setItemsFilter] = useState(null);
   const [scanBarcode, setScanBarcode] = useState(null);
@@ -289,14 +287,6 @@ export default function DressCardPage({ params }) {
   };
 
   // ===== סטטוס פעילות =====
-  const handleToggleActive = () => {
-    if (dress.exitDateFromRepo) {
-      handleReturnToActivity();
-    } else {
-      setShowReasonModal(true);
-    }
-  };
-
   const handleReturnToActivity = async () => {
     if (!(await window.customConfirm('האם להחזיר את הדגם לפעילות?'))) return;
     const activeItems = items.filter(i => !i.isDeleted && !i.notInUse);
@@ -316,8 +306,7 @@ export default function DressCardPage({ params }) {
   };
 
   // ===== תמונה =====
-  const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
+  const handleImageUpload = async (file) => {
     if (!file) return;
     setUploading(true);
     try {
@@ -336,7 +325,6 @@ export default function DressCardPage({ params }) {
       flashMessage('שגיאה בתקשורת בהעלאת התמונה', 4000);
     } finally {
       setUploading(false);
-      e.target.value = '';
     }
   };
 
@@ -386,52 +374,47 @@ export default function DressCardPage({ params }) {
   // דגם חדש נבנה באשף ייעודי (מבנה הצעדים של /orders/new), לא בכרטיס
   if (isNewModel) {
     return (
-      <main style={{ direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
-        <style>{modernDressCss}</style>
-        <ModernNewDressWizard
-          useModelNames={useModelNames}
-          showImages={showImages}
-          categories={categories}
-          locations={locations}
-          onCancel={() => router.push('/dashboard/dresses')}
-          onCreated={(created, failedItems) => {
-            if (failedItems?.length) {
-              alert(`הדגם נוצר, אך חלק מהפריטים נכשלו:\n\n${failedItems.join('\n')}`);
-            }
-            router.replace(`/dashboard/dresses/${created.id}`);
-          }}
-        />
-      </main>
+      <ModernNewDressWizard
+        useModelNames={useModelNames}
+        showImages={showImages}
+        categories={categories}
+        locations={locations}
+        onCancel={() => router.push('/dashboard/dresses')}
+        onCreated={(created, failedItems) => {
+          if (failedItems?.length) {
+            alert(`הדגם נוצר, אך חלק מהפריטים נכשלו:\n\n${failedItems.join('\n')}`);
+          }
+          router.replace(`/dashboard/dresses/${created.id}`);
+        }}
+      />
     );
   }
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column' }}>
-        <div style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
-        <h2 style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>טוען כרטיס דגם...</h2>
-        <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
+      <div className="page-loading">
+        <span className="spinner lg" />
+        טוען כרטיס דגם...
       </div>
     );
   }
 
   if (!dress) {
-    return <div style={{ padding: '2rem', textAlign: 'center', fontSize: '1.5rem', color: 'var(--text-muted)' }}>הדגם לא נמצא.</div>;
+    return (
+      <div className="empty-state">
+        <svg className="icon"><use href="#i-alert-circle" /></svg>
+        <h4>הדגם לא נמצא</h4>
+      </div>
+    );
   }
 
   const imageSrc = getImageSource(dress);
 
   return (
-    <main style={{ direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
-      <style>{modernDressCss}</style>
-
+    <>
       <ModernDressCard
         dress={dress}
         items={items}
-        isNewModel={isNewModel}
-        useModelNames={useModelNames}
-        showImages={showImages}
-        imageSrc={imageSrc}
         activeTab={activeTab}
         onTabChange={handleTabChange}
         saving={saving}
@@ -442,9 +425,6 @@ export default function DressCardPage({ params }) {
         onDelete={handleDelete}
         onRestore={handleRestore}
         onExit={handleExit}
-        onToggleActive={handleToggleActive}
-        onToggleInspection={handleToggleInspection}
-        onOpenImage={() => setShowImageModal(true)}
         onPrint={handlePrint}
         tabContents={{
           details: (
@@ -469,7 +449,7 @@ export default function DressCardPage({ params }) {
               saving={saving}
             />
           ),
-          items: !isNewModel && (
+          items: (
             <ModernDressItemsTab
               dress={dress}
               items={items}
@@ -488,10 +468,10 @@ export default function DressCardPage({ params }) {
               }}
             />
           ),
-          rentals: !isNewModel && (
+          rentals: (
             <ModernDressRentalsTab dressId={id} active={activeTab === 'rentals'} />
           ),
-          history: !isNewModel && (
+          history: (
             <ModernDressInfoTab dress={dress} items={items} active={activeTab === 'history'} />
           )
         }}
@@ -504,19 +484,6 @@ export default function DressCardPage({ params }) {
           onSave={handleSaveInactive}
         />
       )}
-
-      {/* כשההגדרה "הצג תמונות דגמים במערכת" כבויה — אין תמונה, אין תצוגה מקדימה ואין העלאה */}
-      {showImages && showImageModal && (
-        <ModernDressImageModal
-          dress={dress}
-          imageSrc={imageSrc}
-          uploading={uploading}
-          onUpload={handleImageUpload}
-          onSetUrl={(url) => patchDress({ imageUrl: url })}
-          onRemove={() => { patchDress({ imageUrl: null }); setShowImageModal(false); }}
-          onClose={() => setShowImageModal(false)}
-        />
-      )}
-    </main>
+    </>
   );
 }

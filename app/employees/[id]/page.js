@@ -2,12 +2,10 @@
 
 import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import SendEmailModal from '@/components/SendEmailModal';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
 import ModernEmployeeHistoryTab from '@/components/employees/ModernEmployeeHistoryTab';
 import modernOrderCss from '@/components/orders/modern/modernOrderStyles';
-import { Copy, Mail, History, RotateCcw, Printer, Pencil, Trash2 } from 'lucide-react';
 
 export default function EmployeePage({ params }) {
   const router = useRouter();
@@ -17,7 +15,7 @@ export default function EmployeePage({ params }) {
   const [activeTab, setActiveTab] = useState('details'); // details, attendance, history
   const [saving, setSaving] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
-  
+
   // Attendance specific states
   const [filterMonth, setFilterMonth] = useState(new Date().getMonth());
   const [filterYear, setFilterYear] = useState(new Date().getFullYear());
@@ -60,16 +58,16 @@ export default function EmployeePage({ params }) {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    setEmployee(prev => ({ 
-      ...prev, 
-      [name]: type === 'checkbox' ? checked : value 
+    setEmployee(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? checked : value
     }));
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
     setSaving(true);
-    
+
     const url = id === 'new' ? '/api/employees' : `/api/employees/${id}`;
     const method = id === 'new' ? 'POST' : 'PUT';
 
@@ -218,7 +216,7 @@ export default function EmployeePage({ params }) {
   const restoreShift = async (shift) => {
     if (!await window.customConfirm('האם לשחזר משמרת זו?')) return;
     try {
-      const res = await fetch(`/api/employees/${id}/shifts/${shift.id}`, { 
+      const res = await fetch(`/api/employees/${id}/shifts/${shift.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isDeleted: false })
@@ -243,7 +241,7 @@ export default function EmployeePage({ params }) {
     return total.toFixed(2);
   };
 
-  if (loading) return <div className="container" style={{ padding: '2rem', textAlign: 'center' }}>טוען נתונים...</div>;
+  if (loading) return <div className="page-loading"><span className="spinner lg" />טוען נתונים...</div>;
   if (!employee) return null;
 
   // מיון כרונולוגי מהישן לחדש - גם על המסך וגם בהדפסה (אותו מערך משמש לשניהם)
@@ -260,8 +258,10 @@ export default function EmployeePage({ params }) {
   // משמרת "לא שלמה" - יש בה תאריך אבל חסרה כניסה או יציאה (לא שתיהן) - מודגשת בצהוב
   const isIncompleteShift = (shift) => !!shift.entryTime !== !!shift.exitTime;
 
+  const initials = `${(employee.firstName || '').charAt(0)}${(employee.lastName || '').charAt(0)}`;
+
   return (
-    <main data-agy-id="employee-details-main" className="container animate-fade-in" style={{ paddingTop: '2rem', maxWidth: '1000px' }}>
+    <>
       <style dangerouslySetInnerHTML={{__html: `
         @media print {
           body * { visibility: hidden; }
@@ -284,131 +284,113 @@ export default function EmployeePage({ params }) {
         }
       `}} />
 
-      <div className="no-print" style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
-        <button data-element-name="כפתור_page_1" data-agy-id="back-button" type="button" onClick={() => router.back()} className="btn btn-outline" style={{ borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 0 }}>
-          →
-        </button>
-        <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>
-          {id === 'new' ? 'עובד חדש' : `כרטיס עובד: ${employee.firstName} ${employee.lastName}`}
-        </h1>
+      <div className="page-head no-print">
+        <div>
+          <h1>{id === 'new' ? 'עובד חדש' : `כרטיס עובד: ${employee.firstName} ${employee.lastName}`}</h1>
+        </div>
+        <div className="page-actions">
+          <button data-agy-id="back-button" data-element-name="כפתור_page_1" type="button" onClick={() => router.back()} className="btn btn-secondary btn-icon-only" title="חזרה">
+            <svg className="icon"><use href="#i-arrow-end" /></svg>
+          </button>
+        </div>
       </div>
 
       {id !== 'new' && (
-        <div className="no-print status-filters" style={{ marginBottom: '2rem' }}>
-          <button data-element-name="כפתור_page_2"
-            data-agy-id="tab-employee-details"
-            className={activeTab === 'details' ? 'status-filter active c-blue' : 'status-filter'}
-            onClick={() => setActiveTab('details')}
-          >
-            <span>פרטי עובד</span>
+        <div className="tabs no-print">
+          <button data-agy-id="tab-employee-details" data-element-name="כפתור_page_2" type="button" className={activeTab === 'details' ? 'tab active' : 'tab'} onClick={() => setActiveTab('details')}>
+            <svg className="icon"><use href="#i-id" /></svg>פרטי עובד
           </button>
-          <button data-element-name="כפתור_page_3"
-            data-agy-id="tab-employee-attendance"
-            className={activeTab === 'attendance' ? 'status-filter active c-blue' : 'status-filter'}
-            onClick={() => setActiveTab('attendance')}
-          >
-            <span>נוכחות וסיכום</span>
+          <button data-agy-id="tab-employee-attendance" data-element-name="כפתור_page_3" type="button" className={activeTab === 'attendance' ? 'tab active' : 'tab'} onClick={() => setActiveTab('attendance')}>
+            <svg className="icon"><use href="#i-clock" /></svg>נוכחות וסיכום
           </button>
-          <button data-element-name="כפתור_page_4"
-            data-agy-id="tab-employee-history"
-            className={activeTab === 'history' ? 'status-filter active c-blue' : 'status-filter'}
-            onClick={() => setActiveTab('history')}
-          >
-            <History data-element-name="רכיב_page_5" size={16} />
-            <span>היסטוריה</span>
+          <button data-agy-id="tab-employee-history" data-element-name="כפתור_page_4" type="button" className={activeTab === 'history' ? 'tab active' : 'tab'} onClick={() => setActiveTab('history')}>
+            <svg data-element-name="רכיב_page_5" className="icon"><use href="#i-history" /></svg>היסטוריה
           </button>
         </div>
       )}
 
       {activeTab === 'details' && (
-        <form data-agy-id="employee-form" className="no-print" onSubmit={handleSave} style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם פרטי *</label>
-              <input data-element-name="שדה_page_6" type="text" name="firstName" value={employee.firstName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+        <form data-agy-id="employee-form" className="card card-pad no-print" onSubmit={handleSave}>
+          <div className="form-grid">
+            <div className="field">
+              <label htmlFor="employee-detail-firstName">שם פרטי *</label>
+              <input data-element-name="שדה_page_6" className="input" type="text" id="employee-detail-firstName" name="firstName" value={employee.firstName || ''} onChange={handleChange} required />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם משפחה *</label>
-              <input data-element-name="שדה_page_7" type="text" name="lastName" value={employee.lastName || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label htmlFor="employee-detail-lastName">שם משפחה *</label>
+              <input data-element-name="שדה_page_7" className="input" type="text" id="employee-detail-lastName" name="lastName" value={employee.lastName || ''} onChange={handleChange} required />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שם מלא (מחושב/לתצוגה)</label>
-              <input data-element-name="שדה_page_8" type="text" name="fullName" value={employee.fullName || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label htmlFor="employee-detail-fullName">שם מלא (מחושב/לתצוגה)</label>
+              <input data-element-name="שדה_page_8" className="input" type="text" id="employee-detail-fullName" name="fullName" value={employee.fullName || ''} onChange={handleChange} />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>תאריך כניסה לארגון</label>
-              <input data-element-name="שדה_page_9" type="date" name="joinDate" value={employee.joinDate ? new Date(employee.joinDate).toISOString().split('T')[0] : ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label htmlFor="employee-detail-joinDate">תאריך כניסה לארגון</label>
+              <input data-element-name="שדה_page_9" className="input" type="date" id="employee-detail-joinDate" name="joinDate" value={employee.joinDate ? new Date(employee.joinDate).toISOString().split('T')[0] : ''} onChange={handleChange} />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>טלפון נייד *</label>
-              <input data-element-name="שדה_page_10" type="text" name="phone1" value={employee.phone1 || ''} onChange={handleChange} required style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label htmlFor="employee-detail-phone1">טלפון נייד *</label>
+              <input data-element-name="שדה_page_10" className="input" type="text" id="employee-detail-phone1" name="phone1" value={employee.phone1 || ''} onChange={handleChange} required />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>טלפון נוסף</label>
-              <input data-element-name="שדה_page_11" type="text" name="phone2" value={employee.phone2 || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label htmlFor="employee-detail-phone2">טלפון נוסף</label>
+              <input data-element-name="שדה_page_11" className="input" type="text" id="employee-detail-phone2" name="phone2" value={employee.phone2 || ''} onChange={handleChange} />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>דוא"ל</label>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input data-element-name="שדה_page_12" type="email" name="email" value={employee.email || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="employee-detail-email">דוא&quot;ל</label>
+              <div style={{ display: 'flex', gap: '8px', alignItems: 'center', maxWidth: '620px' }}>
+                <input data-element-name="שדה_page_12" className="input" type="email" id="employee-detail-email" name="email" value={employee.email || ''} onChange={handleChange} style={{ flex: 1 }} />
                 {employee.email && (
-                  <div className="icon-toolbar" style={{ marginRight: 0 }}>
-                    <button data-element-name="כפתור_page_13" type="button" onClick={() => navigator.clipboard.writeText(employee.email)} title="העתק כתובת מייל" className="icon-btn">
-                      <Copy data-element-name="רכיב_page_14" size={18} />
+                  <>
+                    <button data-element-name="כפתור_page_13" type="button" onClick={() => navigator.clipboard.writeText(employee.email)} title="העתק כתובת מייל" className="btn btn-ghost btn-icon-only">
+                      <svg data-element-name="רכיב_page_14" className="icon"><use href="#i-link" /></svg>
                     </button>
-                    <button data-element-name="כפתור_page_15" type="button" onClick={() => setEmailModalOpen(true)} title="שלח מייל" className="icon-btn" style={{ color: 'var(--primary-color)' }}>
-                      <Mail data-element-name="רכיב_page_16" size={18} />
+                    <button data-element-name="כפתור_page_15" type="button" onClick={() => setEmailModalOpen(true)} title="שלח מייל" className="btn btn-ghost btn-icon-only" style={{ color: 'var(--primary-solid)' }}>
+                      <svg data-element-name="רכיב_page_16" className="icon"><use href="#i-mail" /></svg>
                     </button>
-                  </div>
+                  </>
                 )}
               </div>
               {(!employee.email || !employee.email.includes('@')) && (
-                <div style={{ marginTop: '0.5rem' }}>
+                <div style={{ marginTop: '8px' }}>
                   <button data-element-name="כפתור_page_17"
                     type="button"
                     onClick={() => {
                       const currentEmail = employee.email || '';
                       setEmployee(prev => ({ ...prev, email: currentEmail + '@gmail.com' }));
                     }}
-                    style={{
-                      padding: '0.3rem 0.6rem',
-                      fontSize: '0.85rem',
-                      background: 'var(--primary-color)',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '12px',
-                      cursor: 'pointer',
-                      transition: 'opacity 0.2s'
-                    }}
-                    onMouseOver={(e) => e.target.style.opacity = '0.8'}
-                    onMouseOut={(e) => e.target.style.opacity = '1'}
+                    className="btn btn-primary btn-sm"
                   >
                     השלם ל- @gmail.com
                   </button>
                 </div>
               )}
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>עיר</label>
-              <input data-element-name="שדה_page_18" type="text" name="city" value={employee.city || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label htmlFor="employee-detail-city">עיר</label>
+              <input data-element-name="שדה_page_18" className="input" type="text" id="employee-detail-city" name="city" value={employee.city || ''} onChange={handleChange} />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>רחוב</label>
-              <input data-element-name="שדה_page_19" type="text" name="street" value={employee.street || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label htmlFor="employee-detail-street">רחוב</label>
+              <input data-element-name="שדה_page_19" className="input" type="text" id="employee-detail-street" name="street" value={employee.street || ''} onChange={handleChange} />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>בית</label>
-              <input data-element-name="שדה_page_20" type="text" name="houseNum" value={employee.houseNum || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+            <div className="field">
+              <label htmlFor="employee-detail-houseNum">בית</label>
+              <input data-element-name="שדה_page_20" className="input" type="text" id="employee-detail-houseNum" name="houseNum" value={employee.houseNum || ''} onChange={handleChange} />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>סיסמא לשעון נוכחות</label>
+
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="employee-detail-pwDisplay">סיסמא לשעון נוכחות</label>
               {id === 'new' ? (
-                <input data-element-name="שדה_page_21" type="text" name="password" value={employee.password || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+                <input data-element-name="שדה_page_21" className="input" type="text" name="password" value={employee.password || ''} onChange={handleChange} style={{ maxWidth: '460px' }} />
               ) : (
                 <>
-                  <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input data-element-name="שדה_page_22" type="password" value="********" disabled style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: '#f8fafc', color: '#64748b' }} />
-                    <button data-element-name="כפתור_page_24" type="button" onClick={() => setShowChangePassword(true)} className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>שינוי סיסמא</button>
+                  <div style={{ display: 'flex', gap: '8px', maxWidth: '620px', flexWrap: 'wrap' }}>
+                    <div className="password-field" style={{ flex: 1, minWidth: '180px' }}>
+                      <svg className="icon lead-icon"><use href="#i-lock" /></svg>
+                      <input data-element-name="שדה_page_22" className="input" type="password" id="employee-detail-pwDisplay" value="********" disabled />
+                    </div>
+                    <button data-element-name="כפתור_page_24" type="button" onClick={() => setShowChangePassword(true)} className="btn btn-primary" style={{ whiteSpace: 'nowrap' }}>שינוי סיסמא</button>
                     <button data-element-name="כפתור_page_23" type="button" onClick={async () => {
                       const authResult = await window.customAuthPrompt("הזן קוד מנהל לאיפוס הסיסמה ושליחתה למייל העובד:", "מנהל");
                       if (!authResult) return;
@@ -427,24 +409,30 @@ export default function EmployeePage({ params }) {
                       } catch (e) {
                         window.alert('שגיאה באיפוס הסיסמה');
                       }
-                    }} className="btn btn-outline" style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>אפס ושלח למייל</button>
+                    }} className="btn btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+                      <svg className="icon"><use href="#i-refresh" /></svg>אפס ושלח למייל
+                    </button>
                   </div>
-                  <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.4rem', marginBottom: 0 }}>
-                    מטעמי אבטחה לא ניתן לצפות בסיסמה קיימת - ניתן לשנות אותה (בידיעת הסיסמה הנוכחית) או לאפס ולשלוח סיסמה זמנית לעובד במייל.
-                  </p>
+                  <span className="hint">מטעמי אבטחה לא ניתן לצפות בסיסמה קיימת - ניתן לשנות אותה (בידיעת הסיסמה הנוכחית) או לאפס ולשלוח סיסמה זמנית לעובד במייל.</span>
 
                   {showChangePassword && (
-                    <div style={{ marginTop: '1rem', padding: '1rem', background: '#f1f5f9', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
-                      <div style={{ marginBottom: '0.5rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>סיסמא ישנה</label>
-                        <input data-element-name="שדה_page_25" type="password" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                    <div className="card card-pad" style={{ marginTop: '12px', maxWidth: '460px' }}>
+                      <div className="field">
+                        <label htmlFor="employee-detail-oldPassword">סיסמא ישנה</label>
+                        <div className="password-field">
+                          <svg className="icon lead-icon"><use href="#i-lock" /></svg>
+                          <input data-element-name="שדה_page_25" className="input" type="password" id="employee-detail-oldPassword" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} />
+                        </div>
                       </div>
-                      <div style={{ marginBottom: '1rem' }}>
-                        <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>סיסמא חדשה</label>
-                        <input data-element-name="שדה_page_26" type="password" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                      <div className="field">
+                        <label htmlFor="employee-detail-newPassword">סיסמא חדשה</label>
+                        <div className="password-field">
+                          <svg className="icon lead-icon"><use href="#i-lock" /></svg>
+                          <input data-element-name="שדה_page_26" className="input" type="password" id="employee-detail-newPassword" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} />
+                        </div>
                       </div>
-                      <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button data-element-name="כפתור_page_27" type="button" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); }} className="btn" style={{ background: 'white', border: '1px solid #cbd5e1' }}>ביטול</button>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button data-element-name="כפתור_page_27" type="button" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); }} className="btn btn-secondary">ביטול</button>
                         <button data-element-name="כפתור_page_28" type="button" onClick={async () => {
                           if (!newPasswordInput) {
                               window.alert('יש להזין סיסמא חדשה');
@@ -475,23 +463,35 @@ export default function EmployeePage({ params }) {
                 </>
               )}
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>מספר מחלקה (תפקיד)</label>
-              <input data-element-name="שדה_page_29" type="number" name="roleId" value={employee.roleId || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+
+            <div className="field">
+              <label htmlFor="employee-detail-roleId">מספר מחלקה (תפקיד)</label>
+              <input data-element-name="שדה_page_29" className="input" type="number" id="employee-detail-roleId" name="roleId" value={employee.roleId || ''} onChange={handleChange} />
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>פלטת גוונים מודרנית לפרופיל</label>
-              <select data-element-name="בחירה_page_30" name="themeColor" value={employee.themeColor || 'standard'} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
+            <div className="field">
+              <label htmlFor="employee-detail-themeColor">פלטת גוונים מודרנית לפרופיל</label>
+              <select data-element-name="בחירה_page_30" className="select" id="employee-detail-themeColor" name="themeColor" value={employee.themeColor || 'standard'} onChange={handleChange}>
                 <option value="standard">סטנדרט</option>
                 <option value="dark">מצב לילה</option>
                 <option value="vibrant">צבעוני ומודרני</option>
                 <option value="pastel">גווני פסטל עדינים</option>
               </select>
             </div>
-            <div className="form-group">
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>תמונת פרופיל / מסמך (העלאת קובץ)</label>
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                <input data-element-name="שדה_page_31" type="file" accept="image/*,.pdf" onChange={(e) => {
+
+            <div className="field" style={{ gridColumn: '1 / -1' }}>
+              <label htmlFor="employee-detail-profileImage">תמונת פרופיל / מסמך (העלאת קובץ)</label>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
+                {employee.profileImage && employee.profileImage.startsWith('data:image') ? (
+                  <img src={employee.profileImage} alt="Profile" style={{ width: '56px', height: '56px', objectFit: 'cover', borderRadius: '50%' }} />
+                ) : (
+                  <div className="avatar lg">{initials}</div>
+                )}
+                <label className="upload-zone" htmlFor="employee-detail-profileImage" title="לחיצה או גרירת קובץ" style={{ flex: 1, minWidth: '220px', padding: '16px' }}>
+                  <svg className="icon"><use href="#i-upload" /></svg>
+                  <strong>גרור/י קובץ לכאן או לחצ/י לבחירה</strong>
+                  <span className="hint">תמונה או PDF</span>
+                </label>
+                <input data-element-name="שדה_page_31" type="file" id="employee-detail-profileImage" accept="image/*,.pdf" style={{ display: 'none' }} onChange={(e) => {
                   const file = e.target.files[0];
                   if (file) {
                     const reader = new FileReader();
@@ -500,66 +500,64 @@ export default function EmployeePage({ params }) {
                     };
                     reader.readAsDataURL(file);
                   }
-                }} style={{ width: '100%', padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
+                }} />
                 {employee.profileImage && (
-                  <button data-element-name="כפתור_page_32" type="button" onClick={() => setEmployee(prev => ({ ...prev, profileImage: '' }))} className="btn" style={{ padding: '0.5rem', color: '#d32f2f' }}>הסר</button>
+                  <button data-element-name="כפתור_page_32" type="button" onClick={() => setEmployee(prev => ({ ...prev, profileImage: '' }))} className="btn btn-danger-ghost btn-sm" title="הסרת התמונה">
+                    <svg className="icon"><use href="#i-trash" /></svg>הסר
+                  </button>
                 )}
               </div>
-              {employee.profileImage && employee.profileImage.startsWith('data:image') && (
-                <div style={{ marginTop: '0.5rem' }}>
-                  <img src={employee.profileImage} alt="Profile" style={{ width: '80px', height: '80px', objectFit: 'cover', borderRadius: '50%', border: '2px solid var(--primary-color)' }} />
+            </div>
+
+            <div className="field" style={{ gridColumn: 'span 2' }}>
+              <label htmlFor="employee-detail-notes">הערות</label>
+              <textarea data-element-name="טקסט_page_33" className="textarea" id="employee-detail-notes" name="notes" value={employee.notes || ''} onChange={handleChange} />
+            </div>
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px solid var(--border)', margin: '24px 0' }} />
+          <h2 className="section-title" style={{ marginTop: 0 }}>נתוני שכר</h2>
+
+          <div className="form-grid">
+             <div className="field">
+                <label htmlFor="employee-detail-hourlyWage">שכר לשעה (₪)</label>
+                <input data-element-name="שדה_page_34" className="input" type="number" step="0.01" id="employee-detail-hourlyWage" name="hourlyWage" value={employee.hourlyWage || ''} onChange={handleChange} />
+             </div>
+             <div className="field">
+                <label htmlFor="employee-detail-paymentMethod">אופן תשלום</label>
+                <input data-element-name="שדה_page_35" className="input" type="text" id="employee-detail-paymentMethod" name="paymentMethod" value={employee.paymentMethod || ''} onChange={handleChange} />
+             </div>
+             <div className="field" style={{ justifyContent: 'flex-end' }}>
+                <div className="checkbox-row">
+                  <input data-element-name="שדה_page_36" type="checkbox" id="employee-detail-travelExpenses" name="travelExpenses" checked={employee.travelExpenses || false} onChange={handleChange} />
+                  <label htmlFor="employee-detail-travelExpenses" style={{ fontWeight: 600, color: 'var(--text)' }}>זכאות לנסיעות</label>
                 </div>
-              )}
+             </div>
+          </div>
+
+          <div className="field" style={{ marginTop: '8px' }}>
+            <div className="checkbox-row">
+              <input data-element-name="שדה_page_37" type="checkbox" id="employee-detail-isActive" name="isActive" checked={employee.isActive} onChange={handleChange} />
+              <label htmlFor="employee-detail-isActive" style={{ fontWeight: 600, color: 'var(--text)' }}>עובד פעיל במערכת</label>
             </div>
-            <div className="form-group" style={{ gridColumn: 'span 2' }}>
-              <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>הערות</label>
-              <textarea data-element-name="טקסט_page_33" name="notes" value={employee.notes || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', minHeight: '80px' }} />
+          </div>
+
+          <div className="field">
+            <div className="checkbox-row">
+              <input data-element-name="שדה_page_38" type="checkbox" id="employee-detail-receiveEmailAlerts" name="receiveEmailAlerts" checked={employee.receiveEmailAlerts || false} onChange={handleChange} />
+              <label htmlFor="employee-detail-receiveEmailAlerts" style={{ fontWeight: 600, color: 'var(--text)' }}>קבלת התראות מערכת למייל</label>
             </div>
           </div>
-          
-          <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '2rem 0' }} />
-          <h3 style={{ color: 'var(--primary-color)', marginBottom: '1rem' }}>נתוני שכר</h3>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-             <div className="form-group">
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>שכר לשעה (₪)</label>
-                <input data-element-name="שדה_page_34" type="number" step="0.01" name="hourlyWage" value={employee.hourlyWage || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
-             </div>
-             <div className="form-group">
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '500' }}>אופן תשלום</label>
-                <input data-element-name="שדה_page_35" type="text" name="paymentMethod" value={employee.paymentMethod || ''} onChange={handleChange} style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
-             </div>
-             <div className="form-group" style={{ display: 'flex', alignItems: 'flex-end', paddingBottom: '0.75rem' }}>
-                <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500' }}>
-                  <input data-element-name="שדה_page_36" type="checkbox" name="travelExpenses" checked={employee.travelExpenses || false} onChange={handleChange} style={{ width: '20px', height: '20px' }} />
-                  זכאות לנסיעות
-                </label>
-             </div>
+
+          <div className="field">
+            <div className="checkbox-row">
+              <input data-element-name="שדה_page_39" type="checkbox" id="employee-detail-showAi" name="showAi" checked={employee.showAi || false} onChange={handleChange} />
+              <label htmlFor="employee-detail-showAi" style={{ fontWeight: 600, color: 'var(--text)' }}>הצג AI לעובד זה</label>
+            </div>
           </div>
 
-          <div className="form-group" style={{ marginTop: '1.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500' }}>
-              <input data-element-name="שדה_page_37" type="checkbox" name="isActive" checked={employee.isActive} onChange={handleChange} style={{ width: '20px', height: '20px' }} />
-              עובד פעיל במערכת
-            </label>
-          </div>
-
-          <div className="form-group" style={{ marginTop: '0.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500' }}>
-              <input data-element-name="שדה_page_38" type="checkbox" name="receiveEmailAlerts" checked={employee.receiveEmailAlerts || false} onChange={handleChange} style={{ width: '20px', height: '20px' }} />
-              קבלת התראות מערכת למייל
-            </label>
-          </div>
-
-          <div className="form-group" style={{ marginTop: '0.5rem' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', fontWeight: '500' }}>
-              <input data-element-name="שדה_page_39" type="checkbox" name="showAi" checked={employee.showAi || false} onChange={handleChange} style={{ width: '20px', height: '20px' }} />
-              הצג AI לעובד זה
-            </label>
-          </div>
-
-          <div style={{ marginTop: '2rem', display: 'flex', justifyContent: 'flex-end' }}>
-            <button data-element-name="כפתור_page_40" data-agy-id="save-employee-button" type="submit" className="btn btn-primary" disabled={saving} style={{ padding: '0.75rem 2rem', borderRadius: '24px', fontSize: '1.1rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
+            <button data-agy-id="save-employee-button" data-element-name="כפתור_page_40" type="submit" className="btn btn-primary btn-lg" disabled={saving}>
               {saving ? 'שומר...' : 'שמור פרטים'}
             </button>
           </div>
@@ -567,175 +565,176 @@ export default function EmployeePage({ params }) {
       )}
 
       {activeTab === 'attendance' && (
-        <div className="print-area" style={{ background: 'var(--card-bg)', padding: '1.5rem', borderRadius: '12px', boxShadow: 'var(--shadow-sm)' }}>
-          <div className="bsd-header" style={{ display: 'none' }}>בס"ד</div>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <h2 style={{ margin: 0, color: 'var(--primary-color)' }}>דוח נוכחות וסיכום - {employee.firstName} {employee.lastName}</h2>
-            <div className="no-print" style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.9rem', cursor: 'pointer' }}>
-                <input data-element-name="שדה_page_41" type="checkbox" checked={showDeletedShifts} onChange={(e) => setShowDeletedShifts(e.target.checked)} />
-                הצג מחוקות
-              </label>
-              <select data-element-name="בחירה_page_42" 
-                value={filterMonth} 
-                onChange={(e) => setFilterMonth(parseInt(e.target.value, 10))}
-                style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}
-              >
-                {Array.from({ length: 12 }).map((_, i) => (
-                  <option key={i} value={i}>{new Date(2000, i).toLocaleString('he-IL', { month: 'long' })}</option>
-                ))}
-              </select>
-              <select data-element-name="בחירה_page_43" 
-                value={filterYear} 
-                onChange={(e) => setFilterYear(parseInt(e.target.value, 10))}
-                style={{ padding: '0.5rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}
-              >
-                {[2024, 2025, 2026, 2027].map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-              <button data-element-name="כפתור_page_44" className="btn btn-outline" onClick={() => window.print()} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <Printer data-element-name="רכיב_page_44_icon" size={16} /> הדפס / ייצא PDF
-              </button>
-              <button data-element-name="כפתור_page_45" className="btn btn-primary" onClick={startAddShift} disabled={isAddingShift || editingShiftId !== null}>
-                + הוסף משמרת
-              </button>
+        <div className="print-area card card-pad">
+          <div className="bsd-header" style={{ display: 'none' }}>בס&quot;ד</div>
+          <div className="toolbar" style={{ marginBottom: '18px' }}>
+            <h2 className="section-title" style={{ margin: 0 }}>דוח נוכחות וסיכום - {employee.firstName} {employee.lastName}</h2>
+            <span className="spacer no-print"></span>
+            <div className="checkbox-row no-print">
+              <input data-element-name="שדה_page_41" type="checkbox" id="employee-detail-showDeletedShifts" checked={showDeletedShifts} onChange={(e) => setShowDeletedShifts(e.target.checked)} />
+              <label htmlFor="employee-detail-showDeletedShifts">הצג מחוקות</label>
             </div>
+            <select data-element-name="בחירה_page_42" className="select no-print" style={{ width: 'auto' }}
+              value={filterMonth}
+              onChange={(e) => setFilterMonth(parseInt(e.target.value, 10))}
+            >
+              {Array.from({ length: 12 }).map((_, i) => (
+                <option key={i} value={i}>{new Date(2000, i).toLocaleString('he-IL', { month: 'long' })}</option>
+              ))}
+            </select>
+            <select data-element-name="בחירה_page_43" className="select no-print" style={{ width: 'auto' }}
+              value={filterYear}
+              onChange={(e) => setFilterYear(parseInt(e.target.value, 10))}
+            >
+              {[2024, 2025, 2026, 2027].map(y => (
+                <option key={y} value={y}>{y}</option>
+              ))}
+            </select>
+            <button data-element-name="כפתור_page_44" className="btn btn-secondary no-print" type="button" onClick={() => window.print()}>
+              <svg data-element-name="רכיב_page_44_icon" className="icon"><use href="#i-printer" /></svg>הדפס / ייצא PDF
+            </button>
+            <button data-element-name="כפתור_page_45" className="btn btn-primary no-print" type="button" onClick={startAddShift} disabled={isAddingShift || editingShiftId !== null}>
+              <svg className="icon"><use href="#i-plus" /></svg>הוסף משמרת
+            </button>
           </div>
 
-          <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', marginBottom: '2rem' }}>
-            <thead>
-              {/* שורה נוספת ב-thead (לא רק כותרות העמודות) - כדי שהחודש/שנה יופיעו מחדש
-                  בראש כל עמוד פיזי כשהטבלה נשברת לכמה עמודי הדפסה, בדיוק כמו שורת כותרות
-                  העמודות עצמה שחוזרת בזכות table-header-group. */}
-              <tr>
-                <th colSpan={8} style={{ padding: '0.4rem 0.5rem', textAlign: 'center', fontWeight: 'bold' }}>
-                  תקופה: {new Date(filterYear, filterMonth).toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
-                </th>
-              </tr>
-              <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
-                <th style={{ padding: '0.4rem 0.5rem' }}>תאריך לועזי</th>
-                <th style={{ padding: '0.4rem 0.5rem' }}>תאריך עברי</th>
-                <th style={{ padding: '0.4rem 0.5rem' }}>שעת כניסה</th>
-                <th style={{ padding: '0.4rem 0.5rem' }}>שעת יציאה</th>
-                <th style={{ padding: '0.4rem 0.5rem' }}>סה"כ דקות</th>
-                <th style={{ padding: '0.4rem 0.5rem' }}>לתשלום (₪)</th>
-                <th style={{ padding: '0.4rem 0.5rem' }}>הערות</th>
-                <th className="no-print" style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>פעולות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {isAddingShift && (
-                <tr style={{ borderBottom: '1px solid #eee', background: '#f9f9f9' }}>
-                  <td colSpan="2" style={{ padding: '0.5rem' }}>
-                    <div style={{ position: 'relative', width: '250px' }}>
-                      <HebrewDatePicker data-element-name="רכיב_page_46" 
-                        selectedDate={editShiftData.date}
-                        onChange={handleHebrewDateChange}
-                      />
-                    </div>
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    <input data-element-name="שדה_page_47" type="time" name="entryTime" value={editShiftData.entryTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    <input data-element-name="שדה_page_48" type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    <input data-element-name="שדה_page_49" type="number" disabled placeholder="מחושב אוטומטית" style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    <input data-element-name="שדה_page_50" type="number" disabled placeholder="מחושב אוטומטית" style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
-                  </td>
-                  <td style={{ padding: '0.5rem' }}>
-                    <input data-element-name="שדה_page_51" type="text" name="notes" value={editShiftData.notes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
-                  </td>
-                  <td className="no-print" style={{ padding: '0.5rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                    <button data-element-name="כפתור_page_52" onClick={saveShift} className="btn" style={{ background: '#2e7d32', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.9rem', borderRadius: '6px' }}>שמור</button>
-                    <button data-element-name="כפתור_page_53" onClick={cancelEditShift} className="btn" style={{ background: '#d32f2f', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.9rem', borderRadius: '6px' }}>בטל</button>
-                  </td>
-                </tr>
-              )}
-
-              {filteredShifts.map(shift => (
-                <tr key={shift.id} style={{
-                  borderBottom: '1px solid #eee',
-                  opacity: shift.isDeleted ? 0.6 : 1,
-                  textDecoration: shift.isDeleted ? 'line-through' : 'none',
-                  background: (!shift.isDeleted && isIncompleteShift(shift)) ? '#ffeb3b4a' : 'transparent'
-                }}>
-                  {editingShiftId === shift.id ? (
-                    <>
-                      <td style={{ padding: '0.5rem' }}>
-                         <input data-element-name="שדה_page_54" type="date" value={editShiftData.date || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
-                      </td>
-                      <td style={{ padding: '0.5rem' }}>
-                         <input data-element-name="שדה_page_55" type="text" value={shift.hebrewDate || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
-                      </td>
-                      <td style={{ padding: '0.5rem' }}>
-                        <input data-element-name="שדה_page_56" type="time" name="entryTime" value={editShiftData.entryTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
-                      </td>
-                      <td style={{ padding: '0.5rem' }}>
-                        <input data-element-name="שדה_page_57" type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
-                      </td>
-                      <td style={{ padding: '0.5rem' }}>
-                        <input data-element-name="שדה_page_58" type="number" value={shift.totalMinutes || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
-                      </td>
-                      <td style={{ padding: '0.5rem' }}>
-                        <input data-element-name="שדה_page_59" type="number" value={shift.totalCalculated || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
-                      </td>
-                      <td style={{ padding: '0.5rem' }}>
-                        <input data-element-name="שדה_page_60" type="text" value={shift.notes || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
-                      </td>
-                      <td className="no-print" style={{ padding: '0.5rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
-                        <button data-element-name="כפתור_page_61" onClick={saveShift} className="btn" style={{ background: '#2e7d32', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.9rem', borderRadius: '6px' }}>שמור</button>
-                        <button data-element-name="כפתור_page_62" onClick={cancelEditShift} className="btn" style={{ background: '#f57c00', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.9rem', borderRadius: '6px' }}>בטל</button>
-                      </td>
-                    </>
-                  ) : (
-                    <>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>{new Date(shift.date).toLocaleDateString('he-IL')}</td>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>{shift.hebrewDate || '-'}</td>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>{shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>{shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>{shift.totalMinutes || '-'}</td>
-                      <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold' }}>{shift.totalCalculated ? `₪${shift.totalCalculated}` : '-'}</td>
-                      <td style={{ padding: '0.4rem 0.5rem' }}>{shift.notes || '-'}</td>
-                      <td className="no-print icon-toolbar" style={{ padding: '0.4rem 0.5rem', justifyContent: 'center', marginRight: 0 }}>
-                        {!shift.isDeleted ? (
-                          <>
-                            <button data-element-name="כפתור_page_63" onClick={() => startEditShift(shift)} className="icon-btn" title="ערוך רק כניסה ויציאה">
-                              <Pencil data-element-name="רכיב_page_63_icon" size={16} />
-                            </button>
-                            <button data-element-name="כפתור_page_64" onClick={() => deleteShift(shift.id)} className="icon-btn" style={{ color: '#d32f2f' }} title="מחק">
-                              <Trash2 data-element-name="רכיב_page_64_icon" size={16} />
-                            </button>
-                          </>
-                        ) : (
-                          <button data-element-name="כפתור_page_65" onClick={() => restoreShift(shift)} className="icon-btn" style={{ color: '#2e7d32' }} title="שחזר">
-                            <RotateCcw data-element-name="רכיב_page_66" size={16} />
-                          </button>
-                        )}
-                      </td>
-                    </>
-                  )}
-                </tr>
-              ))}
-              {filteredShifts.length === 0 && !isAddingShift && (
+          <div className="table-wrap" style={{ marginBottom: '20px' }}>
+            <table className="data">
+              <thead>
+                {/* שורה נוספת ב-thead (לא רק כותרות העמודות) - כדי שהחודש/שנה יופיעו מחדש
+                    בראש כל עמוד פיזי כשהטבלה נשברת לכמה עמודי הדפסה, בדיוק כמו שורת כותרות
+                    העמודות עצמה שחוזרת בזכות table-header-group. */}
                 <tr>
-                  <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-muted)' }}>אין משמרות לחודש זה.</td>
+                  <th colSpan={8} style={{ textAlign: 'center' }}>
+                    תקופה: {new Date(filterYear, filterMonth).toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
+                  </th>
                 </tr>
-              )}
-            </tbody>
-          </table>
-          
+                <tr>
+                  <th>תאריך לועזי</th>
+                  <th>תאריך עברי</th>
+                  <th>שעת כניסה</th>
+                  <th>שעת יציאה</th>
+                  <th>סה&quot;כ דקות</th>
+                  <th>לתשלום (₪)</th>
+                  <th>הערות</th>
+                  <th className="no-print" style={{ textAlign: 'center' }}>פעולות</th>
+                </tr>
+              </thead>
+              <tbody>
+                {isAddingShift && (
+                  <tr style={{ background: 'var(--surface-alt)' }}>
+                    <td colSpan="2">
+                      <div style={{ position: 'relative', width: '250px' }}>
+                        <HebrewDatePicker data-element-name="רכיב_page_46"
+                          selectedDate={editShiftData.date}
+                          onChange={handleHebrewDateChange}
+                        />
+                      </div>
+                    </td>
+                    <td>
+                      <input data-element-name="שדה_page_47" className="input" type="time" name="entryTime" value={editShiftData.entryTime || ''} onChange={handleShiftEditChange} />
+                    </td>
+                    <td>
+                      <input data-element-name="שדה_page_48" className="input" type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} />
+                    </td>
+                    <td>
+                      <input data-element-name="שדה_page_49" className="input" type="number" disabled placeholder="מחושב אוטומטית" />
+                    </td>
+                    <td>
+                      <input data-element-name="שדה_page_50" className="input" type="number" disabled placeholder="מחושב אוטומטית" />
+                    </td>
+                    <td>
+                      <input data-element-name="שדה_page_51" className="input" type="text" name="notes" value={editShiftData.notes || ''} onChange={handleShiftEditChange} />
+                    </td>
+                    <td className="no-print row-actions" style={{ justifyContent: 'center' }}>
+                      <button data-element-name="כפתור_page_52" type="button" onClick={saveShift} className="btn btn-primary btn-sm">שמור</button>
+                      <button data-element-name="כפתור_page_53" type="button" onClick={cancelEditShift} className="btn btn-secondary btn-sm">בטל</button>
+                    </td>
+                  </tr>
+                )}
+
+                {filteredShifts.map(shift => (
+                  <tr key={shift.id} style={{
+                    opacity: shift.isDeleted ? 0.6 : 1,
+                    textDecoration: shift.isDeleted ? 'line-through' : 'none',
+                    background: (!shift.isDeleted && isIncompleteShift(shift)) ? 'color-mix(in srgb, var(--warning-tint) 70%, transparent)' : undefined
+                  }}>
+                    {editingShiftId === shift.id ? (
+                      <>
+                        <td>
+                           <input data-element-name="שדה_page_54" className="input" type="date" value={editShiftData.date || ''} disabled />
+                        </td>
+                        <td>
+                           <input data-element-name="שדה_page_55" className="input" type="text" value={shift.hebrewDate || ''} disabled />
+                        </td>
+                        <td>
+                          <input data-element-name="שדה_page_56" className="input" type="time" name="entryTime" value={editShiftData.entryTime || ''} onChange={handleShiftEditChange} />
+                        </td>
+                        <td>
+                          <input data-element-name="שדה_page_57" className="input" type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} />
+                        </td>
+                        <td>
+                          <input data-element-name="שדה_page_58" className="input" type="number" value={shift.totalMinutes || ''} disabled />
+                        </td>
+                        <td>
+                          <input data-element-name="שדה_page_59" className="input" type="number" value={shift.totalCalculated || ''} disabled />
+                        </td>
+                        <td>
+                          <input data-element-name="שדה_page_60" className="input" type="text" value={shift.notes || ''} disabled />
+                        </td>
+                        <td className="no-print row-actions" style={{ justifyContent: 'center' }}>
+                          <button data-element-name="כפתור_page_61" type="button" onClick={saveShift} className="btn btn-primary btn-sm">שמור</button>
+                          <button data-element-name="כפתור_page_62" type="button" onClick={cancelEditShift} className="btn btn-secondary btn-sm">בטל</button>
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="cell-primary">{new Date(shift.date).toLocaleDateString('he-IL')}</td>
+                        <td>{shift.hebrewDate || '-'}</td>
+                        <td>{shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                        <td>{shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                        <td>{shift.totalMinutes || '-'}</td>
+                        <td className="cell-primary">{shift.totalCalculated ? `₪${shift.totalCalculated}` : '-'}</td>
+                        <td className="cell-muted">{shift.notes || '-'}</td>
+                        <td className="no-print row-actions">
+                          {!shift.isDeleted ? (
+                            <>
+                              <button data-element-name="כפתור_page_63" type="button" onClick={() => startEditShift(shift)} className="btn btn-ghost btn-icon-only btn-sm" title="ערוך רק כניסה ויציאה">
+                                <svg data-element-name="רכיב_page_63_icon" className="icon"><use href="#i-edit" /></svg>
+                              </button>
+                              <button data-element-name="כפתור_page_64" type="button" onClick={() => deleteShift(shift.id)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="מחק">
+                                <svg data-element-name="רכיב_page_64_icon" className="icon"><use href="#i-trash" /></svg>
+                              </button>
+                            </>
+                          ) : (
+                            <button data-element-name="כפתור_page_65" type="button" onClick={() => restoreShift(shift)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר">
+                              <svg data-element-name="רכיב_page_66" className="icon"><use href="#i-refresh" /></svg>
+                            </button>
+                          )}
+                        </td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+                {filteredShifts.length === 0 && !isAddingShift && (
+                  <tr>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '2rem', color: 'var(--text-3)' }}>אין משמרות לחודש זה.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
-            <div style={{ textAlign: 'center', background: '#f0fdf4', padding: '1.5rem 3rem', borderRadius: '12px', border: '1px solid #bbf7d0', minWidth: '300px' }}>
-              <h3 style={{ margin: '0 0 0.5rem 0', color: '#166534' }}>סיכום שכר</h3>
-              <div style={{ fontSize: '1rem', color: '#15803d', marginBottom: '1rem' }}>
+            <div className="card card-pad" style={{ maxWidth: '320px', background: 'var(--success-tint)', borderColor: 'color-mix(in srgb, var(--success) 25%, transparent)' }}>
+              <div className="card-title-row" style={{ marginBottom: '6px' }}>
+                <svg className="icon" style={{ color: 'var(--success)' }}><use href="#i-coin" /></svg>
+                <h3 style={{ margin: 0, color: 'var(--success)' }}>סיכום שכר</h3>
+              </div>
+              <div className="hint" style={{ marginBottom: '8px' }}>
                 {new Date(filterYear, filterMonth).toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
               </div>
-              <div style={{ fontSize: '3rem', fontWeight: 'bold', color: '#15803d' }}>
+              <div style={{ fontSize: '32px', fontWeight: 800, color: 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>
                 ₪{calculateMonthlySalary()}
               </div>
             </div>
@@ -744,7 +743,7 @@ export default function EmployeePage({ params }) {
       )}
 
       {activeTab === 'history' && (
-        <div className="no-print animate-fade-in moc" style={{ padding: 0 }}>
+        <div className="no-print moc" style={{ padding: 0 }}>
           {/* אותו עיצוב "כרטיס מודרני" (moc) שבו מעוצב פאנל ההיסטוריה בכרטיס ההזמנה/לקוח */}
           <style>{modernOrderCss}</style>
           <ModernEmployeeHistoryTab employeeId={id} />
@@ -752,13 +751,13 @@ export default function EmployeePage({ params }) {
       )}
 
       {id !== 'new' && (
-        <SendEmailModal data-element-name="רכיב_page_68" 
-          isOpen={emailModalOpen} 
-          onClose={() => setEmailModalOpen(false)} 
-          defaultTo={employee.email} 
-          employeeId={id} 
+        <SendEmailModal data-element-name="רכיב_page_68"
+          isOpen={emailModalOpen}
+          onClose={() => setEmailModalOpen(false)}
+          defaultTo={employee.email}
+          employeeId={id}
         />
       )}
-    </main>
+    </>
   );
 }

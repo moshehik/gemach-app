@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { X, Calendar, ExternalLink, Check, AlertTriangle, Clock } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 const fmtDate = (d) => {
@@ -15,7 +15,7 @@ const fmtDate = (d) => {
 
 /**
  * מודל "פרטי פריט" — נפתח מאייקון המידע בשורת הפריט, ומציג את היסטוריית
- * ההשכרות של אותו פריט פיזי (אותה שיטת מודלים כמו בכרטיס ההזמנה).
+ * ההשכרות של אותו פריט פיזי.
  */
 export default function ModernDressItemModal({ item, onClose }) {
   const [data, setData] = useState(null);
@@ -38,61 +38,65 @@ export default function ModernDressItemModal({ item, onClose }) {
     return () => { cancelled = true; };
   }, [item?.id]);
 
-  if (!item) return null;
+  if (!item || typeof document === 'undefined') return null;
 
   const rentals = data?.rentals || [];
 
-  return (
-    <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="moc moc-modal-box wide" style={{ maxWidth: '720px' }}>
-        <div className="moc-modal-head">
-          <h3>פרטי פריט — <span className="moc-mono">{item.dressBarcode || 'ללא ברקוד'}</span></h3>
-          <button className="moc-close-x" onClick={onClose}><X size={15} /></button>
+  return createPortal(
+    <div
+      className="modal-backdrop"
+      style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="modal" style={{ maxWidth: '720px', width: '100%', margin: 0 }} onClick={(e) => e.stopPropagation()}>
+        <div className="modal-head">
+          <strong><svg className="icon"><use href="#i-info" /></svg> פרטי פריט — {item.dressBarcode || 'ללא ברקוד'}</strong>
+          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={onClose}>
+            <svg className="icon"><use href="#i-x" /></svg>
+          </button>
         </div>
 
-        <div className="moc-modal-body">
-          <div className="moc-stat-tiles">
-            <div className="moc-stat-tile total">
-              <div className="moc-st-label">מידה</div>
-              <div className="moc-st-value">{item.sizeText || '—'}</div>
+        <div className="modal-body">
+          <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(3,1fr)', marginBottom: '16px' }}>
+            <div className="kpi-card">
+              <div className="kpi-label">מידה</div>
+              <div className="kpi-value">{item.sizeText || '—'}</div>
             </div>
-            <div className="moc-stat-tile info">
-              <div className="moc-st-label">מס' סידורי</div>
-              <div className="moc-st-value">{item.serialNumber ?? '—'}</div>
+            <div className="kpi-card">
+              <div className="kpi-label">מס&apos; סידורי</div>
+              <div className="kpi-value">{item.serialNumber ?? '—'}</div>
             </div>
-            <div className="moc-stat-tile ok">
-              <div className="moc-st-label">סה"כ השכרות</div>
-              <div className="moc-st-value">{rentals.length}</div>
-            </div>
-          </div>
-
-          <div className="moc-compact-row" style={{ paddingTop: 0 }}>
-            <div className="moc-avatar-chip"><Calendar size={16} /></div>
-            <div className="moc-cr-main">
-              <div className="moc-cr-sub" style={{ whiteSpace: 'normal' }}>
-                תאריך כניסה למאגר: <strong style={{ color: 'var(--moc-text-main)' }}>{fmtDate(data?.entryDateToRepo || item.entryDateToRepo)}</strong>
-                {' · '}מיקום: <strong style={{ color: 'var(--moc-text-main)' }}>{item.location || '—'}</strong>
-              </div>
+            <div className="kpi-card">
+              <div className="kpi-label">סה&quot;כ השכרות</div>
+              <div className="kpi-value">{rentals.length}</div>
             </div>
           </div>
 
-          <h3 style={{ margin: '18px 0 10px', fontSize: '1.05rem' }}>היסטוריית השכרות לפריט</h3>
+          <p style={{ fontSize: '13px', color: 'var(--text-2)', margin: '0 0 18px' }}>
+            תאריך כניסה למאגר: <strong style={{ color: 'var(--text)' }}>{fmtDate(data?.entryDateToRepo || item.entryDateToRepo)}</strong>
+            {' · '}מיקום: <strong style={{ color: 'var(--text)' }}>{item.location || '—'}</strong>
+          </p>
+
+          <h3 style={{ fontSize: '15px', margin: '0 0 10px' }}>היסטוריית השכרות לפריט</h3>
 
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '26px 0' }}>
-              <span className="moc-spinner lg" style={{ margin: '0 auto' }} />
-              <p className="moc-hint" style={{ marginTop: '12px' }}>טוען היסטוריה...</p>
-            </div>
+            <div className="loading-inline"><span className="spinner" /> טוען היסטוריה...</div>
           ) : error ? (
-            <div style={{ color: 'var(--moc-danger-text)', textAlign: 'center', padding: '18px 0', fontWeight: 700 }}>{error}</div>
+            <div className="callout callout-danger">
+              <svg className="icon"><use href="#i-alert-circle" /></svg>
+              {error}
+            </div>
           ) : rentals.length === 0 ? (
-            <div className="moc-empty-state">אין היסטוריית השכרות לפריט זה.</div>
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-history" /></svg>
+              <p>אין היסטוריית השכרות לפריט זה.</p>
+            </div>
           ) : (
-            <div className="moc-table-scroll">
-              <table className="moc-data-table">
+            <div className="table-wrap">
+              <table className="data">
                 <thead>
                   <tr>
-                    <th>מס' הזמנה</th>
+                    <th>מס&apos; הזמנה</th>
                     <th>לקוח</th>
                     <th>תאריך אירוע</th>
                     <th>סטטוס</th>
@@ -102,16 +106,16 @@ export default function ModernDressItemModal({ item, onClose }) {
                 <tbody>
                   {rentals.map((r, idx) => (
                     <tr key={idx}>
-                      <td className="moc-mono">{r.orderId}</td>
+                      <td className="cell-primary">{r.orderId}</td>
                       <td>{r.customerName}</td>
                       <td>{r.eventDateHebrew || (r.eventDate ? getHebrewDateString(r.eventDate) : '—')}</td>
                       <td>
                         {!r.isReturned ? (
-                          <span className="moc-badge on-white warning"><Clock size={12} /> טרם הוחזר</span>
+                          <span className="badge badge-warning"><svg className="icon"><use href="#i-clock" /></svg>טרם הוחזר</span>
                         ) : r.returnedOk === false ? (
-                          <span className="moc-badge on-white danger"><AlertTriangle size={12} /> הוחזר עם בעיה</span>
+                          <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר עם בעיה</span>
                         ) : (
-                          <span className="moc-badge on-white success"><Check size={12} /> הוחזר תקין</span>
+                          <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר תקין</span>
                         )}
                       </td>
                       <td style={{ textAlign: 'center' }}>
@@ -119,11 +123,10 @@ export default function ModernDressItemModal({ item, onClose }) {
                           href={`/orders/${r.orderId}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="moc-icon-btn-plain"
-                          style={{ textDecoration: 'none' }}
+                          className="btn btn-ghost btn-icon-only btn-sm"
                           title="פתח כרטיס הזמנה"
                         >
-                          <ExternalLink size={16} />
+                          <svg className="icon"><use href="#i-link" /></svg>
                         </a>
                       </td>
                     </tr>
@@ -134,10 +137,11 @@ export default function ModernDressItemModal({ item, onClose }) {
           )}
         </div>
 
-        <div className="moc-modal-foot">
-          <button className="moc-btn moc-btn-outline" onClick={onClose}>סגור</button>
+        <div className="modal-foot">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>סגור</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

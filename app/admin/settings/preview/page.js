@@ -3,17 +3,26 @@
 import React, { useState } from 'react';
 import dynamic from 'next/dynamic';
 
+// Placeholder shown when a variation component fails to load (still under construction).
+function buildingPlaceholder(label) {
+  function BuildingPlaceholder() {
+    return <div>בבנייה... ({label})</div>;
+  }
+  BuildingPlaceholder.displayName = `BuildingPlaceholder(${label})`;
+  return BuildingPlaceholder;
+}
+
 // Lazy loading all 10 Windows 11 style variations
-const Win_Classic = dynamic(() => import('./components/Win_Classic').catch(() => () => <div>בבנייה... (Win_Classic)</div>), { ssr: false });
-const Win_Dark = dynamic(() => import('./components/Win_Dark').catch(() => () => <div>בבנייה... (Win_Dark)</div>), { ssr: false });
-const Win_Grouped = dynamic(() => import('./components/Win_Grouped').catch(() => () => <div>בבנייה... (Win_Grouped)</div>), { ssr: false });
-const Win_Elevated = dynamic(() => import('./components/Win_Elevated').catch(() => () => <div>בבנייה... (Win_Elevated)</div>), { ssr: false });
-const Win_Fluent = dynamic(() => import('./components/Win_Fluent').catch(() => () => <div>בבנייה... (Win_Fluent)</div>), { ssr: false });
-const Win_Compact = dynamic(() => import('./components/Win_Compact').catch(() => () => <div>בבנייה... (Win_Compact)</div>), { ssr: false });
-const Win_Accent = dynamic(() => import('./components/Win_Accent').catch(() => () => <div>בבנייה... (Win_Accent)</div>), { ssr: false });
-const Win_NoSidebar = dynamic(() => import('./components/Win_NoSidebar').catch(() => () => <div>בבנייה... (Win_NoSidebar)</div>), { ssr: false });
-const Win_HighContrast = dynamic(() => import('./components/Win_HighContrast').catch(() => () => <div>בבנייה... (Win_HighContrast)</div>), { ssr: false });
-const Win_Soft = dynamic(() => import('./components/Win_Soft').catch(() => () => <div>בבנייה... (Win_Soft)</div>), { ssr: false });
+const Win_Classic = dynamic(() => import('./components/Win_Classic').catch(() => buildingPlaceholder('Win_Classic')), { ssr: false });
+const Win_Dark = dynamic(() => import('./components/Win_Dark').catch(() => buildingPlaceholder('Win_Dark')), { ssr: false });
+const Win_Grouped = dynamic(() => import('./components/Win_Grouped').catch(() => buildingPlaceholder('Win_Grouped')), { ssr: false });
+const Win_Elevated = dynamic(() => import('./components/Win_Elevated').catch(() => buildingPlaceholder('Win_Elevated')), { ssr: false });
+const Win_Fluent = dynamic(() => import('./components/Win_Fluent').catch(() => buildingPlaceholder('Win_Fluent')), { ssr: false });
+const Win_Compact = dynamic(() => import('./components/Win_Compact').catch(() => buildingPlaceholder('Win_Compact')), { ssr: false });
+const Win_Accent = dynamic(() => import('./components/Win_Accent').catch(() => buildingPlaceholder('Win_Accent')), { ssr: false });
+const Win_NoSidebar = dynamic(() => import('./components/Win_NoSidebar').catch(() => buildingPlaceholder('Win_NoSidebar')), { ssr: false });
+const Win_HighContrast = dynamic(() => import('./components/Win_HighContrast').catch(() => buildingPlaceholder('Win_HighContrast')), { ssr: false });
+const Win_Soft = dynamic(() => import('./components/Win_Soft').catch(() => buildingPlaceholder('Win_Soft')), { ssr: false });
 
 const TABS = [
   { id: 'win_classic', name: 'Win11 קלאסי (תואם מסך)', component: Win_Classic },
@@ -31,52 +40,44 @@ const TABS = [
 export default function PreviewPage() {
   const [activeTabId, setActiveTabId] = useState(TABS[0].id);
 
-  const ActiveComponent = TABS.find(t => t.id === activeTabId)?.component || Win_Classic;
+  const activeTabInfo = TABS.find(t => t.id === activeTabId) || TABS[0];
+  const ActiveComponent = activeTabInfo.component;
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900" dir="rtl">
-      
-      {/* Top Preview Control Bar */}
-      <div className="bg-white border-b border-slate-300 p-4 sticky top-0 z-50 shadow-sm">
-        <div className="max-w-screen-2xl mx-auto flex flex-col gap-4">
-          
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-xl font-bold text-slate-800">מעבדת תצוגה - סגנון Windows 11</h1>
-              <p className="text-sm text-slate-500">נבחרו 10 סגנונות חדשים בהשראת מסך ההגדרות של ווינדוס</p>
-            </div>
-            <div className="bg-blue-50 px-4 py-2 rounded-lg text-sm font-medium border border-blue-200 text-blue-800">
-              מסך נוכחי: <span className="font-bold">{TABS.find(t => t.id === activeTabId)?.name}</span>
-            </div>
-          </div>
-
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin scrollbar-thumb-slate-300">
-            {TABS.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTabId(tab.id)}
-                className={`
-                  px-4 py-2 rounded-full text-sm font-bold whitespace-nowrap transition-all border
-                  ${activeTabId === tab.id 
-                    ? 'bg-blue-600 text-white border-blue-600 shadow-md' 
-                    : 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50'}
-                `}
-              >
-                {tab.name}
-              </button>
-            ))}
-          </div>
-
+    <>
+      <div className="page-head">
+        <div>
+          <h1>מעבדת תצוגה - סגנון Windows 11</h1>
+          <div className="page-desc">נבחרו 10 סגנונות חדשים בהשראת מסך ההגדרות של ווינדוס</div>
+        </div>
+        <div className="page-actions">
+          <span className="badge badge-primary">מסך נוכחי: <strong>{activeTabInfo.name}</strong></span>
         </div>
       </div>
 
-      {/* Component Render Area */}
-      <div className="relative isolate">
-        <div className="w-full min-h-[calc(100vh-140px)] bg-slate-50">
-          <ActiveComponent />
+      <div className="card card-pad" style={{ marginBottom: '20px' }}>
+        <div className="pill-tabs">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              type="button"
+              className={activeTabId === tab.id ? 'pill-tab active' : 'pill-tab'}
+              onClick={() => setActiveTabId(tab.id)}
+            >
+              {tab.name}
+            </button>
+          ))}
         </div>
       </div>
 
-    </div>
+      <div className="callout callout-info" style={{ marginBottom: '20px' }}>
+        <svg className="icon"><use href="#i-info" /></svg>
+        מסך תצוגה מקדימה בלבד — כל לשונית מציגה חלופת עיצוב מלאה למסך אחר באפליקציה; דגימות התוכן בכל חלופה עדיין בבנייה.
+      </div>
+
+      <div className="table-wrap">
+        <ActiveComponent />
+      </div>
+    </>
   );
 }

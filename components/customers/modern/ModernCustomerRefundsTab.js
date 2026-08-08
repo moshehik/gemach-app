@@ -2,51 +2,52 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Save } from 'lucide-react';
 
 export default function ModernCustomerRefundsTab({ customer, onChange, onSubmit, saving, refunds = [] }) {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-      <form className="moc-card-panel" onSubmit={onSubmit}>
-        <h3 style={{ marginTop: 0, marginBottom: '16px', fontSize: '1.05rem' }}>פרטי חשבון בנק לזיכויים</h3>
-        <div className="moc-grid-2">
-          <div>
-            <span className="moc-field-label">שם בנק</span>
-            <input type="text" name="bankName" value={customer.bankName || ''} onChange={onChange} placeholder="למשל: לאומי" />
+      <form className="card card-pad" onSubmit={onSubmit}>
+        <h3 style={{ marginTop: 0, marginBottom: '14px' }}>פרטי חשבון בנק לזיכויים</h3>
+        <div className="form-grid">
+          <div className="field">
+            <label>שם בנק</label>
+            <input type="text" className="input" name="bankName" value={customer.bankName || ''} onChange={onChange} placeholder="למשל: לאומי" />
           </div>
-          <div>
-            <span className="moc-field-label">סניף</span>
-            <input type="text" name="bankBranch" value={customer.bankBranch || ''} onChange={onChange} placeholder="מספר סניף" />
+          <div className="field">
+            <label>סניף</label>
+            <input type="text" className="input" name="bankBranch" value={customer.bankBranch || ''} onChange={onChange} placeholder="מספר סניף" />
           </div>
-          <div>
-            <span className="moc-field-label">מספר חשבון</span>
-            <input type="text" name="bankAccount" value={customer.bankAccount || ''} onChange={onChange} />
+          <div className="field">
+            <label>מספר חשבון</label>
+            <input type="text" className="input" name="bankAccount" value={customer.bankAccount || ''} onChange={onChange} />
           </div>
-          <div>
-            <span className="moc-field-label">שם בעל החשבון</span>
-            <input type="text" name="bankAccountName" value={customer.bankAccountName || ''} onChange={onChange} />
+          <div className="field">
+            <label>שם בעל החשבון</label>
+            <input type="text" className="input" name="bankAccountName" value={customer.bankAccountName || ''} onChange={onChange} />
           </div>
         </div>
-        <div style={{ marginTop: '18px', display: 'flex', justifyContent: 'flex-end' }}>
-          <button type="submit" className="moc-btn moc-btn-gold" disabled={saving}>
-            {saving ? <span className="moc-spinner" /> : <Save size={15} />} {saving ? 'שומר...' : 'שמור פרטי בנק'}
+        <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {saving ? <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
+            {saving ? 'שומר...' : 'שמור פרטי בנק'}
           </button>
         </div>
       </form>
 
-      <div className="moc-card-panel">
-        <div className="moc-table-toolbar">
-          <h3 style={{ margin: 0, fontSize: '1.05rem' }}>היסטוריית זיכויים</h3>
-          <span className="moc-hint">{refunds.length} זיכויים</span>
+      <div>
+        <div className="toolbar">
+          <div style={{ fontWeight: 800, fontSize: '14.5px' }}>היסטוריית זיכויים</div>
+          <span className="spacer" />
+          <span className="hint" style={{ color: 'var(--text-3)' }}>{refunds.length} זיכויים</span>
         </div>
 
         {refunds.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="moc-data-table">
+          <div className="table-wrap">
+            <table className="data">
               <thead>
                 <tr>
                   <th>תאריך בקשה</th>
-                  <th>מס' הזמנה</th>
+                  <th>מס&apos; הזמנה</th>
                   <th>סכום</th>
                   <th>סיבה</th>
                   <th>סטטוס</th>
@@ -58,18 +59,15 @@ export default function ModernCustomerRefundsTab({ customer, onChange, onSubmit,
                     <td>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</td>
                     <td>
                       {refund.orderId ? (
-                        <Link href={`/orders/${refund.orderId}`} style={{ color: 'var(--moc-primary-dark)', textDecoration: 'none', fontWeight: 700 }}>
+                        <Link href={`/orders/${refund.orderId}`} className="cell-primary" style={{ color: 'var(--primary-solid)' }}>
                           {refund.orderId}
                         </Link>
                       ) : '-'}
                     </td>
-                    <td style={{ fontWeight: 700, color: 'var(--moc-danger-text)' }}>₪{refund.amount}</td>
+                    <td className="cell-primary" style={{ color: 'var(--danger)' }}>₪{refund.amount}</td>
                     <td>{refund.reason || '-'}</td>
                     <td>
-                      <span className="moc-badge" style={{
-                        background: refund.isExecuted ? 'var(--moc-success-bg)' : 'var(--moc-warning-bg)',
-                        color: refund.isExecuted ? '#166534' : '#92400e'
-                      }}>
+                      <span className={`badge ${refund.isExecuted ? 'badge-success' : 'badge-warning'}`}>
                         {refund.isExecuted ? `בוצע (${new Date(refund.executionDate).toLocaleDateString('he-IL')})` : 'ממתין לביצוע'}
                       </span>
                     </td>
@@ -77,9 +75,15 @@ export default function ModernCustomerRefundsTab({ customer, onChange, onSubmit,
                 ))}
               </tbody>
             </table>
+            <div className="table-foot">
+              <span>סה&quot;כ זיכויים מוצגים: {refunds.length}</span>
+            </div>
           </div>
         ) : (
-          <div className="moc-empty-state">אין זיכויים ללקוח זה.</div>
+          <div className="empty-state">
+            <svg className="icon"><use href="#i-refresh" /></svg>
+            <p>אין זיכויים ללקוח זה.</p>
+          </div>
         )}
       </div>
     </div>
