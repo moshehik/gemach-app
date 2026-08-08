@@ -75,29 +75,6 @@ export default function UserMenu() {
     }
   };
 
-  const handlePunch = async (action) => {
-    if (!user) return;
-    setActionLoading(true);
-    try {
-      const res = await fetch('/api/attendance', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ employeeId: user.id, action }),
-      });
-      const data = await res.json();
-      if (res.ok) {
-        setActiveShift(action === 'IN' ? data.shift : null);
-      } else {
-        alert(data.error || 'שגיאה בדיווח נוכחות');
-      }
-    } catch (err) {
-      alert('שגיאת תקשורת');
-    } finally {
-      setActionLoading(false);
-      setDropdownOpen(false);
-    }
-  };
-
   if (loading) {
     return <div className="avatar skeleton" style={{ width: 34, height: 34 }} />;
   }
@@ -147,7 +124,7 @@ export default function UserMenu() {
         title={`${user.firstName} ${user.lastName} — ${activeShift ? 'בעבודה' : 'לא בעבודה'}`}
       >
         <div className="avatar">
-          {user.firstName ? user.firstName.charAt(0) : 'U'}
+          {(user.firstName ? user.firstName.charAt(0) : '') + (user.lastName ? user.lastName.charAt(0) : '') || 'U'}
           <span className={`status-dot ${activeShift ? 'online' : 'offline'}`} />
         </div>
         {isGlobalFetching && <span className="spinner" title="טוען נתונים..." style={{ width: 14, height: 14 }} />}
@@ -157,28 +134,19 @@ export default function UserMenu() {
         <div className="user-menu-dropdown">
           <div className="user-menu-head">
             <div className="avatar">
-              {user.firstName ? user.firstName.charAt(0) : 'U'}
+              {(user.firstName ? user.firstName.charAt(0) : '') + (user.lastName ? user.lastName.charAt(0) : '') || 'U'}
               <span className={`status-dot ${activeShift ? 'online' : 'offline'}`} />
             </div>
             <div>
               <strong>{user.firstName} {user.lastName}</strong>
-              <span>{activeShift ? 'בעבודה כעת' : 'לא בעבודה'}</span>
+              <span>
+                {activeShift && (
+                  <svg className="icon" style={{ width: '9px', height: '9px', color: 'var(--success)' }}><use href="#i-check-circle" /></svg>
+                )}
+                {' '}{activeShift ? 'בעבודה כעת' : 'לא בעבודה'}{user.department?.name ? ` · ${user.department.name}` : ''}
+              </span>
             </div>
           </div>
-
-          {!activeShift ? (
-            <button type="button" className="user-menu-item" onClick={() => handlePunch('IN')} disabled={actionLoading}>
-              <svg className="icon"><use href="#i-clock" /></svg>
-              כניסה לעבודה (שעון נוכחות)
-            </button>
-          ) : (
-            <button type="button" className="user-menu-item danger" onClick={() => handlePunch('OUT')} disabled={actionLoading}>
-              <svg className="icon"><use href="#i-clock" /></svg>
-              יציאה ממשמרת
-            </button>
-          )}
-
-          <div className="user-menu-divider" />
 
           <button
             type="button"
@@ -186,8 +154,17 @@ export default function UserMenu() {
             disabled={actionLoading}
             onClick={() => { setDropdownOpen(false); router.push('/profile'); }}
           >
-            <svg className="icon"><use href="#i-id" /></svg>
+            <svg className="icon"><use href="#i-user" /></svg>
             הפרופיל שלי
+          </button>
+          <button
+            type="button"
+            className="user-menu-item"
+            disabled={actionLoading}
+            onClick={() => { setDropdownOpen(false); router.push('/punch-clock'); }}
+          >
+            <svg className="icon"><use href="#i-clock" /></svg>
+            שעון נוכחות
           </button>
           <button
             type="button"
@@ -198,9 +175,10 @@ export default function UserMenu() {
             <svg className="icon"><use href="#i-message" /></svg>
             הודעות
           </button>
+          <div className="user-menu-divider" />
           <button type="button" className="user-menu-item danger" onClick={handleLogout} disabled={actionLoading}>
             <svg className="icon"><use href="#i-logout" /></svg>
-            התנתק / החלף משתמש
+            התנתקות
           </button>
         </div>
       )}
