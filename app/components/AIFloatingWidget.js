@@ -266,8 +266,8 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
           position: 'fixed',
           bottom: '80px',
           insetInlineEnd: '20px',
-          width: '60px',
-          height: '60px',
+          width: '44px',
+          height: '44px',
           borderRadius: 'var(--radius-full)',
           backgroundColor: 'var(--primary-solid)',
           color: 'var(--text-on-primary)',
@@ -284,7 +284,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
         onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
         title="עוזר AI"
       >
-        <svg data-element-name="רכיב_AIFloatingWidget_3" className="icon" style={{ width: '30px', height: '30px' }}>
+        <svg data-element-name="רכיב_AIFloatingWidget_3" className="icon" style={{ width: '22px', height: '22px' }}>
           <use href="#i-star" />
         </svg>
       </button>
