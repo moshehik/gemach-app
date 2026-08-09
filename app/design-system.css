@@ -242,7 +242,7 @@ a{color:inherit; text-decoration:none}
 /* ---- topbar pinned-shortcuts row — mirrors the sidebar's .nav-pin-btn: each
    pinned item is a normal .icon-btn (a <Link>) with a hover-revealed remove
    badge, same corner-badge language as .icon-btn .dot above ---- */
-.topbar-pins{display:flex; align-items:center; gap:6px; flex:0 1 auto; max-width:260px; overflow-x:auto; overflow-y:hidden}
+.topbar-pins{display:flex; align-items:center; gap:6px; flex:0 0 auto; max-width:260px; overflow-x:auto; overflow-y:hidden}
 .topbar-pin-icon.active{background:var(--primary-tint); border-color:var(--primary-tint-2); color:var(--primary-solid)}
 .topbar-pin-remove{
   position:absolute; top:-4px; inset-inline-end:-4px; width:16px; height:16px; border-radius:50%;
