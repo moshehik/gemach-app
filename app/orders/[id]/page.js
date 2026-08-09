@@ -2,8 +2,7 @@
 
 import { useState, useEffect, use, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { Mail, PenTool, Calendar, CalendarRange, Globe, SlidersHorizontal, FileText, User, Package, Receipt, CreditCard } from 'lucide-react';
+import { createPortal } from 'react-dom';
 import ActiveEmployeesModal from '../../../components/orders/ActiveEmployeesModal';
 import ModernOrderCard from '../../../components/orders/modern/ModernOrderCard';
 import ModernGeneralDetails from '../../../components/orders/modern/ModernGeneralDetails';
@@ -87,14 +86,16 @@ const formatListCounts = (label, counts) => {
 // קיבוץ שדות ההזמנה לקבוצות שינוי הגיוניות למודל אישור "ביטול שינויים" —
 // כל קבוצה מקבלת איקון אחד וכיתוב קצר אחד, במקום שורה נפרדת לכל שדה טכני
 // (eventDate/eventDateHebrew למשל תמיד משתנים יחד, אין טעם בשתי שורות עבורם).
+// כל קבוצה מחזיקה id של סמל מתוך ה-sprite המשותף (app/components/IconSprite.js) במקום
+// קומפוננטת אייקון מ-lucide-react, כדי לתאום עם מערכת העיצוב "אריג".
 const CHANGE_GROUPS = [
-  { Icon: Calendar, label: 'תאריך אירוע', fields: ['eventDate', 'eventDateHebrew'] },
-  { Icon: CalendarRange, label: 'טווח תאריכים (לקיחה/החזרה)', fields: ['fromDate', 'toDate', 'returnDate'] },
-  { Icon: Globe, label: 'סוג אירוע (רגיל/חו"ל)', fields: ['isAbroad', 'isWeekdayEvent'] },
-  { Icon: SlidersHorizontal, label: 'ריווח ימים מותאם', fields: ['customSpacing'] },
-  { Icon: FileText, label: 'הערות להזמנה', fields: ['notes'] },
-  { Icon: PenTool, label: 'חתימה על תקנון', fields: ['hasSignedRegulations'] },
-  { Icon: User, label: 'לקוח', fields: ['customerId'] }
+  { icon: '#i-calendar', label: 'תאריך אירוע', fields: ['eventDate', 'eventDateHebrew'] },
+  { icon: '#i-calendar', label: 'טווח תאריכים (לקיחה/החזרה)', fields: ['fromDate', 'toDate', 'returnDate'] },
+  { icon: '#i-pin', label: 'סוג אירוע (רגיל/חו"ל)', fields: ['isAbroad', 'isWeekdayEvent'] },
+  { icon: '#i-alert-tri', label: 'ריווח ימים מותאם', fields: ['customSpacing'] },
+  { icon: '#i-file', label: 'הערות להזמנה', fields: ['notes'] },
+  { icon: '#i-check-circle', label: 'חתימה על תקנון', fields: ['hasSignedRegulations'] },
+  { icon: '#i-user', label: 'לקוח', fields: ['customerId'] }
 ];
 
 export default function OrderDetailsPage({ params }) {
@@ -123,8 +124,6 @@ export default function OrderDetailsPage({ params }) {
   const [saveMessage, setSaveMessage] = useState('');
   const [isUnlocked, setIsUnlocked] = useState(false);
   const [showEmployeesModal, setShowEmployeesModal] = useState(false);
-  const [showPrintMenu, setShowPrintMenu] = useState(false);
-  const [showRegulationsModal, setShowRegulationsModal] = useState(false);
   const [inventoryCache, setInventoryCache] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   
@@ -564,15 +563,30 @@ export default function OrderDetailsPage({ params }) {
     setRefunds(updatedOrder.refunds || []);
   };
 
-  if (loading) return (
-    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', flexDirection: 'column', cursor: 'default', userSelect: 'none' }}>
-      <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid var(--primary-color)', borderRadius: '50%', animation: 'spin 1s linear infinite', pointerEvents: 'none' }} />
-      <h2 style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>טוען נתוני הזמנה...</h2>
-      <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
-    </div>
-  );
-  
-  if (!order) return <div style={{ padding: '2rem', textAlign: 'center', fontSize: '1.5rem', color: 'var(--text-muted)' }}>הזמנה לא נמצאה.</div>;
+  // עדכון "טלאי" חלקי של ההזמנה מ-OrderPrintMenu (ר' components/orders/OrderPrintMenu.js) —
+  // הקומפוננטה המשותפת קוראת ל-PUT קטן משלה (למשל אישור חתימה על תקנון) ומחזירה רק את השדות
+  // שהשתנו, לא הזמנה מלאה כמו handleOrderUpdate.
+  const handlePrintMenuOrderUpdate = (patch) => {
+    setOrder(prev => (prev ? { ...prev, ...patch } : prev));
+  };
+
+  if (loading) {
+    return (
+      <div className="page-loading">
+        <span className="spinner lg" />
+        טוען נתוני הזמנה...
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="empty-state">
+        <svg className="icon"><use href="#i-alert-circle" /></svg>
+        <h4>הזמנה לא נמצאה</h4>
+      </div>
+    );
+  }
 
   const totalPayable = items.filter(i => !i.isDeleted).reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
 
@@ -729,16 +743,16 @@ export default function OrderDetailsPage({ params }) {
     const snap = savedSnapshotRef.current;
     if (!snap) return [];
     const rows = [];
-    CHANGE_GROUPS.forEach(({ Icon, label, fields }) => {
+    CHANGE_GROUPS.forEach(({ icon, label, fields }) => {
       const changed = fields.some(f => JSON.stringify((snap.order && snap.order[f]) ?? null) !== JSON.stringify((order && order[f]) ?? null));
-      if (changed) rows.push({ Icon, text: label });
+      if (changed) rows.push({ icon, text: label });
     });
     const itemsText = formatListCounts('פריטים', summarizeListDiffCounts(snap.items, items));
-    if (itemsText) rows.push({ Icon: Package, text: itemsText });
+    if (itemsText) rows.push({ icon: '#i-bag', text: itemsText });
     const obligationsText = formatListCounts('התחייבויות תשלום', summarizeListDiffCounts(snap.obligations, obligations));
-    if (obligationsText) rows.push({ Icon: Receipt, text: obligationsText });
+    if (obligationsText) rows.push({ icon: '#i-receipt', text: obligationsText });
     const paymentsText = formatListCounts('תשלומים', summarizeListDiffCounts(snap.payments, payments));
-    if (paymentsText) rows.push({ Icon: CreditCard, text: paymentsText });
+    if (paymentsText) rows.push({ icon: '#i-card', text: paymentsText });
     return rows;
   };
 
@@ -753,22 +767,20 @@ export default function OrderDetailsPage({ params }) {
     const rows = buildChangeRows();
     const confirmed = await window.customConfirm(
       <div>
-        <p style={{ margin: '0 0 14px', color: '#64748b', fontSize: '0.95rem', lineHeight: 1.5 }}>
+        <p style={{ margin: '0 0 14px', color: 'var(--text-2)', fontSize: '0.95rem', lineHeight: 1.5 }}>
           פעולה זו תבטל את כל השינויים שלא נשמרו בהזמנה זו, ותחזיר אותה למצב האחרון שנשמר:
         </p>
         {rows.length > 0 ? (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '260px', overflowY: 'auto' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '260px', overflowY: 'auto' }}>
             {rows.map((r, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 0' }}>
-                <span style={{ width: '30px', height: '30px', borderRadius: '8px', background: 'rgba(212, 175, 55, 0.14)', color: '#b5952f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <r.Icon size={15} />
-                </span>
-                <span style={{ fontSize: '0.92rem', fontWeight: 600, color: '#334155' }}>{r.text}</span>
-              </div>
+              <span key={i} className="chip" style={{ alignSelf: 'flex-start' }}>
+                <svg className="icon" style={{ width: '12px', height: '12px' }}><use href={r.icon} /></svg>
+                {r.text}
+              </span>
             ))}
           </div>
         ) : (
-          <div style={{ fontSize: '0.92rem', color: '#94a3b8', fontStyle: 'italic' }}>שינויים שלא נשמרו</div>
+          <div style={{ fontSize: '0.92rem', color: 'var(--text-3)', fontStyle: 'italic' }}>שינויים שלא נשמרו</div>
         )}
       </div>
     );
@@ -837,15 +849,6 @@ export default function OrderDetailsPage({ params }) {
     }
   };
 
-  const handlePrintOrder = () => {
-    if (order.hasSignedRegulations) {
-      setShowPrintMenu(!showPrintMenu);
-      return;
-    }
-
-    setShowRegulationsModal(true);
-  };
-
   // שינוי סטטוס חתימה על תקנון מכפתור הטופ-בר בעיצוב המודרני (עם אישור)
   const handleToggleSignature = async () => {
     const nowYes = !order.hasSignedRegulations;
@@ -874,8 +877,6 @@ export default function OrderDetailsPage({ params }) {
   };
 
   const handleSendEmail = async (type, forcedEmail = null) => {
-    setShowPrintMenu(false);
-    
     let targetEmail = forcedEmail || order.customer?.email;
     
     if (!targetEmail || !targetEmail.includes('@')) {
@@ -940,8 +941,9 @@ export default function OrderDetailsPage({ params }) {
   };
 
   return (
-    <main data-agy-id="[id]_page_main_1" style={{ direction: 'rtl', fontFamily: 'var(--font-primary, system-ui)' }}>
-      {/* עיצוב הכרטיס המודרני — נטען כאן כדי שגם המודלים המשותפים (תקנון, מייל, עובדים) יעוצבו בו */}
+    <>
+      {/* עיצוב הכרטיס המודרני הישן (.moc-*) — עדיין נטען כאן כי ModernItemsManager/ModernPaymentsManager/
+          ModernRentalsManager (שאר האשכול) עדיין תלויים בו; יוסר כשגם הם יעברו לעיצוב "אריג". */}
       <style>{modernOrderCss}</style>
 
       <ModernOrderCard
@@ -964,12 +966,7 @@ export default function OrderDetailsPage({ params }) {
           onDelete={handleDeleteOrder}
           onExit={() => handleExit()}
           onToggleSignature={handleToggleSignature}
-          onPrintButtonClick={handlePrintOrder}
-          printMenuOpen={showPrintMenu}
-          onClosePrintMenu={() => setShowPrintMenu(false)}
-          onPrint={(type) => { setShowPrintMenu(false); window.open(`/print/order?orderId=${order.orderId}&type=${type}`, '_blank'); }}
-          onSendEmail={handleSendEmail}
-          onShowEmployees={() => setShowEmployeesModal(true)}
+          onOrderUpdate={handlePrintMenuOrderUpdate}
           onQuickScan={handleQuickScan}
           onWalletClick={handleWalletClick}
           tabContents={{
@@ -1041,78 +1038,50 @@ export default function OrderDetailsPage({ params }) {
           }}
         />
 
-      <ActiveEmployeesModal data-element-name="רכיב_page_27"
+      <ActiveEmployeesModal
         orderId={order.orderId}
         isOpen={showEmployeesModal}
         onClose={() => setShowEmployeesModal(false)}
       />
 
-      {/* Regulations Modal */}
-      {showRegulationsModal && typeof document !== 'undefined' && (
-        <div className="moc moc-modal-overlay" style={{ zIndex: 2000 }}>
-          <div className="moc-modal-box" style={{ maxWidth: '400px', textAlign: 'center' }}>
-            <div className="moc-modal-body" style={{ paddingTop: '28px' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', background: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)' }}>
-                <PenTool size={26} />
-              </div>
-              <h3 style={{ margin: '0 0 10px', fontSize: '1.2rem' }}>חתימה על תקנון</h3>
-              <p style={{ color: 'var(--moc-text-muted)', margin: 0, lineHeight: 1.6 }}>האם הלקוח חתם על התקנון?</p>
+      {/* חלון "כתובת מייל חסרה" — נפתח מ"מייל מהיר" בטאב פרטים כלליים כשללקוח אין מייל תקין.
+          זהה במבנה/ברוח לחלון המקביל בתוך OrderPrintMenu.js (זרימת "מייל הזמנה/השכרה" מתפריט
+          ההדפסה), רק שמופעל כאן ממסלול נפרד (handleSendEmail) שאינו עובר דרך אותו קומפוננט. */}
+      {showEmailPrompt && typeof document !== 'undefined' && createPortal(
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowEmailPrompt(false); }}
+        >
+          <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-icon-circle" style={{ background: 'var(--info-tint)', color: 'var(--info)' }}>
+              <svg className="icon"><use href="#i-mail" /></svg>
             </div>
-            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
-              <button data-element-name="כפתור_page_29" className="moc-btn moc-btn-outline" onClick={() => setShowRegulationsModal(false)}>
-                לא (ביטול)
-              </button>
-              <button data-element-name="כפתור_page_28" className="moc-btn moc-btn-gold"
-                onClick={() => {
-                  const updatedOrder = { ...order, hasSignedRegulations: true };
-                  setOrder(updatedOrder);
-                  handleSave(updatedOrder);
-                  setShowRegulationsModal(false);
-                  setShowPrintMenu(true);
-                }}
-              >
-                כן, חתם
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* Email Prompt Modal */}
-      {showEmailPrompt && typeof document !== 'undefined' && (
-        <div className="moc moc-modal-overlay" style={{ zIndex: 2000 }}>
-          <div className="moc-modal-box" style={{ maxWidth: '420px', textAlign: 'center' }}>
-            <div className="moc-modal-body" style={{ paddingTop: '28px' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', background: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)' }}>
-                <Mail data-element-name="רכיב_page_30" size={26} />
-              </div>
-              <h3 style={{ margin: '0 0 10px', fontSize: '1.2rem' }}>כתובת מייל חסרה</h3>
-              <p style={{ color: 'var(--moc-text-muted)', margin: '0 0 18px', lineHeight: 1.6 }}>
-                ללקוח זה לא מעודכנת כתובת מייל במערכת. אנא הזן כתובת מייל עדכנית לשליחת הדוח (תישמר אוטומטית בכרטיס הלקוח).
-              </p>
-              <input data-element-name="שדה_page_31"
-                type="email"
-                value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
-                placeholder="example@gmail.com"
-                dir="ltr"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleEmailSubmit();
-                }}
-                style={{ textAlign: 'left' }}
-              />
-            </div>
-            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
-              <button data-element-name="כפתור_page_33" className="moc-btn moc-btn-outline" onClick={() => setShowEmailPrompt(false)}>
-                ביטול
-              </button>
-              <button data-element-name="כפתור_page_32" className="moc-btn moc-btn-gold" onClick={handleEmailSubmit}>
-                שמור ושלח
-              </button>
+            <h3>כתובת מייל חסרה</h3>
+            <p>
+              ללקוח זה לא מעודכנת כתובת מייל במערכת. אנא הזן כתובת מייל עדכנית לשליחת הדוח (תישמר אוטומטית בכרטיס הלקוח).
+            </p>
+            <input
+              type="email"
+              className="input"
+              value={emailInput}
+              onChange={(e) => setEmailInput(e.target.value)}
+              placeholder="example@gmail.com"
+              dir="ltr"
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleEmailSubmit();
+              }}
+              style={{ marginBottom: '18px', textAlign: 'start' }}
+            />
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowEmailPrompt(false)}>ביטול</button>
+              <button type="button" className="btn btn-primary" onClick={handleEmailSubmit}>שמור ושלח</button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </main>
+    </>
   );
 }

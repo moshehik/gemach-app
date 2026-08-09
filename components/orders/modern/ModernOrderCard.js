@@ -1,26 +1,43 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
-import {
-  X, Info, Package, RefreshCcw, CreditCard, History, User, Phone, Calendar,
-  ScanLine, Wallet, PenTool, Check, Printer, Trash2, Save, Undo2, ArrowRight,
-  FileText, ClipboardList, Mail, Clock, Lock, LockOpen, ShieldAlert
-} from 'lucide-react';
-import { calculateOrderStatus, getStatusColor } from '../../../lib/orderStatus';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { calculateOrderStatus } from '../../../lib/orderStatus';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import OrderPrintMenu from '../OrderPrintMenu';
 
-const TAB_META = {
-  details: { title: 'פרטים כלליים' },
-  items: { title: 'פירוט פריטים בהזמנה' },
-  payments: { title: 'תשלומים' },
-  history: { title: 'מידע והיסטוריה' }
+// מיפוי סטטוס טקסטואלי (calculateOrderStatus ב-lib/orderStatus.js, משותף לכמה עמודים) אל
+// מחלקת ה-badge של מערכת העיצוב "אריג" — אותו מיפוי כמו בעמוד רשימת ההזמנות (app/orders/page.js).
+const getStatusBadgeClass = (status) => {
+  switch (status) {
+    case 'הוחזר':
+    case 'הוחזר חלקי':
+      return 'badge-success';
+    case 'הושכר':
+    case 'הושכר חלקי':
+      return 'badge-info';
+    case 'בקרוב':
+      return 'badge-warning';
+    case 'עבר':
+    case 'מחוק':
+    case 'טיוטה':
+    default:
+      return 'badge-neutral';
+  }
 };
 
+const TABS = [
+  { id: 'details', label: 'פרטים כלליים', icon: 'i-user' },
+  { id: 'items', label: 'פריטים והשכרות', icon: 'i-bag', withCount: true },
+  { id: 'payments', label: 'תשלומים', icon: 'i-card' },
+  { id: 'history', label: 'מידע', icon: 'i-history' }
+];
+
 /**
- * המעטפת של כרטיס ההזמנה בעיצוב המודרני: סיידבר זהב עם טאבים, טופ-בר פעולות,
- * ותוכן של טאב אחד בכל רגע. כל הטאבים נשארים mounted (display:none) כדי לשמור
- * על סטייט פנימי של המנהלים הקיימים.
+ * המעטפת של כרטיס ההזמנה בעיצוב "אריג": page-head עם פעולות, כרטיס סיכום
+ * (לקוח + סטטוס + אירוע + סריקה מהירה), לשוניות ותוכן טאב אחד בכל רגע.
+ * כל הטאבים נשארים mounted (tab-panel לא-active מוסתר ב-CSS בלבד) כדי לשמור
+ * על סטייט פנימי של המנהלים הקיימים (פריטים/תשלומים).
  */
 export default function ModernOrderCard({
   order,
@@ -42,57 +59,38 @@ export default function ModernOrderCard({
   onDelete,
   onExit,
   onToggleSignature,
-  onPrintButtonClick,
-  printMenuOpen,
-  onClosePrintMenu,
-  onPrint,
-  onSendEmail,
-  onShowEmployees,
+  onOrderUpdate,
   onQuickScan,
   onWalletClick,
-  layoutToggle,
   tabContents
 }) {
   const [scanValue, setScanValue] = useState('');
   const [showUnlockModal, setShowUnlockModal] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
-  const printWrapRef = useRef(null);
-
-  // סגירת תפריט ההדפסה בלחיצה מחוץ לו
-  useEffect(() => {
-    if (!printMenuOpen) return;
-    const close = (e) => {
-      if (printWrapRef.current && !printWrapRef.current.contains(e.target)) onClosePrintMenu();
-    };
-    document.addEventListener('mousedown', close);
-    return () => document.removeEventListener('mousedown', close);
-  }, [printMenuOpen, onClosePrintMenu]);
 
   const activeItems = (items || []).filter(i => !i.isDeleted);
   const debt = totalRequired - totalPaid;
-  // שמירה לא תבקש אישור מנהל אם החוב זהה לזה שהיה כשהכרטיס נטען (ר' handleSave) - התג
+  // שמירה לא תבקש אישור מנהל אם החוב זהה לזה שהיה כשהכרטיס נטען (ר' handleSave בעמוד) - התג
   // מציג את אותה הבחנה כדי לא להבהיל על אישור שלא באמת ידרש בלחיצה על שמירה.
   const debtUnchangedSinceOpen = openedDebt !== undefined && openedDebt !== null
     && Math.round(debt * 100) === Math.round(openedDebt * 100);
   const saveNeedsApproval = debt > 0 && !debtUnchangedSinceOpen;
 
   const orderStatus = calculateOrderStatus(order);
-  const statusColor = getStatusColor(orderStatus);
 
-  const customerName = order.customer
-    ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ')
-    : 'לא נבחר לקוח';
+  const customer = order.customer;
+  const customerName = customer ? [customer.firstName, customer.lastName].filter(Boolean).join(' ') : 'לא נבחר לקוח';
+  const initials = customer ? (`${customer.firstName?.[0] || ''}${customer.lastName?.[0] || ''}` || '?') : '?';
 
   const eventDateLabel = (order.isAbroad || order.isWeekdayEvent)
     ? (order.fromDate ? `${getHebrewDateString(order.fromDate)} — ${getHebrewDateString(order.toDate || order.returnDate)}` : 'אירוע חו"ל')
     : (order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'ללא תאריך אירוע'));
 
   const updatedLabel = order.updatedAt
-    ? `עודכן: ${getHebrewDateString(order.updatedAt)} · ${new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+    ? `עודכן: ${new Date(order.updatedAt).toLocaleDateString('he-IL')} · ${new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
     : '';
 
-  const meta = TAB_META[activeTab] || { title: '' };
-  const hint = activeTab === 'details' ? updatedLabel : (meta.hint || '');
+  const isErrorMsg = saveMessage && (saveMessage.includes('שגיאה') || saveMessage.includes('בוטלה'));
 
   const handleScanSubmit = (e) => {
     e.preventDefault();
@@ -102,229 +100,195 @@ export default function ModernOrderCard({
     onQuickScan(code);
   };
 
-  const tabs = [
-    { id: 'details', label: 'פרטים כלליים', icon: Info },
-    { id: 'items', label: 'פריטים והשכרות', icon: Package, count: activeItems.length },
-    { id: 'payments', label: 'תשלומים', icon: CreditCard },
-    { id: 'history', label: 'מידע', icon: History }
-  ];
+  const handleLockClick = async () => {
+    if (isLocked) {
+      setShowUnlockModal(true);
+    } else if (onLock) {
+      const msg = 'האם ברצונך לנעול מחדש את ההזמנה?';
+      const confirmed = window.customConfirm ? await window.customConfirm(msg) : window.confirm(msg);
+      if (confirmed) onLock();
+    }
+  };
 
   return (
-    <div className="moc moc-page-overlay">
-      {/* כפתור סגירה על רקע החלון (מחוץ לכרטיס הלבן/הסיידבר הזהב), פינה ימנית-עליונה של
-          המסך כולו - לבקשת הבעלים, ולא מוטמע בין שאר האייקונים בסיידבר כמו קודם. */}
-      <button className="moc-page-close-btn" title="סגור כרטיס וחזור" onClick={() => onExit()}>
-        <X size={20} />
-      </button>
-      <div className="moc-page-wrap">
-      <div className="moc-top-strip">
-        <div className="moc-breadcrumb">
-          גמ"ח שמלות &raquo; <Link href="/orders">הזמנות</Link> &raquo; <strong>הזמנה #{order.orderId}</strong>
+    <>
+      <div className="page-head">
+        <div>
+          <h1>הזמנה #{order.orderId}</h1>
+        </div>
+        <div className="page-actions">
+          <button
+            type="button"
+            className={debt > 0 ? 'btn btn-danger-ghost' : debt < 0 ? 'btn btn-secondary' : 'btn btn-secondary btn-icon-only'}
+            style={debt < 0 ? { color: 'var(--success)' } : undefined}
+            title={debt > 0
+              ? `יתרת חוב: ₪${debt.toLocaleString('he-IL')} — לחץ למעבר לתשלומים`
+              : debt < 0 ? `יתרת זכות: ₪${Math.abs(debt).toLocaleString('he-IL')}` : 'שולם במלואו'}
+            onClick={() => (onWalletClick ? onWalletClick() : onTabChange('payments'))}
+          >
+            <svg className="icon"><use href="#i-wallet" /></svg>
+            {debt !== 0 && `₪${Math.abs(debt).toLocaleString('he-IL')}`}
+          </button>
+
+          <button
+            type="button"
+            className={`badge ${order.hasSignedRegulations ? 'badge-success' : 'badge-neutral'}`}
+            style={{ border: 'none', cursor: 'pointer' }}
+            onClick={onToggleSignature}
+            title={order.hasSignedRegulations ? 'חתם על תקנון השכרה — לחץ לשינוי' : 'לא חתם על תקנון — לחץ לשינוי'}
+          >
+            <svg className="icon"><use href={order.hasSignedRegulations ? '#i-check-circle' : '#i-x-circle'} /></svg>
+            {order.hasSignedRegulations ? 'חתם' : 'לא חתם'}
+          </button>
+
+          {isPastEvent && (
+            <button
+              type="button"
+              className={isLocked ? 'btn btn-danger-ghost btn-icon-only' : 'btn btn-secondary btn-icon-only'}
+              title={isLocked
+                ? 'הזמנה נעולה — תאריך האירוע עבר. ניתן להחזיר בלבד; השכרה ועריכה חסומות. לחץ לשחרור באישור מנהל'
+                : 'ההזמנה שוחררה לעריכה. לחץ לנעילה מחדש'}
+              onClick={handleLockClick}
+            >
+              <svg className="icon"><use href="#i-lock" /></svg>
+            </button>
+          )}
+
+          <OrderPrintMenu
+            order={order}
+            onOrderUpdate={onOrderUpdate}
+            triggerClassName="btn btn-secondary btn-icon-only"
+            triggerTitle="הדפסה / מייל"
+          />
+
+          <button type="button" className="btn btn-danger-ghost btn-icon-only" title="מחיקת הזמנה" onClick={onDelete}>
+            <svg className="icon"><use href="#i-trash" /></svg>
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-secondary btn-icon-only"
+            title={hasUnsavedChanges ? 'ביטול שינויים שלא נשמרו' : 'אין שינויים לביטול'}
+            onClick={onCancelChanges}
+            disabled={!hasUnsavedChanges || saving}
+          >
+            <svg className="icon"><use href="#i-refresh" /></svg>
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-primary"
+            title={saveNeedsApproval ? `שמירה עם יתרת חוב של ₪${debt.toLocaleString('he-IL')} תדרוש אישור מנהל` : 'שמור שינויים'}
+            onClick={() => onSave()}
+            disabled={saving}
+          >
+            {saving ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
+            שמור שינויים
+            {!saving && saveNeedsApproval && (
+              <span className="badge badge-danger" style={{ marginInlineStart: '4px' }}>
+                <svg className="icon" style={{ width: '10px', height: '10px' }}><use href="#i-shield" /></svg>
+                ₪{debt.toLocaleString('he-IL')}
+              </span>
+            )}
+          </button>
+
+          <button type="button" className="btn btn-ghost" title="שמירה וחזרה לרשימת ההזמנות" onClick={() => onExit()}>
+            <svg className="icon"><use href="#i-arrow-end" /></svg>
+            חזור
+          </button>
         </div>
       </div>
 
-      <div className="moc-container" style={{ position: 'relative' }}>
-        {/* ============ סיידבר ============ */}
-        <aside className="moc-sidebar">
-          <div>
-            <div className="moc-sidebar-top-row">
-              <div className="moc-order-id-group">
-                <span className="moc-order-num">הזמנה #{order.orderId}</span>
-                <span className="moc-v-divider" />
-                <span className="moc-badge" style={{ background: statusColor.bg, color: statusColor.text }}>
-                  <Clock size={13} /> {orderStatus}
-                </span>
-              </div>
-            </div>
+      {saveMessage && (
+        <div className={`callout ${isErrorMsg ? 'callout-danger' : 'callout-success'}`} style={{ marginBottom: '18px' }}>
+          <svg className="icon"><use href={isErrorMsg ? '#i-alert-circle' : '#i-check-circle'} /></svg>
+          {saveMessage}
+        </div>
+      )}
 
-            <div className="moc-sidebar-info-panel">
-              <div className="moc-sip-row"><User size={15} /><strong>{customerName}</strong></div>
-              {order.customer?.phone1 && (
-                <div className="moc-sip-row"><Phone size={15} /><span style={{ direction: 'ltr' }}>{order.customer.phone1}</span></div>
-              )}
-              <div className="moc-sip-row"><Calendar size={15} /><span>{eventDateLabel}</span></div>
-            </div>
+      {/* כרטיס סיכום: לקוח, סטטוס, אירוע, סריקה מהירה */}
+      <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '20px' }}>
+        <div className="avatar lg">{initials}</div>
+        <div style={{ flex: 1, minWidth: '240px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <strong style={{ fontSize: '16px' }}>{customerName}</strong>
+            <span className={`badge ${getStatusBadgeClass(orderStatus)}`}>
+              <svg className="icon"><use href="#i-clock" /></svg>
+              {orderStatus}
+            </span>
           </div>
-
-          <div>
-            <hr className="moc-sidebar-divider" />
-            <nav className="moc-tab-nav">
-              {tabs.map(tab => {
-                const Icon = tab.icon;
-                return (
-                  <button
-                    key={tab.id}
-                    className={`moc-tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-                    onClick={() => onTabChange(tab.id)}
-                  >
-                    <Icon size={17} /> {tab.label}
-                    {tab.count !== undefined && <span className="moc-count">{tab.count}</span>}
-                  </button>
-                );
-              })}
-            </nav>
-
-            <form className="moc-search-wrapper" style={{ marginTop: '16px' }} onSubmit={handleScanSubmit}>
-              <ScanLine size={17} />
-              <input
-                type="text"
-                className="moc-search-input"
-                value={scanValue}
-                onChange={e => setScanValue(e.target.value)}
-                placeholder="סריקה מהירה — השכרה / החזרה"
-              />
-            </form>
+          <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '5px', fontSize: '13px', color: 'var(--text-2)' }}>
+            {customer?.phone1 && (
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <svg className="icon" style={{ width: '13px', height: '13px', color: 'var(--text-3)' }}><use href="#i-phone" /></svg>
+                <span style={{ direction: 'ltr' }}>{customer.phone1}</span>
+              </span>
+            )}
+            <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+              <svg className="icon" style={{ width: '13px', height: '13px', color: 'var(--text-3)' }}><use href="#i-calendar" /></svg>
+              {eventDateLabel}
+            </span>
+            {updatedLabel && <span style={{ color: 'var(--text-3)' }}>{updatedLabel}</span>}
           </div>
-        </aside>
-
-        {/* ============ תוכן ============ */}
-        <main className="moc-content-area">
-          <div className="moc-content-topbar">
-            <div className="moc-topbar-title-block">
-              <h2>{meta.title}</h2>
-              {hint && <span className="moc-hint" title={hint}>{hint}</span>}
-              {saveMessage && (
-                <span className={`moc-save-msg ${saveMessage.includes('שגיאה') || saveMessage.includes('בוטלה') ? 'err' : 'ok'}`} title={saveMessage}>
-                  {saveMessage}
-                </span>
-              )}
-            </div>
-
-            <div className="moc-topbar-actions">
-              {/* נעילת הזמנה שתאריכה עבר — הכל גלוי, פעולות פריטים חסומות עד שחרור באישור מנהל */}
-              {isPastEvent && (
-                <button
-                  className={`moc-icon-btn-soft ${isLocked ? 'lock-on' : 'lock-off'}`}
-                  title={isLocked
-                    ? 'הזמנה נעולה — תאריך האירוע עבר. ניתן להחזיר בלבד; השכרה ועריכה חסומות. לחץ לשחרור באישור מנהל'
-                    : 'ההזמנה שוחררה לעריכה. לחץ לנעילה מחדש'}
-                  onClick={async () => {
-                    if (isLocked) {
-                      setShowUnlockModal(true);
-                    } else if (onLock) {
-                      const msg = 'האם ברצונך לנעול מחדש את ההזמנה?';
-                      const confirmed = window.customConfirm ? await window.customConfirm(msg) : window.confirm(msg);
-                      if (confirmed) onLock();
-                    }
-                  }}
-                >
-                  {isLocked ? <Lock size={18} /> : <LockOpen size={18} />}
-                </button>
-              )}
-
-              <button
-                className={`moc-icon-btn-soft money ${debt > 0 ? 'debt' : debt < 0 ? 'credit' : ''}`}
-                title={debt > 0 ? `יתרת חוב: ₪${debt.toLocaleString('he-IL')} — לחץ לתשלום בנדרים פלוס` : debt < 0 ? `יתרת זכות: ₪${Math.abs(debt).toLocaleString('he-IL')}` : 'שולם במלואו'}
-                onClick={() => (onWalletClick ? onWalletClick() : onTabChange('payments'))}
-              >
-                <Wallet size={18} />
-                {debt !== 0 && (
-                  <span className="moc-amt-badge">₪{Math.abs(debt).toLocaleString('he-IL')}</span>
-                )}
-              </button>
-
-              <div className="moc-topbar-sep" />
-
-              <button
-                className={`moc-icon-btn-soft sig ${order.hasSignedRegulations ? 'yes' : 'no'}`}
-                title={order.hasSignedRegulations ? 'חתם על תקנון השכרה — לחץ לשינוי' : 'לא חתם על תקנון — לחץ לשינוי'}
-                onClick={onToggleSignature}
-              >
-                <PenTool size={17} />
-                <span className="moc-mini-badge">
-                  {order.hasSignedRegulations ? <Check size={8} /> : <X size={8} />}
-                </span>
-              </button>
-
-              <div style={{ position: 'relative' }} ref={printWrapRef}>
-                <button className="moc-icon-btn-soft purple" title="הדפסה / מייל" onClick={onPrintButtonClick}>
-                  <Printer size={18} />
-                </button>
-                {printMenuOpen && (
-                  <div className="moc-dropdown-menu">
-                    <div className="moc-dropdown-item" onClick={() => onPrint('order')}><FileText size={15} /> הזמנה</div>
-                    <div className="moc-dropdown-item" onClick={() => onPrint('rental')}><ClipboardList size={15} /> השכרה</div>
-                    <div className="moc-dropdown-item" onClick={() => onSendEmail('order')}><Mail size={15} /> מייל הזמנה</div>
-                    <div className="moc-dropdown-item" onClick={() => onSendEmail('rental')}><Mail size={15} /> מייל השכרה</div>
-                  </div>
-                )}
-              </div>
-
-              <button className="moc-icon-btn-soft danger" title="מחיקת הזמנה" onClick={onDelete}>
-                <Trash2 size={18} />
-              </button>
-
-              <div className="moc-topbar-sep" />
-
-              {/* שני מצבים ברורים: שמירה רגילה מול שמירה שתעצור לבקשת אישור מנהל בגלל יתרת
-                  חוב חדשה/שהשתנתה (ר' handleSave - saveNeedsApproval, מושווה מול openedDebt).
-                  הזמנה שכבר הייתה בחוב לפני פתיחת הכרטיס ולא נעשה בה שינוי שמשפיע על הסכום
-                  לא מסומנת כדורשת אישור, כי השמירה בפועל לא תבקש אחד. needs-approval משנה
-                  את גוון האייקון, מוסיף תג מגן ותג-סכום כדי שהמשתמש ידע מראש. */}
-              <button
-                className={`moc-icon-btn-soft primary save-btn ${saveNeedsApproval ? 'needs-approval' : ''}`}
-                title={saveNeedsApproval
-                  ? `שמירה עם יתרת חוב של ₪${debt.toLocaleString('he-IL')} תדרוש אישור מנהל`
-                  : 'שמור שינויים'}
-                onClick={() => onSave()}
-                disabled={saving}
-              >
-                {saving ? <span className="moc-spinner" /> : <Save size={18} />}
-                {!saving && saveNeedsApproval && (
-                  <>
-                    <span className="moc-mini-badge"><ShieldAlert size={9} /></span>
-                    <span className="moc-amt-badge">₪{debt.toLocaleString('he-IL')}</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                className="moc-icon-btn-soft warn"
-                title={hasUnsavedChanges ? 'ביטול שינויים שלא נשמרו' : 'אין שינויים לביטול'}
-                onClick={onCancelChanges}
-                disabled={!hasUnsavedChanges || saving}
-              >
-                <Undo2 size={18} />
-              </button>
-
-              <button className="moc-icon-btn-soft exit" title="שמירה וחזרה" onClick={() => onExit()}>
-                <ArrowRight size={16} /> חזור
-              </button>
-            </div>
-          </div>
-
-          <div>
-            {tabs.map(tab => (
-              <section key={tab.id} className={`moc-content-section ${activeTab === tab.id ? 'active' : ''}`}>
-                {tabContents[tab.id]}
-              </section>
-            ))}
-          </div>
-        </main>
-      </div>
+        </div>
+        <form className="input-icon-wrap" style={{ maxWidth: '270px', width: '100%' }} onSubmit={handleScanSubmit}>
+          <svg className="icon"><use href="#i-tag" /></svg>
+          <input
+            type="text"
+            className="input"
+            value={scanValue}
+            onChange={e => setScanValue(e.target.value)}
+            placeholder="סריקה מהירה — השכרה / החזרה"
+          />
+        </form>
       </div>
 
-      {/* מודל שחרור נעילה באישור מנהל */}
-      {showUnlockModal && (
-        <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget && !unlocking) setShowUnlockModal(false); }}>
-          <div className="moc moc-modal-box" style={{ maxWidth: '420px', textAlign: 'center' }}>
-            <div className="moc-modal-body" style={{ paddingTop: '28px' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', background: 'var(--moc-danger-bg)', color: 'var(--moc-danger-text)' }}>
-                <Lock size={26} />
-              </div>
-              <h3 style={{ margin: '0 0 10px', fontSize: '1.2rem' }}>הזמנה נעולה</h3>
-              <p style={{ color: 'var(--moc-text-muted)', margin: 0, lineHeight: 1.7 }}>
-                תאריך האירוע של הזמנה זו עבר, ולכן השכרה, עריכה ומחיקה של פריטים חסומות.
-                <br />
-                החזרה מהשכרה, תשלומים וזיכויים זמינים כרגיל.
-                <br />
-                <strong>שחרור מלא לעריכה דורש אישור מנהל.</strong>
-              </p>
+      <div className="tabs">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            className={`tab${activeTab === tab.id ? ' active' : ''}`}
+            style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
+            onClick={() => onTabChange(tab.id)}
+          >
+            <svg className="icon"><use href={`#${tab.icon}`} /></svg>
+            {tab.label}
+            {tab.withCount && <span className="badge badge-neutral" style={{ marginInlineStart: '4px' }}>{activeItems.length}</span>}
+          </button>
+        ))}
+      </div>
+
+      {TABS.map(tab => (
+        <div key={tab.id} className={`tab-panel${activeTab === tab.id ? ' active' : ''}`}>
+          {tabContents[tab.id]}
+        </div>
+      ))}
+
+      {/* מודל אישור שחרור נעילה (הזמנה שתאריך האירוע שלה עבר) */}
+      {showUnlockModal && typeof document !== 'undefined' && createPortal(
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget && !unlocking) setShowUnlockModal(false); }}
+        >
+          <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-icon-circle" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
+              <svg className="icon"><use href="#i-lock" /></svg>
             </div>
-            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
-              <button className="moc-btn moc-btn-outline" disabled={unlocking} onClick={() => setShowUnlockModal(false)}>ביטול</button>
+            <h3>הזמנה נעולה</h3>
+            <p>
+              תאריך האירוע של הזמנה זו עבר, ולכן השכרה, עריכה ומחיקה של פריטים חסומות.
+              <br />
+              החזרה מהשכרה, תשלומים וזיכויים זמינים כרגיל.
+              <br />
+              <strong>שחרור מלא לעריכה דורש אישור מנהל.</strong>
+            </p>
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-secondary" disabled={unlocking} onClick={() => setShowUnlockModal(false)}>ביטול</button>
               <button
-                className="moc-btn moc-btn-gold"
+                type="button"
+                className="btn btn-primary"
                 disabled={unlocking}
                 onClick={async () => {
                   setUnlocking(true);
@@ -336,12 +300,14 @@ export default function ModernOrderCard({
                   }
                 }}
               >
-                {unlocking ? <><span className="moc-spinner" /> מאמת...</> : <><LockOpen size={15} /> שחרר באישור מנהל</>}
+                {unlocking ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-lock" /></svg>}
+                {unlocking ? 'מאמת...' : 'שחרר באישור מנהל'}
               </button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
-    </div>
+    </>
   );
 }

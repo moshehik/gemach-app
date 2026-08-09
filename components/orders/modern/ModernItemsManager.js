@@ -2,11 +2,6 @@
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  Plus, Trash2, RotateCcw, Edit2, X, Check, Info, CalendarSearch, Scan,
-  PackageCheck, PackageOpen, Undo2, XCircle, Shirt, Scissors, Ruler, ChevronDown, ChevronLeft, AlertTriangle,
-  CheckCircle2, ScanLine
-} from 'lucide-react';
 import OrderModelSelector from '../OrderModelSelector';
 import OrderSizeSelector from '../OrderSizeSelector';
 import ItemCapacityModal from '../ItemCapacityModal';
@@ -48,7 +43,7 @@ const dedupeAuditLogs = (logs) => {
 };
 
 /**
- * טאב "פריטים" בעיצוב המודרני — פורט מלא של OrderItemsManager, כולל ההשכרות:
+ * טאב "פריטים והשכרות" בעיצוב "אריג" — פורט מלא של OrderItemsManager, כולל ההשכרות:
  * הוספה/עריכה עם בורר דגם ומידה (כולל מטמון מלאי), תיקונים כצ'יפים,
  * השכרה/החזרה עם אישור וברקוד, מחיקה/שחזור, פרטי חיובים והיסטוריה לפריט.
  * חשוף דרך ref: scan(barcode) — סריקת ברקוד מהסיידבר מבצעת השכרה/החזרה
@@ -554,29 +549,32 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   // פריטים שהוגרו מ-Access בלי DressItem מקושר לא יקבלו קישור.
   const itemModelId = (item) => item.dressModelId || item.dressItem?.dressModelId || null;
 
+  const isChecked = (v) => v === 1 || v === true;
+
   const renderRepairChips = (item, index) => {
-    const neck = item.neckAlteration === 1 || item.neckAlteration === true;
-    const sleeve = item.sleeveAlteration === 1 || item.sleeveAlteration === true;
+    const neck = isChecked(item.neckAlteration);
+    const sleeve = isChecked(item.sleeveAlteration);
     const length = item.lengthAlteration && String(item.lengthAlteration).trim() !== '' ? item.lengthAlteration : null;
     const hasAny = neck || sleeve || length;
     return (
-      <div className="moc-repair-chips">
-        {neck && <span className="moc-repair-chip" title="תיקון צוואר"><Shirt size={13} /> צוואר</span>}
-        {sleeve && <span className="moc-repair-chip" title="תיקון שרוול"><Scissors size={13} /> שרוול</span>}
-        {length && <span className="moc-repair-chip" title="קיצור אורך"><Ruler size={13} /> {length} ס"מ</span>}
-        {!hasAny && <span className="moc-repair-chip muted">ללא תיקונים</span>}
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+        {neck && <span className="chip" title="תיקון צוואר"><svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-scissors" /></svg>צוואר</span>}
+        {sleeve && <span className="chip" title="תיקון שרוול"><svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-scissors" /></svg>שרוול</span>}
+        {length && <span className="chip">{length} ס"מ</span>}
+        {!hasAny && <span className="chip" style={{ opacity: .7 }}>ללא תיקונים</span>}
         {hasAny && (
           <button
-            className={`moc-repair-chip ${item.alterationDone ? 'done' : 'not-done'}`}
-            style={locked ? { cursor: 'default' } : undefined}
+            type="button"
+            className={`badge ${item.alterationDone ? 'badge-success' : 'badge-warning'}`}
+            style={{ border: 'none', font: 'inherit', cursor: locked ? 'default' : 'pointer' }}
             title={(item.alterationDetails ? `פירוט: ${item.alterationDetails} · ` : '') + (locked ? 'הזמנה נעולה' : 'לחץ לשינוי סטטוס ביצוע התיקון')}
             onClick={() => { if (!locked) handleItemChange(index, 'alterationDone', !item.alterationDone); }}
           >
-            {item.alterationDone ? <><Check size={12} /> בוצע</> : 'לא בוצע'}
+            {item.alterationDone ? <><svg className="icon"><use href="#i-check" /></svg>בוצע</> : 'לא בוצע'}
           </button>
         )}
         {hasAny && item.alterationDetails && (
-          <span className="moc-hint" style={{ flexBasis: '100%', fontSize: '0.78rem' }}>{item.alterationDetails}</span>
+          <span className="hint" style={{ flexBasis: '100%', fontSize: '11.5px', color: 'var(--text-3)' }}>{item.alterationDetails}</span>
         )}
       </div>
     );
@@ -585,12 +583,12 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   const renderStatusBadge = (item) => {
     if (item.isReturned) {
       if (item.returnedOk === false) {
-        return <span className="moc-badge on-white danger"><AlertTriangle size={13} /> הוחזר - לא תקין</span>;
+        return <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר - לא תקין</span>;
       }
-      return <span className="moc-badge on-white success"><PackageCheck size={13} /> הוחזר - תקין</span>;
+      return <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר - תקין</span>;
     }
-    if (item.isTaken) return <span className="moc-badge on-white info"><PackageOpen size={13} /> בהשכרה</span>;
-    return <span className="moc-badge on-white neutral">ממתין</span>;
+    if (item.isTaken) return <span className="badge badge-info"><svg className="icon"><use href="#i-box" /></svg>בהשכרה</span>;
+    return <span className="badge badge-neutral">ממתין</span>;
   };
 
   // בורר מצב לפריט שהוחזר — זמין גם בהזמנה נעולה, כי פריט מוחזר הוא כמעט תמיד של אירוע שעבר
@@ -598,63 +596,73 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     const isGood = item.returnedOk !== false;
     const busy = savingConditionId === item.id;
     return (
-      <div className="moc-return-toggle compact icon-only" title="מצב הפריט בהחזרה">
-        <button type="button" className={`good ${isGood ? 'active' : ''}`} disabled={busy} title="תקין"
+      <div className="toggle-btn-group" title="מצב הפריט בהחזרה">
+        <button type="button" className={isGood ? 'on' : ''} disabled={busy} title="תקין"
           onClick={(e) => { e.stopPropagation(); handleSetReturnCondition(item, true); }}>
-          <CheckCircle2 size={15} />
+          <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-check-circle" /></svg>
         </button>
-        <div className="moc-rt-sep" />
-        <button type="button" className={`bad ${!isGood ? 'active' : ''}`} disabled={busy} title="לא תקין"
+        <button type="button" className={!isGood ? 'off' : ''} disabled={busy} title="לא תקין"
           onClick={(e) => { e.stopPropagation(); handleSetReturnCondition(item, false); }}>
-          <AlertTriangle size={15} />
+          <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-alert-tri" /></svg>
         </button>
       </div>
     );
   };
 
+  const showAlterCol = enableAlterations && showAlterations;
+  const visibleItems = (items || []).map((item, originalIndex) => ({ item, originalIndex })).filter(({ item }) => showDeleted || !item.isDeleted);
+
   return (
     <>
       {locked && (
-        <div className="moc-pending-banner">
+        <div className="callout callout-warning" style={{ marginBottom: '16px' }}>
+          <svg className="icon"><use href="#i-lock" /></svg>
           <span>ההזמנה נעולה — תאריך האירוע עבר. ניתן לבצע החזרה מהשכרה בלבד; השכרה, עריכה ומחיקה חסומות עד שחרור באישור מנהל דרך אייקון המנעול למעלה.</span>
         </div>
       )}
 
-      {/* סרגל עליון של הטאב — כפתור ההוספה בימין, מונה בשמאל */}
-      <div className="moc-section-head">
+      {/* סרגל עליון של הטאב — כפתור ההוספה, בוררי תצוגה ומונה פריטים */}
+      <div className="toolbar">
         {!locked && (
-          <button className="moc-icon-btn-add" title="הוסף פריט חדש" onClick={handleAddItem}>
-            <Plus size={18} />
+          <button type="button" className="btn btn-primary btn-sm" title="הוסף פריט חדש" onClick={handleAddItem}>
+            <svg className="icon"><use href="#i-plus" /></svg>הוסף פריט
           </button>
         )}
         {enableAlterations && (
-          <button className={`moc-pill-toggle ${showAlterations ? 'on' : ''}`} onClick={() => setShowAlterations(v => !v)} title="הצגת עמודת התיקונים">
-            {showAlterations && <Check size={13} />} פרטי תיקונים
+          <div className="pill-tabs">
+            <button type="button" className={`pill-tab ${showAlterations ? 'active' : ''}`} onClick={() => setShowAlterations(v => !v)} title="הצגת עמודת התיקונים">
+              {showAlterations && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-check" /></svg>}פרטי תיקונים
+            </button>
+            <button type="button" className={`pill-tab ${showDeleted ? 'active' : ''}`} onClick={() => setShowDeleted(v => !v)} title="הצגת פריטים שנמחקו">
+              {showDeleted && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-check" /></svg>}פריטים מחוקים
+            </button>
+          </div>
+        )}
+        {!enableAlterations && (
+          <button type="button" className={`pill-tab ${showDeleted ? 'active' : ''}`} onClick={() => setShowDeleted(v => !v)} title="הצגת פריטים שנמחקו">
+            {showDeleted && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-check" /></svg>}פריטים מחוקים
           </button>
         )}
-        <button className={`moc-pill-toggle ${showDeleted ? 'on' : ''}`} onClick={() => setShowDeleted(v => !v)} title="הצגת פריטים שנמחקו">
-          {showDeleted && <Check size={13} />} פריטים מחוקים
-        </button>
-        <span className="moc-hint" style={{ marginInlineStart: 'auto' }}>
+        <span className="spacer" />
+        <span className="hint" style={{ color: 'var(--text-3)' }}>
           {activeItems.length} פריטים פעילים{totalPrice > 0 ? ` · סה"כ ₪${totalPrice.toLocaleString('he-IL')}` : ''}
         </span>
       </div>
 
-      {items && items.filter(i => showDeleted || !i.isDeleted).length > 0 ? (
-        <div className="moc-card-panel" style={{ padding: 0, overflowX: 'auto', maxHeight: '60vh', overflowY: 'auto' }}>
-          <table className={`moc-data-table ${(!showAlterations || !enableAlterations) ? 'hide-alter' : ''}`}>
+      {visibleItems.length > 0 ? (
+        <div className="table-wrap" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
+          <table className="data">
             <thead>
               <tr>
                 <th>תיאור דגם ומידה</th>
-                <th className="moc-col-alter">תיקונים</th>
+                {showAlterCol && <th>תיקונים</th>}
                 <th style={{ textAlign: 'center', width: '110px' }}>סטטוס</th>
-                <th style={{ textAlign: 'center' }}>פעולות</th>
+                <th></th>
                 <th style={{ textAlign: 'center', width: '110px' }}>פרטים</th>
               </tr>
             </thead>
             <tbody>
-              {items.map((item, originalIndex) => {
-                if (!showDeleted && item.isDeleted) return null;
+              {visibleItems.map(({ item, originalIndex }) => {
                 const isDeletedRow = item.isDeleted;
                 const isRented = item.isTaken && !item.isReturned;
                 const isEditingMode = item.isNew || item.isEditing;
@@ -666,19 +674,19 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                 const code = itemCode(item);
 
                 return (
-                  <tr key={item.id || item._localId || originalIndex} className={isDeletedRow ? 'deleted' : isEditingMode ? 'editing' : ''}>
+                  <tr key={item.id || item._localId || originalIndex} className={isDeletedRow ? 'row-flag' : ''}>
                     <td>
                       {canEditModelSize ? (
-                        <div className="moc-inline-edit">
-                          <div>
-                            <span className="moc-field-label">דגם</span>
+                        <div className="form-grid" style={{ gap: '8px', gridTemplateColumns: '1fr 1fr' }}>
+                          <div className="field" style={{ marginBottom: 0 }}>
+                            <label>דגם</label>
                             <OrderModelSelector
                               value={{ name: item.description, id: item.dressModelId }}
                               onChange={(model) => handleModelChange(originalIndex, model)}
                             />
                           </div>
-                          <div>
-                            <span className="moc-field-label">מידה</span>
+                          <div className="field" style={{ marginBottom: 0 }}>
+                            <label>מידה</label>
                             <OrderSizeSelector
                               modelId={item.dressModelId}
                               order={order}
@@ -699,120 +707,119 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                               target="_blank"
                               rel="noopener noreferrer"
                               title="פתח כרטיס דגם"
-                              style={{ color: 'inherit', textDecoration: 'none', fontWeight: 700 }}
-                              onMouseEnter={(e) => { e.currentTarget.style.color = 'var(--moc-primary-dark)'; e.currentTarget.style.textDecoration = 'underline'; }}
-                              onMouseLeave={(e) => { e.currentTarget.style.color = 'inherit'; e.currentTarget.style.textDecoration = 'none'; }}
+                              className="cell-primary"
+                              style={isDeletedRow ? { textDecoration: 'line-through', color: 'var(--text-3)' } : undefined}
                             >
                               {itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}
                             </a>
                           ) : (
-                            <strong>{itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}</strong>
+                            <strong style={isDeletedRow ? { textDecoration: 'line-through', color: 'var(--text-3)' } : undefined}>
+                              {itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}
+                            </strong>
                           )}
-                          {code && <div className="moc-mono" style={{ fontSize: '0.78rem', color: 'var(--moc-text-muted)' }}>קוד: {code}{item.barcode ? ` · ברקוד: ${item.barcode}` : ''}</div>}
+                          {code && <div className="cell-muted" style={{ fontWeight: 400, fontSize: '11.5px', marginTop: '2px' }}>קוד: {code}{item.barcode ? ` · ברקוד: ${item.barcode}` : ''}</div>}
                         </>
                       )}
                     </td>
-                    <td className="moc-col-alter">
-                      {isEditingMode && enableAlterations ? (
-                        <div className="moc-inline-edit moc-edit-box">
-                          {!item.isNew && !fullyEditableNow && (
-                            <div className="moc-hint" style={{ flexBasis: '100%', fontSize: '0.78rem' }}>
-                              חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך כעת רק את פירוט התיקון
-                            </div>
-                          )}
-                          <div className="moc-alter-edit-row">
-                            <button type="button"
-                              className={`moc-alter-toggle ${(item.neckAlteration === 1 || item.neckAlteration === true) ? 'on' : ''}`}
-                              disabled={!fullyEditableNow}
-                              onClick={() => handleItemChange(originalIndex, 'neckAlteration', (item.neckAlteration === 1 || item.neckAlteration === true) ? 0 : 1)}>
-                              <Shirt size={13} /> צוואר
-                            </button>
-                            <button type="button"
-                              className={`moc-alter-toggle ${(item.sleeveAlteration === 1 || item.sleeveAlteration === true) ? 'on' : ''}`}
-                              disabled={!fullyEditableNow}
-                              onClick={() => handleItemChange(originalIndex, 'sleeveAlteration', (item.sleeveAlteration === 1 || item.sleeveAlteration === true) ? 0 : 1)}>
-                              <Scissors size={13} /> שרוול
-                            </button>
-                            <label className={`moc-alter-length ${item.lengthAlteration ? 'on' : ''}`}>
-                              <Ruler size={13} />
-                              <input type="number" value={item.lengthAlteration || ''}
+                    {showAlterCol && (
+                      <td>
+                        {isEditingMode ? (
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            {!item.isNew && !fullyEditableNow && (
+                              <div className="hint" style={{ flexBasis: '100%', fontSize: '11.5px', color: 'var(--text-3)' }}>
+                                חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך כעת רק את פירוט התיקון
+                              </div>
+                            )}
+                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                              <button type="button"
+                                className={`pill-tab ${isChecked(item.neckAlteration) ? 'active' : ''}`}
+                                disabled={!fullyEditableNow}
+                                onClick={() => handleItemChange(originalIndex, 'neckAlteration', isChecked(item.neckAlteration) ? 0 : 1)}>
+                                <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-scissors" /></svg>צוואר
+                              </button>
+                              <button type="button"
+                                className={`pill-tab ${isChecked(item.sleeveAlteration) ? 'active' : ''}`}
+                                disabled={!fullyEditableNow}
+                                onClick={() => handleItemChange(originalIndex, 'sleeveAlteration', isChecked(item.sleeveAlteration) ? 0 : 1)}>
+                                <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-scissors" /></svg>שרוול
+                              </button>
+                              <input type="number" className="input" style={{ maxWidth: '100px' }} value={item.lengthAlteration || ''}
                                 disabled={!fullyEditableNow}
                                 onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
-                                placeholder="אורך" />
-                              <span>ס"מ</span>
-                            </label>
+                                placeholder="אורך (ס״מ)" />
+                            </div>
+                            <input type="text" className="input" value={item.alterationDetails || item.repairs || ''}
+                              onChange={(e) => handleItemChange(originalIndex, 'alterationDetails', e.target.value)}
+                              placeholder="פירוט התיקון הנדרש..." />
                           </div>
-                          <input type="text" value={item.alterationDetails || item.repairs || ''}
-                            onChange={(e) => handleItemChange(originalIndex, 'alterationDetails', e.target.value)}
-                            placeholder="פירוט התיקון הנדרש..." />
-                        </div>
-                      ) : (
-                        renderRepairChips(item, originalIndex)
-                      )}
-                    </td>
+                        ) : (
+                          renderRepairChips(item, originalIndex)
+                        )}
+                      </td>
+                    )}
                     <td style={{ textAlign: 'center' }}>
-                      {item.isNew ? <span className="moc-badge on-white neutral">חדש</span> : renderStatusBadge(item)}
+                      {item.isNew ? <span className="badge badge-neutral">חדש</span> : renderStatusBadge(item)}
                     </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                    <td>
+                      <div className="row-actions" style={{ flexWrap: 'wrap' }}>
                         {locked ? (
                           // הזמנה נעולה — מותרות החזרה וסימון מצב הפריט בלבד; עריכה, השכרה וביטולים חסומים
                           isRented ? (
-                            <button className="moc-btn moc-btn-gold moc-btn-sm"
+                            <button type="button" className="btn btn-secondary btn-sm"
                               onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
-                              <PackageCheck size={13} /> החזרה
+                              <svg className="icon"><use href="#i-check" /></svg>החזרה
                             </button>
                           ) : item.isReturned && !isDeletedRow ? (
                             renderConditionToggle(item)
                           ) : (
-                            <span className="moc-hint" style={{ fontStyle: 'italic' }}>נעול</span>
+                            <span className="hint" style={{ fontStyle: 'italic', color: 'var(--text-3)' }}>נעול</span>
                           )
                         ) : isEditingMode ? (
                           <>
-                            <button className="moc-btn moc-btn-gold moc-btn-sm"
+                            <button type="button" className="btn btn-primary btn-sm"
                               disabled={savingItemIndex === originalIndex}
                               onClick={(e) => { e.stopPropagation(); handleConfirmItem(originalIndex); }}>
-                              {savingItemIndex === originalIndex ? <><span className="moc-spinner" /> שומר...</> : <><Check size={14} /> אישור</>}
+                              {savingItemIndex === originalIndex ? <><span className="spinner" style={{ width: '13px', height: '13px', borderWidth: '2px' }} />שומר...</> : <><svg className="icon"><use href="#i-check" /></svg>אישור</>}
                             </button>
-                            <button className="moc-btn moc-btn-outline moc-btn-sm"
+                            <button type="button" className="btn btn-secondary btn-sm"
                               disabled={savingItemIndex === originalIndex}
                               onClick={(e) => { e.stopPropagation(); item.isNew ? cancelNewItem(originalIndex) : cancelEditItem(originalIndex); }}>
-                              <X size={14} /> ביטול
+                              <svg className="icon"><use href="#i-x" /></svg>ביטול
                             </button>
                           </>
                         ) : isDeletedRow ? null : (
                           <>
                             {!item.isTaken && (
-                              <button className="moc-btn moc-btn-outline moc-btn-sm"
+                              <button type="button" className="btn btn-secondary btn-sm"
                                 title={canFullyEditItem(item) ? 'ערוך פרטי פריט' : 'חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך רק את פירוט התיקון'}
                                 onClick={(e) => { e.stopPropagation(); handleEditItem(originalIndex); }}>
-                                <Edit2 size={13} /> עריכה
+                                <svg className="icon"><use href="#i-edit" /></svg>עריכה
                               </button>
                             )}
                             {!item.isTaken && !item.isNew && (
-                              <button className="moc-btn moc-btn-gold moc-btn-sm"
+                              <button type="button" className="btn btn-primary btn-sm"
                                 onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'rent' }); }}>
-                                <PackageOpen size={13} /> השכרה
+                                <svg className="icon"><use href="#i-box" /></svg>השכרה
                               </button>
                             )}
                             {isRented && (
                               <>
-                                <button className="moc-btn moc-btn-gold moc-btn-sm"
+                                <button type="button" className="btn btn-secondary btn-sm"
                                   onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
-                                  <PackageCheck size={13} /> החזרה
+                                  <svg className="icon"><use href="#i-check" /></svg>החזרה
                                 </button>
-                                <button className="moc-btn moc-btn-danger-soft moc-btn-sm" title="בטל השכרה"
+                                <button type="button" className="btn btn-danger-ghost btn-sm" title="בטל השכרה"
                                   onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelRent' }); }}>
-                                  <XCircle size={13} /> ביטול
+                                  <svg className="icon"><use href="#i-x-circle" /></svg>ביטול
                                 </button>
                               </>
                             )}
                             {item.isReturned && (
                               <>
                                 {renderConditionToggle(item)}
-                                <button className="moc-btn moc-btn-danger-soft moc-btn-sm" title="בטל החזרה"
+                                <button type="button" className="btn btn-danger-ghost btn-sm" title="בטל החזרה"
                                   onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' }); }}>
-                                  <Undo2 size={13} /> ביטול החזרה
+                                  <svg className="icon"><use href="#i-refresh" /></svg>ביטול החזרה
                                 </button>
                               </>
                             )}
@@ -823,25 +830,26 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                     <td style={{ textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                         {!item.isNew && (
-                          <button className="moc-icon-btn-plain" title="פרטים נוספים והיסטוריה"
+                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים והיסטוריה"
                             onClick={(e) => { e.stopPropagation(); showItemDetails(item); }}>
-                            <Info size={16} />
+                            <svg className="icon"><use href="#i-info" /></svg>
                           </button>
                         )}
                         {!item.isNew && (
-                          <button className="moc-icon-btn-plain" title="בדוק תפוסה לתאריך אירוע"
+                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="בדוק תפוסה לתאריך אירוע"
                             onClick={(e) => { e.stopPropagation(); setCapacityModalItem(item); }}>
-                            <CalendarSearch size={16} />
+                            <svg className="icon"><use href="#i-calendar" /></svg>
                           </button>
                         )}
                         {/* מחיקה — לא זמינה לפריט שנלקח (מושכר או הוחזר) או בהזמנה נעולה; שחזור תמיד מוצג לשורה מחוקה */}
                         {!locked && !item.isNew && (isDeletedRow || !item.isTaken) && (
                           <button
-                            className={`moc-icon-btn-plain ${isDeletedRow ? 'restore' : 'row-delete'}`}
+                            type="button"
+                            className="btn btn-ghost btn-icon-only btn-sm"
                             title={isDeletedRow ? 'שחזר פריט' : 'מחק פריט'}
                             onClick={(e) => { e.stopPropagation(); toggleDeleted(originalIndex); }}
                           >
-                            {isDeletedRow ? <RotateCcw size={15} /> : <Trash2 size={15} />}
+                            <svg className="icon"><use href={isDeletedRow ? '#i-refresh' : '#i-trash'} /></svg>
                           </button>
                         )}
                       </div>
@@ -854,37 +862,40 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
           <div ref={listEndRef} />
         </div>
       ) : (
-        <div className="moc-card-panel">
-          <div className="moc-empty-state">
-            <div style={{ fontSize: '1.1rem', marginBottom: '6px' }}>אין פריטים להזמנה זו</div>
-            <button className="moc-btn moc-btn-gold" onClick={handleAddItem}><Plus size={15} /> הוסף פריט ראשון</button>
+        <div className="table-wrap">
+          <div className="empty-state">
+            <svg className="icon"><use href="#i-bag" /></svg>
+            <h4>אין פריטים להזמנה זו</h4>
+            <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: '10px' }} onClick={handleAddItem}>
+              <svg className="icon"><use href="#i-plus" /></svg>הוסף פריט ראשון
+            </button>
           </div>
         </div>
       )}
 
       {/* ===== מודל אישור השכרה/החזרה ===== */}
       {confirmModal.isOpen && (
-        <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfirmModal({ isOpen: false, item: null, actionType: null }); }}>
-          <div className="moc moc-modal-box" style={{ maxWidth: '400px', textAlign: 'center' }}>
-            <div className="moc-modal-body" style={{ paddingTop: '28px' }}>
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px', background: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)' }}>
-                {confirmModal.actionType === 'return' ? <PackageCheck size={26} /> : confirmModal.actionType === 'rent' ? <PackageOpen size={26} /> : <XCircle size={26} />}
-              </div>
-              <h3 style={{ margin: '0 0 10px', fontSize: '1.2rem' }}>
-                {confirmModal.actionType === 'rent' ? 'אישור השכרה' : confirmModal.actionType === 'return' ? 'אישור החזרה' : confirmModal.actionType === 'cancelRent' ? 'ביטול השכרה' : 'ביטול החזרה'}
-              </h3>
-              <p style={{ color: 'var(--moc-text-muted)', margin: 0, lineHeight: 1.6 }}>
-                האם אתה בטוח שברצונך {confirmModal.actionType === 'rent' ? 'לסמן פריט זה כמושכר' : confirmModal.actionType === 'return' ? 'לסמן פריט זה כמוחזר' : confirmModal.actionType === 'cancelRent' ? 'לבטל את השכרת הפריט' : 'לבטל את החזרת הפריט'}?
-              </p>
-              {!isFullyPaid && (confirmModal.actionType === 'rent' || confirmModal.actionType === 'return') && (
-                <p style={{ color: 'var(--moc-danger-text)', fontWeight: 700, fontSize: '0.9rem', background: 'var(--moc-danger-bg)', padding: '8px', borderRadius: '8px', marginTop: '12px' }}>
-                  שים לב: ההזמנה לא שולמה במלואה! נדרש אישור מנהל.
-                </p>
-              )}
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmModal({ isOpen: false, item: null, actionType: null }); }}>
+          <div className="modal confirm-modal" style={{ margin: 0 }}>
+            <div className="modal-icon-circle" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
+              <svg className="icon"><use href={confirmModal.actionType === 'return' ? '#i-check' : confirmModal.actionType === 'rent' ? '#i-box' : '#i-x-circle'} /></svg>
             </div>
-            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
-              <button className="moc-btn moc-btn-outline" onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}>ביטול</button>
-              <button className="moc-btn moc-btn-gold" onClick={async () => {
+            <h3>
+              {confirmModal.actionType === 'rent' ? 'אישור השכרה' : confirmModal.actionType === 'return' ? 'אישור החזרה' : confirmModal.actionType === 'cancelRent' ? 'ביטול השכרה' : 'ביטול החזרה'}
+            </h3>
+            <p>
+              האם אתה בטוח שברצונך {confirmModal.actionType === 'rent' ? 'לסמן פריט זה כמושכר' : confirmModal.actionType === 'return' ? 'לסמן פריט זה כמוחזר' : confirmModal.actionType === 'cancelRent' ? 'לבטל את השכרת הפריט' : 'לבטל את החזרת הפריט'}?
+            </p>
+            {!isFullyPaid && (confirmModal.actionType === 'rent' || confirmModal.actionType === 'return') && (
+              <div className="callout callout-danger" style={{ marginBottom: '20px', textAlign: 'start' }}>
+                <svg className="icon"><use href="#i-alert-tri" /></svg>
+                <span>שים לב: ההזמנה לא שולמה במלואה! נדרש אישור מנהל.</span>
+              </div>
+            )}
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}>ביטול</button>
+              <button type="button" className="btn btn-primary" onClick={async () => {
                 const { item, actionType } = confirmModal;
                 setConfirmModal({ isOpen: false, item: null, actionType: null });
                 if (actionType === 'rent') {
@@ -909,57 +920,56 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
       {/* ===== מודל בחירת פריט — כשכמה פריטים זהים בהזמנה תואמים לברקוד שנסרק ===== */}
       {itemChoiceModal.isOpen && (
-        <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setItemChoiceModal({ isOpen: false, candidates: [], barcode: null }); }}>
-          <div className="moc moc-modal-box">
-            <div className="moc-modal-head">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{
-                  width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)', flexShrink: 0
-                }}>
-                  <ScanLine size={18} />
-                </span>
-                לאיזה פריט לשייך את הברקוד?
-              </h3>
-              <button className="moc-close-x" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}><X size={15} /></button>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setItemChoiceModal({ isOpen: false, candidates: [], barcode: null }); }}>
+          <div className="modal" style={{ margin: 0 }}>
+            <div className="modal-head">
+              <strong><svg className="icon"><use href="#i-tag" /></svg>לאיזה פריט לשייך את הברקוד?</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
             </div>
-            <div className="moc-modal-body">
-              <p style={{ color: 'var(--moc-text-muted)', margin: '0 0 16px', lineHeight: 1.6, fontSize: '0.9rem' }}>
+            <div className="modal-body">
+              <p className="hint" style={{ color: 'var(--text-2)', lineHeight: 1.6 }}>
                 נמצאו מספר פריטים זהים בהזמנה שמתאימים לברקוד שנסרק — יש לבחור לאיזה פריט לשייך אותו:
-                <br />
-                <strong className="moc-mono" style={{ display: 'inline-block', marginTop: '6px', padding: '4px 10px', background: 'var(--moc-neutral-bg)', borderRadius: '8px', color: 'var(--moc-text-main)' }}>
+              </p>
+              <p style={{ marginBottom: '16px' }}>
+                <strong style={{ display: 'inline-block', padding: '4px 10px', background: 'var(--surface-alt)', borderRadius: 'var(--radius-sm)', fontFamily: 'Consolas, monospace', direction: 'ltr' }}>
                   {itemChoiceModal.barcode}
                 </strong>
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {itemChoiceModal.candidates.map((item, idx) => {
-                  const hasRepair = item.neckAlteration === 1 || item.neckAlteration === true ||
-                    item.sleeveAlteration === 1 || item.sleeveAlteration === true ||
+                  const hasRepair = isChecked(item.neckAlteration) || isChecked(item.sleeveAlteration) ||
                     (item.lengthAlteration && String(item.lengthAlteration).trim() !== '');
                   return (
                     <button
                       key={item.id || idx}
-                      className="moc-choice-card"
+                      type="button"
+                      className="list-card"
+                      style={{ width: '100%', cursor: 'pointer', textAlign: 'start', font: 'inherit', color: 'inherit' }}
                       onClick={() => chooseItemForBarcode(item)}
                     >
-                      <span className="moc-choice-icon"><PackageOpen size={18} /></span>
-                      <span className="moc-choice-main">
-                        <div className="moc-choice-title">{itemName(item)}</div>
-                        <div className="moc-choice-sub">
+                      <span className="kpi-icon" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
+                        <svg className="icon"><use href="#i-box" /></svg>
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{itemName(item)}</div>
+                        <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px', fontSize: '12px', color: 'var(--text-3)' }}>
                           <span>מידה {item.sizeText || '-'}</span>
-                          <span className={`moc-badge on-white ${hasRepair ? 'warning' : 'neutral'}`}>
-                            {hasRepair && <Scissors size={12} />} {hasRepair ? 'עם תיקון' : 'ללא תיקון'}
+                          <span className={`badge ${hasRepair ? 'badge-warning' : 'badge-neutral'}`}>
+                            {hasRepair && <svg className="icon"><use href="#i-scissors" /></svg>}{hasRepair ? 'עם תיקון' : 'ללא תיקון'}
                           </span>
                         </div>
                       </span>
-                      <ChevronLeft size={18} className="moc-choice-arrow" />
+                      <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-chevron-start" /></svg>
                     </button>
                   );
                 })}
               </div>
             </div>
-            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
-              <button className="moc-btn moc-btn-outline" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}>ביטול</button>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}>ביטול</button>
             </div>
           </div>
         </div>
@@ -967,13 +977,17 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
       {/* ===== מודל ברקוד ידני להשכרה ===== */}
       {showManualScanModal && (
-        <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) { setShowManualScanModal(false); setManualBarcode(''); } }}>
-          <div className="moc moc-modal-box" style={{ maxWidth: '400px' }}>
-            <div className="moc-modal-head"><h3>הזנת ברקוד ידנית</h3>
-              <button className="moc-close-x" onClick={() => { setShowManualScanModal(false); setManualBarcode(''); }}><X size={15} /></button>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowManualScanModal(false); setManualBarcode(''); } }}>
+          <div className="modal" style={{ margin: 0, maxWidth: '400px' }}>
+            <div className="modal-head">
+              <strong>הזנת ברקוד ידנית</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => { setShowManualScanModal(false); setManualBarcode(''); }}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
             </div>
-            <div className="moc-modal-body">
-              <p style={{ color: 'var(--moc-text-muted)', fontSize: '0.92rem', marginTop: 0 }}>הזן את הברקוד המופיע על הפריט כדי לאשר את הפעולה.</p>
+            <div className="modal-body">
+              <p className="hint" style={{ color: 'var(--text-2)', marginTop: 0 }}>הזן את הברקוד המופיע על הפריט כדי לאשר את הפעולה.</p>
               <form onSubmit={async (e) => {
                 e.preventDefault();
                 setShowManualScanModal(false);
@@ -981,12 +995,12 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                 setManualBarcode('');
                 if (selectedItemForScan) await handleRent(selectedItemForScan, barcode);
               }}>
-                <div style={{ position: 'relative', marginBottom: '14px' }}>
-                  <input type="text" autoFocus placeholder="סרוק או הקלד ברקוד..." value={manualBarcode}
+                <div className="input-icon-wrap" style={{ marginBottom: '14px' }}>
+                  <svg className="icon"><use href="#i-tag" /></svg>
+                  <input type="text" className="input" autoFocus placeholder="סרוק או הקלד ברקוד..." value={manualBarcode}
                     onChange={(e) => setManualBarcode(e.target.value)} style={{ textAlign: 'center', direction: 'ltr' }} />
-                  <Scan size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--moc-text-muted)' }} />
                 </div>
-                <button type="submit" className="moc-btn moc-btn-gold" style={{ width: '100%', justifyContent: 'center' }}>בצע סריקה</button>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%' }}>בצע סריקה</button>
               </form>
             </div>
           </div>
@@ -995,26 +1009,29 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
       {/* ===== מודל פרטי פריט (חיובים + היסטוריה) ===== */}
       {mounted && detailsModalItem && createPortal(
-        <div className="moc moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setDetailsModalItem(null); }}>
-          <div className="moc-modal-box wide">
-            <div className="moc-modal-head">
-              <h3>פרטי פריט: {itemName(detailsModalItem)}</h3>
-              <button className="moc-close-x" onClick={() => setDetailsModalItem(null)}><X size={15} /></button>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setDetailsModalItem(null); }}>
+          <div className="modal" style={{ margin: 0, maxWidth: '720px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className="modal-head">
+              <strong>פרטי פריט: {itemName(detailsModalItem)}</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setDetailsModalItem(null)}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
             </div>
-            <div className="moc-modal-body">
-              <span className="moc-field-label">תשלומים וחיובים לפריט זה (חיוב, זיכוי, ביטול, תיקונים)</span>
-              <div className="moc-card-panel" style={{ padding: '10px 14px', marginBottom: '16px', maxHeight: '190px', overflowY: 'auto' }}>
+            <div className="modal-body" style={{ overflowY: 'auto' }}>
+              <span className="hint" style={{ color: 'var(--text-2)', fontWeight: 700 }}>תשלומים וחיובים לפריט זה (חיוב, זיכוי, ביטול, תיקונים)</span>
+              <div className="table-wrap" style={{ margin: '8px 0 16px', maxHeight: '190px', overflowY: 'auto' }}>
                 {(() => {
-                  if (!order || !order.obligations) return <span className="moc-hint">לא נמצאו חיובים מפורטים</span>;
+                  if (!order || !order.obligations) return <div className="empty-state" style={{ padding: '16px' }}>לא נמצאו חיובים מפורטים</div>;
                   const searchStr = `(פריט #${detailsModalItem.id})`;
                   const cleanTxt = (t) => (t || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim();
                   // כל ההתחייבויות שמשויכות לפריט — כולל זיכויים/ביטולים (סכומים שליליים)
                   const relatedObligations = order.obligations.filter(obs =>
                     !obs.isDeleted && obs.description && obs.description.includes(searchStr)
                   );
-                  if (relatedObligations.length === 0) return <span className="moc-hint">אין חיובים מפורטים לפריט זה</span>;
+                  if (relatedObligations.length === 0) return <div className="empty-state" style={{ padding: '16px' }}>אין חיובים מפורטים לפריט זה</div>;
                   return (
-                    <table className="moc-data-table">
+                    <table className="data">
                       <tbody>
                         {relatedObligations.map((obs, idx) => {
                           const isCredit = obs.amount < 0;
@@ -1025,20 +1042,20 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                           const showDesc = desc && desc !== label;
                           return (
                             <tr key={idx}>
-                              <td style={{ fontWeight: 600 }} colSpan={showDesc ? 1 : 2}>
+                              <td className="cell-primary" colSpan={showDesc ? 1 : 2}>
                                 {label}
-                                {isCredit && <span className="moc-badge on-white danger" style={{ marginRight: '6px' }}>זיכוי</span>}
+                                {isCredit && <span className="badge badge-danger" style={{ marginInlineStart: '6px' }}>זיכוי</span>}
                               </td>
-                              {showDesc && <td className="moc-hint">{desc}</td>}
-                              <td style={{ fontWeight: 700, color: isCredit ? 'var(--moc-danger-text)' : '#16a34a', direction: 'ltr', textAlign: 'left' }}>
+                              {showDesc && <td className="cell-muted">{desc}</td>}
+                              <td style={{ fontWeight: 700, color: isCredit ? 'var(--success)' : 'var(--danger)', direction: 'ltr', textAlign: 'left' }}>
                                 {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
                               </td>
                             </tr>
                           );
                         })}
-                        <tr style={{ fontWeight: 700, background: 'var(--moc-neutral-bg)' }}>
+                        <tr style={{ fontWeight: 700, background: 'var(--surface-alt)' }}>
                           <td colSpan={2}>סה"כ לפריט</td>
-                          <td style={{ color: '#16a34a', direction: 'ltr', textAlign: 'left' }}>₪{relatedObligations.reduce((sum, obs) => sum + obs.amount, 0)}</td>
+                          <td style={{ color: 'var(--success)', direction: 'ltr', textAlign: 'left' }}>₪{relatedObligations.reduce((sum, obs) => sum + obs.amount, 0)}</td>
                         </tr>
                       </tbody>
                     </table>
@@ -1058,20 +1075,20 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                 const takenDate = fmtFull(detailsModalItem.takenDate);
                 const returnDate = fmtFull(detailsModalItem.returnDate);
                 return (
-                  <div className="moc-grid-2" style={{ marginBottom: '16px' }}>
+                  <div className="form-grid cols-3" style={{ marginBottom: '16px' }}>
                     <div>
-                      <span className="moc-field-label">תאריך הוספה</span>
-                      <div className="moc-field-value" style={{ fontSize: '0.92rem' }}>{addedDate || '-'}</div>
+                      <span className="hint" style={{ color: 'var(--text-3)' }}>תאריך הוספה</span>
+                      <div style={{ fontSize: '13px', fontWeight: 600, marginTop: '2px' }}>{addedDate || '-'}</div>
                     </div>
                     <div>
-                      <span className="moc-field-label">תאריך השכרה (לקיחה)</span>
-                      <div className="moc-field-value" style={{ fontSize: '0.92rem', color: takenDate ? undefined : 'var(--moc-text-muted)' }}>
+                      <span className="hint" style={{ color: 'var(--text-3)' }}>תאריך השכרה (לקיחה)</span>
+                      <div style={{ fontSize: '13px', fontWeight: 600, marginTop: '2px', color: takenDate ? undefined : 'var(--text-3)' }}>
                         {takenDate || 'טרם הושכר'}
                       </div>
                     </div>
                     <div>
-                      <span className="moc-field-label">תאריך החזרה</span>
-                      <div className="moc-field-value" style={{ fontSize: '0.92rem', color: returnDate ? undefined : 'var(--moc-text-muted)' }}>
+                      <span className="hint" style={{ color: 'var(--text-3)' }}>תאריך החזרה</span>
+                      <div style={{ fontSize: '13px', fontWeight: 600, marginTop: '2px', color: returnDate ? undefined : 'var(--text-3)' }}>
                         {returnDate || 'טרם הוחזר'}
                       </div>
                     </div>
@@ -1079,10 +1096,10 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                 );
               })()}
 
-              <span className="moc-field-label">היסטוריית שינויים</span>
-              <div className="moc-card-panel" style={{ padding: '6px 14px', maxHeight: '250px', overflowY: 'auto' }}>
+              <span className="hint" style={{ color: 'var(--text-2)', fontWeight: 700 }}>היסטוריית שינויים</span>
+              <div className="card" style={{ marginTop: '8px', maxHeight: '250px', overflowY: 'auto' }}>
                 {detailsModalItem.loadingLogs ? (
-                  <div className="moc-empty-state" style={{ padding: '14px 0' }}>טוען היסטוריה...</div>
+                  <div className="loading-inline"><span className="spinner" />טוען היסטוריה...</div>
                 ) : detailsModalItem.auditLogs && detailsModalItem.auditLogs.length > 0 ? (
                   dedupeAuditLogs(detailsModalItem.auditLogs).map((log, idx) => {
                     const actionLabel = ACTION_TRANSLATIONS[log.action] || log.action;
@@ -1106,33 +1123,33 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                         }
                       }
                       changesNode = rows.length > 0
-                        ? <div className="moc-diff">{rows}</div>
-                        : <div className="moc-hint" style={{ fontStyle: 'italic' }}>אין שינויים רלוונטיים להצגה</div>;
+                        ? <div style={{ fontSize: '12px', lineHeight: 1.7 }}>{rows}</div>
+                        : <div className="hint" style={{ fontStyle: 'italic', color: 'var(--text-3)' }}>אין שינויים רלוונטיים להצגה</div>;
                     } catch (e) {
-                      changesNode = <div className="moc-diff moc-mono">{String(log.changesJson)}</div>;
+                      changesNode = <div style={{ fontSize: '12px', fontFamily: 'Consolas, monospace' }}>{String(log.changesJson)}</div>;
                     }
                     const isExpanded = !!expandedHistory[idx];
                     return (
-                      <div key={idx} className="moc-history-item">
-                        <button type="button" className="moc-history-row" onClick={() => toggleHistoryExpand(idx)}>
-                          <ChevronDown size={15} className={`moc-history-chevron ${isExpanded ? 'expanded' : ''}`} />
-                          <div className="moc-history-dot" />
-                          <span className="moc-action-tag">{actionLabel}</span>
-                          <span className="moc-meta">
+                      <div key={idx}>
+                        <button type="button" className="select-row" style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer', font: 'inherit', textAlign: 'start', color: 'inherit' }}
+                          onClick={() => toggleHistoryExpand(idx)}>
+                          <svg className="icon" style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform .15s ease', color: 'var(--text-3)' }}><use href="#i-chevron-down" /></svg>
+                          <span className="badge badge-primary">{actionLabel}</span>
+                          <span className="hint" style={{ color: 'var(--text-3)' }}>
                             {new Date(log.createdAt).toLocaleDateString('he-IL')} ({getHebrewDateString(log.createdAt)}) · {new Date(log.createdAt).toLocaleTimeString('he-IL', { timeStyle: 'short' })}
                           </span>
                         </button>
-                        {isExpanded && <div className="moc-history-details">{changesNode}</div>}
+                        {isExpanded && <div style={{ padding: '0 16px 12px 44px' }}>{changesNode}</div>}
                       </div>
                     );
                   })
                 ) : (
-                  <div className="moc-hint" style={{ fontStyle: 'italic', padding: '10px 0' }}>אין היסטוריית שינויים להצגה</div>
+                  <div className="empty-state" style={{ padding: '16px' }}>אין היסטוריית שינויים להצגה</div>
                 )}
               </div>
             </div>
-            <div className="moc-modal-foot">
-              <button className="moc-btn moc-btn-outline" onClick={() => setDetailsModalItem(null)}>סגור</button>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setDetailsModalItem(null)}>סגור</button>
             </div>
           </div>
         </div>,
