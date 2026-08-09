@@ -260,12 +260,12 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
     return (
       <button data-element-name="כפתור_AIFloatingWidget_2"
         type="button"
-        className="print-hide"
+        className="print-hide ai-widget-fab"
         onClick={() => setIsOpen(true)}
         style={{
           position: 'fixed',
           bottom: '80px',
-          insetInlineEnd: '20px',
+          insetInlineStart: 'calc(var(--sidebar-current-w) + 20px)',
           width: '44px',
           height: '44px',
           borderRadius: 'var(--radius-full)',
@@ -293,10 +293,10 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
 
   return (
     <>
-      <div className="print-hide card" style={{
+      <div className="print-hide card ai-widget-panel" style={{
         position: 'fixed',
         bottom: '80px',
-        insetInlineEnd: '20px',
+        insetInlineStart: 'calc(var(--sidebar-current-w) + 20px)',
         width: isExpanded ? '600px' : '380px',
         height: isExpanded ? '80vh' : '550px',
         maxWidth: 'calc(100vw - 40px)',
