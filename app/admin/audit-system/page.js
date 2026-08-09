@@ -80,24 +80,26 @@ export default function AuditSystemDocsPage() {
 
       <Section title="11 תחומי הביקורת">
         <div className="table-wrap" style={{ marginBottom: '16px' }}>
-          <table className="data">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>תחום</th>
-                <th>מה הוא בודק</th>
-              </tr>
-            </thead>
-            <tbody>
-              {agents.map((a, i) => (
-                <tr key={a.slug}>
-                  <td className="cell-muted">{i + 1}</td>
-                  <td className="cell-primary">{a.label}</td>
-                  <td>{a.desc}</td>
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>#</th>
+                  <th>תחום</th>
+                  <th>מה הוא בודק</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {agents.map((a, i) => (
+                  <tr key={a.slug}>
+                    <td className="cell-muted">{i + 1}</td>
+                    <td className="cell-primary">{a.label}</td>
+                    <td>{a.desc}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
         <Callout tone="info" title="שמות הסוכנים">
           כל תחום הוא קובץ עצמאי תחת <Code>.claude/agents/&lt;slug&gt;.md</Code> (העמודה &quot;תחום&quot;

@@ -425,101 +425,103 @@ export default function AlterationsPage() {
         </div>
       ) : (
         <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>תאריך אירוע</th>
-                <th>לקוח</th>
-                <th>דגם שמלה</th>
-                <th>מידה</th>
-                <th>פירוט תיקונים</th>
-                <th>סטטוס</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {items.length === 0 ? (
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
                 <tr>
-                  <td colSpan="7">
-                    <div className="empty-state">
-                      <svg className="icon"><use href="#i-search" /></svg>
-                      <p>לא נמצאו תיקונים העונים לחתך החיפוש</p>
-                    </div>
-                  </td>
+                  <th>תאריך אירוע</th>
+                  <th>לקוח</th>
+                  <th>דגם שמלה</th>
+                  <th>מידה</th>
+                  <th>פירוט תיקונים</th>
+                  <th>סטטוס</th>
+                  <th></th>
                 </tr>
-              ) : (
-                items.map((item) => {
-                  const isDone = item.alterationDone;
-                  const rowStyle = {
-                    background: isDone ? 'var(--success-tint)' : 'var(--warning-tint)',
-                    borderRight: isDone ? '4px solid var(--success)' : '4px solid var(--warning)'
-                  };
+              </thead>
+              <tbody>
+                {items.length === 0 ? (
+                  <tr>
+                    <td colSpan="7">
+                      <div className="empty-state">
+                        <svg className="icon"><use href="#i-search" /></svg>
+                        <p>לא נמצאו תיקונים העונים לחתך החיפוש</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  items.map((item) => {
+                    const isDone = item.alterationDone;
+                    const rowStyle = {
+                      background: isDone ? 'var(--success-tint)' : 'var(--warning-tint)',
+                      borderRight: isDone ? '4px solid var(--success)' : '4px solid var(--warning)'
+                    };
 
-                  return (
-                    <tr
-                      key={item.id}
-                      style={rowStyle}
-                      onMouseEnter={e => e.currentTarget.style.background = rowStyle.background}
-                      onMouseLeave={e => e.currentTarget.style.background = rowStyle.background}
-                    >
-                      <td className="cell-primary">{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</td>
-                      <td>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
-                      <td>
-                        {item.dressItem?.dress?.name
-                          ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
-                          : (item.description || item.dressItem?.dressName)}
-                      </td>
-                      <td>
-                        <span className="badge badge-neutral">{item.sizeText || item.size}</span>
-                      </td>
-                      <td style={{ maxWidth: '350px' }}>
-                        <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                          {item.neckAlteration > 0 && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>צוואר: הצרה {item.neckAlteration}</span>}
-                          {item.sleeveAlteration > 0 && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>שרוול: הארכה {item.sleeveAlteration}</span>}
-                          {item.lengthAlteration && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>אורך: {item.lengthAlteration}</span>}
-                          {item.alterationDetails && <span className="chip">{item.alterationDetails}</span>}
-                          {!item.neckAlteration && !item.sleeveAlteration && !item.lengthAlteration && !item.alterationDetails && <span className="cell-muted">-</span>}
-                        </div>
-                      </td>
-                      <td>
-                        {isDone ? (
-                          <span className="badge badge-success">בוצע</span>
-                        ) : (
-                          <span className="badge badge-warning">ממתין</span>
-                        )}
-                      </td>
-                      <td>
-                        <div className="row-actions">
-                          <Link
-                            href={`/orders/${item.order?.orderId}`}
-                            className="btn btn-ghost btn-icon-only btn-sm"
-                            title="כרטיס הזמנה"
-                          >
-                            <svg className="icon"><use href="#i-file" /></svg>
-                          </Link>
+                    return (
+                      <tr
+                        key={item.id}
+                        style={rowStyle}
+                        onMouseEnter={e => e.currentTarget.style.background = rowStyle.background}
+                        onMouseLeave={e => e.currentTarget.style.background = rowStyle.background}
+                      >
+                        <td className="cell-primary">{item.order?.eventDateHebrew || (item.order?.eventDate ? getHebrewDateString(item.order.eventDate) : '-')}</td>
+                        <td>{item.order?.customer?.firstName} {item.order?.customer?.lastName}</td>
+                        <td>
+                          {item.dressItem?.dress?.name
+                            ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
+                            : (item.description || item.dressItem?.dressName)}
+                        </td>
+                        <td>
+                          <span className="badge badge-neutral">{item.sizeText || item.size}</span>
+                        </td>
+                        <td style={{ maxWidth: '350px' }}>
+                          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
+                            {item.neckAlteration > 0 && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>צוואר: הצרה {item.neckAlteration}</span>}
+                            {item.sleeveAlteration > 0 && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>שרוול: הארכה {item.sleeveAlteration}</span>}
+                            {item.lengthAlteration && <span className="chip" style={{ background: 'var(--accent-tint)', color: 'var(--accent)' }}>אורך: {item.lengthAlteration}</span>}
+                            {item.alterationDetails && <span className="chip">{item.alterationDetails}</span>}
+                            {!item.neckAlteration && !item.sleeveAlteration && !item.lengthAlteration && !item.alterationDetails && <span className="cell-muted">-</span>}
+                          </div>
+                        </td>
+                        <td>
                           {isDone ? (
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ visibility: 'hidden' }} tabIndex={-1} aria-hidden="true">
-                              <svg className="icon"><use href="#i-check-circle" /></svg>
-                            </button>
+                            <span className="badge badge-success">בוצע</span>
                           ) : (
-                            <button
-                              type="button"
-                              className="btn btn-ghost btn-icon-only btn-sm"
-                              style={{ color: 'var(--success)' }}
-                              onClick={() => markDone(item.id)}
-                              title="סמן שבוצע"
-                            >
-                              <svg className="icon"><use href="#i-check-circle" /></svg>
-                            </button>
+                            <span className="badge badge-warning">ממתין</span>
                           )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
+                        </td>
+                        <td>
+                          <div className="row-actions">
+                            <Link
+                              href={`/orders/${item.order?.orderId}`}
+                              className="btn btn-ghost btn-icon-only btn-sm"
+                              title="כרטיס הזמנה"
+                            >
+                              <svg className="icon"><use href="#i-file" /></svg>
+                            </Link>
+                            {isDone ? (
+                              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ visibility: 'hidden' }} tabIndex={-1} aria-hidden="true">
+                                <svg className="icon"><use href="#i-check-circle" /></svg>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="btn btn-ghost btn-icon-only btn-sm"
+                                style={{ color: 'var(--success)' }}
+                                onClick={() => markDone(item.id)}
+                                title="סמן שבוצע"
+                              >
+                                <svg className="icon"><use href="#i-check-circle" /></svg>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
+                )}
+              </tbody>
+            </table>
+          </div>
 
           {/* סיכום הרשומות ועימוד */}
           <div className="table-foot">

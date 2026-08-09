@@ -314,116 +314,120 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
 
       {activeItems.length > 0 ? (
         <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>פריט</th>
-                <th>מידה / ברקוד</th>
-                <th style={{ textAlign: 'center', width: '110px' }}>סטטוס</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {activeItems.map((item, index) => {
-                const isRented = item.isTaken && !item.isReturned;
-                const isReturned = item.isReturned;
-                const barcode = item.barcode || item.dressItem?.dressBarcode || null;
-                const taken = fmtDate(item.takenDate);
-                const returned = fmtDate(item.returnDate);
-                const isInlineRenting = rentingItemId === item.id;
-
-                return (
-                  <tr key={item.id || index}>
-                    <td className="cell-primary">
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                        {itemName(item)}
-                        {itemHasRepairs(item) && (
-                          <span title={`יש תיקונים${item.alterationDetails ? `: ${item.alterationDetails}` : ''}`} style={{ color: 'var(--warning)', display: 'inline-flex' }}>
-                            <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-scissors" /></svg>
-                          </span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="cell-muted">
-                      מידה: {item.sizeText || '-'}
-                      {barcode && <> · <span style={{ fontFamily: 'Consolas, monospace', direction: 'ltr', display: 'inline-block' }}>{barcode}</span></>}
-                      {taken && <div>לקיחה: {taken}</div>}
-                      {returned && <div>החזרה: {returned}</div>}
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      {isReturned ? (
-                        item.returnedOk === false ? (
-                          <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר - לא תקין</span>
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>פריט</th>
+                  <th>מידה / ברקוד</th>
+                  <th style={{ textAlign: 'center', width: '110px' }}>סטטוס</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody>
+                {activeItems.map((item, index) => {
+                  const isRented = item.isTaken && !item.isReturned;
+                  const isReturned = item.isReturned;
+                  const barcode = item.barcode || item.dressItem?.dressBarcode || null;
+                  const taken = fmtDate(item.takenDate);
+                  const returned = fmtDate(item.returnDate);
+                  const isInlineRenting = rentingItemId === item.id;
+  
+                  return (
+                    <tr key={item.id || index}>
+                      <td className="cell-primary">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                          {itemName(item)}
+                          {itemHasRepairs(item) && (
+                            <span title={`יש תיקונים${item.alterationDetails ? `: ${item.alterationDetails}` : ''}`} style={{ color: 'var(--warning)', display: 'inline-flex' }}>
+                              <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-scissors" /></svg>
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="cell-muted">
+                        מידה: {item.sizeText || '-'}
+                        {barcode && <> · <span style={{ fontFamily: 'Consolas, monospace', direction: 'ltr', display: 'inline-block' }}>{barcode}</span></>}
+                        {taken && <div>לקיחה: {taken}</div>}
+                        {returned && <div>החזרה: {returned}</div>}
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        {isReturned ? (
+                          item.returnedOk === false ? (
+                            <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר - לא תקין</span>
+                          ) : (
+                            <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר - תקין</span>
+                          )
+                        ) : isRented ? (
+                          <span className="badge badge-info"><svg className="icon"><use href="#i-box" /></svg>מושכר</span>
                         ) : (
-                          <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר - תקין</span>
-                        )
-                      ) : isRented ? (
-                        <span className="badge badge-info"><svg className="icon"><use href="#i-box" /></svg>מושכר</span>
-                      ) : (
-                        <span className="badge badge-neutral">ממתין</span>
-                      )}
-                    </td>
-                    <td>
-                      <div className="row-actions" style={{ flexWrap: 'wrap' }}>
-                        {!item.isTaken && !isInlineRenting && (
-                          <button type="button" className="btn btn-primary btn-sm" onClick={() => startInlineRent(item)}>
-                            <svg className="icon"><use href="#i-box" /></svg>השכרה
-                          </button>
+                          <span className="badge badge-neutral">ממתין</span>
                         )}
-
-                        {isInlineRenting && (
-                          <form
-                            onSubmit={(e) => { e.preventDefault(); confirmInlineRent(item); }}
-                            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                          >
-                            <input
-                              ref={inlineInputRef}
-                              type="text"
-                              className="input"
-                              value={inlineBarcode}
-                              onChange={(e) => setInlineBarcode(e.target.value)}
-                              placeholder="סרוק ברקוד"
-                              style={{ width: '140px', direction: 'ltr' }}
-                            />
-                            <button type="submit" className="btn btn-primary btn-sm">אשר</button>
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ביטול"
-                              onClick={() => { setRentingItemId(null); setInlineBarcode(''); }}>
-                              <svg className="icon"><use href="#i-x" /></svg>
+                      </td>
+                      <td>
+                        <div className="row-actions" style={{ flexWrap: 'wrap' }}>
+                          {!item.isTaken && !isInlineRenting && (
+                            <button type="button" className="btn btn-primary btn-sm" onClick={() => startInlineRent(item)}>
+                              <svg className="icon"><use href="#i-box" /></svg>השכרה
                             </button>
-                          </form>
-                        )}
-
-                        {isRented && (
-                          <>
-                            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'return' })}>
-                              <svg className="icon"><use href="#i-check" /></svg>החזרה
+                          )}
+  
+                          {isInlineRenting && (
+                            <form
+                              onSubmit={(e) => { e.preventDefault(); confirmInlineRent(item); }}
+                              style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                            >
+                              <input
+                                ref={inlineInputRef}
+                                type="text"
+                                className="input"
+                                value={inlineBarcode}
+                                onChange={(e) => setInlineBarcode(e.target.value)}
+                                placeholder="סרוק ברקוד"
+                                style={{ width: '140px', direction: 'ltr' }}
+                              />
+                              <button type="submit" className="btn btn-primary btn-sm">אשר</button>
+                              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ביטול"
+                                onClick={() => { setRentingItemId(null); setInlineBarcode(''); }}>
+                                <svg className="icon"><use href="#i-x" /></svg>
+                              </button>
+                            </form>
+                          )}
+  
+                          {isRented && (
+                            <>
+                              <button type="button" className="btn btn-secondary btn-sm" onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'return' })}>
+                                <svg className="icon"><use href="#i-check" /></svg>החזרה
+                              </button>
+                              <button type="button" className="btn btn-danger-ghost btn-sm" title="ביטול השכרה"
+                                onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelRent' })}>
+                                <svg className="icon"><use href="#i-x-circle" /></svg>ביטול השכרה
+                              </button>
+                            </>
+                          )}
+  
+                          {isReturned && (
+                            <button type="button" className="btn btn-danger-ghost btn-sm" title="ביטול החזרה"
+                              onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' })}>
+                              <svg className="icon"><use href="#i-refresh" /></svg>ביטול החזרה
                             </button>
-                            <button type="button" className="btn btn-danger-ghost btn-sm" title="ביטול השכרה"
-                              onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelRent' })}>
-                              <svg className="icon"><use href="#i-x-circle" /></svg>ביטול השכרה
-                            </button>
-                          </>
-                        )}
-
-                        {isReturned && (
-                          <button type="button" className="btn btn-danger-ghost btn-sm" title="ביטול החזרה"
-                            onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' })}>
-                            <svg className="icon"><use href="#i-refresh" /></svg>ביטול החזרה
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
       ) : (
         <div className="table-wrap">
-          <div className="empty-state">
-            <svg className="icon"><use href="#i-bag" /></svg>
-            <h4>אין פריטים להצגה בהשכרות והחזרות</h4>
+          <div className="table-scroll">
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-bag" /></svg>
+              <h4>אין פריטים להצגה בהשכרות והחזרות</h4>
+            </div>
           </div>
         </div>
       )}

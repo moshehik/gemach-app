@@ -57,6 +57,17 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
     });
   };
 
+  const [copiedIdx, setCopiedIdx] = useState(null);
+  const copyBubbleText = async (idx, text) => {
+    try {
+      await navigator.clipboard.writeText(text || '');
+      setCopiedIdx(idx);
+      setTimeout(() => setCopiedIdx((cur) => (cur === idx ? null : cur)), 1500);
+    } catch {
+      // clipboard permission denied or unavailable — silently ignore
+    }
+  };
+
   useEffect(() => {
     const savedSessions = localStorage.getItem('ai_employee_chat_sessions');
     let sessions = [];
@@ -265,7 +276,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
         style={{
           position: 'fixed',
           bottom: '80px',
-          insetInlineStart: 'calc(var(--sidebar-current-w) + 20px)',
+          insetInlineStart: '20px',
           width: '44px',
           height: '44px',
           borderRadius: 'var(--radius-full)',
@@ -411,6 +422,14 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
             <div className="chat-thread">
               {messages.map((msg, idx) => (
                 <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
+                  <button
+                    type="button"
+                    className={`bubble-copy-btn${copiedIdx === idx ? ' copied' : ''}`}
+                    title="העתק"
+                    onClick={() => copyBubbleText(idx, msg.content)}
+                  >
+                    <svg className="icon"><use href={`#${copiedIdx === idx ? 'i-check' : 'i-copy'}`} /></svg>
+                  </button>
                   <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(msg.content)}</div>
                   {msg.tableData && renderTable(msg.tableData)}
                 </div>
@@ -495,24 +514,26 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
 
             <div style={{ padding: '18px 22px', overflow: 'auto', flex: 1 }}>
               <div className="table-wrap">
-                <table className="data">
-                  <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
-                    <tr>
-                      {Object.keys(modalTableData[0]).map(h => (
-                        <th key={h}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modalTableData.map((row, i) => (
-                      <tr key={i}>
+                <div className="table-scroll">
+                  <table className="data">
+                    <thead style={{ position: 'sticky', top: 0, zIndex: 1 }}>
+                      <tr>
                         {Object.keys(modalTableData[0]).map(h => (
-                          <td key={h}>{row[h]}</td>
+                          <th key={h}>{h}</th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {modalTableData.map((row, i) => (
+                        <tr key={i}>
+                          {Object.keys(modalTableData[0]).map(h => (
+                            <td key={h}>{row[h]}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

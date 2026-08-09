@@ -45,35 +45,37 @@ export default function RefundPolicyPage() {
         </p>
 
         <div className="table-wrap" style={{ marginBottom: '14px' }}>
-          <table className="data">
-            <thead>
-              <tr>
-                <th>חלון</th>
-                <th>מתי</th>
-                <th>מה מוחזר</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="cell-primary">1. החזר מלא</td>
-                <td>עד <Badge>REFUND_DAYS_FROM_ORDER</Badge> ימים <em>מתאריך ביצוע ההזמנה</em></td>
-                <td>100% משווי הפריט (ללא תיקונים — ר&apos;&nbsp;למטה)</td>
-              </tr>
-              <tr>
-                <td className="cell-primary">2. אזור אמצעי</td>
-                <td>בין שני החלונות</td>
-                <td>
-                  אם לקטגוריית המחיר מוגדר <strong>פיקדון</strong> (שדה &quot;פיקדון&quot; במחירון) — מוחזר סכום קבוע זה בש&quot;ח.
-                  אחרת מוחזר לפי <Badge>REFUND_PERCENTAGE</Badge> אחוזים משווי הפריט.
-                </td>
-              </tr>
-              <tr>
-                <td className="cell-primary">3. ללא החזר</td>
-                <td>פחות מ-<Badge>NO_REFUND_DAYS_BEFORE_EVENT</Badge> ימים <em>לפני תאריך האירוע</em></td>
-                <td>0% — כל שווי הפריט נזקף כדמי ביטול</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>חלון</th>
+                  <th>מתי</th>
+                  <th>מה מוחזר</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="cell-primary">1. החזר מלא</td>
+                  <td>עד <Badge>REFUND_DAYS_FROM_ORDER</Badge> ימים <em>מתאריך ביצוע ההזמנה</em></td>
+                  <td>100% משווי הפריט (ללא תיקונים — ר&apos;&nbsp;למטה)</td>
+                </tr>
+                <tr>
+                  <td className="cell-primary">2. אזור אמצעי</td>
+                  <td>בין שני החלונות</td>
+                  <td>
+                    אם לקטגוריית המחיר מוגדר <strong>פיקדון</strong> (שדה &quot;פיקדון&quot; במחירון) — מוחזר סכום קבוע זה בש&quot;ח.
+                    אחרת מוחזר לפי <Badge>REFUND_PERCENTAGE</Badge> אחוזים משווי הפריט.
+                  </td>
+                </tr>
+                <tr>
+                  <td className="cell-primary">3. ללא החזר</td>
+                  <td>פחות מ-<Badge>NO_REFUND_DAYS_BEFORE_EVENT</Badge> ימים <em>לפני תאריך האירוע</em></td>
+                  <td>0% — כל שווי הפריט נזקף כדמי ביטול</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div className="callout callout-info">

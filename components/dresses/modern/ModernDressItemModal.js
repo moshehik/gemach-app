@@ -93,46 +93,48 @@ export default function ModernDressItemModal({ item, onClose }) {
             </div>
           ) : (
             <div className="table-wrap">
-              <table className="data">
-                <thead>
-                  <tr>
-                    <th>מס&apos; הזמנה</th>
-                    <th>לקוח</th>
-                    <th>תאריך אירוע</th>
-                    <th>סטטוס</th>
-                    <th style={{ textAlign: 'center' }}>הזמנה</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {rentals.map((r, idx) => (
-                    <tr key={idx}>
-                      <td className="cell-primary">{r.orderId}</td>
-                      <td>{r.customerName}</td>
-                      <td>{r.eventDateHebrew || (r.eventDate ? getHebrewDateString(r.eventDate) : '—')}</td>
-                      <td>
-                        {!r.isReturned ? (
-                          <span className="badge badge-warning"><svg className="icon"><use href="#i-clock" /></svg>טרם הוחזר</span>
-                        ) : r.returnedOk === false ? (
-                          <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר עם בעיה</span>
-                        ) : (
-                          <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר תקין</span>
-                        )}
-                      </td>
-                      <td style={{ textAlign: 'center' }}>
-                        <a
-                          href={`/orders/${r.orderId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-ghost btn-icon-only btn-sm"
-                          title="פתח כרטיס הזמנה"
-                        >
-                          <svg className="icon"><use href="#i-link" /></svg>
-                        </a>
-                      </td>
+              <div className="table-scroll">
+                <table className="data">
+                  <thead>
+                    <tr>
+                      <th>מס&apos; הזמנה</th>
+                      <th>לקוח</th>
+                      <th>תאריך אירוע</th>
+                      <th>סטטוס</th>
+                      <th style={{ textAlign: 'center' }}>הזמנה</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {rentals.map((r, idx) => (
+                      <tr key={idx}>
+                        <td className="cell-primary">{r.orderId}</td>
+                        <td>{r.customerName}</td>
+                        <td>{r.eventDateHebrew || (r.eventDate ? getHebrewDateString(r.eventDate) : '—')}</td>
+                        <td>
+                          {!r.isReturned ? (
+                            <span className="badge badge-warning"><svg className="icon"><use href="#i-clock" /></svg>טרם הוחזר</span>
+                          ) : r.returnedOk === false ? (
+                            <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר עם בעיה</span>
+                          ) : (
+                            <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר תקין</span>
+                          )}
+                        </td>
+                        <td style={{ textAlign: 'center' }}>
+                          <a
+                            href={`/orders/${r.orderId}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-ghost btn-icon-only btn-sm"
+                            title="פתח כרטיס הזמנה"
+                          >
+                            <svg className="icon"><use href="#i-link" /></svg>
+                          </a>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

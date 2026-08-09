@@ -469,26 +469,28 @@ export default function ModernNewDressWizard({
               </div>
             ) : (
               <div className="table-wrap" style={{ maxHeight: '320px', overflowY: 'auto' }}>
-                <table className="data">
-                  <thead>
-                    <tr><th>מידה</th><th>מס&apos; סידורי</th><th>ברקוד</th><th>מיקום</th><th style={{ textAlign: 'center' }} /></tr>
-                  </thead>
-                  <tbody>
-                    {plannedItems.map((it, idx) => (
-                      <tr key={pendingItems[idx].key}>
-                        <td className="cell-primary">{it.sizeText}</td>
-                        <td>{pad2(it.serialNumber)}</td>
-                        <td>{it.dressBarcode}</td>
-                        <td>{it.location || '—'}</td>
-                        <td style={{ textAlign: 'center' }}>
-                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="הסר פריט" onClick={() => removePendingItem(pendingItems[idx].key)}>
-                            <svg className="icon"><use href="#i-trash" /></svg>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="table-scroll">
+                  <table className="data">
+                    <thead>
+                      <tr><th>מידה</th><th>מס&apos; סידורי</th><th>ברקוד</th><th>מיקום</th><th style={{ textAlign: 'center' }} /></tr>
+                    </thead>
+                    <tbody>
+                      {plannedItems.map((it, idx) => (
+                        <tr key={pendingItems[idx].key}>
+                          <td className="cell-primary">{it.sizeText}</td>
+                          <td>{pad2(it.serialNumber)}</td>
+                          <td>{it.dressBarcode}</td>
+                          <td>{it.location || '—'}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="הסר פריט" onClick={() => removePendingItem(pendingItems[idx].key)}>
+                              <svg className="icon"><use href="#i-trash" /></svg>
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -556,19 +558,21 @@ export default function ModernNewDressWizard({
               <>
                 <h3>הפריטים שייווצרו</h3>
                 <div className="table-wrap" style={{ maxHeight: '260px', overflowY: 'auto' }}>
-                  <table className="data">
-                    <thead><tr><th>מידה</th><th>מס&apos; סידורי</th><th>ברקוד</th><th>מיקום</th></tr></thead>
-                    <tbody>
-                      {plannedItems.map((it, idx) => (
-                        <tr key={idx}>
-                          <td className="cell-primary">{it.sizeText}</td>
-                          <td>{pad2(it.serialNumber)}</td>
-                          <td>{it.dressBarcode}</td>
-                          <td>{it.location || '—'}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div className="table-scroll">
+                    <table className="data">
+                      <thead><tr><th>מידה</th><th>מס&apos; סידורי</th><th>ברקוד</th><th>מיקום</th></tr></thead>
+                      <tbody>
+                        {plannedItems.map((it, idx) => (
+                          <tr key={idx}>
+                            <td className="cell-primary">{it.sizeText}</td>
+                            <td>{pad2(it.serialNumber)}</td>
+                            <td>{it.dressBarcode}</td>
+                            <td>{it.location || '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </>
             ) : (

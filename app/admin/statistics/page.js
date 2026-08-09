@@ -204,28 +204,30 @@ function DailyTable({ data }) {
   const rows = sortRows(data, sort, (r, key) => r[key]);
   return (
     <div className="table-wrap">
-      <table className="data">
-        <thead>
-          <tr>
-            <th className={sort.key === 'date' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('date')}>תאריך <SortIcon sort={sort} colKey="date" /></th>
-            <th className={sort.key === 'newOrders' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('newOrders')}>הזמנות שבוצעו <SortIcon sort={sort} colKey="newOrders" /></th>
-            <th className={sort.key === 'revenue' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('revenue')}>הכנסות (שולמו) <SortIcon sort={sort} colKey="revenue" /></th>
-            <th className={sort.key === 'itemsRented' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('itemsRented')}>פריטים הושכרו <SortIcon sort={sort} colKey="itemsRented" /></th>
-            <th className={sort.key === 'itemsReturned' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('itemsReturned')}>פריטים הוחזרו <SortIcon sort={sort} colKey="itemsReturned" /></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(r => (
-            <tr key={r.date}>
-              <td className="cell-primary">{new Date(r.date).toLocaleDateString('he-IL')}</td>
-              <td>{r.newOrders}</td>
-              <td style={{ color: 'var(--success)', fontWeight: 700 }}>₪{r.revenue.toLocaleString()}</td>
-              <td>{r.itemsRented}</td>
-              <td>{r.itemsReturned}</td>
+      <div className="table-scroll">
+        <table className="data">
+          <thead>
+            <tr>
+              <th className={sort.key === 'date' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('date')}>תאריך <SortIcon sort={sort} colKey="date" /></th>
+              <th className={sort.key === 'newOrders' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('newOrders')}>הזמנות שבוצעו <SortIcon sort={sort} colKey="newOrders" /></th>
+              <th className={sort.key === 'revenue' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('revenue')}>הכנסות (שולמו) <SortIcon sort={sort} colKey="revenue" /></th>
+              <th className={sort.key === 'itemsRented' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('itemsRented')}>פריטים הושכרו <SortIcon sort={sort} colKey="itemsRented" /></th>
+              <th className={sort.key === 'itemsReturned' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('itemsReturned')}>פריטים הוחזרו <SortIcon sort={sort} colKey="itemsReturned" /></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.date}>
+                <td className="cell-primary">{new Date(r.date).toLocaleDateString('he-IL')}</td>
+                <td>{r.newOrders}</td>
+                <td style={{ color: 'var(--success)', fontWeight: 700 }}>₪{r.revenue.toLocaleString()}</td>
+                <td>{r.itemsRented}</td>
+                <td>{r.itemsReturned}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -237,36 +239,38 @@ function ModelSizeTable({ data, type, showAlterations }) {
   const rows = sortRows(data, sort, getValue);
   return (
     <div className="table-wrap">
-      <table className="data">
-        <thead>
-          <tr>
-            <th className={sort.key === 'primary' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('primary')}>{type} <SortIcon sort={sort} colKey="primary" /></th>
-            <th className={sort.key === 'count' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('count')}>כמות השכרות סה&quot;כ <SortIcon sort={sort} colKey="count" /></th>
-            {showAlterations && (
-              <>
-                <th className={sort.key === 'neck' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('neck')}>תיקוני צוואר <SortIcon sort={sort} colKey="neck" /></th>
-                <th className={sort.key === 'length' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('length')}>תיקוני אורך <SortIcon sort={sort} colKey="length" /></th>
-                <th className={sort.key === 'sleeve' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sleeve')}>תיקוני שרוול <SortIcon sort={sort} colKey="sleeve" /></th>
-              </>
-            )}
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, idx) => (
-            <tr key={idx}>
-              <td className="cell-primary">{r.name || r.size}</td>
-              <td className="cell-primary" style={{ color: 'var(--primary)' }}>{r.count}</td>
+      <div className="table-scroll">
+        <table className="data">
+          <thead>
+            <tr>
+              <th className={sort.key === 'primary' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('primary')}>{type} <SortIcon sort={sort} colKey="primary" /></th>
+              <th className={sort.key === 'count' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('count')}>כמות השכרות סה&quot;כ <SortIcon sort={sort} colKey="count" /></th>
               {showAlterations && (
                 <>
-                  <td>{r.neck}</td>
-                  <td>{r.length}</td>
-                  <td>{r.sleeve}</td>
+                  <th className={sort.key === 'neck' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('neck')}>תיקוני צוואר <SortIcon sort={sort} colKey="neck" /></th>
+                  <th className={sort.key === 'length' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('length')}>תיקוני אורך <SortIcon sort={sort} colKey="length" /></th>
+                  <th className={sort.key === 'sleeve' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sleeve')}>תיקוני שרוול <SortIcon sort={sort} colKey="sleeve" /></th>
                 </>
               )}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r, idx) => (
+              <tr key={idx}>
+                <td className="cell-primary">{r.name || r.size}</td>
+                <td className="cell-primary" style={{ color: 'var(--primary)' }}>{r.count}</td>
+                {showAlterations && (
+                  <>
+                    <td>{r.neck}</td>
+                    <td>{r.length}</td>
+                    <td>{r.sleeve}</td>
+                  </>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -277,28 +281,30 @@ function SeamstressTable({ data }) {
   const rows = sortRows(data, sort, (r, key) => r[key]);
   return (
     <div className="table-wrap">
-      <table className="data">
-        <thead>
-          <tr>
-            <th className={sort.key === 'date' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('date')}>תאריך אירוע (יעד) <SortIcon sort={sort} colKey="date" /></th>
-            <th className={sort.key === 'itemsCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('itemsCount')}>מספר פריטים לתיקון <SortIcon sort={sort} colKey="itemsCount" /></th>
-            <th className={sort.key === 'neck' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('neck')}>תיקוני צוואר <SortIcon sort={sort} colKey="neck" /></th>
-            <th className={sort.key === 'length' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('length')}>תיקוני אורך <SortIcon sort={sort} colKey="length" /></th>
-            <th className={sort.key === 'sleeve' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sleeve')}>תיקוני שרוול <SortIcon sort={sort} colKey="sleeve" /></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, i) => (
-            <tr key={`${r.date}-${i}`}>
-              <td className="cell-primary">{new Date(r.date).toLocaleDateString('he-IL')}</td>
-              <td style={{ fontWeight: 700, color: 'var(--warning)' }}>{r.itemsCount}</td>
-              <td>{r.neck}</td>
-              <td>{r.length}</td>
-              <td>{r.sleeve}</td>
+      <div className="table-scroll">
+        <table className="data">
+          <thead>
+            <tr>
+              <th className={sort.key === 'date' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('date')}>תאריך אירוע (יעד) <SortIcon sort={sort} colKey="date" /></th>
+              <th className={sort.key === 'itemsCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('itemsCount')}>מספר פריטים לתיקון <SortIcon sort={sort} colKey="itemsCount" /></th>
+              <th className={sort.key === 'neck' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('neck')}>תיקוני צוואר <SortIcon sort={sort} colKey="neck" /></th>
+              <th className={sort.key === 'length' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('length')}>תיקוני אורך <SortIcon sort={sort} colKey="length" /></th>
+              <th className={sort.key === 'sleeve' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sleeve')}>תיקוני שרוול <SortIcon sort={sort} colKey="sleeve" /></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={`${r.date}-${i}`}>
+                <td className="cell-primary">{new Date(r.date).toLocaleDateString('he-IL')}</td>
+                <td style={{ fontWeight: 700, color: 'var(--warning)' }}>{r.itemsCount}</td>
+                <td>{r.neck}</td>
+                <td>{r.length}</td>
+                <td>{r.sleeve}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -309,35 +315,37 @@ function PaymentsTable({ data }) {
   const rows = sortRows(data, sort, (r, key) => r[key]);
   return (
     <div className="table-wrap">
-      <table className="data">
-        <thead>
-          <tr>
-            <th className={sort.key === 'orderId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('orderId')}>מספר הזמנה <SortIcon sort={sort} colKey="orderId" /></th>
-            <th className={sort.key === 'customerName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('customerName')}>לקוח <SortIcon sort={sort} colKey="customerName" /></th>
-            <th className={sort.key === 'orderDate' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('orderDate')}>תאריך הזמנה <SortIcon sort={sort} colKey="orderDate" /></th>
-            <th className={sort.key === 'expectedTotal' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('expectedTotal')}>סך הכל חויב <SortIcon sort={sort} colKey="expectedTotal" /></th>
-            <th className={sort.key === 'actualPaid' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('actualPaid')}>סך הכל שולם <SortIcon sort={sort} colKey="actualPaid" /></th>
-            <th className={sort.key === 'debt' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('debt')}>יתרת חובה <SortIcon sort={sort} colKey="debt" /></th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map(r => (
-            <tr key={r.orderId} className={r.debt > 0 ? 'row-flag' : ''}>
-              <td className="cell-primary">{r.orderId}</td>
-              <td>{r.customerName}</td>
-              <td className="cell-muted">{r.orderDate ? new Date(r.orderDate).toLocaleDateString('he-IL') : ''}</td>
-              <td>₪{r.expectedTotal.toLocaleString()}</td>
-              <td style={{ color: 'var(--success)' }}>₪{r.actualPaid.toLocaleString()}</td>
-              <td
-                className={r.debt > 0 ? '' : 'cell-muted'}
-                style={r.debt > 0 ? { fontWeight: 700, color: 'var(--danger)' } : undefined}
-              >
-                ₪{r.debt.toLocaleString()}
-              </td>
+      <div className="table-scroll">
+        <table className="data">
+          <thead>
+            <tr>
+              <th className={sort.key === 'orderId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('orderId')}>מספר הזמנה <SortIcon sort={sort} colKey="orderId" /></th>
+              <th className={sort.key === 'customerName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('customerName')}>לקוח <SortIcon sort={sort} colKey="customerName" /></th>
+              <th className={sort.key === 'orderDate' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('orderDate')}>תאריך הזמנה <SortIcon sort={sort} colKey="orderDate" /></th>
+              <th className={sort.key === 'expectedTotal' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('expectedTotal')}>סך הכל חויב <SortIcon sort={sort} colKey="expectedTotal" /></th>
+              <th className={sort.key === 'actualPaid' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('actualPaid')}>סך הכל שולם <SortIcon sort={sort} colKey="actualPaid" /></th>
+              <th className={sort.key === 'debt' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('debt')}>יתרת חובה <SortIcon sort={sort} colKey="debt" /></th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map(r => (
+              <tr key={r.orderId} className={r.debt > 0 ? 'row-flag' : ''}>
+                <td className="cell-primary">{r.orderId}</td>
+                <td>{r.customerName}</td>
+                <td className="cell-muted">{r.orderDate ? new Date(r.orderDate).toLocaleDateString('he-IL') : ''}</td>
+                <td>₪{r.expectedTotal.toLocaleString()}</td>
+                <td style={{ color: 'var(--success)' }}>₪{r.actualPaid.toLocaleString()}</td>
+                <td
+                  className={r.debt > 0 ? '' : 'cell-muted'}
+                  style={r.debt > 0 ? { fontWeight: 700, color: 'var(--danger)' } : undefined}
+                >
+                  ₪{r.debt.toLocaleString()}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -348,46 +356,48 @@ function InventoryTable({ data }) {
   const rows = sortRows(data, sort, (r, key) => r[key]);
   return (
     <div className="table-wrap">
-      <table className="data">
-        <thead>
-          <tr>
-            <th className={sort.key === 'modelName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('modelName')}>דגם השמלה <SortIcon sort={sort} colKey="modelName" /></th>
-            <th className={sort.key === 'sizeText' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sizeText')}>מידה <SortIcon sort={sort} colKey="sizeText" /></th>
-            <th className={sort.key === 'totalStock' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('totalStock')}>סה&quot;כ במלאי הפיזי <SortIcon sort={sort} colKey="totalStock" /></th>
-            <th className={sort.key === 'maxRented' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('maxRented')}>שיא השכרות חופפות <SortIcon sort={sort} colKey="maxRented" /></th>
-            <th>תאריכי שיא</th>
-            <th>סטטוס</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r, idx) => (
-            <tr key={idx} className={r.hasShortage ? 'row-flag' : ''}>
-              <td className="cell-primary">{r.modelName}</td>
-              <td>{r.sizeText}</td>
-              <td>{r.totalStock}</td>
-              <td style={{ fontWeight: 700, color: r.hasShortage ? 'var(--danger)' : 'var(--success)' }}>
-                {r.maxRented}
-              </td>
-              <td className="cell-muted">
-                {r.peakDates ? r.peakDates.split(', ').map(d => d ? new Date(d).toLocaleDateString('he-IL') : '').join(', ') : ''}
-              </td>
-              <td>
-                {r.hasShortage ? (
-                  <span className="badge badge-danger">
-                    <svg className="icon"><use href="#i-alert-circle" /></svg>
-                    חוסר במלאי!
-                  </span>
-                ) : (
-                  <span className="badge badge-success">
-                    <svg className="icon"><use href="#i-check" /></svg>
-                    תקין
-                  </span>
-                )}
-              </td>
+      <div className="table-scroll">
+        <table className="data">
+          <thead>
+            <tr>
+              <th className={sort.key === 'modelName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('modelName')}>דגם השמלה <SortIcon sort={sort} colKey="modelName" /></th>
+              <th className={sort.key === 'sizeText' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sizeText')}>מידה <SortIcon sort={sort} colKey="sizeText" /></th>
+              <th className={sort.key === 'totalStock' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('totalStock')}>סה&quot;כ במלאי הפיזי <SortIcon sort={sort} colKey="totalStock" /></th>
+              <th className={sort.key === 'maxRented' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('maxRented')}>שיא השכרות חופפות <SortIcon sort={sort} colKey="maxRented" /></th>
+              <th>תאריכי שיא</th>
+              <th>סטטוס</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((r, idx) => (
+              <tr key={idx} className={r.hasShortage ? 'row-flag' : ''}>
+                <td className="cell-primary">{r.modelName}</td>
+                <td>{r.sizeText}</td>
+                <td>{r.totalStock}</td>
+                <td style={{ fontWeight: 700, color: r.hasShortage ? 'var(--danger)' : 'var(--success)' }}>
+                  {r.maxRented}
+                </td>
+                <td className="cell-muted">
+                  {r.peakDates ? r.peakDates.split(', ').map(d => d ? new Date(d).toLocaleDateString('he-IL') : '').join(', ') : ''}
+                </td>
+                <td>
+                  {r.hasShortage ? (
+                    <span className="badge badge-danger">
+                      <svg className="icon"><use href="#i-alert-circle" /></svg>
+                      חוסר במלאי!
+                    </span>
+                  ) : (
+                    <span className="badge badge-success">
+                      <svg className="icon"><use href="#i-check" /></svg>
+                      תקין
+                    </span>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -395,9 +405,11 @@ function InventoryTable({ data }) {
 function EmptyState() {
   return (
     <div className="table-wrap">
-      <div className="empty-state">
-        <svg className="icon"><use href="#i-search" /></svg>
-        <p>אין נתונים להצגה בטווח התאריכים הנבחר.</p>
+      <div className="table-scroll">
+        <div className="empty-state">
+          <svg className="icon"><use href="#i-search" /></svg>
+          <p>אין נתונים להצגה בטווח התאריכים הנבחר.</p>
+        </div>
       </div>
     </div>
   );

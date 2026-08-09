@@ -83,6 +83,7 @@ export default function EmailLogsPage() {
 
       {/* Data Table */}
       <div className="table-wrap">
+        <div className="table-scroll">
         {loading && logs.length === 0 ? (
           <div className="page-loading">
             <span className="spinner lg" />
@@ -148,6 +149,7 @@ export default function EmailLogsPage() {
             </tbody>
           </table>
         )}
+        </div>
 
         {/* סיכום הרשומות ועימוד */}
         <div className="table-foot">

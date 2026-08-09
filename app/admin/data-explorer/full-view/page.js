@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import * as XLSX from 'xlsx';
 
 export default function FullViewPage() {
   const [data, setData] = useState([]);
@@ -111,6 +110,8 @@ export default function FullViewPage() {
       return;
     }
 
+    // xlsx (~900KB) נטען דינמית רק בלחיצה על הייצוא — לא חלק מה-bundle של הדף
+    const XLSX = await import('xlsx');
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "נתונים");
@@ -168,35 +169,37 @@ export default function FullViewPage() {
       <div className="table-wrap">
         {renderPaginationControls('top')}
 
-        <table className="data">
-          <thead>
-            <tr>
-              {columns.map(col => (
-                <th key={col}>{col}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {currentData.length > 0 ? currentData.map((row, i) => (
-              <tr key={i}>
+        <div className="table-scroll">
+          <table className="data">
+            <thead>
+              <tr>
                 {columns.map(col => (
-                  <td key={col} style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[col])}>
-                    {row[col] !== null ? String(row[col]) : <span className="hint" style={{ fontStyle: 'italic' }}>NULL</span>}
-                  </td>
+                  <th key={col}>{col}</th>
                 ))}
               </tr>
-            )) : (
-              <tr>
-                <td colSpan={columns.length || 1}>
-                  <div className="empty-state">
-                    <svg className="icon"><use href="#i-database" /></svg>
-                    <h4>אין נתונים להצגה</h4>
-                  </div>
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {currentData.length > 0 ? currentData.map((row, i) => (
+                <tr key={i}>
+                  {columns.map(col => (
+                    <td key={col} style={{ maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[col])}>
+                      {row[col] !== null ? String(row[col]) : <span className="hint" style={{ fontStyle: 'italic' }}>NULL</span>}
+                    </td>
+                  ))}
+                </tr>
+              )) : (
+                <tr>
+                  <td colSpan={columns.length || 1}>
+                    <div className="empty-state">
+                      <svg className="icon"><use href="#i-database" /></svg>
+                      <h4>אין נתונים להצגה</h4>
+                    </div>
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
 
         {renderPaginationControls('bottom')}
       </div>

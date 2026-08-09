@@ -162,58 +162,60 @@ export default function RecalculationsPage() {
           {results.length > 0 ? (
             <>
               <div className="table-wrap">
-                <table className="data">
-                  <thead>
-                    <tr>
-                      <th style={{ width: '40px', textAlign: 'center' }}>
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.size === results.length && results.length > 0}
-                          onChange={handleSelectAll}
-                        />
-                      </th>
-                      <th className={sort.key === 'orderId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('orderId')}>הזמנה <SortIcon sort={sort} colKey="orderId" /></th>
-                      <th className={sort.key === 'customerName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('customerName')}>לקוח <SortIcon sort={sort} colKey="customerName" /></th>
-                      <th>תאריך אירוע עברי</th>
-                      <th className={sort.key === 'oldAmount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('oldAmount')}>סכום ישן <SortIcon sort={sort} colKey="oldAmount" /></th>
-                      <th className={sort.key === 'newAmount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('newAmount')}>סכום מתוקן <SortIcon sort={sort} colKey="newAmount" /></th>
-                      <th className={sort.key === 'diff' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('diff')}>פער <SortIcon sort={sort} colKey="diff" /></th>
-                      <th>פעולות</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortRows(results, sort, (r, key) => r[key]).map(row => (
-                      <tr key={row.orderId}>
-                        <td style={{ textAlign: 'center' }}>
+                <div className="table-scroll">
+                  <table className="data">
+                    <thead>
+                      <tr>
+                        <th style={{ width: '40px', textAlign: 'center' }}>
                           <input
                             type="checkbox"
-                            checked={selectedIds.has(row.orderId)}
-                            onChange={() => toggleSelect(row.orderId)}
+                            checked={selectedIds.size === results.length && results.length > 0}
+                            onChange={handleSelectAll}
                           />
-                        </td>
-                        <td className="cell-primary">{row.orderId}</td>
-                        <td>{row.customerName}</td>
-                        <td>{row.eventDateHebrew || '-'}</td>
-                        <td>₪{row.oldAmount}</td>
-                        <td style={{ fontWeight: 700, color: 'var(--info)' }}>₪{row.newAmount}</td>
-                        <td style={{ fontWeight: 800, color: row.diff > 0 ? 'var(--danger)' : 'var(--success)', direction: 'ltr', textAlign: 'right' }}>
-                          ₪{row.diff > 0 ? '+' : ''}{row.diff}
-                        </td>
-                        <td>
-                          <a
-                            href={`/orders/${row.orderId}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="btn btn-secondary btn-sm"
-                          >
-                            <svg className="icon"><use href="#i-link" /></svg>
-                            עיין בהזמנה
-                          </a>
-                        </td>
+                        </th>
+                        <th className={sort.key === 'orderId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('orderId')}>הזמנה <SortIcon sort={sort} colKey="orderId" /></th>
+                        <th className={sort.key === 'customerName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('customerName')}>לקוח <SortIcon sort={sort} colKey="customerName" /></th>
+                        <th>תאריך אירוע עברי</th>
+                        <th className={sort.key === 'oldAmount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('oldAmount')}>סכום ישן <SortIcon sort={sort} colKey="oldAmount" /></th>
+                        <th className={sort.key === 'newAmount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('newAmount')}>סכום מתוקן <SortIcon sort={sort} colKey="newAmount" /></th>
+                        <th className={sort.key === 'diff' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('diff')}>פער <SortIcon sort={sort} colKey="diff" /></th>
+                        <th>פעולות</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {sortRows(results, sort, (r, key) => r[key]).map(row => (
+                        <tr key={row.orderId}>
+                          <td style={{ textAlign: 'center' }}>
+                            <input
+                              type="checkbox"
+                              checked={selectedIds.has(row.orderId)}
+                              onChange={() => toggleSelect(row.orderId)}
+                            />
+                          </td>
+                          <td className="cell-primary">{row.orderId}</td>
+                          <td>{row.customerName}</td>
+                          <td>{row.eventDateHebrew || '-'}</td>
+                          <td>₪{row.oldAmount}</td>
+                          <td style={{ fontWeight: 700, color: 'var(--info)' }}>₪{row.newAmount}</td>
+                          <td style={{ fontWeight: 800, color: row.diff > 0 ? 'var(--danger)' : 'var(--success)', direction: 'ltr', textAlign: 'right' }}>
+                            ₪{row.diff > 0 ? '+' : ''}{row.diff}
+                          </td>
+                          <td>
+                            <a
+                              href={`/orders/${row.orderId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="btn btn-secondary btn-sm"
+                            >
+                              <svg className="icon"><use href="#i-link" /></svg>
+                              עיין בהזמנה
+                            </a>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
 
                 <div className="bulk-bar" style={{ flexWrap: 'wrap', alignItems: 'flex-end' }}>
                   <strong>החלת שינויים</strong>

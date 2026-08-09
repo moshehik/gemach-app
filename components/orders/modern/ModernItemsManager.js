@@ -651,224 +651,228 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
       {visibleItems.length > 0 ? (
         <div className="table-wrap" style={{ maxHeight: '60vh', overflowY: 'auto' }}>
-          <table className="data">
-            <thead>
-              <tr>
-                <th>תיאור דגם ומידה</th>
-                {showAlterCol && <th>תיקונים</th>}
-                <th style={{ textAlign: 'center', width: '110px' }}>סטטוס</th>
-                <th></th>
-                <th style={{ textAlign: 'center', width: '110px' }}>פרטים</th>
-              </tr>
-            </thead>
-            <tbody>
-              {visibleItems.map(({ item, originalIndex }) => {
-                const isDeletedRow = item.isDeleted;
-                const isRented = item.isTaken && !item.isReturned;
-                const isEditingMode = item.isNew || item.isEditing;
-                // פריטים ישנים שהוגרו מ-Access בלי DressItem מקושר (dressModelId ריק) אין להם
-                // מלאי מזוהה לבחור ממנו — עבורם דגם/מידה נשארים לקריאה בלבד גם במצב עריכה,
-                // ורק פרטי התיקון ניתנים לעריכה.
-                const fullyEditableNow = canFullyEditItem(item);
-                const canEditModelSize = item.isNew || (item.isEditing && !!item.dressModelId && fullyEditableNow);
-                const code = itemCode(item);
-
-                return (
-                  <tr key={item.id || item._localId || originalIndex} className={isDeletedRow ? 'row-flag' : ''}>
-                    <td>
-                      {canEditModelSize ? (
-                        <div className="form-grid" style={{ gap: '8px', gridTemplateColumns: '1fr 1fr' }}>
-                          <div className="field" style={{ marginBottom: 0 }}>
-                            <label>דגם</label>
-                            <OrderModelSelector
-                              value={{ name: item.description, id: item.dressModelId }}
-                              onChange={(model) => handleModelChange(originalIndex, model)}
-                            />
-                          </div>
-                          <div className="field" style={{ marginBottom: 0 }}>
-                            <label>מידה</label>
-                            <OrderSizeSelector
-                              modelId={item.dressModelId}
-                              order={order}
-                              value={item.sizeText}
-                              onChange={(val) => handleItemChange(originalIndex, 'sizeText', val)}
-                              inventoryCache={inventoryCache}
-                              // הפריט הנערך עצמו לא נספר כ"תפוס" מול עצמו — אחרת המידה הנוכחית שלו
-                              // תוצג כלא זמינה רק כי הוא כבר מחזיק אותה
-                              currentCartItems={items.filter((_, i) => i !== originalIndex)}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          {itemModelId(item) ? (
-                            <a
-                              href={`/dashboard/dresses/${itemModelId(item)}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              title="פתח כרטיס דגם"
-                              className="cell-primary"
-                              style={isDeletedRow ? { textDecoration: 'line-through', color: 'var(--text-3)' } : undefined}
-                            >
-                              {itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}
-                            </a>
-                          ) : (
-                            <strong style={isDeletedRow ? { textDecoration: 'line-through', color: 'var(--text-3)' } : undefined}>
-                              {itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}
-                            </strong>
-                          )}
-                          {code && <div className="cell-muted" style={{ fontWeight: 400, fontSize: '11.5px', marginTop: '2px' }}>קוד: {code}{item.barcode ? ` · ברקוד: ${item.barcode}` : ''}</div>}
-                        </>
-                      )}
-                    </td>
-                    {showAlterCol && (
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>תיאור דגם ומידה</th>
+                  {showAlterCol && <th>תיקונים</th>}
+                  <th style={{ textAlign: 'center', width: '110px' }}>סטטוס</th>
+                  <th></th>
+                  <th style={{ textAlign: 'center', width: '110px' }}>פרטים</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visibleItems.map(({ item, originalIndex }) => {
+                  const isDeletedRow = item.isDeleted;
+                  const isRented = item.isTaken && !item.isReturned;
+                  const isEditingMode = item.isNew || item.isEditing;
+                  // פריטים ישנים שהוגרו מ-Access בלי DressItem מקושר (dressModelId ריק) אין להם
+                  // מלאי מזוהה לבחור ממנו — עבורם דגם/מידה נשארים לקריאה בלבד גם במצב עריכה,
+                  // ורק פרטי התיקון ניתנים לעריכה.
+                  const fullyEditableNow = canFullyEditItem(item);
+                  const canEditModelSize = item.isNew || (item.isEditing && !!item.dressModelId && fullyEditableNow);
+                  const code = itemCode(item);
+  
+                  return (
+                    <tr key={item.id || item._localId || originalIndex} className={isDeletedRow ? 'row-flag' : ''}>
                       <td>
-                        {isEditingMode ? (
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            {!item.isNew && !fullyEditableNow && (
-                              <div className="hint" style={{ flexBasis: '100%', fontSize: '11.5px', color: 'var(--text-3)' }}>
-                                חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך כעת רק את פירוט התיקון
-                              </div>
-                            )}
-                            <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
-                              <button type="button"
-                                className={`pill-tab ${isChecked(item.neckAlteration) ? 'active' : ''}`}
-                                disabled={!fullyEditableNow}
-                                onClick={() => handleItemChange(originalIndex, 'neckAlteration', isChecked(item.neckAlteration) ? 0 : 1)}>
-                                <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-scissors" /></svg>צוואר
-                              </button>
-                              <button type="button"
-                                className={`pill-tab ${isChecked(item.sleeveAlteration) ? 'active' : ''}`}
-                                disabled={!fullyEditableNow}
-                                onClick={() => handleItemChange(originalIndex, 'sleeveAlteration', isChecked(item.sleeveAlteration) ? 0 : 1)}>
-                                <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-scissors" /></svg>שרוול
-                              </button>
-                              <input type="number" className="input" style={{ maxWidth: '100px' }} value={item.lengthAlteration || ''}
-                                disabled={!fullyEditableNow}
-                                onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
-                                placeholder="אורך (ס״מ)" />
+                        {canEditModelSize ? (
+                          <div className="form-grid" style={{ gap: '8px', gridTemplateColumns: '1fr 1fr' }}>
+                            <div className="field" style={{ marginBottom: 0 }}>
+                              <label>דגם</label>
+                              <OrderModelSelector
+                                value={{ name: item.description, id: item.dressModelId }}
+                                onChange={(model) => handleModelChange(originalIndex, model)}
+                              />
                             </div>
-                            <input type="text" className="input" value={item.alterationDetails || item.repairs || ''}
-                              onChange={(e) => handleItemChange(originalIndex, 'alterationDetails', e.target.value)}
-                              placeholder="פירוט התיקון הנדרש..." />
+                            <div className="field" style={{ marginBottom: 0 }}>
+                              <label>מידה</label>
+                              <OrderSizeSelector
+                                modelId={item.dressModelId}
+                                order={order}
+                                value={item.sizeText}
+                                onChange={(val) => handleItemChange(originalIndex, 'sizeText', val)}
+                                inventoryCache={inventoryCache}
+                                // הפריט הנערך עצמו לא נספר כ"תפוס" מול עצמו — אחרת המידה הנוכחית שלו
+                                // תוצג כלא זמינה רק כי הוא כבר מחזיק אותה
+                                currentCartItems={items.filter((_, i) => i !== originalIndex)}
+                              />
+                            </div>
                           </div>
                         ) : (
-                          renderRepairChips(item, originalIndex)
+                          <>
+                            {itemModelId(item) ? (
+                              <a
+                                href={`/dashboard/dresses/${itemModelId(item)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                title="פתח כרטיס דגם"
+                                className="cell-primary"
+                                style={isDeletedRow ? { textDecoration: 'line-through', color: 'var(--text-3)' } : undefined}
+                              >
+                                {itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}
+                              </a>
+                            ) : (
+                              <strong style={isDeletedRow ? { textDecoration: 'line-through', color: 'var(--text-3)' } : undefined}>
+                                {itemName(item)}{item.sizeText ? ` - ${item.sizeText}` : ''}
+                              </strong>
+                            )}
+                            {code && <div className="cell-muted" style={{ fontWeight: 400, fontSize: '11.5px', marginTop: '2px' }}>קוד: {code}{item.barcode ? ` · ברקוד: ${item.barcode}` : ''}</div>}
+                          </>
                         )}
                       </td>
-                    )}
-                    <td style={{ textAlign: 'center' }}>
-                      {item.isNew ? <span className="badge badge-neutral">חדש</span> : renderStatusBadge(item)}
-                    </td>
-                    <td>
-                      <div className="row-actions" style={{ flexWrap: 'wrap' }}>
-                        {locked ? (
-                          // הזמנה נעולה — מותרות החזרה וסימון מצב הפריט בלבד; עריכה, השכרה וביטולים חסומים
-                          isRented ? (
-                            <button type="button" className="btn btn-secondary btn-sm"
-                              onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
-                              <svg className="icon"><use href="#i-check" /></svg>החזרה
-                            </button>
-                          ) : item.isReturned && !isDeletedRow ? (
-                            renderConditionToggle(item)
+                      {showAlterCol && (
+                        <td>
+                          {isEditingMode ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              {!item.isNew && !fullyEditableNow && (
+                                <div className="hint" style={{ flexBasis: '100%', fontSize: '11.5px', color: 'var(--text-3)' }}>
+                                  חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך כעת רק את פירוט התיקון
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                <button type="button"
+                                  className={`pill-tab ${isChecked(item.neckAlteration) ? 'active' : ''}`}
+                                  disabled={!fullyEditableNow}
+                                  onClick={() => handleItemChange(originalIndex, 'neckAlteration', isChecked(item.neckAlteration) ? 0 : 1)}>
+                                  <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-scissors" /></svg>צוואר
+                                </button>
+                                <button type="button"
+                                  className={`pill-tab ${isChecked(item.sleeveAlteration) ? 'active' : ''}`}
+                                  disabled={!fullyEditableNow}
+                                  onClick={() => handleItemChange(originalIndex, 'sleeveAlteration', isChecked(item.sleeveAlteration) ? 0 : 1)}>
+                                  <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-scissors" /></svg>שרוול
+                                </button>
+                                <input type="number" className="input" style={{ maxWidth: '100px' }} value={item.lengthAlteration || ''}
+                                  disabled={!fullyEditableNow}
+                                  onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
+                                  placeholder="אורך (ס״מ)" />
+                              </div>
+                              <input type="text" className="input" value={item.alterationDetails || item.repairs || ''}
+                                onChange={(e) => handleItemChange(originalIndex, 'alterationDetails', e.target.value)}
+                                placeholder="פירוט התיקון הנדרש..." />
+                            </div>
                           ) : (
-                            <span className="hint" style={{ fontStyle: 'italic', color: 'var(--text-3)' }}>נעול</span>
-                          )
-                        ) : isEditingMode ? (
-                          <>
-                            <button type="button" className="btn btn-primary btn-sm"
-                              disabled={savingItemIndex === originalIndex}
-                              onClick={(e) => { e.stopPropagation(); handleConfirmItem(originalIndex); }}>
-                              {savingItemIndex === originalIndex ? <><span className="spinner" style={{ width: '13px', height: '13px', borderWidth: '2px' }} />שומר...</> : <><svg className="icon"><use href="#i-check" /></svg>אישור</>}
-                            </button>
-                            <button type="button" className="btn btn-secondary btn-sm"
-                              disabled={savingItemIndex === originalIndex}
-                              onClick={(e) => { e.stopPropagation(); item.isNew ? cancelNewItem(originalIndex) : cancelEditItem(originalIndex); }}>
-                              <svg className="icon"><use href="#i-x" /></svg>ביטול
-                            </button>
-                          </>
-                        ) : isDeletedRow ? null : (
-                          <>
-                            {!item.isTaken && (
+                            renderRepairChips(item, originalIndex)
+                          )}
+                        </td>
+                      )}
+                      <td style={{ textAlign: 'center' }}>
+                        {item.isNew ? <span className="badge badge-neutral">חדש</span> : renderStatusBadge(item)}
+                      </td>
+                      <td>
+                        <div className="row-actions" style={{ flexWrap: 'wrap' }}>
+                          {locked ? (
+                            // הזמנה נעולה — מותרות החזרה וסימון מצב הפריט בלבד; עריכה, השכרה וביטולים חסומים
+                            isRented ? (
                               <button type="button" className="btn btn-secondary btn-sm"
-                                title={canFullyEditItem(item) ? 'ערוך פרטי פריט' : 'חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך רק את פירוט התיקון'}
-                                onClick={(e) => { e.stopPropagation(); handleEditItem(originalIndex); }}>
-                                <svg className="icon"><use href="#i-edit" /></svg>עריכה
+                                onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
+                                <svg className="icon"><use href="#i-check" /></svg>החזרה
                               </button>
-                            )}
-                            {!item.isTaken && !item.isNew && (
+                            ) : item.isReturned && !isDeletedRow ? (
+                              renderConditionToggle(item)
+                            ) : (
+                              <span className="hint" style={{ fontStyle: 'italic', color: 'var(--text-3)' }}>נעול</span>
+                            )
+                          ) : isEditingMode ? (
+                            <>
                               <button type="button" className="btn btn-primary btn-sm"
-                                onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'rent' }); }}>
-                                <svg className="icon"><use href="#i-box" /></svg>השכרה
+                                disabled={savingItemIndex === originalIndex}
+                                onClick={(e) => { e.stopPropagation(); handleConfirmItem(originalIndex); }}>
+                                {savingItemIndex === originalIndex ? <><span className="spinner" style={{ width: '13px', height: '13px', borderWidth: '2px' }} />שומר...</> : <><svg className="icon"><use href="#i-check" /></svg>אישור</>}
                               </button>
-                            )}
-                            {isRented && (
-                              <>
+                              <button type="button" className="btn btn-secondary btn-sm"
+                                disabled={savingItemIndex === originalIndex}
+                                onClick={(e) => { e.stopPropagation(); item.isNew ? cancelNewItem(originalIndex) : cancelEditItem(originalIndex); }}>
+                                <svg className="icon"><use href="#i-x" /></svg>ביטול
+                              </button>
+                            </>
+                          ) : isDeletedRow ? null : (
+                            <>
+                              {!item.isTaken && (
                                 <button type="button" className="btn btn-secondary btn-sm"
-                                  onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
-                                  <svg className="icon"><use href="#i-check" /></svg>החזרה
+                                  title={canFullyEditItem(item) ? 'ערוך פרטי פריט' : 'חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך רק את פירוט התיקון'}
+                                  onClick={(e) => { e.stopPropagation(); handleEditItem(originalIndex); }}>
+                                  <svg className="icon"><use href="#i-edit" /></svg>עריכה
                                 </button>
-                                <button type="button" className="btn btn-danger-ghost btn-sm" title="בטל השכרה"
-                                  onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelRent' }); }}>
-                                  <svg className="icon"><use href="#i-x-circle" /></svg>ביטול
+                              )}
+                              {!item.isTaken && !item.isNew && (
+                                <button type="button" className="btn btn-primary btn-sm"
+                                  onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'rent' }); }}>
+                                  <svg className="icon"><use href="#i-box" /></svg>השכרה
                                 </button>
-                              </>
-                            )}
-                            {item.isReturned && (
-                              <>
-                                {renderConditionToggle(item)}
-                                <button type="button" className="btn btn-danger-ghost btn-sm" title="בטל החזרה"
-                                  onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' }); }}>
-                                  <svg className="icon"><use href="#i-refresh" /></svg>ביטול החזרה
-                                </button>
-                              </>
-                            )}
-                          </>
-                        )}
-                      </div>
-                    </td>
-                    <td style={{ textAlign: 'center' }}>
-                      <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
-                        {!item.isNew && (
-                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים והיסטוריה"
-                            onClick={(e) => { e.stopPropagation(); showItemDetails(item); }}>
-                            <svg className="icon"><use href="#i-info" /></svg>
-                          </button>
-                        )}
-                        {!item.isNew && (
-                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="בדוק תפוסה לתאריך אירוע"
-                            onClick={(e) => { e.stopPropagation(); setCapacityModalItem(item); }}>
-                            <svg className="icon"><use href="#i-calendar" /></svg>
-                          </button>
-                        )}
-                        {/* מחיקה — לא זמינה לפריט שנלקח (מושכר או הוחזר) או בהזמנה נעולה; שחזור תמיד מוצג לשורה מחוקה */}
-                        {!locked && !item.isNew && (isDeletedRow || !item.isTaken) && (
-                          <button
-                            type="button"
-                            className="btn btn-ghost btn-icon-only btn-sm"
-                            title={isDeletedRow ? 'שחזר פריט' : 'מחק פריט'}
-                            onClick={(e) => { e.stopPropagation(); toggleDeleted(originalIndex); }}
-                          >
-                            <svg className="icon"><use href={isDeletedRow ? '#i-refresh' : '#i-trash'} /></svg>
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-          <div ref={listEndRef} />
+                              )}
+                              {isRented && (
+                                <>
+                                  <button type="button" className="btn btn-secondary btn-sm"
+                                    onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'return' }); }}>
+                                    <svg className="icon"><use href="#i-check" /></svg>החזרה
+                                  </button>
+                                  <button type="button" className="btn btn-danger-ghost btn-sm" title="בטל השכרה"
+                                    onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelRent' }); }}>
+                                    <svg className="icon"><use href="#i-x-circle" /></svg>ביטול
+                                  </button>
+                                </>
+                              )}
+                              {item.isReturned && (
+                                <>
+                                  {renderConditionToggle(item)}
+                                  <button type="button" className="btn btn-danger-ghost btn-sm" title="בטל החזרה"
+                                    onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' }); }}>
+                                    <svg className="icon"><use href="#i-refresh" /></svg>ביטול החזרה
+                                  </button>
+                                </>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ textAlign: 'center' }}>
+                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                          {!item.isNew && (
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים והיסטוריה"
+                              onClick={(e) => { e.stopPropagation(); showItemDetails(item); }}>
+                              <svg className="icon"><use href="#i-info" /></svg>
+                            </button>
+                          )}
+                          {!item.isNew && (
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="בדוק תפוסה לתאריך אירוע"
+                              onClick={(e) => { e.stopPropagation(); setCapacityModalItem(item); }}>
+                              <svg className="icon"><use href="#i-calendar" /></svg>
+                            </button>
+                          )}
+                          {/* מחיקה — לא זמינה לפריט שנלקח (מושכר או הוחזר) או בהזמנה נעולה; שחזור תמיד מוצג לשורה מחוקה */}
+                          {!locked && !item.isNew && (isDeletedRow || !item.isTaken) && (
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-icon-only btn-sm"
+                              title={isDeletedRow ? 'שחזר פריט' : 'מחק פריט'}
+                              onClick={(e) => { e.stopPropagation(); toggleDeleted(originalIndex); }}
+                            >
+                              <svg className="icon"><use href={isDeletedRow ? '#i-refresh' : '#i-trash'} /></svg>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <div ref={listEndRef} />
+          </div>
         </div>
       ) : (
         <div className="table-wrap">
-          <div className="empty-state">
-            <svg className="icon"><use href="#i-bag" /></svg>
-            <h4>אין פריטים להזמנה זו</h4>
-            <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: '10px' }} onClick={handleAddItem}>
-              <svg className="icon"><use href="#i-plus" /></svg>הוסף פריט ראשון
-            </button>
+          <div className="table-scroll">
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-bag" /></svg>
+              <h4>אין פריטים להזמנה זו</h4>
+              <button type="button" className="btn btn-primary btn-sm" style={{ marginTop: '10px' }} onClick={handleAddItem}>
+                <svg className="icon"><use href="#i-plus" /></svg>הוסף פריט ראשון
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -1021,46 +1025,48 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
             <div className="modal-body" style={{ overflowY: 'auto' }}>
               <span className="hint" style={{ color: 'var(--text-2)', fontWeight: 700 }}>תשלומים וחיובים לפריט זה (חיוב, זיכוי, ביטול, תיקונים)</span>
               <div className="table-wrap" style={{ margin: '8px 0 16px', maxHeight: '190px', overflowY: 'auto' }}>
-                {(() => {
-                  if (!order || !order.obligations) return <div className="empty-state" style={{ padding: '16px' }}>לא נמצאו חיובים מפורטים</div>;
-                  const searchStr = `(פריט #${detailsModalItem.id})`;
-                  const cleanTxt = (t) => (t || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim();
-                  // כל ההתחייבויות שמשויכות לפריט — כולל זיכויים/ביטולים (סכומים שליליים)
-                  const relatedObligations = order.obligations.filter(obs =>
-                    !obs.isDeleted && obs.description && obs.description.includes(searchStr)
-                  );
-                  if (relatedObligations.length === 0) return <div className="empty-state" style={{ padding: '16px' }}>אין חיובים מפורטים לפריט זה</div>;
-                  return (
-                    <table className="data">
-                      <tbody>
-                        {relatedObligations.map((obs, idx) => {
-                          const isCredit = obs.amount < 0;
-                          const label = cleanTxt(obs.productName)
-                            || (isCredit ? 'זיכוי / ביטול' : (obs.description.includes('תיקון') ? 'תיקון' : 'חיוב'));
-                          const desc = cleanTxt(obs.description);
-                          // ברוב החיובים ה-productName וה-description זהים — לא להציג את אותו טקסט פעמיים
-                          const showDesc = desc && desc !== label;
-                          return (
-                            <tr key={idx}>
-                              <td className="cell-primary" colSpan={showDesc ? 1 : 2}>
-                                {label}
-                                {isCredit && <span className="badge badge-danger" style={{ marginInlineStart: '6px' }}>זיכוי</span>}
-                              </td>
-                              {showDesc && <td className="cell-muted">{desc}</td>}
-                              <td style={{ fontWeight: 700, color: isCredit ? 'var(--success)' : 'var(--danger)', direction: 'ltr', textAlign: 'left' }}>
-                                {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                        <tr style={{ fontWeight: 700, background: 'var(--surface-alt)' }}>
-                          <td colSpan={2}>סה"כ לפריט</td>
-                          <td style={{ color: 'var(--success)', direction: 'ltr', textAlign: 'left' }}>₪{relatedObligations.reduce((sum, obs) => sum + obs.amount, 0)}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  );
-                })()}
+                <div className="table-scroll">
+                  {(() => {
+                    if (!order || !order.obligations) return <div className="empty-state" style={{ padding: '16px' }}>לא נמצאו חיובים מפורטים</div>;
+                    const searchStr = `(פריט #${detailsModalItem.id})`;
+                    const cleanTxt = (t) => (t || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim();
+                    // כל ההתחייבויות שמשויכות לפריט — כולל זיכויים/ביטולים (סכומים שליליים)
+                    const relatedObligations = order.obligations.filter(obs =>
+                      !obs.isDeleted && obs.description && obs.description.includes(searchStr)
+                    );
+                    if (relatedObligations.length === 0) return <div className="empty-state" style={{ padding: '16px' }}>אין חיובים מפורטים לפריט זה</div>;
+                    return (
+                      <table className="data">
+                        <tbody>
+                          {relatedObligations.map((obs, idx) => {
+                            const isCredit = obs.amount < 0;
+                            const label = cleanTxt(obs.productName)
+                              || (isCredit ? 'זיכוי / ביטול' : (obs.description.includes('תיקון') ? 'תיקון' : 'חיוב'));
+                            const desc = cleanTxt(obs.description);
+                            // ברוב החיובים ה-productName וה-description זהים — לא להציג את אותו טקסט פעמיים
+                            const showDesc = desc && desc !== label;
+                            return (
+                              <tr key={idx}>
+                                <td className="cell-primary" colSpan={showDesc ? 1 : 2}>
+                                  {label}
+                                  {isCredit && <span className="badge badge-danger" style={{ marginInlineStart: '6px' }}>זיכוי</span>}
+                                </td>
+                                {showDesc && <td className="cell-muted">{desc}</td>}
+                                <td style={{ fontWeight: 700, color: isCredit ? 'var(--success)' : 'var(--danger)', direction: 'ltr', textAlign: 'left' }}>
+                                  {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
+                                </td>
+                              </tr>
+                            );
+                          })}
+                          <tr style={{ fontWeight: 700, background: 'var(--surface-alt)' }}>
+                            <td colSpan={2}>סה"כ לפריט</td>
+                            <td style={{ color: 'var(--success)', direction: 'ltr', textAlign: 'left' }}>₪{relatedObligations.reduce((sum, obs) => sum + obs.amount, 0)}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                    );
+                  })()}
+                </div>
               </div>
 
               {(() => {

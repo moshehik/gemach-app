@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import * as XLSX from 'xlsx';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 export default function AttendanceReportPage() {
@@ -40,7 +39,9 @@ export default function AttendanceReportPage() {
     window.print();
   };
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    // xlsx (~900KB) נטען דינמית רק בלחיצה על הייצוא — לא חלק מה-bundle של הדף
+    const XLSX = await import('xlsx');
     const wb = XLSX.utils.book_new();
 
     // Sort employees to have them in order
@@ -257,36 +258,38 @@ export default function AttendanceReportPage() {
                   </div>
 
                   <div className="table-wrap" style={{ border: 'none', borderRadius: 0, boxShadow: 'none' }}>
-                    <table className="data">
-                      <thead>
-                        {/* שורה נוספת ב-thead (לא רק כותרות העמודות) - כדי שהחודש/שנה יופיעו מחדש
-                            בראש כל עמוד פיזי כשטבלת המשמרות של עובד נשברת לכמה עמודי הדפסה, בדיוק
-                            כמו שורת כותרות העמודות עצמה חוזרת בזכות table-header-group. */}
-                        <tr>
-                          <th colSpan={5} style={{ textAlign: 'center' }}>
-                            תקופה: {getMonthName(selectedMonth)} {selectedYear}
-                          </th>
-                        </tr>
-                        <tr>
-                          <th>תאריך</th>
-                          <th>כניסה</th>
-                          <th>יציאה</th>
-                          <th>סה&quot;כ שעות</th>
-                          <th>סה&quot;כ לתשלום</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {employee.shifts.map((shift) => (
-                          <tr key={shift.id}>
-                            <td>{shift.date ? getHebrewDateString(shift.date) : '-'}</td>
-                            <td>{shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                            <td>{shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
-                            <td>{shift.totalMinutes ? (shift.totalMinutes / 60).toFixed(2) : '0.00'}</td>
-                            <td className="cell-primary">₪{shift.totalCalculated ? shift.totalCalculated.toFixed(2) : '0.00'}</td>
+                    <div className="table-scroll">
+                      <table className="data">
+                        <thead>
+                          {/* שורה נוספת ב-thead (לא רק כותרות העמודות) - כדי שהחודש/שנה יופיעו מחדש
+                              בראש כל עמוד פיזי כשטבלת המשמרות של עובד נשברת לכמה עמודי הדפסה, בדיוק
+                              כמו שורת כותרות העמודות עצמה חוזרת בזכות table-header-group. */}
+                          <tr>
+                            <th colSpan={5} style={{ textAlign: 'center' }}>
+                              תקופה: {getMonthName(selectedMonth)} {selectedYear}
+                            </th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                          <tr>
+                            <th>תאריך</th>
+                            <th>כניסה</th>
+                            <th>יציאה</th>
+                            <th>סה&quot;כ שעות</th>
+                            <th>סה&quot;כ לתשלום</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {employee.shifts.map((shift) => (
+                            <tr key={shift.id}>
+                              <td>{shift.date ? getHebrewDateString(shift.date) : '-'}</td>
+                              <td>{shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                              <td>{shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                              <td>{shift.totalMinutes ? (shift.totalMinutes / 60).toFixed(2) : '0.00'}</td>
+                              <td className="cell-primary">₪{shift.totalCalculated ? shift.totalCalculated.toFixed(2) : '0.00'}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
                   <div className="table-foot">

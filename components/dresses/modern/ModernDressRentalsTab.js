@@ -126,58 +126,60 @@ export default function ModernDressRentalsTab({ dressId, active }) {
         </div>
       ) : (
         <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>מס&apos; הזמנה</th>
-                <th>לקוח</th>
-                <th>פריט</th>
-                <th>תאריך אירוע</th>
-                <th>לקיחה</th>
-                <th>סטטוס החזרה</th>
-                <th style={{ textAlign: 'center' }}>כרטיס הזמנה</th>
-              </tr>
-            </thead>
-            <tbody>
-              {paginatedRentals.map((r, idx) => (
-                <tr key={idx}>
-                  <td className="cell-primary">{r.orderId}</td>
-                  <td>{r.customerName}</td>
-                  <td>
-                    {r.sizeText || '—'} <span className="cell-muted">· {r.dressBarcode || '—'}</span>
-                  </td>
-                  <td>{r.eventDateHebrew || (r.eventDate ? getHebrewDateString(r.eventDate) : '—')}</td>
-                  <td>
-                    {r.takenDate ? (
-                      <span title={new Date(r.takenDate).toLocaleDateString('he-IL')}>
-                        {getHebrewDateString(r.takenDate) || new Date(r.takenDate).toLocaleDateString('he-IL')}
-                      </span>
-                    ) : '—'}
-                  </td>
-                  <td>
-                    {!r.isReturned ? (
-                      <span className="badge badge-warning"><svg className="icon"><use href="#i-clock" /></svg>טרם הוחזר</span>
-                    ) : r.returnedOk === false ? (
-                      <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר עם בעיה</span>
-                    ) : (
-                      <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר תקין</span>
-                    )}
-                  </td>
-                  <td style={{ textAlign: 'center' }}>
-                    <a
-                      href={`/orders/${r.orderId}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="btn btn-ghost btn-icon-only btn-sm"
-                      title="פתח כרטיס הזמנה"
-                    >
-                      <svg className="icon"><use href="#i-link" /></svg>
-                    </a>
-                  </td>
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>מס&apos; הזמנה</th>
+                  <th>לקוח</th>
+                  <th>פריט</th>
+                  <th>תאריך אירוע</th>
+                  <th>לקיחה</th>
+                  <th>סטטוס החזרה</th>
+                  <th style={{ textAlign: 'center' }}>כרטיס הזמנה</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {paginatedRentals.map((r, idx) => (
+                  <tr key={idx}>
+                    <td className="cell-primary">{r.orderId}</td>
+                    <td>{r.customerName}</td>
+                    <td>
+                      {r.sizeText || '—'} <span className="cell-muted">· {r.dressBarcode || '—'}</span>
+                    </td>
+                    <td>{r.eventDateHebrew || (r.eventDate ? getHebrewDateString(r.eventDate) : '—')}</td>
+                    <td>
+                      {r.takenDate ? (
+                        <span title={new Date(r.takenDate).toLocaleDateString('he-IL')}>
+                          {getHebrewDateString(r.takenDate) || new Date(r.takenDate).toLocaleDateString('he-IL')}
+                        </span>
+                      ) : '—'}
+                    </td>
+                    <td>
+                      {!r.isReturned ? (
+                        <span className="badge badge-warning"><svg className="icon"><use href="#i-clock" /></svg>טרם הוחזר</span>
+                      ) : r.returnedOk === false ? (
+                        <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר עם בעיה</span>
+                      ) : (
+                        <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר תקין</span>
+                      )}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      <a
+                        href={`/orders/${r.orderId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="btn btn-ghost btn-icon-only btn-sm"
+                        title="פתח כרטיס הזמנה"
+                      >
+                        <svg className="icon"><use href="#i-link" /></svg>
+                      </a>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           <div className="table-foot">
             <span>סה&quot;כ השכרות מוצגות: {visible.length}</span>

@@ -146,33 +146,35 @@ export default function NeonUsageCard() {
       </div>
 
       <div className="table-wrap">
-        <table className="data">
-          <thead>
-            <tr>
-              <th>סביבה (ענף)</th>
-              <th>מצב</th>
-              <th>Autoscaling (CU)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {endpoints.map(e => (
-              <tr key={e.id}>
-                <td className="cell-primary">{e.branch}</td>
-                <td>
-                  {e.state === 'idle' ? (
-                    <span className="cell-muted">רדום (לא מחויב)</span>
-                  ) : (
-                    <span style={{ color: 'var(--success)' }}>{e.state === 'active' ? 'פעיל' : e.state}</span>
-                  )}
-                </td>
-                <td>
-                  {e.minCu} - {e.maxCu}
-                  {e.maxCu > 2 && <span style={{ color: 'var(--warning)', marginInlineStart: '6px', fontSize: '12px' }}>(מומלץ להגביל ל-1)</span>}
-                </td>
+        <div className="table-scroll">
+          <table className="data">
+            <thead>
+              <tr>
+                <th>סביבה (ענף)</th>
+                <th>מצב</th>
+                <th>Autoscaling (CU)</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {endpoints.map(e => (
+                <tr key={e.id}>
+                  <td className="cell-primary">{e.branch}</td>
+                  <td>
+                    {e.state === 'idle' ? (
+                      <span className="cell-muted">רדום (לא מחויב)</span>
+                    ) : (
+                      <span style={{ color: 'var(--success)' }}>{e.state === 'active' ? 'פעיל' : e.state}</span>
+                    )}
+                  </td>
+                  <td>
+                    {e.minCu} - {e.maxCu}
+                    {e.maxCu > 2 && <span style={{ color: 'var(--warning)', marginInlineStart: '6px', fontSize: '12px' }}>(מומלץ להגביל ל-1)</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

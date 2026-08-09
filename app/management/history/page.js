@@ -235,40 +235,6 @@ export default function HistoryPage() {
         </div>
       </div>
 
-      {/* Filters and Search */}
-      <div className="toolbar" style={{ justifyContent: 'space-between' }}>
-        <form onSubmit={handleSearch} className="search-toolbar" style={{ flex: 1, minWidth: '300px', maxWidth: '480px' }}>
-          <svg className="icon"><use href="#i-search" /></svg>
-          <input
-            type="text"
-            placeholder="חיפוש נתיב, שאילתת API או שגיאה..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-          />
-          <div className="search-toolbar-actions">
-            <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
-          </div>
-        </form>
-
-        <div className="field" style={{ marginBottom: 0, minWidth: '220px' }}>
-          <label htmlFor="mgmt-history-employee" className="sr-only">סינון לפי משתמש</label>
-          <select
-            id="mgmt-history-employee"
-            className="select"
-            value={employeeId}
-            onChange={(e) => { setEmployeeId(e.target.value); setPage(1); }}
-          >
-            <option value="">-- כל המשתמשים --</option>
-            <option value="guest">אורחים בלבד</option>
-            {employees.map(emp => (
-              <option key={emp.id} value={emp.id}>
-                {emp.firstName} {emp.lastName}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {/* Action Bar */}
       <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap', marginBottom: '16px' }}>
         <div style={{ color: 'var(--text-2)', fontSize: '13px' }}>
@@ -310,6 +276,39 @@ export default function HistoryPage() {
 
       {/* Data Table */}
       <div className="table-wrap">
+        <div className="table-head-toolbar">
+          <form onSubmit={handleSearch} className="search-toolbar" style={{ flex: 1, minWidth: '260px', maxWidth: '480px' }}>
+            <svg className="icon"><use href="#i-search" /></svg>
+            <input
+              type="text"
+              placeholder="חיפוש נתיב, שאילתת API או שגיאה..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+            <div className="search-toolbar-actions">
+              <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
+            </div>
+          </form>
+
+          <div className="field" style={{ marginBottom: 0, minWidth: '200px' }}>
+            <label htmlFor="mgmt-history-employee" className="sr-only">סינון לפי משתמש</label>
+            <select
+              id="mgmt-history-employee"
+              className="select"
+              value={employeeId}
+              onChange={(e) => { setEmployeeId(e.target.value); setPage(1); }}
+            >
+              <option value="">-- כל המשתמשים --</option>
+              <option value="guest">אורחים בלבד</option>
+              {employees.map(emp => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.firstName} {emp.lastName}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="table-scroll">
         {loading && logs.length === 0 ? (
           <div className="page-loading">
             <span className="spinner lg" />
@@ -405,6 +404,7 @@ export default function HistoryPage() {
             </tbody>
           </table>
         )}
+        </div>
 
         {/* סיכום הרשומות ועימוד */}
         <div className="table-foot">

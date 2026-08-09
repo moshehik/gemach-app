@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import * as XLSX from 'xlsx';
 import { HDate } from '@hebcal/core';
 
 // דפים שהוצאו מהתפריט הצדדי (2026-08-08, צומצם ל-11 הפריטים שהיו בתפריט
@@ -83,6 +82,17 @@ export default function HomeDashboard() {
       }
       return <span key={i}>{part}</span>;
     });
+  };
+
+  const [copiedAiIdx, setCopiedAiIdx] = useState(null);
+  const copyBubbleText = async (idx, text) => {
+    try {
+      await navigator.clipboard.writeText(text || '');
+      setCopiedAiIdx(idx);
+      setTimeout(() => setCopiedAiIdx((cur) => (cur === idx ? null : cur)), 1500);
+    } catch {
+      // clipboard permission denied or unavailable — silently ignore
+    }
   };
 
   useEffect(() => {
@@ -201,7 +211,9 @@ export default function HomeDashboard() {
     localStorage.removeItem('dashboardAiMessages');
   };
 
-  const exportTableToExcel = (data, filename) => {
+  const exportTableToExcel = async (data, filename) => {
+    // xlsx (~900KB) נטען דינמית רק בלחיצה על "הורד Excel" — לא חלק מה-bundle של דף הבית
+    const XLSX = await import('xlsx');
     const cleanedData = data.map(row => {
       const cleanRow = { ...row };
       Object.keys(cleanRow).forEach(key => {
@@ -350,6 +362,14 @@ export default function HomeDashboard() {
           <div className="chat-thread" style={{ maxHeight: '600px', overflowY: 'auto' }}>
             {aiMessages.map((msg, idx) => (
               <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
+                <button
+                  type="button"
+                  className={`bubble-copy-btn${copiedAiIdx === idx ? ' copied' : ''}`}
+                  title="העתק"
+                  onClick={() => copyBubbleText(idx, msg.content)}
+                >
+                  <svg className="icon"><use href={`#${copiedAiIdx === idx ? 'i-check' : 'i-copy'}`} /></svg>
+                </button>
                 <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(msg.content)}</div>
                 {msg.data && msg.data.length > 0 && (
                   <div style={{ marginTop: '10px' }}>
@@ -357,6 +377,7 @@ export default function HomeDashboard() {
                       <svg className="icon"><use href="#i-download" /></svg> הורד Excel
                     </button>
                     <div className="table-wrap">
+                      <div className="table-scroll">
                       <table className="data">
                         <thead>
                           <tr>
@@ -385,6 +406,7 @@ export default function HomeDashboard() {
                           ))}
                         </tbody>
                       </table>
+                      </div>
                       {msg.data.length > 15 && (
                         <div style={{ textAlign: 'center', padding: '8px', color: 'var(--text-3)', fontStyle: 'italic' }}>
                           מציג 15 תוצאות ראשונות (הורד קובץ לצפייה במלא)

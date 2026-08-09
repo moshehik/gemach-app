@@ -1,14 +1,19 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 export default function PunchClockPage() {
+  const [employees, setEmployees] = useState(null); // null = loading
   const [employeeId, setEmployeeId] = useState('');
+  const [employeeSearch, setEmployeeSearch] = useState('');
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [password, setPassword] = useState('');
   const [statusMessage, setStatusMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const passwordInputRef = useRef(null);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -17,9 +22,18 @@ export default function PunchClockPage() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    fetchSharedJson('/api/employees', { ttl: TTL.STATIC })
+      .then(list => setEmployees(Array.isArray(list) ? list : []))
+      .catch(() => setEmployees([]));
+  }, []);
+
+  const filteredEmployees = (employees || [])
+    .filter(emp => `${emp.firstName} ${emp.lastName}`.includes(employeeSearch));
+
   const handlePunch = async (action) => {
     if (!employeeId || !password) {
-      setStatusMessage('אנא הזן קוד עובד וסיסמא');
+      setStatusMessage('אנא בחר עובד והזן סיסמא');
       return;
     }
 
@@ -40,6 +54,7 @@ export default function PunchClockPage() {
       } else {
         setStatusMessage(action === 'IN' ? '✅ כניסה נרשמה בהצלחה' : '✅ יציאה נרשמה בהצלחה');
         setEmployeeId('');
+        setEmployeeSearch('');
         setPassword('');
         // Hide success message after 3 seconds
         setTimeout(() => setStatusMessage(''), 3000);
@@ -58,7 +73,7 @@ export default function PunchClockPage() {
       <div className="page-head">
         <div>
           <h1>שעון נוכחות</h1>
-          <div className="page-desc">הזנת קוד עובד וסיסמא לרישום כניסה או יציאה מהעבודה</div>
+          <div className="page-desc">בחירת עובד והזנת סיסמא לרישום כניסה או יציאה מהעבודה</div>
         </div>
       </div>
 
@@ -74,19 +89,56 @@ export default function PunchClockPage() {
           </div>
 
           <div className="field">
-            <label htmlFor="punch-clock-employeeId">קוד עובד</label>
-            <input
-              data-element-name="שדה_punch-clock_1"
-              className="input"
-              id="punch-clock-employeeId"
-              type="number"
-              inputMode="numeric"
-              dir="auto"
-              value={employeeId}
-              onChange={(e) => setEmployeeId(e.target.value)}
-              placeholder="הזן קוד עובד"
-              style={{ textAlign: 'center' }}
-            />
+            <label htmlFor="punch-clock-employeeSearch">עובד</label>
+            <div className="combobox">
+              <input
+                data-element-name="שדה_punch-clock_1"
+                className="input"
+                id="punch-clock-employeeSearch"
+                type="text"
+                value={employeeSearch}
+                placeholder="הקלד לחיפוש שם..."
+                onChange={(e) => {
+                  setEmployeeSearch(e.target.value);
+                  setIsDropdownOpen(true);
+                  setEmployeeId('');
+                }}
+                onFocus={() => setIsDropdownOpen(true)}
+                onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+              />
+              {isDropdownOpen && (
+                <div className="combobox-results">
+                  {employees === null ? (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '10px 16px', color: 'var(--text-2)', fontSize: '12.5px' }}>
+                      <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
+                      טוען רשימת עובדים...
+                    </div>
+                  ) : (
+                    <>
+                      {filteredEmployees.map(emp => (
+                        <div
+                          key={emp.id}
+                          className="combobox-option"
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setEmployeeId(emp.id.toString());
+                            setEmployeeSearch(`${emp.firstName} ${emp.lastName}`);
+                            setIsDropdownOpen(false);
+                            passwordInputRef.current?.focus();
+                          }}
+                        >
+                          <svg className="icon"><use href="#i-user" /></svg>
+                          {emp.firstName} {emp.lastName}
+                        </div>
+                      ))}
+                      {filteredEmployees.length === 0 && (
+                        <div className="combobox-option" style={{ cursor: 'default', color: 'var(--text-3)' }}>לא נמצאו תוצאות</div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="field">
@@ -95,6 +147,7 @@ export default function PunchClockPage() {
               <svg className="icon lead-icon"><use href="#i-lock" /></svg>
               <input
                 data-element-name="שדה_punch-clock_2"
+                ref={passwordInputRef}
                 className="input"
                 id="punch-clock-password"
                 type={showPassword ? 'text' : 'password'}

@@ -454,180 +454,182 @@ export default function ModernDressItemsTab({
           </div>
         ) : (
           <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th className={sort.key === 'sizeText' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sizeText')}>
-                    {getLabel ? getLabel('item_size', 'מידה') : 'מידה'} <SortIcon sort={sort} colKey="sizeText" />
-                  </th>
-                  <th className={sort.key === 'serialNumber' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('serialNumber')}>
-                    {getLabel ? getLabel('item_serialNumber', "מס' סידורי") : "מס' סידורי"} <SortIcon sort={sort} colKey="serialNumber" />
-                  </th>
-                  <th className={sort.key === 'dressBarcode' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('dressBarcode')}>
-                    {getLabel ? getLabel('item_barcode', 'ברקוד פריט') : 'ברקוד פריט'} <SortIcon sort={sort} colKey="dressBarcode" />
-                  </th>
-                  <th className={sort.key === 'location' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('location')}>
-                    מיקום <SortIcon sort={sort} colKey="location" />
-                  </th>
-                  <th className={sort.key === 'inRepair' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('inRepair')}>
-                    בתיקון <SortIcon sort={sort} colKey="inRepair" />
-                  </th>
-                  <th className={sort.key === 'notInUse' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('notInUse')}>
-                    לא בשימוש <SortIcon sort={sort} colKey="notInUse" />
-                  </th>
-                  <th style={{ textAlign: 'center' }} />
-                </tr>
-
-                {showColFilters && (
+            <div className="table-scroll">
+              <table className="data">
+                <thead>
                   <tr>
-                    <td style={{ padding: '6px 10px' }}><input className="input" style={{ padding: '5px 8px', fontSize: '12px' }} type="text" placeholder="סנן מידה" value={colFilters.sizeText} onChange={e => setColFilters({ ...colFilters, sizeText: e.target.value })} /></td>
-                    <td style={{ padding: '6px 10px' }}><input className="input" style={{ padding: '5px 8px', fontSize: '12px' }} type="text" placeholder="סנן מס'" value={colFilters.serialNumber} onChange={e => setColFilters({ ...colFilters, serialNumber: e.target.value })} /></td>
-                    <td style={{ padding: '6px 10px' }}><input className="input" style={{ padding: '5px 8px', fontSize: '12px' }} type="text" placeholder="סנן ברקוד" value={colFilters.dressBarcode} onChange={e => setColFilters({ ...colFilters, dressBarcode: e.target.value })} /></td>
-                    <td style={{ padding: '6px 10px' }}><input className="input" style={{ padding: '5px 8px', fontSize: '12px' }} type="text" placeholder="סנן מיקום" value={colFilters.location} onChange={e => setColFilters({ ...colFilters, location: e.target.value })} /></td>
-                    <td colSpan={3} className="cell-muted" style={{ fontSize: '11.5px' }}>סינון לפי סטטוס — דרך הצ&apos;יפים שמעל הטבלה</td>
+                    <th className={sort.key === 'sizeText' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sizeText')}>
+                      {getLabel ? getLabel('item_size', 'מידה') : 'מידה'} <SortIcon sort={sort} colKey="sizeText" />
+                    </th>
+                    <th className={sort.key === 'serialNumber' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('serialNumber')}>
+                      {getLabel ? getLabel('item_serialNumber', "מס' סידורי") : "מס' סידורי"} <SortIcon sort={sort} colKey="serialNumber" />
+                    </th>
+                    <th className={sort.key === 'dressBarcode' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('dressBarcode')}>
+                      {getLabel ? getLabel('item_barcode', 'ברקוד פריט') : 'ברקוד פריט'} <SortIcon sort={sort} colKey="dressBarcode" />
+                    </th>
+                    <th className={sort.key === 'location' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('location')}>
+                      מיקום <SortIcon sort={sort} colKey="location" />
+                    </th>
+                    <th className={sort.key === 'inRepair' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('inRepair')}>
+                      בתיקון <SortIcon sort={sort} colKey="inRepair" />
+                    </th>
+                    <th className={sort.key === 'notInUse' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('notInUse')}>
+                      לא בשימוש <SortIcon sort={sort} colKey="notInUse" />
+                    </th>
+                    <th style={{ textAlign: 'center' }} />
                   </tr>
-                )}
-              </thead>
-
-              <tbody>
-                {paginatedItems.map(item => {
-                  const isEditing = editingId === item.id;
-                  const rowStatus = statusOf(item);
-                  const rowClass = (rowStatus === 'deleted' || highlightId === item.id) ? 'row-flag' : undefined;
-
-                  const repairOn = isEditing ? draft.inRepair : item.inRepair;
-                  const unusedOn = isEditing ? draft.notInUse : item.notInUse;
-
-                  return (
-                    <tr key={item.id} className={rowClass} ref={el => { rowRefs.current[item.id] = el; }}>
-                      {/* מידה — נעול תמיד */}
-                      <td className="cell-primary">{item.sizeText || '—'}</td>
-
-                      {/* מס' סידורי — נעול תמיד */}
-                      <td className="cell-muted">{item.serialNumber != null ? String(item.serialNumber).padStart(2, '0') : '—'}</td>
-
-                      {/* ברקוד — נעול תמיד (נגזר מקוד הדגם + מידה + מס' סידורי) */}
-                      <td title="הברקוד נקבע אוטומטית ואינו ניתן לעריכה">{item.dressBarcode || '—'}</td>
-
-                      {/* מיקום */}
-                      <td>
-                        {isEditing ? (
-                          <select
-                            className="select"
-                            style={{ padding: '6px 9px', fontSize: '12.5px' }}
-                            value={draft.location}
-                            onChange={e => setDraft({ ...draft, location: e.target.value })}
-                            onKeyDown={e => { if (e.key === 'Enter') saveEdit(item); if (e.key === 'Escape') cancelEdit(); }}
-                            autoFocus
-                          >
-                            <option value="">--</option>
-                            {(locations || []).map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
-                          </select>
-                        ) : (
-                          <span>{item.location || '—'}</span>
-                        )}
-                      </td>
-
-                      {/* בתיקון */}
-                      <td>
-                        {isEditing ? (
-                          <button
-                            type="button"
-                            className={`pill-tab${repairOn ? ' active' : ''}`}
-                            title='שנה סימון "בתיקון"'
-                            onClick={() => setDraft({ ...draft, inRepair: !draft.inRepair, notInUse: !draft.inRepair ? false : draft.notInUse })}
-                          >
-                            {repairOn ? 'בתיקון' : 'לא'}
-                          </button>
-                        ) : repairOn ? (
-                          <span className="badge badge-warning"><svg className="icon"><use href="#i-alert-tri" /></svg>בתיקון</span>
-                        ) : (
-                          <span className="cell-muted">—</span>
-                        )}
-                      </td>
-
-                      {/* לא בשימוש */}
-                      <td>
-                        {isEditing ? (
-                          <button
-                            type="button"
-                            className={`pill-tab${unusedOn ? ' active' : ''}`}
-                            title='שנה סימון "לא בשימוש"'
-                            onClick={() => setDraft({ ...draft, notInUse: !draft.notInUse, inRepair: !draft.notInUse ? false : draft.inRepair })}
-                          >
-                            {unusedOn ? 'לא בשימוש' : 'בשימוש'}
-                          </button>
-                        ) : unusedOn ? (
-                          <span className="badge badge-danger"><svg className="icon"><use href="#i-x-circle" /></svg>לא בשימוש</span>
-                        ) : (
-                          <span className="cell-muted">—</span>
-                        )}
-                      </td>
-
-                      {/* פעולות */}
-                      <td>
-                        <div className="row-actions">
-                          {isEditing ? (
-                            <>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-icon-only btn-sm"
-                                title="שמור שינויים בשורה"
-                                onClick={() => saveEdit(item)}
-                                disabled={rowSaving}
-                              >
-                                {rowSaving ? <span className="spinner" /> : <svg className="icon"><use href="#i-check" /></svg>}
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-icon-only btn-sm"
-                                title="ביטול עריכה (Esc)"
-                                onClick={cancelEdit}
-                                disabled={rowSaving}
-                              >
-                                <svg className="icon"><use href="#i-x" /></svg>
-                              </button>
-                            </>
-                          ) : (
-                            <>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-icon-only btn-sm"
-                                title="עריכת הפריט"
-                                onClick={() => startEdit(item)}
-                                disabled={item.isDeleted}
-                              >
-                                <svg className="icon"><use href="#i-edit" /></svg>
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-icon-only btn-sm"
-                                title="פרטי פריט והיסטוריית השכרות"
-                                onClick={() => setInfoItem(item)}
-                              >
-                                <svg className="icon"><use href="#i-info" /></svg>
-                              </button>
-                              {item.isDeleted ? (
-                                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר פריט" onClick={() => restoreItem(item)}>
-                                  <svg className="icon"><use href="#i-refresh" /></svg>
-                                </button>
-                              ) : (
-                                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="מחק פריט" onClick={() => deleteItem(item)}>
-                                  <svg className="icon"><use href="#i-trash" /></svg>
-                                </button>
-                              )}
-                            </>
-                          )}
-                        </div>
-                        {isEditing && rowError && (
-                          <div className="error-text" style={{ marginTop: '4px' }}>{rowError}</div>
-                        )}
-                      </td>
+  
+                  {showColFilters && (
+                    <tr>
+                      <td style={{ padding: '6px 10px' }}><input className="input" style={{ padding: '5px 8px', fontSize: '12px' }} type="text" placeholder="סנן מידה" value={colFilters.sizeText} onChange={e => setColFilters({ ...colFilters, sizeText: e.target.value })} /></td>
+                      <td style={{ padding: '6px 10px' }}><input className="input" style={{ padding: '5px 8px', fontSize: '12px' }} type="text" placeholder="סנן מס'" value={colFilters.serialNumber} onChange={e => setColFilters({ ...colFilters, serialNumber: e.target.value })} /></td>
+                      <td style={{ padding: '6px 10px' }}><input className="input" style={{ padding: '5px 8px', fontSize: '12px' }} type="text" placeholder="סנן ברקוד" value={colFilters.dressBarcode} onChange={e => setColFilters({ ...colFilters, dressBarcode: e.target.value })} /></td>
+                      <td style={{ padding: '6px 10px' }}><input className="input" style={{ padding: '5px 8px', fontSize: '12px' }} type="text" placeholder="סנן מיקום" value={colFilters.location} onChange={e => setColFilters({ ...colFilters, location: e.target.value })} /></td>
+                      <td colSpan={3} className="cell-muted" style={{ fontSize: '11.5px' }}>סינון לפי סטטוס — דרך הצ&apos;יפים שמעל הטבלה</td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  )}
+                </thead>
+  
+                <tbody>
+                  {paginatedItems.map(item => {
+                    const isEditing = editingId === item.id;
+                    const rowStatus = statusOf(item);
+                    const rowClass = (rowStatus === 'deleted' || highlightId === item.id) ? 'row-flag' : undefined;
+  
+                    const repairOn = isEditing ? draft.inRepair : item.inRepair;
+                    const unusedOn = isEditing ? draft.notInUse : item.notInUse;
+  
+                    return (
+                      <tr key={item.id} className={rowClass} ref={el => { rowRefs.current[item.id] = el; }}>
+                        {/* מידה — נעול תמיד */}
+                        <td className="cell-primary">{item.sizeText || '—'}</td>
+  
+                        {/* מס' סידורי — נעול תמיד */}
+                        <td className="cell-muted">{item.serialNumber != null ? String(item.serialNumber).padStart(2, '0') : '—'}</td>
+  
+                        {/* ברקוד — נעול תמיד (נגזר מקוד הדגם + מידה + מס' סידורי) */}
+                        <td title="הברקוד נקבע אוטומטית ואינו ניתן לעריכה">{item.dressBarcode || '—'}</td>
+  
+                        {/* מיקום */}
+                        <td>
+                          {isEditing ? (
+                            <select
+                              className="select"
+                              style={{ padding: '6px 9px', fontSize: '12.5px' }}
+                              value={draft.location}
+                              onChange={e => setDraft({ ...draft, location: e.target.value })}
+                              onKeyDown={e => { if (e.key === 'Enter') saveEdit(item); if (e.key === 'Escape') cancelEdit(); }}
+                              autoFocus
+                            >
+                              <option value="">--</option>
+                              {(locations || []).map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
+                            </select>
+                          ) : (
+                            <span>{item.location || '—'}</span>
+                          )}
+                        </td>
+  
+                        {/* בתיקון */}
+                        <td>
+                          {isEditing ? (
+                            <button
+                              type="button"
+                              className={`pill-tab${repairOn ? ' active' : ''}`}
+                              title='שנה סימון "בתיקון"'
+                              onClick={() => setDraft({ ...draft, inRepair: !draft.inRepair, notInUse: !draft.inRepair ? false : draft.notInUse })}
+                            >
+                              {repairOn ? 'בתיקון' : 'לא'}
+                            </button>
+                          ) : repairOn ? (
+                            <span className="badge badge-warning"><svg className="icon"><use href="#i-alert-tri" /></svg>בתיקון</span>
+                          ) : (
+                            <span className="cell-muted">—</span>
+                          )}
+                        </td>
+  
+                        {/* לא בשימוש */}
+                        <td>
+                          {isEditing ? (
+                            <button
+                              type="button"
+                              className={`pill-tab${unusedOn ? ' active' : ''}`}
+                              title='שנה סימון "לא בשימוש"'
+                              onClick={() => setDraft({ ...draft, notInUse: !draft.notInUse, inRepair: !draft.notInUse ? false : draft.inRepair })}
+                            >
+                              {unusedOn ? 'לא בשימוש' : 'בשימוש'}
+                            </button>
+                          ) : unusedOn ? (
+                            <span className="badge badge-danger"><svg className="icon"><use href="#i-x-circle" /></svg>לא בשימוש</span>
+                          ) : (
+                            <span className="cell-muted">—</span>
+                          )}
+                        </td>
+  
+                        {/* פעולות */}
+                        <td>
+                          <div className="row-actions">
+                            {isEditing ? (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-icon-only btn-sm"
+                                  title="שמור שינויים בשורה"
+                                  onClick={() => saveEdit(item)}
+                                  disabled={rowSaving}
+                                >
+                                  {rowSaving ? <span className="spinner" /> : <svg className="icon"><use href="#i-check" /></svg>}
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-icon-only btn-sm"
+                                  title="ביטול עריכה (Esc)"
+                                  onClick={cancelEdit}
+                                  disabled={rowSaving}
+                                >
+                                  <svg className="icon"><use href="#i-x" /></svg>
+                                </button>
+                              </>
+                            ) : (
+                              <>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-icon-only btn-sm"
+                                  title="עריכת הפריט"
+                                  onClick={() => startEdit(item)}
+                                  disabled={item.isDeleted}
+                                >
+                                  <svg className="icon"><use href="#i-edit" /></svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-icon-only btn-sm"
+                                  title="פרטי פריט והיסטוריית השכרות"
+                                  onClick={() => setInfoItem(item)}
+                                >
+                                  <svg className="icon"><use href="#i-info" /></svg>
+                                </button>
+                                {item.isDeleted ? (
+                                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר פריט" onClick={() => restoreItem(item)}>
+                                    <svg className="icon"><use href="#i-refresh" /></svg>
+                                  </button>
+                                ) : (
+                                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="מחק פריט" onClick={() => deleteItem(item)}>
+                                    <svg className="icon"><use href="#i-trash" /></svg>
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                          {isEditing && rowError && (
+                            <div className="error-text" style={{ marginTop: '4px' }}>{rowError}</div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
             {/* שורת סך-הכל ועימוד — צמודה לתחתית הטבלה */}
             <div className="table-foot">

@@ -192,7 +192,7 @@ export function PopupProvider({ children }) {
       {children}
 
       {/* Toast Alerts Container */}
-      <div className="toast-stack" style={{ position: 'fixed', top: '20px', insetInlineStart: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}>
+      <div className="toast-stack" style={{ position: 'fixed', top: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 9999 }}>
         {alerts.map(alert => (
           <div key={alert.id} className={`toast ${alert.type} animate-slide-in`} style={{ minWidth: '300px', maxWidth: '90vw' }}>
             <svg data-element-name={alert.type === 'error' ? 'רכיב_PopupProvider_2' : alert.type === 'success' ? 'רכיב_PopupProvider_3' : 'רכיב_PopupProvider_4'} className="icon">

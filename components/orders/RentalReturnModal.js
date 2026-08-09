@@ -26,7 +26,6 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const [duplicates, setDuplicates] = useState(null);
   const [itemDetails, setItemDetails] = useState(null);
 
-  const [openMenuId, setOpenMenuId] = useState(null);
   const [rentingItemId, setRentingItemId] = useState(null);
   const [inlineBarcode, setInlineBarcode] = useState({});
 
@@ -102,16 +101,6 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
       modalBarcodeRef.current.focus({ preventScroll: true });
     }
   }, [selectedOrder, duplicates]);
-
-  // Close any open item action-menu on outside click
-  useEffect(() => {
-    if (!openMenuId) return;
-    const handler = (e) => {
-      if (!e.target.closest('.rrm-item-menu')) setOpenMenuId(null);
-    };
-    document.addEventListener('click', handler);
-    return () => document.removeEventListener('click', handler);
-  }, [openMenuId]);
 
   const activeItems = selectedOrder ? selectedOrder.items.filter(i => !i.isDeleted) : [];
   const pendingItems = activeItems.filter(i => i.barcode && !i.isTaken);
@@ -310,7 +299,6 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   };
 
   const showItemDetails = async (item) => {
-    setOpenMenuId(null);
     try {
       const res = await fetch(`/api/audit/order-item/${item.id}`);
       let history = [];
@@ -349,7 +337,6 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   };
 
   const reportIssue = async (itemId, issueType) => {
-    setOpenMenuId(null);
     if (!await window.customConfirm('האם אתה בטוח? תוסף הערה אוטומטית בכרטיס הלקוח.')) return;
     const success = await doReportIssue(itemId, issueType);
     if (success) alert('הערה נוספה בהצלחה.');
@@ -357,7 +344,6 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
   // הפוך של reportIssue(..., 'returned-bad') — מחזיר פריט שסומן "לא תקין" בחזרה למצב "תקין".
   const markReturnGoodAgain = async (itemId) => {
-    setOpenMenuId(null);
     if (!await window.customConfirm('לסמן את הפריט בחזרה כ"הוחזר - תקין"?', 'עדכון מצב פריט')) return;
     setIsBusy(true);
     try {
@@ -390,11 +376,6 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     if (!await window.customConfirm(`לסמן את "${item.description}" כהוחזר לא תקין?`, 'דיווח על פריט פגום')) return;
     await handleReturnScan(item.barcode);
     await doReportIssue(item.id, 'returned-bad');
-  };
-
-  const toggleItemMenu = (e, itemId) => {
-    e.stopPropagation();
-    setOpenMenuId(prev => prev === itemId ? null : itemId);
   };
 
   const handleHeaderSave = async () => {
@@ -527,107 +508,92 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
   // Rendering
   const modalContent = (
-    <div className="modal-backdrop" onDoubleClick={attemptCloseCard} style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', direction: 'rtl' }}>
-      <div className="rrm-card" onClick={e => e.stopPropagation()}>
+    <div className="modal-backdrop" onDoubleClick={attemptCloseCard} style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div className="modal animate-fade-in" onClick={e => e.stopPropagation()} style={{ maxWidth: '980px', width: '95%', maxHeight: '90vh', display: 'flex', flexDirection: 'column', margin: 0 }}>
 
         {loading || !selectedOrder ? (
-          <div className="rrm-loading">
-            <span className="spinner lg" />
-            <h2>טוען נתוני השכרה...</h2>
+          <div className="modal-body">
+            <div className="loading-inline" style={{ padding: '3rem 1rem' }}>
+              <span className="spinner lg" />
+              <span>טוען נתוני השכרה...</span>
+            </div>
           </div>
         ) : (
           <>
-            {/* Sidebar */}
-            <aside className="rrm-sidebar">
-              <div>
-                <div className="rrm-sidebar-top-row">
-                  <button data-agy-id="rentalreturnmodal_button_1" className="rrm-icon-btn-ghost" title="סגור חלון" onClick={attemptCloseCard}>
-                    <svg className="icon"><use href="#i-x" /></svg>
-                  </button>
-                  <div className="rrm-order-id-group">
-                    <span className="rrm-order-num">הזמנה #{selectedOrder.orderId}</span>
-                    <span className="rrm-v-divider" />
-                    <span className="badge" style={{ background: overallStatusColor.bg, color: overallStatusColor.text }}>
-                      <svg className="icon"><use href="#i-clock" /></svg>
-                      {overallStatus}
-                    </span>
-                  </div>
-                </div>
+            <div className="modal-head">
+              <strong>
+                <svg className="icon"><use href="#i-box" /></svg>
+                השכרה והחזרה — הזמנה #{selectedOrder.orderId}
+                <span className="badge" style={{ background: overallStatusColor.bg, color: overallStatusColor.text, marginInlineStart: '6px' }}>
+                  <svg className="icon"><use href="#i-clock" /></svg>
+                  {overallStatus}
+                </span>
+              </strong>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {(isProcessing || isConfirming || isBusy) && (
+                  <span className="spinner" aria-label="מעבד..." />
+                )}
+                <a
+                  href={`/orders/${selectedOrder.orderId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-ghost btn-icon-only btn-sm"
+                  title="פתח כרטיס הזמנה בטאב חדש"
+                >
+                  <svg className="icon"><use href="#i-arrow-end" /></svg>
+                </a>
+                <OrderPrintMenu
+                  order={selectedOrder}
+                  onOrderUpdate={(patch) => setSelectedOrder(prev => prev ? { ...prev, ...patch } : prev)}
+                  triggerClassName="btn btn-ghost btn-icon-only btn-sm"
+                  triggerTitle="הדפסה ומייל"
+                  preConfirm={handlePrintPreConfirm}
+                />
+                <button data-agy-id="rentalreturnmodal_button_1" type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={attemptCloseCard} title="סגור חלון" aria-label="סגור חלון">
+                  <svg className="icon"><use href="#i-x" /></svg>
+                </button>
+              </div>
+            </div>
 
-                <div className="rrm-sidebar-info-panel">
-                  <div className="rrm-sip-row">
-                    <svg className="icon"><use href="#i-user" /></svg>
-                    <strong>{selectedOrder.customer ? `${selectedOrder.customer.firstName || ''} ${selectedOrder.customer.lastName || ''}` : 'לא צוין לקוח'}</strong>
-                  </div>
-                  {selectedOrder.customer?.phone1 && (
-                    <div className="rrm-sip-row">
-                      <svg className="icon"><use href="#i-phone" /></svg>
-                      <span style={{ direction: 'ltr' }}>{selectedOrder.customer.phone1}</span>
-                    </div>
-                  )}
-                  {selectedOrder.eventDate && (
-                    <div className="rrm-sip-row">
-                      <svg className="icon"><use href="#i-calendar" /></svg>
-                      <span>
-                        {(selectedOrder.isAbroad || selectedOrder.isWeekdayEvent)
-                          ? (selectedOrder.fromDate ? `${getHebrewDateString(selectedOrder.fromDate)} — ${getHebrewDateString(selectedOrder.toDate || selectedOrder.returnDate)}` : 'אירוע חו"ל')
-                          : (selectedOrder.eventDateHebrew || getHebrewDateString(selectedOrder.eventDate))}
-                      </span>
-                    </div>
-                  )}
-                </div>
+            <div className="modal-body" style={{ overflowY: 'auto' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', alignItems: 'center', marginBottom: '16px', color: 'var(--text-2)', fontSize: '13px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg className="icon"><use href="#i-user" /></svg>
+                  <strong style={{ color: 'var(--text)' }}>{selectedOrder.customer ? `${selectedOrder.customer.firstName || ''} ${selectedOrder.customer.lastName || ''}` : 'לא צוין לקוח'}</strong>
+                </span>
+                {selectedOrder.customer?.phone1 && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg className="icon"><use href="#i-phone" /></svg>
+                    <span style={{ direction: 'ltr' }}>{selectedOrder.customer.phone1}</span>
+                  </span>
+                )}
+                {selectedOrder.eventDate && (
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg className="icon"><use href="#i-calendar" /></svg>
+                    <span>
+                      {(selectedOrder.isAbroad || selectedOrder.isWeekdayEvent)
+                        ? (selectedOrder.fromDate ? `${getHebrewDateString(selectedOrder.fromDate)} — ${getHebrewDateString(selectedOrder.toDate || selectedOrder.returnDate)}` : 'אירוע חו"ל')
+                        : (selectedOrder.eventDateHebrew || getHebrewDateString(selectedOrder.eventDate))}
+                    </span>
+                  </span>
+                )}
               </div>
 
-              <div>
-                <hr className="rrm-sidebar-divider" />
-                <form data-agy-id="rentalreturnmodal_form_2" className="rrm-search-wrapper" style={{ marginTop: '16px' }} onSubmit={handleGlobalBarcodeScan}>
+              <form data-agy-id="rentalreturnmodal_form_2" className="field" onSubmit={handleGlobalBarcodeScan} style={{ marginBottom: '16px' }}>
+                <div className="input-icon-wrap">
                   <svg className="icon"><use href="#i-tag" /></svg>
                   <input data-agy-id="rentalreturnmodal_input_3"
                     ref={modalBarcodeRef}
                     type="text"
-                    className="rrm-search-input"
+                    className="input"
                     value={modalBarcode}
                     onChange={(e) => setModalBarcode(e.target.value.replace(/\s+/g, ''))}
                     placeholder="סריקה מהירה — השכרה / החזרה"
                     disabled={isProcessing}
                   />
-                  <button data-agy-id="rentalreturnmodal_button_4" type="submit" className="hidden" style={{display: 'none'}}>סרוק</button>
-                </form>
-              </div>
-            </aside>
-
-            {/* Main */}
-            <div className="rrm-main">
-              <div className="rrm-main-header">
-                <h3>השכרה והחזרה</h3>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {(isProcessing || isConfirming || isBusy) && (
-                    <span className="spinner" aria-label="מעבד..." />
-                  )}
-                  <a
-                    href={`/orders/${selectedOrder.orderId}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="rrm-icon-btn"
-                    title="פתח כרטיס הזמנה בטאב חדש"
-                  >
-                    <svg className="icon"><use href="#i-arrow-end" /></svg>
-                  </a>
-                  <OrderPrintMenu
-                    order={selectedOrder}
-                    onOrderUpdate={(patch) => setSelectedOrder(prev => prev ? { ...prev, ...patch } : prev)}
-                    triggerClassName="rrm-icon-btn info"
-                    triggerTitle="הדפסה ומייל"
-                    preConfirm={handlePrintPreConfirm}
-                  />
-                  <button data-agy-id="rentalreturnmodal_button_6" className="rrm-icon-btn primary" onClick={handleHeaderSave} title="שמור וסגור" disabled={isConfirming}>
-                    <svg className="icon"><use href="#i-check" /></svg>
-                  </button>
-                  <button data-agy-id="rentalreturnmodal_button_7" className="rrm-icon-btn danger" onClick={handleHeaderCancel} title="בטל שינויים שלא אושרו וסגור">
-                    <svg className="icon"><use href="#i-x-circle" /></svg>
-                  </button>
                 </div>
-              </div>
+                <button data-agy-id="rentalreturnmodal_button_4" type="submit" className="hidden" style={{ display: 'none' }}>סרוק</button>
+              </form>
 
               {(selectedOrder.orderNotes || selectedOrder.notes) && (
                 <div className="callout callout-warning" style={{ marginBottom: '16px' }}>
@@ -637,303 +603,169 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               )}
 
               {pendingCount > 0 && (
-                <div className="rrm-pending-banner">
-                  <span>{pendingCount} פריטים נסרקו וממתינים לאישור השכרה</span>
-                  <button data-agy-id="rentalreturnmodal_button_8" className="btn btn-primary btn-sm" onClick={confirmRental} disabled={isConfirming || isBusy}>
+                <div className="callout callout-warning" style={{ marginBottom: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <svg className="icon"><use href="#i-alert-tri" /></svg>
+                    {pendingCount} פריטים נסרקו וממתינים לאישור השכרה
+                  </span>
+                  <button data-agy-id="rentalreturnmodal_button_8" type="button" className="btn btn-primary btn-sm" onClick={confirmRental} disabled={isConfirming || isBusy}>
                     {isConfirming ? 'מאשר...' : `אשר הכל (${pendingCount})`}
                   </button>
                 </div>
               )}
 
-              <ul className="rrm-item-list">
-                {activeItems.map(item => {
-                  const status = getItemStatus(item);
-                  const isRenting = rentingItemId === item.id;
-                  return (
-                    <li key={item.id}>
-                      <div className="rrm-item-details">
-                        <div className="rrm-item-title">
-                          {item.description}
-                          <span className={`badge badge-${status.tone}`}>{status.text}</span>
-                          {enableAlterations && (item.alterationDetails || item.repairs) && (
-                            <span className="rrm-repairs-icon" title="יש תיקונים - לחצו על פרטים לצפייה" onClick={() => showItemDetails(item)}>
-                              <svg className="icon"><use href="#i-scissors" /></svg>
-                            </span>
-                          )}
-                          <div className="rrm-item-menu" style={{ position: 'relative' }}>
-                            <button data-agy-id="rentalreturnmodal_button_9" className="rrm-icon-btn" onClick={(e) => toggleItemMenu(e, item.id)}>
-                              <svg className="icon"><use href="#i-more" /></svg>
-                            </button>
-                            {openMenuId === item.id && (
-                              <div className="rrm-floating-menu">
-                                <button data-agy-id="rentalreturnmodal_button_10" className="rrm-menu-item" onClick={() => showItemDetails(item)}>
-                                  <svg className="icon"><use href="#i-info" /></svg> פרטים
-                                </button>
-                                {item.isTaken && !item.isReturned && (
-                                  <button data-agy-id="rentalreturnmodal_button_11" className="rrm-menu-item danger" disabled={isBusy} onClick={() => { setOpenMenuId(null); undoRental(item.id); }}>
-                                    <svg className="icon"><use href="#i-refresh" /></svg> ביטול השכרה
-                                  </button>
-                                )}
-                                {item.isReturned && (
-                                  <>
-                                    <button data-agy-id="rentalreturnmodal_button_12" className="rrm-menu-item danger" disabled={isBusy} onClick={() => { setOpenMenuId(null); undoReturn(item.id); }}>
-                                      <svg className="icon"><use href="#i-refresh" /></svg> ביטול החזרה
-                                    </button>
-                                    {item.returnedOk ? (
-                                      <button data-agy-id="rentalreturnmodal_button_13" className="rrm-menu-item danger" disabled={isBusy} onClick={() => reportIssue(item.id, 'returned-bad')}>
-                                        <svg className="icon"><use href="#i-alert-tri" /></svg> דווח על בעיה
-                                      </button>
+              {activeItems.length === 0 ? (
+                <div className="empty-state">
+                  <svg className="icon"><use href="#i-box" /></svg>
+                  <p>אין פריטים בהזמנה זו</p>
+                </div>
+              ) : (
+                <div className="table-wrap">
+                  <div className="table-scroll">
+                    <table className="data">
+                      <thead>
+                        <tr>
+                          <th>פריט</th>
+                          {enableAlterations && <th>תיקונים</th>}
+                          <th style={{ textAlign: 'center' }}>סטטוס</th>
+                          <th>פעולות</th>
+                          <th style={{ textAlign: 'center' }}>פרטים</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {activeItems.map(item => {
+                          const status = getItemStatus(item);
+                          const isRenting = rentingItemId === item.id;
+                          return (
+                            <tr key={item.id}>
+                              <td className="cell-primary">
+                                {item.description}
+                                <div className="cell-muted" style={{ fontWeight: 400, fontSize: '11.5px', marginTop: '2px' }}>
+                                  {getLabel('item_size', 'מידה')}: {item.sizeText || '-'}
+                                  {item.barcode && <> · {getLabel('item_barcode', 'ברקוד')}: {item.barcode}</>}
+                                  {item.isTaken && <> · לקיחה: {item.takenDate ? getHebrewDateString(item.takenDate) : 'לא ידוע'}</>}
+                                  {item.isReturned && <> · הוחזר: {item.returnDate ? getHebrewDateString(item.returnDate) : 'לא ידוע'}</>}
+                                </div>
+                              </td>
+                              {enableAlterations && (
+                                <td>
+                                  {(item.alterationDetails || item.repairs) ? (
+                                    <span className="chip" style={{ cursor: 'pointer' }} title="יש תיקונים - לחצו על פרטים לצפייה" onClick={() => showItemDetails(item)}>
+                                      <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-scissors" /></svg>
+                                      תיקונים
+                                    </span>
+                                  ) : (
+                                    <span className="chip" style={{ opacity: 0.7 }}>ללא תיקונים</span>
+                                  )}
+                                </td>
+                              )}
+                              <td style={{ textAlign: 'center' }}>
+                                <span className={`badge badge-${status.tone}`}>{status.text}</span>
+                              </td>
+                              <td>
+                                <div className="row-actions" style={{ flexWrap: 'wrap' }}>
+                                  {!item.barcode && !item.isTaken && (
+                                    isRenting ? (
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <input data-agy-id="rentalreturnmodal_input_14"
+                                          type="text"
+                                          className="input"
+                                          autoFocus
+                                          placeholder="סרוק ברקוד"
+                                          style={{ width: '140px', direction: 'ltr' }}
+                                          value={inlineBarcode[item.id] || ''}
+                                          onChange={(e) => setInlineBarcode(prev => ({ ...prev, [item.id]: e.target.value.replace(/\s+/g, '') }))}
+                                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmInlineRent(item); } }}
+                                        />
+                                        <button data-agy-id="rentalreturnmodal_button_15" type="button" className="btn btn-primary btn-sm" disabled={isBusy} onClick={() => confirmInlineRent(item)}>אשר</button>
+                                        <button data-agy-id="rentalreturnmodal_button_16" type="button" className="btn btn-ghost btn-icon-only btn-sm" disabled={isBusy} onClick={() => setRentingItemId(null)}>
+                                          <svg className="icon"><use href="#i-x" /></svg>
+                                        </button>
+                                      </div>
                                     ) : (
-                                      <button data-agy-id="rentalreturnmodal_button_20" className="rrm-menu-item" disabled={isBusy} onClick={() => markReturnGoodAgain(item.id)}>
-                                        <svg className="icon"><use href="#i-check-circle" /></svg> סמן כתקין
+                                      <button data-agy-id="rentalreturnmodal_button_17" type="button" className="btn btn-primary btn-sm" onClick={() => setRentingItemId(item.id)}>
+                                        <svg className="icon"><use href="#i-box" /></svg> השכרה
                                       </button>
-                                    )}
-                                  </>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                        <div className="rrm-item-sub">
-                          {getLabel('item_size', 'מידה')}: {item.sizeText || '-'}
-                          {item.barcode && <> · {getLabel('item_barcode', 'ברקוד')}: <span className="rrm-mono">{item.barcode}</span></>}
-                          {item.isTaken && <> · <strong>לקיחה:</strong> {item.takenDate ? getHebrewDateString(item.takenDate) : 'לא ידוע'}</>}
-                          {item.isReturned && <> · <strong>הוחזר:</strong> {item.returnDate ? getHebrewDateString(item.returnDate) : 'לא ידוע'}</>}
-                        </div>
-                      </div>
+                                    )
+                                  )}
 
-                      <div className="rrm-action-bar">
-                        {!item.barcode && !item.isTaken && (
-                          isRenting ? (
-                            <div className="rrm-inline-barcode">
-                              <input data-agy-id="rentalreturnmodal_input_14"
-                                type="text"
-                                autoFocus
-                                placeholder="סרוק ברקוד"
-                                value={inlineBarcode[item.id] || ''}
-                                onChange={(e) => setInlineBarcode(prev => ({ ...prev, [item.id]: e.target.value.replace(/\s+/g, '') }))}
-                                onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmInlineRent(item); } }}
-                              />
-                              <button data-agy-id="rentalreturnmodal_button_15" className="btn btn-primary btn-sm" disabled={isBusy} onClick={() => confirmInlineRent(item)}>אשר</button>
-                              <button data-agy-id="rentalreturnmodal_button_16" className="rrm-icon-btn" disabled={isBusy} onClick={() => setRentingItemId(null)}>
-                                <svg className="icon"><use href="#i-x" /></svg>
-                              </button>
-                            </div>
-                          ) : (
-                            <button data-agy-id="rentalreturnmodal_button_17" className="btn btn-primary btn-sm" onClick={() => setRentingItemId(item.id)}>השכרה</button>
-                          )
-                        )}
+                                  {item.barcode && !item.isTaken && (
+                                    <span className="hint">ממתין לאישור השכרה</span>
+                                  )}
 
-                        {item.barcode && !item.isTaken && (
-                          <span className="rrm-hint-text">ממתין לאישור השכרה</span>
-                        )}
+                                  {item.isTaken && (
+                                    <>
+                                      <div className="toggle-btn-group" title="מצב הפריט בהחזרה">
+                                        <button data-agy-id="rentalreturnmodal_button_18"
+                                          type="button"
+                                          className={item.isReturned && item.returnedOk ? 'on' : ''}
+                                          onClick={() => handleMarkReturnGood(item)}
+                                          disabled={item.isReturned || isBusy}
+                                          title="החזרה תקינה"
+                                        >
+                                          <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-check-circle" /></svg>
+                                        </button>
+                                        <button data-agy-id="rentalreturnmodal_button_19"
+                                          type="button"
+                                          className={item.isReturned && !item.returnedOk ? 'off' : ''}
+                                          onClick={() => handleMarkReturnBad(item)}
+                                          disabled={item.isReturned || isBusy}
+                                          title="לא תקין"
+                                        >
+                                          <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-alert-tri" /></svg>
+                                        </button>
+                                      </div>
+                                      {!item.isReturned && (
+                                        <button data-agy-id="rentalreturnmodal_button_11" type="button" className="btn btn-danger-ghost btn-sm" disabled={isBusy} onClick={() => undoRental(item.id)}>
+                                          <svg className="icon"><use href="#i-refresh" /></svg> ביטול השכרה
+                                        </button>
+                                      )}
+                                      {item.isReturned && (
+                                        <>
+                                          <button data-agy-id="rentalreturnmodal_button_12" type="button" className="btn btn-danger-ghost btn-sm" disabled={isBusy} onClick={() => undoReturn(item.id)}>
+                                            <svg className="icon"><use href="#i-refresh" /></svg> ביטול החזרה
+                                          </button>
+                                          {item.returnedOk ? (
+                                            <button data-agy-id="rentalreturnmodal_button_13" type="button" className="btn btn-danger-ghost btn-sm" disabled={isBusy} onClick={() => reportIssue(item.id, 'returned-bad')}>
+                                              <svg className="icon"><use href="#i-alert-tri" /></svg> דווח על בעיה
+                                            </button>
+                                          ) : (
+                                            <button data-agy-id="rentalreturnmodal_button_20" type="button" className="btn btn-secondary btn-sm" disabled={isBusy} onClick={() => markReturnGoodAgain(item.id)}>
+                                              <svg className="icon"><use href="#i-check-circle" /></svg> סמן כתקין
+                                            </button>
+                                          )}
+                                        </>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                <div className="row-actions" style={{ justifyContent: 'center' }}>
+                                  <button data-agy-id="rentalreturnmodal_button_10" type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים והיסטוריה" onClick={() => showItemDetails(item)}>
+                                    <svg className="icon"><use href="#i-info" /></svg>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+            </div>
 
-                        {item.isTaken && (
-                          <div className={`rrm-return-banner ${item.isReturned ? 'readonly' : ''}`}>
-                            <button data-agy-id="rentalreturnmodal_button_18"
-                              className={`rrm-return-good ${item.isReturned && item.returnedOk ? 'active' : ''}`}
-                              onClick={() => handleMarkReturnGood(item)}
-                              disabled={item.isReturned || isBusy}
-                            >
-                              <svg className="icon"><use href="#i-check-circle" /></svg> החזרה תקינה
-                            </button>
-                            <div className="rrm-divider-v"></div>
-                            <button data-agy-id="rentalreturnmodal_button_19"
-                              className={`rrm-return-bad ${item.isReturned && !item.returnedOk ? 'active' : ''}`}
-                              onClick={() => handleMarkReturnBad(item)}
-                              disabled={item.isReturned || isBusy}
-                            >
-                              <svg className="icon"><use href="#i-alert-tri" /></svg> לא תקין
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-                {activeItems.length === 0 && (
-                  <li className="empty-state">
-                    <svg className="icon"><use href="#i-box" /></svg>
-                    <p>אין פריטים בהזמנה זו</p>
-                  </li>
-                )}
-              </ul>
+            <div className="modal-foot">
+              <button data-agy-id="rentalreturnmodal_button_7" type="button" className="btn btn-danger-ghost" onClick={handleHeaderCancel}>בטל שינויים וסגור</button>
+              <button data-agy-id="rentalreturnmodal_button_6" type="button" className="btn btn-primary" onClick={handleHeaderSave} disabled={isConfirming}>
+                <svg className="icon"><use href="#i-check" /></svg> שמור וסגור
+              </button>
             </div>
           </>
         )}
       </div>
-
-      <style dangerouslySetInnerHTML={{
-        __html: `
-        @keyframes rrm-fade-in {
-          from { opacity: 0; transform: scale(0.98); }
-          to { opacity: 1; transform: scale(1); }
-        }
-        @keyframes rrm-slide-in {
-          from { opacity: 0; transform: translateY(-6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .rrm-card {
-          display: flex;
-          background: var(--surface);
-          border-radius: var(--radius-lg);
-          overflow: hidden;
-          box-shadow: var(--shadow-lg);
-          width: 95%;
-          max-width: 1000px;
-          max-height: 90vh;
-          border: 1px solid var(--border);
-          animation: rrm-fade-in 0.2s ease-out forwards;
-        }
-        .rrm-loading {
-          display: flex; flex-direction: column; align-items: center; justify-content: center;
-          padding: 4rem 2rem; width: 100%; gap: 1.5rem;
-        }
-        .rrm-loading h2 { font-size: 1.25rem; font-weight: 600; color: var(--text); margin: 0; }
-
-        .rrm-sidebar {
-          width: 300px; min-width: 260px; flex-shrink: 0;
-          background: linear-gradient(165deg, var(--primary) 0%, var(--primary-hover) 100%);
-          color: var(--text-on-primary); padding: 22px 20px; display: flex; flex-direction: column; justify-content: space-between;
-          overflow-y: auto; overflow-x: hidden;
-        }
-        .rrm-sidebar-top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: nowrap; min-width: 0; }
-        .rrm-order-id-group { display: flex; align-items: center; gap: 8px; flex-wrap: nowrap; min-width: 0; overflow: hidden; }
-        .rrm-order-num { font-weight: 700; font-size: 1rem; color: var(--text-on-primary); font-family: var(--font-heading); margin: 0; }
-        .rrm-v-divider { width: 1px; height: 16px; background: color-mix(in srgb, var(--text-on-primary) 30%, transparent); display: inline-block; }
-        .rrm-icon-btn-ghost {
-          background: color-mix(in srgb, black 15%, transparent); color: var(--text-on-primary); border: none; border-radius: 50%;
-          width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
-          cursor: pointer; transition: background 0.2s; flex-shrink: 0;
-        }
-        .rrm-icon-btn-ghost .icon { width: 16px; height: 16px; }
-        .rrm-icon-btn-ghost:hover { background: color-mix(in srgb, black 30%, transparent); }
-
-        .rrm-sidebar-info-panel {
-          background: color-mix(in srgb, var(--text-on-primary) 10%, transparent); border-radius: var(--radius-md); padding: 14px 16px;
-          display: flex; flex-direction: column; gap: 11px;
-        }
-        .rrm-sip-row { display: flex; align-items: center; gap: 9px; font-size: 0.95rem; color: color-mix(in srgb, var(--text-on-primary) 95%, transparent); margin: 0; }
-        .rrm-sip-row .icon { width: 15px; height: 15px; opacity: 0.75; flex-shrink: 0; }
-        .rrm-sip-row strong { font-weight: 700; font-size: 1.02rem; }
-
-        .rrm-search-wrapper { position: relative; width: 100%; }
-        .rrm-search-wrapper .icon { position: absolute; inset-inline-end: 12px; top: 50%; transform: translateY(-50%); width: 17px; height: 17px; color: var(--text-3); pointer-events: none; }
-        .rrm-search-input {
-          width: 100%; padding: 11px 42px 11px 16px; border-radius: var(--radius-full); border: none; outline: none;
-          background: var(--surface); color: var(--text); font-size: 0.92rem; transition: all 0.2s;
-          box-shadow: inset 0 1px 3px color-mix(in srgb, black 6%, transparent); font-family: inherit;
-        }
-        .rrm-search-input:focus { box-shadow: inset 0 1px 3px color-mix(in srgb, black 6%, transparent), 0 0 0 3px color-mix(in srgb, var(--text-on-primary) 35%, transparent); }
-        .rrm-search-input::placeholder { color: var(--text-3); }
-
-        .rrm-sidebar-divider { border: none; border-top: 1px solid color-mix(in srgb, var(--text-on-primary) 18%, transparent); margin: 18px 0; }
-
-        .rrm-main { padding: 24px 28px; width: 70%; overflow-y: auto; flex: 1; min-width: 0; }
-        .rrm-main-header {
-          display: flex; justify-content: space-between; align-items: center;
-          margin-bottom: 16px; border-bottom: 2px solid var(--border); padding-bottom: 14px;
-        }
-        .rrm-main-header h3 { margin: 0; font-family: var(--font-heading); font-size: 1.35rem; color: var(--text); }
-
-        .rrm-icon-btn {
-          background: transparent; border: none; border-radius: var(--radius-sm); width: 34px; height: 34px;
-          display: flex; align-items: center; justify-content: center; cursor: pointer;
-          color: var(--text-2); transition: all 0.2s; padding: 0;
-        }
-        .rrm-icon-btn .icon { width: 18px; height: 18px; }
-        .rrm-icon-btn:hover { background: var(--surface-alt); color: var(--text); }
-        .rrm-icon-btn.primary { color: var(--primary-solid); }
-        .rrm-icon-btn.primary:hover { background: var(--primary-solid); color: var(--text-on-primary); }
-        .rrm-icon-btn.danger { color: var(--danger); }
-        .rrm-icon-btn.danger:hover { background: var(--danger-tint); }
-        .rrm-icon-btn.info { color: var(--info); }
-        .rrm-icon-btn.info:hover { background: var(--info); color: var(--text-on-primary); }
-        .rrm-icon-btn:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .rrm-repairs-icon {
-          display: inline-flex; align-items: center; justify-content: center;
-          width: 24px; height: 24px; border-radius: 50%; cursor: pointer;
-          color: var(--warning); background: var(--warning-tint);
-          transition: all 0.2s;
-        }
-        .rrm-repairs-icon .icon { width: 14px; height: 14px; }
-        .rrm-repairs-icon:hover { background: color-mix(in srgb, var(--warning) 20%, transparent); }
-
-        .rrm-pending-banner {
-          display: flex; align-items: center; justify-content: space-between; gap: 12px;
-          background: var(--warning-tint); border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
-          border-radius: var(--radius-md); padding: 12px 16px; margin-bottom: 16px; font-weight: 600;
-          color: var(--text); font-size: 0.92rem;
-        }
-
-        .rrm-item-list { list-style: none; padding: 0; margin: 0; }
-        .rrm-item-list li {
-          padding: 18px 0; border-bottom: 1px solid var(--border);
-          display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap;
-        }
-        .rrm-item-list li:last-child { border-bottom: none; }
-        .rrm-item-details { flex: 1; min-width: 240px; }
-        .rrm-item-title {
-          font-size: 1.05rem; font-weight: 600; margin-bottom: 6px; display: flex;
-          align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text);
-        }
-        .rrm-item-sub { font-size: 0.85rem; color: var(--text-2); }
-        .rrm-mono { font-family: monospace; font-weight: 600; color: var(--text); }
-
-        .rrm-action-bar { display: flex; align-items: center; }
-        .rrm-hint-text { font-size: 0.85rem; color: var(--text-2); font-style: italic; }
-
-        .rrm-inline-barcode { display: flex; align-items: center; gap: 8px; }
-        .rrm-inline-barcode input {
-          padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong);
-          width: 140px; direction: ltr; background: var(--surface); color: var(--text);
-        }
-
-        .rrm-return-banner {
-          display: inline-flex; background: var(--surface-alt); border-radius: var(--radius-full);
-          padding: 4px; border: 1px solid var(--border);
-        }
-        .rrm-return-banner button {
-          border: none; background: transparent; padding: 6px 14px; border-radius: var(--radius-full);
-          font-weight: 600; font-size: 0.85rem; cursor: pointer; transition: 0.2s;
-          display: flex; align-items: center; gap: 6px; color: var(--text-2);
-        }
-        .rrm-return-banner .icon { width: 14px; height: 14px; }
-        .rrm-return-good.active { background: var(--success-tint); color: var(--success); }
-        .rrm-return-bad.active { background: var(--danger-tint); color: var(--danger); }
-        .rrm-return-banner button:not(:disabled):hover { color: var(--text); }
-        .rrm-return-banner.readonly button { cursor: default; }
-        .rrm-divider-v { width: 1px; background: var(--border); margin: 6px 2px; }
-
-        .rrm-item-menu .rrm-floating-menu {
-          position: absolute; top: 100%; inset-inline-end: 0; background: var(--surface);
-          border: 1px solid var(--border); border-radius: var(--radius-md);
-          box-shadow: var(--shadow-md); display: flex; flex-direction: column;
-          padding: 4px; z-index: 50; min-width: 160px; animation: rrm-slide-in 0.15s ease-out forwards;
-        }
-        .rrm-menu-item {
-          background: transparent; border: none; width: 100%; text-align: start; padding: 8px 10px;
-          font-size: 0.85rem; border-radius: var(--radius-sm); cursor: pointer; color: var(--text);
-          display: flex; align-items: center; gap: 6px;
-        }
-        .rrm-menu-item .icon { width: 14px; height: 14px; }
-        .rrm-menu-item:hover { background: var(--surface-alt); }
-        .rrm-menu-item.danger { color: var(--danger); }
-        .rrm-menu-item.danger:hover { background: var(--danger-tint); }
-
-        .rrm-detail-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px; }
-        .rrm-detail-box { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
-        .rrm-detail-label { font-size: 11px; color: var(--text-3); }
-        .rrm-detail-value { font-weight: 600; color: var(--text); font-size: 13px; }
-        .rrm-detail-section-title { font-size: 13.5px; font-weight: 700; color: var(--text); margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-        .rrm-history-item { background: var(--surface-alt); border: 1px solid var(--border); border-radius: var(--radius-md); padding: 10px 12px; font-size: 13px; }
-
-        @media (max-width: 720px) {
-          .rrm-card { flex-direction: column; max-height: 95vh; }
-          .rrm-sidebar, .rrm-main { width: 100%; }
-        }
-      `}} />
     </div>
   );
 
@@ -953,38 +785,38 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               </button>
             </div>
             <div className="modal-body" style={{ overflowY: 'auto' }}>
-              <div className="rrm-detail-grid">
-                <div className="rrm-detail-box">
-                  <div className="rrm-detail-label">תאריך אירוע</div>
-                  <div className="rrm-detail-value">{selectedOrder?.eventDate ? getHebrewDateString(selectedOrder.eventDate) : '-'}</div>
+              <div className="kpi-grid" style={{ gridTemplateColumns: 'repeat(2, 1fr)', marginBottom: '18px' }}>
+                <div className="kpi-card">
+                  <div className="kpi-label">תאריך אירוע</div>
+                  <div className="kpi-value" style={{ fontSize: '13px', fontWeight: 600 }}>{selectedOrder?.eventDate ? getHebrewDateString(selectedOrder.eventDate) : '-'}</div>
                 </div>
-                <div className="rrm-detail-box">
-                  <div className="rrm-detail-label">תאריך לקיחה</div>
-                  <div className="rrm-detail-value">{itemDetails.item.takenDate ? `${getHebrewDateString(itemDetails.item.takenDate)} ${new Date(itemDetails.item.takenDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : (itemDetails.item.isTaken ? 'לא ידוע' : '-')}</div>
+                <div className="kpi-card">
+                  <div className="kpi-label">תאריך לקיחה</div>
+                  <div className="kpi-value" style={{ fontSize: '13px', fontWeight: 600 }}>{itemDetails.item.takenDate ? `${getHebrewDateString(itemDetails.item.takenDate)} ${new Date(itemDetails.item.takenDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : (itemDetails.item.isTaken ? 'לא ידוע' : '-')}</div>
                 </div>
-                <div className="rrm-detail-box">
-                  <div className="rrm-detail-label">תאריך החזרה</div>
-                  <div className="rrm-detail-value">{itemDetails.item.returnDate ? `${getHebrewDateString(itemDetails.item.returnDate)} ${new Date(itemDetails.item.returnDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : (itemDetails.item.isReturned ? 'לא ידוע' : '-')}</div>
+                <div className="kpi-card">
+                  <div className="kpi-label">תאריך החזרה</div>
+                  <div className="kpi-value" style={{ fontSize: '13px', fontWeight: 600 }}>{itemDetails.item.returnDate ? `${getHebrewDateString(itemDetails.item.returnDate)} ${new Date(itemDetails.item.returnDate).toLocaleTimeString('he-IL', {hour: '2-digit', minute: '2-digit'})}` : (itemDetails.item.isReturned ? 'לא ידוע' : '-')}</div>
                 </div>
-                <div className="rrm-detail-box">
-                  <div className="rrm-detail-label">חזר תקין?</div>
-                  <div className="rrm-detail-value">{itemDetails.item.isReturned ? (itemDetails.item.returnedOk ? 'כן' : 'לא') : '-'}</div>
+                <div className="kpi-card">
+                  <div className="kpi-label">חזר תקין?</div>
+                  <div className="kpi-value" style={{ fontSize: '13px', fontWeight: 600 }}>{itemDetails.item.isReturned ? (itemDetails.item.returnedOk ? 'כן' : 'לא') : '-'}</div>
                 </div>
                 {enableAlterations && (
-                  <div className="rrm-detail-box" style={{ gridColumn: '1 / -1' }}>
-                    <div className="rrm-detail-label">מחרוזת תיקונים</div>
-                    <div className="rrm-detail-value">{itemDetails.item.alterationDetails || itemDetails.item.repairs || '-'}</div>
+                  <div className="kpi-card" style={{ gridColumn: '1 / -1' }}>
+                    <div className="kpi-label">מחרוזת תיקונים</div>
+                    <div className="kpi-value" style={{ fontSize: '13px', fontWeight: 600 }}>{itemDetails.item.alterationDetails || itemDetails.item.repairs || '-'}</div>
                   </div>
                 )}
               </div>
 
-              <h4 className="rrm-detail-section-title">היסטוריית פעולות</h4>
+              <h4 style={{ fontSize: '13.5px', fontWeight: 700, color: 'var(--text)', margin: '0 0 10px', paddingBottom: '8px', borderBottom: '1px solid var(--border)' }}>היסטוריית פעולות</h4>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {itemDetails.history && itemDetails.history.length === 0 ? (
                   <p style={{ color: 'var(--text-3)', fontStyle: 'italic', fontSize: '13px' }}>אין היסטוריה לפריט זה</p>
                 ) : (
                   itemDetails.history && itemDetails.history.map(log => (
-                    <div key={log.id} className="rrm-history-item">
+                    <div key={log.id} style={{ background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', padding: '10px 12px', fontSize: '13px' }}>
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
                         <span className="badge badge-info">{ACTION_TRANSLATIONS[log.action] || log.action}</span>
                         <span style={{ color: 'var(--text-3)', fontSize: '11.5px' }}>{getHebrewDateString(log.createdAt)} {new Date(log.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
@@ -1024,13 +856,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                     <div style={{ flex: 1, display: 'grid', gridTemplateColumns: enableAlterations ? 'repeat(3, 1fr)' : '1fr', gap: '8px' }}>
                       {enableAlterations ? (
                         <>
-                          <div className="rrm-detail-box"><span className="rrm-detail-label">אורך</span><span className="rrm-detail-value">{opt.lengthAlteration || 'ללא'}</span></div>
-                          <div className="rrm-detail-box"><span className="rrm-detail-label">צוואר</span><span className="rrm-detail-value">{opt.neckAlteration || 'ללא'}</span></div>
-                          <div className="rrm-detail-box"><span className="rrm-detail-label">שרוול</span><span className="rrm-detail-value">{opt.sleeveAlteration || 'ללא'}</span></div>
-                          <div className="rrm-detail-box" style={{ gridColumn: '1 / -1' }}><span className="rrm-detail-label">פירוט</span><span className="rrm-detail-value">{opt.alterationDetails || 'אין פירוט נוסף'}</span></div>
+                          <div className="kpi-card" style={{ padding: '10px 12px' }}><div className="kpi-label">אורך</div><div className="kpi-value" style={{ fontSize: '13px', fontWeight: 600 }}>{opt.lengthAlteration || 'ללא'}</div></div>
+                          <div className="kpi-card" style={{ padding: '10px 12px' }}><div className="kpi-label">צוואר</div><div className="kpi-value" style={{ fontSize: '13px', fontWeight: 600 }}>{opt.neckAlteration || 'ללא'}</div></div>
+                          <div className="kpi-card" style={{ padding: '10px 12px' }}><div className="kpi-label">שרוול</div><div className="kpi-value" style={{ fontSize: '13px', fontWeight: 600 }}>{opt.sleeveAlteration || 'ללא'}</div></div>
+                          <div className="kpi-card" style={{ padding: '10px 12px', gridColumn: '1 / -1' }}><div className="kpi-label">פירוט</div><div className="kpi-value" style={{ fontSize: '13px', fontWeight: 600 }}>{opt.alterationDetails || 'אין פירוט נוסף'}</div></div>
                         </>
                       ) : (
-                        <div className="rrm-detail-box">פריט מס' {idx + 1} במערכת</div>
+                        <div className="kpi-card" style={{ padding: '10px 12px' }}>פריט מס' {idx + 1} במערכת</div>
                       )}
                     </div>
                   </button>

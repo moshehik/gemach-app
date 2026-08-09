@@ -323,42 +323,44 @@ export default function CustomersPage() {
         <div className="loading-inline"><span className="spinner" /> טוען נתונים...</div>
       ) : (
         <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th className={sort === 'legacyId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('legacyId')}>
-                  קוד לקוח {renderSortIcon('legacyId')}
-                </th>
-                <th className={sort === 'firstName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('firstName')}>
-                  {getLabel('customer_firstName', 'שם פרטי')} {renderSortIcon('firstName')}
-                </th>
-                <th className={sort === 'lastName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('lastName')}>
-                  {getLabel('customer_lastName', 'שם משפחה')} {renderSortIcon('lastName')}
-                </th>
-                <th className={sort === 'phone1' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('phone1')}>
-                  {getLabel('customer_phone1', 'טלפון')} {renderSortIcon('phone1')}
-                </th>
-                <th className={sort === 'city' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('city')}>
-                  {getLabel('customer_city', 'עיר')} {renderSortIcon('city')}
-                </th>
-                <th className={sort === 'email' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('email')}>
-                  {getLabel('customer_email', 'דוא"ל')} {renderSortIcon('email')}
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.map(customer => (
-                <tr key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)}>
-                  <td className={customer.legacyId ? 'cell-primary' : 'cell-primary cell-muted'}>{customer.legacyId || 'חדש'}</td>
-                  <td>{customer.firstName}</td>
-                  <td>{customer.lastName}</td>
-                  <td>{customer.phone1}</td>
-                  <td>{customer.city}</td>
-                  <td>{customer.email || '-'}</td>
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th className={sort === 'legacyId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('legacyId')}>
+                    קוד לקוח {renderSortIcon('legacyId')}
+                  </th>
+                  <th className={sort === 'firstName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('firstName')}>
+                    {getLabel('customer_firstName', 'שם פרטי')} {renderSortIcon('firstName')}
+                  </th>
+                  <th className={sort === 'lastName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('lastName')}>
+                    {getLabel('customer_lastName', 'שם משפחה')} {renderSortIcon('lastName')}
+                  </th>
+                  <th className={sort === 'phone1' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('phone1')}>
+                    {getLabel('customer_phone1', 'טלפון')} {renderSortIcon('phone1')}
+                  </th>
+                  <th className={sort === 'city' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('city')}>
+                    {getLabel('customer_city', 'עיר')} {renderSortIcon('city')}
+                  </th>
+                  <th className={sort === 'email' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('email')}>
+                    {getLabel('customer_email', 'דוא"ל')} {renderSortIcon('email')}
+                  </th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {customers.map(customer => (
+                  <tr key={customer.id} onClick={() => router.push(`/customers/${customer.id}`)}>
+                    <td className={customer.legacyId ? 'cell-primary' : 'cell-primary cell-muted'}>{customer.legacyId || 'חדש'}</td>
+                    <td>{customer.firstName}</td>
+                    <td>{customer.lastName}</td>
+                    <td>{customer.phone1}</td>
+                    <td>{customer.city}</td>
+                    <td>{customer.email || '-'}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
           <div className="table-foot">
             <span>סה"כ שורות מוצגות: {customers.length}</span>
             {totalPages > 1 && (

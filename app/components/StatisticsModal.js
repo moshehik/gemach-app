@@ -10,15 +10,25 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [activeSessionId, setActiveSessionId] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
+  const [chatSessions, setChatSessions] = useState([]);
   const chatEndRef = useRef(null);
+
+  const sessionsStorageKey = `ai_statistics_chat_sessions_${pageContext || 'general'}`;
+
+  const getGreeting = () => `שלום! אני עוזר הסטטיסטיקה של ${pageContext === 'orders' ? 'ההזמנות' : pageContext === 'customers' ? 'הלקוחות' : 'המערכת'}. שאל אותי שאלות על הנתונים (למשל: 'כמה הזמנות יש החודש?' או 'מה פילוח הלקוחות לפי ערים?').`;
 
   useEffect(() => {
     if (isOpen && messages.length === 0) {
-      setMessages([{ 
-        role: 'assistant', 
-        content: `שלום! אני עוזר הסטטיסטיקה של ${pageContext === 'orders' ? 'ההזמנות' : pageContext === 'customers' ? 'הלקוחות' : 'המערכת'}. שאל אותי שאלות על הנתונים (למשל: 'כמה הזמנות יש החודש?' או 'מה פילוח הלקוחות לפי ערים?').` 
-      }]);
+      setMessages([{ role: 'assistant', content: getGreeting() }]);
       setActiveSessionId(null);
+
+      let sessions = [];
+      try {
+        const saved = localStorage.getItem(sessionsStorageKey);
+        if (saved) sessions = JSON.parse(saved);
+      } catch (e) {}
+      setChatSessions(sessions);
     }
   }, [isOpen, messages.length, pageContext]);
 
@@ -27,6 +37,39 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
       chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isOpen, loading]);
+
+  const startNewChat = () => {
+    if (messages.length > 1) {
+      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
+      const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
+      setChatSessions(updatedSessions);
+      localStorage.setItem(sessionsStorageKey, JSON.stringify(updatedSessions));
+    }
+    setMessages([{ role: 'assistant', content: getGreeting() }]);
+    setActiveSessionId(null);
+    setShowHistory(false);
+  };
+
+  const clearChat = async () => {
+    if (await window.customConfirm('האם אתה בטוח שברצונך למחוק את השיחה הנוכחית?')) {
+      setMessages([{ role: 'assistant', content: getGreeting() }]);
+      setActiveSessionId(null);
+      setShowHistory(false);
+    }
+  };
+
+  const loadSession = (session) => {
+    if (messages.length > 1 && !chatSessions.find(s => s.id === session.id)) {
+      // eslint-disable-next-line react-hooks/purity -- runs inside the loadSession click handler, never during render
+      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
+      const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
+      setChatSessions(updatedSessions);
+      localStorage.setItem(sessionsStorageKey, JSON.stringify(updatedSessions));
+    }
+    setMessages(session.messages);
+    setActiveSessionId(null);
+    setShowHistory(false);
+  };
 
   const sendMessage = async (e) => {
     e.preventDefault();
@@ -125,27 +168,97 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
             <BarChart3 className="icon" />
             סטטיסטיקות מתקדמות AI
           </strong>
-          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={onClose} title="סגירה" aria-label="סגירה">
-            <X className="icon" />
-          </button>
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon-only btn-sm"
+              onClick={() => setShowHistory(!showHistory)}
+              style={{ color: showHistory ? 'var(--accent)' : undefined }}
+              title="היסטוריה"
+              aria-label="היסטוריה"
+            >
+              <svg className="icon"><use href="#i-history" /></svg>
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon-only btn-sm"
+              onClick={startNewChat}
+              title="חדש"
+              aria-label="חדש"
+            >
+              <svg className="icon"><use href="#i-plus" /></svg>
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-icon-only btn-sm"
+              onClick={clearChat}
+              title="מחק"
+              aria-label="מחק"
+            >
+              <svg className="icon"><use href="#i-trash" /></svg>
+            </button>
+            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={onClose} title="סגירה" aria-label="סגירה">
+              <X className="icon" />
+            </button>
+          </div>
         </div>
 
         {/* Chat Area */}
         <div className="modal-body" style={{ flex: 1, overflowY: 'auto' }}>
-          <div className="chat-thread">
-            {messages.map((msg, idx) => (
-              <div key={idx} className={`bubble ${msg.role}`} style={{ whiteSpace: 'pre-wrap' }}>
-                <FormattedMessage content={msg.content} />
-              </div>
-            ))}
-            {loading && (
-              <div className="bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div className="typing-indicator"><span></span><span></span><span></span></div>
-                מנתח נתונים...
-              </div>
-            )}
-            <div ref={chatEndRef} />
-          </div>
+          {showHistory ? (
+            <div style={{ padding: '10px' }}>
+              <h3 style={{ marginTop: 0, color: 'var(--text)', fontSize: '1.1rem', borderBottom: '1px solid var(--border)', paddingBottom: '8px' }}>היסטוריית שיחות</h3>
+              {messages.length > 1 && (
+                <div
+                  onClick={() => setShowHistory(false)}
+                  className="list-card"
+                  style={{
+                    background: 'var(--success-tint)', borderColor: 'var(--success)',
+                    cursor: 'pointer', flexDirection: 'column', alignItems: 'stretch', gap: '4px',
+                  }}
+                >
+                  <span style={{ fontWeight: 'bold', color: 'var(--success)', fontSize: '0.9rem' }}>שיחה נוכחית (פעילה)</span>
+                  <span style={{ color: 'var(--success)', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {messages[1].content}
+                  </span>
+                </div>
+              )}
+              {chatSessions.length === 0 && messages.length <= 1 ? (
+                <div style={{ color: 'var(--text-3)', fontSize: '0.9rem', marginTop: '10px' }}>אין היסטוריית שיחות שמורה.</div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '10px' }}>
+                  {chatSessions.map((session) => (
+                    <div
+                      key={session.id}
+                      onClick={() => loadSession(session)}
+                      className="list-card"
+                      style={{ cursor: 'pointer', flexDirection: 'column', alignItems: 'stretch', gap: '4px' }}
+                    >
+                      <span style={{ fontWeight: 'bold', color: 'var(--text)', fontSize: '0.9rem' }}>{session.date}</span>
+                      <span style={{ color: 'var(--text-3)', fontSize: '0.85rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {session.messages.length > 1 ? session.messages[1].content : 'שיחה ריקה'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="chat-thread">
+              {messages.map((msg, idx) => (
+                <div key={idx} className={`bubble ${msg.role}`} style={{ whiteSpace: 'pre-wrap' }}>
+                  <FormattedMessage content={msg.content} />
+                </div>
+              ))}
+              {loading && (
+                <div className="bubble assistant" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div className="typing-indicator"><span></span><span></span><span></span></div>
+                  מנתח נתונים...
+                </div>
+              )}
+              <div ref={chatEndRef} />
+            </div>
+          )}
         </div>
 
         {/* Input Area */}

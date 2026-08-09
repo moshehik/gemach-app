@@ -9,6 +9,11 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
   const [aiPrompt, setAiPrompt] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [hideAi, setHideAi] = useState(false);
+  // שתי לשוניות בפופאפ הייצוא: "רגיל" (כמות שורות + אקסל/PDF) מול "AI" (חיפוש/ארגון
+  // עם AI). הלשונית השנייה קיימת רק כש-AI פעיל במערכת (ראו hideAi למטה) — כשה-AI כבוי
+  // אין טעם בלשוניות בכלל ומוצגות רק אפשרויות הייצוא הרגילות, בלי UI של לשוניות.
+  // סגנון הלשוניות מבוסס על app/components/ErrorReportButton.js (.tabs/.tab).
+  const [activeTab, setActiveTab] = useState('regular');
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -311,108 +316,122 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                 </div>
               ) : (
                 <>
-                  <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--surface-alt)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
-                    <label htmlFor="export-limit-input" style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-2)' }}>כמות שורות לייצוא:</label>
-                    <input
-                      data-agy-id="export_limit_input"
-                      id="export-limit-input"
-                      className="input"
-                      type="number"
-                      min="1"
-                      value={exportLimit}
-                      onChange={(e) => {
-                         const val = parseInt(e.target.value);
-                         setExportLimit(isNaN(val) ? 100 : val);
-                         setIsAdminVerified(false); // Reset verification if limit changes
-                      }}
-                      style={{ width: '80px' }}
-                    />
-                    {exportLimit > 200 && !isAdminVerified && (
-                      <span className="badge badge-danger">דורש מנהל</span>
-                    )}
-                    {isAdminVerified && (
-                      <span className="badge badge-success">
-                        <svg className="icon"><use href="#i-check" /></svg>
-                        אושר מנהל
-                      </span>
-                    )}
-                  </div>
-
-                  <div style={{ marginBottom: '2rem' }}>
-                    <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: 'var(--text-2)' }}>דוח מיידי מהנתונים (לפי הסינון הקיים):</h3>
-                    <div style={{ display: 'flex', gap: '1rem' }}>
-                      <button
-                        data-agy-id="export_excel_btn"
-                        type="button"
-                        onClick={() => handleActionClick('excel')}
-                        className="btn btn-secondary"
-                        style={{ flex: 1, flexDirection: 'column', gap: '0.5rem', padding: '0.75rem' }}
-                      >
-                        <svg className="icon" style={{ width: '24px', height: '24px', color: 'var(--success)' }}><use href="#i-file" /></svg>
-                        <span>ייצוא לאקסל</span>
+                  {/* לשוניות רגיל/AI (item 34) — מוצגות רק כש-AI פעיל במערכת; כשהוא כבוי
+                     (hideAi) אין UI של לשוניות בכלל ומוצגות רק אפשרויות הייצוא הרגילות. */}
+                  {!hideAi && (
+                    <div className="tabs" style={{ marginBottom: '20px' }}>
+                      <button type="button" className={`tab${activeTab === 'regular' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('regular')}>
+                        רגיל
                       </button>
-                      <button
-                        data-agy-id="export_pdf_btn"
-                        type="button"
-                        onClick={() => handleActionClick('pdf')}
-                        className="btn btn-secondary"
-                        style={{ flex: 1, flexDirection: 'column', gap: '0.5rem', padding: '0.75rem' }}
-                      >
-                        <svg className="icon" style={{ width: '24px', height: '24px', color: 'var(--danger)' }}><use href="#i-file" /></svg>
-                        <span>ייצוא ל-PDF</span>
+                      <button type="button" className={`tab ai-feature-element${activeTab === 'ai' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('ai')}>
+                        <svg className="icon"><use href="#i-star" /></svg>
+                        AI
                       </button>
                     </div>
-                  </div>
+                  )}
 
-                  {!hideAi && (
+                  {(hideAi || activeTab === 'regular') && (
                     <>
-                      <hr className="ai-feature-element" style={{ border: 'none', borderTop: '1px solid var(--border)', marginBottom: '1.5rem' }} />
-
-                      <div className="ai-feature-element">
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-2)' }}>
-                          <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
-                          דוח מותאם אישית באמצעות AI
-                        </h3>
-                        <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', marginBottom: '1rem' }}>
-                          תאר כיצד תרצה לארגן את הנתונים, למשל: "סדר לפי מחיר וסכם לפי מידות", או "הצג רק דגמים במחיר מעל 100".
-                        </p>
-
-                        <textarea
-                          data-agy-id="export_ai_prompt_textarea"
-                          className="textarea"
-                          value={aiPrompt}
-                          onChange={(e) => setAiPrompt(e.target.value)}
-                          placeholder="הכנס את בקשתך לדוח..."
-                          style={{ height: '80px', resize: 'none', marginBottom: '1rem' }}
-                          disabled={isLoading}
+                      <div style={{ marginBottom: '1.5rem', display: 'flex', alignItems: 'center', gap: '1rem', background: 'var(--surface-alt)', padding: '1rem', borderRadius: 'var(--radius-md)' }}>
+                        <label htmlFor="export-limit-input" style={{ fontWeight: 700, fontSize: '13px', color: 'var(--text-2)' }}>כמות שורות לייצוא:</label>
+                        <input
+                          data-agy-id="export_limit_input"
+                          id="export-limit-input"
+                          className="input"
+                          type="number"
+                          min="1"
+                          value={exportLimit}
+                          onChange={(e) => {
+                             const val = parseInt(e.target.value);
+                             setExportLimit(isNaN(val) ? 100 : val);
+                             setIsAdminVerified(false); // Reset verification if limit changes
+                          }}
+                          style={{ width: '80px' }}
                         />
+                        {exportLimit > 200 && !isAdminVerified && (
+                          <span className="badge badge-danger">דורש מנהל</span>
+                        )}
+                        {isAdminVerified && (
+                          <span className="badge badge-success">
+                            <svg className="icon"><use href="#i-check" /></svg>
+                            אושר מנהל
+                          </span>
+                        )}
+                      </div>
 
+                      <div style={{ marginBottom: hideAi ? 0 : '2rem' }}>
+                        <h3 style={{ fontSize: '1rem', marginBottom: '1rem', color: 'var(--text-2)' }}>דוח מיידי מהנתונים (לפי הסינון הקיים):</h3>
                         <div style={{ display: 'flex', gap: '1rem' }}>
                           <button
-                            data-agy-id="export_excel_ai_btn"
+                            data-agy-id="export_excel_btn"
                             type="button"
-                            onClick={() => handleActionClick('excel_ai')}
-                            disabled={isLoading}
-                            className="btn"
-                            style={{ flex: 1, backgroundColor: 'var(--accent-solid)', color: 'var(--text-on-primary)', border: 'none' }}
+                            onClick={() => handleActionClick('excel')}
+                            className="btn btn-secondary"
+                            style={{ flex: 1, flexDirection: 'column', gap: '0.5rem', padding: '0.75rem' }}
                           >
-                            {isLoading ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-star" /></svg>}
-                            <span>אקסל (AI)</span>
+                            <svg className="icon" style={{ width: '24px', height: '24px', color: 'var(--success)' }}><use href="#i-file" /></svg>
+                            <span>ייצוא לאקסל</span>
                           </button>
                           <button
-                            data-agy-id="export_pdf_ai_btn"
+                            data-agy-id="export_pdf_btn"
                             type="button"
-                            onClick={() => handleActionClick('pdf_ai')}
-                            disabled={isLoading}
-                            className="btn"
-                            style={{ flex: 1, backgroundColor: 'var(--accent-solid)', color: 'var(--text-on-primary)', border: 'none' }}
+                            onClick={() => handleActionClick('pdf')}
+                            className="btn btn-secondary"
+                            style={{ flex: 1, flexDirection: 'column', gap: '0.5rem', padding: '0.75rem' }}
                           >
-                            {isLoading ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-star" /></svg>}
-                            <span>PDF (AI)</span>
+                            <svg className="icon" style={{ width: '24px', height: '24px', color: 'var(--danger)' }}><use href="#i-file" /></svg>
+                            <span>ייצוא ל-PDF</span>
                           </button>
                         </div>
                       </div>
                     </>
+                  )}
+
+                  {!hideAi && activeTab === 'ai' && (
+                    <div className="ai-feature-element">
+                      <h3 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '1rem', marginBottom: '0.5rem', color: 'var(--text-2)' }}>
+                        <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
+                        דוח מותאם אישית באמצעות AI
+                      </h3>
+                      <p style={{ fontSize: '0.85rem', color: 'var(--text-2)', marginBottom: '1rem' }}>
+                        תאר כיצד תרצה לארגן את הנתונים, למשל: "סדר לפי מחיר וסכם לפי מידות", או "הצג רק דגמים במחיר מעל 100".
+                      </p>
+
+                      <textarea
+                        data-agy-id="export_ai_prompt_textarea"
+                        className="textarea"
+                        value={aiPrompt}
+                        onChange={(e) => setAiPrompt(e.target.value)}
+                        placeholder="הכנס את בקשתך לדוח..."
+                        style={{ height: '80px', resize: 'none', marginBottom: '1rem' }}
+                        disabled={isLoading}
+                      />
+
+                      <div style={{ display: 'flex', gap: '1rem' }}>
+                        <button
+                          data-agy-id="export_excel_ai_btn"
+                          type="button"
+                          onClick={() => handleActionClick('excel_ai')}
+                          disabled={isLoading}
+                          className="btn"
+                          style={{ flex: 1, backgroundColor: 'var(--accent-solid)', color: 'var(--text-on-primary)', border: 'none' }}
+                        >
+                          {isLoading ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-star" /></svg>}
+                          <span>אקסל (AI)</span>
+                        </button>
+                        <button
+                          data-agy-id="export_pdf_ai_btn"
+                          type="button"
+                          onClick={() => handleActionClick('pdf_ai')}
+                          disabled={isLoading}
+                          className="btn"
+                          style={{ flex: 1, backgroundColor: 'var(--accent-solid)', color: 'var(--text-on-primary)', border: 'none' }}
+                        >
+                          {isLoading ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-star" /></svg>}
+                          <span>PDF (AI)</span>
+                        </button>
+                      </div>
+                    </div>
                   )}
                 </>
               )}

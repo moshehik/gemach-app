@@ -405,44 +405,46 @@ export default function EmployeesPage() {
             </div>
 
             <div className="table-wrap">
-              {loading ? (
-                <div className="page-loading">
-                  <span className="spinner lg" />
-                  טוען נתונים...
-                </div>
-              ) : (
-                <table className="data">
-                  <thead>
-                    <tr>
-                      <th className={empSort.key === 'code' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('code')}>קוד עובד <SortIcon sort={empSort} colKey="code" /></th>
-                      <th className={empSort.key === 'fullName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('fullName')}>שם מלא <SortIcon sort={empSort} colKey="fullName" /></th>
-                      <th className={empSort.key === 'department' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('department')}>תפקיד <SortIcon sort={empSort} colKey="department" /></th>
-                      <th className={empSort.key === 'phone1' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('phone1')}>טלפון <SortIcon sort={empSort} colKey="phone1" /></th>
-                      <th className={empSort.key === 'isActive' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('isActive')}>סטטוס <SortIcon sort={empSort} colKey="isActive" /></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sortedEmployees.map(employee => (
-                      <tr key={employee.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/employees/${employee.id}`)}>
-                        <td className="cell-primary">{employee.legacyId || employee.id.substring(0, 5)}</td>
-                        <td className="cell-primary">{employee.firstName} {employee.lastName}</td>
-                        <td>{employee.department ? employee.department.name : (employee.roleId || 'עובד')}</td>
-                        <td>{employee.phone1 || '-'}</td>
-                        <td>
-                          <span className={employee.isActive ? 'badge badge-success' : 'badge badge-neutral'}>
-                            {employee.isActive ? 'פעיל' : 'לא פעיל'}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                    {filteredEmployees.length === 0 && (
+              <div className="table-scroll">
+                {loading ? (
+                  <div className="page-loading">
+                    <span className="spinner lg" />
+                    טוען נתונים...
+                  </div>
+                ) : (
+                  <table className="data">
+                    <thead>
                       <tr>
-                        <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>לא נמצאו עובדים התואמים את החיפוש.</td>
+                        <th className={empSort.key === 'code' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('code')}>קוד עובד <SortIcon sort={empSort} colKey="code" /></th>
+                        <th className={empSort.key === 'fullName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('fullName')}>שם מלא <SortIcon sort={empSort} colKey="fullName" /></th>
+                        <th className={empSort.key === 'department' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('department')}>תפקיד <SortIcon sort={empSort} colKey="department" /></th>
+                        <th className={empSort.key === 'phone1' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('phone1')}>טלפון <SortIcon sort={empSort} colKey="phone1" /></th>
+                        <th className={empSort.key === 'isActive' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('isActive')}>סטטוס <SortIcon sort={empSort} colKey="isActive" /></th>
                       </tr>
-                    )}
-                  </tbody>
-                </table>
-              )}
+                    </thead>
+                    <tbody>
+                      {sortedEmployees.map(employee => (
+                        <tr key={employee.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/employees/${employee.id}`)}>
+                          <td className="cell-primary">{employee.legacyId || employee.id.substring(0, 5)}</td>
+                          <td className="cell-primary">{employee.firstName} {employee.lastName}</td>
+                          <td>{employee.department ? employee.department.name : (employee.roleId || 'עובד')}</td>
+                          <td>{employee.phone1 || '-'}</td>
+                          <td>
+                            <span className={employee.isActive ? 'badge badge-success' : 'badge badge-neutral'}>
+                              {employee.isActive ? 'פעיל' : 'לא פעיל'}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredEmployees.length === 0 && (
+                        <tr>
+                          <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>לא נמצאו עובדים התואמים את החיפוש.</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                )}
+              </div>
               <div className="table-foot">
                 <span>סה&quot;כ שורות מוצגות: {loading ? '...' : filteredEmployees.length}</span>
               </div>
@@ -505,62 +507,64 @@ export default function EmployeesPage() {
             </div>
 
             <div className="table-wrap">
-              <table className="data">
-                <thead>
-                  <tr>
-                    <th className={attSort.key === 'fullName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('fullName')}>שם <SortIcon sort={attSort} colKey="fullName" /></th>
-                    <th className={attSort.key === 'totalMinutes' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('totalMinutes')}>ס&quot;ה דקות <SortIcon sort={attSort} colKey="totalMinutes" /></th>
-                    <th className={attSort.key === 'daysCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('daysCount')}>כמות ימים <SortIcon sort={attSort} colKey="daysCount" /></th>
-                    <th className={attSort.key === 'issues' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('issues')}>תקלות <SortIcon sort={attSort} colKey="issues" /></th>
-                    <th className={attSort.key === 'totalCalculated' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('totalCalculated')}>ס&quot;ה <SortIcon sort={attSort} colKey="totalCalculated" /></th>
-                    <th className={attSort.key === 'hasTravels' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('hasTravels')}>נסיעות <SortIcon sort={attSort} colKey="hasTravels" /></th>
-                    <th className="no-print" style={{ textAlign: 'center' }}>פעולות</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loadingAttendance ? (
+              <div className="table-scroll">
+                <table className="data">
+                  <thead>
                     <tr>
-                      <td colSpan="6" style={{ padding: '4rem', textAlign: 'center' }}>
-                        <span className="spinner lg" style={{ margin: '0 auto' }} />
-                      </td>
+                      <th className={attSort.key === 'fullName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('fullName')}>שם <SortIcon sort={attSort} colKey="fullName" /></th>
+                      <th className={attSort.key === 'totalMinutes' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('totalMinutes')}>ס&quot;ה דקות <SortIcon sort={attSort} colKey="totalMinutes" /></th>
+                      <th className={attSort.key === 'daysCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('daysCount')}>כמות ימים <SortIcon sort={attSort} colKey="daysCount" /></th>
+                      <th className={attSort.key === 'issues' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('issues')}>תקלות <SortIcon sort={attSort} colKey="issues" /></th>
+                      <th className={attSort.key === 'totalCalculated' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('totalCalculated')}>ס&quot;ה <SortIcon sort={attSort} colKey="totalCalculated" /></th>
+                      <th className={attSort.key === 'hasTravels' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('hasTravels')}>נסיעות <SortIcon sort={attSort} colKey="hasTravels" /></th>
+                      <th className="no-print" style={{ textAlign: 'center' }}>פעולות</th>
                     </tr>
-                  ) : processedAttendance.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>
-                        לא נמצאו נתוני נוכחות לחודש זה.
-                      </td>
-                    </tr>
-                  ) : (
-                    sortedAttendance.map(emp => (
-                      <tr
-                        key={emp.id}
-                        className={emp.issues > 0 ? 'row-flag' : undefined}
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => router.push(`/employees/${emp.id}`)}
-                      >
-                        <td className="cell-primary">{emp.fullName}</td>
-                        <td>{emp.timeStr}</td>
-                        <td>{emp.daysCount}</td>
-                        <td>
-                          {emp.issues > 0 && (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--danger)', fontWeight: 700 }}>
-                              {emp.issues} <svg className="icon"><use href="#i-alert-tri" /></svg>
-                            </span>
-                          )}
-                        </td>
-                        <td className="cell-primary">{emp.totalCalculated.toFixed(2)}</td>
-                        <td>{emp.hasTravels}</td>
-                        <td className="no-print" style={{ textAlign: 'center' }}>
-                          <button type="button" onClick={(e) => { e.stopPropagation(); handlePrintPdfs(emp.id); }} className="btn btn-secondary btn-sm" title="הדפס דוח אישי לעובד זה">
-                            <svg className="icon"><use href="#i-printer" /></svg>
-                            הדפס
-                          </button>
+                  </thead>
+                  <tbody>
+                    {loadingAttendance ? (
+                      <tr>
+                        <td colSpan="7" style={{ padding: '4rem', textAlign: 'center' }}>
+                          <span className="spinner lg" style={{ margin: '0 auto' }} />
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
+                    ) : processedAttendance.length === 0 ? (
+                      <tr>
+                        <td colSpan="7" style={{ padding: '4rem', textAlign: 'center', color: 'var(--text-3)' }}>
+                          לא נמצאו נתוני נוכחות לחודש זה.
+                        </td>
+                      </tr>
+                    ) : (
+                      sortedAttendance.map(emp => (
+                        <tr
+                          key={emp.id}
+                          className={emp.issues > 0 ? 'row-flag' : undefined}
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => router.push(`/employees/${emp.id}`)}
+                        >
+                          <td className="cell-primary">{emp.fullName}</td>
+                          <td>{emp.timeStr}</td>
+                          <td>{emp.daysCount}</td>
+                          <td>
+                            {emp.issues > 0 && (
+                              <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', color: 'var(--danger)', fontWeight: 700 }}>
+                                {emp.issues} <svg className="icon"><use href="#i-alert-tri" /></svg>
+                              </span>
+                            )}
+                          </td>
+                          <td className="cell-primary">{emp.totalCalculated.toFixed(2)}</td>
+                          <td>{emp.hasTravels}</td>
+                          <td className="no-print" style={{ textAlign: 'center' }}>
+                            <button type="button" onClick={(e) => { e.stopPropagation(); handlePrintPdfs(emp.id); }} className="btn btn-secondary btn-sm" title="הדפס דוח אישי לעובד זה">
+                              <svg className="icon"><use href="#i-printer" /></svg>
+                              הדפס
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
               <div className="table-foot">
                 <span>סה&quot;כ שורות מוצגות: {loadingAttendance ? '...' : processedAttendance.length}</span>
               </div>

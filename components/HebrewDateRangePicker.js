@@ -267,15 +267,15 @@ export default function HebrewDateRangePicker({
     };
 
     return (
-      <div className="card card-pad">
+      <div className="datepicker" style={{ width: '280px', maxWidth: '100%', boxShadow: 'none' }}>
         {title && (
-          <h4 style={{ margin: '0 0 10px 0', textAlign: 'center', color: 'var(--primary-solid)', fontWeight: 'bold' }}>
+          <div style={{ margin: '0 0 10px 0', textAlign: 'center', color: 'var(--primary-solid)', fontWeight: 700, fontSize: '12.5px' }}>
             {title}
-          </h4>
+          </div>
         )}
 
         {/* Navigation Month/Year */}
-        <div className="datepicker-head" style={{ marginBottom: '10px' }}>
+        <div className="datepicker-head">
           <strong>{currentMonthLabel} {gematriya(year)}</strong>
           <div className="datepicker-nav">
             <button
@@ -297,40 +297,42 @@ export default function HebrewDateRangePicker({
           </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '6px', marginBottom: '10px' }}>
-          <select
-            value={month}
-            onChange={e => {
-              const newMonth = parseInt(e.target.value);
-              setCurrentPanel(p => ({ ...p, month: newMonth }));
-            }}
-            className="select"
-            style={{ flex: 1, fontSize: '12.5px', padding: '6px 8px' }}
-          >
-            {months.map(m => (
-              <option key={m.value} value={m.value}>{m.label}</option>
-            ))}
-          </select>
+        <div className="form-grid" style={{ gap: '8px', marginBottom: '12px' }}>
+          <div className="field" style={{ margin: 0 }}>
+            <select
+              value={month}
+              onChange={e => {
+                const newMonth = parseInt(e.target.value);
+                setCurrentPanel(p => ({ ...p, month: newMonth }));
+              }}
+              className="select"
+            >
+              {months.map(m => (
+                <option key={m.value} value={m.value}>{m.label}</option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            value={year}
-            onChange={e => {
-              const newYear = parseInt(e.target.value);
-              setCurrentPanel(p => {
-                let newMonth = p.month;
-                if (newMonth === 13 && !HDate.isLeapYear(newYear)) {
-                  newMonth = 12;
-                }
-                return { ...p, year: newYear, month: newMonth };
-              });
-            }}
-            className="select"
-            style={{ flex: 1, fontSize: '12.5px', padding: '6px 8px' }}
-          >
-            {yearOptions.map(y => (
-              <option key={y} value={y}>{gematriya(y)} ({y})</option>
-            ))}
-          </select>
+          <div className="field" style={{ margin: 0 }}>
+            <select
+              value={year}
+              onChange={e => {
+                const newYear = parseInt(e.target.value);
+                setCurrentPanel(p => {
+                  let newMonth = p.month;
+                  if (newMonth === 13 && !HDate.isLeapYear(newYear)) {
+                    newMonth = 12;
+                  }
+                  return { ...p, year: newYear, month: newMonth };
+                });
+              }}
+              className="select"
+            >
+              {yearOptions.map(y => (
+                <option key={y} value={y}>{gematriya(y)}</option>
+              ))}
+            </select>
+          </div>
         </div>
 
         {/* Days Header */}
@@ -390,7 +392,7 @@ export default function HebrewDateRangePicker({
         >
           <div
             className="modal animate-fade-in"
-            style={{ width: '720px', maxWidth: '96vw', maxHeight: '92vh', margin: 0, overflowY: 'auto' }}
+            style={{ width: 'auto', maxWidth: '96vw', maxHeight: '92vh', margin: 0, overflowY: 'auto' }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -439,9 +441,9 @@ export default function HebrewDateRangePicker({
               </div>
 
               {/* Panels Container */}
-              <div className="two-col" style={{ marginBottom: '4px' }}>
-                {renderPanel('from', fromPanel, setFromPanel, '')}
-                {renderPanel('to', toPanel, setToPanel, '')}
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', justifyContent: 'center', marginBottom: '4px' }}>
+                {renderPanel('from', fromPanel, setFromPanel, 'מתאריך')}
+                {renderPanel('to', toPanel, setToPanel, 'עד תאריך')}
               </div>
             </div>
 

@@ -153,6 +153,15 @@ export default function OrdersPage() {
   // and the pending/expired badges disagree with reality whenever that setting was changed.
   const [holdMinutes, setHoldMinutes] = useState(15);
 
+  // Ticking clock for the pending-cart-hold row highlight below; reading Date.now() directly
+  // during render is impure, so it's sampled in an effect instead.
+  const [nowTick, setNowTick] = useState(null);
+  useEffect(() => {
+    setNowTick(Date.now());
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   const [advFilters, setAdvFilters] = useState(defaultOrdersAdvFilters);
   const [showAdvSearch, setShowAdvSearch] = useState(false);
   // לשוניות מודל הסינון המתקדם (item 33) + מצב חיפוש AI על השדות שמולאו (item 32)
@@ -699,6 +708,7 @@ export default function OrdersPage() {
       )}
 
       <div className="table-wrap">
+        <div className="table-scroll">
         {loading && orders.length === 0 ? (
           <div className="page-loading">
             <span className="spinner lg" />
@@ -722,7 +732,7 @@ export default function OrdersPage() {
               {orders.map(order => {
                 const isPaid = (order.totalPaid >= order.totalAmount && order.totalAmount > 0) || order.totalPaid > 0 || order.status === 'שולם' || order.status === 'שולם חלקי';
                 const pendingItem = (!order.legacyId && !isPaid) ? order.items?.find(i => i.cartStatus === 'pending') : null;
-                const isPending = pendingItem && new Date(pendingItem.cartStatusDate).getTime() + holdMinutes * 60000 > Date.now();
+                const isPending = pendingItem && nowTick && new Date(pendingItem.cartStatusDate).getTime() + holdMinutes * 60000 > nowTick;
 
                 const isUnpaid = order.totalPaid < order.totalAmount && order.totalAmount > 0;
                 const hasCustomSpacing = order.customSpacing !== null && order.customSpacing !== undefined;
@@ -813,6 +823,7 @@ export default function OrdersPage() {
             </tbody>
           </table>
         )}
+        </div>
 
         {/* סיכום הרשומות ועימוד */}
         <div className="table-foot">

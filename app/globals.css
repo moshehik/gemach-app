@@ -1789,6 +1789,19 @@ div:has(> table) {
   overflow-y: visible;
 }
 
+/*
+  אותה בעיה, הפעם במערכת האריג: .table-wrap הוא בעצם div:has(> table), ולכן גם הוא
+  נלכד ע"י הכלל הגלובלי שלמעלה (75vh + גלילה פנימית). מערכת האריג בנויה על גלילת עמוד
+  רגילה — לא תיבה עם גלילה פנימית משלה — כדי ש-.table-foot (position:sticky; bottom:0)
+  יידבק לתחתית ה-viewport עצמו ולא לתחתית תיבה פנימית של 75vh. יוצאים אותו מהכלל, באותה
+  תבנית כמו .page-shell/.print-container שלמעלה.
+*/
+.table-wrap,
+.table-wrap div:has(> table) {
+  max-height: none;
+  overflow-y: visible;
+}
+
 thead th, th {
   position: sticky;
   top: -1px;
@@ -1972,6 +1985,24 @@ table.items-table thead tr th,
   box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.08), 0 2px 4px -2px rgba(0, 0, 0, 0.04) !important;
   border-bottom: 2px solid var(--border-color, rgba(212, 175, 55, 0.3)) !important;
   transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/*
+  table.data (מערכת האריג) לא נועד להיות עם כותרת דביקה כלל — design-system.css לא
+  מגדיר לה position:sticky. הכלל הגלובלי שלמעלה תפס גם אותה ודחף z-index:35 שמנצח את
+  ה-topbar החדש (z-index:5, position:sticky) באותו הקשר-ערימה, ולכן תפריט החיפוש
+  שבתפריט העליון נופל מתחת לכותרות הטבלה. מבטלים כאן במפורש עבור טבלאות האריג.
+*/
+table.data thead th,
+table.data thead tr th {
+  position: static !important;
+  top: auto !important;
+  z-index: auto !important;
+  background-color: var(--surface-alt) !important;
+  background-image: none !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid var(--border) !important;
+  outline: none !important;
 }
 
 /*

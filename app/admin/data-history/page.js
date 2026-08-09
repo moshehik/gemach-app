@@ -17,9 +17,7 @@ export default function DataHistoryPage() {
         </div>
       </div>
 
-      <div className="card card-pad">
-        <HistoryViewer data-element-name="רכיב_page_1" />
-      </div>
+      <HistoryViewer data-element-name="רכיב_page_1" />
     </>
   );
 }

@@ -28,6 +28,26 @@ export default function EmployeePage({ params }) {
   const [oldPasswordInput, setOldPasswordInput] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
 
+  // רשימת המחלקות האמיתית (טבלת Department) עבור בורר המחלקה - null = עדיין נטען
+  const [departments, setDepartments] = useState(null);
+  const [deptLoadFailed, setDeptLoadFailed] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/departments')
+      .then(res => {
+        if (!res.ok) throw new Error('failed');
+        return res.json();
+      })
+      .then(data => {
+        if (!cancelled) setDepartments(Array.isArray(data) ? data : []);
+      })
+      .catch(() => {
+        if (!cancelled) setDeptLoadFailed(true);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
   const fetchEmployee = () => {
     if (id === 'new') {
       setEmployee({
@@ -464,8 +484,30 @@ export default function EmployeePage({ params }) {
             </div>
 
             <div className="field">
-              <label htmlFor="employee-detail-roleId">מספר מחלקה (תפקיד)</label>
-              <input data-element-name="שדה_page_29" className="input" type="number" id="employee-detail-roleId" name="roleId" value={employee.roleId || ''} onChange={handleChange} />
+              <label htmlFor="employee-detail-roleId">מחלקה (תפקיד)</label>
+              {deptLoadFailed ? (
+                <>
+                  {/* רשימת המחלקות לא נטענה - חוזרים לקלט מספרי חופשי כדי לא לחסום עריכה */}
+                  <input data-element-name="שדה_page_29" className="input" type="number" id="employee-detail-roleId" name="roleId" value={employee.roleId ?? ''} onChange={handleChange} />
+                  <span className="hint" style={{ color: 'var(--danger)' }}>רשימת המחלקות לא נטענה מהשרת - ניתן להזין מספר מחלקה ידנית.</span>
+                </>
+              ) : departments === null ? (
+                <select data-element-name="שדה_page_29" className="select" id="employee-detail-roleId" name="roleId" value="" disabled>
+                  <option value="">טוען מחלקות...</option>
+                </select>
+              ) : (
+                <select data-element-name="שדה_page_29" className="select" id="employee-detail-roleId" name="roleId" value={employee.roleId ?? ''} onChange={handleChange}>
+                  <option value="">ללא מחלקה</option>
+                  {departments.map(dept => (
+                    <option key={dept.roleId} value={dept.roleId}>{dept.name} ({dept.roleId})</option>
+                  ))}
+                  {/* ערך קיים שאינו ברשימה (נתון ישן/שגוי) - מוצג כאופציה כדי שלא יימחק בשקט בשמירה */}
+                  {employee.roleId !== null && employee.roleId !== '' && employee.roleId !== undefined &&
+                    !departments.some(d => String(d.roleId) === String(employee.roleId)) && (
+                    <option value={employee.roleId}>מחלקה לא מוכרת ({employee.roleId})</option>
+                  )}
+                </select>
+              )}
             </div>
             <div className="field">
               <label htmlFor="employee-detail-themeColor">פלטת גוונים מודרנית לפרופיל</label>
@@ -598,6 +640,7 @@ export default function EmployeePage({ params }) {
           </div>
 
           <div className="table-wrap" style={{ marginBottom: '20px' }}>
+            <div className="table-scroll">
             <table className="data">
               <thead>
                 {/* שורה נוספת ב-thead (לא רק כותרות העמודות) - כדי שהחודש/שנה יופיעו מחדש
@@ -722,6 +765,7 @@ export default function EmployeePage({ params }) {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'flex-start' }}>

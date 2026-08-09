@@ -139,9 +139,14 @@ a{color:inherit; text-decoration:none}
    APP SHELL — sidebar (right, RTL) + topbar + content
    ============================================================ */
 .app-shell{display:flex;min-height:100vh}
+/* the AI floating-widget button sits fixed at the real bottom-corner of the
+   screen (not offset past the sidebar), above the sidebar via z-index — this
+   bottom padding keeps the sidebar's own scrolled nav content clear of that
+   corner instead of running underneath the button. */
+:root{--ai-fab-clearance: 140px}
 .sidebar{
   width:var(--sidebar-w); flex:0 0 auto; background:var(--surface);
-  border-inline-start:1px solid var(--border); padding:18px 14px;
+  border-inline-start:1px solid var(--border); padding:18px 14px calc(18px + var(--ai-fab-clearance));
   position:sticky; top:0; height:100vh; overflow-y:auto; order:0;
   transition:width .2s ease, padding .2s ease;
 }
@@ -155,7 +160,7 @@ a{color:inherit; text-decoration:none}
    ============================================================ */
 @media (min-width:901px){
   :root[data-sidebar="collapsed"]{--sidebar-current-w: 68px}
-  :root[data-sidebar="collapsed"] .sidebar{width:68px; padding:18px 10px}
+  :root[data-sidebar="collapsed"] .sidebar{width:68px; padding:18px 10px calc(18px + var(--ai-fab-clearance))}
   :root[data-sidebar="collapsed"] .nav-label,
   :root[data-sidebar="collapsed"] .nav-group-label,
   :root[data-sidebar="collapsed"] .brand-text,
@@ -248,7 +253,13 @@ a{color:inherit; text-decoration:none}
 /* ---- topbar pinned-shortcuts row — mirrors the sidebar's .nav-pin-btn: each
    pinned item is a normal .icon-btn (a <Link>) with a hover-revealed remove
    badge, same corner-badge language as .icon-btn .dot above ---- */
-.topbar-pins{display:flex; align-items:center; gap:6px; flex:0 0 auto; max-width:260px; overflow-x:auto; overflow-y:hidden}
+/* padding+negative-margin here is NOT decorative — .topbar-pin-remove overhangs its icon
+   by 4px (top:-4px; inset-inline-end:-4px), and since this row clips/scrolls flush
+   against the icons' own edges, that alone was enough overflow to trigger a permanent
+   stray scrollbar even with a single pinned icon. The padding absorbs the overhang
+   before it counts as scrollable content; the matching negative margin cancels the
+   resulting visual shift so the row still sits exactly where it did before. */
+.topbar-pins{display:flex; align-items:center; gap:6px; flex:0 0 auto; max-width:260px; overflow-x:auto; overflow-y:hidden; padding:4px; margin:-4px}
 .topbar-pin-icon.active{background:var(--primary-tint); border-color:var(--primary-tint-2); color:var(--primary-solid)}
 .topbar-pin-remove{
   position:absolute; top:-4px; inset-inline-end:-4px; width:16px; height:16px; border-radius:50%;
@@ -269,7 +280,7 @@ a{color:inherit; text-decoration:none}
 .user-menu-head{display:flex; align-items:center; gap:10px; padding:10px 10px 12px; border-bottom:1px solid var(--border); margin-bottom:6px}
 .user-menu-head strong{font-size:13.5px; display:block}
 .user-menu-head span{font-size:11.5px; color:var(--text-3)}
-.user-menu-item{display:flex; align-items:center; gap:10px; padding:9px 10px; border-radius:var(--radius-sm); font-size:13px; color:var(--text); cursor:pointer; text-decoration:none}
+.user-menu-item{display:flex; align-items:center; gap:10px; width:100%; padding:9px 10px; border-radius:var(--radius-sm); font-size:13px; font-family:var(--font); color:var(--text); cursor:pointer; text-decoration:none; background:none; border:none; margin:0; text-align:start}
 .user-menu-item:hover{background:var(--surface-alt)}
 .user-menu-item.danger{color:var(--danger)}
 .user-menu-divider{height:1px; background:var(--border); margin:6px 2px}
@@ -493,8 +504,30 @@ a{color:inherit; text-decoration:none}
 /* ============================================================
    TABLE
    ============================================================ */
-.table-wrap{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); overflow-x:auto; box-shadow:var(--shadow-sm)}
+/* .table-wrap must stay overflow:visible so .table-foot's position:sticky;
+   bottom:0 resolves against the real page/viewport instead of getting
+   trapped as its own scroll container (a sticky element is always confined
+   to its nearest ancestor scroll container, even one with no actual
+   overflowing content — and that's true even when the "container" is the
+   table-wrap's own former overflow-x:auto, which had no vertical overflow
+   of its own). Horizontal scrolling for wide tables now lives on the inner
+   .table-scroll wrapper instead (overflow doesn't apply to a bare <table>
+   element itself — confirmed live: an overflow-x:auto declared directly on
+   table.data computes back to visible and never takes effect). */
+.table-wrap{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm)}
+/* an optional search/filter strip integrated into the table's own frame (as the first
+   child of .table-wrap, before .table-scroll) instead of floating above it as a bare
+   .toolbar row — used on history-style pages where a search bar sitting loose above
+   the card looked disconnected. No background of its own (stays flush with .table-wrap's
+   surface so the shared rounded top corners never get a mismatched-fill seam), just a
+   border-bottom to separate it from the table below. */
+.table-head-toolbar{display:flex; align-items:center; gap:12px; flex-wrap:wrap; padding:14px 16px; border-bottom:1px solid var(--border)}
+.table-scroll{overflow-x:auto}
 table.data{width:100%; border-collapse:collapse; font-size:13px}
+/* replaces the corner-clipping .table-wrap used to give for free via its own
+   overflow — rounds just the header's outer corners to match --radius-lg */
+table.data thead th:first-child{border-start-start-radius:var(--radius-lg)}
+table.data thead th:last-child{border-start-end-radius:var(--radius-lg)}
 table.data thead th{
   text-align:start; font-size:11.5px; font-weight:700; color:var(--text-3); text-transform:uppercase; letter-spacing:.03em;
   padding:12px 16px; background:var(--surface-alt); border-bottom:1px solid var(--border); white-space:nowrap;
@@ -867,9 +900,21 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
 .step-line{width:40px; height:2px; background:var(--border-strong); margin:0 8px}
 
 .chat-thread{display:flex; flex-direction:column; gap:12px}
-.bubble{max-width:70%; padding:11px 14px; border-radius:var(--radius-md); font-size:13.5px; line-height:1.5}
+.bubble{max-width:70%; padding:11px 14px; border-radius:var(--radius-md); font-size:13.5px; line-height:1.5; position:relative}
 .bubble.user{align-self:flex-end; background:var(--primary); color:var(--text-on-primary); border-end-end-radius:2px}
-.bubble.assistant{align-self:flex-start; background:var(--surface-alt); color:var(--text); border-end-start-radius:2px}
+.bubble.assistant{align-self:flex-start; background:var(--surface-alt); color:var(--text); border:1px solid var(--border); border-end-start-radius:2px}
+
+/* hover-revealed copy action, same corner-badge language as .icon-btn .dot /
+   .topbar-pin-remove above ---- */
+.bubble-copy-btn{
+  position:absolute; top:-9px; inset-inline-end:-9px; width:22px; height:22px; border-radius:50%;
+  border:1px solid var(--border); background:var(--surface); color:var(--text-2); display:flex; align-items:center; justify-content:center;
+  cursor:pointer; opacity:0; transition:opacity .15s ease, color .15s ease; padding:0; flex:0 0 auto; box-shadow:var(--shadow-sm);
+}
+.bubble-copy-btn .icon{width:11px;height:11px}
+.bubble-copy-btn.copied{color:var(--success)}
+.bubble:hover .bubble-copy-btn{opacity:1}
+@media (hover:none){ .bubble-copy-btn{opacity:1} }
 
 .two-col{display:grid; grid-template-columns:1fr 1fr; gap:18px}
 .section-title{font-size:13px; font-weight:800; color:var(--text-2); text-transform:uppercase; letter-spacing:.03em; margin:26px 0 12px}
@@ -1018,7 +1063,7 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
    LIVE-SEARCH COMBOBOX — typeahead with sort-while-typing
    ============================================================ */
 .combobox{position:relative}
-.combobox-results{position:absolute; top:calc(100% + 4px); inset-inline:0; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow-lg); z-index:20; max-height:240px; overflow-y:auto}
+.combobox-results{position:absolute; top:calc(100% + 4px); inset-inline:0; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); box-shadow:var(--shadow-lg); z-index:40; max-height:240px; overflow-y:auto}
 .combobox-option{display:flex; align-items:center; gap:10px; padding:10px 12px; cursor:pointer; font-size:13px; border-bottom:1px solid var(--border)}
 .combobox-option:last-child{border-bottom:none}
 .combobox-option:hover, .combobox-option.highlighted{background:var(--surface-alt)}

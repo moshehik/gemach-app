@@ -43,38 +43,40 @@ export default function ModernCustomerRefundsTab({ customer, onChange, onSubmit,
 
         {refunds.length > 0 ? (
           <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr>
-                  <th>תאריך בקשה</th>
-                  <th>מס&apos; הזמנה</th>
-                  <th>סכום</th>
-                  <th>סיבה</th>
-                  <th>סטטוס</th>
-                </tr>
-              </thead>
-              <tbody>
-                {refunds.map(refund => (
-                  <tr key={refund.id}>
-                    <td>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</td>
-                    <td>
-                      {refund.orderId ? (
-                        <Link href={`/orders/${refund.orderId}`} className="cell-primary" style={{ color: 'var(--primary-solid)' }}>
-                          {refund.orderId}
-                        </Link>
-                      ) : '-'}
-                    </td>
-                    <td className="cell-primary" style={{ color: 'var(--danger)' }}>₪{refund.amount}</td>
-                    <td>{refund.reason || '-'}</td>
-                    <td>
-                      <span className={`badge ${refund.isExecuted ? 'badge-success' : 'badge-warning'}`}>
-                        {refund.isExecuted ? `בוצע (${new Date(refund.executionDate).toLocaleDateString('he-IL')})` : 'ממתין לביצוע'}
-                      </span>
-                    </td>
+            <div className="table-scroll">
+              <table className="data">
+                <thead>
+                  <tr>
+                    <th>תאריך בקשה</th>
+                    <th>מס&apos; הזמנה</th>
+                    <th>סכום</th>
+                    <th>סיבה</th>
+                    <th>סטטוס</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {refunds.map(refund => (
+                    <tr key={refund.id}>
+                      <td>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</td>
+                      <td>
+                        {refund.orderId ? (
+                          <Link href={`/orders/${refund.orderId}`} className="cell-primary" style={{ color: 'var(--primary-solid)' }}>
+                            {refund.orderId}
+                          </Link>
+                        ) : '-'}
+                      </td>
+                      <td className="cell-primary" style={{ color: 'var(--danger)' }}>₪{refund.amount}</td>
+                      <td>{refund.reason || '-'}</td>
+                      <td>
+                        <span className={`badge ${refund.isExecuted ? 'badge-success' : 'badge-warning'}`}>
+                          {refund.isExecuted ? `בוצע (${new Date(refund.executionDate).toLocaleDateString('he-IL')})` : 'ממתין לביצוע'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <div className="table-foot">
               <span>סה&quot;כ זיכויים מוצגים: {refunds.length}</span>
             </div>

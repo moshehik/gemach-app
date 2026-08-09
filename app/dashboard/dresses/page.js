@@ -7,6 +7,7 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { useLabels } from '@/app/components/LabelsContext';
 import { fetchSharedJson, readCache, TTL } from '@/lib/apiCache';
 import { buildDressesListParams } from '@/app/lib/prefetchRoutes';
+import { getDressThumbUrl } from '@/app/lib/dressImageUrl';
 
 export default function DressesManagement() {
   const { getLabel } = useLabels();
@@ -343,91 +344,110 @@ export default function DressesManagement() {
         <div className="loading-inline"><span className="spinner" /> טוען נתונים...</div>
       ) : (
         <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                {showImageColumn && <th>תמונה</th>}
-                <th className={catalogSort.key === 'barcodePrefix' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('barcodePrefix')}>
-                  {getLabel('item_barcode', 'קוד')} {renderCatalogSortIcon('barcodePrefix')}
-                </th>
-                {useModelNames && (
-                  <th className={catalogSort.key === 'name' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('name')}>
-                    {getLabel('item_modelName', 'שם דגם')} {renderCatalogSortIcon('name')}
-                  </th>
-                )}
-                <th className={catalogSort.key === 'entryDateToRepo' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('entryDateToRepo')}>
-                  תאריך כניסה {renderCatalogSortIcon('entryDateToRepo')}
-                </th>
-                <th className={catalogSort.key === 'itemsCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('itemsCount')}>
-                  כמות פריטים {renderCatalogSortIcon('itemsCount')}
-                </th>
-                <th style={{ textAlign: 'center' }}>פעולות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredDresses.length === 0 ? (
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
                 <tr>
-                  <td colSpan={emptyStateColSpan} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)', fontSize: '1.2rem' }}>
-                    לא נמצאו דגמים. נסה לשנות את הסינון או הוסף דגם חדש.
-                  </td>
+                  {showImageColumn && <th>תמונה</th>}
+                  <th className={catalogSort.key === 'barcodePrefix' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('barcodePrefix')}>
+                    {getLabel('item_barcode', 'קוד')} {renderCatalogSortIcon('barcodePrefix')}
+                  </th>
+                  {useModelNames && (
+                    <th className={catalogSort.key === 'name' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('name')}>
+                      {getLabel('item_modelName', 'שם דגם')} {renderCatalogSortIcon('name')}
+                    </th>
+                  )}
+                  <th className={catalogSort.key === 'entryDateToRepo' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('entryDateToRepo')}>
+                    תאריך כניסה {renderCatalogSortIcon('entryDateToRepo')}
+                  </th>
+                  <th className={catalogSort.key === 'itemsCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleCatalogSort('itemsCount')}>
+                    כמות פריטים {renderCatalogSortIcon('itemsCount')}
+                  </th>
+                  <th style={{ textAlign: 'center' }}>פעולות</th>
                 </tr>
-              ) : filteredDresses.map(dress => {
-                const isInactive = (!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo;
-                const imgSrc = getImageSource(dress);
-                return (
-                  <tr key={dress.id} className={dress.isDeleted ? 'row-flag' : undefined} style={!dress.isDeleted && isInactive ? { background: 'var(--warning-tint)' } : undefined}>
-                    {showImageColumn && (
-                      <td>
-                        {imgSrc && (
-                          <img
-                            src={imgSrc}
-                            alt={dress.name}
-                            onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'flex'; }}
-                            style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
-                          />
-                        )}
-                        <div
-                          className="file-icon"
-                          style={{
-                            display: imgSrc ? 'none' : 'flex', width: '44px', height: '44px', alignItems: 'center', justifyContent: 'center',
-                            borderRadius: 'var(--radius-sm)', background: 'var(--surface-alt)', color: 'var(--text-3)', fontSize: '10.5px'
-                          }}
-                        >
-                          אין
-                        </div>
-                      </td>
-                    )}
-                    <td className={dress.isDeleted ? 'cell-primary cell-muted' : 'cell-primary'}>{dress.barcodePrefix || '-'}</td>
-                    {useModelNames && (
-                      <td className={dress.isDeleted ? 'cell-primary cell-muted' : 'cell-primary'}>
-                        {dress.name}
-                      </td>
-                    )}
-                    <td className={dress.isDeleted ? 'cell-muted' : undefined}>{formatHebrewDate(dress.entryDateToRepo)}</td>
-                    <td className={dress.isDeleted ? 'cell-muted' : undefined}>{dress.items?.filter(i => !i.isDeleted).length || 0}</td>
-                    <td>
-                      <div className="row-actions">
-                        <Link href={`/dashboard/dresses/${dress.id}`} className="btn btn-primary btn-sm">כרטיס שמלה</Link>
-                        {dress.isDeleted ? (
-                          <button onClick={() => handleRestoreModel(dress)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר">
-                            <svg className="icon"><use href="#i-refresh" /></svg>
-                          </button>
-                        ) : isInactive ? (
-                          <button onClick={() => handleReturnToActivity(dress)} className="btn btn-secondary btn-sm" style={{ color: 'var(--warning)' }} title="החזר לפעילות">
-                            החזר לפעילות
-                          </button>
-                        ) : (
-                          <button onClick={() => handleDeleteModel(dress.id)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="מחק">
-                            <svg className="icon"><use href="#i-trash" /></svg>
-                          </button>
-                        )}
-                      </div>
+              </thead>
+              <tbody>
+                {filteredDresses.length === 0 ? (
+                  <tr>
+                    <td colSpan={emptyStateColSpan} style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)', fontSize: '1.2rem' }}>
+                      לא נמצאו דגמים. נסה לשנות את הסינון או הוסף דגם חדש.
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                ) : filteredDresses.map(dress => {
+                  const isInactive = (!dress.items || !dress.items.some(i => !i.notInUse)) || dress.exitDateFromRepo;
+                  const imgSrc = getImageSource(dress);
+                  // תא של 44px לא צריך את תמונת המקור — מנסים קודם את ה-thumb
+                  // (קיים רק להעלאות חדשות); onError נופל חזרה למקור ורק אז מוותר.
+                  const thumbSrc = getDressThumbUrl(imgSrc);
+                  return (
+                    <tr key={dress.id} className={dress.isDeleted ? 'row-flag' : undefined} style={!dress.isDeleted && isInactive ? { background: 'var(--warning-tint)' } : undefined}>
+                      {showImageColumn && (
+                        <td>
+                          {imgSrc && (
+                            <img
+                              src={thumbSrc || imgSrc}
+                              alt={dress.name}
+                              loading="lazy"
+                              decoding="async"
+                              width={44}
+                              height={44}
+                              onError={(e) => {
+                                const img = e.target;
+                                if (thumbSrc && !img.dataset.fellBack) {
+                                  // אין קובץ thumb (תמונה ישנה) — ננסה את המקור
+                                  img.dataset.fellBack = '1';
+                                  img.src = imgSrc;
+                                } else {
+                                  img.style.display = 'none';
+                                  img.nextSibling.style.display = 'flex';
+                                }
+                              }}
+                              style={{ width: '44px', height: '44px', objectFit: 'cover', borderRadius: 'var(--radius-sm)' }}
+                            />
+                          )}
+                          <div
+                            className="file-icon"
+                            style={{
+                              display: imgSrc ? 'none' : 'flex', width: '44px', height: '44px', alignItems: 'center', justifyContent: 'center',
+                              borderRadius: 'var(--radius-sm)', background: 'var(--surface-alt)', color: 'var(--text-3)', fontSize: '10.5px'
+                            }}
+                          >
+                            אין
+                          </div>
+                        </td>
+                      )}
+                      <td className={dress.isDeleted ? 'cell-primary cell-muted' : 'cell-primary'}>{dress.barcodePrefix || '-'}</td>
+                      {useModelNames && (
+                        <td className={dress.isDeleted ? 'cell-primary cell-muted' : 'cell-primary'}>
+                          {dress.name}
+                        </td>
+                      )}
+                      <td className={dress.isDeleted ? 'cell-muted' : undefined}>{formatHebrewDate(dress.entryDateToRepo)}</td>
+                      <td className={dress.isDeleted ? 'cell-muted' : undefined}>{dress.items?.filter(i => !i.isDeleted).length || 0}</td>
+                      <td>
+                        <div className="row-actions">
+                          <Link href={`/dashboard/dresses/${dress.id}`} className="btn btn-primary btn-sm">כרטיס שמלה</Link>
+                          {dress.isDeleted ? (
+                            <button onClick={() => handleRestoreModel(dress)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר">
+                              <svg className="icon"><use href="#i-refresh" /></svg>
+                            </button>
+                          ) : isInactive ? (
+                            <button onClick={() => handleReturnToActivity(dress)} className="btn btn-secondary btn-sm" style={{ color: 'var(--warning)' }} title="החזר לפעילות">
+                              החזר לפעילות
+                            </button>
+                          ) : (
+                            <button onClick={() => handleDeleteModel(dress.id)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="מחק">
+                              <svg className="icon"><use href="#i-trash" /></svg>
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
 
           <div className="table-foot">
             <span>סה"כ שורות מוצגות: {loading ? '...' : filteredDresses.length}</span>

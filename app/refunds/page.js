@@ -93,6 +93,7 @@ function DebtsTable({
         </div>
       ) : (
         <div className="table-wrap">
+          <div className="table-scroll">
           <table className="data">
             <thead>
               <tr>
@@ -173,6 +174,7 @@ function DebtsTable({
               )}
             </tbody>
           </table>
+          </div>
 
           {/* סרגל פעולה קבוצתית — מופיע כאשר נבחרו הזמנות לאישור תשלום */}
           {selectedIds.size > 0 && (
@@ -633,6 +635,7 @@ export default function RefundsPage() {
             </div>
           ) : (
             <div className="table-wrap">
+              <div className="table-scroll">
               <table className="data">
                 <thead>
                   <tr>
@@ -736,6 +739,7 @@ export default function RefundsPage() {
                   )}
                 </tbody>
               </table>
+              </div>
               <div className="table-foot">
                 <span>סה&quot;כ שורות מוצגות: {filteredRefunds.length}</span>
                 {refundsHasMore && (

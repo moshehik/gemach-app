@@ -62,6 +62,7 @@ export default function ModernCustomerOrdersTab({ orders = [] }) {
 
       {sortedOrders.length > 0 ? (
         <div className="table-wrap">
+          <div className="table-scroll">
           <table className="data">
             <thead>
               <tr>
@@ -112,6 +113,7 @@ export default function ModernCustomerOrdersTab({ orders = [] }) {
               })}
             </tbody>
           </table>
+          </div>
           <div className="table-foot">
             <span>סה&quot;כ הזמנות מוצגות: {sortedOrders.length}</span>
           </div>

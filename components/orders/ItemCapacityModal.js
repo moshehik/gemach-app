@@ -164,42 +164,44 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
 
               {viewMode === 'list' && (results.occupiedCount > 0 ? (
                 <div className="table-wrap">
-                  <table className="data">
-                    <thead>
-                      <tr>
-                        <th>תאריך אירוע</th>
-                        <th>שם לקוח</th>
-                        <th>כמות בתפוסה</th>
-                        <th>הזמנה</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {[...results.occupiedOrders].sort((a,b) => new Date(a.eventDate) - new Date(b.eventDate)).map(occOrder => {
-                        const isCurrent = occOrder.orderId === order.orderId;
-                        return (
-                          <tr key={occOrder.id} style={isCurrent ? { background: 'var(--primary-tint)' } : undefined}>
-                            <td className={isCurrent ? 'cell-primary' : undefined}>
-                              {new Date(occOrder.eventDate).toLocaleDateString('he-IL')} <span className="hint" style={{ color: 'var(--text-3)' }}>({getHebrewDateString(occOrder.eventDate)})</span>
-                              {isCurrent && <span className="badge badge-primary" style={{ marginInlineStart: '8px' }}>הזמנה נוכחית</span>}
-                            </td>
-                            <td>{occOrder.customerName}</td>
-                            <td><span className="badge badge-danger">{occOrder.quantity}</span></td>
-                            <td>
-                              <a
-                                href={`/orders/${occOrder.orderId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-secondary btn-sm"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                צפה בהזמנה <svg className="icon"><use href="#i-link" /></svg>
-                              </a>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                  <div className="table-scroll">
+                    <table className="data">
+                      <thead>
+                        <tr>
+                          <th>תאריך אירוע</th>
+                          <th>שם לקוח</th>
+                          <th>כמות בתפוסה</th>
+                          <th>הזמנה</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {[...results.occupiedOrders].sort((a,b) => new Date(a.eventDate) - new Date(b.eventDate)).map(occOrder => {
+                          const isCurrent = occOrder.orderId === order.orderId;
+                          return (
+                            <tr key={occOrder.id} style={isCurrent ? { background: 'var(--primary-tint)' } : undefined}>
+                              <td className={isCurrent ? 'cell-primary' : undefined}>
+                                {new Date(occOrder.eventDate).toLocaleDateString('he-IL')} <span className="hint" style={{ color: 'var(--text-3)' }}>({getHebrewDateString(occOrder.eventDate)})</span>
+                                {isCurrent && <span className="badge badge-primary" style={{ marginInlineStart: '8px' }}>הזמנה נוכחית</span>}
+                              </td>
+                              <td>{occOrder.customerName}</td>
+                              <td><span className="badge badge-danger">{occOrder.quantity}</span></td>
+                              <td>
+                                <a
+                                  href={`/orders/${occOrder.orderId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  צפה בהזמנה <svg className="icon"><use href="#i-link" /></svg>
+                                </a>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : (
                 <div className="empty-state">

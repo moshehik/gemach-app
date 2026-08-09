@@ -343,9 +343,9 @@ export default function HistoryViewer({ entityType, entityId }) {
       </div>
 
       {isExpanded && (
-        <div style={{ marginBottom: '24px', background: 'var(--surface-alt)', padding: '20px', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
+        <div style={{ marginBottom: '24px' }}>
 
-          {/* Search & Filters - One Line */}
+          {/* Search & Filters — sit directly in the card's own frame, no nested box */}
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px', alignItems: 'flex-end' }}>
 
             <form onSubmit={(e) => { e.preventDefault(); setFilterSearch(searchInput); }} style={{ display: 'flex', gap: '8px', flex: '2', minWidth: '250px' }}>

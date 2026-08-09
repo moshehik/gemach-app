@@ -423,38 +423,40 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
               {viewMode === 'list' && (
                 results.occupiedCount > 0 ? (
                   <div className="table-wrap">
-                    <table className="data">
-                      <thead>
-                        <tr>
-                          <th>תאריך אירוע</th>
-                          <th>שם לקוח</th>
-                          <th>כמות בתפוסה</th>
-                          <th>פעולות</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {[...results.occupiedOrders].sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate)).map(order => (
-                          <tr key={order.id}>
-                            <td>
-                              {new Date(order.eventDate).toLocaleDateString('he-IL')} <span className="hint" style={{ color: 'var(--text-3)' }}>({order.eventDateHebrew || 'לא צוין'})</span>
-                            </td>
-                            <td>{order.customerName}</td>
-                            <td><span className="badge badge-danger">{order.quantity}</span></td>
-                            <td>
-                              <a
-                                href={`/orders/${order.orderId}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="btn btn-secondary btn-sm"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                פתח <svg className="icon"><use href="#i-link" /></svg>
-                              </a>
-                            </td>
+                    <div className="table-scroll" style={{ maxHeight: '360px', overflowY: 'auto' }}>
+                      <table className="data">
+                        <thead>
+                          <tr>
+                            <th>תאריך אירוע</th>
+                            <th>שם לקוח</th>
+                            <th>כמות בתפוסה</th>
+                            <th>פעולות</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {[...results.occupiedOrders].sort((a, b) => new Date(a.eventDate) - new Date(b.eventDate)).map(order => (
+                            <tr key={order.id}>
+                              <td>
+                                {new Date(order.eventDate).toLocaleDateString('he-IL')} <span className="hint" style={{ color: 'var(--text-3)' }}>({order.eventDateHebrew || 'לא צוין'})</span>
+                              </td>
+                              <td>{order.customerName}</td>
+                              <td><span className="badge badge-danger">{order.quantity}</span></td>
+                              <td>
+                                <a
+                                  href={`/orders/${order.orderId}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  פתח <svg className="icon"><use href="#i-link" /></svg>
+                                </a>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
                 ) : (
                   <div className="empty-state">

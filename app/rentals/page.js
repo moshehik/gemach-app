@@ -486,6 +486,7 @@ export default function RentalsPage() {
       )}
 
       <div className="table-wrap">
+        <div className="table-scroll">
         <table className="data">
           <thead>
             <tr>
@@ -596,6 +597,7 @@ export default function RentalsPage() {
             })}
           </tbody>
         </table>
+        </div>
 
         {/* סיכום הרשומות ועימוד — מוצמד לתחתית הטבלה */}
         <div className="table-foot">

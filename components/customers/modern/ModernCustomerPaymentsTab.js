@@ -65,6 +65,7 @@ export default function ModernCustomerPaymentsTab({ payments = [], customer }) {
 
       {payments.length > 0 ? (
         <div className="table-wrap">
+          <div className="table-scroll">
           <table className="data">
             <thead>
               <tr>
@@ -96,6 +97,7 @@ export default function ModernCustomerPaymentsTab({ payments = [], customer }) {
               })}
             </tbody>
           </table>
+          </div>
           <div className="table-foot">
             <span>סה&quot;כ רשומות מוצגות: {payments.length}</span>
           </div>

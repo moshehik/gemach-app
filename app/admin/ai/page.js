@@ -260,24 +260,26 @@ export default function AIPage() {
             </div>
             <div className="modal-body" style={{ overflow: 'auto' }}>
               <div className="table-wrap">
-                <table className="data">
-                  <thead>
-                    <tr>
-                      {Object.keys(modalTableData[0]).map(h => (
-                        <th key={h}>{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modalTableData.map((row, i) => (
-                      <tr key={i}>
+                <div className="table-scroll">
+                  <table className="data">
+                    <thead>
+                      <tr>
                         {Object.keys(modalTableData[0]).map(h => (
-                          <td key={h}>{row[h]}</td>
+                          <th key={h}>{h}</th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {modalTableData.map((row, i) => (
+                        <tr key={i}>
+                          {Object.keys(modalTableData[0]).map(h => (
+                            <td key={h}>{row[h]}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>

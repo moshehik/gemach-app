@@ -5,6 +5,31 @@ import { useRouter } from 'next/navigation';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { useLabels } from '@/app/components/LabelsContext';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
+import { getDressThumbUrl } from '@/app/lib/dressImageUrl';
+
+// תמונת דגם בתאים הקטנים (טבלה 44px / שורות 96px): מנסים קודם את קובץ
+// ה-thumb (קיים רק להעלאות חדשות — ראה app/lib/dressImageUrl.js), ועם onError
+// נופלים חזרה לתמונה המלאה. loading="lazy" כדי שגלילה בקטלוג לא תוריד את
+// כל התמונות מראש.
+function KioskThumbImg({ model, style }) {
+  const thumbSrc = getDressThumbUrl(model.imageUrl);
+  return (
+    <img
+      src={thumbSrc || model.imageUrl}
+      alt={model.name}
+      loading="lazy"
+      decoding="async"
+      onError={(e) => {
+        const img = e.target;
+        if (thumbSrc && !img.dataset.fellBack) {
+          img.dataset.fellBack = '1';
+          img.src = model.imageUrl;
+        }
+      }}
+      style={style}
+    />
+  );
+}
 
 export default function CustomerInventoryViewer() {
   const { getLabel } = useLabels();
@@ -966,56 +991,58 @@ export default function CustomerInventoryViewer() {
                 </div>
               ) : viewMode === 'table' ? (
                 <div className="table-wrap" style={{ zoom: zoomLevel }}>
-                  <table className="data">
-                    <thead>
-                      <tr>
-                        {settings.hide_dress_images !== 'true' && <th></th>}
-                        <th>שם דגם</th>
-                        <th>מק״ט</th>
-                        <th>קטגוריה</th>
-                        <th>סה״כ פנוי</th>
-                        <th>פירוט לפי מידה</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {displayDresses.map(model => {
-                        const { sizesArray, totalAvailable, totalUnits } = getModelSizeInfo(model);
-                        const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
-                        return (
-                          <tr key={model.id} onClick={() => handleModelDoubleClick(model)} style={{ cursor: isLocked ? 'default' : 'pointer' }}>
-                            {settings.hide_dress_images !== 'true' && (
-                              <td style={{ width: '58px' }}>
-                                <div className="kiosk-img" style={{ width: '44px', height: '44px', minHeight: 0, margin: 0 }}>
-                                  {model.imageUrl ? <img src={model.imageUrl} alt={model.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : <svg className="icon" style={{ width: '20px', height: '20px' }}><use href="#i-image" /></svg>}
+                  <div className="table-scroll">
+                    <table className="data">
+                      <thead>
+                        <tr>
+                          {settings.hide_dress_images !== 'true' && <th></th>}
+                          <th>שם דגם</th>
+                          <th>מק״ט</th>
+                          <th>קטגוריה</th>
+                          <th>סה״כ פנוי</th>
+                          <th>פירוט לפי מידה</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {displayDresses.map(model => {
+                          const { sizesArray, totalAvailable, totalUnits } = getModelSizeInfo(model);
+                          const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
+                          return (
+                            <tr key={model.id} onClick={() => handleModelDoubleClick(model)} style={{ cursor: isLocked ? 'default' : 'pointer' }}>
+                              {settings.hide_dress_images !== 'true' && (
+                                <td style={{ width: '58px' }}>
+                                  <div className="kiosk-img" style={{ width: '44px', height: '44px', minHeight: 0, margin: 0 }}>
+                                    {model.imageUrl ? <KioskThumbImg model={model} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : <svg className="icon" style={{ width: '20px', height: '20px' }}><use href="#i-image" /></svg>}
+                                  </div>
+                                </td>
+                              )}
+                              <td className="cell-primary">{model.name}</td>
+                              <td className="cell-muted">{model.barcodePrefix ? `#${model.barcodePrefix}` : '—'}</td>
+                              <td>
+                                {model.priceCategory ? <span className="badge badge-neutral">{model.priceCategory}</span> : '—'}
+                              </td>
+                              <td style={{ fontWeight: 800, color: totalAvailable > 0 ? 'var(--success)' : 'var(--danger)' }}>{totalAvailable}/{totalUnits}</td>
+                              <td>
+                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                                  {visibleSizesArr.length === 0 ? (
+                                    <span className="hint" style={{ color: 'var(--text-3)' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי'}</span>
+                                  ) : visibleSizesArr.map(([sName, sData]) => (
+                                    <span key={sName}
+                                      className={`kiosk-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
+                                      onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model, sName); }}
+                                      title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
+                                      style={{ cursor: isLocked ? 'default' : 'pointer' }}>
+                                      {sName} · {sData.available}/{sData.total}
+                                    </span>
+                                  ))}
                                 </div>
                               </td>
-                            )}
-                            <td className="cell-primary">{model.name}</td>
-                            <td className="cell-muted">{model.barcodePrefix ? `#${model.barcodePrefix}` : '—'}</td>
-                            <td>
-                              {model.priceCategory ? <span className="badge badge-neutral">{model.priceCategory}</span> : '—'}
-                            </td>
-                            <td style={{ fontWeight: 800, color: totalAvailable > 0 ? 'var(--success)' : 'var(--danger)' }}>{totalAvailable}/{totalUnits}</td>
-                            <td>
-                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                                {visibleSizesArr.length === 0 ? (
-                                  <span className="hint" style={{ color: 'var(--text-3)' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי'}</span>
-                                ) : visibleSizesArr.map(([sName, sData]) => (
-                                  <span key={sName}
-                                    className={`kiosk-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
-                                    onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model, sName); }}
-                                    title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
-                                    style={{ cursor: isLocked ? 'default' : 'pointer' }}>
-                                    {sName} · {sData.available}/{sData.total}
-                                  </span>
-                                ))}
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               ) : viewMode === 'rows' ? (
                 <div style={{ zoom: zoomLevel }}>
@@ -1029,7 +1056,7 @@ export default function CustomerInventoryViewer() {
                         <div className="kiosk-img" style={{ width: '96px', height: '96px', minHeight: 0, flexShrink: 0, margin: 0 }}>
                           {settings.hide_dress_images !== 'true' ? (
                             model.imageUrl ? (
-                              <img src={model.imageUrl} alt={model.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                              <KioskThumbImg model={model} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
                             ) : (
                               <svg data-element-name="רכיב_page_57" className="icon"><use href="#i-image" /></svg>
                             )
@@ -1087,7 +1114,9 @@ export default function CustomerInventoryViewer() {
                         <div className="kiosk-img">
                           {settings.hide_dress_images !== 'true' ? (
                             model.imageUrl ? (
-                              <img src={model.imageUrl} alt={model.name} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
+                              // כרטיסיית הגריד הגדולה נשארת על התמונה המלאה (thumb של 300px
+                              // עלול להיראות מרוח כאן) — רק טעינה עצלה נוספה
+                              <img src={model.imageUrl} alt={model.name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
                             ) : (
                               <svg data-element-name="רכיב_page_57b" className="icon"><use href="#i-image" /></svg>
                             )

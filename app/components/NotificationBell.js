@@ -1,11 +1,13 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 
 export default function NotificationBell({ employeeId }) {
   const [notifications, setNotifications] = useState([]);
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
+  const pathname = usePathname();
 
   const fetchNotifications = () => {
     if (!employeeId) return;
@@ -24,6 +26,15 @@ export default function NotificationBell({ employeeId }) {
     const interval = setInterval(fetchNotifications, 60000);
     return () => clearInterval(interval);
   }, [employeeId]);
+
+  // NotificationBell lives once in AppShell and never remounts on client-side
+  // navigation, so reads marked on /messages (a separate fetch/state) would
+  // otherwise sit stale here for up to the 60s poll interval. Re-sync on every
+  // route change and whenever the dropdown is opened so the dot/count reflect
+  // reads made elsewhere without waiting for the interval.
+  useEffect(() => {
+    fetchNotifications();
+  }, [pathname]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -65,7 +76,7 @@ export default function NotificationBell({ employeeId }) {
 
   return (
     <div style={{ position: 'relative' }} ref={menuRef}>
-      <button type="button" className="icon-btn" onClick={() => setIsOpen(!isOpen)} title="התראות">
+      <button type="button" className="icon-btn" onClick={() => { if (!isOpen) fetchNotifications(); setIsOpen(!isOpen); }} title="התראות">
         <svg className="icon"><use href="#i-bell" /></svg>
         {unreadCount > 0 && <span className="dot" />}
       </button>

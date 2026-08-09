@@ -349,59 +349,61 @@ export default function PricelistManagement() {
               </div>
 
               <div className="table-wrap">
-                <table className="data">
-                  <thead>
-                    <tr>
-                      <th>תיאור</th>
-                      <th>מידות</th>
-                      <th>מחיר השכרה</th>
-                      <th>החזר פיקדון</th>
-                      <th style={{ textAlign: 'center' }}>פעולות</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {categoriesMap[categoryName].map(item => (
-                      editingId === item.id ? (
-                        renderEditRow(false, item.id)
-                      ) : (
-                        <tr key={item.id}>
-                          <td className="cell-primary">{item.description || '-'}</td>
-                          <td>
-                            {item.fromSize || item.toSize ? (
-                              <span className="badge badge-neutral">
-                                {item.fromSize && item.toSize ? `${item.fromSize} - ${item.toSize}` : item.fromSize ? `מ-${item.fromSize}` : `עד ${item.toSize}`}
-                              </span>
-                            ) : '-'}
-                          </td>
-                          <td>
-                            {item.price ? <span className="badge badge-primary">₪{item.price}</span> : '-'}
-                          </td>
-                          <td>
-                            {item.deposit ? `₪${item.deposit}` : '-'}
-                          </td>
-                          <td style={{ textAlign: 'center' }}>
-                            <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
-                              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => handleEditClick(item)} title="ערוך">
-                                <svg className="icon"><use href="#i-edit" /></svg>
-                              </button>
-                              <button
-                                type="button"
-                                className="btn btn-ghost btn-icon-only btn-sm"
-                                onClick={() => handleDelete(item.id)}
-                                title="מחק"
-                                disabled={isLocked}
-                                style={{ opacity: isLocked ? 0.45 : 1 }}
-                              >
-                                <svg className="icon"><use href={isLocked ? '#i-lock' : '#i-trash'} /></svg>
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      )
-                    ))}
-                    {isAddingNew && editingId === 'new' && addingCategory === (categoryName !== 'ללא קטגוריה' ? categoryName : '') && renderEditRow(true, 'new-row')}
-                  </tbody>
-                </table>
+                <div className="table-scroll">
+                  <table className="data">
+                    <thead>
+                      <tr>
+                        <th>תיאור</th>
+                        <th>מידות</th>
+                        <th>מחיר השכרה</th>
+                        <th>החזר פיקדון</th>
+                        <th style={{ textAlign: 'center' }}>פעולות</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {categoriesMap[categoryName].map(item => (
+                        editingId === item.id ? (
+                          renderEditRow(false, item.id)
+                        ) : (
+                          <tr key={item.id}>
+                            <td className="cell-primary">{item.description || '-'}</td>
+                            <td>
+                              {item.fromSize || item.toSize ? (
+                                <span className="badge badge-neutral">
+                                  {item.fromSize && item.toSize ? `${item.fromSize} - ${item.toSize}` : item.fromSize ? `מ-${item.fromSize}` : `עד ${item.toSize}`}
+                                </span>
+                              ) : '-'}
+                            </td>
+                            <td>
+                              {item.price ? <span className="badge badge-primary">₪{item.price}</span> : '-'}
+                            </td>
+                            <td>
+                              {item.deposit ? `₪${item.deposit}` : '-'}
+                            </td>
+                            <td style={{ textAlign: 'center' }}>
+                              <div className="row-actions" style={{ justifyContent: 'flex-end' }}>
+                                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => handleEditClick(item)} title="ערוך">
+                                  <svg className="icon"><use href="#i-edit" /></svg>
+                                </button>
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-icon-only btn-sm"
+                                  onClick={() => handleDelete(item.id)}
+                                  title="מחק"
+                                  disabled={isLocked}
+                                  style={{ opacity: isLocked ? 0.45 : 1 }}
+                                >
+                                  <svg className="icon"><use href={isLocked ? '#i-lock' : '#i-trash'} /></svg>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        )
+                      ))}
+                      {isAddingNew && editingId === 'new' && addingCategory === (categoryName !== 'ללא קטגוריה' ? categoryName : '') && renderEditRow(true, 'new-row')}
+                    </tbody>
+                  </table>
+                </div>
                 <div className="table-foot">
                   <span>סה&quot;כ שורות מוצגות: {categoriesMap[categoryName].length}</span>
                 </div>

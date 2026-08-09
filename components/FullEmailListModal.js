@@ -168,57 +168,59 @@ export default function FullEmailListModal({ isOpen, onClose }) {
             </div>
           ) : (
             <div className="table-wrap">
-              <table className="data">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>שם לקוח</th>
-                    <th>כתובת דוא&quot;ל</th>
-                    <th>טלפון</th>
-                    <th>עיר</th>
-                    <th style={{ textAlign: 'center' }}>פעולות</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {paginatedEmails.map((item, idx) => (
-                    <tr key={item.id || idx}>
-                      <td className="cell-muted">{startIndex + idx + 1}</td>
-                      <td className="cell-primary">{item.name}</td>
-                      <td style={{ direction: 'ltr', textAlign: 'start', color: 'var(--primary-solid)', fontWeight: 500 }}>
-                        {item.email}
-                      </td>
-                      <td>{item.phone || '-'}</td>
-                      <td>{item.city || '-'}</td>
-                      <td style={{ textAlign: 'center' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
-                          <button
-                            type="button"
-                            onClick={() => handleCopySingle(item.email, item.id)}
-                            title="העתק מייל"
-                            className="btn btn-sm btn-icon-only"
-                            style={
-                              copiedSingle === item.id
-                                ? { background: 'var(--success-tint)', color: 'var(--success)', border: '1px solid transparent' }
-                                : { background: 'var(--surface-alt)', color: 'var(--text-2)', border: '1px solid var(--border)' }
-                            }
-                          >
-                            <svg className="icon"><use href={copiedSingle === item.id ? '#i-check' : '#i-link'} /></svg>
-                          </button>
-                          <Link
-                            href={`/customers/${item.id}`}
-                            target="_blank"
-                            title="פתח כרטיס לקוח"
-                            className="btn btn-sm btn-icon-only"
-                            style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)', border: '1px solid var(--primary-tint-2)' }}
-                          >
-                            <svg className="icon"><use href="#i-expand" /></svg>
-                          </Link>
-                        </div>
-                      </td>
+              <div className="table-scroll">
+                <table className="data">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>שם לקוח</th>
+                      <th>כתובת דוא&quot;ל</th>
+                      <th>טלפון</th>
+                      <th>עיר</th>
+                      <th style={{ textAlign: 'center' }}>פעולות</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {paginatedEmails.map((item, idx) => (
+                      <tr key={item.id || idx}>
+                        <td className="cell-muted">{startIndex + idx + 1}</td>
+                        <td className="cell-primary">{item.name}</td>
+                        <td style={{ direction: 'ltr', textAlign: 'start', color: 'var(--primary-solid)', fontWeight: 500 }}>
+                          {item.email}
+                        </td>
+                        <td>{item.phone || '-'}</td>
+                        <td>{item.city || '-'}</td>
+                        <td style={{ textAlign: 'center' }}>
+                          <div style={{ display: 'flex', gap: '6px', justifyContent: 'center' }}>
+                            <button
+                              type="button"
+                              onClick={() => handleCopySingle(item.email, item.id)}
+                              title="העתק מייל"
+                              className="btn btn-sm btn-icon-only"
+                              style={
+                                copiedSingle === item.id
+                                  ? { background: 'var(--success-tint)', color: 'var(--success)', border: '1px solid transparent' }
+                                  : { background: 'var(--surface-alt)', color: 'var(--text-2)', border: '1px solid var(--border)' }
+                              }
+                            >
+                              <svg className="icon"><use href={copiedSingle === item.id ? '#i-check' : '#i-link'} /></svg>
+                            </button>
+                            <Link
+                              href={`/customers/${item.id}`}
+                              target="_blank"
+                              title="פתח כרטיס לקוח"
+                              className="btn btn-sm btn-icon-only"
+                              style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)', border: '1px solid var(--primary-tint-2)' }}
+                            >
+                              <svg className="icon"><use href="#i-expand" /></svg>
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>

@@ -3,7 +3,6 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
-import { utils, writeFile } from 'xlsx'; // Assuming xlsx is installed, if not we'll write a simple CSV export
 
 const tableTranslations = {
   Customer: "לקוחות",
@@ -273,9 +272,11 @@ export default function DataExplorerPage() {
     document.body.removeChild(link);
   };
 
-  const downloadExcel = (data, filename) => {
+  const downloadExcel = async (data, filename) => {
     if (!data || data.length === 0) return;
     try {
+      // xlsx (~900KB) נטען דינמית רק בלחיצה על הייצוא — לא חלק מה-bundle של הדף
+      const { utils, writeFile } = await import('xlsx');
       const worksheet = utils.json_to_sheet(data);
       const workbook = utils.book_new();
       utils.book_append_sheet(workbook, worksheet, "Data");
@@ -494,33 +495,35 @@ export default function DataExplorerPage() {
           {selectedTable && !loading && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div className="table-wrap" style={{ maxHeight: '450px', overflow: 'auto' }}>
-                {tableData.length > 0 ? (
-                  <table className="data">
-                    <thead>
-                      <tr>
-                        {tableColumns.map(col => (
-                          <th key={col}>{col}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {tableData.map((row, i) => (
-                        <tr key={i}>
+                <div className="table-scroll">
+                  {tableData.length > 0 ? (
+                    <table className="data">
+                      <thead>
+                        <tr>
                           {tableColumns.map(col => (
-                            <td key={col} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[col])}>
-                              {row[col] !== null ? String(row[col]) : <span className="hint" style={{ fontStyle: 'italic' }}>NULL</span>}
-                            </td>
+                            <th key={col}>{col}</th>
                           ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                ) : (
-                  <div className="empty-state">
-                    <svg className="icon"><use href="#i-database" /></svg>
-                    <h4>אין נתונים בטבלה זו</h4>
-                  </div>
-                )}
+                      </thead>
+                      <tbody>
+                        {tableData.map((row, i) => (
+                          <tr key={i}>
+                            {tableColumns.map(col => (
+                              <td key={col} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[col])}>
+                                {row[col] !== null ? String(row[col]) : <span className="hint" style={{ fontStyle: 'italic' }}>NULL</span>}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="empty-state">
+                      <svg className="icon"><use href="#i-database" /></svg>
+                      <h4>אין נתונים בטבלה זו</h4>
+                    </div>
+                  )}
+                </div>
               </div>
               <div className="table-foot">
                 <span>מציג עד <strong>500</strong> רשומות אחרונות</span>
@@ -686,26 +689,28 @@ export default function DataExplorerPage() {
           {queryResult.length > 0 && !queryError && (
             <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
               <div className="table-wrap" style={{ maxHeight: '400px', overflow: 'auto' }}>
-                <table className="data">
-                  <thead>
-                    <tr>
-                      {queryColumns.map(col => (
-                        <th key={col}>{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {queryResult.map((row, i) => (
-                      <tr key={i}>
+                <div className="table-scroll">
+                  <table className="data">
+                    <thead>
+                      <tr>
                         {queryColumns.map(col => (
-                          <td key={col} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[col])}>
-                            {row[col] !== null ? String(row[col]) : <span className="hint" style={{ fontStyle: 'italic' }}>NULL</span>}
-                          </td>
+                          <th key={col}>{col}</th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {queryResult.map((row, i) => (
+                        <tr key={i}>
+                          {queryColumns.map(col => (
+                            <td key={col} style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[col])}>
+                              {row[col] !== null ? String(row[col]) : <span className="hint" style={{ fontStyle: 'italic' }}>NULL</span>}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
               <div className="table-foot">
                 <span>נמצאו <strong>{queryResult.length}</strong> רשומות</span>

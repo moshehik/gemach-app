@@ -38,29 +38,31 @@ export default function AccessImportPage() {
         <div className="card card-pad">
           <p>מריצים מתיקיית האפליקציה (<code>gemach-app/</code>) בשורת הפקודה:</p>
           <div className="table-wrap" style={{ marginBottom: '16px' }}>
-            <table className="data">
-              <thead>
-                <tr><th>פקודה</th><th>מה קורה</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="cell-primary"><code>node scripts/import_from_access.js</code></td>
-                  <td>הרצת ניסיון (Dry Run) — ברירת המחדל. מדווח כמה שורות ייווצרו/יתעדכנו בכל טבלה, <strong>בלי לכתוב כלום</strong>. תמיד מתחילים כאן.</td>
-                </tr>
-                <tr>
-                  <td className="cell-primary"><code>node scripts/import_from_access.js --write</code></td>
-                  <td>כתיבה אמיתית ל-PROD. מריצים רק אחרי שהרצת הניסיון נראית הגיונית.</td>
-                </tr>
-                <tr>
-                  <td className="cell-primary"><code>--limit=500</code></td>
-                  <td>מגביל את מספר השורות לכל טבלה (לבדיקות). אפשר לשלב עם <code>--tail</code> כדי לדגום את סוף הטבלה (השורות החדשות) במקום את תחילתה.</td>
-                </tr>
-                <tr>
-                  <td className="cell-primary"><code>--db-path=&quot;C:\...\file.accdb&quot;</code></td>
-                  <td>מצביע על קובץ אקסס אחר מברירת המחדל (למשל עותק בדיקה).</td>
-                </tr>
-              </tbody>
-            </table>
+            <div className="table-scroll">
+              <table className="data">
+                <thead>
+                  <tr><th>פקודה</th><th>מה קורה</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="cell-primary"><code>node scripts/import_from_access.js</code></td>
+                    <td>הרצת ניסיון (Dry Run) — ברירת המחדל. מדווח כמה שורות ייווצרו/יתעדכנו בכל טבלה, <strong>בלי לכתוב כלום</strong>. תמיד מתחילים כאן.</td>
+                  </tr>
+                  <tr>
+                    <td className="cell-primary"><code>node scripts/import_from_access.js --write</code></td>
+                    <td>כתיבה אמיתית ל-PROD. מריצים רק אחרי שהרצת הניסיון נראית הגיונית.</td>
+                  </tr>
+                  <tr>
+                    <td className="cell-primary"><code>--limit=500</code></td>
+                    <td>מגביל את מספר השורות לכל טבלה (לבדיקות). אפשר לשלב עם <code>--tail</code> כדי לדגום את סוף הטבלה (השורות החדשות) במקום את תחילתה.</td>
+                  </tr>
+                  <tr>
+                    <td className="cell-primary"><code>--db-path=&quot;C:\...\file.accdb&quot;</code></td>
+                    <td>מצביע על קובץ אקסס אחר מברירת המחדל (למשל עותק בדיקה).</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
 
           <div className="callout callout-info" style={{ marginBottom: '10px' }}>
@@ -92,55 +94,57 @@ export default function AccessImportPage() {
             <code>legacyId</code> (שבטבלת ההזמנות הוא ערך ישן ולא אמין).
           </p>
           <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr><th>טבלה במערכת</th><th>טבלה באקסס</th><th>מפתח התאמה</th><th>אופן העדכון</th></tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td className="cell-primary">לקוחות (Customer)</td>
-                  <td>לקוחות</td>
-                  <td><code>legacyId</code> ↔ קוד_לקוח</td>
-                  <td>יצירה + עדכון</td>
-                </tr>
-                <tr>
-                  <td className="cell-primary">עובדים (Employee)</td>
-                  <td>עובדים</td>
-                  <td><code>legacyId</code> ↔ קוד_עובד</td>
-                  <td>יצירה + עדכון (סיסמה — ר&apos; למטה)</td>
-                </tr>
-                <tr>
-                  <td className="cell-primary">דגמי שמלות (DressModel)</td>
-                  <td>שמלות_דגמים</td>
-                  <td><code>legacyId</code> ↔ קוד_שמלה</td>
-                  <td>יצירה + עדכון</td>
-                </tr>
-                <tr>
-                  <td className="cell-primary">פריטי שמלות (DressItem)</td>
-                  <td>שמלות_נתונים</td>
-                  <td><code>legacyId</code> ↔ קוד</td>
-                  <td>יצירה + עדכון</td>
-                </tr>
-                <tr>
-                  <td className="cell-primary">הזמנות (Order)</td>
-                  <td>הזמנות</td>
-                  <td><code>orderId</code> ↔ קוד_הזמנה</td>
-                  <td>יצירה + עדכון (גם כותרות של הזמנות קיימות)</td>
-                </tr>
-                <tr>
-                  <td className="cell-primary">פריטי הזמנה / תשלומים / חיובים<br />(OrderItem / Payment / PaymentObligation)</td>
-                  <td>הזמנות_פרטים / הזמנות_תשלום_ביצוע / הזמנות_תשלום</td>
-                  <td><code>legacyId</code> ↔ קוד_פריט / קוד</td>
-                  <td><strong>הכנסה בלבד, ורק להזמנות חדשות</strong> (ר&apos; מגבלה ידועה למטה)</td>
-                </tr>
-                <tr>
-                  <td className="cell-primary">נוכחות עובדים (Shift)</td>
-                  <td>עובדים_נוכחות</td>
-                  <td><code>legacyId</code> ↔ קוד</td>
-                  <td>יצירה + עדכון (שדות מאקסס בלבד — ר&apos; פירוט למטה)</td>
-                </tr>
-              </tbody>
-            </table>
+            <div className="table-scroll">
+              <table className="data">
+                <thead>
+                  <tr><th>טבלה במערכת</th><th>טבלה באקסס</th><th>מפתח התאמה</th><th>אופן העדכון</th></tr>
+                </thead>
+                <tbody>
+                  <tr>
+                    <td className="cell-primary">לקוחות (Customer)</td>
+                    <td>לקוחות</td>
+                    <td><code>legacyId</code> ↔ קוד_לקוח</td>
+                    <td>יצירה + עדכון</td>
+                  </tr>
+                  <tr>
+                    <td className="cell-primary">עובדים (Employee)</td>
+                    <td>עובדים</td>
+                    <td><code>legacyId</code> ↔ קוד_עובד</td>
+                    <td>יצירה + עדכון (סיסמה — ר&apos; למטה)</td>
+                  </tr>
+                  <tr>
+                    <td className="cell-primary">דגמי שמלות (DressModel)</td>
+                    <td>שמלות_דגמים</td>
+                    <td><code>legacyId</code> ↔ קוד_שמלה</td>
+                    <td>יצירה + עדכון</td>
+                  </tr>
+                  <tr>
+                    <td className="cell-primary">פריטי שמלות (DressItem)</td>
+                    <td>שמלות_נתונים</td>
+                    <td><code>legacyId</code> ↔ קוד</td>
+                    <td>יצירה + עדכון</td>
+                  </tr>
+                  <tr>
+                    <td className="cell-primary">הזמנות (Order)</td>
+                    <td>הזמנות</td>
+                    <td><code>orderId</code> ↔ קוד_הזמנה</td>
+                    <td>יצירה + עדכון (גם כותרות של הזמנות קיימות)</td>
+                  </tr>
+                  <tr>
+                    <td className="cell-primary">פריטי הזמנה / תשלומים / חיובים<br />(OrderItem / Payment / PaymentObligation)</td>
+                    <td>הזמנות_פרטים / הזמנות_תשלום_ביצוע / הזמנות_תשלום</td>
+                    <td><code>legacyId</code> ↔ קוד_פריט / קוד</td>
+                    <td><strong>הכנסה בלבד, ורק להזמנות חדשות</strong> (ר&apos; מגבלה ידועה למטה)</td>
+                  </tr>
+                  <tr>
+                    <td className="cell-primary">נוכחות עובדים (Shift)</td>
+                    <td>עובדים_נוכחות</td>
+                    <td><code>legacyId</code> ↔ קוד</td>
+                    <td>יצירה + עדכון (שדות מאקסס בלבד — ר&apos; פירוט למטה)</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </section>

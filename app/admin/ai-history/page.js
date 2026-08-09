@@ -73,66 +73,68 @@ export default function AiHistoryPage() {
       </div>
 
       <div className="table-wrap">
-        <table className="data">
-          <thead>
-            <tr>
-              <th>תאריך התחלה</th>
-              <th>הקשר (עמוד)</th>
-              <th>עובד</th>
-              <th>הודעות</th>
-              <th>פעולות</th>
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
+        <div className="table-scroll">
+          <table className="data">
+            <thead>
               <tr>
-                <td colSpan="5" style={{ textAlign: 'center', padding: '3rem' }}>
-                  <span className="spinner lg" style={{ margin: '0 auto' }} />
-                </td>
+                <th>תאריך התחלה</th>
+                <th>הקשר (עמוד)</th>
+                <th>עובד</th>
+                <th>הודעות</th>
+                <th>פעולות</th>
               </tr>
-            ) : sessions.length === 0 ? (
-              <tr>
-                <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)' }}>
-                  לא נמצאו שיחות
-                </td>
-              </tr>
-            ) : (
-              sessions.map(session => {
-                let msgCount = 0;
-                try {
-                  msgCount = JSON.parse(session.messagesJson).length;
-                } catch (e) {}
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '3rem' }}>
+                    <span className="spinner lg" style={{ margin: '0 auto' }} />
+                  </td>
+                </tr>
+              ) : sessions.length === 0 ? (
+                <tr>
+                  <td colSpan="5" style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-3)' }}>
+                    לא נמצאו שיחות
+                  </td>
+                </tr>
+              ) : (
+                sessions.map(session => {
+                  let msgCount = 0;
+                  try {
+                    msgCount = JSON.parse(session.messagesJson).length;
+                  } catch (e) {}
 
-                return (
-                  <tr key={session.id}>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-calendar" /></svg>
-                        {new Date(session.startedAt).toLocaleString('he-IL')}
-                      </div>
-                    </td>
-                    <td>
-                      <span className={`badge ${getContextBadgeClass(session.context)}`}>{session.context}</span>
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-user" /></svg>
-                        {session.employee ? `${session.employee.firstName} ${session.employee.lastName || ''}` : 'לא ידוע'}
-                      </div>
-                    </td>
-                    <td style={{ fontWeight: 700 }}>{msgCount} הודעות</td>
-                    <td>
-                      <button type="button" className="btn btn-secondary btn-sm" title="צפה בשיחה" onClick={() => viewSession(session)}>
-                        <svg className="icon"><use href="#i-eye" /></svg>
-                        צפה בשיחה
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })
-            )}
-          </tbody>
-        </table>
+                  return (
+                    <tr key={session.id}>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-calendar" /></svg>
+                          {new Date(session.startedAt).toLocaleString('he-IL')}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${getContextBadgeClass(session.context)}`}>{session.context}</span>
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-user" /></svg>
+                          {session.employee ? `${session.employee.firstName} ${session.employee.lastName || ''}` : 'לא ידוע'}
+                        </div>
+                      </td>
+                      <td style={{ fontWeight: 700 }}>{msgCount} הודעות</td>
+                      <td>
+                        <button type="button" className="btn btn-secondary btn-sm" title="צפה בשיחה" onClick={() => viewSession(session)}>
+                          <svg className="icon"><use href="#i-eye" /></svg>
+                          צפה בשיחה
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
 
         <div className="table-foot">
           <span>סה&quot;כ שורות מוצגות: {loading ? '...' : sessions.length} מתוך {total}</span>

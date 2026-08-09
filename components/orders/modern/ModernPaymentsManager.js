@@ -621,54 +621,58 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         </div>
         {activeObligations.length > 0 ? (
           <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr><th>תיאור</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}></th></tr>
-              </thead>
-              <tbody>
-                {sortedObligations.map((obs, idx) => {
-                  const descText = (obs.productName || obs.description || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim() || (obs.isManual ? 'חיוב ידני' : 'חיוב מחירון');
-                  // חיוב שלילי הוא זיכוי/ביטול — הסימן וכיוון ה-LTR נדרשים במפורש, אחרת אלגוריתם
-                  // הכיווניות של הדפדפן מציג "₪-45" הפוך בתוך הקשר RTL
-                  const isCredit = obs.amount < 0;
-                  const creditInfo = getCancellationCreditInfo(obs);
-                  const iconId = getObligationIcon(obs);
-                  return (
-                    <tr key={idx}>
-                      <td className="cell-primary">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                          <svg className="icon" style={{ width: '14px', height: '14px', color: 'var(--text-3)' }}><use href={`#${iconId}`} /></svg>
-                          {descText}
-                        </div>
-                        {creditInfo && <CancellationCreditBadge deadline={creditInfo.deadline} amount={creditInfo.remaining} />}
-                      </td>
-                      <td className="cell-muted">{fmtDate(obs.createdAt)}</td>
-                      <td style={{ fontWeight: 700, color: isCredit ? 'var(--success)' : 'var(--danger)', direction: 'ltr', textAlign: 'left' }}>
-                        {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
-                      </td>
-                      <td>
-                        <div className="row-actions">
-                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים" onClick={() => setSelectedObligationDetails(obs)}>
-                            <svg className="icon"><use href="#i-info" /></svg>
-                          </button>
-                          {obs.isManual !== false && (
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="מחק" onClick={() => removeObligation(obligations.indexOf(obs))}>
-                              <svg className="icon"><use href="#i-trash" /></svg>
+            <div className="table-scroll">
+              <table className="data">
+                <thead>
+                  <tr><th>תיאור</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}></th></tr>
+                </thead>
+                <tbody>
+                  {sortedObligations.map((obs, idx) => {
+                    const descText = (obs.productName || obs.description || '').replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '').trim() || (obs.isManual ? 'חיוב ידני' : 'חיוב מחירון');
+                    // חיוב שלילי הוא זיכוי/ביטול — הסימן וכיוון ה-LTR נדרשים במפורש, אחרת אלגוריתם
+                    // הכיווניות של הדפדפן מציג "₪-45" הפוך בתוך הקשר RTL
+                    const isCredit = obs.amount < 0;
+                    const creditInfo = getCancellationCreditInfo(obs);
+                    const iconId = getObligationIcon(obs);
+                    return (
+                      <tr key={idx}>
+                        <td className="cell-primary">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                            <svg className="icon" style={{ width: '14px', height: '14px', color: 'var(--text-3)' }}><use href={`#${iconId}`} /></svg>
+                            {descText}
+                          </div>
+                          {creditInfo && <CancellationCreditBadge deadline={creditInfo.deadline} amount={creditInfo.remaining} />}
+                        </td>
+                        <td className="cell-muted">{fmtDate(obs.createdAt)}</td>
+                        <td style={{ fontWeight: 700, color: isCredit ? 'var(--success)' : 'var(--danger)', direction: 'ltr', textAlign: 'left' }}>
+                          {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
+                        </td>
+                        <td>
+                          <div className="row-actions">
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים" onClick={() => setSelectedObligationDetails(obs)}>
+                              <svg className="icon"><use href="#i-info" /></svg>
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                            {obs.isManual !== false && (
+                              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="מחק" onClick={() => removeObligation(obligations.indexOf(obs))}>
+                                <svg className="icon"><use href="#i-trash" /></svg>
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div className="table-wrap">
-            <div className="empty-state">
-              <svg className="icon"><use href="#i-receipt" /></svg>
-              <h4>אין חיובים מתועדים</h4>
+            <div className="table-scroll">
+              <div className="empty-state">
+                <svg className="icon"><use href="#i-receipt" /></svg>
+                <h4>אין חיובים מתועדים</h4>
+              </div>
             </div>
           </div>
         )}
@@ -690,48 +694,52 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         </div>
         {activePayments.length > 0 ? (
           <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr><th>אופן</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}></th></tr>
-              </thead>
-              <tbody>
-                {sortedPayments.map((p, idx) => {
-                  // תשלום שלילי הוא זיכוי/החזר שנרשם כתנועה שלילית — אותו טיפול סימן/כיווניות
-                  // כמו בטבלת החיובים, כדי שלא יוצג "₪-45" (סימן במקום הלא נכון) בהקשר RTL
-                  const isCreditPayment = p.amount < 0;
-                  return (
-                    <tr key={idx}>
-                      <td className="cell-primary">
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                          <svg className="icon" style={{ width: '14px', height: '14px', color: 'var(--text-3)' }}><use href="#i-coin" /></svg>
-                          {p.paymentMethod || '-'}
-                        </div>
-                      </td>
-                      <td className="cell-muted">{fmtDate(p.paymentDate)}</td>
-                      <td style={{ fontWeight: 700, color: isCreditPayment ? 'var(--info)' : 'var(--success)', direction: 'ltr', textAlign: 'left' }}>
-                        {isCreditPayment ? `-₪${Math.abs(p.amount)}` : `₪${p.amount}`}
-                      </td>
-                      <td>
-                        <div className="row-actions">
-                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים" onClick={() => setSelectedPaymentDetails(p)}>
-                            <svg className="icon"><use href="#i-info" /></svg>
-                          </button>
-                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="מחק" onClick={() => removePayment(payments.indexOf(p))}>
-                            <svg className="icon"><use href="#i-trash" /></svg>
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+            <div className="table-scroll">
+              <table className="data">
+                <thead>
+                  <tr><th>אופן</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}></th></tr>
+                </thead>
+                <tbody>
+                  {sortedPayments.map((p, idx) => {
+                    // תשלום שלילי הוא זיכוי/החזר שנרשם כתנועה שלילית — אותו טיפול סימן/כיווניות
+                    // כמו בטבלת החיובים, כדי שלא יוצג "₪-45" (סימן במקום הלא נכון) בהקשר RTL
+                    const isCreditPayment = p.amount < 0;
+                    return (
+                      <tr key={idx}>
+                        <td className="cell-primary">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                            <svg className="icon" style={{ width: '14px', height: '14px', color: 'var(--text-3)' }}><use href="#i-coin" /></svg>
+                            {p.paymentMethod || '-'}
+                          </div>
+                        </td>
+                        <td className="cell-muted">{fmtDate(p.paymentDate)}</td>
+                        <td style={{ fontWeight: 700, color: isCreditPayment ? 'var(--info)' : 'var(--success)', direction: 'ltr', textAlign: 'left' }}>
+                          {isCreditPayment ? `-₪${Math.abs(p.amount)}` : `₪${p.amount}`}
+                        </td>
+                        <td>
+                          <div className="row-actions">
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים" onClick={() => setSelectedPaymentDetails(p)}>
+                              <svg className="icon"><use href="#i-info" /></svg>
+                            </button>
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="מחק" onClick={() => removePayment(payments.indexOf(p))}>
+                              <svg className="icon"><use href="#i-trash" /></svg>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div className="table-wrap">
-            <div className="empty-state">
-              <svg className="icon"><use href="#i-coin" /></svg>
-              <h4>לא בוצעו תשלומים</h4>
+            <div className="table-scroll">
+              <div className="empty-state">
+                <svg className="icon"><use href="#i-coin" /></svg>
+                <h4>לא בוצעו תשלומים</h4>
+              </div>
             </div>
           </div>
         )}
@@ -744,32 +752,36 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         </div>
         {pendingRefunds.length > 0 ? (
           <div className="table-wrap">
-            <table className="data">
-              <thead>
-                <tr><th>פרטים / סיבה</th><th>תאריך בקשה</th><th>סכום</th><th style={{ width: '110px' }}></th></tr>
-              </thead>
-              <tbody>
-                {pendingRefunds.map((r, idx) => (
-                  <tr key={idx}>
-                    <td className="cell-primary">{r.reason || 'ללא סיבה'}</td>
-                    <td className="cell-muted">{fmtDate(r.createdAt)}</td>
-                    <td style={{ fontWeight: 700, color: 'var(--info)', direction: 'ltr', textAlign: 'left' }}>₪{r.amount}</td>
-                    <td>
-                      <button type="button" className="btn btn-primary btn-sm" disabled={isProcessing} onClick={() => approveRefund(r.id)}>
-                        {isProcessing ? <span className="spinner" style={{ width: '13px', height: '13px', borderWidth: '2px' }} /> : 'אשר ביצוע'}
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="table-scroll">
+              <table className="data">
+                <thead>
+                  <tr><th>פרטים / סיבה</th><th>תאריך בקשה</th><th>סכום</th><th style={{ width: '110px' }}></th></tr>
+                </thead>
+                <tbody>
+                  {pendingRefunds.map((r, idx) => (
+                    <tr key={idx}>
+                      <td className="cell-primary">{r.reason || 'ללא סיבה'}</td>
+                      <td className="cell-muted">{fmtDate(r.createdAt)}</td>
+                      <td style={{ fontWeight: 700, color: 'var(--info)', direction: 'ltr', textAlign: 'left' }}>₪{r.amount}</td>
+                      <td>
+                        <button type="button" className="btn btn-primary btn-sm" disabled={isProcessing} onClick={() => approveRefund(r.id)}>
+                          {isProcessing ? <span className="spinner" style={{ width: '13px', height: '13px', borderWidth: '2px' }} /> : 'אשר ביצוע'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         ) : (
           <div className="table-wrap">
-            <div className="empty-state">
-              <svg className="icon"><use href="#i-refresh" /></svg>
-              <h4>אין זיכויים ממתינים</h4>
-              <p>בקשות זיכוי שנוצרו יופיעו כאן וימתינו לאישור ביצוע.</p>
+            <div className="table-scroll">
+              <div className="empty-state">
+                <svg className="icon"><use href="#i-refresh" /></svg>
+                <h4>אין זיכויים ממתינים</h4>
+                <p>בקשות זיכוי שנוצרו יופיעו כאן וימתינו לאישור ביצוע.</p>
+              </div>
             </div>
           </div>
         )}

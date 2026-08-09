@@ -113,8 +113,17 @@ export default function ModernOrderCard({
   return (
     <>
       <div className="page-head">
-        <div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h1>הזמנה #{order.orderId}</h1>
+          <button
+            type="button"
+            className={`btn btn-ghost btn-icon-only btn-sm`}
+            style={{ color: order.hasSignedRegulations ? 'var(--success)' : 'var(--text-3)' }}
+            onClick={onToggleSignature}
+            title={order.hasSignedRegulations ? 'חתם על תקנון השכרה — לחץ לשינוי' : 'לא חתם על תקנון — לחץ לשינוי'}
+          >
+            <svg className="icon"><use href={order.hasSignedRegulations ? '#i-check-circle' : '#i-x-circle'} /></svg>
+          </button>
         </div>
         <div className="page-actions">
           <button
@@ -128,17 +137,6 @@ export default function ModernOrderCard({
           >
             <svg className="icon"><use href="#i-wallet" /></svg>
             {debt !== 0 && `₪${Math.abs(debt).toLocaleString('he-IL')}`}
-          </button>
-
-          <button
-            type="button"
-            className={`badge ${order.hasSignedRegulations ? 'badge-success' : 'badge-neutral'}`}
-            style={{ border: 'none', cursor: 'pointer' }}
-            onClick={onToggleSignature}
-            title={order.hasSignedRegulations ? 'חתם על תקנון השכרה — לחץ לשינוי' : 'לא חתם על תקנון — לחץ לשינוי'}
-          >
-            <svg className="icon"><use href={order.hasSignedRegulations ? '#i-check-circle' : '#i-x-circle'} /></svg>
-            {order.hasSignedRegulations ? 'חתם' : 'לא חתם'}
           </button>
 
           {isPastEvent && (
@@ -161,7 +159,7 @@ export default function ModernOrderCard({
             triggerTitle="הדפסה / מייל"
           />
 
-          <button type="button" className="btn btn-danger-ghost btn-icon-only" title="מחיקת הזמנה" onClick={onDelete}>
+          <button type="button" className="btn btn-ghost btn-icon-only" style={{ color: 'var(--danger)' }} title="מחיקת הזמנה" onClick={onDelete}>
             <svg className="icon"><use href="#i-trash" /></svg>
           </button>
 

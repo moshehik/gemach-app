@@ -165,49 +165,51 @@ export default function InventoryAlertsPage() {
         </div>
       ) : (
         <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th className={sort.key === 'dressName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('dressName')}>דגם <SortIcon sort={sort} colKey="dressName" /></th>
-                <th className={sort.key === 'sizeText' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sizeText')}>מידה <SortIcon sort={sort} colKey="sizeText" /></th>
-                <th className={sort.key === 'fromDate' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('fromDate')}>תאריכי חריגה <SortIcon sort={sort} colKey="fromDate" /></th>
-                <th className={sort.key === 'inStock' ? 'sortable sort-active' : 'sortable'} style={{ textAlign: 'center' }} onClick={() => handleSort('inStock')}>במלאי <SortIcon sort={sort} colKey="inStock" /></th>
-                <th className={sort.key === 'demanded' ? 'sortable sort-active' : 'sortable'} style={{ textAlign: 'center' }} onClick={() => handleSort('demanded')}>ביקוש <SortIcon sort={sort} colKey="demanded" /></th>
-                <th style={{ textAlign: 'center' }}>פעולות</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sortRows(alerts, sort, (a, key) => a[key]).map((alert, idx) => (
-                <tr key={idx}>
-                  <td className="cell-primary">
-                    {alert.modelId ? (
-                      <a href={`/dashboard/dresses/${alert.modelId}`} title="פתח כרטיס דגם" style={{ color: 'var(--primary-solid)', textDecoration: 'none', fontWeight: 700 }}>
-                        {alert.dressName}
-                      </a>
-                    ) : alert.dressName}
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      {alert.sizeText}
-                      <StatusSummary summary={alert.statusSummary} />
-                    </div>
-                  </td>
-                  <td style={{ color: 'var(--danger)', fontWeight: 600 }}>
-                    {formatDate(alert.fromDate)}
-                    {alert.fromDate !== alert.toDate && ` - ${formatDate(alert.toDate)}`}
-                  </td>
-                  <td style={{ textAlign: 'center', fontWeight: 600 }}>{alert.inStock}</td>
-                  <td style={{ textAlign: 'center', color: 'var(--danger)', fontWeight: 800 }}>{alert.demanded}</td>
-                  <td style={{ textAlign: 'center' }}>
-                    <button type="button" className="btn btn-danger btn-sm" onClick={() => setSelectedOrders(alert.orders)}>
-                      <svg className="icon"><use href="#i-alert-tri" /></svg>
-                      צפה בהזמנות ({alert.orders.length})
-                    </button>
-                  </td>
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th className={sort.key === 'dressName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('dressName')}>דגם <SortIcon sort={sort} colKey="dressName" /></th>
+                  <th className={sort.key === 'sizeText' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sizeText')}>מידה <SortIcon sort={sort} colKey="sizeText" /></th>
+                  <th className={sort.key === 'fromDate' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('fromDate')}>תאריכי חריגה <SortIcon sort={sort} colKey="fromDate" /></th>
+                  <th className={sort.key === 'inStock' ? 'sortable sort-active' : 'sortable'} style={{ textAlign: 'center' }} onClick={() => handleSort('inStock')}>במלאי <SortIcon sort={sort} colKey="inStock" /></th>
+                  <th className={sort.key === 'demanded' ? 'sortable sort-active' : 'sortable'} style={{ textAlign: 'center' }} onClick={() => handleSort('demanded')}>ביקוש <SortIcon sort={sort} colKey="demanded" /></th>
+                  <th style={{ textAlign: 'center' }}>פעולות</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {sortRows(alerts, sort, (a, key) => a[key]).map((alert, idx) => (
+                  <tr key={idx}>
+                    <td className="cell-primary">
+                      {alert.modelId ? (
+                        <a href={`/dashboard/dresses/${alert.modelId}`} title="פתח כרטיס דגם" style={{ color: 'var(--primary-solid)', textDecoration: 'none', fontWeight: 700 }}>
+                          {alert.dressName}
+                        </a>
+                      ) : alert.dressName}
+                    </td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {alert.sizeText}
+                        <StatusSummary summary={alert.statusSummary} />
+                      </div>
+                    </td>
+                    <td style={{ color: 'var(--danger)', fontWeight: 600 }}>
+                      {formatDate(alert.fromDate)}
+                      {alert.fromDate !== alert.toDate && ` - ${formatDate(alert.toDate)}`}
+                    </td>
+                    <td style={{ textAlign: 'center', fontWeight: 600 }}>{alert.inStock}</td>
+                    <td style={{ textAlign: 'center', color: 'var(--danger)', fontWeight: 800 }}>{alert.demanded}</td>
+                    <td style={{ textAlign: 'center' }}>
+                      <button type="button" className="btn btn-danger btn-sm" onClick={() => setSelectedOrders(alert.orders)}>
+                        <svg className="icon"><use href="#i-alert-tri" /></svg>
+                        צפה בהזמנות ({alert.orders.length})
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
 
           <div className="table-foot">
             <span>סה&quot;כ דגמים בחריגה: {alerts.length}</span>

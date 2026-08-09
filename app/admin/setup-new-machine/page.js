@@ -30,24 +30,26 @@ export default function SetupNewMachinePage() {
         <p>לאחר העתקת התיקייה, מריצים מתוך <code dir="ltr">gemach-app/</code>:</p>
 
         <div className="table-wrap" style={{ marginBottom: '16px' }}>
-          <table className="data">
-            <thead>
-              <tr>
-                <th>פקודה</th>
-                <th>מה קורה</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="cell-primary"><code dir="ltr">powershell -ExecutionPolicy Bypass -File scripts\setup\setup-new-machine.ps1</code></td>
-                <td>מריץ את סקריפט ההתקנה המלא (ר&apos; שלבים למטה).</td>
-              </tr>
-              <tr>
-                <td className="cell-primary">לחיצה כפולה על הקובץ + &quot;Run with PowerShell&quot;</td>
-                <td>אותה תוצאה, בלי שורת פקודה.</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>פקודה</th>
+                  <th>מה קורה</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="cell-primary"><code dir="ltr">powershell -ExecutionPolicy Bypass -File scripts\setup\setup-new-machine.ps1</code></td>
+                  <td>מריץ את סקריפט ההתקנה המלא (ר&apos; שלבים למטה).</td>
+                </tr>
+                <tr>
+                  <td className="cell-primary">לחיצה כפולה על הקובץ + &quot;Run with PowerShell&quot;</td>
+                  <td>אותה תוצאה, בלי שורת פקודה.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <p><strong>שלבי הסקריפט:</strong></p>
@@ -73,24 +75,26 @@ export default function SetupNewMachinePage() {
         <p>אחרי שההתקנה הצליחה וקבצי הסביבה במקום:</p>
 
         <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>פקודה</th>
-                <th>מה קורה</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td className="cell-primary"><code dir="ltr">npm run dev</code></td>
-                <td>מרים שרת פיתוח מקומי בכתובת <code dir="ltr">http://localhost:3000</code>.</td>
-              </tr>
-              <tr>
-                <td className="cell-primary"><code dir="ltr">npm run build</code> ואז <code dir="ltr">npm start</code></td>
-                <td>הרצה במצב production מקומי (build מלא, כולל <code dir="ltr">prisma generate</code>).</td>
-              </tr>
-            </tbody>
-          </table>
+          <div className="table-scroll">
+            <table className="data">
+              <thead>
+                <tr>
+                  <th>פקודה</th>
+                  <th>מה קורה</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td className="cell-primary"><code dir="ltr">npm run dev</code></td>
+                  <td>מרים שרת פיתוח מקומי בכתובת <code dir="ltr">http://localhost:3000</code>.</td>
+                </tr>
+                <tr>
+                  <td className="cell-primary"><code dir="ltr">npm run build</code> ואז <code dir="ltr">npm start</code></td>
+                  <td>הרצה במצב production מקומי (build מלא, כולל <code dir="ltr">prisma generate</code>).</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <h2>יומן שינויים</h2>
