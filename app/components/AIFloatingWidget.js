@@ -275,7 +275,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
         onClick={() => setIsOpen(true)}
         style={{
           position: 'fixed',
-          bottom: '80px',
+          bottom: '20px',
           insetInlineStart: '20px',
           width: '44px',
           height: '44px',
@@ -306,7 +306,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
     <>
       <div className="print-hide card ai-widget-panel" style={{
         position: 'fixed',
-        bottom: '80px',
+        bottom: '20px',
         insetInlineStart: 'calc(var(--sidebar-current-w) + 20px)',
         width: isExpanded ? '600px' : '380px',
         height: isExpanded ? '80vh' : '550px',

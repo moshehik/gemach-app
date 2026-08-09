@@ -272,6 +272,17 @@ a{color:inherit; text-decoration:none}
 .icon-btn .icon{width:17px;height:17px}
 .icon-btn .dot{position:absolute; top:6px; inset-inline-end:6px; width:7px; height:7px; border-radius:50%; background:var(--accent-solid); border:1.5px solid var(--surface)}
 
+/* אזור אייקונים מאוחד בקצה ה-topbar (רענון → פרופיל): מסגרת אחת משותפת
+   על רקע surface, וכל כפתור בתוכה שקוף לגמרי — hover עדין בלבד */
+.topbar-icon-cluster{
+  display:flex; align-items:center; gap:2px; flex:0 0 auto;
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:var(--radius-full); padding:3px 6px;
+}
+.topbar-icon-cluster .icon-btn{background:transparent; border:none}
+.topbar-icon-cluster .icon-btn:hover{background:var(--surface-alt)}
+.topbar-icon-cluster .user-chip{padding-inline-start:4px}
+
 /* ---- topbar pinned-shortcuts row — mirrors the sidebar's .nav-pin-btn: each
    pinned item is a normal .icon-btn (a <Link>) with a hover-revealed remove
    badge, same corner-badge language as .icon-btn .dot above ---- */
@@ -460,10 +471,10 @@ a{color:inherit; text-decoration:none}
 .datepicker-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px}
 .datepicker-head strong{font-size:13.5px}
 .datepicker-nav{display:flex; gap:2px}
-.datepicker-weekdays{display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:10.5px; font-weight:700; color:var(--text-3); margin-bottom:4px}
-.datepicker-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:2px}
-.datepicker-day{aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:var(--radius-sm); font-size:12.5px; cursor:pointer; color:var(--text); gap:0; border:1.5px solid transparent}
-.datepicker-day .g-num{font-size:8.5px; color:var(--text-3)}
+.datepicker-weekdays{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); text-align:center; font-size:10.5px; font-weight:700; color:var(--text-3); margin-bottom:4px}
+.datepicker-grid{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:2px}
+.datepicker-day{aspect-ratio:1; display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:var(--radius-sm); font-size:12.5px; cursor:pointer; color:var(--text); gap:0; border:1.5px solid transparent; min-width:0; overflow:hidden}
+.datepicker-day .g-num{font-size:8.5px; color:var(--text-3); max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding-inline:1px}
 .datepicker-day:hover{background:var(--surface-alt)}
 .datepicker-day.muted{color:var(--text-3); opacity:.4}
 .datepicker-day.today{border-color:var(--primary-solid)}
@@ -486,6 +497,9 @@ a{color:inherit; text-decoration:none}
 .date-range-trigger .seg-arrow .icon{width:12px;height:12px}
 .date-range-trigger .trigger-icon{width:33px;height:33px;border-radius:50%; display:flex; align-items:center; justify-content:center; color:var(--text-3); background:var(--surface-alt); flex:0 0 auto}
 .date-range-trigger .trigger-icon .icon{width:16px;height:16px}
+/* וריאנט "שטוח" לסרגלי סינון: אותו עיצוב ואותו גובה כמו .search-toolbar שלצידו —
+   רדיוס זהה במקום גלולה, וגובה שנמתח לגובה השורה (השתמש עם .toolbar align-items:stretch) */
+.range-flat .date-range-trigger{height:100%; min-height:41px; border-radius:var(--radius-sm)}
 
 /* ============================================================
    BADGES / STATUS PILLS
@@ -569,7 +583,12 @@ table.data tbody tr.row-flag{background:var(--danger-tint)}
   background:var(--surface-alt); font-size:12.5px; color:var(--text-2);
   position:sticky; bottom:0; z-index:2; border-radius:0 0 var(--radius-lg) var(--radius-lg);
   box-shadow:0 -4px 8px -4px rgba(20,10,15,.08);
+  transition:border-radius .15s ease;
 }
+/* בזמן שהשורה תקועה בתחתית החלון (StickyTableHeaders מדליק .is-stuck) הפינות המעוגלות
+   חושפות את תאי הטבלה שמאחוריהן דרך מפרצי הפינות השקופים — לכן הן מתיישרות זמנית;
+   כשמגיעים לסוף הטבלה המחלקה יורדת והפינות המעוגלות של המסגרת חוזרות. */
+.table-foot.is-stuck{border-radius:0}
 /* a pagination bar placed ABOVE the table (rare — most tables only have one, at the bottom)
    must not sticky-to-viewport-bottom or use bottom-rounded corners like the normal .table-foot */
 .table-foot-top{position:static; border-top:none; border-bottom:1px solid var(--border); border-radius:var(--radius-lg) var(--radius-lg) 0 0; box-shadow:none}
@@ -647,6 +666,21 @@ table.data tbody tr.row-flag{background:var(--danger-tint)}
 .modal-body{padding:22px}
 .modal-body .field:last-child{margin-bottom:0}
 .modal-foot{display:flex; justify-content:flex-end; gap:8px; padding:14px 22px; border-top:1px solid var(--border); background:var(--surface-alt)}
+
+/* ---- חלונית הלוח הכפול (HebrewDateRangePicker): מודל בגובה קבוע — הגוף נגלל, הכותרת והכפתורים תמיד גלויים.
+   חייב לשבת אחרי חוקי ה-.modal ובספציפיות כפולה, אחרת max-width:520px של .modal דורס ---- */
+.modal.range-cal-modal{width:auto; max-width:min(100%,680px); max-height:92vh; margin:0; display:flex; flex-direction:column; min-width:0}
+.modal.range-cal-modal .modal-body{overflow-y:auto; overscroll-behavior:contain}
+.modal.range-cal-modal .modal-foot{flex-wrap:wrap}
+.range-cal-summary{margin:4px 0 0 0; font-size:12.5px; color:var(--text-3)}
+.range-cal-summary strong{color:var(--primary-solid)}
+.range-cal-count{font-weight:700}
+.range-cal-presets{margin-bottom:12px; align-items:center}
+.range-cal-presets-label{font-size:12.5px; font-weight:700; color:var(--text-3)}
+.range-cal-controls{display:flex; align-items:center; gap:8px; margin-bottom:14px}
+.range-cal-controls .select{flex:1; min-width:0}
+.range-cal-panels{display:flex; flex-wrap:wrap; gap:14px; justify-content:center}
+.datepicker.range-panel{width:280px; max-width:100%; box-shadow:none; border:1px solid var(--border); padding:10px 12px}
 
 /* ============================================================
    PALETTE PRESETS — live switcher, alternate brand hues
@@ -1173,173 +1207,10 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
 .combobox-option mark{background:var(--accent-tint); color:var(--accent-solid); border-radius:3px; padding:0 1px}
 .combobox-option .meta{margin-inline-start:auto; font-size:11.5px; color:var(--text-3)}
 
-/* ============================================================
-   KIOSK SHELL — scoped scale-up for the customer self-service
-   screen (page-kiosk); reuses every shared component but at
-   genuine touch scale, distinct from the dense admin screens
-   ============================================================ */
-.kiosk-shell{font-size:17px; max-width:1120px; margin:0 auto; padding:16px 16px 24px}
-.kiosk-shell .btn{font-size:16px; padding:14px 24px; border-radius:12px}
-.kiosk-shell .btn .icon{width:19px; height:19px}
-.kiosk-shell .btn-icon-only{width:56px; height:56px; border-radius:16px}
-.kiosk-shell .btn-lg{padding:18px 32px; font-size:18px; border-radius:14px}
-.kiosk-shell .pill-tab{font-size:15px; padding:12px 22px}
-.kiosk-shell .badge{font-size:14px; padding:7px 14px}
-.kiosk-shell .input{font-size:17px; padding:15px 18px; border-radius:12px}
-.kiosk-shell .switch{width:48px; height:28px}
-.kiosk-shell .switch::after{width:24px; height:24px}
-.kiosk-shell .switch.on::after{inset-inline-start:22px}
-.kiosk-shell .checkbox-row{font-size:15px; gap:12px}
-.kiosk-shell .datepicker{width:360px; padding:20px}
-.kiosk-shell .datepicker-day{font-size:15px}
-.kiosk-shell .datepicker-day .g-num{font-size:10px}
-.kiosk-shell .datepicker-head strong{font-size:16px}
-
-/* .kiosk-topbar is now the outer card (row1 = brand+stepper, always shown;
-   row2 = results toolbar, stage 2 only) — see .kiosk-topbar-row1/-row2 below.
-   Previously a single unused flex row; nothing else in the app referenced it. */
-.kiosk-topbar{display:flex; flex-direction:column; gap:16px; padding:16px 22px; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); margin-bottom:22px}
-.kiosk-topbar-row1{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap}
-.kiosk-topbar-row2{display:flex; align-items:center; gap:18px; flex-wrap:wrap; padding-top:16px; border-top:1px solid var(--border)}
-.kiosk-brand{display:flex; align-items:center; gap:12px; font-weight:800; font-size:19px}
-.kiosk-brand .brand-mark{width:44px; height:44px}
-.kiosk-brand .brand-mark .icon{width:22px;height:22px}
-.kiosk-actions{display:flex; gap:10px}
-
-/* ---- stepper: "שלב 1 · בחירת תאריך" / "שלב 2 · קטלוג ותוצאות" — a visual
-   layer over the existing `stage` state (1|2), no new state of its own ---- */
-.kiosk-stepper{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
-.kiosk-step-btn{display:flex; align-items:center; gap:10px; border:none; background:transparent; padding:8px 14px; border-radius:var(--radius-full); font-weight:700; font-size:14px; color:var(--text-3); font-family:var(--font); cursor:pointer; transition:background .15s ease, color .15s ease}
-.kiosk-step-btn .num{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--surface-alt); color:var(--text-3); font-size:13px; font-weight:800; flex-shrink:0}
-.kiosk-step-btn.done .num{background:var(--success); color:var(--text-on-primary)}
-.kiosk-step-btn.current{background:var(--surface-alt); color:var(--primary-hover)}
-.kiosk-step-btn.current .num{background:var(--primary); color:var(--text-on-primary)}
-.kiosk-step-sep{width:26px; height:2px; background:var(--border); border-radius:2px; flex-shrink:0}
-
-/* ---- results toolbar text bits (row2) ---- */
-.kiosk-results-title{display:flex; align-items:center; gap:9px; font-size:17px; white-space:nowrap; color:var(--primary-hover); font-weight:800; margin:0}
-.kiosk-date-chip{display:flex; align-items:center; gap:6px; color:var(--text-3); font-weight:600; font-size:13px; white-space:nowrap}
-.kiosk-count-line{font-weight:700; color:var(--text-2); font-size:13.5px; white-space:nowrap}
-.kiosk-count-line .good{color:var(--success); font-weight:800}
-
-.kiosk-hero{text-align:center; padding:28px 20px 44px; display:flex; flex-direction:column; align-items:center; gap:18px}
-.kiosk-hero h2{font-size:32px}
-.kiosk-hero .kiosk-sub{color:var(--text-2); font-size:16px; margin-top:-10px}
-.kiosk-hero-eyebrow{display:inline-flex; align-items:center; gap:8px; background:var(--accent-tint); color:var(--primary-hover); padding:7px 16px; border-radius:var(--radius-full); font-weight:800; font-size:13px}
-.kiosk-date-chips{display:flex; gap:10px; flex-wrap:wrap; justify-content:center}
-
-/* ---- small gradient icon badge in front of "העוזר החכם" headings (assist-card look) ---- */
-.kiosk-glow-icon{width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:linear-gradient(150deg,var(--accent),var(--primary)); color:var(--text-on-primary); flex-shrink:0}
-.kiosk-glow-icon .icon{width:18px; height:18px}
-.kiosk-search{position:relative; width:100%; max-width:640px}
-.kiosk-search .icon{position:absolute; inset-inline-start:18px; top:50%; transform:translateY(-50%); width:20px; height:20px; color:var(--text-3)}
-.kiosk-search input{width:100%; padding:16px 20px; padding-inline-start:50px; font-size:17px; border-radius:16px; border:1.5px solid var(--border-strong)}
-
-.kiosk-results-head{display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:14px; padding:0 4px 18px; border-bottom:1px solid var(--border); margin-bottom:22px}
-.kiosk-filters{display:flex; gap:8px; flex-wrap:wrap}
-.kiosk-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:20px}
-.kiosk-card{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-md); padding:16px; box-shadow:var(--shadow-sm); transition:box-shadow .15s ease,transform .15s ease; cursor:pointer}
-.kiosk-card:hover{box-shadow:var(--shadow-md); transform:translateY(-2px)}
-.kiosk-card .kiosk-img{height:190px; border-radius:14px; background:var(--surface-alt); display:flex; align-items:center; justify-content:center; margin-bottom:14px}
-.kiosk-card .kiosk-img .icon{width:44px; height:44px; color:var(--text-3)}
-.kiosk-card h3{font-size:18px}
-.kiosk-card .kiosk-code{color:var(--text-3); font-size:13px; margin-bottom:12px}
-.kiosk-size-row{display:flex; gap:8px; flex-wrap:wrap}
-.kiosk-size-pill{padding:9px 14px; border-radius:12px; font-size:14px; font-weight:700; border:1.5px solid transparent}
-.kiosk-size-pill.avail{background:var(--success-tint); color:var(--success); border-color:color-mix(in srgb, var(--success) 25%, transparent)}
-.kiosk-size-pill.out{background:var(--surface-sunken); color:var(--text-3); text-decoration:line-through}
-@media (max-width:900px){ .kiosk-grid{grid-template-columns:repeat(2,1fr)} }
-
-/* ---- kiosk results body: right-side filter panel + grid (RTL: panel first = right) ---- */
-.kiosk-body{display:grid; grid-template-columns:250px 1fr; gap:24px; align-items:start}
-.kiosk-filter-panel{background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:18px; display:flex; flex-direction:column; gap:20px; position:sticky; top:16px}
-.kiosk-filter-head{display:flex; align-items:center; justify-content:space-between}
-.kiosk-filter-group h4{display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-2); text-transform:uppercase; letter-spacing:.03em; margin-bottom:10px}
-.kiosk-filter-group h4 .icon{width:15px; height:15px; color:var(--text-3)}
-.kiosk-filter-check{display:flex; align-items:center; gap:9px; padding:6px 0; font-size:14px; cursor:pointer}
-.kiosk-filter-check input{width:18px; height:18px; accent-color:var(--primary-solid); flex:0 0 auto}
-.kiosk-filter-check .count{margin-inline-start:auto; color:var(--text-3); font-size:12.5px; font-variant-numeric:tabular-nums}
-.kiosk-size-filter-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:6px}
-.kiosk-size-filter-chip{border:1.5px solid var(--border-strong); border-radius:10px; background:var(--surface); padding:8px 4px; text-align:center; cursor:pointer; display:flex; flex-direction:column; gap:1px}
-.kiosk-size-filter-chip strong{font-size:13px}
-.kiosk-size-filter-chip .count{font-size:10px; color:var(--text-3)}
-.kiosk-size-filter-chip.active{border-color:var(--primary-solid); background:var(--primary-tint)}
-.kiosk-size-filter-chip.zero{opacity:.4}
-.kiosk-view-toggle{display:inline-flex; border:1px solid var(--border-strong); border-radius:10px; overflow:hidden}
-.kiosk-view-toggle button{width:40px; height:36px; border:none; background:var(--surface); color:var(--text-2); cursor:pointer; display:flex; align-items:center; justify-content:center; border-inline-start:1px solid var(--border-strong)}
-.kiosk-view-toggle button:first-child{border-inline-start:none}
-.kiosk-view-toggle button.active{background:var(--primary-tint); color:var(--primary-solid)}
-.kiosk-card .more-details{display:flex; align-items:center; gap:5px; margin-top:12px; padding-top:12px; border-top:1px solid var(--border); font-size:12.5px; font-weight:700; color:var(--primary-solid); cursor:pointer}
-@media (max-width:900px){ .kiosk-body{grid-template-columns:1fr} .kiosk-filter-panel{position:static} }
-
-/* ============================================================
-   WARM ATELIER — kiosk-only palette override
-   Source mockup: kiosk-design-mockups/design-11-warm-atelier.html
-   ("אטלייה חמה"). Per explicit user request this is intentionally
-   NOT the app's "אריג" burgundy palette — it's a separate look used
-   only on the customer kiosk screen. Every shared component under
-   .kiosk-shell (.btn, .card, .badge, .input, .modal, .datepicker,
-   .list-card, .table-wrap, the .kiosk-* classes above, etc.) already
-   reads its colors from the tokens below, so overriding them here —
-   scoped strictly to .kiosk-shell — reskins the whole screen without
-   touching a single component's own CSS or leaking into the rest of
-   the app. Deliberately light-only (no dark-mode variant): the mockup
-   itself has none, and the physical kiosk terminal always runs in a
-   bright, fixed light mode regardless of an employee's theme prefs.
-   ============================================================ */
-.kiosk-shell{
-  --bg:#FBF3EA; --surface:#FFFFFF; --surface-alt:#F4E7D8; --surface-sunken:#EFDBC0;
-  --border:#E7D6C2; --border-strong:#D9C3A0;
-  --text:#2B221C; --text-2:#6E5F52; --text-3:#A6957F; --text-on-primary:#FFF8F0;
-
-  --primary:#B5533C; --primary-hover:#8F3E2C; --primary-solid:var(--primary);
-  --primary-tint:#F1DFB8; --primary-tint-2:#E7CB93;
-
-  --accent:#C79A4B; --accent-solid:var(--accent); --accent-tint:#F1DFB8;
-
-  --success:#5C7A5C; --success-solid:var(--success); --success-tint:#E1EBDF;
-  --warning:#96661F; --warning-tint:#F1DFB8;
-  --danger:#B4483C; --danger-solid:var(--danger); --danger-tint:#F6DFDB;
-  /* pinned so the full-coverage custom palettes (which now also set the info
-     tint at :root) can never leak into the fixed "Warm Atelier" kiosk look */
-  --info:#3E6E8C; --info-tint:#E3EEF3;
-
-  --radius-sm:10px; --radius-md:16px; --radius-lg:26px;
-
-  --shadow-sm:0 2px 6px rgba(60,40,20,.08);
-  --shadow-md:0 10px 28px rgba(60,40,20,.12);
-  --shadow-lg:0 22px 50px rgba(60,40,20,.18);
-
-  background:
-    radial-gradient(1200px 600px at 15% -10%, var(--primary-tint) 0%, transparent 60%),
-    radial-gradient(1000px 700px at 110% 10%, #F0D9C4 0%, transparent 55%),
-    var(--bg);
-  border-radius: var(--radius-lg);
-}
-/* Recessed cream form fields against white cards — matches the mockup's
-   nested-surface convention (e.g. its .filter-group input, .ai-ask input,
-   .assist-input-row input all sit on --paper while the card around them is
-   --card/white). The shared .input/.select/.textarea rule uses --surface,
-   the same token .card uses, so it's remapped here rather than in --surface
-   itself (that would flatten every card to cream too). */
-.kiosk-shell .input, .kiosk-shell .select, .kiosk-shell .textarea{background:var(--surface-alt)}
-
-/* HebrewDatePicker's popover portals to document.body (see
-   components/HebrewDatePicker.js, createPortal) — it renders as a sibling of
-   <body>'s other children, not a DOM descendant of .kiosk-shell, so the
-   scoped override above can't reach it through normal CSS-variable
-   inheritance. app/customer-interface/page.js adds/removes this body class
-   for exactly as long as the kiosk page is mounted, giving the popover its
-   own (identical) palette without touching HebrewDatePicker.js itself or
-   affecting the date picker anywhere else in the app. */
-body.kiosk-warm-theme .datepicker{
-  --surface:#FFFFFF; --surface-alt:#F4E7D8; --border:#E7D6C2;
-  --text:#2B221C; --text-2:#6E5F52; --text-3:#A6957F; --text-on-primary:#FFF8F0;
-  --primary-solid:#B5533C; --primary-tint:#F1DFB8;
-  --radius-sm:10px; --radius-lg:26px;
-  --shadow-lg:0 22px 50px rgba(60,40,20,.18);
-}
-body.kiosk-warm-theme .datepicker .select{background:var(--surface-alt)}
+/* NOTE: the customer kiosk screen ("אטלייה חמה") no longer uses the shared
+   design system at all — its full standalone skin lives in
+   app/customer-interface/kiosk.css (ka-* prefixed classes, scoped under
+   .katelier), ported 1:1 from kiosk-design-mockups/design-11-warm-atelier.html. */
 
 /* ============================================================
    RESPONSIVE — adapts to window/device size, from ultra-wide
@@ -1379,8 +1250,6 @@ body.kiosk-warm-theme .datepicker .select{background:var(--surface-alt)}
   body:has(.sidebar.open) .ai-widget-panel{display:none !important}
   .search-box{width:auto; flex:1; min-width:0}
   .topbar-title{font-size:15.5px}
-  .kiosk-shell{font-size:16px}
-  .kiosk-hero h2{font-size:26px}
 }
 /* small tablet / large phone */
 @media (max-width:640px){
@@ -1390,9 +1259,6 @@ body.kiosk-warm-theme .datepicker .select{background:var(--surface-alt)}
   .page-actions{width:100%}
   .page-actions .btn{flex:1}
   .kpi-grid{grid-template-columns:1fr}
-  .kiosk-grid{grid-template-columns:1fr !important}
-  .kiosk-topbar{flex-direction:column; align-items:stretch; gap:10px}
-  .kiosk-actions{justify-content:center}
   .modal-backdrop{padding:14px}
   .modal{max-width:100%}
   .datepicker{width:100%; max-width:320px}

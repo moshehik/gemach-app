@@ -200,7 +200,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
             <button
               type="button"
-              className={`badge ${order.hasSignedRegulations ? 'badge-success' : 'badge-neutral'}`}
+              className={`badge ${order.hasSignedRegulations ? 'badge-success' : 'badge-warning'}`}
               style={{ border: 'none', cursor: 'pointer' }}
               onClick={toggleSignature}
               title="סטטוס חתימה על תקנון — לחץ לשינוי"

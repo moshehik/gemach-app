@@ -115,14 +115,17 @@ export default function ModernOrderCard({
       <div className="page-head">
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <h1>הזמנה #{order.orderId}</h1>
+          {/* תג עם טקסט ולא אייקון בודד — איקס עירום ליד הכותרת נראה כמו כפתור סגירה
+              ולא מסביר את עצמו; התג מקביל לזה שבטאב "פרטים כלליים" */}
           <button
             type="button"
-            className={`btn btn-ghost btn-icon-only btn-sm`}
-            style={{ color: order.hasSignedRegulations ? 'var(--success)' : 'var(--text-3)' }}
+            className={`badge ${order.hasSignedRegulations ? 'badge-success' : 'badge-warning'}`}
+            style={{ border: 'none', cursor: 'pointer' }}
             onClick={onToggleSignature}
             title={order.hasSignedRegulations ? 'חתם על תקנון השכרה — לחץ לשינוי' : 'לא חתם על תקנון — לחץ לשינוי'}
           >
             <svg className="icon"><use href={order.hasSignedRegulations ? '#i-check-circle' : '#i-x-circle'} /></svg>
+            {order.hasSignedRegulations ? 'חתם על תקנון' : 'לא חתם על תקנון'}
           </button>
         </div>
         <div className="page-actions">

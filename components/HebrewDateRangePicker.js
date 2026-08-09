@@ -1,8 +1,8 @@
 'use client';
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { HDate, gematriya, Sedra, Locale } from '@hebcal/core';
-import { HEBREW_DAYS, getHebrewMonthYear, getHebrewDateString, getHebrewMonthName, getHebrewYearString } from '@/lib/hebrewDate';
+import { HEBREW_DAYS, getHebrewDateString } from '@/lib/hebrewDate';
 
 const getMonthsForYear = (year) => {
   const isLeap = HDate.isLeapYear(year);
@@ -23,6 +23,27 @@ const getMonthsForYear = (year) => {
   ];
 };
 
+// ISO מקומי (בלי toISOString שסוטה ל-UTC וזז יום אחורה בערב)
+const toLocalISO = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+};
+
+const hdateToISO = (hd) => toLocalISO(hd.greg());
+
+const nextHebMonth = (year, month) => {
+  const days = HDate.daysInMonth(month, year);
+  const next = new HDate(1, month, year).add(days, 'd');
+  return { year: next.getFullYear(), month: next.getMonth() };
+};
+
+const prevHebMonth = (year, month) => {
+  const prev = new HDate(1, month, year).subtract(1, 'd');
+  return { year: prev.getFullYear(), month: prev.getMonth() };
+};
+
 export default function HebrewDateRangePicker({
   startDate,
   endDate,
@@ -34,135 +55,79 @@ export default function HebrewDateRangePicker({
 }) {
   const [isOpen, setIsOpen] = useState(false);
 
-  // Local active panels month/year state
-  const [fromPanel, setFromPanel] = useState({ year: '', month: '', day: 1 });
-  const [toPanel, setToPanel] = useState({ year: '', month: '', day: 1 });
+  // חודש הבסיס: הפאנל הראשון מציג אותו, השני תמיד את החודש העוקב
+  const [base, setBase] = useState({ year: '', month: '' });
 
-  // Local temporary selection values
+  // בחירה זמנית — נכתבת החוצה רק ב"אישור"
   const [tempStart, setTempStart] = useState('');
   const [tempEnd, setTempEnd] = useState('');
+  const [hoverIso, setHoverIso] = useState('');
 
   const containerRef = useRef(null);
 
-  // Initialize dates when open triggers or props change
+  // אתחול בפתיחה: מתמקמים על חודש תאריך ההתחלה (או היום)
   useEffect(() => {
+    if (!isOpen) return;
     try {
-      const today = new Date();
       const start = startDate ? new Date(startDate) : null;
-      const end = endDate ? new Date(endDate) : null;
-
-      const parsedStart = (start && !isNaN(start.getTime())) ? start : today;
-      const parsedEnd = (end && !isNaN(end.getTime())) ? end : null;
-
-      const hdStart = new HDate(parsedStart);
-      setFromPanel({
-        year: hdStart.getFullYear(),
-        month: hdStart.getMonth(),
-        day: hdStart.getDate()
-      });
-
-      if (parsedEnd) {
-        const hdEnd = new HDate(parsedEnd);
-        if (hdEnd.getFullYear() === hdStart.getFullYear() && hdEnd.getMonth() === hdStart.getMonth()) {
-          const daysInMonth = HDate.daysInMonth(hdStart.getMonth(), hdStart.getFullYear());
-          const hdNext = new HDate(1, hdStart.getMonth(), hdStart.getFullYear()).add(daysInMonth + 1, 'd');
-          setToPanel({
-            year: hdNext.getFullYear(),
-            month: hdNext.getMonth(),
-            day: 1
-          });
-        } else {
-          setToPanel({
-            year: hdEnd.getFullYear(),
-            month: hdEnd.getMonth(),
-            day: hdEnd.getDate()
-          });
-        }
-      } else {
-        // Default to panel: next month
-        const daysInMonth = HDate.daysInMonth(hdStart.getMonth(), hdStart.getFullYear());
-        const hdNext = new HDate(1, hdStart.getMonth(), hdStart.getFullYear()).add(daysInMonth + 1, 'd');
-        setToPanel({
-          year: hdNext.getFullYear(),
-          month: hdNext.getMonth(),
-          day: 1
-        });
-      }
-
-      setTempStart(startDate || '');
-      setTempEnd(endDate || '');
+      const parsedStart = (start && !isNaN(start.getTime())) ? start : new Date();
+      const hd = new HDate(parsedStart);
+      setBase({ year: hd.getFullYear(), month: hd.getMonth() });
+      // נרמול לתאריך-בלבד: ב-orders/new הערכים מגיעים עם שעה (2026-01-01T10:00)
+      // וההשוואות וההדגשה בגריד עובדות על מחרוזות YYYY-MM-DD
+      setTempStart((startDate || '').split('T')[0]);
+      setTempEnd((endDate || '').split('T')[0]);
+      setHoverIso('');
     } catch (e) {
       console.error(e);
     }
-  }, [startDate, endDate, isOpen]);
+  }, [isOpen, startDate, endDate]);
 
-  const toggleOpen = () => {
-    setIsOpen(!isOpen);
-  };
+  // סגירה ב-Escape
+  useEffect(() => {
+    if (!isOpen) return;
+    const onKey = (e) => { if (e.key === 'Escape') setIsOpen(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [isOpen]);
 
-  // Convert Date strings to Hebrew label
-  const getHebrewLabel = (dateStr, fallback) => {
+  const getHebrewLabel = (dateStr, fallback = '') => {
     if (!dateStr) return fallback;
-    const dStr = getHebrewDateString(dateStr);
-    return dStr || fallback;
+    return getHebrewDateString(dateStr) || fallback;
   };
 
-  // Format date to YYYY-MM-DD
-  const formatISO = (hDate) => {
-    const greg = hDate.greg();
-    const year = greg.getFullYear();
-    const month = String(greg.getMonth() + 1).padStart(2, '0');
-    const day = String(greg.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
-
-  // Select day handler
-  const handleSelectDay = (panelType, dayNumber, month, year) => {
-    try {
-      const hd = new HDate(dayNumber, month, year);
-      const isoStr = formatISO(hd);
-
-      if (!tempStart || (tempStart && tempEnd)) {
-        // Start a new selection
-        setTempStart(isoStr);
-        setTempEnd('');
-      } else {
-        // tempStart is set, waiting for tempEnd
-        if (new Date(isoStr) < new Date(tempStart)) {
-          setTempEnd(tempStart);
-          setTempStart(isoStr);
-        } else {
-          setTempEnd(isoStr);
-        }
-      }
-    } catch (e) {
-      console.error(e);
+  const handleSelectDay = (isoStr) => {
+    if (!tempStart || (tempStart && tempEnd)) {
+      setTempStart(isoStr);
+      setTempEnd('');
+    } else if (isoStr < tempStart) {
+      // בחר תאריך מוקדם מההתחלה — מתהפכים
+      setTempEnd(tempStart);
+      setTempStart(isoStr);
+    } else {
+      setTempEnd(isoStr);
     }
   };
 
-  // Clear selections
   const handleClear = () => {
     setTempStart('');
     setTempEnd('');
+    setHoverIso('');
   };
 
-  // Preset ranges
   const applyPreset = (days) => {
     const start = new Date();
     const end = new Date();
     end.setDate(end.getDate() + days);
+    setTempStart(toLocalISO(start));
+    setTempEnd(toLocalISO(end));
+    const hd = new HDate(start);
+    setBase({ year: hd.getFullYear(), month: hd.getMonth() });
+  };
 
-    const isoStart = start.toISOString().split('T')[0];
-    const isoEnd = end.toISOString().split('T')[0];
-
-    setTempStart(isoStart);
-    setTempEnd(isoEnd);
-
-    // Update active months
-    const hdStart = new HDate(start);
-    const hdEnd = new HDate(end);
-    setFromPanel({ year: hdStart.getFullYear(), month: hdStart.getMonth(), day: hdStart.getDate() });
-    setToPanel({ year: hdEnd.getFullYear(), month: hdEnd.getMonth(), day: hdEnd.getDate() });
+  const goToToday = () => {
+    const hd = new HDate();
+    setBase({ year: hd.getFullYear(), month: hd.getMonth() });
   };
 
   const handleApply = () => {
@@ -170,172 +135,66 @@ export default function HebrewDateRangePicker({
     setIsOpen(false);
   };
 
-  // Date array rendering logic
-  const renderCalendarDays = (panelType, currentPanel, setCurrentPanel) => {
-    const { year, month } = currentPanel;
-    if (!year || !month) return null;
+  const secondPanel = useMemo(() => {
+    if (!base.year || !base.month) return null;
+    return nextHebMonth(base.year, base.month);
+  }, [base]);
 
+  // Sedra לשתי השנים המוצגות (ייתכן שהפאנלים חוצים שנה)
+  const sedras = useMemo(() => {
+    const map = {};
+    if (base.year) {
+      try { map[base.year] = new Sedra(base.year, true); } catch (e) {}
+      if (secondPanel && !map[secondPanel.year]) {
+        try { map[secondPanel.year] = new Sedra(secondPanel.year, true); } catch (e) {}
+      }
+    }
+    return map;
+  }, [base.year, secondPanel]);
+
+  const todayAbs = useMemo(() => {
+    try { return new HDate().abs(); } catch (e) { return null; }
+  }, [isOpen]);
+
+  // טווח התצוגה: הטווח שנבחר, או תצוגה מקדימה לפי ריחוף כשנבחרה רק התחלה
+  const previewRange = useMemo(() => {
+    if (tempStart && tempEnd) return { from: tempStart, to: tempEnd };
+    if (tempStart && hoverIso) {
+      return hoverIso < tempStart
+        ? { from: hoverIso, to: tempStart }
+        : { from: tempStart, to: hoverIso };
+    }
+    return null;
+  }, [tempStart, tempEnd, hoverIso]);
+
+  const daysCount = useMemo(() => {
+    if (!tempStart || !tempEnd) return 0;
+    const ms = new Date(tempEnd) - new Date(tempStart);
+    return Math.round(ms / 86400000) + 1;
+  }, [tempStart, tempEnd]);
+
+  const yearOptions = useMemo(() => {
+    const currentHebYear = base.year || new HDate().getFullYear();
+    const opts = [];
+    for (let y = currentHebYear - 30; y < currentHebYear + 30; y++) opts.push(y);
+    return opts;
+  }, [base.year]);
+
+  const renderPanel = ({ year, month }) => {
     const daysInMonth = HDate.daysInMonth(month, year);
     const firstDayOfWeek = new HDate(1, month, year).greg().getDay();
     const blanks = Array.from({ length: firstDayOfWeek });
     const days = Array.from({ length: daysInMonth }, (_, i) => i + 1);
-
-    let gridSedra = null;
-    try {
-      gridSedra = new Sedra(year, true);
-    } catch (e) {}
-
-    return (
-      <>
-        {blanks.map((_, i) => <div key={`blank-${i}`} />)}
-        {days.map(d => {
-          let isSaturday = false;
-          let parashaName = null;
-          let isoDate = '';
-          let isInRange = false;
-
-          try {
-            const hd = new HDate(d, month, year);
-            isoDate = formatISO(hd);
-
-            if (hd.greg().getDay() === 6) {
-              isSaturday = true;
-              if (gridSedra) {
-                const lookup = gridSedra.lookup(hd);
-                parashaName = lookup && lookup.parsha ? lookup.parsha.map(p => Locale.gettext(p, 'he-x-NoNikud')).join('-') : '';
-              }
-            }
-
-            if (tempStart && tempEnd) {
-              const currentMs = new Date(isoDate).getTime();
-              const startMs = new Date(tempStart).getTime();
-              const endMs = new Date(tempEnd).getTime();
-              isInRange = currentMs > startMs && currentMs < endMs;
-            }
-          } catch(e) {}
-
-          const isFromSelected = tempStart === isoDate;
-          const isToSelected = tempEnd === isoDate;
-          const isBoundary = isFromSelected || isToSelected;
-
-          return (
-            <div
-              key={d}
-              onClick={() => handleSelectDay(panelType, d, month, year)}
-              className={`datepicker-day${isBoundary ? ' selected' : ''}${(!isBoundary && isInRange) ? ' in-range' : ''}`}
-            >
-              <span>{HEBREW_DAYS[d]}</span>
-              {isSaturday && parashaName && (
-                <span className="g-num">{parashaName}</span>
-              )}
-            </div>
-          );
-        })}
-      </>
-    );
-  };
-
-  const renderPanel = (panelType, currentPanel, setCurrentPanel, title) => {
-    const { year, month } = currentPanel;
-    if (!year || !month) return null;
-
-    const startYear = year - 15;
-    const yearOptions = [];
-    for (let i = 0; i < 30; i++) {
-      yearOptions.push(startYear + i);
-    }
     const months = getMonthsForYear(year);
-    const currentMonthLabel = months.find(m => m.value === month)?.label || '';
-
-    const handlePrevMonth = () => {
-      const prev = new HDate(1, month, year).subtract(1, 'd');
-      setCurrentPanel({
-        year: prev.getFullYear(),
-        month: prev.getMonth(),
-        day: 1
-      });
-    };
-
-    const handleNextMonth = () => {
-      const days = HDate.daysInMonth(month, year);
-      const next = new HDate(1, month, year).add(days, 'd');
-      setCurrentPanel({
-        year: next.getFullYear(),
-        month: next.getMonth(),
-        day: 1
-      });
-    };
+    const monthLabel = months.find(m => m.value === month)?.label || '';
+    const sedra = sedras[year] || null;
 
     return (
-      <div className="datepicker" style={{ width: '280px', maxWidth: '100%', boxShadow: 'none' }}>
-        {title && (
-          <div style={{ margin: '0 0 10px 0', textAlign: 'center', color: 'var(--primary-solid)', fontWeight: 700, fontSize: '12.5px' }}>
-            {title}
-          </div>
-        )}
-
-        {/* Navigation Month/Year */}
-        <div className="datepicker-head">
-          <strong>{currentMonthLabel} {gematriya(year)}</strong>
-          <div className="datepicker-nav">
-            <button
-              type="button"
-              onClick={handlePrevMonth}
-              className="btn btn-ghost btn-icon-only btn-sm"
-              title="חודש קודם"
-            >
-              <svg className="icon"><use href="#i-chevron-end" /></svg>
-            </button>
-            <button
-              type="button"
-              onClick={handleNextMonth}
-              className="btn btn-ghost btn-icon-only btn-sm"
-              title="חודש הבא"
-            >
-              <svg className="icon"><use href="#i-chevron-start" /></svg>
-            </button>
-          </div>
+      <div className="datepicker range-panel">
+        <div className="datepicker-head" style={{ justifyContent: 'center' }}>
+          <strong>{monthLabel} {gematriya(year)}</strong>
         </div>
 
-        <div className="form-grid" style={{ gap: '8px', marginBottom: '12px' }}>
-          <div className="field" style={{ margin: 0 }}>
-            <select
-              value={month}
-              onChange={e => {
-                const newMonth = parseInt(e.target.value);
-                setCurrentPanel(p => ({ ...p, month: newMonth }));
-              }}
-              className="select"
-            >
-              {months.map(m => (
-                <option key={m.value} value={m.value}>{m.label}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="field" style={{ margin: 0 }}>
-            <select
-              value={year}
-              onChange={e => {
-                const newYear = parseInt(e.target.value);
-                setCurrentPanel(p => {
-                  let newMonth = p.month;
-                  if (newMonth === 13 && !HDate.isLeapYear(newYear)) {
-                    newMonth = 12;
-                  }
-                  return { ...p, year: newYear, month: newMonth };
-                });
-              }}
-              className="select"
-            >
-              {yearOptions.map(y => (
-                <option key={y} value={y}>{gematriya(y)}</option>
-              ))}
-            </select>
-          </div>
-        </div>
-
-        {/* Days Header */}
         <div className="datepicker-weekdays">
           <div>א'</div>
           <div>ב'</div>
@@ -346,27 +205,64 @@ export default function HebrewDateRangePicker({
           <div style={{ color: 'var(--primary-solid)' }}>ש'</div>
         </div>
 
-        {/* Days Grid */}
-        <div className="datepicker-grid">
-          {renderCalendarDays(panelType, currentPanel, setCurrentPanel)}
+        <div className="datepicker-grid" onMouseLeave={() => setHoverIso('')}>
+          {blanks.map((_, i) => <div key={`blank-${i}`} />)}
+          {days.map(d => {
+            let isSaturday = false;
+            let parashaName = null;
+            let isoDate = '';
+            let isToday = false;
+
+            try {
+              const hd = new HDate(d, month, year);
+              isoDate = hdateToISO(hd);
+              isToday = todayAbs !== null && hd.abs() === todayAbs;
+              if (hd.greg().getDay() === 6) {
+                isSaturday = true;
+                if (sedra) {
+                  const lookup = sedra.lookup(hd);
+                  parashaName = lookup && lookup.parsha ? lookup.parsha.map(p => Locale.gettext(p, 'he-x-NoNikud')).join('-') : '';
+                }
+              }
+            } catch (e) {}
+
+            const isBoundary = isoDate && (isoDate === tempStart || isoDate === tempEnd);
+            const isInRange = !isBoundary && previewRange
+              && isoDate > previewRange.from && isoDate < previewRange.to;
+
+            return (
+              <div
+                key={d}
+                onClick={() => isoDate && handleSelectDay(isoDate)}
+                onMouseEnter={() => setHoverIso(isoDate)}
+                className={`datepicker-day${isBoundary ? ' selected' : ''}${isInRange ? ' in-range' : ''}${isToday && !isBoundary ? ' today' : ''}`}
+              >
+                <span>{HEBREW_DAYS[d]}</span>
+                {isSaturday && parashaName && (
+                  <span className="g-num" title={parashaName}>{parashaName}</span>
+                )}
+              </div>
+            );
+          })}
         </div>
       </div>
     );
   };
 
-  const fromLabel = getHebrewLabel(tempStart, placeholderStart);
-  const toLabel = getHebrewLabel(tempEnd, placeholderEnd);
+  const fromLabel = getHebrewLabel(startDate, placeholderStart);
+  const toLabel = getHebrewLabel(endDate, placeholderEnd);
+  const baseMonths = base.year ? getMonthsForYear(base.year) : [];
 
   return (
     <div ref={containerRef} style={{ position: 'relative', width: '100%', ...(style || {}) }} className={className}>
-      {/* Trigger Bar */}
+      {/* פס הטריגר */}
       <div
-        onClick={toggleOpen}
+        onClick={() => setIsOpen(!isOpen)}
         className={`date-range-trigger${isOpen ? ' open' : ''}`}
       >
         <div className="seg">
           <span className="seg-label">מתאריך:</span>
-          <span className={`seg-value${tempStart ? '' : ' placeholder'}`}>{fromLabel}</span>
+          <span className={`seg-value${startDate ? '' : ' placeholder'}`}>{fromLabel}</span>
         </div>
 
         <span className="seg-arrow">
@@ -375,7 +271,7 @@ export default function HebrewDateRangePicker({
 
         <div className="seg seg-end">
           <span className="seg-label">עד תאריך:</span>
-          <span className={`seg-value${tempEnd ? '' : ' placeholder'}`}>{toLabel}</span>
+          <span className={`seg-value${endDate ? '' : ' placeholder'}`}>{toLabel}</span>
         </div>
 
         <div className="trigger-icon">
@@ -383,30 +279,35 @@ export default function HebrewDateRangePicker({
         </div>
       </div>
 
-      {/* Double Calendar Popup Overlay */}
-      {isOpen && typeof document !== 'undefined' && createPortal(
+      {/* חלונית הלוח הכפול */}
+      {isOpen && base.year && typeof document !== 'undefined' && createPortal(
         <div
           className="modal-backdrop"
           style={{ position: 'fixed', inset: 0, zIndex: 100000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
           onClick={() => setIsOpen(false)}
         >
           <div
-            className="modal animate-fade-in"
-            style={{ width: 'auto', maxWidth: '96vw', maxHeight: '92vh', margin: 0, overflowY: 'auto' }}
+            className="modal range-cal-modal animate-fade-in"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header */}
+            {/* כותרת */}
             <div className="modal-head">
               <div>
                 <strong>
                   <svg className="icon"><use href="#i-calendar" /></svg>
-                  בחירת טווח תאריכים עברי
+                  בחירת טווח תאריכים
                 </strong>
-                {tempStart && (
-                  <p style={{ margin: '4px 0 0 0', fontSize: '12.5px', color: 'var(--text-3)' }}>
-                    טווח נבחר: <strong>{getHebrewLabel(tempStart)}</strong> עד <strong>{tempEnd ? getHebrewLabel(tempEnd) : 'אנא בחר...'}</strong>
-                  </p>
-                )}
+                <p className="range-cal-summary">
+                  {tempStart ? (
+                    <>
+                      <strong>{getHebrewLabel(tempStart)}</strong>
+                      {' ← '}
+                      {tempEnd
+                        ? <><strong>{getHebrewLabel(tempEnd)}</strong> <span className="range-cal-count">({daysCount} ימים)</span></>
+                        : 'בחרו תאריך סיום...'}
+                    </>
+                  ) : 'בחרו תאריך התחלה בלוח'}
+                </p>
               </div>
               <button
                 type="button"
@@ -419,39 +320,85 @@ export default function HebrewDateRangePicker({
             </div>
 
             <div className="modal-body">
-              {/* Quick Presets */}
-              <div className="pill-tabs" style={{ marginBottom: '16px', alignItems: 'center' }}>
-                <span style={{ fontSize: '12.5px', alignSelf: 'center', fontWeight: 'bold', color: 'var(--text-3)' }}>בחירה מהירה:</span>
-                <button type="button" onClick={() => applyPreset(7)} className="pill-tab">שבוע (7 ימים)</button>
-                <button type="button" onClick={() => applyPreset(14)} className="pill-tab">שבועיים (14 יום)</button>
-                <button type="button" onClick={() => applyPreset(30)} className="pill-tab">חודש (30 יום)</button>
+              {/* בחירה מהירה */}
+              <div className="pill-tabs range-cal-presets">
+                <span className="range-cal-presets-label">בחירה מהירה:</span>
+                <button type="button" onClick={() => applyPreset(7)} className="pill-tab">שבוע</button>
+                <button type="button" onClick={() => applyPreset(14)} className="pill-tab">שבועיים</button>
+                <button type="button" onClick={() => applyPreset(30)} className="pill-tab">חודש</button>
                 <button type="button" onClick={() => applyPreset(90)} className="pill-tab">3 חודשים</button>
+              </div>
+
+              {/* ניווט משותף לשני החודשים */}
+              <div className="range-cal-controls">
                 <button
                   type="button"
-                  onClick={() => {
-                    const hd = new HDate();
-                    setFromPanel({ year: hd.getFullYear(), month: hd.getMonth(), day: hd.getDate() });
-                    const hdNext = new HDate().add(30, 'd');
-                    setToPanel({ year: hdNext.getFullYear(), month: hdNext.getMonth(), day: hdNext.getDate() });
-                  }}
-                  className="pill-tab active"
+                  onClick={() => setBase(b => prevHebMonth(b.year, b.month))}
+                  className="btn btn-secondary btn-icon-only btn-sm"
+                  title="חודש קודם"
                 >
-                  חודש נוכחי
+                  <svg className="icon"><use href="#i-chevron-end" /></svg>
+                </button>
+
+                <select
+                  value={base.month}
+                  onChange={e => setBase(b => ({ ...b, month: parseInt(e.target.value) }))}
+                  className="select"
+                >
+                  {baseMonths.map(m => (
+                    <option key={m.value} value={m.value}>{m.label}</option>
+                  ))}
+                </select>
+
+                <select
+                  value={base.year}
+                  onChange={e => {
+                    const newYear = parseInt(e.target.value);
+                    setBase(b => {
+                      let newMonth = b.month;
+                      if (newMonth === 13 && !HDate.isLeapYear(newYear)) newMonth = 12;
+                      return { year: newYear, month: newMonth };
+                    });
+                  }}
+                  className="select"
+                >
+                  {yearOptions.map(y => (
+                    <option key={y} value={y}>{gematriya(y)}</option>
+                  ))}
+                </select>
+
+                <button
+                  type="button"
+                  onClick={goToToday}
+                  className="btn btn-secondary btn-icon-only btn-sm"
+                  title="חזרה להיום"
+                >
+                  <svg className="icon"><use href="#i-home" /></svg>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBase(b => nextHebMonth(b.year, b.month))}
+                  className="btn btn-secondary btn-icon-only btn-sm"
+                  title="חודש הבא"
+                >
+                  <svg className="icon"><use href="#i-chevron-start" /></svg>
                 </button>
               </div>
 
-              {/* Panels Container */}
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '18px', justifyContent: 'center', marginBottom: '4px' }}>
-                {renderPanel('from', fromPanel, setFromPanel, 'מתאריך')}
-                {renderPanel('to', toPanel, setToPanel, 'עד תאריך')}
+              {/* שני חודשים עוקבים */}
+              <div className="range-cal-panels">
+                {renderPanel(base)}
+                {secondPanel && renderPanel(secondPanel)}
               </div>
             </div>
 
-            {/* Footer actions */}
+            {/* כפתורי פעולה — תמיד גלויים, לא נגללים */}
             <div className="modal-foot" style={{ justifyContent: 'space-between' }}>
               <button
                 type="button"
                 onClick={handleClear}
+                disabled={!tempStart && !tempEnd}
                 className="btn btn-secondary"
               >
                 נקה בחירה

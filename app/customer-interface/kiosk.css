@@ -1,0 +1,431 @@
+/* =====================================================================
+   WARM ATELIER — customer kiosk skin ("אטלייה חמה")
+   Ported 1:1 from kiosk-design-mockups/design-11-warm-atelier.html and
+   loaded only by app/customer-interface/page.js.
+
+   Every class here is ka-* prefixed and scoped under .katelier, so the
+   app's design system (globals.css / design-system.css) can't style
+   this screen and nothing here leaks out of it. Light-only by design —
+   the mockup has no dark variant and the physical kiosk terminal always
+   runs a bright fixed theme regardless of an employee's theme prefs.
+   ===================================================================== */
+
+.katelier{
+  --paper:#FBF3EA;
+  --paper-deep:#F4E7D8;
+  --card:#FFFFFF;
+  --ink:#2B221C;
+  --ink-soft:#6E5F52;
+  --ink-faint:#A6957F;
+  --line:#E7D6C2;
+  --line-soft:#F1E3D2;
+  --terracotta:#B5533C;
+  --terracotta-deep:#8F3E2C;
+  --gold:#C79A4B;
+  --gold-soft:#F1DFB8;
+  --sage:#5C7A5C;
+  --sage-soft:#E1EBDF;
+  --brick:#B4483C;
+  --brick-soft:#F6DFDB;
+  --shadow-sm:0 2px 6px rgba(60,40,20,0.08);
+  --shadow-md:0 10px 28px rgba(60,40,20,0.12);
+  --shadow-lg:0 22px 50px rgba(60,40,20,0.18);
+  --radius-sm:10px;
+  --radius-md:16px;
+  --radius-lg:26px;
+
+  /* globals.css paints every <th> with var(--sticky-header-bg) !important
+     (sticky-headers infra) — remapping the token here keeps the kiosk table
+     header on the warm paper-deep tone instead of the app's surface-alt */
+  --sticky-header-bg:#F4E7D8;
+
+  font-family:'Segoe UI','Assistant',Arial,sans-serif;
+  color:var(--ink);
+  direction:rtl;
+  max-width:1400px;
+  margin:0 auto;
+  padding:26px 30px 60px;
+  font-size:15px;
+  line-height:1.45;
+  min-height:100vh;
+}
+
+/* The page mounts this body class so the warm paper backdrop covers the
+   whole content area (the .katelier column itself is max-width-capped). */
+body.katelier-bg,
+body.katelier-bg .content{
+  background:
+    radial-gradient(1200px 600px at 15% -10%, #F1DFB8 0%, transparent 60%),
+    radial-gradient(1000px 700px at 110% 10%, #F0D9C4 0%, transparent 55%),
+    #FBF3EA;
+}
+body.katelier-bg .content{padding:0}
+
+.katelier h1,.katelier h2,.katelier h3,.katelier h4{margin:0; font-weight:800; letter-spacing:-0.01em}
+.katelier p{margin:0}
+.katelier button{font-family:inherit; cursor:pointer}
+.katelier input,.katelier select{font-family:inherit; color:var(--ink)}
+.katelier .icon{width:20px; height:20px; stroke:currentColor; stroke-width:1.8; fill:none; stroke-linecap:round; stroke-linejoin:round; flex-shrink:0}
+
+/* ---------- topbar ---------- */
+.ka-topbar{
+  display:flex; flex-direction:column; gap:16px;
+  padding:16px 22px; background:var(--card); border:1px solid var(--line);
+  border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); margin-bottom:22px;
+}
+.ka-topbar-row1{display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap}
+.ka-topbar-row2{
+  display:flex; align-items:center; gap:22px; flex-wrap:wrap;
+  padding-top:16px; border-top:1px solid var(--line-soft);
+}
+.ka-brand{display:flex; align-items:center; gap:12px; font-size:19px; font-weight:800; color:var(--terracotta-deep)}
+.ka-brand-mark{
+  width:40px; height:40px; border-radius:12px;
+  background:linear-gradient(150deg,var(--terracotta),var(--gold));
+  display:flex; align-items:center; justify-content:center; color:#fff; box-shadow:var(--shadow-sm); flex-shrink:0;
+}
+.ka-brand-mark .icon{width:22px; height:22px}
+
+.ka-stepper{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
+.ka-step-btn{
+  display:flex; align-items:center; gap:10px; border:none; background:transparent;
+  padding:8px 14px; border-radius:999px; font-weight:700; font-size:14px; color:var(--ink-faint);
+  transition:background .15s, color .15s;
+}
+.ka-step-btn .num{
+  width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+  background:var(--paper-deep); color:var(--ink-faint); font-size:13px; font-weight:800; flex-shrink:0;
+}
+.ka-step-btn.done .num{background:var(--sage); color:#fff}
+.ka-step-btn.current{background:var(--paper-deep); color:var(--terracotta-deep)}
+.ka-step-btn.current .num{background:var(--terracotta); color:#fff}
+.ka-step-sep{width:26px; height:2px; background:var(--line); border-radius:2px; flex-shrink:0}
+
+/* ---------- card primitive ---------- */
+.ka-card{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--radius-lg);
+  box-shadow:var(--shadow-sm);
+}
+.ka-card-pad{padding:26px}
+
+/* ---------- STEP 1 : hero + date ---------- */
+.ka-hero{text-align:center; padding:10px 0 30px}
+.ka-hero-eyebrow{
+  display:inline-flex; align-items:center; gap:8px; background:var(--gold-soft); color:var(--terracotta-deep);
+  padding:7px 16px; border-radius:999px; font-weight:800; font-size:13px; margin-bottom:18px;
+}
+.ka-hero h2{font-size:34px; margin-bottom:10px}
+.ka-hero .ka-lead{color:var(--ink-soft); font-size:16px; margin-bottom:0}
+
+.ka-search-pill{
+  max-width:640px; margin:0 auto 26px; display:flex; align-items:center; gap:12px;
+  background:var(--card); border:2px solid var(--line); border-radius:999px; padding:8px 10px 8px 8px;
+  box-shadow:var(--shadow-sm); transition:border-color .15s;
+}
+.ka-search-pill:focus-within{border-color:var(--terracotta)}
+.ka-search-pill > .icon{color:var(--terracotta); margin-inline-start:12px}
+.ka-search-pill form{flex:1; display:flex; align-items:center; gap:10px}
+.ka-search-pill input{flex:1; border:none; outline:none; background:transparent; font-size:16px; color:var(--ink); padding:8px 0}
+
+.ka-stack{max-width:700px; margin:0 auto; display:flex; flex-direction:column; gap:20px}
+
+/* AI assistant card */
+.ka-assist-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:16px}
+.ka-assist-title{display:flex; align-items:center; gap:10px; font-weight:800; font-size:16px; color:var(--terracotta-deep)}
+.ka-glow{
+  width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+  background:linear-gradient(150deg,var(--gold),var(--terracotta)); color:#fff; flex-shrink:0;
+}
+.ka-glow .icon{width:18px; height:18px}
+.ka-icon-btn{
+  width:38px; height:38px; border-radius:12px; border:1px solid var(--line); background:var(--paper);
+  display:flex; align-items:center; justify-content:center; color:var(--ink-soft); transition:.15s; flex-shrink:0;
+}
+.ka-icon-btn:hover{background:var(--paper-deep); color:var(--ink)}
+.ka-icon-btn.primary{background:var(--terracotta); border-color:var(--terracotta); color:#fff}
+.ka-icon-btn.primary:hover{background:var(--terracotta-deep)}
+.ka-icon-btn:disabled{opacity:.55; cursor:default}
+.ka-icon-btn .icon{width:17px; height:17px}
+
+.ka-chat-thread{display:flex; flex-direction:column; gap:10px; margin-bottom:16px; overflow-y:auto; max-height:400px}
+.ka-bubble{max-width:82%; padding:12px 16px; border-radius:16px; font-size:14.5px; line-height:1.5}
+.ka-bubble.user{align-self:flex-end; background:var(--terracotta); color:#fff; border-bottom-left-radius:4px}
+.ka-bubble.assistant{align-self:flex-start; background:var(--paper-deep); color:var(--ink); border-bottom-right-radius:4px}
+.ka-quick-chip{
+  margin-top:10px; display:inline-flex; align-items:center; gap:6px; background:var(--card);
+  border:1px solid var(--line); padding:6px 12px; border-radius:999px; font-size:12.5px; font-weight:700; color:var(--terracotta-deep);
+  transition:.15s;
+}
+.ka-quick-chip:hover{border-color:var(--terracotta); background:var(--gold-soft)}
+.ka-quick-chip .icon{width:13px; height:13px}
+.ka-assist-input-row{display:flex; gap:10px}
+.ka-assist-input-row input{
+  flex:1; border:1px solid var(--line); border-radius:12px; padding:12px 16px; font-size:14.5px; background:var(--paper); outline-color:var(--terracotta);
+}
+
+/* typing indicator (three dots) */
+.ka-typing{display:inline-flex; gap:5px; padding:12px 16px}
+.ka-typing span{width:7px; height:7px; border-radius:50%; background:var(--ink-faint); animation:ka-blink 1.2s infinite}
+.ka-typing span:nth-child(2){animation-delay:.2s}
+.ka-typing span:nth-child(3){animation-delay:.4s}
+@keyframes ka-blink{0%,80%,100%{opacity:.25} 40%{opacity:1}}
+
+/* date card */
+.ka-date-title{display:flex; align-items:center; gap:10px; font-size:18px; font-weight:800; color:var(--terracotta-deep); margin-bottom:18px}
+.ka-hebrew-selects{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:20px}
+.ka-hebrew-selects label{display:block; font-size:12px; font-weight:700; color:var(--ink-faint); margin-bottom:6px; text-align:start}
+.ka-hebrew-selects select{
+  width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--paper);
+  font-size:14px; color:var(--ink); font-weight:700;
+}
+
+.ka-calendar{max-width:420px; margin:0 auto 22px; background:var(--paper); border:1px solid var(--line-soft); border-radius:18px; padding:16px}
+.ka-cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-weight:800; color:var(--terracotta-deep)}
+.ka-cal-head .ka-icon-btn{width:32px; height:32px}
+.ka-cal-head .ka-icon-btn .icon{width:15px; height:15px}
+.ka-cal-weekdays{display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:11.5px; font-weight:700; color:var(--ink-faint); margin-bottom:6px}
+.ka-cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px}
+.ka-cal-day{
+  aspect-ratio:1; border-radius:10px; display:flex; flex-direction:column; align-items:center; justify-content:center;
+  font-size:12.5px; font-weight:700; color:var(--ink); background:var(--card); border:1px solid transparent; cursor:pointer;
+  padding:0; transition:border-color .12s;
+}
+.ka-cal-day:hover{border-color:var(--gold)}
+.ka-cal-day .g{font-size:9.5px; font-weight:600; color:var(--ink-faint)}
+/* מכבד את הגדרת המערכת "הסתר תאריך לועזי" (body class מ-app/layout.js) */
+body.hide-gregorian-calendar .ka-cal-day .g{display:none}
+.ka-cal-day.muted{color:var(--ink-faint); background:transparent; opacity:.55; cursor:default; border-color:transparent}
+.ka-cal-day.today{border-color:var(--gold)}
+.ka-cal-day.selected{background:var(--terracotta); color:#fff; box-shadow:var(--shadow-sm); border-color:transparent}
+.ka-cal-day.selected .g{color:#fff9}
+.ka-cal-foot{display:flex; align-items:center; justify-content:space-between; margin-top:12px; font-size:12px; gap:8px}
+.ka-cal-foot button{background:none; border:none; color:var(--terracotta-deep); font-weight:700; display:flex; gap:5px; align-items:center; padding:4px}
+.ka-cal-foot button .icon{width:13px; height:13px}
+.ka-cal-foot .ka-parsha{color:var(--ink-faint); font-weight:600; text-align:center; flex:1; min-width:0}
+
+.ka-cta-row{display:flex; justify-content:center; padding-top:4px}
+.ka-btn-cta{
+  display:flex; align-items:center; gap:10px; background:linear-gradient(150deg,var(--terracotta),var(--terracotta-deep));
+  color:#fff; border:none; padding:16px 36px; border-radius:999px; font-size:17px; font-weight:800;
+  box-shadow:0 12px 28px rgba(143,62,44,0.35); transition:transform .15s, box-shadow .15s;
+}
+.ka-btn-cta:hover{transform:translateY(-2px); box-shadow:0 16px 34px rgba(143,62,44,0.42)}
+
+/* ---------- STEP 2 : results toolbar ---------- */
+.ka-action-cluster{display:flex; gap:2px}
+.ka-action-cluster .ka-icon-btn{border:none; background:transparent}
+.ka-action-cluster .ka-icon-btn:hover{background:var(--paper-deep)}
+.ka-action-cluster .ka-icon-btn.danger{background:transparent; border:none; color:var(--brick)}
+.ka-action-cluster .ka-icon-btn.danger:hover{background:var(--brick-soft)}
+
+.ka-results-title{display:flex; align-items:center; gap:9px; font-size:17px; white-space:nowrap; color:var(--terracotta-deep)}
+.ka-results-title .icon{width:19px; height:19px}
+.ka-date-chip{
+  display:flex; align-items:center; gap:6px; color:var(--ink-faint);
+  font-weight:600; font-size:13px; white-space:nowrap;
+}
+.ka-btn-soft{
+  display:flex; align-items:center; gap:8px; background:transparent; border:none;
+  padding:8px 4px; font-weight:700; font-size:13.5px; color:var(--ink-soft); white-space:nowrap;
+}
+.ka-btn-soft:hover{color:var(--terracotta-deep)}
+.ka-btn-soft .icon{width:16px; height:16px}
+.ka-count-line{font-weight:700; color:var(--ink-soft); font-size:13.5px; white-space:nowrap}
+.ka-count-line .good{color:var(--sage); font-weight:800}
+.ka-ai-ask{position:relative; flex:1; min-width:180px}
+.ka-ai-ask .icon{position:absolute; inset-inline-start:14px; top:50%; transform:translateY(-50%); color:var(--gold); width:17px; height:17px}
+.ka-ai-ask input{
+  width:100%; padding:9px 16px; padding-inline-start:40px; border:none; border-radius:11px;
+  background:var(--paper); font-size:13.5px; outline-color:var(--terracotta);
+}
+.ka-ask-active{
+  flex:1; min-width:180px; display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:9px 16px; border:none; border-radius:11px; background:var(--gold-soft);
+  color:var(--terracotta-deep); font-size:13.5px; font-weight:700;
+}
+.ka-ask-active .icon{width:17px; height:17px}
+
+.ka-layout{display:grid; grid-template-columns:270px 1fr; gap:22px; align-items:start}
+.ka-layout.no-panel{grid-template-columns:1fr}
+
+/* filter panel */
+.ka-filter-panel{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--radius-lg); padding:20px;
+  position:sticky; top:20px; display:flex; flex-direction:column; gap:20px; box-shadow:var(--shadow-sm);
+}
+.ka-filter-group h4{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--terracotta-deep); margin-bottom:10px}
+.ka-filter-group h4 .icon{width:15px; height:15px}
+.ka-filter-group input[type="text"]{
+  width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px; background:var(--paper); font-size:13.5px; outline-color:var(--terracotta);
+}
+.ka-filter-hint{font-size:11.5px; color:var(--ink-faint); margin-top:6px; line-height:1.5}
+
+.ka-check-row{display:flex; align-items:center; justify-content:space-between; padding:7px 2px; font-size:13.5px; font-weight:600; color:var(--ink); cursor:pointer}
+.ka-check-row .count{background:var(--paper-deep); color:var(--ink-soft); font-size:11px; font-weight:800; padding:2px 8px; border-radius:999px}
+.ka-check-row input{width:17px; height:17px; accent-color:var(--terracotta)}
+.ka-check-row-inner{display:flex; align-items:center; gap:9px}
+
+.ka-size-chip-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+.ka-size-chip{
+  border:1.5px solid var(--line); border-radius:12px; padding:8px 4px; text-align:center; cursor:pointer; background:var(--paper);
+  transition:.15s;
+}
+.ka-size-chip strong{display:block; font-size:14px; color:var(--ink)}
+.ka-size-chip .count{font-size:10.5px; color:var(--ink-faint); font-weight:700}
+.ka-size-chip.active{background:var(--terracotta); border-color:var(--terracotta)}
+.ka-size-chip.active strong, .ka-size-chip.active .count{color:#fff}
+.ka-size-chip.zero{opacity:.45}
+
+.ka-switch-row{display:flex; align-items:center; gap:10px; font-size:13.5px; font-weight:600; color:var(--ink); padding:2px; cursor:pointer}
+.ka-switch{width:40px; height:22px; border-radius:999px; background:var(--line); position:relative; flex-shrink:0; transition:.2s}
+.ka-switch::after{content:""; position:absolute; top:2px; inset-inline-start:2px; width:18px; height:18px; border-radius:50%; background:#fff; box-shadow:var(--shadow-sm); transition:.2s}
+.ka-switch.on{background:var(--sage)}
+.ka-switch.on::after{inset-inline-start:20px}
+
+.ka-view-toggle{display:flex; gap:6px; background:var(--paper); border-radius:12px; padding:5px}
+.ka-view-toggle button{
+  flex:1; display:flex; align-items:center; justify-content:center; padding:9px; border:none; background:transparent;
+  border-radius:9px; color:var(--ink-faint);
+}
+.ka-view-toggle button .icon{width:17px; height:17px}
+.ka-view-toggle button.active{background:var(--card); color:var(--terracotta-deep); box-shadow:var(--shadow-sm)}
+
+.ka-slider-field .s-head{display:flex; justify-content:space-between; font-size:12.5px; font-weight:700; color:var(--ink-soft); margin-bottom:6px}
+.katelier input[type="range"]{width:100%; accent-color:var(--terracotta)}
+.ka-slider-field .s-ticks{display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink-faint); margin-top:4px}
+
+.ka-btn-clear{
+  display:flex; align-items:center; justify-content:center; gap:8px; background:transparent; border:1.5px solid var(--brick-soft);
+  color:var(--brick); padding:10px; border-radius:12px; font-weight:700; font-size:13px;
+}
+.ka-btn-clear:hover{background:var(--brick-soft)}
+.ka-btn-clear .icon{width:15px; height:15px}
+
+/* results grid */
+.ka-results-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:16px}
+.ka-dress-card{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--radius-md); padding:16px; box-shadow:var(--shadow-sm);
+  transition:transform .15s, box-shadow .15s; cursor:pointer;
+}
+.ka-dress-card:hover{transform:translateY(-3px); box-shadow:var(--shadow-md); border-color:var(--gold)}
+/* תמונת דגם כעיגול פרופיל; ללא תמונה — אותיות הדגם על רקע חם */
+.ka-avatar{
+  border-radius:50%; background:linear-gradient(150deg,var(--paper-deep),var(--gold-soft));
+  color:var(--terracotta-deep); font-weight:800; display:flex; align-items:center; justify-content:center;
+  overflow:hidden; flex-shrink:0; border:2px solid var(--card); box-shadow:var(--shadow-sm);
+  user-select:none;
+}
+.ka-avatar img{width:100%; height:100%; object-fit:cover}
+.ka-avatar.lg{width:88px; height:88px; font-size:26px; margin:0 auto 12px}
+.ka-avatar.md{width:64px; height:64px; font-size:20px}
+.ka-avatar.sm{width:40px; height:40px; font-size:13px}
+.ka-dress-card h3{font-size:15.5px; margin-bottom:3px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.ka-dress-code{font-size:12px; color:var(--ink-faint); font-weight:600; margin-bottom:10px}
+.ka-avail-line{display:flex; align-items:center; gap:6px; font-weight:800; font-size:12.5px; margin-bottom:12px}
+.ka-avail-line .icon{width:15px; height:15px}
+.ka-avail-line.ok{color:var(--sage)}
+.ka-avail-line.bad{color:var(--brick)}
+.ka-size-row{display:flex; flex-wrap:wrap; gap:6px}
+.ka-size-pill{font-size:11px; font-weight:800; padding:4px 9px; border-radius:8px}
+.ka-size-pill.avail{background:var(--sage-soft); color:var(--sage)}
+.ka-size-pill.out{background:var(--brick-soft); color:var(--brick); text-decoration:line-through; opacity:.75}
+
+/* list view */
+.ka-results-list{display:flex; flex-direction:column; gap:12px}
+.ka-dress-row{
+  display:flex; align-items:center; gap:18px; background:var(--card); border:1px solid var(--line); border-radius:16px; padding:14px 18px;
+  cursor:pointer; transition:.15s;
+}
+.ka-dress-row:hover{border-color:var(--gold); box-shadow:var(--shadow-sm)}
+.ka-dress-row .ka-rmeta{flex:1; min-width:160px}
+.ka-dress-row h3{font-size:15px; display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.ka-dress-row .ka-dress-code{margin-bottom:0; margin-top:3px}
+.ka-dress-row .ka-avail-line{margin-bottom:0; white-space:nowrap}
+.ka-dress-row .ka-size-row{flex:1.4}
+
+/* table view */
+.ka-table-wrap{background:var(--card); border:1px solid var(--line); border-radius:18px; overflow:auto; box-shadow:var(--shadow-sm)}
+table.ka-data{width:100%; border-collapse:collapse; font-size:13.5px}
+table.ka-data th{
+  text-align:start; padding:14px 16px; background:var(--paper-deep); color:var(--ink-soft); font-weight:800; font-size:12.5px;
+  border-bottom:1px solid var(--line); white-space:nowrap;
+}
+table.ka-data td{padding:12px 16px; border-bottom:1px solid var(--line-soft); vertical-align:middle}
+table.ka-data tr:last-child td{border-bottom:none}
+table.ka-data tbody tr{cursor:pointer}
+table.ka-data tbody tr:hover{background:var(--paper)}
+.ka-cell-primary{font-weight:700}
+.ka-cell-muted{color:var(--ink-faint)}
+.ka-badge{display:inline-block; padding:4px 11px; border-radius:999px; font-size:11.5px; font-weight:800}
+.ka-badge-neutral{background:var(--paper-deep); color:var(--ink-soft)}
+.ka-badge-primary{background:var(--gold-soft); color:var(--terracotta-deep)}
+
+/* loading / empty states */
+.ka-state-box{background:var(--card); border:1px dashed var(--line); border-radius:16px; padding:44px 20px; text-align:center}
+.ka-state-box .icon{width:26px; height:26px; color:var(--ink-faint)}
+.ka-state-box h4{margin:10px 0 4px; font-size:15px}
+.ka-state-box p{color:var(--ink-faint); font-size:13px; margin-top:6px}
+.ka-spinner{
+  width:26px; height:26px; border-radius:50%; border:3px solid var(--paper-deep); border-top-color:var(--terracotta);
+  margin:0 auto 10px; animation:ka-spin 0.8s linear infinite; display:inline-block;
+}
+.ka-spinner.sm{width:16px; height:16px; border-width:2px; margin:0}
+@keyframes ka-spin{to{transform:rotate(360deg)}}
+.ka-btn-mini{margin-top:14px; background:var(--terracotta); color:#fff; border:none; padding:9px 18px; border-radius:999px; font-weight:700; font-size:13px}
+.ka-btn-mini:hover{background:var(--terracotta-deep)}
+
+/* modals */
+.ka-modal-backdrop{
+  position:fixed; inset:0; background:rgba(43,34,28,.45); backdrop-filter:blur(2px);
+  display:flex; align-items:center; justify-content:center; z-index:99999; padding:20px;
+}
+.ka-modal{background:var(--card); border-radius:22px; width:100%; max-width:420px; box-shadow:var(--shadow-lg); overflow:hidden; display:flex; flex-direction:column; max-height:85vh}
+.ka-modal.wide{max-width:600px}
+.ka-modal-head{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; padding:20px 22px; border-bottom:1px solid var(--line-soft);
+  font-weight:800; font-size:16px; color:var(--terracotta-deep); flex-shrink:0;
+}
+.ka-modal-head-title{display:flex; align-items:center; gap:10px; min-width:0}
+.ka-modal-head-title .icon{width:18px; height:18px}
+.ka-modal-body{padding:22px; overflow-y:auto}
+.ka-modal-foot{display:flex; justify-content:flex-end; gap:10px; padding:16px 22px; border-top:1px solid var(--line-soft); background:var(--paper); flex-shrink:0}
+.ka-field{margin-bottom:16px}
+.ka-field:last-child{margin-bottom:0}
+.ka-field label{display:block; font-size:12.5px; font-weight:700; color:var(--ink-soft); margin-bottom:7px}
+.ka-field select, .ka-field input{
+  width:100%; padding:11px 14px; border:1px solid var(--line); border-radius:10px; background:var(--paper); font-size:14px; outline-color:var(--terracotta);
+}
+.ka-pin-field{position:relative}
+.ka-pin-field input{padding-inline-start:40px; padding-inline-end:40px}
+.ka-pin-field .lead-icon{position:absolute; inset-inline-start:12px; top:50%; transform:translateY(-50%); color:var(--ink-faint); width:16px; height:16px}
+.ka-pin-field .toggle-eye{position:absolute; inset-inline-end:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--ink-faint); display:flex; padding:2px}
+.ka-pin-field .toggle-eye .icon{width:16px; height:16px}
+.ka-btn{padding:10px 20px; border-radius:10px; font-weight:700; font-size:14px; border:1px solid transparent}
+.ka-btn:disabled{opacity:.6; cursor:default}
+.ka-btn-ghost{background:var(--paper); border-color:var(--line); color:var(--ink)}
+.ka-btn-ghost:hover{background:var(--paper-deep)}
+.ka-btn-primary{background:var(--terracotta); color:#fff}
+.ka-btn-primary:hover{background:var(--terracotta-deep)}
+.ka-error{color:var(--brick); font-size:13px; font-weight:700; text-align:center; margin-top:12px}
+.ka-order-row{display:flex; align-items:center; gap:12px; padding:12px; border:1px solid var(--line-soft); border-radius:14px; margin-bottom:10px}
+.ka-order-row:last-child{margin-bottom:0}
+.ka-order-row .om{flex:1; min-width:0}
+.ka-order-row .om strong{display:block; font-size:13.5px}
+.ka-order-row .om span{font-size:12px; color:var(--ink-faint)}
+.ka-link-btn{width:36px; height:36px; border-radius:10px; background:var(--paper-deep); display:flex; align-items:center; justify-content:center; color:var(--terracotta-deep); text-decoration:none; flex-shrink:0}
+.ka-link-btn:hover{background:var(--gold-soft)}
+.ka-link-btn .icon{width:16px; height:16px}
+.ka-modal-hint{font-size:12px; color:var(--ink-faint); margin-bottom:14px}
+
+@media (max-width:900px){
+  .katelier{padding:16px 14px 40px}
+  .ka-layout{grid-template-columns:1fr}
+  .ka-filter-panel{position:static}
+  .ka-topbar-row1{flex-direction:column; align-items:stretch; gap:14px}
+  .ka-hero h2{font-size:26px}
+}
+@media (max-width:640px){
+  .ka-results-grid{grid-template-columns:1fr}
+  .ka-dress-row{flex-wrap:wrap}
+  .ka-modal-backdrop{padding:14px}
+}

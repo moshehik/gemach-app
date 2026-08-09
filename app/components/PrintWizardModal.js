@@ -104,7 +104,7 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
     <div
       data-element-name="לחיץ_PrintWizardModal_1"
       className="modal-backdrop"
-      style={{ position: 'fixed', inset: 0, zIndex: 1100 }}
+      style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', justifyContent: 'center', alignItems: 'center' }}
       onClick={onClose}
     >
       <div
