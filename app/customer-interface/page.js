@@ -71,6 +71,19 @@ export default function CustomerInventoryViewer() {
     return () => document.body.classList.remove('hide-global-nav');
   }, [isLocked]);
 
+  // Warm Atelier kiosk palette (see ".kiosk-shell" override in
+  // app/design-system.css) is scoped via CSS variables to .kiosk-shell, but
+  // HebrewDatePicker's calendar popover renders through a React portal
+  // straight into document.body (components/HebrewDatePicker.js), outside
+  // that DOM subtree — so the variable override can't reach it by
+  // inheritance alone. This body class gives the CSS a hook to re-theme that
+  // portaled popover too, for as long as this page is mounted; it's purely
+  // presentational and touches no other state.
+  useEffect(() => {
+    document.body.classList.add('kiosk-warm-theme');
+    return () => document.body.classList.remove('kiosk-warm-theme');
+  }, []);
+
   useEffect(() => {
     const handleFullscreenChange = () => {
       // Don't touch the modal if it's already open (would overwrite a pending 'print'
@@ -478,9 +491,122 @@ export default function CustomerInventoryViewer() {
   return (
     <div data-agy-id="customer_inventory_main_container" className="kiosk-shell" style={{ minHeight: '100vh', direction: 'rtl' }}>
 
+      {/* Topbar: brand + 2-step stepper (row1, always shown) — a purely visual
+          layer over the existing `stage` state; row2 (results toolbar) only
+          renders on stage 2, replacing the old separate header card + toolbar row below. */}
+      <div className="kiosk-topbar">
+        <div className="kiosk-topbar-row1">
+          <div className="kiosk-brand">
+            <div className="brand-mark"><svg className="icon"><use href="#i-bag" /></svg></div>
+            <div>עמדת לקוחות</div>
+          </div>
+          <div className="kiosk-stepper">
+            <button type="button" className={`kiosk-step-btn${stage > 1 ? ' done' : ''}${stage === 1 ? ' current' : ''}`} onClick={() => setStage(1)}>
+              <span className="num">
+                {stage > 1 ? <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-check-circle" /></svg> : '1'}
+              </span>
+              שלב 1 · בחירת תאריך
+            </button>
+            <div className="kiosk-step-sep" />
+            <button type="button" className={`kiosk-step-btn${stage === 2 ? ' current' : ''}`} onClick={() => setStage(2)}>
+              <span className="num">2</span>
+              שלב 2 · קטלוג ותוצאות
+            </button>
+          </div>
+        </div>
+
+        {stage === 2 && (
+          <div className="kiosk-topbar-row2">
+            <h2 className="kiosk-results-title">
+              <svg className="icon"><use href="#i-bag" /></svg>
+              קטלוג שמלות זמינות
+            </h2>
+            <span className="kiosk-date-chip">
+              <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-calendar" /></svg>
+              {getHebrewDateString(new Date(selectedDate))} ({(new Date(selectedDate)).toLocaleDateString('he-IL')})
+            </span>
+            <span data-agy-id="catalog_results_count" className="kiosk-count-line">
+              {displayDresses.length} דגמים · <span className="good">{grandTotalItems} יחידות פנויות</span>
+            </span>
+
+            {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && (
+              isAiChatVisible ? (
+                <button data-element-name="כפתור_page_36" data-agy-id="catalog_close_ai_btn" type="button" className="ai-feature-element btn btn-secondary"
+                  onClick={() => setIsAiChatVisible(false)} style={{ flex: '1 1 280px' }}>
+                  <svg data-element-name="רכיב_page_37" className="icon"><use href="#i-star" /></svg>
+                  העוזר החכם פעיל - לחץ לסגירה
+                </button>
+              ) : (
+                <form onSubmit={handleAiSubmit} className="ai-feature-element" style={{ position: 'relative', flex: '1 1 240px', minWidth: '240px' }}>
+                  <svg data-element-name="רכיב_page_38" className="icon" style={{ position: 'absolute', insetInlineStart: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent)' }}><use href="#i-star" /></svg>
+                  <input data-element-name="שדה_page_39"
+                    data-agy-id="catalog_ai_input"
+                    type="text"
+                    className="input"
+                    placeholder="שאל את ה-AI..."
+                    value={aiInput}
+                    onChange={e => setAiInput(e.target.value)}
+                    disabled={aiLoading}
+                    style={{ paddingInlineStart: '46px' }}
+                  />
+                </form>
+              ))}
+
+            <button data-element-name="כפתור_sidebar_toggle" data-agy-id="toggle_sidebar_btn" type="button"
+              className={`btn ${sidebarOpen ? 'btn-primary' : 'btn-secondary'}`}
+              onClick={() => setSidebarOpen(o => !o)}>
+              <svg data-element-name="רכיב_sidebar_toggle_icon" className="icon"><use href="#i-category" /></svg>
+              סינון ותצוגה
+              {(search || selectedCategories.length > 0) && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />}
+            </button>
+
+            <div className="kiosk-actions">
+              <button data-element-name="כפתור_page_21" data-agy-id="exit_to_system_btn" type="button" className="btn btn-secondary btn-icon-only"
+                onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } router.push('/'); }} title="חזור למערכת">
+                <svg data-element-name="רכיב_page_22" className="icon"><use href="#i-logout" /></svg>
+              </button>
+              <button data-element-name="כפתור_page_23" data-agy-id="new_search_btn" type="button" className="btn btn-secondary btn-icon-only" onClick={() => setStage(1)} title="חיפוש חדש">
+                <svg data-element-name="רכיב_page_24" className="icon"><use href="#i-search" /></svg>
+              </button>
+              <button data-element-name="כפתור_page_25" data-agy-id="refresh_inventory_btn" type="button" className="btn btn-secondary btn-icon-only" onClick={fetchInventory} title="רענון מלאי">
+                <svg data-element-name="רכיב_page_26" className="icon"><use href="#i-refresh" /></svg>
+              </button>
+              <button data-element-name="כפתור_page_27" data-agy-id="print_catalog_btn" type="button" className="btn btn-secondary btn-icon-only"
+                onClick={() => { if (isLocked) { setUnlockIntent('print'); setShowUnlockModal(true); return; } handleCatalogPrint(); }}
+                title={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'}>
+                <svg data-element-name="רכיב_page_28" className="icon"><use href="#i-printer" /></svg>
+              </button>
+              {isLocked ? (
+                <button data-element-name="כפתור_page_29" data-agy-id="unlock_screen_btn" type="button" className="btn btn-danger btn-icon-only"
+                  onClick={() => { setUnlockIntent('unlock'); setShowUnlockModal(true); }} title="שחרור מסך">
+                  <svg data-element-name="רכיב_page_30" className="icon"><use href="#i-lock" /></svg>
+                </button>
+              ) : (
+                <button data-element-name="כפתור_page_31" data-agy-id="lock_screen_btn" type="button" className="btn btn-danger btn-icon-only" onClick={() => {
+                  // The orders modal links into staff order pages — never leave it up on a locked kiosk.
+                  setShowOrdersModal(false);
+                  setIsLocked(true);
+                  if (document.documentElement.requestFullscreen) {
+                    document.documentElement.requestFullscreen().catch(err => console.warn(err));
+                  }
+                }} title="תפיסת מסך ללקוח">
+                  <svg data-element-name="רכיב_page_32" className="icon"><use href="#i-lock" /></svg>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Stage 1: Search & Date Selection */}
       {stage === 1 && (
         <div className="kiosk-hero">
+          {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && (
+            <div className="ai-feature-element kiosk-hero-eyebrow">
+              <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-star" /></svg>
+              עוזר חכם זמין
+            </div>
+          )}
           <h2>מה תחפש היום?</h2>
           <p className="kiosk-sub">הזן סגנון, מידה או פשוט בחר תאריך מהיומן</p>
 
@@ -490,8 +616,8 @@ export default function CustomerInventoryViewer() {
               {aiMessages.length > 1 ? (
                 <div className="card card-pad">
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                    <div className="card-title-row" style={{ fontWeight: 800, color: 'var(--accent)' }}>
-                      <svg data-element-name="רכיב_page_4" className="icon"><use href="#i-star" /></svg>
+                    <div className="card-title-row" style={{ fontWeight: 800, color: 'var(--primary-hover)' }}>
+                      <span className="kiosk-glow-icon"><svg data-element-name="רכיב_page_4" className="icon"><use href="#i-star" /></svg></span>
                       העוזר החכם
                     </div>
                     <button data-element-name="כפתור_page_5" data-agy-id="new_ai_chat_btn" type="button" className="btn btn-ghost btn-icon-only" title="שיחה חדשה"
@@ -640,95 +766,11 @@ export default function CustomerInventoryViewer() {
       {/* Stage 2: Inventory Grid */}
       {stage === 2 && (
         <div>
-          <div className="card card-pad" style={{ marginBottom: '20px' }}>
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap', marginBottom: '10px' }}>
-                <h2 style={{ margin: 0 }}>קטלוג שמלות זמינות</h2>
-                <div className="kiosk-actions">
-                  <button data-element-name="כפתור_page_21" data-agy-id="exit_to_system_btn" type="button" className="btn btn-secondary btn-icon-only"
-                    onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } router.push('/'); }} title="חזור למערכת">
-                    <svg data-element-name="רכיב_page_22" className="icon"><use href="#i-logout" /></svg>
-                  </button>
-                  <button data-element-name="כפתור_page_23" data-agy-id="new_search_btn" type="button" className="btn btn-secondary btn-icon-only" onClick={() => setStage(1)} title="חיפוש חדש">
-                    <svg data-element-name="רכיב_page_24" className="icon"><use href="#i-search" /></svg>
-                  </button>
-                  <button data-element-name="כפתור_page_25" data-agy-id="refresh_inventory_btn" type="button" className="btn btn-secondary btn-icon-only" onClick={fetchInventory} title="רענון מלאי">
-                    <svg data-element-name="רכיב_page_26" className="icon"><use href="#i-refresh" /></svg>
-                  </button>
-                  <button data-element-name="כפתור_page_27" data-agy-id="print_catalog_btn" type="button" className="btn btn-secondary btn-icon-only"
-                    onClick={() => { if (isLocked) { setUnlockIntent('print'); setShowUnlockModal(true); return; } handleCatalogPrint(); }}
-                    title={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'}>
-                    <svg data-element-name="רכיב_page_28" className="icon"><use href="#i-printer" /></svg>
-                  </button>
-                  {isLocked ? (
-                    <button data-element-name="כפתור_page_29" data-agy-id="unlock_screen_btn" type="button" className="btn btn-danger btn-icon-only"
-                      onClick={() => { setUnlockIntent('unlock'); setShowUnlockModal(true); }} title="שחרור מסך">
-                      <svg data-element-name="רכיב_page_30" className="icon"><use href="#i-lock" /></svg>
-                    </button>
-                  ) : (
-                    <button data-element-name="כפתור_page_31" data-agy-id="lock_screen_btn" type="button" className="btn btn-danger btn-icon-only" onClick={() => {
-                      // The orders modal links into staff order pages — never leave it up on a locked kiosk.
-                      setShowOrdersModal(false);
-                      setIsLocked(true);
-                      if (document.documentElement.requestFullscreen) {
-                        document.documentElement.requestFullscreen().catch(err => console.warn(err));
-                      }
-                    }} title="תפיסת מסך ללקוח">
-                      <svg data-element-name="רכיב_page_32" className="icon"><use href="#i-lock" /></svg>
-                    </button>
-                  )}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--text-2)', fontSize: '16px' }}>
-                <svg data-element-name="רכיב_page_33" className="icon"><use href="#i-calendar" /></svg>
-                לתאריך: <span className="badge badge-primary">{getHebrewDateString(new Date(selectedDate))} ({(new Date(selectedDate)).toLocaleDateString('he-IL')})</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Toolbar: sidebar toggle + result count + AI */}
-          <div className="kiosk-results-head">
-            <button data-element-name="כפתור_sidebar_toggle" data-agy-id="toggle_sidebar_btn" type="button"
-              className={`btn ${sidebarOpen ? 'btn-primary' : 'btn-secondary'}`}
-              onClick={() => setSidebarOpen(o => !o)}>
-              <svg data-element-name="רכיב_sidebar_toggle_icon" className="icon"><use href="#i-category" /></svg>
-              סינון ותצוגה
-              {(search || selectedCategories.length > 0) && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />}
-            </button>
-
-            <span data-agy-id="catalog_results_count" style={{ fontWeight: 700, color: 'var(--text-2)' }}>
-              {displayDresses.length} דגמים · <span style={{ color: 'var(--success)' }}>{grandTotalItems} יחידות פנויות</span>
-            </span>
-
-            {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && (
-              isAiChatVisible ? (
-                <button data-element-name="כפתור_page_36" data-agy-id="catalog_close_ai_btn" type="button" className="ai-feature-element btn btn-secondary"
-                  onClick={() => setIsAiChatVisible(false)} style={{ flex: '1 1 280px' }}>
-                  <svg data-element-name="רכיב_page_37" className="icon"><use href="#i-star" /></svg>
-                  העוזר החכם פעיל - לחץ לסגירה
-                </button>
-              ) : (
-                <form onSubmit={handleAiSubmit} className="ai-feature-element" style={{ position: 'relative', flex: '1 1 240px', minWidth: '240px' }}>
-                  <svg data-element-name="רכיב_page_38" className="icon" style={{ position: 'absolute', insetInlineStart: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent)' }}><use href="#i-star" /></svg>
-                  <input data-element-name="שדה_page_39"
-                    data-agy-id="catalog_ai_input"
-                    type="text"
-                    className="input"
-                    placeholder="שאל את ה-AI..."
-                    value={aiInput}
-                    onChange={e => setAiInput(e.target.value)}
-                    disabled={aiLoading}
-                    style={{ paddingInlineStart: '46px' }}
-                  />
-                </form>
-              ))}
-          </div>
-
           {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && isAiChatVisible && stage === 2 && (
             <div className="ai-feature-element card card-pad" style={{ marginBottom: '20px' }}>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                <div className="card-title-row" style={{ fontWeight: 800, color: 'var(--accent)' }}>
-                  <svg data-element-name="רכיב_page_46" className="icon"><use href="#i-star" /></svg>
+                <div className="card-title-row" style={{ fontWeight: 800, color: 'var(--primary-hover)' }}>
+                  <span className="kiosk-glow-icon"><svg data-element-name="רכיב_page_46" className="icon"><use href="#i-star" /></svg></span>
                   העוזר החכם
                 </div>
                 <div style={{ display: 'flex', gap: '6px' }}>
