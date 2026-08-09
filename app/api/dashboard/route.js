@@ -6,46 +6,56 @@ import { checkAuth } from '../../../lib/auth';
 export async function GET() {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
-    // Basic Counts
-    const totalCustomers = await prisma.customer.count({ where: { isDeleted: false } });
-    const totalOrders = await prisma.order.count();
-    const totalDresses = await prisma.dressItem.count({ where: { notInUse: false } });
+    // חלון הגרף — 35 ימים אחורה מכסה "30 הימים האחרונים" כולל שוליים, במקום למשוך
+    // מאות שורות ולסנן ב-JS.
+    const trendWindowStart = new Date();
+    trendWindowStart.setDate(trendWindowStart.getDate() - 35);
+    trendWindowStart.setHours(0, 0, 0, 0);
 
-    // Aggregate Revenue
-    const revenueAggregation = await prisma.order.aggregate({
-      _sum: {
-        totalAmount: true
-      }
-    });
+    // כל 6 השאילתות בלתי-תלויות זו בזו — רצות במקביל במקום 6 סבבים עוקבים מול Neon.
+    const [
+      totalCustomers,
+      totalOrders,
+      totalDresses,
+      revenueAggregation,
+      paymentMethodsStats,
+      recentOrders
+    ] = await Promise.all([
+      prisma.customer.count({ where: { isDeleted: false } }),
+      prisma.order.count(),
+      prisma.dressItem.count({ where: { notInUse: false } }),
+      prisma.order.aggregate({
+        _sum: {
+          totalAmount: true
+        }
+      }),
+      prisma.order.groupBy({
+        by: ['paymentMethod'],
+        _sum: {
+          totalAmount: true
+        },
+        _count: {
+          id: true
+        }
+      }),
+      // Orders trend — only the rows inside the chart window instead of the last N
+      // orders by id (which could span any date range and still miss chart days).
+      prisma.order.findMany({
+        where: { paymentDate: { gte: trendWindowStart } },
+        select: {
+          paymentDate: true,
+          totalAmount: true
+        }
+      })
+    ]);
+
     const totalRevenue = revenueAggregation._sum.totalAmount || 0;
-
-    // Revenue by Payment Method (groupBy)
-    const paymentMethodsStats = await prisma.order.groupBy({
-      by: ['paymentMethod'],
-      _sum: {
-        totalAmount: true
-      },
-      _count: {
-        id: true
-      }
-    });
 
     const revenueByMethod = paymentMethodsStats.map(stat => ({
       method: stat.paymentMethod || 'לא מוגדר',
       amount: stat._sum.totalAmount || 0,
       count: stat._count.id
     })).sort((a, b) => b.amount - a.amount);
-
-    // Orders trend (last 10 orders for simple chart or group by month if dates exist)
-    // For simplicity, let's fetch recent orders and group by Date in JS
-    const recentOrders = await prisma.order.findMany({
-      orderBy: { id: 'desc' },
-      take: 100,
-      select: {
-        paymentDate: true,
-        totalAmount: true
-      }
-    });
 
     const dateRevenueMap = {};
     recentOrders.forEach(order => {

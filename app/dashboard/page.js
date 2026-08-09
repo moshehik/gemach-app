@@ -4,36 +4,43 @@ import DashboardCharts from './DashboardCharts';
 export const dynamic = 'force-dynamic';
 
 export default async function Dashboard() {
-  // Basic KPIs
-  const totalCustomers = await prisma.customer.count({ where: { isDeleted: false } });
-  const totalEmployees = await prisma.employee.count({ where: { isActive: true } });
-  const totalOrders = await prisma.order.count();
-  
-  const revenueAggregation = await prisma.order.aggregate({
-    _sum: { totalAmount: true }
-  });
-  const totalRevenue = revenueAggregation._sum.totalAmount || 0;
+  // Trend window: 35 days back covers the "last 30 active days" chart
+  const trendSince = new Date();
+  trendSince.setDate(trendSince.getDate() - 35);
 
-  // Chart Data: Revenue by Method
-  const paymentMethodsStats = await prisma.order.groupBy({
-    by: ['paymentMethod'],
-    _sum: { totalAmount: true },
-    _count: { id: true }
-  });
+  const [
+    totalCustomers,
+    totalEmployees,
+    totalOrders,
+    revenueAggregation,
+    paymentMethodsStats,
+    recentOrders,
+  ] = await Promise.all([
+    prisma.customer.count({ where: { isDeleted: false } }),
+    prisma.employee.count({ where: { isActive: true } }),
+    prisma.order.count(),
+    prisma.order.aggregate({
+      _sum: { totalAmount: true }
+    }),
+    prisma.order.groupBy({
+      by: ['paymentMethod'],
+      _sum: { totalAmount: true },
+      _count: { id: true }
+    }),
+    prisma.order.findMany({
+      orderBy: { paymentDate: 'desc' },
+      select: { paymentDate: true, totalAmount: true },
+      where: { paymentDate: { gte: trendSince } }
+    }),
+  ]);
+
+  const totalRevenue = revenueAggregation._sum.totalAmount || 0;
 
   const revenueByMethod = paymentMethodsStats.map(stat => ({
     method: stat.paymentMethod || 'לא מוגדר',
     amount: stat._sum.totalAmount || 0,
     count: stat._count.id
   })).sort((a, b) => b.amount - a.amount);
-
-  // Chart Data: Revenue Trend (grouping last 1000 orders by date string in JS)
-  const recentOrders = await prisma.order.findMany({
-    orderBy: { paymentDate: 'desc' },
-    take: 1000,
-    select: { paymentDate: true, totalAmount: true },
-    where: { paymentDate: { not: null } }
-  });
 
   const dateRevenueMap = {};
   recentOrders.forEach(order => {

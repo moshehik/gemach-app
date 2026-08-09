@@ -345,6 +345,7 @@ model OrderItem {
   @@index([createdAt])
   @@index([isTaken])
   @@index([isReturned])
+  @@index([takenDate])
 }
 
 model PriceList {

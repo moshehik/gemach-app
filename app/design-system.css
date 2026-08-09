@@ -39,14 +39,30 @@
   --info: #3E6E8C;
   --info-tint: #E3EEF3;
 
+  /* links inside free text (internal messages etc.) — follows the palette's info hue */
+  --link: var(--info);
+
+  /* AI product identity (pink/purple) — deliberately FIXED across palettes so
+     AI features stay visually distinct; override-able in the future if ever needed */
+  --ai-accent: #EC4899;
+  --ai-accent-2: #A855F7;
+
+  /* extra status hues used by list-page filters/dots (.c-purple/.c-teal) that
+     have no semantic-token equivalent — fixed hue, with dark-readable variants */
+  --status-purple: #7C3AED;
+  --status-teal: #0D9488;
+
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-full: 999px;
 
-  --shadow-sm: 0 1px 2px rgba(60,45,30,.06), 0 1px 1px rgba(60,45,30,.04);
-  --shadow-md: 0 4px 12px rgba(60,45,30,.08), 0 2px 4px rgba(60,45,30,.05);
-  --shadow-lg: 0 12px 32px rgba(60,45,30,.14), 0 4px 10px rgba(60,45,30,.06);
+  /* shadow tint base (r,g,b) — warm brown by default; custom palettes derive
+     it from their neutral so shadows never look "borrowed" from another hue */
+  --shadow-rgb: 60,45,30;
+  --shadow-sm: 0 1px 2px rgba(var(--shadow-rgb),.06), 0 1px 1px rgba(var(--shadow-rgb),.04);
+  --shadow-md: 0 4px 12px rgba(var(--shadow-rgb),.08), 0 2px 4px rgba(var(--shadow-rgb),.05);
+  --shadow-lg: 0 12px 32px rgba(var(--shadow-rgb),.14), 0 4px 10px rgba(var(--shadow-rgb),.06);
 
   --font: "Segoe UI", "Assistant", "Arial Hebrew", Arial, sans-serif;
   --sidebar-w: 248px;
@@ -94,9 +110,13 @@
     --info: #8FBBD4;
     --info-tint: #1F2E36;
 
-    --shadow-sm: 0 1px 2px rgba(0,0,0,.3);
-    --shadow-md: 0 4px 12px rgba(0,0,0,.35);
-    --shadow-lg: 0 12px 32px rgba(0,0,0,.45);
+    --status-purple: #B79BF5;
+    --status-teal: #4FC2B8;
+
+    --shadow-rgb: 0,0,0;
+    --shadow-sm: 0 1px 2px rgba(var(--shadow-rgb),.3);
+    --shadow-md: 0 4px 12px rgba(var(--shadow-rgb),.35);
+    --shadow-lg: 0 12px 32px rgba(var(--shadow-rgb),.45);
   }
 }
 :root[data-theme="dark"]{
@@ -110,7 +130,9 @@
   --warning: #E0B26E; --warning-tint: #3A2F1C;
   --danger: #E2938B; --danger-solid:#B84438; --danger-tint: #3A2320;
   --info: #8FBBD4; --info-tint: #1F2E36;
-  --shadow-sm: 0 1px 2px rgba(0,0,0,.3); --shadow-md: 0 4px 12px rgba(0,0,0,.35); --shadow-lg: 0 12px 32px rgba(0,0,0,.45);
+  --status-purple: #B79BF5; --status-teal: #4FC2B8;
+  --shadow-rgb: 0,0,0;
+  --shadow-sm: 0 1px 2px rgba(var(--shadow-rgb),.3); --shadow-md: 0 4px 12px rgba(var(--shadow-rgb),.35); --shadow-lg: 0 12px 32px rgba(var(--shadow-rgb),.45);
 }
 
 *{box-sizing:border-box}
@@ -177,7 +199,7 @@ a{color:inherit; text-decoration:none}
   .nav-label{transition:none}
 }
 .brand{display:flex; align-items:center; gap:10px; padding:6px 8px 20px}
-.brand-mark{width:36px;height:36px;border-radius:var(--radius-md);background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:#fff;flex:0 0 auto}
+.brand-mark{width:36px;height:36px;border-radius:var(--radius-md);background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;color:var(--text-on-primary);flex:0 0 auto}
 .brand-mark .icon{width:20px;height:20px}
 .brand-text{font-weight:800;font-size:15px}
 .brand-sub{font-size:11.5px;color:var(--text-3)}
@@ -192,7 +214,7 @@ a{color:inherit; text-decoration:none}
 .nav-link:hover{background:var(--surface-alt); color:var(--text)}
 .nav-link.active{background:var(--primary-tint); color:var(--primary); font-weight:700}
 .nav-link.active .icon{color:var(--primary)}
-.nav-badge{margin-inline-start:auto; background:var(--accent-solid); color:#fff; font-size:10.5px; font-weight:700; border-radius:var(--radius-full); padding:1px 6px; min-width:16px; text-align:center}
+.nav-badge{margin-inline-start:auto; background:var(--accent-solid); color:var(--text-on-primary); font-size:10.5px; font-weight:700; border-radius:var(--radius-full); padding:1px 6px; min-width:16px; text-align:center}
 
 /* ---- sidebar pin affordance — hover-revealed on each .nav-link, toggles that
    item into the topbar's pinned-shortcuts row (see .topbar-pins below) ---- */
@@ -263,7 +285,7 @@ a{color:inherit; text-decoration:none}
 .topbar-pin-icon.active{background:var(--primary-tint); border-color:var(--primary-tint-2); color:var(--primary-solid)}
 .topbar-pin-remove{
   position:absolute; top:-4px; inset-inline-end:-4px; width:16px; height:16px; border-radius:50%;
-  border:1.5px solid var(--surface); background:var(--danger-solid); color:#fff; display:flex; align-items:center; justify-content:center;
+  border:1.5px solid var(--surface); background:var(--danger-solid); color:var(--text-on-primary); display:flex; align-items:center; justify-content:center;
   cursor:pointer; opacity:0; transition:opacity .15s ease; padding:0; flex:0 0 auto;
 }
 .topbar-pin-remove .icon{width:9px;height:9px; stroke-width:3}
@@ -314,7 +336,7 @@ a{color:inherit; text-decoration:none}
 .btn-secondary:hover{background:var(--surface-alt); border-color:var(--primary-solid); color:var(--primary-solid)}
 .btn-ghost{background:transparent; color:var(--text-2)}
 .btn-ghost:hover{background:var(--surface-alt); color:var(--text)}
-.btn-danger{background:var(--danger-solid); color:#fff; box-shadow:0 1px 2px rgba(20,10,15,.08), 0 4px 10px color-mix(in srgb, var(--danger-solid) 30%, transparent)}
+.btn-danger{background:var(--danger-solid); color:var(--text-on-primary); box-shadow:0 1px 2px rgba(20,10,15,.08), 0 4px 10px color-mix(in srgb, var(--danger-solid) 30%, transparent)}
 .btn-danger:hover{filter:brightness(.94)}
 .btn-danger-ghost{background:var(--danger-tint); color:var(--danger)}
 .btn-danger-ghost:hover{background:color-mix(in srgb, var(--danger-tint) 60%, var(--danger) 12%)}
@@ -445,7 +467,7 @@ a{color:inherit; text-decoration:none}
 .datepicker-day:hover{background:var(--surface-alt)}
 .datepicker-day.muted{color:var(--text-3); opacity:.4}
 .datepicker-day.today{border-color:var(--primary-solid)}
-.datepicker-day.selected{background:var(--primary-solid); color:#fff}
+.datepicker-day.selected{background:var(--primary-solid); color:var(--text-on-primary)}
 .datepicker-day.selected .g-num{color:rgba(255,255,255,.75)}
 .datepicker-day.in-range{background:var(--primary-tint); color:var(--primary-solid); font-weight:700}
 .datepicker-foot{display:flex; justify-content:space-between; align-items:center; margin-top:10px; padding-top:10px; border-top:1px solid var(--border); font-size:12px}
@@ -553,7 +575,7 @@ table.data tbody tr.row-flag{background:var(--danger-tint)}
 .table-foot-top{position:static; border-top:none; border-bottom:1px solid var(--border); border-radius:var(--radius-lg) var(--radius-lg) 0 0; box-shadow:none}
 .pager{display:flex; align-items:center; gap:4px}
 .pager button{width:28px;height:28px;border-radius:var(--radius-sm);border:1px solid var(--border);background:var(--surface);display:flex;align-items:center;justify-content:center;color:var(--text-2);cursor:pointer}
-.pager button.active{background:var(--primary-solid); color:#fff; border-color:var(--primary-solid)}
+.pager button.active{background:var(--primary-solid); color:var(--text-on-primary); border-color:var(--primary-solid)}
 .pager .icon{width:14px;height:14px}
 
 /* ============================================================
@@ -572,7 +594,7 @@ table.data tbody tr.row-flag{background:var(--danger-tint)}
 .settings-cat.active .icon{color:var(--primary-solid)}
 .pill-tabs{display:flex; gap:6px; flex-wrap:wrap}
 .pill-tab{padding:7px 14px; border-radius:var(--radius-full); font-size:12.5px; font-weight:700; border:1px solid var(--border); background:var(--surface); color:var(--text-2); cursor:pointer}
-.pill-tab.active{background:var(--primary-solid); border-color:var(--primary-solid); color:#fff}
+.pill-tab.active{background:var(--primary-solid); border-color:var(--primary-solid); color:var(--text-on-primary)}
 
 /* ============================================================
    LOADING STATES — spinner + skeleton placeholders
@@ -762,6 +784,59 @@ table.data tbody tr.row-flag{background:var(--danger-tint)}
   --accent:#D9BE70; --accent-solid:#8C6E1E; --accent-tint:#332D18;
 }
 
+/* ------------------------------------------------------------
+   PRESET NEUTRAL SETS — full-coverage counterpart to the hue
+   blocks above: every preset now explicitly carries its neutral
+   set (--bg, --surface*, --border*, --text*, --text-on-primary +
+   --shadow-rgb). All 14 presets deliberately share the default
+   warm אריג neutrals, so nothing is visually reskinned — the
+   grouped rules below exist so (a) a preset is a complete,
+   self-describing palette, and (b) a future preset can override
+   its neutrals by adding a more specific block AFTER these.
+   Structure mirrors the base tokens exactly (light rule →
+   @media auto-dark rule → explicit [data-theme="dark"] rule);
+   keep that order — a light rule placed after the dark ones
+   would silently win the cascade (see project memory on
+   media-query source order). Must stay BEFORE the high-contrast
+   block so contrast keeps winning at equal specificity.
+   ------------------------------------------------------------ */
+:root[data-palette="forest"], :root[data-palette="ocean"], :root[data-palette="plum"],
+:root[data-palette="amber"], :root[data-palette="slate"], :root[data-palette="rose"],
+:root[data-palette="indigo"], :root[data-palette="turquoise"], :root[data-palette="mustard"],
+:root[data-palette="fuchsia"], :root[data-palette="coffee"], :root[data-palette="mint"],
+:root[data-palette="burgundy"]{
+  --bg:#FAF7F2; --surface:#FFFFFF; --surface-alt:#F4EEE6; --surface-sunken:#EFE8DD;
+  --border:#E5DBCB; --border-strong:#D8CAB2;
+  --text:#2A2420; --text-2:#6C6155; --text-3:#7A7062; --text-on-primary:#FFF9F2;
+  --shadow-rgb:60,45,30;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"])[data-palette="forest"], :root:not([data-theme="light"])[data-palette="ocean"],
+  :root:not([data-theme="light"])[data-palette="plum"], :root:not([data-theme="light"])[data-palette="amber"],
+  :root:not([data-theme="light"])[data-palette="slate"], :root:not([data-theme="light"])[data-palette="rose"],
+  :root:not([data-theme="light"])[data-palette="indigo"], :root:not([data-theme="light"])[data-palette="turquoise"],
+  :root:not([data-theme="light"])[data-palette="mustard"], :root:not([data-theme="light"])[data-palette="fuchsia"],
+  :root:not([data-theme="light"])[data-palette="coffee"], :root:not([data-theme="light"])[data-palette="mint"],
+  :root:not([data-theme="light"])[data-palette="burgundy"]{
+    --bg:#1B1714; --surface:#24201B; --surface-alt:#2C2620; --surface-sunken:#191512;
+    --border:#3C342A; --border-strong:#4A4032;
+    --text:#F1EAE0; --text-2:#C2B8A8; --text-3:#9A9081; --text-on-primary:#FFF9F2;
+    --shadow-rgb:0,0,0;
+  }
+}
+:root[data-palette="forest"][data-theme="dark"], :root[data-palette="ocean"][data-theme="dark"],
+:root[data-palette="plum"][data-theme="dark"], :root[data-palette="amber"][data-theme="dark"],
+:root[data-palette="slate"][data-theme="dark"], :root[data-palette="rose"][data-theme="dark"],
+:root[data-palette="indigo"][data-theme="dark"], :root[data-palette="turquoise"][data-theme="dark"],
+:root[data-palette="mustard"][data-theme="dark"], :root[data-palette="fuchsia"][data-theme="dark"],
+:root[data-palette="coffee"][data-theme="dark"], :root[data-palette="mint"][data-theme="dark"],
+:root[data-palette="burgundy"][data-theme="dark"]{
+  --bg:#1B1714; --surface:#24201B; --surface-alt:#2C2620; --surface-sunken:#191512;
+  --border:#3C342A; --border-strong:#4A4032;
+  --text:#F1EAE0; --text-2:#C2B8A8; --text-3:#9A9081; --text-on-primary:#FFF9F2;
+  --shadow-rgb:0,0,0;
+}
+
 /* ============================================================
    HIGH-CONTRAST MODE — accessibility display mode, overrides
    neutrals + primary/accent regardless of the chosen palette
@@ -886,6 +961,34 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
 .density-btn{flex:1; padding:7px 4px; border-radius:var(--radius-sm); border:1px solid var(--border); background:var(--surface); cursor:pointer; font-size:11.5px; color:var(--text-2)}
 .density-btn.active{border-color:var(--primary-solid); background:var(--primary-tint); color:var(--primary-solid)}
 
+/* ---- עמוד "עיצוב ותצוגה" (redesign) — קומפקטי, רוחב מוגבל, סעיפים ---- */
+.settings-wrap{max-width:860px}
+.settings-card{margin-bottom:16px}
+.mode-row-4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:640px){ .mode-row-4{grid-template-columns:repeat(2,1fr)} }
+.font-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(118px,1fr)); gap:6px}
+.font-grid .font-opt{text-align:center}
+.settings-two-col{display:grid; grid-template-columns:1fr 1fr; gap:16px}
+@media (max-width:640px){ .settings-two-col{grid-template-columns:1fr} }
+.saved-palette-list{display:flex; flex-direction:column; gap:8px; margin-bottom:4px}
+.saved-palette-row{display:flex; align-items:center; gap:10px; border:1px solid var(--border); border-radius:var(--radius-md); padding:8px 12px; background:var(--surface)}
+.saved-palette-row.active{border-color:var(--primary-solid); background:var(--primary-tint)}
+.saved-palette-dot{width:26px; height:26px; border-radius:50%; flex:0 0 auto; border:1px solid var(--border-strong)}
+.saved-palette-name{flex:1; font-size:13px; font-weight:700; color:var(--text)}
+.saved-palette-actions{display:flex; gap:6px; align-items:center}
+.saved-palette-delete .icon{width:14px; height:14px}
+.saved-palette-delete:hover{color:var(--danger); border-color:var(--danger)}
+.settings-inline-head{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; font-size:13px}
+.settings-inline-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:12px}
+.color-fields-grid{display:grid; grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); gap:12px}
+.color-fields-grid .field{margin-bottom:0}
+.neutral-auto-toggle{display:inline-flex; align-items:center; gap:5px; font-size:12px; color:var(--text-2); cursor:pointer; white-space:nowrap}
+.preview-rows{display:flex; flex-direction:column; gap:6px; margin-top:12px}
+.preview-row{display:flex; align-items:center; gap:10px}
+.preview-row-label{flex:0 0 34px; font-size:11.5px; color:var(--text-3)}
+.preview-strip{display:flex; gap:4px; flex:1}
+.preview-cell{flex:1; height:24px; border-radius:6px; border:1px solid var(--border)}
+
 .toast{display:flex; align-items:center; gap:10px; background:var(--surface); border:1px solid var(--border); box-shadow:var(--shadow-md); border-radius:var(--radius-md); padding:12px 16px; font-size:13px; max-width:340px}
 .toast .icon{width:17px;height:17px}
 .toast.success{border-inline-start:3px solid var(--success)}
@@ -894,8 +997,8 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
 .stepper{display:flex; align-items:center; gap:0; margin-bottom:22px}
 .step{display:flex; align-items:center; gap:8px; color:var(--text-3); font-size:12.5px; font-weight:700}
 .step-num{width:26px;height:26px;border-radius:50%;background:var(--surface-sunken);color:var(--text-3);display:flex;align-items:center;justify-content:center;font-size:12px}
-.step.done .step-num{background:var(--success-solid); color:#fff}
-.step.current .step-num{background:var(--primary-solid); color:#fff}
+.step.done .step-num{background:var(--success-solid); color:var(--text-on-primary)}
+.step.current .step-num{background:var(--primary-solid); color:var(--text-on-primary)}
 .step.current{color:var(--text)}
 .step-line{width:40px; height:2px; background:var(--border-strong); margin:0 8px}
 
@@ -930,7 +1033,7 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
    icon section headers, colored status words — token-driven so
    these follow the live palette switcher like everything else ---- */
 .print-letterhead{display:flex; align-items:center; gap:12px; padding-bottom:14px; margin-bottom:20px; border-bottom:2px solid var(--primary-solid)}
-.print-mark{width:38px;height:38px;border-radius:9px;background:var(--primary-solid);color:#fff;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.print-mark{width:38px;height:38px;border-radius:9px;background:var(--primary-solid);color:var(--text-on-primary);display:flex;align-items:center;justify-content:center;flex:0 0 auto}
 .print-mark .icon{width:20px;height:20px}
 .print-org{font-weight:800; font-size:15px; color:#1a1a1a}
 .print-contact{font-size:11.5px; color:#666; margin-top:1px}
@@ -947,7 +1050,7 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
 
 .print-check{width:14px;height:14px;border:1.5px solid #999;border-radius:3px;display:inline-flex;align-items:center;justify-content:center}
 .print-check.done{background:var(--primary-solid); border-color:var(--primary-solid)}
-.print-check.done .icon{width:10px;height:10px;color:#fff;stroke-width:3}
+.print-check.done .icon{width:10px;height:10px;color:var(--text-on-primary);stroke-width:3}
 
 .print-totals-box{border:1.5px solid var(--primary-solid); border-radius:10px; padding:12px 16px; background:color-mix(in srgb, var(--primary-solid) 6%, white); margin:12px 0; display:flex; justify-content:space-between; align-items:center}
 
@@ -1108,9 +1211,9 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
 .kiosk-stepper{display:flex; align-items:center; gap:10px; flex-wrap:wrap}
 .kiosk-step-btn{display:flex; align-items:center; gap:10px; border:none; background:transparent; padding:8px 14px; border-radius:var(--radius-full); font-weight:700; font-size:14px; color:var(--text-3); font-family:var(--font); cursor:pointer; transition:background .15s ease, color .15s ease}
 .kiosk-step-btn .num{width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--surface-alt); color:var(--text-3); font-size:13px; font-weight:800; flex-shrink:0}
-.kiosk-step-btn.done .num{background:var(--success); color:#fff}
+.kiosk-step-btn.done .num{background:var(--success); color:var(--text-on-primary)}
 .kiosk-step-btn.current{background:var(--surface-alt); color:var(--primary-hover)}
-.kiosk-step-btn.current .num{background:var(--primary); color:#fff}
+.kiosk-step-btn.current .num{background:var(--primary); color:var(--text-on-primary)}
 .kiosk-step-sep{width:26px; height:2px; background:var(--border); border-radius:2px; flex-shrink:0}
 
 /* ---- results toolbar text bits (row2) ---- */
@@ -1126,7 +1229,7 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
 .kiosk-date-chips{display:flex; gap:10px; flex-wrap:wrap; justify-content:center}
 
 /* ---- small gradient icon badge in front of "העוזר החכם" headings (assist-card look) ---- */
-.kiosk-glow-icon{width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:linear-gradient(150deg,var(--accent),var(--primary)); color:#fff; flex-shrink:0}
+.kiosk-glow-icon{width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; background:linear-gradient(150deg,var(--accent),var(--primary)); color:var(--text-on-primary); flex-shrink:0}
 .kiosk-glow-icon .icon{width:18px; height:18px}
 .kiosk-search{position:relative; width:100%; max-width:640px}
 .kiosk-search .icon{position:absolute; inset-inline-start:18px; top:50%; transform:translateY(-50%); width:20px; height:20px; color:var(--text-3)}
@@ -1197,6 +1300,9 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
   --success:#5C7A5C; --success-solid:var(--success); --success-tint:#E1EBDF;
   --warning:#96661F; --warning-tint:#F1DFB8;
   --danger:#B4483C; --danger-solid:var(--danger); --danger-tint:#F6DFDB;
+  /* pinned so the full-coverage custom palettes (which now also set the info
+     tint at :root) can never leak into the fixed "Warm Atelier" kiosk look */
+  --info:#3E6E8C; --info-tint:#E3EEF3;
 
   --radius-sm:10px; --radius-md:16px; --radius-lg:26px;
 
@@ -1228,7 +1334,7 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
    affecting the date picker anywhere else in the app. */
 body.kiosk-warm-theme .datepicker{
   --surface:#FFFFFF; --surface-alt:#F4E7D8; --border:#E7D6C2;
-  --text:#2B221C; --text-2:#6E5F52; --text-3:#A6957F;
+  --text:#2B221C; --text-2:#6E5F52; --text-3:#A6957F; --text-on-primary:#FFF8F0;
   --primary-solid:#B5533C; --primary-tint:#F1DFB8;
   --radius-sm:10px; --radius-lg:26px;
   --shadow-lg:0 22px 50px rgba(60,40,20,.18);

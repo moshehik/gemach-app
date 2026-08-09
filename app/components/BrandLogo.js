@@ -6,6 +6,13 @@ import versionData from '../version.json';
 export default function BrandLogo() {
   const [logoUrl, setLogoUrl] = useState('/api/logo');
   const [hasError, setHasError] = useState(false);
+  const [versionText, setVersionText] = useState('');
+
+  // מוגדר רק אחרי ה-mount כדי שלא ייווצר hydration mismatch כש-version.json
+  // מתעדכן (בזמן dev) בין ה-render בשרת לבין טעינת ה-bundle בלקוח.
+  useEffect(() => {
+    setVersionText(`גירסא ${versionData.version} | ${versionData.date}`);
+  }, []);
 
   useEffect(() => {
     // Check if we have a new timestamp in localStorage
@@ -25,10 +32,6 @@ export default function BrandLogo() {
     window.addEventListener('logoUpdated', handleLogoUpdate);
     return () => window.removeEventListener('logoUpdated', handleLogoUpdate);
   }, []);
-
-  // הגירסה עברה ל-tooltip על הלוגו: כשורת טקסט היא הגביהה את עמודת המותג
-  // מעל שורת האייקונים (38px) ונקראה כטקסט דיבאג במעטפת מול לקוחות.
-  const versionText = `גירסא ${versionData.version} | ${versionData.date}`;
 
   if (hasError) {
     return (

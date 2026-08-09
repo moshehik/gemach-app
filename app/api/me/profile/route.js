@@ -33,7 +33,8 @@ async function getSessionEmployee() {
       street: true,
       houseNum: true,
       joinDate: true,
-      themeColor: true,
+      // themeColor הוסב לאחסון JSON של העדפות עיצוב פר-עובד
+      // (/api/me/design-prefs) — לא נחשף ולא מתעדכן דרך הפרופיל יותר.
       profileImage: true,
       receiveEmailAlerts: true,
       isActive: true,
@@ -75,7 +76,7 @@ export async function PUT(request) {
     // נשאר undefined ו-Prisma מדלג עליו — אין דריסת ערכים קיימים בשמירה חלקית.
     const data = {};
     for (const field of ['firstName', 'lastName', 'fullName', 'phone1', 'phone2',
-      'email', 'emailSuffix', 'city', 'street', 'houseNum', 'themeColor', 'profileImage']) {
+      'email', 'emailSuffix', 'city', 'street', 'houseNum', 'profileImage']) {
       if (typeof body[field] === 'string') data[field] = body[field];
     }
     if (typeof body.receiveEmailAlerts === 'boolean') {

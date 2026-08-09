@@ -36,11 +36,31 @@ export default function ModernCustomerCard({
   return (
     <>
       <div className="page-head">
-        <div>
-          <h1>{customerName}</h1>
-          <div className="page-desc">
-            לקוח #{customer.legacyId || customer.id} · {ordersCount} הזמנות
-            {updatedLabel && ` · ${updatedLabel}`}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div className="avatar lg">{initials}</div>
+          <div>
+            <h1>{customerName}</h1>
+            <div className="page-desc">
+              לקוח #{customer.legacyId || customer.id} · {ordersCount} הזמנות
+              {updatedLabel && ` · ${updatedLabel}`}
+            </div>
+            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginTop: '6px', color: 'var(--text-2)', fontSize: '13px' }}>
+              {customer.phone1 && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg className="icon"><use href="#i-phone" /></svg><span style={{ direction: 'ltr' }}>{customer.phone1}</span>
+                </span>
+              )}
+              {customer.email && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg className="icon"><use href="#i-mail" /></svg><span style={{ direction: 'ltr' }}>{customer.email}</span>
+                </span>
+              )}
+              {address && (
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <svg className="icon"><use href="#i-pin" /></svg>{address}
+                </span>
+              )}
+            </div>
           </div>
         </div>
         <div className="page-actions">
@@ -67,31 +87,6 @@ export default function ModernCustomerCard({
             חזור
           </button>
         </div>
-      </div>
-
-      <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: '18px', flexWrap: 'wrap', marginBottom: '20px' }}>
-        <div className="avatar lg">{initials}</div>
-        <div style={{ flex: 1, minWidth: '220px' }}>
-          <div style={{ fontSize: '17px', fontWeight: 800 }}>{customerName}</div>
-          <div style={{ display: 'flex', gap: '18px', flexWrap: 'wrap', marginTop: '6px', color: 'var(--text-2)', fontSize: '13px' }}>
-            {customer.phone1 && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <svg className="icon"><use href="#i-phone" /></svg><span style={{ direction: 'ltr' }}>{customer.phone1}</span>
-              </span>
-            )}
-            {customer.email && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <svg className="icon"><use href="#i-mail" /></svg><span style={{ direction: 'ltr' }}>{customer.email}</span>
-              </span>
-            )}
-            {address && (
-              <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <svg className="icon"><use href="#i-pin" /></svg>{address}
-              </span>
-            )}
-          </div>
-        </div>
-        <span className="badge badge-primary"><svg className="icon"><use href="#i-bag" /></svg>{ordersCount} הזמנות</span>
       </div>
 
       <div className="tabs">

@@ -72,8 +72,8 @@ export default function AISearchBar({
     return (
       <form onSubmit={handleAiSubmit} className="ai-search is-magic">
         {loading
-          ? <Loader2 className="ai-search__icon animate-spin" size={18} style={{ color: '#ec4899' }} />
-          : <Sparkles className="ai-search__icon" size={18} style={{ color: '#ec4899' }} />}
+          ? <Loader2 className="ai-search__icon animate-spin" size={18} style={{ color: 'var(--ai-accent)' }} />
+          : <Sparkles className="ai-search__icon" size={18} style={{ color: 'var(--ai-accent)' }} />}
         <input data-element-name="שדה_AISearchBar_5"
           type="text"
           className="ai-search__input"

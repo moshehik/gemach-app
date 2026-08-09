@@ -63,7 +63,7 @@ export default function LogoSettings() {
         </button>
       </div>
       {message && (
-        <p style={{ marginTop: '1rem', color: message.includes('בהצלחה') ? 'var(--primary-color)' : '#e53935' }}>
+        <p style={{ marginTop: '1rem', color: message.includes('בהצלחה') ? 'var(--success)' : 'var(--danger)' }}>
           {message}
         </p>
       )}

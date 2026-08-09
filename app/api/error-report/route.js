@@ -43,6 +43,46 @@ export async function GET(request) {
   }
 }
 
+export async function PATCH(request) {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get('auth_token');
+
+    if (!token?.value) {
+      return NextResponse.json({ success: false, error: 'לא מורשה' }, { status: 401 });
+    }
+
+    const employee = await prisma.employee.findUnique({ where: { id: token.value } });
+    if (!employee) {
+      return NextResponse.json({ success: false, error: 'משתמש לא נמצא' }, { status: 404 });
+    }
+
+    const { reportId, status } = await request.json();
+    if (!reportId || !['OPEN', 'ARCHIVED'].includes(status)) {
+      return NextResponse.json({ success: false, error: 'נתונים חסרים או לא תקינים' }, { status: 400 });
+    }
+
+    const isProgrammer = employee.roleId === 2;
+    const existing = await prisma.errorReport.findUnique({ where: { id: reportId } });
+    if (!existing) {
+      return NextResponse.json({ success: false, error: 'הדיווח לא נמצא' }, { status: 404 });
+    }
+    if (!isProgrammer && existing.employeeId !== employee.id) {
+      return NextResponse.json({ success: false, error: 'אין לך הרשאה לדיווח זה' }, { status: 403 });
+    }
+
+    const updated = await prisma.errorReport.update({
+      where: { id: reportId },
+      data: { status },
+    });
+
+    return NextResponse.json({ success: true, report: updated });
+  } catch (error) {
+    console.error('Error updating error report status:', error);
+    return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
+  }
+}
+
 export async function POST(request) {
   try {
     const cookieStore = await cookies();

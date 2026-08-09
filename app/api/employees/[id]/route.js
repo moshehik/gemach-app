@@ -92,7 +92,8 @@ export async function PUT(request, { params }) {
         hourlyWage: body.hourlyWage !== "" && body.hourlyWage !== null ? parseFloat(body.hourlyWage) : null,
         travelExpenses: typeof body.travelExpenses === 'boolean' ? body.travelExpenses : (body.travelExpenses === 'true' || body.travelExpenses === true),
         isActive: body.isActive !== undefined ? body.isActive : true,
-        themeColor: body.themeColor,
+        // themeColor אינו מתעדכן כאן יותר — העמודה הוסבה ל-JSON של העדפות
+        // עיצוב פר-עובד (/api/me/design-prefs); כתיבה מכאן הייתה דורסת אותן.
         profileImage: body.profileImage,
         receiveEmailAlerts: typeof body.receiveEmailAlerts === 'boolean' ? body.receiveEmailAlerts : (body.receiveEmailAlerts === 'true' || body.receiveEmailAlerts === true),
         showAi: typeof body.showAi === 'boolean' ? body.showAi : (body.showAi === 'true' || body.showAi === true)

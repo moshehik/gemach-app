@@ -212,15 +212,9 @@ export default function MyProfilePage() {
             <input data-element-name="שדה_profile_10" className="input" type="text" id="profile-houseNum" name="houseNum" value={profile.houseNum || ''} onChange={handleChange} />
           </div>
 
-          <div className="field">
-            <label htmlFor="profile-themeColor">פלטת גוונים מודרנית לפרופיל</label>
-            <select data-element-name="בחירה_profile_14" className="select" id="profile-themeColor" name="themeColor" value={profile.themeColor || 'standard'} onChange={handleChange}>
-              <option value="standard">סטנדרט</option>
-              <option value="dark">מצב לילה</option>
-              <option value="vibrant">צבעוני ומודרני</option>
-              <option value="pastel">גווני פסטל עדינים</option>
-            </select>
-          </div>
+          {/* בורר "פלטת גוונים" הישן הוסר — הוא מעולם לא השפיע על התצוגה.
+              העדפות עיצוב אישיות (פלטה/מצב/גופן וכו') נמצאות בעמוד
+              "עיצוב ותצוגה" (/display-settings) ונשמרות פר-עובד. */}
 
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label htmlFor="profile-pwDisplay">סיסמא לשעון נוכחות</label>

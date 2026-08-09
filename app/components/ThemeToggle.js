@@ -5,20 +5,40 @@ import React, { useEffect, useState } from 'react';
 // settings page, not a topbar icon) — kept as the only lucide icon in the shell
 // since this real toggle predates the sprite and dropping it isn't an option.
 import { Sun, Moon } from 'lucide-react';
+import { DESIGN_PREFS_EVENT, pushPrefsToServer } from '../lib/designPrefs';
 
 export default function ThemeToggle({ employeeId, initialTheme }) {
   // Starts from the server-rendered cookie value (matches SSR, avoids a hydration
-  // mismatch); a mount-only effect below then defers to an explicit mode saved by
-  // the /display-settings page, if any, since that page also owns data-theme.
+  // mismatch). For GUESTS a mount-only effect below then defers to an explicit
+  // mode saved by the /display-settings page in localStorage; for logged-in
+  // employees the cookie/DB (synced by DesignPrefsSync) is authoritative —
+  // replaying browser-wide localStorage would leak the previous employee's
+  // mode on a shared terminal.
   const [theme, setTheme] = useState(initialTheme || 'light');
 
   useEffect(() => {
+    if (employeeId) return; // logged-in: cookie already correct, DB sync below
     try {
       const saved = JSON.parse(localStorage.getItem('gemachDesignPrefs') || '{}');
       if (saved.mode === 'dark' || saved.mode === 'light' || saved.mode === 'contrast') {
         setTheme(saved.mode);
       }
     } catch (e) {}
+  }, [employeeId]);
+
+  // Follow whatever DesignPrefsSync / display-settings applies, so the icon
+  // doesn't go stale when the mode changes elsewhere.
+  useEffect(() => {
+    const onApplied = (e) => {
+      const mode = e?.detail?.mode;
+      if (mode === 'dark' || mode === 'light' || mode === 'contrast') setTheme(mode);
+      else if (mode === 'auto') {
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        setTheme(prefersDark ? 'dark' : 'light');
+      }
+    };
+    window.addEventListener(DESIGN_PREFS_EVENT, onApplied);
+    return () => window.removeEventListener(DESIGN_PREFS_EVENT, onApplied);
   }, []);
 
   useEffect(() => {
@@ -37,6 +57,8 @@ export default function ThemeToggle({ employeeId, initialTheme }) {
       const saved = JSON.parse(localStorage.getItem('gemachDesignPrefs') || '{}');
       localStorage.setItem('gemachDesignPrefs', JSON.stringify({ ...saved, mode: next }));
     } catch (e) {}
+    // Per-user persistence: mode is part of the employee's DB prefs too.
+    if (employeeId) pushPrefsToServer({ mode: next });
   };
 
   return (

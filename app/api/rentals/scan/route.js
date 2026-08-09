@@ -11,25 +11,30 @@ export async function POST(request) {
       return NextResponse.json({ error: 'חסרים נתונים (מספר הזמנה או ברקוד)' }, { status: 400 });
     }
 
-    // 1. Validate order
-    const order = await prisma.order.findUnique({
-      where: { orderId: parseInt(orderId) },
-      include: { items: true }
-    });
+    // 1+2. Validate order and find the DressItem by barcode — three independent lookups,
+    // fetched in parallel (this is the hot path of every barcode scan). The validation
+    // checks below run in the exact same order as before, so error precedence is unchanged.
+    const [order, dressItem, warehouseSetting] = await Promise.all([
+      prisma.order.findUnique({
+        where: { orderId: parseInt(orderId) },
+        include: { items: true }
+      }),
+      prisma.dressItem.findFirst({
+        where: { dressBarcode: barcode },
+        include: { dress: true }
+      }),
+      prisma.systemSetting.findUnique({
+        where: { key: 'inventory_include_warehouse' }
+      })
+    ]);
 
     if (!order) {
       return NextResponse.json({ error: 'ההזמנה לא נמצאה' }, { status: 404 });
     }
-    
+
     if (order.isDeleted) {
       return NextResponse.json({ error: 'ההזמנה בוטלה, לא ניתן לבצע השכרות' }, { status: 400 });
     }
-
-    // 2. Find the DressItem by barcode
-    const dressItem = await prisma.dressItem.findFirst({
-      where: { dressBarcode: barcode },
-      include: { dress: true }
-    });
 
     if (!dressItem) {
       return NextResponse.json({ error: 'ברקוד לא קיים במאגר השמלות' }, { status: 404 });
@@ -43,9 +48,6 @@ export async function POST(request) {
       return NextResponse.json({ error: `הפריט עם ברקוד ${barcode} נמצא בתיקון ולא ניתן להשכרה` }, { status: 400 });
     }
 
-    const warehouseSetting = await prisma.systemSetting.findUnique({
-      where: { key: 'inventory_include_warehouse' }
-    });
     const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
 
     if (!includeWarehouse && dressItem.location) {
@@ -66,29 +68,46 @@ export async function POST(request) {
     
     const barcodePrefix = parseInt(prefixStr);
     
-    // 3. Check if already in THIS order
-    const existingInOrder = await prisma.orderItem.findFirst({
-      where: {
-        orderId: parseInt(orderId),
-        barcode: barcode,
-        isDeleted: false
-      }
-    });
+    // 3+4+5. Three more independent read-only lookups (same-order check, unreturned-rental
+    // check, and the candidate items of this order) — fetched in parallel; the checks below
+    // still run in the original order so the returned error stays the same one as before.
+    const [existingInOrder, unreturnedItem, potentialItems] = await Promise.all([
+      // 3. Check if already in THIS order
+      prisma.orderItem.findFirst({
+        where: {
+          orderId: parseInt(orderId),
+          barcode: barcode,
+          isDeleted: false
+        }
+      }),
+      // 4. Check if currently rented and not returned
+      prisma.orderItem.findFirst({
+        where: {
+          barcode: barcode,
+          isTaken: true,
+          isReturned: false,
+          isDeleted: false
+        },
+        include: { order: true }
+      }),
+      // 5. Candidate OrderItems in this order (unassigned barcode slots)
+      prisma.orderItem.findMany({
+        where: {
+          orderId: parseInt(orderId),
+          isDeleted: false,
+          barcode: null
+        },
+        include: {
+          dressItem: {
+            include: { dress: true }
+          }
+        }
+      })
+    ]);
 
     if (existingInOrder) {
       return NextResponse.json({ error: 'הברקוד כבר קיים בהזמנה זו' }, { status: 400 });
     }
-
-    // 4. Check if currently rented and not returned
-    const unreturnedItem = await prisma.orderItem.findFirst({
-      where: {
-        barcode: barcode,
-        isTaken: true,
-        isReturned: false,
-        isDeleted: false
-      },
-      include: { order: true }
-    });
 
     if (unreturnedItem) {
       return NextResponse.json({ 
@@ -107,20 +126,7 @@ export async function POST(request) {
     // Let's find order items in this order that match prefix and size.
     // sizeText in DressItem might be "38", "40", etc. which matches sizeStr.
     
-    const sizeVal = parseInt(sizeStr); 
-
-    const potentialItems = await prisma.orderItem.findMany({
-      where: {
-        orderId: parseInt(orderId),
-        isDeleted: false,
-        barcode: null
-      },
-      include: {
-        dressItem: {
-          include: { dress: true }
-        }
-      }
-    });
+    const sizeVal = parseInt(sizeStr);
 
     const matchingItems = potentialItems.filter(item => {
       const pfx = item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix;

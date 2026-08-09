@@ -148,15 +148,6 @@ const HEBREW_NOTES = {
   print_rental_footer: 'טקסט תקנון וחתימה בתחתית כרטיס השכרה מודפס.'
 };
 
-const DEFAULT_DEPARTMENTS = [
-  { roleId: 0, name: 'הנהלה ראשית' },
-  { roleId: 1, name: 'הנהלה' },
-  { roleId: 2, name: 'מתכנת' },
-  { roleId: 3, name: 'תופרת' },
-  { roleId: 4, name: 'מזכירה' },
-  { roleId: 6, name: 'מסך לקוחות' }
-];
-
 const CUSTOMER_FIELDS = [
   { key: 'firstName', name: 'שם פרטי', alias: 'שם_פרטי' },
   { key: 'lastName', name: 'שם משפחה', alias: 'שם_משפחה' },
@@ -332,7 +323,9 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
     };
   }, [isOpen]);
 
-  const deptList = (departments && departments.length > 0) ? departments : DEFAULT_DEPARTMENTS;
+  // מקור האמת היחיד הוא טבלת Department (דרך /api/departments) - בלי רשימת
+  // ברירת מחדל קשיחה בקוד. אם הרשימה ריקה/לא נטענה מציגים על כך הודעה מפורשת.
+  const deptList = departments || [];
 
   const selectedList = (value || '')
     .split(',')
@@ -406,6 +399,13 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '240px', overflowY: 'auto' }}>
+            {deptList.length === 0 && (
+              <div style={{ padding: '10px', fontSize: '12.5px', color: 'var(--text-3)', textAlign: 'center' }}>
+                רשימת המחלקות לא נטענה או שאין מחלקות במערכת.
+                <br />
+                ניתן לנהל מחלקות במסך <a href="/admin/departments" style={{ color: 'var(--primary-solid)', fontWeight: 700 }}>ניהול מחלקות</a>.
+              </div>
+            )}
             {deptList.map(dept => {
               const isActive = selectedList.includes(dept.name);
 

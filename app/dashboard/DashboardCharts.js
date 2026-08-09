@@ -1,13 +1,15 @@
 'use client';
 
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+// עטיפת טעינה דינמית ל-recharts: הספרייה (~400KB) יוצאת מה-bundle הבסיסי של
+// לוח הבקרה ונטענת רק כשהגרפים באמת מוצגים. ה-placeholder משכפל את שלד שני
+// הכרטיסים בגובה הגרפים המדויק (300px + כותרת) כדי שלא יהיה layout jank במעבר.
+// התוכן עצמו לא השתנה — הוא עבר כפי-שהוא ל-DashboardChartsImpl.js.
 
-const COLORS = ['var(--primary-solid)', 'var(--success)', 'var(--info)', 'var(--accent)', 'var(--danger)'];
+import dynamic from 'next/dynamic';
 
-export default function DashboardCharts({ revenueByMethod, revenueTrend }) {
+function ChartsSkeleton() {
   return (
     <div className="form-grid" style={{ marginTop: '1.5rem' }}>
-
       <div className="card">
         <div className="card-head">
           <div className="card-title-row">
@@ -16,30 +18,11 @@ export default function DashboardCharts({ revenueByMethod, revenueTrend }) {
           </div>
         </div>
         <div className="card-pad">
-          <div style={{ height: '300px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={revenueByMethod}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  outerRadius={100}
-                  dataKey="amount"
-                  nameKey="method"
-                  label={({ method, percent }) => `${method} (${(percent * 100).toFixed(0)}%)`}
-                >
-                  {revenueByMethod.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => `₪${value}`} />
-              </PieChart>
-            </ResponsiveContainer>
+          <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="loading-inline"><span className="spinner" /> טוען גרף...</div>
           </div>
         </div>
       </div>
-
       <div className="card">
         <div className="card-head">
           <div className="card-title-row">
@@ -48,23 +31,20 @@ export default function DashboardCharts({ revenueByMethod, revenueTrend }) {
           </div>
         </div>
         <div className="card-pad">
-          <div style={{ height: '300px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={revenueTrend}
-                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
-              >
-                <XAxis dataKey="date" />
-                <YAxis />
-                <Tooltip formatter={(value) => `₪${value}`} />
-                <Legend />
-                <Bar dataKey="revenue" name="הכנסות (₪)" fill="var(--primary-solid)" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <div style={{ height: '300px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <div className="loading-inline"><span className="spinner" /> טוען גרף...</div>
           </div>
         </div>
       </div>
-
     </div>
   );
+}
+
+const DashboardChartsImpl = dynamic(() => import('./DashboardChartsImpl'), {
+  ssr: false,
+  loading: ChartsSkeleton,
+});
+
+export default function DashboardCharts(props) {
+  return <DashboardChartsImpl {...props} />;
 }

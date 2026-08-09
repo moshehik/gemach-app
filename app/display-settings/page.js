@@ -1,60 +1,33 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { DEFAULT_CUSTOM_COLORS, applyCustomPaletteStyle } from '../lib/customPalette';
-import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { useEffect, useRef, useState } from 'react';
+import {
+  DEFAULT_CUSTOM_COLORS,
+  applyCustomPaletteStyle,
+  buildCustomPaletteVars,
+} from '../lib/customPalette';
+import {
+  DESIGN_PREFS_EVENT,
+  applyAttr,
+  applyMode,
+  pushPrefsToServer,
+  readLocalPrefs,
+  writeDesignPrefsCookie,
+  writeLocalPrefs,
+  writeThemeCookie,
+} from '../lib/designPrefs';
 
-// Real "עיצוב ותצוגה" settings page — ports the live palette/font/theme-mode/
-// density/text-scale switcher that used to exist only as a standalone mockup
-// (scratch/design-v2/assets/app.js, section 6 "Display-preferences panel").
-// Everything here reads/writes the same localStorage blob (`gemachDesignPrefs`,
-// shape { palette, font, mode, density, textScale, customColors }) and applies
-// the matching data-* attribute on <html> immediately, exactly like the
-// mockup's vanilla JS did — so the no-FOUC bootstrap script added in
-// app/layout.js picks up whatever is chosen here on the next full page load
-// for guests / logged-out sessions.
+// עמוד "עיצוב ותצוגה" — גרסה קומפקטית ומאורגנת (סעיפים ברורים, רוחב מוגבל):
+//   1. מצב תצוגה (בהיר/כהה/ניגודיות/אוטומטי)
+//   2. פלטות מובנות (14 פריסטים)
+//   3. הפלטות שלי — פלטות מותאמות שמורות בשם + עורך חי (ראשי/משני/נייטרלי)
+//   4. אפשרויות נוספות — גופן, צפיפות, גודל טקסט
 //
-// The one preset that isn't a fixed hue is `palette: 'custom'` — its colors
-// live in `customColors: { primary, accent }` alongside the rest of this
-// blob, and app/lib/customPalette.js derives the full --primary-*/--accent-*
-// variable set (light + dark) from just those two hex values, applied via a
-// real <style id="custom-palette-style"> tag scoped to
-// [data-palette="custom"] — see that file's header comment for why.
-//
-// Per-employee scoping: multiple employees share the same front-desk browser
-// profile, so a single browser-wide localStorage key would let whoever last
-// touched this page silently override the next employee's own choices. Every
-// write below is therefore mirrored into a `designPrefs_<employeeId>` cookie
-// (JSON-encoded, mirrors the `theme_<employeeId>` cookie ThemeToggle.js
-// already writes for dark/light mode) — app/layout.js's RootLayout reads that
-// cookie server-side, keyed by the `auth_token` cookie of whoever is actually
-// logged in, and server-renders the correct data-palette/data-font/
-// data-density/data-text-scale attributes (and custom-palette <style> tag) on
-// the very first paint. localStorage is kept alongside it — it's still the
-// only source for guests/logged-out sessions (no employee id to scope a
-// cookie by) and gives this page itself instant local reactivity regardless
-// of login state.
-
-const STORAGE_KEY = 'gemachDesignPrefs';
-
-// Writes the subset of prefs that are meant to be per-employee (mode/theme
-// has its own theme_<employeeId> cookie via ThemeToggle.js, so it's
-// deliberately left out here) into designPrefs_<employeeId>. No-ops for
-// guests (employeeId is null before /api/me resolves, or always for a
-// logged-out session) — localStorage remains their only persistence.
-function writeDesignPrefsCookie(employeeId, raw) {
-  if (typeof document === 'undefined' || !employeeId) return;
-  const payload = {
-    palette: raw.palette,
-    font: raw.font,
-    density: raw.density,
-    textScale: raw.textScale,
-    customColors: raw.customColors,
-  };
-  try {
-    document.cookie = `designPrefs_${employeeId}=${encodeURIComponent(JSON.stringify(payload))}; path=/; max-age=31536000; SameSite=Lax`;
-  } catch (e) {}
-}
+// התמדה בשלוש שכבות (ר' app/lib/designPrefs.js): localStorage (מיידי,
+// והיחיד לאורחים) → קוקיז פר-עובד (SSR לפני-צבע) → DB (מקור אמת פר-עובד,
+// PUT מושהה ל-/api/me/design-prefs). הפלטה המותאמת נגזרת במלואה —
+// כולל נייטרלים, tints סמנטיים וצל — ב-app/lib/customPalette.js ומוזרקת
+// כתג <style id="custom-palette-style"> שמתרכב עם data-theme.
 
 const PALETTES = [
   { key: 'wine', label: 'יין (ברירת מחדל)', primary: '#7C2E4D', accent: '#96661F' },
@@ -149,7 +122,7 @@ const MODES = [
   { key: 'light', label: 'בהיר' },
   { key: 'dark', label: 'כהה' },
   { key: 'contrast', label: 'ניגודיות גבוהה' },
-  { key: 'auto', label: 'אוטומטי (לפי המערכת)' },
+  { key: 'auto', label: 'אוטומטי' },
 ];
 
 const DENSITIES = [
@@ -172,56 +145,57 @@ const DEFAULT_PREFS = {
   textScale: 'normal',
 };
 
-function applyAttr(attr, val, offVals) {
-  if (typeof document === 'undefined') return;
-  const root = document.documentElement;
-  if (!val || offVals.indexOf(val) !== -1) root.removeAttribute(attr);
-  else root.setAttribute(attr, val);
+// מזהה ייחודי לפלטה שמורה — מחוץ לקומפוננטה (נקרא רק מתוך event handler)
+function makePaletteId() {
+  return `p${Date.now().toString(36)}${Math.floor(Math.random() * 46656).toString(36)}`;
 }
 
-function applyMode(mode) {
-  if (typeof document === 'undefined') return;
-  const root = document.documentElement;
-  if (mode === 'dark' || mode === 'light' || mode === 'contrast') {
-    root.setAttribute('data-theme', mode);
-  } else {
-    const prefersDark = typeof window !== 'undefined' && window.matchMedia
-      && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    root.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
-  }
+function normalizeCustomColors(cc) {
+  return {
+    primary: (cc && cc.primary) || DEFAULT_CUSTOM_COLORS.primary,
+    accent: (cc && cc.accent) || DEFAULT_CUSTOM_COLORS.accent,
+    neutral: (cc && cc.neutral) || '',
+  };
+}
+
+// שורת תצוגה-מקדימה של פלטה מותאמת — גוונים חיים שנגזרים מהצבעים שנבחרו
+function PreviewStrip({ colors }) {
+  const vars = buildCustomPaletteVars(colors.primary, colors.accent, colors.neutral);
+  const cells = (side) => ([
+    ['רקע', side.bg],
+    ['משטח', side.surfaceAlt],
+    ['גבול', side.border],
+    ['ראשי', side.primarySolid],
+    ['גוון ראשי', side.primaryTint],
+    ['משני', side.accentSolid],
+    ['טקסט', side.text],
+  ]);
+  return (
+    <div className="preview-rows">
+      {[['בהיר', vars.light], ['כהה', vars.dark]].map(([label, side]) => (
+        <div key={label} className="preview-row">
+          <span className="preview-row-label">{label}</span>
+          <div className="preview-strip">
+            {cells(side).map(([name, color]) => (
+              <span key={name} className="preview-cell" style={{ background: color }} title={`${name} · ${color}`} />
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function DisplaySettingsPage() {
   const [prefs, setPrefs] = useState(DEFAULT_PREFS);
-  const [customColors, setCustomColors] = useState(DEFAULT_CUSTOM_COLORS);
+  const [customColors, setCustomColors] = useState(normalizeCustomColors(null));
+  const [savedPalettes, setSavedPalettes] = useState([]);
+  const [newPaletteName, setNewPaletteName] = useState('');
   const [employeeId, setEmployeeId] = useState(null);
+  const employeeIdRef = useRef(null);
+  const pushTimerRef = useRef(null);
 
-  // Same shared-cache /api/me lookup UserMenu.js and PopupProvider already
-  // use — by the time this page mounts it's normally already warm (AppShell
-  // renders UserMenu on every page), so this resolves without a fresh
-  // network round-trip. A rejected promise (401 = guest / requireLogin off)
-  // is expected and simply leaves employeeId null, matching the "no employee
-  // id to scope by" guest fallback described above.
-  useEffect(() => {
-    fetchSharedJson('/api/me', { ttl: TTL.STATIC })
-      .then((data) => {
-        if (data && data.success && data.employee?.id) {
-          setEmployeeId(data.employee.id);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  // Sync UI state from whatever is actually saved (the no-FOUC script in
-  // layout.js has already applied it to <html> before this component mounts;
-  // this just reflects it in the controls' active state).
-  useEffect(() => {
-    let saved = {};
-    try {
-      saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    } catch (e) {
-      saved = {};
-    }
+  function hydrateFrom(saved) {
     setPrefs({
       palette: saved.palette || DEFAULT_PREFS.palette,
       font: saved.font || DEFAULT_PREFS.font,
@@ -229,37 +203,57 @@ export default function DisplaySettingsPage() {
       density: saved.density || DEFAULT_PREFS.density,
       textScale: saved.textScale || DEFAULT_PREFS.textScale,
     });
-    const savedCustomColors = {
-      primary: (saved.customColors && saved.customColors.primary) || DEFAULT_CUSTOM_COLORS.primary,
-      accent: (saved.customColors && saved.customColors.accent) || DEFAULT_CUSTOM_COLORS.accent,
-    };
-    setCustomColors(savedCustomColors);
-    // Defensive re-apply: guarantees the <style id="custom-palette-style">
-    // tag matches these colors even if this page was reached via client-side
-    // navigation from a session where it was never created (e.g. localStorage
-    // was edited directly, or the palette was set to 'custom' on another tab).
+    const cc = normalizeCustomColors(saved.customColors);
+    setCustomColors(cc);
+    setSavedPalettes(Array.isArray(saved.savedPalettes) ? saved.savedPalettes : []);
+    // Defensive re-apply: מבטיח שתג ה-style של הפלטה המותאמת תואם את
+    // הצבעים השמורים גם אם הגענו לכאן בניווט-לקוח בלי שהתג נוצר.
     if (saved.palette === 'custom') {
-      applyCustomPaletteStyle(savedCustomColors);
+      applyCustomPaletteStyle(cc);
     }
+  }
+
+  // --- טעינה: קודם מקומי (מיידי), אחר-כך DB (מקור אמת פר-עובד) ---
+  useEffect(() => {
+    hydrateFrom(readLocalPrefs());
+    fetch('/api/me/design-prefs')
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (!data || !data.success || !data.employeeId) return;
+        employeeIdRef.current = data.employeeId;
+        setEmployeeId(data.employeeId);
+        if (data.prefs) {
+          const merged = { ...readLocalPrefs(), ...data.prefs };
+          writeLocalPrefs(merged);
+          hydrateFrom(merged);
+        }
+      })
+      .catch(() => {});
   }, []);
 
+  // --- התמדה משותפת: localStorage + קוקי פר-עובד + PUT מושהה ל-DB ---
+  function commit(nextRaw) {
+    writeLocalPrefs(nextRaw);
+    writeDesignPrefsCookie(employeeIdRef.current, nextRaw);
+    if (pushTimerRef.current) clearTimeout(pushTimerRef.current);
+    pushTimerRef.current = setTimeout(() => {
+      pushPrefsToServer({
+        palette: nextRaw.palette,
+        font: nextRaw.font,
+        mode: nextRaw.mode,
+        density: nextRaw.density,
+        textScale: nextRaw.textScale,
+        customColors: nextRaw.customColors,
+        savedPalettes: nextRaw.savedPalettes,
+      });
+    }, 500);
+  }
+
   function updatePref(key, value) {
-    // Side effects (localStorage + live DOM attribute) run synchronously here,
-    // directly in the click handler — NOT inside the setPrefs updater below.
-    // React does not guarantee when/how many times a setState updater callback
-    // runs, so persistence and the DOM mutation must not depend on it; setPrefs
-    // is used purely to re-render the controls' "active" highlighting.
-    let raw = {};
-    try {
-      raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    } catch (e) {
-      raw = {};
-    }
-    const nextRaw = { ...raw, [key]: value };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRaw));
-    } catch (e) {}
-    writeDesignPrefsCookie(employeeId, nextRaw);
+    // תופעות-לוואי (התמדה + DOM) רצות סינכרונית כאן, לא בתוך updater של
+    // setState — React לא מבטיח מתי/כמה פעמים ה-updater רץ.
+    const nextRaw = { ...readLocalPrefs(), [key]: value };
+    commit(nextRaw);
 
     switch (key) {
       case 'palette':
@@ -276,6 +270,11 @@ export default function DisplaySettingsPage() {
         break;
       case 'mode':
         applyMode(value);
+        // מצב הוא פר-עובד: מתעדכן גם בקוקי-התמה (SSR) וגם בכפתור שבסרגל
+        writeThemeCookie(employeeIdRef.current, value);
+        try {
+          window.dispatchEvent(new CustomEvent(DESIGN_PREFS_EVENT, { detail: { mode: value } }));
+        } catch (e) {}
         break;
       default:
         break;
@@ -284,69 +283,105 @@ export default function DisplaySettingsPage() {
     setPrefs((prev) => ({ ...prev, [key]: value }));
   }
 
-  // Selects the "custom" palette slot — reusing whatever colors were saved
-  // from a previous edit (or the built-in default the first time). Kept
-  // separate from updatePref() because, unlike the fixed presets, activating
-  // "custom" also needs the derived <style> tag created/refreshed.
+  // בחירת פלטה מותאמת (מהעורך או מפלטה שמורה) — מחילה מיידית + מתמידה
+  function activateCustom(colors, extraRaw) {
+    const cc = normalizeCustomColors(colors);
+    const nextRaw = { ...readLocalPrefs(), ...extraRaw, palette: 'custom', customColors: cc };
+    commit(nextRaw);
+    applyAttr('data-palette', 'custom', ['wine']);
+    applyCustomPaletteStyle(cc);
+    setCustomColors(cc);
+    setPrefs((prev) => ({ ...prev, palette: 'custom' }));
+  }
+
   function selectCustomPalette() {
-    let raw = {};
-    try {
-      raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    } catch (e) {
-      raw = {};
-    }
+    const raw = readLocalPrefs();
     const colors = (raw.customColors && raw.customColors.primary && raw.customColors.accent)
       ? raw.customColors
       : customColors;
-    const nextRaw = { ...raw, palette: 'custom', customColors: colors };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRaw));
-    } catch (e) {}
-    writeDesignPrefsCookie(employeeId, nextRaw);
-    applyAttr('data-palette', 'custom', ['wine']);
-    applyCustomPaletteStyle(colors);
-    setCustomColors(colors);
-    setPrefs((prev) => ({ ...prev, palette: 'custom' }));
+    activateCustom(colors);
   }
 
-  // Live-updates one channel (primary/accent) of the custom palette: persists
-  // it, re-derives the full light+dark variable set, and rewrites the
-  // <style id="custom-palette-style"> tag so the change previews immediately
-  // — same instant-apply feel as clicking a preset swatch.
   function updateCustomColor(channel, hexValue) {
-    const next = { ...customColors, [channel]: hexValue };
-    setCustomColors(next);
-    let raw = {};
-    try {
-      raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-    } catch (e) {
-      raw = {};
+    activateCustom({ ...customColors, [channel]: hexValue });
+  }
+
+  function toggleManualNeutral(enabled) {
+    if (enabled) {
+      // ערך התחלתי הגיוני: הנייטרל האוטומטי הנגזר כרגע מהצבע הראשי
+      const derivedBg = buildCustomPaletteVars(customColors.primary, customColors.accent, '').light.bg;
+      activateCustom({ ...customColors, neutral: derivedBg });
+    } else {
+      activateCustom({ ...customColors, neutral: '' });
     }
-    const nextRaw = { ...raw, palette: 'custom', customColors: next };
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextRaw));
-    } catch (e) {}
-    writeDesignPrefsCookie(employeeId, nextRaw);
-    applyAttr('data-palette', 'custom', ['wine']);
-    applyCustomPaletteStyle(next);
-    setPrefs((prev) => ({ ...prev, palette: 'custom' }));
+  }
+
+  function saveCurrentAsPalette() {
+    const name = newPaletteName.trim() || `הפלטה שלי ${savedPalettes.length + 1}`;
+    const entry = {
+      id: makePaletteId(),
+      name: name.slice(0, 40),
+      primary: customColors.primary,
+      accent: customColors.accent,
+      neutral: customColors.neutral || '',
+    };
+    const nextList = [...savedPalettes, entry];
+    setSavedPalettes(nextList);
+    setNewPaletteName('');
+    activateCustom(customColors, { savedPalettes: nextList });
+  }
+
+  function applySavedPalette(entry) {
+    activateCustom({ primary: entry.primary, accent: entry.accent, neutral: entry.neutral || '' });
+  }
+
+  function deleteSavedPalette(id) {
+    const nextList = savedPalettes.filter((p) => p.id !== id);
+    setSavedPalettes(nextList);
+    const nextRaw = { ...readLocalPrefs(), savedPalettes: nextList };
+    commit(nextRaw);
   }
 
   const selectFontValue = QUICK_FONT_KEYS.includes(prefs.font) ? '' : (prefs.font || '');
+  const activePreset = PALETTES.find((p) => p.key === prefs.palette);
+  const isSavedActive = (entry) => prefs.palette === 'custom'
+    && entry.primary === customColors.primary
+    && entry.accent === customColors.accent
+    && (entry.neutral || '') === (customColors.neutral || '');
+  const manualNeutral = Boolean(customColors.neutral);
 
   return (
-    <div>
+    <div className="settings-wrap">
       <div className="page-head">
         <div>
           <h1>עיצוב ותצוגה</h1>
           <div className="page-desc">
-            העדפות תצוגה אישיות — פלטת צבעים, גופן, מצב תצוגה, צפיפות וגודל טקסט. השינויים נשמרים על המכשיר הזה בלבד.
+            העדפות תצוגה אישיות — נשמרות לחשבון שלך וחלות בכל מחשב שבו תתחבר/י.
           </div>
         </div>
       </div>
 
-      <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <div className="section-title">פלטת צבעים</div>
+      {/* 1 — מצב תצוגה */}
+      <div className="card card-pad settings-card">
+        <div className="section-title">מצב תצוגה</div>
+        <div className="mode-row mode-row-4">
+          {MODES.map((m) => (
+            <button
+              key={m.key}
+              type="button"
+              data-theme-mode={m.key}
+              className={`mode-btn${prefs.mode === m.key ? ' active' : ''}`}
+              onClick={() => updatePref('mode', m.key)}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 2 — פלטות מובנות */}
+      <div className="card card-pad settings-card">
+        <div className="section-title">פלטות מובנות</div>
         <div className="swatch-row">
           {PALETTES.map((p) => (
             <button
@@ -359,71 +394,161 @@ export default function DisplaySettingsPage() {
               onClick={() => updatePref('palette', p.key)}
             />
           ))}
-          <button
-            type="button"
-            className={`swatch-btn swatch-btn-custom${prefs.palette === 'custom' ? ' active' : ''}`}
-            style={{ background: `linear-gradient(135deg, ${customColors.primary}, ${customColors.accent})` }}
-            title="פלטה מותאמת אישית"
-            aria-label="פלטה מותאמת אישית"
-            onClick={selectCustomPalette}
-          >
-            <svg className="icon"><use href="#i-edit" /></svg>
-          </button>
         </div>
-        {prefs.palette === 'custom' && (
-          <div className="custom-palette-editor">
-            <div className="form-grid">
-              <div className="field">
-                <label htmlFor="custom-palette-primary">צבע ראשי</label>
-                <div className="color-field-row">
-                  <input
-                    id="custom-palette-primary"
-                    type="color"
-                    className="color-swatch-input"
-                    value={customColors.primary}
-                    onChange={(e) => updateCustomColor('primary', e.target.value)}
-                  />
-                  <span className="color-field-hex">{customColors.primary.toUpperCase()}</span>
-                </div>
-              </div>
-              <div className="field">
-                <label htmlFor="custom-palette-accent">צבע משני</label>
-                <div className="color-field-row">
-                  <input
-                    id="custom-palette-accent"
-                    type="color"
-                    className="color-swatch-input"
-                    value={customColors.accent}
-                    onChange={(e) => updateCustomColor('accent', e.target.value)}
-                  />
-                  <span className="color-field-hex">{customColors.accent.toUpperCase()}</span>
-                </div>
-              </div>
-            </div>
-            <div className="hint">הגוונים הבהירים, הכהים ומצב התצוגה הכהה נגזרים אוטומטית משני הצבעים שנבחרו.</div>
-          </div>
-        )}
+        <div className="hint" style={{ marginTop: 8 }}>
+          {activePreset ? `פעילה: ${activePreset.label}` : 'פעילה: פלטה מותאמת אישית'}
+        </div>
       </div>
 
-      <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <div className="section-title">גופן</div>
-        <div className="font-btn-row" style={{ marginBottom: 12 }}>
-          {QUICK_FONTS.map((f) => (
-            <button
-              key={f.key}
-              type="button"
-              className={`font-opt${prefs.font === f.key ? ' active' : ''}`}
-              onClick={() => updatePref('font', f.key)}
-            >
-              {f.label}
+      {/* 3 — הפלטות שלי + עורך */}
+      <div className="card card-pad settings-card">
+        <div className="section-title">הפלטות שלי</div>
+
+        {savedPalettes.length > 0 && (
+          <div className="saved-palette-list">
+            {savedPalettes.map((entry) => (
+              <div key={entry.id} className={`saved-palette-row${isSavedActive(entry) ? ' active' : ''}`}>
+                <span
+                  className="saved-palette-dot"
+                  style={{ background: `linear-gradient(135deg, ${entry.primary}, ${entry.accent})` }}
+                />
+                <span className="saved-palette-name">{entry.name}</span>
+                <span className="saved-palette-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => applySavedPalette(entry)}
+                    disabled={isSavedActive(entry)}
+                  >
+                    {isSavedActive(entry) ? 'פעילה' : 'החלה'}
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm saved-palette-delete"
+                    title="מחיקת הפלטה"
+                    aria-label={`מחיקת הפלטה ${entry.name}`}
+                    onClick={() => deleteSavedPalette(entry.id)}
+                  >
+                    <svg className="icon"><use href="#i-trash" /></svg>
+                  </button>
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="custom-palette-editor">
+          <div className="settings-inline-head">
+            <strong>עורך פלטה מותאמת</strong>
+            {prefs.palette !== 'custom' && (
+              <button type="button" className="btn btn-secondary btn-sm" onClick={selectCustomPalette}>
+                הפעלת הפלטה המותאמת
+              </button>
+            )}
+          </div>
+          <div className="color-fields-grid">
+            <div className="field">
+              <label htmlFor="custom-palette-primary">צבע ראשי</label>
+              <div className="color-field-row">
+                <input
+                  id="custom-palette-primary"
+                  type="color"
+                  className="color-swatch-input"
+                  value={customColors.primary}
+                  onChange={(e) => updateCustomColor('primary', e.target.value)}
+                />
+                <span className="color-field-hex">{customColors.primary.toUpperCase()}</span>
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="custom-palette-accent">צבע משני</label>
+              <div className="color-field-row">
+                <input
+                  id="custom-palette-accent"
+                  type="color"
+                  className="color-swatch-input"
+                  value={customColors.accent}
+                  onChange={(e) => updateCustomColor('accent', e.target.value)}
+                />
+                <span className="color-field-hex">{customColors.accent.toUpperCase()}</span>
+              </div>
+            </div>
+            <div className="field">
+              <label htmlFor="custom-palette-neutral">גוון רקע (נייטרלי)</label>
+              <div className="color-field-row">
+                <label className="neutral-auto-toggle">
+                  <input
+                    type="checkbox"
+                    checked={manualNeutral}
+                    onChange={(e) => toggleManualNeutral(e.target.checked)}
+                  />
+                  ידני
+                </label>
+                {manualNeutral ? (
+                  <>
+                    <input
+                      id="custom-palette-neutral"
+                      type="color"
+                      className="color-swatch-input"
+                      value={customColors.neutral}
+                      onChange={(e) => updateCustomColor('neutral', e.target.value)}
+                    />
+                    <span className="color-field-hex">{customColors.neutral.toUpperCase()}</span>
+                  </>
+                ) : (
+                  <span className="hint">אוטומטי — נגזר מהצבע הראשי</span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <PreviewStrip colors={customColors} />
+          <div className="hint">
+            כל הגוונים — רקעים, גבולות, טקסט, צללים ומצב כהה — נגזרים אוטומטית מהצבעים שנבחרו.
+          </div>
+
+          <div className="settings-inline-actions">
+            <input
+              type="text"
+              className="input"
+              style={{ maxWidth: 220 }}
+              placeholder="שם לפלטה (למשל: ורוד שלי)"
+              value={newPaletteName}
+              maxLength={40}
+              onChange={(e) => setNewPaletteName(e.target.value)}
+            />
+            <button type="button" className="btn btn-primary btn-sm" onClick={saveCurrentAsPalette}>
+              שמירה כפלטה חדשה
             </button>
-          ))}
+          </div>
         </div>
-        <div className="field" style={{ marginBottom: 0 }}>
+      </div>
+
+      {/* 4 — אפשרויות נוספות */}
+      <div className="card card-pad settings-card">
+        <div className="section-title">אפשרויות נוספות</div>
+
+        <div className="field">
+          <label>גופן</label>
+          <div className="font-grid">
+            {QUICK_FONTS.map((f) => (
+              <button
+                key={f.key}
+                type="button"
+                className={`font-opt${prefs.font === f.key ? ' active' : ''}`}
+                onClick={() => updatePref('font', f.key)}
+              >
+                {f.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="field">
           <label htmlFor="display-settings-more-fonts">עוד גופנים</label>
           <select
             id="display-settings-more-fonts"
             className="select"
+            style={{ maxWidth: 280 }}
             value={selectFontValue}
             onChange={(e) => {
               if (!e.target.value) return;
@@ -440,57 +565,46 @@ export default function DisplaySettingsPage() {
             ))}
           </select>
         </div>
-      </div>
 
-      <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <div className="section-title">מצב תצוגה</div>
-        <div className="mode-row">
-          {MODES.map((m) => (
-            <button
-              key={m.key}
-              type="button"
-              data-theme-mode={m.key}
-              className={`mode-btn${prefs.mode === m.key ? ' active' : ''}`}
-              onClick={() => updatePref('mode', m.key)}
-            >
-              {m.label}
-            </button>
-          ))}
+        <div className="settings-two-col">
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label>צפיפות</label>
+            <div className="density-row">
+              {DENSITIES.map((d) => (
+                <button
+                  key={d.key}
+                  type="button"
+                  data-density-mode={d.key}
+                  className={`density-btn${prefs.density === d.key ? ' active' : ''}`}
+                  onClick={() => updatePref('density', d.key)}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="field" style={{ marginBottom: 0 }}>
+            <label>גודל טקסט</label>
+            <div className="density-row">
+              {TEXT_SCALES.map((t) => (
+                <button
+                  key={t.key}
+                  type="button"
+                  data-text-scale-mode={t.key}
+                  className={`density-btn${prefs.textScale === t.key ? ' active' : ''}`}
+                  onClick={() => updatePref('textScale', t.key)}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
-      </div>
-
-      <div className="card card-pad" style={{ marginBottom: 16 }}>
-        <div className="section-title">צפיפות</div>
-        <div className="density-row">
-          {DENSITIES.map((d) => (
-            <button
-              key={d.key}
-              type="button"
-              data-density-mode={d.key}
-              className={`density-btn${prefs.density === d.key ? ' active' : ''}`}
-              onClick={() => updatePref('density', d.key)}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="card card-pad">
-        <div className="section-title">גודל טקסט</div>
-        <div className="density-row">
-          {TEXT_SCALES.map((t) => (
-            <button
-              key={t.key}
-              type="button"
-              data-text-scale-mode={t.key}
-              className={`density-btn${prefs.textScale === t.key ? ' active' : ''}`}
-              onClick={() => updatePref('textScale', t.key)}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
+        {!employeeId && (
+          <div className="hint" style={{ marginTop: 10 }}>
+            לא מחובר/ת — ההעדפות נשמרות על הדפדפן הזה בלבד. התחברות תשמור אותן לחשבון.
+          </div>
+        )}
       </div>
     </div>
   );

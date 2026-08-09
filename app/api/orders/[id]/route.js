@@ -1,7 +1,59 @@
 import { NextResponse } from 'next/server';
+import { Prisma } from '@prisma/client';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 
 export const dynamic = 'force-dynamic';
+
+// שליפת פריטי ההזמנה עם dressItem+dress בשאילתת JOIN אחת במקום include מקונן של
+// פריזמה (3 סבבים עוקבים מול Neon — OrderItem ואז DressItem ואז DressModel, כ-100-200ms
+// לסבב). אותו תקדים כמו app/api/alterations/route.js, אבל רשימת העמודות נבנית מה-DMMF
+// של הקליינט כך שהיא תמיד תואמת את הסכימה הנוכחית ולא מתיישנת עם שינויי מודל.
+// (relationJoins של פריזמה נבחן ונפסל — ר' ההערה ב-prisma/schema.prisma.)
+const scalarFieldNames = (modelName) =>
+  Prisma.dmmf.datamodel.models
+    .find(m => m.name === modelName)
+    .fields.filter(f => f.kind === 'scalar' || f.kind === 'enum')
+    .map(f => f.name);
+
+const ORDER_ITEM_FIELDS = scalarFieldNames('OrderItem');
+const DRESS_ITEM_FIELDS = scalarFieldNames('DressItem');
+const DRESS_MODEL_FIELDS = scalarFieldNames('DressModel');
+
+const colList = (fields, alias, prefix) =>
+  fields.map(f => `${alias}."${f}" AS "${prefix}${f}"`).join(', ');
+
+const pickPrefixed = (row, fields, prefix) => {
+  const out = {};
+  for (const f of fields) out[f] = row[prefix + f];
+  return out;
+};
+
+// מחזיר בדיוק את הצורה של:
+// prisma.orderItem.findMany({ where: { orderId }, include: { dressItem: { include: { dress: true } } } })
+async function fetchOrderItemsWithDress(orderId) {
+  const rows = await prisma.$queryRaw(Prisma.sql`
+    SELECT
+      ${Prisma.raw(colList(ORDER_ITEM_FIELDS, 'oi', 'oi_'))},
+      ${Prisma.raw(colList(DRESS_ITEM_FIELDS, 'di', 'di_'))},
+      ${Prisma.raw(colList(DRESS_MODEL_FIELDS, 'dm', 'dm_'))}
+    FROM "OrderItem" oi
+    LEFT JOIN "DressItem" di ON di."id" = oi."dressItemId"
+    LEFT JOIN "DressModel" dm ON dm."id" = di."dressModelId"
+    WHERE oi."orderId" = ${orderId}
+  `);
+
+  return rows.map(row => {
+    const item = pickPrefixed(row, ORDER_ITEM_FIELDS, 'oi_');
+    if (row.di_id !== null) {
+      const dressItem = pickPrefixed(row, DRESS_ITEM_FIELDS, 'di_');
+      dressItem.dress = row.dm_id !== null ? pickPrefixed(row, DRESS_MODEL_FIELDS, 'dm_') : null;
+      item.dressItem = dressItem;
+    } else {
+      item.dressItem = null;
+    }
+    return item;
+  });
+}
 import { recalculateOrderObligations, computeOrderObligations } from '../../../../lib/pricingEngine';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../lib/inventory';
@@ -48,16 +100,7 @@ export async function GET(request, { params }) {
     // Workaround for schema relation pointing to Order.id instead of Order.orderId
     // These queries are independent of each other - fetch them concurrently instead of one at a time.
     const [items, payments, refunds, priceList, obligationsRaw, settings] = await Promise.all([
-      prisma.orderItem.findMany({
-        where: { orderId: parsedOrderId },
-        include: {
-          dressItem: {
-            include: {
-              dress: true
-            }
-          }
-        }
-      }),
+      fetchOrderItemsWithDress(parsedOrderId),
       prisma.payment.findMany({ where: { orderId: parsedOrderId } }),
       prisma.refund.findMany({ where: { orderId: parsedOrderId } }),
       prisma.priceList.findMany({ select: { id: true, legacyId: true, category: true, description: true, fromSize: true, toSize: true, price: true } }),
@@ -666,10 +709,7 @@ export async function PUT(request, { params }) {
           employee: true
         }
       }),
-      prisma.orderItem.findMany({
-        where: { orderId: parsedOrderId },
-        include: { dressItem: { include: { dress: true } } }
-      }),
+      fetchOrderItemsWithDress(parsedOrderId),
       prisma.payment.findMany({ where: { orderId: parsedOrderId } }),
       prisma.refund.findMany({ where: { orderId: parsedOrderId } }),
       prisma.paymentObligation.findMany({ where: { orderId: parsedOrderId } }),

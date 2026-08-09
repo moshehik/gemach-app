@@ -104,10 +104,10 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     top: dropdownPos.top,
     left: dropdownPos.left,
     width: dropdownPos.width,
-    backgroundColor: 'var(--card-bg, white)',
-    border: '1px solid var(--element-border, #e2e8f0)',
+    backgroundColor: 'var(--surface)',
+    border: '1px solid var(--border)',
     borderRadius: '12px',
-    boxShadow: '0 8px 16px rgba(0,0,0,0.12)',
+    boxShadow: 'var(--shadow-lg)',
     zIndex: 999999,
     direction: 'rtl'
   };
@@ -123,7 +123,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
               style={{
                 padding: '0.8rem 1rem',
                 cursor: 'pointer',
-                borderBottom: '1px solid #eee',
+                borderBottom: '1px solid var(--border)',
                 textAlign: 'right',
                 transition: 'background-color 0.2s'
               }}
@@ -162,7 +162,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
           width: '100%',
           padding: '1.2rem',
           borderRadius: '12px',
-          border: `2px solid ${error ? '#d32f2f' : 'var(--element-border)'}`,
+          border: `2px solid ${error ? 'var(--danger)' : 'var(--element-border)'}`,
           fontSize: '1.1rem',
           outline: 'none',
           transition: 'border-color 0.2s',
@@ -170,7 +170,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
           backgroundColor: 'var(--card-bg)'
         }}
         onMouseEnter={(e) => { if (!error) e.target.style.borderColor = 'var(--primary-color)' }}
-        onMouseLeave={(e) => { if (!error) e.target.style.borderColor = '#e0e0e0' }}
+        onMouseLeave={(e) => { if (!error) e.target.style.borderColor = 'var(--element-border)' }}
       />
       {loading && isOpen && (
         <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>טוען...</div>

@@ -1,5 +1,9 @@
 generator client {
   provider = "prisma-client-js"
+  // הערה (בדיקת ביצועים 2026-08-09): previewFeatures = ["relationJoins"] נבחן ונפסל —
+  // הדלקת הדגל הופכת את ברירת המחדל ל-JOIN בכל האפליקציה, ורשימת ההזמנות הראשית
+  // נמדדה איתו פי-3 איטית יותר (צבירת JSONB על items+payments+obligations).
+  // נתיבים חמים ספציפיים שופרו ידנית במקום (ר' app/api/orders/[id], app/api/dashboard/debts).
 }
 
 datasource db {
@@ -96,7 +100,7 @@ model Employee {
   hourlyWage         Float? // שכר_שעה
   paymentMethod      String? // אופן_תשלום
   travelExpenses     Boolean?       @default(false) // נסיעות
-  themeColor         String?        @default("standard") // פלטת גוונים
+  themeColor         String?        @default("standard") // הוסב: JSON העדפות עיצוב פר-עובד (ר' /api/me/design-prefs); ערכי legacy ("standard" וכו') נחשבים "אין העדפות"
   profileImage       String? // קובץ פלוס תמונה
   receiveEmailAlerts Boolean        @default(false) // קבלת התראות למייל
   showAi             Boolean        @default(false) // הרשאת AI
@@ -376,6 +380,7 @@ model OrderItem {
   @@index([createdAt])
   @@index([isTaken])
   @@index([isReturned])
+  @@index([takenDate])
 }
 
 model PriceList {

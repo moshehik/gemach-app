@@ -6,35 +6,43 @@
 @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Frank+Ruhl+Libre:wght@400;500;700;900&family=Heebo:wght@300;400;500;600;700&display=swap');
 
 :root {
+  /*
+    גשר טוקני-Legacy → "אריג": הטוקנים הישנים החיים (זהב/קרם) ממופים מעתה
+    כ-var() אל הטוקנים הקנוניים של app/design-system.css, כך שכל שכבת
+    design-overrides.css, הכותרות הדביקות, AISearchBar והקומפוננטות הישנות
+    עוקבות אוטומטית אחרי הפלטה החיה (פריסט/מותאמת), בהיר וכהה, בלי לגעת
+    בעשרות קבצים. משתנים "מתים" (0 צרכנים — cat-*, banner-*, day-* וכו')
+    הושארו כפי שהם בכוונה. ההפניות נפתרות בזמן-שימוש, ולכן זה תקין למרות
+    ש-design-system.css מיובא אחרי הקובץ הזה.
+  */
   --gradient-primary: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
-  --primary-light: rgba(212, 175, 55, 0.15);
+  --primary-light: var(--primary-tint);
   --border-main: rgba(0, 0, 0, 0.1);
   --text-secondary: #8a8371;
   --danger-bg: #fef2f2;
-  --danger-text: #ef4444;
+  --danger-text: var(--danger);
   --success-bg: #f0fdf4;
-  --success-text: #22c55e;
+  --success-text: var(--success);
   --warning-color: #f59e0b;
 
-  --primary-color: #d4af37; /* Gold */
-  --btn-primary-text: #1e293b;
-  --primary-hover: #b5952f;
-  --bg-color: #fcfbf9; /* Soft cream/white */
-  --text-main: #2c2c2c; /* Deep gray */
-  /* ניטרלים חמים (קרם/שמנת) במקום אפורים קרים — פלטת העיצוב המוסכמת */
-  --text-muted: #8a8371;
-  --card-bg: rgba(255, 255, 255, 0.85);
-  --border-color: rgba(212, 175, 55, 0.2);
+  --primary-color: var(--primary-solid);
+  --btn-primary-text: var(--text-on-primary);
+  --primary-hover: #b5952f; /* נדרס ממילא ע"י design-system.css (סדר ייבוא) */
+  --bg-color: var(--bg);
+  --text-main: var(--text);
+  --text-muted: var(--text-2);
+  --card-bg: var(--surface);
+  --border-color: var(--border);
   --shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   /* --shadow-md היה בשימוש ב-9 מקומות בלי שהוגדר מעולם — כל box-shadow כזה פשוט לא צויר */
   --shadow-md: 0 6px 14px -3px rgba(0, 0, 0, 0.07), 0 3px 6px -4px rgba(0, 0, 0, 0.04);
   --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.5);
-  --element-bg: #f6f3ea;
-  --element-border: #e5ddc8;
-  --image-bg: #f4f1e9;
-  --divider: #f0ead9;
-  --input-bg: white;
+  --glass-border: 1px solid var(--border);
+  --element-bg: var(--surface-alt);
+  --element-border: var(--border);
+  --image-bg: var(--surface-sunken);
+  --divider: var(--border);
+  --input-bg: var(--surface);
   /* כינוי לאחור: --text-color היה בשימוש ב-24 מקומות בלי שהוגדר מעולם */
   --text-color: var(--text-main);
 
@@ -66,17 +74,10 @@
 }
 
 [data-theme="dark"] {
-  --bg-color: #121212;
-  --text-main: #e0e0e0;
-  --text-muted: #9e9e9e;
-  --card-bg: rgba(30, 30, 30, 0.85);
-  --border-color: rgba(212, 175, 55, 0.3);
-  --glass-border: 1px solid rgba(255, 255, 255, 0.08);
-  --element-bg: #2b2820;
-  --element-border: #4a4437;
-  --image-bg: #211e18;
-  --divider: #3a352b;
-  --input-bg: #1e1c17;
+  /* הטוקנים המגושרים (bg-color, text-main, card-bg, border-color, element-*,
+     divider, input-bg, glass-border, image-bg) הוסרו מכאן בכוונה — הם עוקבים
+     עכשיו דרך הגשר שב-:root אחרי הווריאנטים הכהים של טוקני האריג עצמם;
+     הגדרה כהה קשיחה כאן הייתה דורסת את הגשר וקופאת על הזהב הישן. */
 
   /* גרסאות כהות לצבעי הלוח — רקע מעומעם + טקסט בהיר, במקום פסטל בהיר על רקע כהה */
   --cat-empty-bg: rgba(239, 68, 68, 0.16);     --cat-empty-border: rgba(239, 68, 68, 0.35);     --cat-empty-text: #fca5a5;
@@ -102,9 +103,10 @@
 }
 
 [data-theme="dark"] body {
-  background-image: 
-    radial-gradient(at 0% 0%, hsla(43, 65%, 20%, 0.5) 0px, transparent 50%),
-    radial-gradient(at 100% 0%, hsla(0, 0%, 15%, 1) 0px, transparent 50%);
+  /* הילת-רקע עדינה במצב כהה — נגזרת מהטוקנים במקום זהב קשיח, כדי לעקוב אחרי הפלטה */
+  background-image:
+    radial-gradient(at 0% 0%, color-mix(in srgb, var(--accent-tint) 50%, transparent) 0px, transparent 50%),
+    radial-gradient(at 100% 0%, color-mix(in srgb, var(--surface) 90%, transparent) 0px, transparent 50%);
 }
 
 * {
@@ -482,13 +484,13 @@ body.hide-global-nav .navbar {
   background: currentColor;
 }
 
-.status-filter.active.c-amber  { color: #d97706; }
-.status-filter.active.c-purple { color: #7c3aed; }
-.status-filter.active.c-gray   { color: #475569; }
-.status-filter.active.c-red    { color: #dc2626; }
-.status-filter.active.c-green  { color: #059669; }
-.status-filter.active.c-blue   { color: #2563eb; }
-.status-filter.active.c-teal   { color: #0d9488; }
+.status-filter.active.c-amber  { color: var(--warning); }
+.status-filter.active.c-purple { color: var(--status-purple); }
+.status-filter.active.c-gray   { color: var(--text-3); }
+.status-filter.active.c-red    { color: var(--danger); }
+.status-filter.active.c-green  { color: var(--success); }
+.status-filter.active.c-blue   { color: var(--info); }
+.status-filter.active.c-teal   { color: var(--status-teal); }
 
 .icon-toolbar {
   display: flex;
@@ -538,11 +540,11 @@ body.hide-global-nav .navbar {
   padding: 0 1.05rem 0 1.2rem;
   height: 38px;
   gap: 0.45rem;
-  background: linear-gradient(135deg, var(--primary-color), #e8c85a);
+  background: linear-gradient(135deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 72%, #fff));
   color: var(--btn-primary-text);
   font-weight: 700;
   font-size: 0.88rem;
-  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.35);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--primary-color) 35%, transparent);
 }
 
 .icon-btn-primary:hover {
@@ -552,14 +554,14 @@ body.hide-global-nav .navbar {
 
 /* גרסת "אישור"/"פעולה חיובית" של הכפתור הראשי — אותה צורה, צבע ירוק סמנטי */
 .icon-btn-primary.c-approve {
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: #fff;
-  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  background: linear-gradient(135deg, color-mix(in srgb, var(--success-solid) 82%, #fff), var(--success-solid));
+  color: var(--text-on-primary);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--success-solid) 30%, transparent);
 }
 
 .icon-btn-primary.c-approve:hover {
-  background: linear-gradient(135deg, #059669, #047857);
-  color: #fff;
+  background: linear-gradient(135deg, var(--success-solid), color-mix(in srgb, var(--success-solid) 80%, #000));
+  color: var(--text-on-primary);
 }
 
 /* (סגנון .icon-nav-link מוגדר למעלה, יחד עם שאר רכיבי הכותרת) */
@@ -1806,16 +1808,15 @@ thead th, th {
   position: sticky;
   top: -1px;
   z-index: 20;
-  background-color: var(--sticky-header-bg, #f8fafc);
+  background-color: var(--sticky-header-bg);
   background-clip: padding-box;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 -2px 0 var(--sticky-header-bg, #f8fafc);
-  outline: 1px solid var(--sticky-header-bg, #f8fafc);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05), 0 -2px 0 var(--sticky-header-bg);
+  outline: 1px solid var(--sticky-header-bg);
 }
 
 [data-theme="dark"] thead th, [data-theme="dark"] th {
-  background-color: var(--sticky-header-bg, #221f18);
-  box-shadow: 0 2px 4px rgba(255,255,255,0.05), 0 -2px 0 var(--sticky-header-bg, #221f18);
-  outline: 1px solid var(--sticky-header-bg, #221f18);
+  box-shadow: 0 2px 4px rgba(255,255,255,0.05), 0 -2px 0 var(--sticky-header-bg);
+  outline: 1px solid var(--sticky-header-bg);
 }
 
 /* Hide Gregorian Calendar Setting */
@@ -1842,11 +1843,8 @@ body.hide-ai-features .ai-feature-element { display: none !important; }
    ========================================================== */
 :root {
   --navbar-height: 72px;
-  --sticky-header-bg: #faf8f2;
-}
-
-[data-theme="dark"] {
-  --sticky-header-bg: #221f18;
+  /* מגושר לטוקן האריג — עוקב אוטומטית אחרי הפלטה החיה, בהיר וכהה */
+  --sticky-header-bg: var(--surface-alt);
 }
 
 body.hide-global-nav {
@@ -2076,7 +2074,7 @@ table.data thead tr th {
   background: var(--input-bg);
   border: 1px solid var(--border-color);
   border-radius: 99px;
-  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.08);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary-color) 8%, transparent);
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
@@ -2131,16 +2129,16 @@ table.data thead tr th {
 }
 
 .ai-search__inline-btn.is-active {
-  color: #ec4899;
-  background: rgba(236, 72, 153, 0.12);
+  color: var(--ai-accent);
+  background: color-mix(in srgb, var(--ai-accent) 12%, transparent);
 }
 
 .ai-search__inline-btn.is-stats {
-  color: #10b981;
+  color: var(--success);
 }
 
 .ai-search__inline-btn.is-stats:hover {
-  background: rgba(16, 185, 129, 0.12);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
 }
 
 .ai-search__sep {
@@ -2157,7 +2155,7 @@ table.data thead tr th {
   padding: 0 1.05rem;
   border: none;
   border-radius: 99px;
-  background: linear-gradient(135deg, var(--primary-color), #e8c85a);
+  background: linear-gradient(135deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 72%, #fff));
   color: var(--btn-primary-text);
   font-family: inherit;
   font-weight: 700;
@@ -2171,17 +2169,17 @@ table.data thead tr th {
 
 /* מצב AI — אותה גלולה, בזהות הצבע הסגול-ורודה של תכונות ה-AI */
 .ai-search.is-magic {
-  border-color: rgba(236, 72, 153, 0.4);
-  box-shadow: 0 2px 10px rgba(236, 72, 153, 0.12);
+  border-color: color-mix(in srgb, var(--ai-accent) 40%, transparent);
+  box-shadow: 0 2px 10px color-mix(in srgb, var(--ai-accent) 12%, transparent);
 }
 
 .ai-search.is-magic:focus-within {
-  border-color: #ec4899;
-  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.15);
+  border-color: var(--ai-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ai-accent) 15%, transparent);
 }
 
 .ai-search.is-magic .ai-search__go {
-  background: linear-gradient(135deg, #a855f7, #ec4899);
+  background: linear-gradient(135deg, var(--ai-accent-2), var(--ai-accent));
   color: #fff;
 }
 
@@ -2194,7 +2192,7 @@ table.data thead tr th {
   border: 1px solid var(--border-color);
   background: var(--input-bg);
   color: var(--text-main);
-  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.08);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--primary-color) 8%, transparent);
   outline: none;
   font-size: 1rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -2219,12 +2217,12 @@ table.data thead tr th {
   align-items: center;
   justify-content: center;
   border: none;
-  background: linear-gradient(135deg, var(--primary-color), #e8c85a);
+  background: linear-gradient(135deg, var(--primary-color), color-mix(in srgb, var(--primary-color) 72%, #fff));
   color: var(--btn-primary-text);
   font-weight: 700;
   cursor: pointer;
   transition: background 0.2s ease;
-  box-shadow: 0 3px 10px rgba(212, 175, 55, 0.25);
+  box-shadow: 0 3px 10px color-mix(in srgb, var(--primary-color) 25%, transparent);
 }
 
 .ai-search-submit:hover {
@@ -2263,10 +2261,10 @@ table.data thead tr th {
   height: 45px;
   padding: 0 3rem 0 1rem;
   border-radius: 24px;
-  border: 1.5px solid rgba(236, 72, 153, 0.35);
+  border: 1.5px solid color-mix(in srgb, var(--ai-accent) 35%, transparent);
   background: var(--input-bg);
   color: var(--text-main);
-  box-shadow: 0 3px 12px rgba(236, 72, 153, 0.12);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--ai-accent) 12%, transparent);
   outline: none;
   font-size: 1rem;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
@@ -2279,8 +2277,8 @@ table.data thead tr th {
 }
 
 .ai-search-input-magic:focus {
-  border-color: #ec4899;
-  box-shadow: 0 0 0 3px rgba(236, 72, 153, 0.15);
+  border-color: var(--ai-accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ai-accent) 15%, transparent);
 }
 
 .ai-search-submit-magic {
@@ -2292,12 +2290,12 @@ table.data thead tr th {
   justify-content: center;
   gap: 0.5rem;
   border: none;
-  background: linear-gradient(135deg, #a855f7, #ec4899);
+  background: linear-gradient(135deg, var(--ai-accent-2), var(--ai-accent));
   color: #fff;
   font-weight: 700;
   cursor: pointer;
   transition: filter 0.2s ease;
-  box-shadow: 0 3px 12px rgba(236, 72, 153, 0.3);
+  box-shadow: 0 3px 12px color-mix(in srgb, var(--ai-accent) 30%, transparent);
 }
 
 .ai-search-submit-magic:hover {
@@ -2328,13 +2326,13 @@ table.data thead tr th {
   flex: none;
 }
 
-.status-dot.c-amber  { color: #d97706; }
-.status-dot.c-purple { color: #7c3aed; }
-.status-dot.c-gray   { color: #64748b; }
-.status-dot.c-red    { color: #dc2626; }
-.status-dot.c-green  { color: #059669; }
-.status-dot.c-blue   { color: #2563eb; }
-.status-dot.c-teal   { color: #0d9488; }
+.status-dot.c-amber  { color: var(--warning); }
+.status-dot.c-purple { color: var(--status-purple); }
+.status-dot.c-gray   { color: var(--text-3); }
+.status-dot.c-red    { color: var(--danger); }
+.status-dot.c-green  { color: var(--success); }
+.status-dot.c-blue   { color: var(--info); }
+.status-dot.c-teal   { color: var(--status-teal); }
 
 /* בהדפסה — בלי שלד ובלי כותרות דביקות, שהכל יזרום על פני העמודים */
 @media print {

@@ -1,6 +1,12 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { cacheNamespace, fetchJson } from '@/app/lib/pageCache';
+
+// מטמון SWR משותף — ראה app/lib/pageCache.js. כניסה חוזרת לדף מציגה את
+// הנתונים הקודמים מיידית, וה-fetch של הדף הופך לרענון שקט ברקע.
+const messagesCache = cacheNamespace('messages');
+const MESSAGES_CACHE_KEY = 'all';
 
 export default function MessagesPage() {
   const [activeTab, setActiveTab] = useState('incoming'); // 'incoming', 'outgoing', 'archived', 'compose'
@@ -26,52 +32,64 @@ export default function MessagesPage() {
   // סינון מקומי בלבד על הרשימות שכבר נטענו (ללא קריאות שרת נוספות)
   const [searchTerm, setSearchTerm] = useState('');
 
+  // מפרק תשובת שרת (או עותק שמור במטמון) לתוך ה-state — אותה לוגיקה בדיוק
+  // שהייתה אינליין בתוך fetchData לפני חיבור הדף למטמון המשותף.
+  const applyData = (notifData, empData, meData) => {
+    if (meData && meData.success && meData.employee) {
+      setCurrentUser(meData.employee);
+    }
+
+    if (notifData && notifData.success) {
+      const inc = notifData.notifications || [];
+      const out = notifData.outgoing || [];
+
+      const allArchived = [];
+      const filteredInc = [];
+      const filteredOut = [];
+
+      inc.forEach(n => {
+        if (n.isArchived) allArchived.push({ ...n, direction: 'incoming' });
+        else filteredInc.push(n);
+      });
+
+      out.forEach(n => {
+        if (n.isArchived) allArchived.push({ ...n, direction: 'outgoing' });
+        else filteredOut.push(n);
+      });
+
+      allArchived.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+      setIncoming(filteredInc);
+      setOutgoing(filteredOut);
+      setArchived(allArchived);
+    }
+    if (Array.isArray(empData)) {
+      setEmployees(empData);
+    } else if (empData && empData.success) {
+      setEmployees(empData.employees || []);
+    }
+  };
+
   const fetchData = async () => {
-    setLoading(true);
+    // SWR: אם יש עותק במטמון המשותף — מציגים אותו מיידית, וה-fetch שבהמשך
+    // הופך לרענון שקט (בלי מסך טעינה). אחרת מתנהגים כמו קודם.
+    const cached = messagesCache.get(MESSAGES_CACHE_KEY);
+    if (cached) {
+      applyData(cached.notifData, cached.empData, cached.meData);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
     try {
-      const [notifRes, empRes, meRes] = await Promise.all([
-        fetch('/api/notifications'),
-        fetch('/api/employees'),
-        fetch('/api/me')
+      // fetchJson מאחד בקשות GET מקבילות לאותו URL (ראה pageCache.js)
+      const [notifData, empData, meData] = await Promise.all([
+        fetchJson('/api/notifications', { cache: 'no-store' }),
+        fetchJson('/api/employees', { cache: 'no-store' }),
+        fetchJson('/api/me', { cache: 'no-store' })
       ]);
 
-      const notifData = await notifRes.json();
-      const empData = await empRes.json();
-      const meData = await meRes.json();
-
-      if (meData.success && meData.employee) {
-        setCurrentUser(meData.employee);
-      }
-
-      if (notifData.success) {
-        const inc = notifData.notifications || [];
-        const out = notifData.outgoing || [];
-
-        const allArchived = [];
-        const filteredInc = [];
-        const filteredOut = [];
-
-        inc.forEach(n => {
-          if (n.isArchived) allArchived.push({ ...n, direction: 'incoming' });
-          else filteredInc.push(n);
-        });
-
-        out.forEach(n => {
-          if (n.isArchived) allArchived.push({ ...n, direction: 'outgoing' });
-          else filteredOut.push(n);
-        });
-
-        allArchived.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-
-        setIncoming(filteredInc);
-        setOutgoing(filteredOut);
-        setArchived(allArchived);
-      }
-      if (Array.isArray(empData)) {
-        setEmployees(empData);
-      } else if (empData && empData.success) {
-        setEmployees(empData.employees || []);
-      }
+      messagesCache.set(MESSAGES_CACHE_KEY, { notifData, empData, meData });
+      applyData(notifData, empData, meData);
     } catch (err) {
       setError('שגיאה בטעינת נתונים');
     } finally {
@@ -92,6 +110,9 @@ export default function MessagesPage() {
       });
       if (res.ok) {
         setIncoming(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+        // העדכון בוצע רק ב-state המקומי — מפנים את העותק במטמון כדי שכניסה
+        // חוזרת לדף לא תציג לרגע את המצב הישן (לא-נקרא)
+        messagesCache.delete(MESSAGES_CACHE_KEY);
       }
     } catch (err) {
       console.error(err);
@@ -126,6 +147,7 @@ export default function MessagesPage() {
         setIncoming(updateList);
         setOutgoing(updateList);
         setArchived(updateList);
+        messagesCache.delete(MESSAGES_CACHE_KEY); // עדכון מקומי בלבד — ראה markAsRead
       }
     } catch (err) {
       console.error('Error updating tags:', err);
@@ -195,6 +217,7 @@ export default function MessagesPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setCurrentUser(data.employee);
+        messagesCache.delete(MESSAGES_CACHE_KEY); // עדכון מקומי בלבד — ראה markAsRead
       }
     } catch (err) {
       console.error('Error saving settings:', err);

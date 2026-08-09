@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { verifySecret } from '@/lib/passwordAuth';
 import { getTrustedDeviceFromCookieStore, markDeviceUsed } from '@/lib/trustedDevice';
+import { issueSessionCookie } from '@/lib/auth';
 
 export async function POST(request) {
   try {
@@ -67,6 +68,16 @@ export async function POST(request) {
       path: '/',
       maxAge: 60 * 60 * 24 * 7 // 1 week
     });
+
+    // Signed session cookie (auth_session) — DB-free role verification fast
+    // path for checkAuth/checkPageAccess/RootLayout. Best-effort: if
+    // AUTH_SECRET isn't configured (or signing fails) the login still
+    // succeeds and everything falls back to the legacy auth_token-only path.
+    try {
+      issueSessionCookie(cookieStore, employee);
+    } catch (e) {
+      console.warn('issueSessionCookie failed (continuing with legacy auth only):', e?.message || e);
+    }
 
     return NextResponse.json({ success: true, mustResetPassword: !!employee.mustResetPassword });
   } catch (error) {

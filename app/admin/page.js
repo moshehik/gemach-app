@@ -25,6 +25,7 @@ const categories = [
       { href: '/admin/inventory-alerts', icon: 'i-alert-tri', label: 'התראות מלאי', subLabel: 'בדיקת Overbooking' },
       { href: '/admin/recalculations', icon: 'i-coin', label: 'חישובים', subLabel: 'פערי תשלומים' },
       { href: '/admin/settings', icon: 'i-settings', label: 'הגדרות', subLabel: 'תצורה ולוגו' },
+      { href: '/admin/departments', icon: 'i-users', label: 'ניהול מחלקות', subLabel: 'תפקידי עובדים ומספרי מחלקה' },
       { href: '/admin/refund-policy', icon: 'i-receipt', label: 'מדיניות זיכויים', subLabel: 'תיעוד חוקי ביטול' },
       { href: '/admin/labels', icon: 'i-tag', label: 'שינוי שמות', subLabel: 'כיתובים וטקסטים' },
       { href: '/admin/trusted-devices', icon: 'i-shield', label: 'מחשבי מערכת מהימנים', subLabel: 'כניסה מהירה ב-4 ספרות' },

@@ -105,11 +105,13 @@
  *    duplicates for anything this tool itself inserted, and a scoped
  *    reconciliation pass for the pre-existing backlog can be built later
  *    with a deliberately-chosen matching strategy (out of scope tonight).
- *  - Does not touch Refund, PriceList, PriceRule, or any other model - only
- *    the 10 tables listed above (Customer, Employee, DressModel, DressItem,
- *    Order, OrderItem, Payment, PaymentObligation, Shift, SystemSetting -
- *    note this line said "7 tables" before 2026-08-06 and was already stale
- *    by 2, since Shift had been added without updating the count).
+ *  - Does not touch Refund, PriceRule, or any other model - only the 12
+ *    tables handled above (Customer, Department, Employee, DressModel,
+ *    DressItem, Order, OrderItem, Payment, PaymentObligation, Shift,
+ *    SystemSetting, PriceList). PriceList (מחירים) and Department (מחלקות)
+ *    were added 2026-08-09 as full legacyId-keyed upserts - see the comments
+ *    above processPriceList()/processDepartments() for the verification that
+ *    their legacyIds are genuine Access keys (no synthetic-junk problem).
  *
  * DATA-QUALITY GUARDS BUILT IN (see git history / commit message for the
  * concrete investigation numbers behind each of these)
@@ -145,6 +147,7 @@ const { PrismaClient } = require('@prisma/client');
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
+const bcrypt = require('bcryptjs');
 
 // ---------------------------------------------------------------------------
 // CLI args
@@ -345,6 +348,32 @@ function applyLimit(rows) {
   return TAIL ? rows.slice(-ROW_LIMIT) : rows.slice(0, ROW_LIMIT);
 }
 
+// ---------------------------------------------------------------------------
+// Password hashing (Employee create path only)
+// ---------------------------------------------------------------------------
+// Access stores סיסמא as PLAINTEXT. The live app stores only bcrypt hashes
+// (see lib/passwordAuth.js hashSecret + scripts/migrate_hash_passwords.js), and
+// login uses bcrypt.compare - so inserting the Access plaintext as-is produced
+// employees who could never log in (bug fixed 2026-08-09). Mirror the live
+// create path (app/api/employees/route.js): hash the password AND derive
+// pinHash from the last 4 chars while the plaintext is still in hand, so the
+// trusted-device fast login works for imported employees too.
+// Guard against double-hashing: a value that already looks like a bcrypt hash
+// is stored as-is (pinHash can't be derived from a hash - left null).
+const BCRYPT_HASH_RE = /^\$2[aby]\$\d{2}\$/;
+const SALT_ROUNDS = 10; // same work factor as lib/passwordAuth.js
+
+function hashAccessPassword(rawPassword) {
+  if (!rawPassword) return { password: null, pinHash: null };
+  const s = String(rawPassword);
+  if (BCRYPT_HASH_RE.test(s)) return { password: s, pinHash: null }; // already hashed - never double-hash
+  const last4 = s.length <= 4 ? s : s.slice(-4);
+  return {
+    password: bcrypt.hashSync(s, SALT_ROUNDS),
+    pinHash: bcrypt.hashSync(last4, SALT_ROUNDS),
+  };
+}
+
 /**
  * Bulk INSERT ... ON CONFLICT (<conflictCol>) DO UPDATE, chunked, with native
  * JS param binding (no manual SQL-escaping of Hebrew text needed). On dry
@@ -501,8 +530,12 @@ async function processEmployees() {
     ];
 
     if (isNew) {
-      // Only on CREATE do we also set the login password from Access.
-      createRows.push([crypto.randomUUID(), legacyId, ...common, toStr(e['\u05e1\u05d9\u05e1\u05de\u05d0'])]); // סיסמא
+      // Only on CREATE do we also set the login password from Access - hashed
+      // via hashAccessPassword (bcrypt + derived pinHash), NEVER plaintext
+      // (bug fixed 2026-08-09: the Access plaintext used to be stored as-is,
+      // so bcrypt.compare at login always failed for imported employees).
+      const hashedPw = hashAccessPassword(toStr(e['סיסמא']));
+      createRows.push([crypto.randomUUID(), legacyId, ...common, hashedPw.password, hashedPw.pinHash]); // סיסמא
     } else {
       updateRows.push([crypto.randomUUID(), legacyId, ...common]);
     }
@@ -515,7 +548,7 @@ async function processEmployees() {
 
   const createResult = await bulkUpsert({
     label: 'Employee (new)', table: 'Employee', conflictCol: 'legacyId',
-    columns: ['id', 'legacyId', ...baseCols, 'password'],
+    columns: ['id', 'legacyId', ...baseCols, 'password', 'pinHash'],
     updateColumns: baseCols, // irrelevant path for brand-new legacyIds, but harmless if hit
     rows: createRows,
   });
@@ -1032,6 +1065,107 @@ async function processSystemSettings() {
   return { accessCount: rows.length, toCreate, toUpdate: 0, alreadyExists, legacyIdCollisions, ...result };
 }
 
+// ---------------------------------------------------------------------------
+// PriceList (מחירים) - added 2026-08-09. lib/pricingEngine.js reads PriceList
+// live, but this table was previously skipped by this tool, so a price change
+// made in Access never reached the app. Full upsert keyed on legacyId <-> קוד
+// (verified 2026-08-09: all 9 PROD rows carry a legacyId that matches Access's
+// קוד exactly - no synthetic-junk problem here). Access is the source of truth
+// for this table; every Access-sourced field is refreshed on each run.
+// Both date columns are TRUE Access Date/Time columns (probed 2026-08-09:
+// תאריך_סיום_מחיר is the 1970-01-01 NULL-serialization sentinel on every row),
+// so parseTrueDate's 1899/1970 sentinel guard applies.
+// ---------------------------------------------------------------------------
+async function processPriceList() {
+  console.log('\n--- PriceList (מחירים) ---');
+  const rows = applyLimit(await accessQuery(`SELECT * FROM [מחירים]`));
+
+  const existing = await prisma.priceList.findMany({ where: { legacyId: { not: null } }, select: { legacyId: true } });
+  const existingSet = new Set(existing.map(r => r.legacyId));
+
+  let toCreate = 0, toUpdate = 0;
+  const dbRows = [];
+  for (const p of rows) {
+    const legacyId = toInt(p['קוד']); // קוד
+    if (!legacyId) continue;
+    if (existingSet.has(legacyId)) toUpdate++; else toCreate++;
+
+    dbRows.push([
+      crypto.randomUUID(), legacyId,
+      toStr(p['תיאור']),                    // תיאור -> description
+      toInt(p['ממידה']),                    // ממידה -> fromSize (can legitimately be -1)
+      toInt(p['עד_מידה']),                  // עד_מידה -> toSize
+      toFloat(p['מחיר']),                   // מחיר -> price
+      parseTrueDate(p['תאריך_התחלת_מחיר']), // תאריך_התחלת_מחיר -> startDate
+      parseTrueDate(p['תאריך_סיום_מחיר']),  // תאריך_סיום_מחיר -> endDate (sentinel -> null)
+      toStr(p['קטגוריה']),                  // קטגוריה -> category (links to DressModel.priceCategory)
+      toFloat(p['החזר']),                   // החזר -> deposit
+      new Date(),
+    ]);
+  }
+
+  console.log(`  Access rows: ${rows.length} | will create: ${toCreate} | will update: ${toUpdate}`);
+
+  const result = await bulkUpsert({
+    label: 'PriceList', table: 'PriceList', conflictCol: 'legacyId',
+    columns: ['id', 'legacyId', 'description', 'fromSize', 'toSize', 'price', 'startDate', 'endDate', 'category', 'deposit', 'updatedAt'],
+    updateColumns: ['description', 'fromSize', 'toSize', 'price', 'startDate', 'endDate', 'category', 'deposit', 'updatedAt'],
+    rows: dbRows,
+  });
+
+  return { accessCount: rows.length, toCreate, toUpdate, ...result };
+}
+
+// ---------------------------------------------------------------------------
+// Department (מחלקות) - added 2026-08-09. Only 6 rows, but until now nothing
+// kept them in sync with Access. Full upsert keyed on legacyId <-> קוד
+// (verified 2026-08-09: all 6 PROD rows already carry the exact Access קוד,
+// including the special קוד=-2 "הנהלה ראשית" row).
+// NOTE Department.roleId (מס_מחלקה) is ALSO unique in the schema; if Access
+// ever re-assigns a מס_מחלקה that a DIFFERENT department already holds in the
+// DB, blindly upserting would blow the unique constraint mid-batch - such rows
+// are skipped with a loud warning instead, for manual resolution.
+// ---------------------------------------------------------------------------
+async function processDepartments() {
+  console.log('\n--- Department (מחלקות) ---');
+  const rows = applyLimit(await accessQuery(`SELECT * FROM [מחלקות]`));
+
+  const existing = await prisma.department.findMany({ select: { legacyId: true, roleId: true } });
+  const existingSet = new Set(existing.filter(r => r.legacyId != null).map(r => r.legacyId));
+  const roleIdOwner = new Map(existing.filter(r => r.legacyId != null).map(r => [r.roleId, r.legacyId]));
+
+  let toCreate = 0, toUpdate = 0, skipped = 0;
+  const dbRows = [];
+  for (const d of rows) {
+    const legacyId = toInt(d['קוד']); // קוד (can legitimately be negative, e.g. -2)
+    if (legacyId === null) continue;
+    const roleId = toInt(d['מס_מחלקה']); // מס_מחלקה
+    const name = toStr(d['שם_מחלקה']);   // שם_מחלקה
+    if (roleId === null || !name) { skipped++; continue; } // both NOT NULL in schema
+
+    const owner = roleIdOwner.get(roleId);
+    if (owner !== undefined && owner !== legacyId) {
+      skipped++;
+      console.warn(`  [Department] SKIPPED legacyId=${legacyId} ("${name}"): its roleId=${roleId} is already held by department legacyId=${owner} in the DB (roleId is unique) - resolve manually.`);
+      continue;
+    }
+
+    if (existingSet.has(legacyId)) toUpdate++; else toCreate++;
+    dbRows.push([crypto.randomUUID(), legacyId, roleId, name]);
+  }
+
+  console.log(`  Access rows: ${rows.length} | will create: ${toCreate} | will update: ${toUpdate} | skipped: ${skipped}`);
+
+  const result = await bulkUpsert({
+    label: 'Department', table: 'Department', conflictCol: 'legacyId',
+    columns: ['id', 'legacyId', 'roleId', 'name'], // no updatedAt column on this model
+    updateColumns: ['roleId', 'name'],
+    rows: dbRows,
+  });
+
+  return { accessCount: rows.length, toCreate, toUpdate, skipped, ...result };
+}
+
 async function getOrderCustomerMap(orderIdSet) {
   const orders = await prisma.order.findMany({
     where: { orderId: { in: Array.from(orderIdSet) } },
@@ -1048,6 +1182,7 @@ async function main() {
 
   const summary = {};
   summary.customer = await processCustomers();
+  summary.department = await processDepartments(); // before Employee - Employee.roleId FKs Department.roleId
   summary.employee = await processEmployees();
   summary.dressModel = await processDressModels();
   summary.dressItem = await processDressItems();
@@ -1055,13 +1190,14 @@ async function main() {
   summary.subRecords = await processOrderSubRecords(summary.order.newOrderIds);
   summary.shift = await processShifts();
   summary.systemSetting = await processSystemSettings();
+  summary.priceList = await processPriceList();
 
   console.log('\n' + '='.repeat(78));
   console.log(`SUMMARY  (mode: ${WRITE ? 'WRITE' : 'DRY RUN'})`);
   console.log('='.repeat(78));
-  for (const key of ['customer', 'employee', 'dressModel', 'dressItem', 'order', 'shift', 'systemSetting']) {
+  for (const key of ['customer', 'department', 'employee', 'dressModel', 'dressItem', 'order', 'shift', 'systemSetting', 'priceList']) {
     const s = summary[key];
-    console.log(`${key.padEnd(12)} access=${s.accessCount}  create=${s.toCreate}  update=${s.toUpdate}` +
+    console.log(`${key.padEnd(13)} access=${s.accessCount}  create=${s.toCreate}  update=${s.toUpdate}` +
       (s.written !== undefined ? `  written=${s.written}` : '') +
       (s.failed && s.failed.length ? `  FAILED=${s.failed.length}` : ''));
   }
@@ -1078,7 +1214,7 @@ async function main() {
   }
 
   // Print any per-row failures in full for investigation.
-  for (const key of ['customer', 'employee', 'dressModel', 'dressItem', 'order', 'shift', 'systemSetting']) {
+  for (const key of ['customer', 'department', 'employee', 'dressModel', 'dressItem', 'order', 'shift', 'systemSetting', 'priceList']) {
     const s = summary[key];
     if (s.failed && s.failed.length) {
       console.log(`\n${key} failed rows:`);

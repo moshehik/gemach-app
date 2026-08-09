@@ -20,7 +20,7 @@ export default function FormattedMessage({ content }) {
       <Link 
         key={match.index} 
         href={`/orders/${orderId}`} 
-        style={{ color: '#2563eb', textDecoration: 'underline', fontWeight: '600' }}
+        style={{ color: 'var(--link)', textDecoration: 'underline', fontWeight: '600' }}
         target="_blank"
       >
         {prefix}{orderId}

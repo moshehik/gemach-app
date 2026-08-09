@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
-import { checkAuth } from '@/lib/auth';
+import { checkAuth, invalidateRequireLoginCache } from '@/lib/auth';
 import { validateNumericSetting } from '../../lib/settingsValidation';
 
 export const dynamic = 'force-dynamic';
@@ -101,6 +101,12 @@ export async function POST(request) {
     }
 
     await Promise.all(updatePromises);
+
+    // lib/auth.js caches the require_login setting in-memory (30s TTL) so
+    // checkAuth() doesn't hit the DB on every request — drop that cache now
+    // so a toggle takes effect immediately on this server instance (other
+    // warm serverless instances converge within the TTL).
+    invalidateRequireLoginCache();
 
     return NextResponse.json({ success: true, message: 'Settings saved successfully' });
   } catch (error) {

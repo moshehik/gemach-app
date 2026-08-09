@@ -2,16 +2,17 @@
 
 import { useEffect, useState } from 'react';
 
+// צבעי טוקני "אריג" (design-system.css) — עוקבים אחרי הפלטה החיה ומצב כהה
 const STATUS_META = {
-  ok: { color: '#10b981', bg: '#10b98115', label: 'תקין', icon: '✅' },
-  warn: { color: '#f59e0b', bg: '#f59e0b15', label: 'ממצאים', icon: '⚠️' },
-  error: { color: '#ef4444', bg: '#ef444415', label: 'שגיאה', icon: '❌' }
+  ok: { color: 'var(--success)', bg: 'var(--success-tint)', label: 'תקין', icon: '✅' },
+  warn: { color: 'var(--warning)', bg: 'var(--warning-tint)', label: 'ממצאים', icon: '⚠️' },
+  error: { color: 'var(--danger)', bg: 'var(--danger-tint)', label: 'שגיאה', icon: '❌' }
 };
 
 const SEVERITY_META = {
-  high: { color: '#ef4444', bg: '#ef444420', label: 'גבוה' },
-  medium: { color: '#f59e0b', bg: '#f59e0b20', label: 'בינוני' },
-  low: { color: '#64748b', bg: '#64748b20', label: 'נמוך' }
+  high: { color: 'var(--danger)', bg: 'var(--danger-tint)', label: 'גבוה' },
+  medium: { color: 'var(--warning)', bg: 'var(--warning-tint)', label: 'בינוני' },
+  low: { color: 'var(--text-3)', bg: 'var(--surface-sunken)', label: 'נמוך' }
 };
 
 function formatDateTime(iso) {
@@ -49,10 +50,10 @@ function AgentMiniCard({ agent }) {
 
   return (
     <div style={{
-      border: '1px solid var(--border-color, #e2e8f0)',
+      border: '1px solid var(--border)',
       borderRight: `4px solid ${meta.color}`,
       borderRadius: '10px',
-      background: 'var(--card-bg, #fff)',
+      background: 'var(--surface)',
       overflow: 'hidden'
     }}>
       <button
@@ -63,13 +64,13 @@ function AgentMiniCard({ agent }) {
           cursor: findings.length > 0 ? 'pointer' : 'default', textAlign: 'right'
         }}
       >
-        <span style={{ fontWeight: 700, color: 'var(--foreground)', fontSize: '0.92rem' }}>{agent.label}</span>
+        <span style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.92rem' }}>{agent.label}</span>
         <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
           <span style={{ fontSize: '0.8rem', color: meta.color, fontWeight: 700 }}>
             {findings.length > 0 ? `${findings.length} ממצאים` : meta.label}
           </span>
           {findings.length > 0 && (
-            <span style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text-muted)' }}>▼</span>
+            <span style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text-2)' }}>▼</span>
           )}
         </span>
       </button>
@@ -78,16 +79,16 @@ function AgentMiniCard({ agent }) {
           {findings.map((f, i) => {
             const sMeta = SEVERITY_META[f.severity] || SEVERITY_META.low;
             return (
-              <li key={i} style={{ fontSize: '0.85rem', lineHeight: 1.6, borderTop: '1px solid var(--border-color, #f1f5f9)', paddingTop: '0.6rem' }}>
+              <li key={i} style={{ fontSize: '0.85rem', lineHeight: 1.6, borderTop: '1px solid var(--border)', paddingTop: '0.6rem' }}>
                 <span style={{
                   display: 'inline-block', fontSize: '0.72rem', fontWeight: 800, color: sMeta.color,
                   background: sMeta.bg, borderRadius: '6px', padding: '0.1rem 0.5rem', marginLeft: '0.4rem'
                 }}>
                   {sMeta.label}
                 </span>
-                <span style={{ color: 'var(--foreground)' }}>{f.description}</span>
-                {f.location && <span style={{ color: 'var(--text-muted)' }}> — {f.location}</span>}
-                {f.recommendation && <div style={{ color: 'var(--text-muted)', marginTop: '0.2rem' }}>המלצה: {f.recommendation}</div>}
+                <span style={{ color: 'var(--text)' }}>{f.description}</span>
+                {f.location && <span style={{ color: 'var(--text-2)' }}> — {f.location}</span>}
+                {f.recommendation && <div style={{ color: 'var(--text-2)', marginTop: '0.2rem' }}>המלצה: {f.recommendation}</div>}
               </li>
             );
           })}
@@ -108,9 +109,9 @@ function ReportCard({ report }) {
 
   return (
     <div style={{
-      border: '1px solid var(--border-color, #e2e8f0)',
+      border: '1px solid var(--border)',
       borderRadius: '12px',
-      background: 'var(--card-bg, #fff)',
+      background: 'var(--surface)',
       overflow: 'hidden'
     }}>
       <button
@@ -122,16 +123,16 @@ function ReportCard({ report }) {
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.9rem', flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 800, color: 'var(--foreground)' }}>{formatDateTime(report.runAt)}</span>
+          <span style={{ fontWeight: 800, color: 'var(--text)' }}>{formatDateTime(report.runAt)}</span>
           <StatCounts agents={agents} />
           <span style={{
             fontSize: '0.85rem', fontWeight: 700,
-            color: report.highCount > 0 ? '#ef4444' : 'var(--text-muted)'
+            color: report.highCount > 0 ? 'var(--danger)' : 'var(--text-2)'
           }}>
             {report.totalFindings} ממצאים{report.highCount > 0 ? ` (${report.highCount} בחומרה גבוהה)` : ''}
           </span>
         </div>
-        <span style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text-muted)' }}>▼</span>
+        <span style={{ transform: open ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s', color: 'var(--text-2)' }}>▼</span>
       </button>
       {open && (
         <div style={{
@@ -169,16 +170,16 @@ export default function AuditReportsPanel() {
     <section style={{ marginBottom: '2.5rem' }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: '0.9rem', borderBottom: '2px solid var(--border-color, #e2e8f0)', paddingBottom: '0.5rem'
+        marginBottom: '0.9rem', borderBottom: '2px solid var(--border)', paddingBottom: '0.5rem'
       }}>
-        <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--primary-color)', margin: 0 }}>
+        <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--primary)', margin: 0 }}>
           דוחות אחרונים
         </h2>
         <button
           onClick={load}
           style={{
-            fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-color)',
-            background: 'none', border: '1px solid var(--border-color, #e2e8f0)',
+            fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary)',
+            background: 'none', border: '1px solid var(--border)',
             borderRadius: '8px', padding: '0.35rem 0.8rem', cursor: 'pointer'
           }}
         >
@@ -187,19 +188,19 @@ export default function AuditReportsPanel() {
       </div>
 
       {error && (
-        <div style={{ color: '#b91c1c', background: '#ef444415', borderRadius: '8px', padding: '0.9rem 1.1rem', fontSize: '0.9rem' }}>
+        <div style={{ color: 'var(--danger)', background: 'var(--danger-tint)', borderRadius: '8px', padding: '0.9rem 1.1rem', fontSize: '0.9rem' }}>
           {error}
         </div>
       )}
 
       {!error && reports === null && (
-        <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', padding: '1rem 0' }}>טוען דוחות…</div>
+        <div style={{ color: 'var(--text-2)', fontSize: '0.9rem', padding: '1rem 0' }}>טוען דוחות…</div>
       )}
 
       {!error && reports !== null && reports.length === 0 && (
         <div style={{
-          color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.7,
-          border: '1px dashed var(--border-color, #cbd5e1)', borderRadius: '10px', padding: '1.25rem'
+          color: 'var(--text-2)', fontSize: '0.9rem', lineHeight: 1.7,
+          border: '1px dashed var(--border-strong)', borderRadius: '10px', padding: '1.25rem'
         }}>
           עדיין לא נשמר אף דוח ביקורת. הרצה של הפקודה <code style={{ direction: 'ltr', display: 'inline-block' }}>/audit-system</code> מ-Claude Code
           תיצור כאן את הדוח הראשון.

@@ -252,6 +252,11 @@ const routePrefetchers = {
     warm('refunds', 'refunds', `/api/refunds?page=1&limit=${REFUNDS_PAGE_SIZE}`,
       (d) => d && Array.isArray(d.data));
   },
+  '/employees': () => {
+    // דף העובדים קורא דרך lib/apiCache (fetchSharedJson) — אותו URL בדיוק
+    // כמו ב-app/employees/page.js, כדי שהחימום ייכתב לאותו מפתח מטמון.
+    fetchSharedJson('/api/employees?all=true', { ttl: TTL.STATIC }).catch(() => {});
+  },
 };
 
 export function prefetchRoute(path) {
@@ -273,6 +278,7 @@ const ROUTE_NEIGHBORS = {
   '/alterations': ['/orders'],
   '/refunds': ['/orders'],
   '/dashboard/dresses': ['/orders'],
+  '/employees': ['/orders'],
 };
 
 export function prefetchNeighbors(pathname) {

@@ -6,7 +6,7 @@ import { getHebrewDateString } from '../../lib/hebrewDate';
 
 export default function ErrorReportButton() {
   const [isOpen, setIsOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState('list'); // 'list' or 'new' or 'thread'
+  const [activeTab, setActiveTab] = useState('list'); // 'list' or 'archive' or 'new' or 'thread'
   const [userText, setUserText] = useState('');
   const [toast, setToast] = useState(null);
   const [mounted, setMounted] = useState(false);
@@ -60,7 +60,7 @@ export default function ErrorReportButton() {
   }, []);
 
   useEffect(() => {
-    if (isOpen && activeTab === 'list') {
+    if (isOpen && (activeTab === 'list' || activeTab === 'archive')) {
       fetchReports();
     }
   }, [isOpen, activeTab]);
@@ -149,6 +149,28 @@ export default function ErrorReportButton() {
     }
   };
 
+  const setReportStatus = async (report, status) => {
+    try {
+      const res = await fetch('/api/error-report', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: report.id, status }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setReports(prev => prev.map(r => r.id === report.id ? { ...r, status } : r));
+        if (selectedReport?.id === report.id) {
+          setSelectedReport(prev => ({ ...prev, status }));
+        }
+        showToast(status === 'ARCHIVED' ? 'הדיווח הועבר לארכיון' : 'הדיווח שוחזר מהארכיון', 'success');
+      } else {
+        showToast(data.error || 'שגיאה בעדכון הדיווח', 'error');
+      }
+    } catch (err) {
+      showToast('שגיאת תקשורת', 'error');
+    }
+  };
+
   const copyDetails = (report) => {
     const details = `
 מאת: ${report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'לא ידוע'}
@@ -185,7 +207,9 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
     }
   };
 
-  const unreadCount = reports.filter(r => (isProgrammer && !r.isReadByProgrammer) || (!isProgrammer && !r.isReadByUser)).length;
+  const unreadCount = reports.filter(r => r.status !== 'ARCHIVED' && ((isProgrammer && !r.isReadByProgrammer) || (!isProgrammer && !r.isReadByUser))).length;
+  const openReports = reports.filter(r => r.status !== 'ARCHIVED');
+  const archivedReports = reports.filter(r => r.status === 'ARCHIVED');
 
   return (
     <>
@@ -221,6 +245,10 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                 <button type="button" className={`tab${activeTab === 'list' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('list')}>
                   פניות שלי {isProgrammer ? '(כל הדיווחים)' : ''}
                 </button>
+                <button type="button" className={`tab${activeTab === 'archive' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('archive')}>
+                  <svg className="icon" style={{ width: 13, height: 13, verticalAlign: -2, marginInlineEnd: 4 }}><use href="#i-archive" /></svg>
+                  ארכיון {archivedReports.length > 0 ? `(${archivedReports.length})` : ''}
+                </button>
                 <button type="button" className={`tab${activeTab === 'new' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('new')}>
                   דיווח על תקלה חדשה
                 </button>
@@ -230,13 +258,23 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
             {activeTab === 'thread' && selectedReport && (
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
                 <div style={{ padding: '10px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setActiveTab('list'); fetchReports(); }}>חזור לרשימה</button>
-                  {isProgrammer && (
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => copyDetails(selectedReport)}>
-                      <svg className="icon"><use href="#i-link" /></svg>
-                      העתק פרטי מערכת
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setActiveTab(selectedReport.status === 'ARCHIVED' ? 'archive' : 'list'); fetchReports(); }}>חזור לרשימה</button>
+                  <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setReportStatus(selectedReport, selectedReport.status === 'ARCHIVED' ? 'OPEN' : 'ARCHIVED')}
+                    >
+                      <svg className="icon"><use href={selectedReport.status === 'ARCHIVED' ? '#i-refresh' : '#i-archive'} /></svg>
+                      {selectedReport.status === 'ARCHIVED' ? 'שחזור מהארכיון' : 'העברה לארכיון'}
                     </button>
-                  )}
+                    {isProgrammer && (
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => copyDetails(selectedReport)}>
+                        <svg className="icon"><use href="#i-link" /></svg>
+                        העתק פרטי מערכת
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 <div style={{ flex: 1, overflowY: 'auto', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
@@ -288,15 +326,15 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
               </div>
             )}
 
-            {activeTab === 'list' && (
+            {(activeTab === 'list' || activeTab === 'archive') && (
               <div style={{ flex: 1, overflowY: 'auto', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {reports.length === 0 ? (
+                {(activeTab === 'archive' ? archivedReports : openReports).length === 0 ? (
                   <div className="empty-state">
-                    <svg className="icon"><use href="#i-message" /></svg>
-                    <p>אין דיווחים קיימים</p>
+                    <svg className="icon"><use href={activeTab === 'archive' ? '#i-archive' : '#i-message'} /></svg>
+                    <p>{activeTab === 'archive' ? 'אין דיווחים בארכיון' : 'אין דיווחים קיימים'}</p>
                   </div>
                 ) : (
-                  reports.map(report => {
+                  (activeTab === 'archive' ? archivedReports : openReports).map(report => {
                     const isUnread = (isProgrammer && !report.isReadByProgrammer) || (!isProgrammer && !report.isReadByUser);
                     return (
                       <div
@@ -310,9 +348,19 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                             {isUnread && <span className="dot-badge" />}
                             {report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'משתמש'}
                           </strong>
-                          <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
-                            {getHebrewDateString(report.updatedAt)} {new Date(report.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
+                              {getHebrewDateString(report.updatedAt)} {new Date(report.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-icon-only btn-sm"
+                              title={activeTab === 'archive' ? 'שחזור מהארכיון' : 'העברה לארכיון'}
+                              onClick={(e) => { e.stopPropagation(); setReportStatus(report, activeTab === 'archive' ? 'OPEN' : 'ARCHIVED'); }}
+                            >
+                              <svg className="icon"><use href={activeTab === 'archive' ? '#i-refresh' : '#i-archive'} /></svg>
+                            </button>
+                          </div>
                         </div>
                         <p style={{ margin: '0 0 8px', color: 'var(--text-2)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{report.userText}</p>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-3)' }}>

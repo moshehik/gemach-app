@@ -55,7 +55,7 @@ export default function EmployeePage({ params }) {
         email: '', emailSuffix: '', city: '', street: '', houseNum: '',
         joinDate: '', password: '', roleId: '', hourlyWage: '',
         travelExpenses: false, paymentMethod: '', notes: '',
-        themeColor: 'standard', profileImage: '',
+        profileImage: '',
         isActive: true, receiveEmailAlerts: false, shifts: []
       });
       setLoading(false);
@@ -509,15 +509,9 @@ export default function EmployeePage({ params }) {
                 </select>
               )}
             </div>
-            <div className="field">
-              <label htmlFor="employee-detail-themeColor">פלטת גוונים מודרנית לפרופיל</label>
-              <select data-element-name="בחירה_page_30" className="select" id="employee-detail-themeColor" name="themeColor" value={employee.themeColor || 'standard'} onChange={handleChange}>
-                <option value="standard">סטנדרט</option>
-                <option value="dark">מצב לילה</option>
-                <option value="vibrant">צבעוני ומודרני</option>
-                <option value="pastel">גווני פסטל עדינים</option>
-              </select>
-            </div>
+            {/* בורר "פלטת גוונים" הישן הוסר — עמודת themeColor הוסבה לאחסון
+                העדפות עיצוב פר-עובד (JSON, /api/me/design-prefs); כל עובד
+                בוחר לעצמו בעמוד "עיצוב ותצוגה". */}
 
             <div className="field" style={{ gridColumn: '1 / -1' }}>
               <label htmlFor="employee-detail-profileImage">תמונת פרופיל / מסמך (העלאת קובץ)</label>

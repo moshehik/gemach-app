@@ -70,6 +70,7 @@ export default function IconSprite() {
         <symbol id="i-expand" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.3" /><path d="m8.3 10.3 3.7 3.7 3.7-3.7" /></symbol>
         <symbol id="i-category" viewBox="0 0 24 24"><path d="M12 3.5 3.5 8l8.5 4.5L20.5 8Z" /><path d="m3.5 12 8.5 4.5L20.5 12" /><path d="m3.5 16 8.5 4.5L20.5 16" /></symbol>
         <symbol id="i-copy" viewBox="0 0 24 24"><rect x="8.5" y="8.5" width="11.5" height="11.5" rx="2" /><path d="M15.5 8.5V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v7.5a2 2 0 0 0 2 2h2.5" /></symbol>
+        <symbol id="i-archive" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="4" rx="1" /><path d="M4.5 8.5v9a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2v-9" /><path d="M10 13h4" /></symbol>
       </defs>
     </svg>
   );
