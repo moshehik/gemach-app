@@ -13,6 +13,9 @@ export default function PunchClockPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  // Trusted system computer (מחשב מערכת) - same fast path as the login screen: on a
+  // computer a manager marked trusted, the 4-character short code is accepted here too.
+  const [deviceTrusted, setDeviceTrusted] = useState(false);
   const passwordInputRef = useRef(null);
 
   useEffect(() => {
@@ -26,6 +29,10 @@ export default function PunchClockPage() {
     fetchSharedJson('/api/employees', { ttl: TTL.STATIC })
       .then(list => setEmployees(Array.isArray(list) ? list : []))
       .catch(() => setEmployees([]));
+    fetch('/api/auth/device-status')
+      .then(res => res.json())
+      .then(data => setDeviceTrusted(!!data.trusted))
+      .catch(() => setDeviceTrusted(false));
   }, []);
 
   const filteredEmployees = (employees || [])
@@ -142,7 +149,7 @@ export default function PunchClockPage() {
           </div>
 
           <div className="field">
-            <label htmlFor="punch-clock-password">סיסמא</label>
+            <label htmlFor="punch-clock-password">{deviceTrusted ? 'סיסמא או קוד מקוצר (4 תווים)' : 'סיסמא'}</label>
             <div className="password-field">
               <svg className="icon lead-icon"><use href="#i-lock" /></svg>
               <input
