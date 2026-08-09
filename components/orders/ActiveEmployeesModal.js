@@ -1,10 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { Users, User, Clock, X } from 'lucide-react';
+import { Users, User, Clock, X, AlertCircle } from 'lucide-react';
 
 /**
- * מודל "עובדים פעילים בזמן ההזמנה" — בשפת העיצוב המודרנית (מחלקות moc,
- * שמוזרקות גלובלית מדף כרטיס ההזמנה).
+ * מודל "עובדים פעילים בזמן ההזמנה" — בשפת העיצוב "אריג" (modal-backdrop/modal/
+ * modal-head/modal-body/modal-foot מ-app/design-system.css).
+ *
+ * אין פרגמנט design-v2 ייעודי לגוף המודל הזה — scratch/design-v2/fragments/order-detail.html
+ * (סביבות שורה 562) מציג רק את כפתור ההפעלה "עובדים פעילים", לא את תוכן המודל עצמו.
+ * לכן, כפי שצוין באיתור התקלה, המבנה כאן מורכב מאוצר המחלקות הקיים באפליקציה
+ * (אותה קונבנציית מודל בדיוק כמו ItemCapacityModal.js ו-RentalReturnModal.js באותו
+ * אשכול "כרטיס הזמנה", עם avatar/status-dot כמו ב-UserMenu.js לשורת עובד) —
+ * זהו מקרה ה-fallback המתועד של כלל הברזל: הרכבה מאוצר קיים כשאין מוקאפ ספציפי.
  */
 export default function ActiveEmployeesModal({ orderId, isOpen, onClose }) {
   const [loading, setLoading] = useState(true);
@@ -41,66 +48,80 @@ export default function ActiveEmployeesModal({ orderId, isOpen, onClose }) {
     });
   };
 
+  const initialsOf = (emp) => `${(emp.firstName || '').charAt(0)}${(emp.lastName || '').charAt(0)}` || 'U';
+
   const content = (
-    <div className="moc moc-modal-overlay" style={{ zIndex: 1600 }} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="moc-modal-box">
-        <div className="moc-modal-head">
-          <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}><Users size={19} /> עובדים פעילים (זמן הזמנה)</h3>
-          <button className="moc-close-x" onClick={onClose}><X size={15} /></button>
+    <div
+      className="modal-backdrop"
+      style={{ position: 'fixed', inset: 0, zIndex: 1600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="modal" style={{ maxWidth: '480px', width: '100%', margin: 0 }}>
+        <div className="modal-head">
+          <strong>
+            <Users className="icon" />
+            עובדים פעילים (זמן הזמנה)
+          </strong>
+          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={onClose} title="סגירה" aria-label="סגירה">
+            <X className="icon" />
+          </button>
         </div>
 
-        <div className="moc-modal-body">
+        <div className="modal-body">
           {loading ? (
-            <div style={{ textAlign: 'center', padding: '28px 0' }}>
-              <span className="moc-spinner lg" style={{ margin: '0 auto' }} />
-              <p className="moc-hint" style={{ marginTop: '12px' }}>טוען נתונים...</p>
-            </div>
+            <div className="loading-inline"><span className="spinner" /> טוען נתונים...</div>
           ) : error ? (
-            <div style={{ color: 'var(--moc-danger-text)', textAlign: 'center', padding: '24px 0', fontWeight: 700 }}>
-              {error}
+            <div className="callout callout-danger">
+              <AlertCircle className="icon" />
+              <span>{error}</span>
             </div>
           ) : (
             <>
-              <div className="moc-hint" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '16px' }}>
-                <Clock size={15} />
+              <p className="hint" style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--text-3)', marginBottom: '16px' }}>
+                <Clock className="icon" style={{ width: '14px', height: '14px' }} />
                 תאריך ביצוע: {formatDate(data.orderDate)}
+              </p>
+
+              <div className="field">
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: 'var(--text-2)' }}>
+                  <User className="icon" style={{ width: '14px', height: '14px' }} /> ביצע/ה את ההזמנה
+                </span>
+                {data.executingEmployee ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div className="avatar">{initialsOf(data.executingEmployee)}</div>
+                    <strong>{data.executingEmployee.fullName || `${data.executingEmployee.firstName} ${data.executingEmployee.lastName}`}</strong>
+                  </div>
+                ) : (
+                  <p className="hint" style={{ color: 'var(--text-3)' }}>לא מוגדר עובד מבצע להזמנה זו.</p>
+                )}
               </div>
 
-              <span className="moc-field-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <User size={14} /> ביצע/ה את ההזמנה
-              </span>
-              {data.executingEmployee ? (
-                <div className="moc-employee-row" style={{ background: 'var(--moc-primary-light)', borderRadius: '8px', padding: '10px 12px', borderBottom: 'none', fontWeight: 700, marginBottom: '16px' }}>
-                  <span>{data.executingEmployee.fullName || `${data.executingEmployee.firstName} ${data.executingEmployee.lastName}`}</span>
-                  <span className="moc-hint">קופאי/ת ההזמנה</span>
-                </div>
-              ) : (
-                <div className="moc-empty-state" style={{ padding: '12px 0', textAlign: 'right' }}>לא מוגדר עובד מבצע להזמנה זו.</div>
-              )}
-
-              <span className="moc-field-label" style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '6px' }}>
-                <Users size={14} /> עובדים נוספים במשמרת
-              </span>
-              {data.activeEmployees && data.activeEmployees.length > 0 ? (
-                <div>
-                  {data.activeEmployees.map(emp => (
-                    <div key={emp.id} className="moc-employee-row">
-                      <span style={{ fontWeight: 600 }}>
-                        <span style={{ display: 'inline-block', width: '8px', height: '8px', borderRadius: '50%', background: 'var(--moc-success-text)', marginLeft: '8px' }} />
-                        {emp.fullName || `${emp.firstName} ${emp.lastName}`}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="moc-empty-state" style={{ padding: '12px 0', textAlign: 'right' }}>לא נמצאו עובדים נוספים במשמרת בזמן זה.</div>
-              )}
+              <div className="field" style={{ marginBottom: 0 }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12.5px', fontWeight: 700, color: 'var(--text-2)' }}>
+                  <Users className="icon" style={{ width: '14px', height: '14px' }} /> עובדים נוספים במשמרת
+                </span>
+                {data.activeEmployees && data.activeEmployees.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {data.activeEmployees.map(emp => (
+                      <div key={emp.id} style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <div className="avatar">
+                          {initialsOf(emp)}
+                          <span className="status-dot online" />
+                        </div>
+                        <span style={{ fontWeight: 600 }}>{emp.fullName || `${emp.firstName} ${emp.lastName}`}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="hint" style={{ color: 'var(--text-3)' }}>לא נמצאו עובדים נוספים במשמרת בזמן זה.</p>
+                )}
+              </div>
             </>
           )}
         </div>
 
-        <div className="moc-modal-foot">
-          <button className="moc-btn moc-btn-outline" onClick={onClose}>סגור</button>
+        <div className="modal-foot">
+          <button type="button" className="btn btn-secondary" onClick={onClose}>סגור</button>
         </div>
       </div>
     </div>
