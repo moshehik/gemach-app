@@ -6,6 +6,35 @@ import StatisticsModal from '../components/StatisticsModal';
 import ExportButtons from '../../components/ExportButtons';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
 
+// מיון בצד הלקוח לשתי הטבלאות בעמוד זה (רשימת עובדים + סיכום נוכחות) - שתיהן טוענות
+// את כל הנתונים למקשה אחת בלי pagination בשרת, אז אין צורך במיון צד-שרת. אותו דפוס
+// כמו ה-SortIcon/מיון הגנרי ב-components/dresses/modern/ModernDressItemsTab.js.
+const compareSortValues = (av, bv) => {
+  const an = Number(av);
+  const bn = Number(bv);
+  if (av != null && bv != null && av !== '' && bv !== '' && !isNaN(an) && !isNaN(bn)) return an - bn;
+  return String(av ?? '').localeCompare(String(bv ?? ''), 'he');
+};
+
+const sortRows = (rows, sort, getValue) => {
+  if (!sort.key) return rows;
+  const copy = [...rows];
+  copy.sort((a, b) => {
+    const cmp = compareSortValues(getValue(a, sort.key), getValue(b, sort.key));
+    return sort.direction === 'asc' ? cmp : -cmp;
+  });
+  return copy;
+};
+
+const SortIcon = ({ sort, colKey }) => {
+  if (sort.key !== colKey) return <svg className="icon"><use href="#i-sort" /></svg>;
+  return (
+    <svg className="icon" style={{ opacity: 1, color: 'var(--primary-solid)', transform: sort.direction === 'desc' ? 'rotate(180deg)' : 'none' }}>
+      <use href="#i-chevron-down" />
+    </svg>
+  );
+};
+
 export default function EmployeesPage() {
   const router = useRouter();
 
@@ -21,6 +50,19 @@ export default function EmployeesPage() {
   const [isAiModeActive, setIsAiModeActive] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
+
+  // מיון טבלת רשימת העובדים (כל הנתונים כבר בזיכרון - ר' הערה מעל sortRows)
+  const [empSort, setEmpSort] = useState({ key: null, direction: 'asc' });
+  const handleEmpSort = (key) => setEmpSort(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
+  const empSortValue = (e, key) => {
+    switch (key) {
+      case 'code': return e.legacyId || e.id;
+      case 'fullName': return `${e.firstName || ''} ${e.lastName || ''}`.trim();
+      case 'department': return e.department ? e.department.name : (e.roleId || 'עובד');
+      case 'isActive': return e.isActive ? 1 : 0;
+      default: return e[key];
+    }
+  };
 
   // מצב תצוגת סרגל החיפוש (חיפוש רגיל / חכם AI) — מחליף את המצב הפנימי שהיה
   // חבוי בתוך רכיב AISearchBar הישן; ההתנהגות זהה, רק המבנה/הסגנון עברו לעיצוב החדש.
@@ -47,6 +89,10 @@ export default function EmployeesPage() {
   const [printMode, setPrintMode] = useState('full');
   const [printMenuOpen, setPrintMenuOpen] = useState(false);
   const printMenuRef = useRef(null);
+
+  // מיון טבלת סיכום הנוכחות (גם היא נבנית מראש בלקוח מ-processedAttendance, ר' למטה)
+  const [attSort, setAttSort] = useState({ key: null, direction: 'asc' });
+  const handleAttSort = (key) => setAttSort(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
 
   useEffect(() => {
     if (!printMenuOpen) return;
@@ -224,6 +270,9 @@ export default function EmployeesPage() {
     };
   }).filter(e => e.daysCount > 0);
 
+  const sortedEmployees = sortRows(filteredEmployees, empSort, empSortValue);
+  const sortedAttendance = sortRows(processedAttendance, attSort, (r, key) => r[key]);
+
   return (
     <>
       <style dangerouslySetInnerHTML={{__html: `
@@ -365,15 +414,15 @@ export default function EmployeesPage() {
                 <table className="data">
                   <thead>
                     <tr>
-                      <th>קוד עובד</th>
-                      <th>שם מלא</th>
-                      <th>תפקיד</th>
-                      <th>טלפון</th>
-                      <th>סטטוס</th>
+                      <th className={empSort.key === 'code' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('code')}>קוד עובד <SortIcon sort={empSort} colKey="code" /></th>
+                      <th className={empSort.key === 'fullName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('fullName')}>שם מלא <SortIcon sort={empSort} colKey="fullName" /></th>
+                      <th className={empSort.key === 'department' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('department')}>תפקיד <SortIcon sort={empSort} colKey="department" /></th>
+                      <th className={empSort.key === 'phone1' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('phone1')}>טלפון <SortIcon sort={empSort} colKey="phone1" /></th>
+                      <th className={empSort.key === 'isActive' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('isActive')}>סטטוס <SortIcon sort={empSort} colKey="isActive" /></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredEmployees.map(employee => (
+                    {sortedEmployees.map(employee => (
                       <tr key={employee.id} style={{ cursor: 'pointer' }} onClick={() => router.push(`/employees/${employee.id}`)}>
                         <td className="cell-primary">{employee.legacyId || employee.id.substring(0, 5)}</td>
                         <td className="cell-primary">{employee.firstName} {employee.lastName}</td>
@@ -459,12 +508,12 @@ export default function EmployeesPage() {
               <table className="data">
                 <thead>
                   <tr>
-                    <th>שם</th>
-                    <th>ס&quot;ה דקות</th>
-                    <th>כמות ימים</th>
-                    <th>תקלות</th>
-                    <th>ס&quot;ה</th>
-                    <th>נסיעות</th>
+                    <th className={attSort.key === 'fullName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('fullName')}>שם <SortIcon sort={attSort} colKey="fullName" /></th>
+                    <th className={attSort.key === 'totalMinutes' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('totalMinutes')}>ס&quot;ה דקות <SortIcon sort={attSort} colKey="totalMinutes" /></th>
+                    <th className={attSort.key === 'daysCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('daysCount')}>כמות ימים <SortIcon sort={attSort} colKey="daysCount" /></th>
+                    <th className={attSort.key === 'issues' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('issues')}>תקלות <SortIcon sort={attSort} colKey="issues" /></th>
+                    <th className={attSort.key === 'totalCalculated' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('totalCalculated')}>ס&quot;ה <SortIcon sort={attSort} colKey="totalCalculated" /></th>
+                    <th className={attSort.key === 'hasTravels' ? 'sortable sort-active' : 'sortable'} onClick={() => handleAttSort('hasTravels')}>נסיעות <SortIcon sort={attSort} colKey="hasTravels" /></th>
                     <th className="no-print" style={{ textAlign: 'center' }}>פעולות</th>
                   </tr>
                 </thead>
@@ -482,7 +531,7 @@ export default function EmployeesPage() {
                       </td>
                     </tr>
                   ) : (
-                    processedAttendance.map(emp => (
+                    sortedAttendance.map(emp => (
                       <tr
                         key={emp.id}
                         className={emp.issues > 0 ? 'row-flag' : undefined}

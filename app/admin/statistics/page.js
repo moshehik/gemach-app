@@ -87,9 +87,8 @@ export default function StatisticsPage() {
           <h1>מרכז נתונים ופילוח</h1>
         </div>
         <div className="page-actions">
-          <a href="/migration_report.html" target="_blank" rel="noopener noreferrer" className="btn btn-secondary">
+          <a href="/migration_report.html" target="_blank" rel="noopener noreferrer" className="btn btn-secondary btn-icon-only" title="דוח הגירת נתונים מאקסס">
             <svg className="icon"><use href="#i-download" /></svg>
-            דוח הגירת נתונים מאקסס
           </a>
         </div>
       </div>
@@ -164,22 +163,59 @@ export default function StatisticsPage() {
   );
 }
 
+// מיון בצד הלקוח לכל טבלאות הסטטיסטיקה שבעמוד זה (הנתונים לכל טווח תאריכים כבר
+// נטענים במלואם, בלי pagination בשרת) - אותו דפוס כמו ה-SortIcon/מיון הגנרי
+// ב-components/dresses/modern/ModernDressItemsTab.js.
+const compareSortValues = (av, bv) => {
+  const an = Number(av);
+  const bn = Number(bv);
+  if (av != null && bv != null && av !== '' && bv !== '' && !isNaN(an) && !isNaN(bn)) return an - bn;
+  return String(av ?? '').localeCompare(String(bv ?? ''), 'he');
+};
+
+const sortRows = (rows, sort, getValue) => {
+  if (!sort.key) return rows;
+  const copy = [...rows];
+  copy.sort((a, b) => {
+    const cmp = compareSortValues(getValue(a, sort.key), getValue(b, sort.key));
+    return sort.direction === 'asc' ? cmp : -cmp;
+  });
+  return copy;
+};
+
+const SortIcon = ({ sort, colKey }) => {
+  if (sort.key !== colKey) return <svg className="icon"><use href="#i-sort" /></svg>;
+  return (
+    <svg className="icon" style={{ opacity: 1, color: 'var(--primary-solid)', transform: sort.direction === 'desc' ? 'rotate(180deg)' : 'none' }}>
+      <use href="#i-chevron-down" />
+    </svg>
+  );
+};
+
+function useLocalSort() {
+  const [sort, setSort] = useState({ key: null, direction: 'asc' });
+  const handleSort = (key) => setSort(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
+  return [sort, handleSort];
+}
+
 function DailyTable({ data }) {
+  const [sort, handleSort] = useLocalSort();
   if (!data || data.length === 0) return <EmptyState />;
+  const rows = sortRows(data, sort, (r, key) => r[key]);
   return (
     <div className="table-wrap">
       <table className="data">
         <thead>
           <tr>
-            <th>תאריך</th>
-            <th>הזמנות שבוצעו</th>
-            <th>הכנסות (שולמו)</th>
-            <th>פריטים הושכרו</th>
-            <th>פריטים הוחזרו</th>
+            <th className={sort.key === 'date' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('date')}>תאריך <SortIcon sort={sort} colKey="date" /></th>
+            <th className={sort.key === 'newOrders' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('newOrders')}>הזמנות שבוצעו <SortIcon sort={sort} colKey="newOrders" /></th>
+            <th className={sort.key === 'revenue' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('revenue')}>הכנסות (שולמו) <SortIcon sort={sort} colKey="revenue" /></th>
+            <th className={sort.key === 'itemsRented' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('itemsRented')}>פריטים הושכרו <SortIcon sort={sort} colKey="itemsRented" /></th>
+            <th className={sort.key === 'itemsReturned' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('itemsReturned')}>פריטים הוחזרו <SortIcon sort={sort} colKey="itemsReturned" /></th>
           </tr>
         </thead>
         <tbody>
-          {data.map(r => (
+          {rows.map(r => (
             <tr key={r.date}>
               <td className="cell-primary">{new Date(r.date).toLocaleDateString('he-IL')}</td>
               <td>{r.newOrders}</td>
@@ -195,25 +231,28 @@ function DailyTable({ data }) {
 }
 
 function ModelSizeTable({ data, type, showAlterations }) {
+  const [sort, handleSort] = useLocalSort();
   if (!data || data.length === 0) return <EmptyState />;
+  const getValue = (r, key) => key === 'primary' ? (r.name ?? r.size) : r[key];
+  const rows = sortRows(data, sort, getValue);
   return (
     <div className="table-wrap">
       <table className="data">
         <thead>
           <tr>
-            <th>{type}</th>
-            <th>כמות השכרות סה"כ</th>
+            <th className={sort.key === 'primary' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('primary')}>{type} <SortIcon sort={sort} colKey="primary" /></th>
+            <th className={sort.key === 'count' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('count')}>כמות השכרות סה&quot;כ <SortIcon sort={sort} colKey="count" /></th>
             {showAlterations && (
               <>
-                <th>תיקוני צוואר</th>
-                <th>תיקוני אורך</th>
-                <th>תיקוני שרוול</th>
+                <th className={sort.key === 'neck' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('neck')}>תיקוני צוואר <SortIcon sort={sort} colKey="neck" /></th>
+                <th className={sort.key === 'length' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('length')}>תיקוני אורך <SortIcon sort={sort} colKey="length" /></th>
+                <th className={sort.key === 'sleeve' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sleeve')}>תיקוני שרוול <SortIcon sort={sort} colKey="sleeve" /></th>
               </>
             )}
           </tr>
         </thead>
         <tbody>
-          {data.map((r, idx) => (
+          {rows.map((r, idx) => (
             <tr key={idx}>
               <td className="cell-primary">{r.name || r.size}</td>
               <td className="cell-primary" style={{ color: 'var(--primary)' }}>{r.count}</td>
@@ -233,21 +272,23 @@ function ModelSizeTable({ data, type, showAlterations }) {
 }
 
 function SeamstressTable({ data }) {
+  const [sort, handleSort] = useLocalSort();
   if (!data || data.length === 0) return <EmptyState />;
+  const rows = sortRows(data, sort, (r, key) => r[key]);
   return (
     <div className="table-wrap">
       <table className="data">
         <thead>
           <tr>
-            <th>תאריך אירוע (יעד)</th>
-            <th>מספר פריטים לתיקון</th>
-            <th>תיקוני צוואר</th>
-            <th>תיקוני אורך</th>
-            <th>תיקוני שרוול</th>
+            <th className={sort.key === 'date' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('date')}>תאריך אירוע (יעד) <SortIcon sort={sort} colKey="date" /></th>
+            <th className={sort.key === 'itemsCount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('itemsCount')}>מספר פריטים לתיקון <SortIcon sort={sort} colKey="itemsCount" /></th>
+            <th className={sort.key === 'neck' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('neck')}>תיקוני צוואר <SortIcon sort={sort} colKey="neck" /></th>
+            <th className={sort.key === 'length' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('length')}>תיקוני אורך <SortIcon sort={sort} colKey="length" /></th>
+            <th className={sort.key === 'sleeve' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sleeve')}>תיקוני שרוול <SortIcon sort={sort} colKey="sleeve" /></th>
           </tr>
         </thead>
         <tbody>
-          {data.map((r, i) => (
+          {rows.map((r, i) => (
             <tr key={`${r.date}-${i}`}>
               <td className="cell-primary">{new Date(r.date).toLocaleDateString('he-IL')}</td>
               <td style={{ fontWeight: 700, color: 'var(--warning)' }}>{r.itemsCount}</td>
@@ -263,22 +304,24 @@ function SeamstressTable({ data }) {
 }
 
 function PaymentsTable({ data }) {
+  const [sort, handleSort] = useLocalSort();
   if (!data || data.length === 0) return <EmptyState />;
+  const rows = sortRows(data, sort, (r, key) => r[key]);
   return (
     <div className="table-wrap">
       <table className="data">
         <thead>
           <tr>
-            <th>מספר הזמנה</th>
-            <th>לקוח</th>
-            <th>תאריך הזמנה</th>
-            <th>סך הכל חויב</th>
-            <th>סך הכל שולם</th>
-            <th>יתרת חובה</th>
+            <th className={sort.key === 'orderId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('orderId')}>מספר הזמנה <SortIcon sort={sort} colKey="orderId" /></th>
+            <th className={sort.key === 'customerName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('customerName')}>לקוח <SortIcon sort={sort} colKey="customerName" /></th>
+            <th className={sort.key === 'orderDate' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('orderDate')}>תאריך הזמנה <SortIcon sort={sort} colKey="orderDate" /></th>
+            <th className={sort.key === 'expectedTotal' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('expectedTotal')}>סך הכל חויב <SortIcon sort={sort} colKey="expectedTotal" /></th>
+            <th className={sort.key === 'actualPaid' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('actualPaid')}>סך הכל שולם <SortIcon sort={sort} colKey="actualPaid" /></th>
+            <th className={sort.key === 'debt' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('debt')}>יתרת חובה <SortIcon sort={sort} colKey="debt" /></th>
           </tr>
         </thead>
         <tbody>
-          {data.map(r => (
+          {rows.map(r => (
             <tr key={r.orderId} className={r.debt > 0 ? 'row-flag' : ''}>
               <td className="cell-primary">{r.orderId}</td>
               <td>{r.customerName}</td>
@@ -300,22 +343,24 @@ function PaymentsTable({ data }) {
 }
 
 function InventoryTable({ data }) {
+  const [sort, handleSort] = useLocalSort();
   if (!data || data.length === 0) return <EmptyState />;
+  const rows = sortRows(data, sort, (r, key) => r[key]);
   return (
     <div className="table-wrap">
       <table className="data">
         <thead>
           <tr>
-            <th>דגם השמלה</th>
-            <th>מידה</th>
-            <th>סה"כ במלאי הפיזי</th>
-            <th>שיא השכרות חופפות</th>
+            <th className={sort.key === 'modelName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('modelName')}>דגם השמלה <SortIcon sort={sort} colKey="modelName" /></th>
+            <th className={sort.key === 'sizeText' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sizeText')}>מידה <SortIcon sort={sort} colKey="sizeText" /></th>
+            <th className={sort.key === 'totalStock' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('totalStock')}>סה&quot;כ במלאי הפיזי <SortIcon sort={sort} colKey="totalStock" /></th>
+            <th className={sort.key === 'maxRented' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('maxRented')}>שיא השכרות חופפות <SortIcon sort={sort} colKey="maxRented" /></th>
             <th>תאריכי שיא</th>
             <th>סטטוס</th>
           </tr>
         </thead>
         <tbody>
-          {data.map((r, idx) => (
+          {rows.map((r, idx) => (
             <tr key={idx} className={r.hasShortage ? 'row-flag' : ''}>
               <td className="cell-primary">{r.modelName}</td>
               <td>{r.sizeText}</td>

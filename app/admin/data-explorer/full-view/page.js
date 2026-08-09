@@ -159,9 +159,8 @@ export default function FullViewPage() {
         </div>
         <div className="page-actions">
           <span className="badge badge-primary">סה"כ רשומות: {data.length}</span>
-          <button type="button" className="btn btn-primary" onClick={downloadExcel}>
+          <button type="button" className="btn btn-secondary btn-icon-only" title="ייצוא לאקסל" onClick={downloadExcel}>
             <svg className="icon"><use href="#i-download" /></svg>
-            ייצוא
           </button>
         </div>
       </div>

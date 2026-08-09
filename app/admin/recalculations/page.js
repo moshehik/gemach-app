@@ -3,6 +3,34 @@
 import { useState } from 'react';
 import HebrewDatePicker from '../../../components/HebrewDatePicker';
 
+// מיון בצד הלקוח: תוצאות הסריקה כבר כולן בזיכרון (אין pagination בשרת), אותו דפוס
+// כמו ה-SortIcon/מיון הגנרי ב-components/dresses/modern/ModernDressItemsTab.js.
+const compareSortValues = (av, bv) => {
+  const an = Number(av);
+  const bn = Number(bv);
+  if (av != null && bv != null && av !== '' && bv !== '' && !isNaN(an) && !isNaN(bn)) return an - bn;
+  return String(av ?? '').localeCompare(String(bv ?? ''), 'he');
+};
+
+const sortRows = (rows, sort, getValue) => {
+  if (!sort.key) return rows;
+  const copy = [...rows];
+  copy.sort((a, b) => {
+    const cmp = compareSortValues(getValue(a, sort.key), getValue(b, sort.key));
+    return sort.direction === 'asc' ? cmp : -cmp;
+  });
+  return copy;
+};
+
+const SortIcon = ({ sort, colKey }) => {
+  if (sort.key !== colKey) return <svg className="icon"><use href="#i-sort" /></svg>;
+  return (
+    <svg className="icon" style={{ opacity: 1, color: 'var(--primary-solid)', transform: sort.direction === 'desc' ? 'rotate(180deg)' : 'none' }}>
+      <use href="#i-chevron-down" />
+    </svg>
+  );
+};
+
 export default function RecalculationsPage() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -12,6 +40,8 @@ export default function RecalculationsPage() {
   const [customNote, setCustomNote] = useState('תיקון חישוב מחירון');
   const [applying, setApplying] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [sort, setSort] = useState({ key: null, direction: 'asc' });
+  const handleColSort = (key) => setSort(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
 
   const handleSearch = async () => {
     if (!startDate || !endDate) {
@@ -142,17 +172,17 @@ export default function RecalculationsPage() {
                           onChange={handleSelectAll}
                         />
                       </th>
-                      <th>הזמנה</th>
-                      <th>לקוח</th>
+                      <th className={sort.key === 'orderId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('orderId')}>הזמנה <SortIcon sort={sort} colKey="orderId" /></th>
+                      <th className={sort.key === 'customerName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('customerName')}>לקוח <SortIcon sort={sort} colKey="customerName" /></th>
                       <th>תאריך אירוע עברי</th>
-                      <th>סכום ישן</th>
-                      <th>סכום מתוקן</th>
-                      <th>פער</th>
+                      <th className={sort.key === 'oldAmount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('oldAmount')}>סכום ישן <SortIcon sort={sort} colKey="oldAmount" /></th>
+                      <th className={sort.key === 'newAmount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('newAmount')}>סכום מתוקן <SortIcon sort={sort} colKey="newAmount" /></th>
+                      <th className={sort.key === 'diff' ? 'sortable sort-active' : 'sortable'} onClick={() => handleColSort('diff')}>פער <SortIcon sort={sort} colKey="diff" /></th>
                       <th>פעולות</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {results.map(row => (
+                    {sortRows(results, sort, (r, key) => r[key]).map(row => (
                       <tr key={row.orderId}>
                         <td style={{ textAlign: 'center' }}>
                           <input

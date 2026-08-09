@@ -207,11 +207,11 @@ export default function AttendanceReportPage() {
             <button
               type="button"
               onClick={handleExportExcel}
-              className="btn btn-primary"
+              className="btn btn-secondary btn-icon-only"
+              title="ייצוא לאקסל"
               disabled={loading || data.length === 0}
             >
               <svg className="icon"><use href="#i-download" /></svg>
-              ייצוא לאקסל
             </button>
           </div>
         </div>

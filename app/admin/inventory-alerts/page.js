@@ -84,10 +84,40 @@ function AlertOrdersModal({ orders, onClose }) {
   );
 }
 
+// מיון בצד הלקוח: הרשימה כולה כבר בזיכרון (אין pagination בשרת), אותו דפוס
+// כמו ה-SortIcon/מיון הגנרי ב-components/dresses/modern/ModernDressItemsTab.js.
+const compareSortValues = (av, bv) => {
+  const an = Number(av);
+  const bn = Number(bv);
+  if (av != null && bv != null && av !== '' && bv !== '' && !isNaN(an) && !isNaN(bn)) return an - bn;
+  return String(av ?? '').localeCompare(String(bv ?? ''), 'he');
+};
+
+const sortRows = (rows, sort, getValue) => {
+  if (!sort.key) return rows;
+  const copy = [...rows];
+  copy.sort((a, b) => {
+    const cmp = compareSortValues(getValue(a, sort.key), getValue(b, sort.key));
+    return sort.direction === 'asc' ? cmp : -cmp;
+  });
+  return copy;
+};
+
+const SortIcon = ({ sort, colKey }) => {
+  if (sort.key !== colKey) return <svg className="icon"><use href="#i-sort" /></svg>;
+  return (
+    <svg className="icon" style={{ opacity: 1, color: 'var(--primary-solid)', transform: sort.direction === 'desc' ? 'rotate(180deg)' : 'none' }}>
+      <use href="#i-chevron-down" />
+    </svg>
+  );
+};
+
 export default function InventoryAlertsPage() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedOrders, setSelectedOrders] = useState(null);
+  const [sort, setSort] = useState({ key: null, direction: 'asc' });
+  const handleSort = (key) => setSort(prev => ({ key, direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc' }));
 
   useEffect(() => {
     fetch('/api/inventory/alerts')
@@ -138,16 +168,16 @@ export default function InventoryAlertsPage() {
           <table className="data">
             <thead>
               <tr>
-                <th>דגם</th>
-                <th>מידה</th>
-                <th>תאריכי חריגה</th>
-                <th style={{ textAlign: 'center' }}>במלאי</th>
-                <th style={{ textAlign: 'center' }}>ביקוש</th>
+                <th className={sort.key === 'dressName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('dressName')}>דגם <SortIcon sort={sort} colKey="dressName" /></th>
+                <th className={sort.key === 'sizeText' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('sizeText')}>מידה <SortIcon sort={sort} colKey="sizeText" /></th>
+                <th className={sort.key === 'fromDate' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('fromDate')}>תאריכי חריגה <SortIcon sort={sort} colKey="fromDate" /></th>
+                <th className={sort.key === 'inStock' ? 'sortable sort-active' : 'sortable'} style={{ textAlign: 'center' }} onClick={() => handleSort('inStock')}>במלאי <SortIcon sort={sort} colKey="inStock" /></th>
+                <th className={sort.key === 'demanded' ? 'sortable sort-active' : 'sortable'} style={{ textAlign: 'center' }} onClick={() => handleSort('demanded')}>ביקוש <SortIcon sort={sort} colKey="demanded" /></th>
                 <th style={{ textAlign: 'center' }}>פעולות</th>
               </tr>
             </thead>
             <tbody>
-              {alerts.map((alert, idx) => (
+              {sortRows(alerts, sort, (a, key) => a[key]).map((alert, idx) => (
                 <tr key={idx}>
                   <td className="cell-primary">
                     {alert.modelId ? (
