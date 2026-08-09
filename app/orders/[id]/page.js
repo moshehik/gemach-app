@@ -9,7 +9,6 @@ import ModernGeneralDetails from '../../../components/orders/modern/ModernGenera
 import ModernItemsManager from '../../../components/orders/modern/ModernItemsManager';
 import ModernPaymentsManager from '../../../components/orders/modern/ModernPaymentsManager';
 import ModernInfoTab from '../../../components/orders/modern/ModernInfoTab';
-import modernOrderCss from '../../../components/orders/modern/modernOrderStyles';
 import { calculateOrderStatus } from '../../../lib/orderStatus';
 import { addHistory } from '../../../lib/historyManager';
 
@@ -942,10 +941,6 @@ export default function OrderDetailsPage({ params }) {
 
   return (
     <>
-      {/* עיצוב הכרטיס המודרני הישן (.moc-*) — עדיין נטען כאן כי ModernItemsManager/ModernPaymentsManager/
-          ModernRentalsManager (שאר האשכול) עדיין תלויים בו; יוסר כשגם הם יעברו לעיצוב "אריג". */}
-      <style>{modernOrderCss}</style>
-
       <ModernOrderCard
           order={order}
           items={items}

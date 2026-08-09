@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation';
 import SendEmailModal from '@/components/SendEmailModal';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
 import ModernEmployeeHistoryTab from '@/components/employees/ModernEmployeeHistoryTab';
-import modernOrderCss from '@/components/orders/modern/modernOrderStyles';
 
 export default function EmployeePage({ params }) {
   const router = useRouter();
@@ -743,9 +742,7 @@ export default function EmployeePage({ params }) {
       )}
 
       {activeTab === 'history' && (
-        <div className="no-print moc" style={{ padding: 0 }}>
-          {/* אותו עיצוב "כרטיס מודרני" (moc) שבו מעוצב פאנל ההיסטוריה בכרטיס ההזמנה/לקוח */}
-          <style>{modernOrderCss}</style>
+        <div className="no-print" style={{ padding: 0 }}>
           <ModernEmployeeHistoryTab employeeId={id} />
         </div>
       )}

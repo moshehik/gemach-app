@@ -1,13 +1,10 @@
 'use client';
 
 import React, { useState, forwardRef, useImperativeHandle, useRef, useEffect } from 'react';
-import {
-  ScanLine, PackageCheck, PackageOpen, Undo2, XCircle, X, Check, Scissors, AlertTriangle, ChevronLeft
-} from 'lucide-react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 /**
- * טאב "השכרות והחזרות" בעיצוב המודרני — פורט מלא של OrderRentalsManager:
+ * טאב "השכרות והחזרות" בעיצוב "אריג" — פורט מלא של OrderRentalsManager:
  * סריקת ברקוד (כולל אימות מלאי, טיפול בפריט שלא הוחזר מהזמנה קודמת, ואישור עובד
  * כשההזמנה לא שולמה במלואה), השכרה עם הזנת ברקוד בשורה, החזרה וביטולים.
  * חשוף דרך ref: scan(barcode) — משמש את שדה "סריקה מהירה" בסיידבר.
@@ -281,164 +278,182 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
     <>
       {/* הערות ההזמנה — חשוב לראות בזמן מסירת השמלות */}
       {order?.notes && (
-        <div className="moc-notes-banner">
-          <AlertTriangle size={17} style={{ flexShrink: 0, marginTop: '1px', color: 'var(--moc-warning-text)' }} />
-          <div><strong>הערות להזמנה: </strong>{order.notes}</div>
+        <div className="callout callout-warning" style={{ marginBottom: '16px' }}>
+          <svg className="icon"><use href="#i-alert-tri" /></svg>
+          <span><strong>הערות להזמנה: </strong>{order.notes}</span>
         </div>
       )}
 
       {!isFullyPaid && (
-        <div className="moc-pending-banner">
+        <div className="callout callout-danger" style={{ marginBottom: '16px' }}>
+          <svg className="icon"><use href="#i-alert-tri" /></svg>
           <span>יש לשלם את ההזמנה במלואה לפני ביצוע השכרה/החזרה — כל פעולה תדרוש אישור עובד/מנהל.</span>
         </div>
       )}
 
       {/* סריקה + סיכום */}
-      <div className="moc-section-head">
-        <span className="moc-hint" style={{ marginLeft: 'auto' }}>
-          הושכרו: {rentedCount} · הוחזרו: {returnedCount} מתוך {activeItems.length}
-        </span>
+      <div className="toolbar">
         <form onSubmit={handleBarcodeScan} style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ position: 'relative', width: '260px' }}>
+          <div className="input-icon-wrap" style={{ width: '260px' }}>
+            <svg className="icon"><use href="#i-tag" /></svg>
             <input
               type="text"
+              className="input"
               value={barcodeInput}
               onChange={e => setBarcodeInput(e.target.value)}
               placeholder="סרוק ברקוד — השכרה / החזרה"
-              style={{ paddingLeft: '34px' }}
             />
-            <ScanLine size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: 'var(--moc-text-muted)' }} />
           </div>
-          <button type="submit" className="moc-btn moc-btn-gold moc-btn-sm">בצע סריקה</button>
+          <button type="submit" className="btn btn-primary btn-sm">בצע סריקה</button>
         </form>
+        <span className="spacer" />
+        <span className="hint" style={{ color: 'var(--text-3)' }}>
+          הושכרו: {rentedCount} · הוחזרו: {returnedCount} מתוך {activeItems.length}
+        </span>
       </div>
 
       {activeItems.length > 0 ? (
-        <div className="moc-card-panel">
-          {activeItems.map((item, index) => {
-            const isRented = item.isTaken && !item.isReturned;
-            const isReturned = item.isReturned;
-            const barcode = item.barcode || item.dressItem?.dressBarcode || null;
-            const taken = fmtDate(item.takenDate);
-            const returned = fmtDate(item.returnDate);
-            const isInlineRenting = rentingItemId === item.id;
+        <div className="table-wrap">
+          <table className="data">
+            <thead>
+              <tr>
+                <th>פריט</th>
+                <th>מידה / ברקוד</th>
+                <th style={{ textAlign: 'center', width: '110px' }}>סטטוס</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeItems.map((item, index) => {
+                const isRented = item.isTaken && !item.isReturned;
+                const isReturned = item.isReturned;
+                const barcode = item.barcode || item.dressItem?.dressBarcode || null;
+                const taken = fmtDate(item.takenDate);
+                const returned = fmtDate(item.returnDate);
+                const isInlineRenting = rentingItemId === item.id;
 
-            return (
-              <div className="moc-rental-item" key={item.id || index}>
-                <div style={{ flex: 1, minWidth: '240px' }}>
-                  <div className="moc-title-line">
-                    {itemName(item)}
-                    {isReturned ? (
-                      item.returnedOk === false ? (
-                        <span className="moc-badge on-white danger"><AlertTriangle size={13} /> הוחזר - לא תקין</span>
-                      ) : (
-                        <span className="moc-badge on-white success"><PackageCheck size={13} /> הוחזר - תקין</span>
-                      )
-                    ) : isRented ? (
-                      <span className="moc-badge on-white info"><PackageOpen size={13} /> מושכר</span>
-                    ) : (
-                      <span className="moc-badge on-white neutral">ממתין</span>
-                    )}
-                    {itemHasRepairs(item) && (
-                      <span title={`יש תיקונים${item.alterationDetails ? `: ${item.alterationDetails}` : ''}`} style={{ color: 'var(--moc-warning-text)', display: 'inline-flex' }}>
-                        <Scissors size={15} />
-                      </span>
-                    )}
-                  </div>
-                  <div className="moc-sub-line">
-                    מידה: {item.sizeText || '-'} · {barcode ? <>ברקוד: <span className="moc-mono">{barcode}</span></> : 'טרם נסרק ברקוד'}
-                    {taken && <span> · לקיחה: {taken}</span>}
-                    {returned && <span> · החזרה: {returned}</span>}
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  {!item.isTaken && !isInlineRenting && (
-                    <button className="moc-btn moc-btn-gold moc-btn-sm" onClick={() => startInlineRent(item)}>
-                      <PackageOpen size={14} /> השכרה
-                    </button>
-                  )}
-
-                  {isInlineRenting && (
-                    <form
-                      onSubmit={(e) => { e.preventDefault(); confirmInlineRent(item); }}
-                      style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      <input
-                        ref={inlineInputRef}
-                        type="text"
-                        value={inlineBarcode}
-                        onChange={(e) => setInlineBarcode(e.target.value)}
-                        placeholder="סרוק ברקוד"
-                        style={{ width: '140px', direction: 'ltr' }}
-                      />
-                      <button type="submit" className="moc-btn moc-btn-gold moc-btn-sm">אשר</button>
-                      <button type="button" className="moc-icon-btn-plain" title="ביטול"
-                        onClick={() => { setRentingItemId(null); setInlineBarcode(''); }}>
-                        <X size={16} />
-                      </button>
-                    </form>
-                  )}
-
-                  {isRented && (
-                    <>
-                      <div className="moc-return-toggle">
-                        <button className="good" onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'return' })}>
-                          <Check size={14} /> החזרה
-                        </button>
+                return (
+                  <tr key={item.id || index}>
+                    <td className="cell-primary">
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                        {itemName(item)}
+                        {itemHasRepairs(item) && (
+                          <span title={`יש תיקונים${item.alterationDetails ? `: ${item.alterationDetails}` : ''}`} style={{ color: 'var(--warning)', display: 'inline-flex' }}>
+                            <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-scissors" /></svg>
+                          </span>
+                        )}
                       </div>
-                      <button className="moc-btn moc-btn-danger-soft moc-btn-sm" title="ביטול השכרה"
-                        onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelRent' })}>
-                        <XCircle size={14} /> ביטול השכרה
-                      </button>
-                    </>
-                  )}
+                    </td>
+                    <td className="cell-muted">
+                      מידה: {item.sizeText || '-'}
+                      {barcode && <> · <span style={{ fontFamily: 'Consolas, monospace', direction: 'ltr', display: 'inline-block' }}>{barcode}</span></>}
+                      {taken && <div>לקיחה: {taken}</div>}
+                      {returned && <div>החזרה: {returned}</div>}
+                    </td>
+                    <td style={{ textAlign: 'center' }}>
+                      {isReturned ? (
+                        item.returnedOk === false ? (
+                          <span className="badge badge-danger"><svg className="icon"><use href="#i-alert-tri" /></svg>הוחזר - לא תקין</span>
+                        ) : (
+                          <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>הוחזר - תקין</span>
+                        )
+                      ) : isRented ? (
+                        <span className="badge badge-info"><svg className="icon"><use href="#i-box" /></svg>מושכר</span>
+                      ) : (
+                        <span className="badge badge-neutral">ממתין</span>
+                      )}
+                    </td>
+                    <td>
+                      <div className="row-actions" style={{ flexWrap: 'wrap' }}>
+                        {!item.isTaken && !isInlineRenting && (
+                          <button type="button" className="btn btn-primary btn-sm" onClick={() => startInlineRent(item)}>
+                            <svg className="icon"><use href="#i-box" /></svg>השכרה
+                          </button>
+                        )}
 
-                  {isReturned && (
-                    <button className="moc-btn moc-btn-danger-soft moc-btn-sm" title="ביטול החזרה"
-                      onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' })}>
-                      <Undo2 size={14} /> ביטול החזרה
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-          })}
+                        {isInlineRenting && (
+                          <form
+                            onSubmit={(e) => { e.preventDefault(); confirmInlineRent(item); }}
+                            style={{ display: 'flex', alignItems: 'center', gap: '6px' }}
+                          >
+                            <input
+                              ref={inlineInputRef}
+                              type="text"
+                              className="input"
+                              value={inlineBarcode}
+                              onChange={(e) => setInlineBarcode(e.target.value)}
+                              placeholder="סרוק ברקוד"
+                              style={{ width: '140px', direction: 'ltr' }}
+                            />
+                            <button type="submit" className="btn btn-primary btn-sm">אשר</button>
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ביטול"
+                              onClick={() => { setRentingItemId(null); setInlineBarcode(''); }}>
+                              <svg className="icon"><use href="#i-x" /></svg>
+                            </button>
+                          </form>
+                        )}
+
+                        {isRented && (
+                          <>
+                            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'return' })}>
+                              <svg className="icon"><use href="#i-check" /></svg>החזרה
+                            </button>
+                            <button type="button" className="btn btn-danger-ghost btn-sm" title="ביטול השכרה"
+                              onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelRent' })}>
+                              <svg className="icon"><use href="#i-x-circle" /></svg>ביטול השכרה
+                            </button>
+                          </>
+                        )}
+
+                        {isReturned && (
+                          <button type="button" className="btn btn-danger-ghost btn-sm" title="ביטול החזרה"
+                            onClick={() => setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' })}>
+                            <svg className="icon"><use href="#i-refresh" /></svg>ביטול החזרה
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       ) : (
-        <div className="moc-card-panel">
-          <div className="moc-empty-state">אין פריטים להצגה בהשכרות והחזרות</div>
+        <div className="table-wrap">
+          <div className="empty-state">
+            <svg className="icon"><use href="#i-bag" /></svg>
+            <h4>אין פריטים להצגה בהשכרות והחזרות</h4>
+          </div>
         </div>
       )}
 
       {/* מודל אישור החזרה/ביטולים */}
       {confirmModal.isOpen && (
-        <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setConfirmModal({ isOpen: false, item: null, actionType: null }); }}>
-          <div className="moc moc-modal-box" style={{ maxWidth: '400px', textAlign: 'center' }}>
-            <div className="moc-modal-body" style={{ paddingTop: '28px' }}>
-              <div style={{
-                width: '56px', height: '56px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                margin: '0 auto 16px',
-                background: confirmModal.actionType === 'return' ? 'var(--moc-success-bg)' : 'var(--moc-danger-bg)',
-                color: confirmModal.actionType === 'return' ? '#16a34a' : 'var(--moc-danger-text)'
-              }}>
-                {confirmModal.actionType === 'return' ? <PackageCheck size={26} /> : <XCircle size={26} />}
-              </div>
-              <h3 style={{ margin: '0 0 10px', fontSize: '1.2rem' }}>
-                {confirmModal.actionType === 'return' ? 'אישור החזרה' : confirmModal.actionType === 'cancelReturn' ? 'ביטול החזרה' : 'ביטול השכרה'}
-              </h3>
-              <p style={{ color: 'var(--moc-text-muted)', margin: 0, lineHeight: 1.6 }}>
-                האם אתה בטוח שברצונך {confirmModal.actionType === 'return' ? 'לבצע החזרה' : confirmModal.actionType === 'cancelReturn' ? 'לבטל את ההחזרה' : 'לבטל את ההשכרה'} של פריט זה?
-                <br />
-                <strong className="moc-mono" style={{ display: 'inline-block', marginTop: '8px', padding: '4px 10px', background: 'var(--moc-neutral-bg)', borderRadius: '8px' }}>
-                  {confirmModal.item?.barcode || confirmModal.item?.dressItem?.dressBarcode || 'ללא ברקוד'}
-                </strong>
-              </p>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmModal({ isOpen: false, item: null, actionType: null }); }}>
+          <div className="modal confirm-modal" style={{ margin: 0 }}>
+            <div className="modal-icon-circle" style={{
+              background: confirmModal.actionType === 'return' ? 'var(--success-tint)' : 'var(--danger-tint)',
+              color: confirmModal.actionType === 'return' ? 'var(--success)' : 'var(--danger)'
+            }}>
+              <svg className="icon"><use href={confirmModal.actionType === 'return' ? '#i-check' : '#i-x-circle'} /></svg>
             </div>
-            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
-              <button className="moc-btn moc-btn-outline" onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}>חזור</button>
+            <h3>
+              {confirmModal.actionType === 'return' ? 'אישור החזרה' : confirmModal.actionType === 'cancelReturn' ? 'ביטול החזרה' : 'ביטול השכרה'}
+            </h3>
+            <p>
+              האם אתה בטוח שברצונך {confirmModal.actionType === 'return' ? 'לבצע החזרה' : confirmModal.actionType === 'cancelReturn' ? 'לבטל את ההחזרה' : 'לבטל את ההשכרה'} של פריט זה?
+              <br />
+              <strong style={{ display: 'inline-block', marginTop: '8px', padding: '4px 10px', background: 'var(--surface-alt)', borderRadius: 'var(--radius-sm)', fontFamily: 'Consolas, monospace', direction: 'ltr' }}>
+                {confirmModal.item?.barcode || confirmModal.item?.dressItem?.dressBarcode || 'ללא ברקוד'}
+              </strong>
+            </p>
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}>חזור</button>
               <button
-                className={`moc-btn ${confirmModal.actionType === 'return' ? 'moc-btn-gold' : 'moc-btn-danger-soft'}`}
+                type="button"
+                className={`btn ${confirmModal.actionType === 'return' ? 'btn-primary' : 'btn-danger-ghost'}`}
                 onClick={() => {
                   const { item, actionType } = confirmModal;
                   setConfirmModal({ isOpen: false, item: null, actionType: null });
@@ -456,52 +471,52 @@ const ModernRentalsManager = forwardRef(function ModernRentalsManager({ items, o
 
       {/* מודל בחירת פריט — כשכמה פריטים זהים בהזמנה תואמים לברקוד שנסרק */}
       {itemChoiceModal.isOpen && (
-        <div className="moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setItemChoiceModal({ isOpen: false, candidates: [], barcode: null }); }}>
-          <div className="moc moc-modal-box">
-            <div className="moc-modal-head">
-              <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                <span style={{
-                  width: '34px', height: '34px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: 'var(--moc-primary-light)', color: 'var(--moc-primary-dark)', flexShrink: 0
-                }}>
-                  <ScanLine size={18} />
-                </span>
-                לאיזה פריט לשייך את הברקוד?
-              </h3>
-              <button className="moc-close-x" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}><X size={15} /></button>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setItemChoiceModal({ isOpen: false, candidates: [], barcode: null }); }}>
+          <div className="modal" style={{ margin: 0 }}>
+            <div className="modal-head">
+              <strong><svg className="icon"><use href="#i-tag" /></svg>לאיזה פריט לשייך את הברקוד?</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
             </div>
-            <div className="moc-modal-body">
-              <p style={{ color: 'var(--moc-text-muted)', margin: '0 0 16px', lineHeight: 1.6, fontSize: '0.9rem' }}>
+            <div className="modal-body">
+              <p className="hint" style={{ color: 'var(--text-2)', lineHeight: 1.6 }}>
                 נמצאו מספר פריטים זהים בהזמנה שמתאימים לברקוד שנסרק — יש לבחור לאיזה פריט לשייך אותו:
-                <br />
-                <strong className="moc-mono" style={{ display: 'inline-block', marginTop: '6px', padding: '4px 10px', background: 'var(--moc-neutral-bg)', borderRadius: '8px', color: 'var(--moc-text-main)' }}>
+              </p>
+              <p style={{ marginBottom: '16px' }}>
+                <strong style={{ display: 'inline-block', padding: '4px 10px', background: 'var(--surface-alt)', borderRadius: 'var(--radius-sm)', fontFamily: 'Consolas, monospace', direction: 'ltr' }}>
                   {itemChoiceModal.barcode}
                 </strong>
               </p>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {itemChoiceModal.candidates.map((item, idx) => (
                   <button
                     key={item.id || idx}
-                    className="moc-choice-card"
+                    type="button"
+                    className="list-card"
+                    style={{ width: '100%', cursor: 'pointer', textAlign: 'start', font: 'inherit', color: 'inherit' }}
                     onClick={() => chooseItemForBarcode(item)}
                   >
-                    <span className="moc-choice-icon"><PackageOpen size={18} /></span>
-                    <span className="moc-choice-main">
-                      <div className="moc-choice-title">{itemName(item)}</div>
-                      <div className="moc-choice-sub">
+                    <span className="kpi-icon" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
+                      <svg className="icon"><use href="#i-box" /></svg>
+                    </span>
+                    <span style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{itemName(item)}</div>
+                      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '3px', fontSize: '12px', color: 'var(--text-3)' }}>
                         <span>מידה {item.sizeText || '-'}</span>
-                        <span className={`moc-badge on-white ${itemHasRepairs(item) ? 'warning' : 'neutral'}`}>
-                          {itemHasRepairs(item) && <Scissors size={12} />} {itemHasRepairs(item) ? 'עם תיקון' : 'ללא תיקון'}
+                        <span className={`badge ${itemHasRepairs(item) ? 'badge-warning' : 'badge-neutral'}`}>
+                          {itemHasRepairs(item) && <svg className="icon"><use href="#i-scissors" /></svg>}{itemHasRepairs(item) ? 'עם תיקון' : 'ללא תיקון'}
                         </span>
                       </div>
                     </span>
-                    <ChevronLeft size={18} className="moc-choice-arrow" />
+                    <svg className="icon" style={{ color: 'var(--text-3)' }}><use href="#i-chevron-start" /></svg>
                   </button>
                 ))}
               </div>
             </div>
-            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
-              <button className="moc-btn moc-btn-outline" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}>ביטול</button>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setItemChoiceModal({ isOpen: false, candidates: [], barcode: null })}>ביטול</button>
             </div>
           </div>
         </div>

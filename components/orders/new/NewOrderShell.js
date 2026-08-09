@@ -1,119 +1,77 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
-import Link from 'next/link';
-import { Check } from 'lucide-react';
+import React from 'react';
 
 /**
- * המעטפת של מסך "הזמנה חדשה": רקע זכוכית, באנר תכלת עם מסלול חמשת השלבים,
- * שורת פעולות עליונה, גוף השלב הפעיל ופוטר ניווט.
- * כל התוכן והלוגיקה מגיעים מהעמוד — כאן רק הפריסה.
+ * מעטפת "הזמנה חדשה": כותרת עמוד ופעולות עליונות, הודעת טוסט (אוטוסייב טיוטה),
+ * מסלול חמשת השלבים (stepper), גוף השלב הפעיל ופוטר ניווט.
+ * כל התוכן והלוגיקה מגיעים מהעמוד — כאן רק הפריסה, בשפת העיצוב "אריג"
+ * (ראו scratch/design-v2/fragments/order-new.html + ModernNewDressWizard.js לאותה מוסכמת stepper).
  */
 export default function NewOrderShell({
   step,
   steps,              // [{ id, label, value, enabled, lockedReason }]
   onStepChange,
-  topBar,             // פעולות בשורה העליונה
+  topBar,             // פעולות בשורה העליונה (page-actions)
+  flash,              // { type: 'ok' | 'err', text } | null
   children,           // גוף השלב
   footer              // כפתורי ניווט
 }) {
-  const currentIndex = steps.findIndex(s => s.id === step);
-  const pageRef = useRef(null);
-
-  // מה שמעל המסך (נאב-בר, ובסביבת פיתוח גם באנר הגירסה) משנה גובה לפי רוחב החלון,
-  // ולכן המרווח העליון נמדד בפועל במקום להיות מספר קבוע — אחרת הכרטיס גולש מתחת למסך.
-  useEffect(() => {
-    const el = pageRef.current;
-    if (!el) return;
-    let last = null;
-    const apply = () => {
-      const top = Math.max(0, Math.round(el.getBoundingClientRect().top + window.scrollY));
-      // ההשמה משנה את גובה העמוד ולכן מעירה שוב את ה-observer; בלי ההשוואה הזו
-      // זו לולאה אינסופית של מדידה-והשמה.
-      if (top === last) return;
-      last = top;
-      el.style.setProperty('--noc-nav', `${top}px`);
-    };
-    apply();
-    // הנאב-בר ממשיך לגדול אחרי ההרכבה (טעינת פונטים, שבירת הקישורים לשתי שורות),
-    // ולא כל שינוי כזה מגיע כאירוע — לכן נמדד שוב כמה פעמים בשתי השניות הראשונות.
-    const ticks = [50, 200, 500, 1000, 2000].map(ms => setTimeout(apply, ms));
-    if (document.fonts && document.fonts.ready) document.fonts.ready.then(apply).catch(() => {});
-    const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(apply) : null;
-    if (observer) {
-      observer.observe(document.documentElement);
-      const nav = document.querySelector('.navbar');
-      if (nav) observer.observe(nav);
-    }
-    window.addEventListener('resize', apply);
-    return () => {
-      ticks.forEach(clearTimeout);
-      window.removeEventListener('resize', apply);
-      if (observer) observer.disconnect();
-    };
-  }, []);
+  const current = steps.find(s => s.id === step);
 
   return (
-    <div className="noc noc-page" ref={pageRef}>
-      <div className="noc-glow a" />
-      <div className="noc-glow b" />
-      <div className="noc-glow c" />
-
-      <div className="noc-inner">
-        <div className="noc-crumb">
-          גמ"ח שמלות &nbsp;›&nbsp; <Link href="/orders">הזמנות</Link> &nbsp;›&nbsp; <strong>הזמנה חדשה</strong>
+    <>
+      <div className="page-head">
+        <div>
+          <h1>הזמנה חדשה</h1>
+          <p className="page-desc">
+            שלב {step} מתוך {steps.length}
+            {current ? ` · ${current.label}` : ''}
+          </p>
         </div>
-
-        <div className="noc-shell">
-          {/* ===== באנר זכוכית ===== */}
-          <aside className="noc-side">
-            <div>
-              <div className="noc-side-title">הזמנה חדשה</div>
-              <div className="noc-side-sub">
-                שלב {currentIndex + 1} מתוך {steps.length}
-                {steps[currentIndex] ? ` · ${steps[currentIndex].label}` : ''}
-              </div>
-
-              <hr className="noc-side-rule" />
-
-              <nav className="noc-steps" aria-label="שלבי ההזמנה">
-                {steps.map(s => {
-                  const done = s.id < step;
-                  const current = s.id === step;
-                  const cls = `noc-step ${done ? 'done' : ''} ${current ? 'current' : ''}`.trim();
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      className={cls}
-                      aria-current={current ? 'step' : undefined}
-                      disabled={!s.enabled && !current}
-                      title={!s.enabled && !current ? s.lockedReason : undefined}
-                      onClick={() => onStepChange(s.id)}
-                    >
-                      <span className="noc-node-col">
-                        <span className="noc-node">{done ? <Check size={12} strokeWidth={3} /> : s.id}</span>
-                      </span>
-                      <span className="noc-step-txt">
-                        <span className="noc-step-ttl">{s.label}</span>
-                        {s.value ? <span className="noc-step-val">{s.value}</span> : null}
-                      </span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-
-          </aside>
-
-          {/* ===== תוכן ===== */}
-          <main className="noc-main">
-            <div className="noc-bar">{topBar}</div>
-            <section className="noc-pane" key={step}>{children}</section>
-            <div className="noc-foot">{footer}</div>
-          </main>
-        </div>
+        <div className="page-actions">{topBar}</div>
       </div>
-    </div>
+
+      {flash && (
+        <div className={`toast ${flash.type === 'err' ? 'error' : 'success'}`} style={{ marginBottom: '18px' }}>
+          <svg className="icon"><use href={flash.type === 'err' ? '#i-alert-circle' : '#i-check-circle'} /></svg>
+          {flash.text}
+        </div>
+      )}
+
+      <nav className="stepper" aria-label="שלבי ההזמנה" style={{ flexWrap: 'wrap' }}>
+        {steps.map((s, idx) => {
+          const done = s.id < step;
+          const isCurrent = s.id === step;
+          const canFocus = s.enabled || isCurrent;
+          return (
+            <React.Fragment key={s.id}>
+              <div
+                className={`step${done ? ' done' : isCurrent ? ' current' : ''}`}
+                role="button"
+                tabIndex={canFocus ? 0 : -1}
+                aria-disabled={!canFocus}
+                aria-current={isCurrent ? 'step' : undefined}
+                title={!canFocus ? s.lockedReason : undefined}
+                style={{ cursor: canFocus ? 'pointer' : 'not-allowed', opacity: canFocus ? 1 : 0.6 }}
+                onClick={() => onStepChange(s.id)}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onStepChange(s.id); } }}
+              >
+                <span className="step-num">{done ? <svg className="icon"><use href="#i-check" /></svg> : s.id}</span>
+                {s.label}
+                {s.value ? <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>· {s.value}</span> : null}
+              </div>
+              {idx < steps.length - 1 && <div className="step-line" />}
+            </React.Fragment>
+          );
+        })}
+      </nav>
+
+      <section key={step} className="animate-fade-in">{children}</section>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '24px', paddingTop: '18px', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
+        {footer}
+      </div>
+    </>
   );
 }

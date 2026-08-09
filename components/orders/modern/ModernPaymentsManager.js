@@ -2,17 +2,13 @@
 
 import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
-import {
-  Trash2, Info, RefreshCcw, CreditCard, Plus, X, Zap, Clock,
-  Shirt, Wrench, FileText, Undo2, Ban, Gift, Pencil, Banknote, SkipForward
-} from 'lucide-react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 
 /** מחשב את הזמן שנותר עד ל-deadline, מתעדכן כל שנייה. null כשהזמן פג. */
 function useCountdown(deadline) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   useEffect(() => {
     const id = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(id);
@@ -29,20 +25,21 @@ function useCountdown(deadline) {
 /**
  * תגית נספרת לאחור על שורת "דמי ביטול" - מציגה עד מתי ועל איזה סכום עדיין ניתן
  * לנצל זיכוי אוטומטי על פריט חלופי שנוסף לאותה הזמנה (ר' CANCELLATION_CREDIT_MINUTES
- * ולוגיקת הקרדיט ב-lib/pricingEngine.js). נעלמת מעצמה כשהזמן פג. נקייה במכוון
- * (בלי מסגרת/רקע) כדי לא להתחרות עם עיצוב הטבלה.
+ * ולוגיקת הקרדיט ב-lib/pricingEngine.js). נעלמת מעצמה כשהזמן פג.
  */
 function CancellationCreditBadge({ deadline, amount }) {
   const countdown = useCountdown(deadline);
   if (!countdown) return null;
   return (
-    <span
-      className={`moc-credit-badge${countdown.urgent ? ' urgent' : ''}`}
-      title="ניתן לנצל סכום זה כזיכוי אוטומטי אם יתווסף פריט חלופי לאותה הזמנה, עד לתום הזמן שנקבע בהגדרות"
-    >
-      <Clock size={11} />
-      ניתן לזכות ₪{amount} על פריט חדש עוד <span className="moc-credit-time">{countdown.text}</span>
-    </span>
+    <div style={{ marginTop: '4px' }}>
+      <span
+        className={`badge ${countdown.urgent ? 'badge-danger' : 'badge-warning'}`}
+        title="ניתן לנצל סכום זה כזיכוי אוטומטי אם יתווסף פריט חלופי לאותה הזמנה, עד לתום הזמן שנקבע בהגדרות"
+      >
+        <svg className="icon"><use href="#i-clock" /></svg>
+        ניתן לזכות ₪{amount} על פריט חדש עוד {countdown.text}
+      </span>
+    </div>
   );
 }
 
@@ -51,31 +48,36 @@ function CreditWindowTile({ deadline, amount }) {
   const countdown = useCountdown(deadline);
   if (!countdown) return null;
   return (
-    <div className="moc-pay-tile credit-window">
-      <div className="moc-pt-lbl">זיכוי ביטול זמין לניצול</div>
-      <div className="moc-pt-amt">₪{amount}</div>
-      <span className={`moc-credit-badge${countdown.urgent ? ' urgent' : ''}`}>
-        <Clock size={11} /> <span className="moc-credit-time">{countdown.text}</span>
+    <div className="kpi-card">
+      <div className="kpi-top">
+        <div className="kpi-icon" style={{ background: 'var(--warning-tint)', color: 'var(--warning)' }}>
+          <svg className="icon"><use href="#i-clock" /></svg>
+        </div>
+      </div>
+      <div className="kpi-label">זיכוי ביטול זמין לניצול</div>
+      <div className="kpi-value">₪{amount}</div>
+      <span className={`badge ${countdown.urgent ? 'badge-danger' : 'badge-warning'}`} style={{ marginTop: '6px' }}>
+        <svg className="icon"><use href="#i-clock" /></svg> {countdown.text}
       </span>
     </div>
   );
 }
 
-/** אייקון וגוון רקע לפי סוג שורת החיוב, כדי שאפשר יהיה לזהות במבט חטוף
- * חיוב רגיל, זיכוי, דמי ביטול, מימוש זיכוי, תיקון, חיוב ידני וכו'. */
-function getObligationVisual(obs) {
+/** אייקון (עמום, כמו בתבנית העיצוב) לפי סוג שורת החיוב - חיוב רגיל, זיכוי, דמי ביטול,
+ * מימוש זיכוי, תיקון, חיוב ידני וכו'. */
+function getObligationIcon(obs) {
   const desc = obs.description || '';
-  if (desc.startsWith('דמי ביטול')) return { Icon: Ban, rowClass: 'moc-row-fee' };
-  if (desc.startsWith('זיכוי דמי ביטול')) return { Icon: Gift, rowClass: 'moc-row-redeem' };
-  if (desc.startsWith('זיכוי בגין ביטול')) return { Icon: Undo2, rowClass: 'moc-row-cancel-credit' };
-  if (desc.startsWith('חיוב מקורי')) return { Icon: FileText, rowClass: 'moc-row-original' };
-  if (desc.startsWith('תיקון')) return { Icon: Wrench, rowClass: 'moc-row-repair' };
-  if (obs.isManual !== false) return { Icon: Pencil, rowClass: 'moc-row-manual' };
-  return { Icon: Shirt, rowClass: 'moc-row-item' };
+  if (desc.startsWith('דמי ביטול')) return 'i-x-circle';
+  if (desc.startsWith('זיכוי דמי ביטול')) return 'i-coin';
+  if (desc.startsWith('זיכוי בגין ביטול')) return 'i-refresh';
+  if (desc.startsWith('חיוב מקורי')) return 'i-file';
+  if (desc.startsWith('תיקון')) return 'i-scissors';
+  if (obs.isManual !== false) return 'i-edit';
+  return 'i-bag';
 }
 
 /**
- * טאב "תשלומים" בעיצוב המודרני — פורט מלא של OrderPaymentsManager:
+ * טאב "תשלומים" בעיצוב "אריג" — פורט מלא של OrderPaymentsManager:
  * אריחי סיכום, חיובים (כולל ידניים), תשלומים דרך נדרים פלוס בלבד
  * (כולל העברה מהירה בקורא מגנטי), בקשות זיכוי וזיכויים ממתינים.
  * חשוף דרך ref: openCreditModal() — אייקון החוב בטופ-בר פותח את חלון נדרים.
@@ -101,10 +103,6 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   const [isRecalculating, setIsRecalculating] = useState(false);
 
   useEffect(() => { setMounted(true); }, []);
-
-  useImperativeHandle(ref, () => ({
-    openCreditModal: () => handleOpenCreditModal()
-  }));
 
   useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -321,6 +319,12 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     setCreditError('');
     setShowCreditModal(true);
   };
+
+  // handleOpenCreditModal חייב להיות מוגדר לפני ה-hook הזה (ולא רק לפני שימוש בפועל בזמן
+  // ריצה) - ESLint react-hooks/immutability דורש סדר הצהרה תואם סדר שימוש בקוד המקור.
+  useImperativeHandle(ref, () => ({
+    openCreditModal: () => handleOpenCreditModal()
+  }));
 
   /** מעקף אשראי מלא מתוך האתר - רושם תשלום אשראי כאילו שולם, מבלי לפנות למסוף נדרים פלוס בכלל.
    * מוגבל למתכנת בלבד (verifyPin ברמת 'מתכנת'), עבור מצבים כמו תקלת סליקה. */
@@ -559,51 +563,67 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   return (
     <>
       {/* אריחי סיכום */}
-      <div className="moc-pay-summary">
-        <div className="moc-pay-tile total">
-          <div className="moc-pt-lbl-row">
-            <span className="moc-pt-lbl">
-              סה"כ לתשלום
-              {isLivePreviewing && (
-                <span className="moc-live-recalc-hint" title="מחשב מחדש ברקע לפי השינויים שעדיין לא נשמרו">
-                  <span className="moc-spinner" /> מתעדכן…
-                </span>
-              )}
-            </span>
+      <div className="kpi-grid">
+        <div className="kpi-card">
+          <div className="kpi-top">
+            <div className="kpi-icon" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
+              <svg className="icon"><use href="#i-receipt" /></svg>
+            </div>
             <button
               type="button"
-              className="moc-recalc-btn"
+              className="btn btn-ghost btn-icon-only btn-sm"
               onClick={handleRecalculate}
               disabled={isRecalculating}
               title="חשב מחדש את חיובי ההזמנה לפי הכללים העדכניים"
             >
-              <RefreshCcw size={14} className={isRecalculating ? 'moc-recalc-spin' : ''} />
+              <svg className="icon" style={{ animation: isRecalculating ? 'spin 1s linear infinite' : 'none' }}><use href="#i-refresh" /></svg>
             </button>
           </div>
-          <div className="moc-pt-amt">₪{(totalRequired || 0).toLocaleString('he-IL')}</div>
+          <div className="kpi-label">
+            סה"כ לתשלום
+          </div>
+          <div className="kpi-value">₪{(totalRequired || 0).toLocaleString('he-IL')}</div>
+          {isLivePreviewing && (
+            <div className="hint" style={{ color: 'var(--text-3)', fontSize: '11px', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }} title="מחשב מחדש ברקע לפי השינויים שעדיין לא נשמרו">
+              <span className="spinner" style={{ width: '10px', height: '10px', borderWidth: '2px' }} />מחשב מחדש ברקע…
+            </div>
+          )}
         </div>
-        <div className="moc-pay-tile paid"><div className="moc-pt-lbl">שולם עד כה</div><div className="moc-pt-amt">₪{(totalPaid || 0).toLocaleString('he-IL')}</div></div>
+        <div className="kpi-card">
+          <div className="kpi-top"><div className="kpi-icon" style={{ background: 'var(--success-tint)', color: 'var(--success)' }}><svg className="icon"><use href="#i-coin" /></svg></div></div>
+          <div className="kpi-label">שולם עד כה</div>
+          <div className="kpi-value">₪{(totalPaid || 0).toLocaleString('he-IL')}</div>
+        </div>
         {balance >= 0 ? (
-          <div className="moc-pay-tile debt"><div className="moc-pt-lbl">יתרת חוב</div><div className="moc-pt-amt">₪{balance.toLocaleString('he-IL')}</div></div>
+          <div className="kpi-card">
+            <div className="kpi-top"><div className="kpi-icon" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}><svg className="icon"><use href="#i-alert-tri" /></svg></div></div>
+            <div className="kpi-label">יתרת חוב</div>
+            <div className="kpi-value">₪{balance.toLocaleString('he-IL')}</div>
+          </div>
         ) : (
-          <div className="moc-pay-tile credit"><div className="moc-pt-lbl">יתרת זכות</div><div className="moc-pt-amt">₪{Math.abs(balance).toLocaleString('he-IL')}</div></div>
+          <div className="kpi-card">
+            <div className="kpi-top"><div className="kpi-icon" style={{ background: 'var(--success-tint)', color: 'var(--success)' }}><svg className="icon"><use href="#i-coin" /></svg></div></div>
+            <div className="kpi-label">יתרת זכות</div>
+            <div className="kpi-value">₪{Math.abs(balance).toLocaleString('he-IL')}</div>
+          </div>
         )}
         {nearestCreditWindow && <CreditWindowTile deadline={nearestCreditWindow.deadline} amount={nearestCreditWindow.amount} />}
       </div>
 
       {/* ===== חיובים ===== */}
-      <div className="moc-section-block">
-        <div className="moc-table-toolbar">
-          <h3 style={{ color: '#b91c1c' }}>חיובים</h3>
-          <button className="moc-btn moc-btn-outline moc-btn-sm" onClick={() => setShowAddChargeModal(true)}>
-            <Plus size={14} /> הוסף חיוב
+      <div style={{ marginBottom: '22px' }}>
+        <div className="toolbar">
+          <h3 style={{ fontSize: '15px', color: 'var(--danger)' }}>חיובים</h3>
+          <span className="spacer" />
+          <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddChargeModal(true)}>
+            <svg className="icon"><use href="#i-plus" /></svg>הוסף חיוב
           </button>
         </div>
-        <div className="moc-card-panel" style={{ padding: 0 }}>
-          {activeObligations.length > 0 ? (
-            <table className="moc-data-table">
+        {activeObligations.length > 0 ? (
+          <div className="table-wrap">
+            <table className="data">
               <thead>
-                <tr><th>תיאור</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}>פעולות</th></tr>
+                <tr><th>תיאור</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}></th></tr>
               </thead>
               <tbody>
                 {sortedObligations.map((obs, idx) => {
@@ -612,28 +632,28 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                   // הכיווניות של הדפדפן מציג "₪-45" הפוך בתוך הקשר RTL
                   const isCredit = obs.amount < 0;
                   const creditInfo = getCancellationCreditInfo(obs);
-                  const { Icon, rowClass } = getObligationVisual(obs);
+                  const iconId = getObligationIcon(obs);
                   return (
-                    <tr key={idx} className={rowClass}>
-                      <td style={{ fontWeight: 600 }}>
+                    <tr key={idx}>
+                      <td className="cell-primary">
                         <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                          <Icon size={15} className="moc-row-icon" />
+                          <svg className="icon" style={{ width: '14px', height: '14px', color: 'var(--text-3)' }}><use href={`#${iconId}`} /></svg>
                           {descText}
                         </div>
                         {creditInfo && <CancellationCreditBadge deadline={creditInfo.deadline} amount={creditInfo.remaining} />}
                       </td>
-                      <td className="moc-hint">{fmtDate(obs.createdAt)}</td>
-                      <td style={{ fontWeight: 700, color: isCredit ? '#16a34a' : '#b91c1c', direction: 'ltr', textAlign: 'left' }}>
+                      <td className="cell-muted">{fmtDate(obs.createdAt)}</td>
+                      <td style={{ fontWeight: 700, color: isCredit ? 'var(--success)' : 'var(--danger)', direction: 'ltr', textAlign: 'left' }}>
                         {isCredit ? `-₪${Math.abs(obs.amount)}` : `₪${obs.amount}`}
                       </td>
                       <td>
-                        <div style={{ display: 'flex', gap: '4px' }}>
-                          <button className="moc-icon-btn-plain" title="פרטים נוספים" onClick={() => setSelectedObligationDetails(obs)}>
-                            <Info size={15} />
+                        <div className="row-actions">
+                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים" onClick={() => setSelectedObligationDetails(obs)}>
+                            <svg className="icon"><use href="#i-info" /></svg>
                           </button>
                           {obs.isManual !== false && (
-                            <button className="moc-icon-btn-plain row-delete" title="מחק" onClick={() => removeObligation(obligations.indexOf(obs))}>
-                              <Trash2 size={15} />
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="מחק" onClick={() => removeObligation(obligations.indexOf(obs))}>
+                              <svg className="icon"><use href="#i-trash" /></svg>
                             </button>
                           )}
                         </div>
@@ -643,126 +663,138 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 })}
               </tbody>
             </table>
-          ) : (
-            <div className="moc-empty-state" style={{ padding: '20px 0' }}>אין חיובים מתועדים</div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-receipt" /></svg>
+              <h4>אין חיובים מתועדים</h4>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ===== תשלומים ===== */}
-      <div className="moc-section-block">
-        <div className="moc-table-toolbar">
-          <h3 style={{ color: '#166534' }}>תשלומים</h3>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            {settings.nedarim_plus_enabled !== 'false' && (
-              <button className="moc-btn moc-btn-gold moc-btn-sm" onClick={handleOpenCreditModal} title="תשלום בכרטיס אשראי (נדרים פלוס)">
-                <CreditCard size={15} /> תשלום בכרטיס אשראי (נדרים פלוס)
-              </button>
-            )}
-            <button className="moc-btn moc-btn-outline moc-btn-sm" onClick={handleOpenRefundModal} title="בקשת זיכוי ללקוח">
-              <RefreshCcw size={15} /> בקשת זיכוי ללקוח
+      <div style={{ marginBottom: '22px' }}>
+        <div className="toolbar">
+          <h3 style={{ fontSize: '15px', color: 'var(--success)' }}>תשלומים</h3>
+          <span className="spacer" />
+          {settings.nedarim_plus_enabled !== 'false' && (
+            <button type="button" className="btn btn-primary btn-sm" onClick={handleOpenCreditModal} title="תשלום בכרטיס אשראי (נדרים פלוס)">
+              <svg className="icon"><use href="#i-card" /></svg>תשלום בכרטיס אשראי (נדרים פלוס)
             </button>
-          </div>
+          )}
+          <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenRefundModal} title="בקשת זיכוי ללקוח">
+            <svg className="icon"><use href="#i-refresh" /></svg>בקשת זיכוי ללקוח
+          </button>
         </div>
-        <div className="moc-card-panel" style={{ padding: 0 }}>
-          {activePayments.length > 0 ? (
-            <table className="moc-data-table">
+        {activePayments.length > 0 ? (
+          <div className="table-wrap">
+            <table className="data">
               <thead>
-                <tr><th>אופן</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}>פעולות</th></tr>
+                <tr><th>אופן</th><th>תאריך</th><th>סכום</th><th style={{ width: '80px' }}></th></tr>
               </thead>
               <tbody>
                 {sortedPayments.map((p, idx) => {
                   // תשלום שלילי הוא זיכוי/החזר שנרשם כתנועה שלילית — אותו טיפול סימן/כיווניות
                   // כמו בטבלת החיובים, כדי שלא יוצג "₪-45" (סימן במקום הלא נכון) בהקשר RTL
                   const isCreditPayment = p.amount < 0;
-                  const PaymentIcon = isCreditPayment ? RefreshCcw : Banknote;
                   return (
-                  <tr key={idx} className={isCreditPayment ? 'moc-row-payment-credit' : 'moc-row-payment'}>
-                    <td style={{ fontWeight: 600 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                        <PaymentIcon size={15} className="moc-row-icon" />
-                        {p.paymentMethod || '-'}
-                      </div>
-                    </td>
-                    <td className="moc-hint">{fmtDate(p.paymentDate)}</td>
-                    <td style={{ fontWeight: 700, color: isCreditPayment ? '#2563eb' : '#16a34a', direction: 'ltr', textAlign: 'left' }}>
-                      {isCreditPayment ? `-₪${Math.abs(p.amount)}` : `₪${p.amount}`}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button className="moc-icon-btn-plain" title="פרטים נוספים" onClick={() => setSelectedPaymentDetails(p)}>
-                          <Info size={15} />
-                        </button>
-                        <button className="moc-icon-btn-plain row-delete" title="מחק" onClick={() => removePayment(payments.indexOf(p))}>
-                          <Trash2 size={15} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                    <tr key={idx}>
+                      <td className="cell-primary">
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                          <svg className="icon" style={{ width: '14px', height: '14px', color: 'var(--text-3)' }}><use href="#i-coin" /></svg>
+                          {p.paymentMethod || '-'}
+                        </div>
+                      </td>
+                      <td className="cell-muted">{fmtDate(p.paymentDate)}</td>
+                      <td style={{ fontWeight: 700, color: isCreditPayment ? 'var(--info)' : 'var(--success)', direction: 'ltr', textAlign: 'left' }}>
+                        {isCreditPayment ? `-₪${Math.abs(p.amount)}` : `₪${p.amount}`}
+                      </td>
+                      <td>
+                        <div className="row-actions">
+                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="פרטים נוספים" onClick={() => setSelectedPaymentDetails(p)}>
+                            <svg className="icon"><use href="#i-info" /></svg>
+                          </button>
+                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="מחק" onClick={() => removePayment(payments.indexOf(p))}>
+                            <svg className="icon"><use href="#i-trash" /></svg>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
                   );
                 })}
               </tbody>
             </table>
-          ) : (
-            <div className="moc-empty-state" style={{ padding: '20px 0' }}>לא בוצעו תשלומים</div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-coin" /></svg>
+              <h4>לא בוצעו תשלומים</h4>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ===== זיכויים ממתינים ===== */}
-      <div className="moc-section-block">
-        <div className="moc-table-toolbar">
-          <h3 style={{ color: '#1e40af' }}>זיכויים ממתינים</h3>
+      <div>
+        <div className="toolbar">
+          <h3 style={{ fontSize: '15px', color: 'var(--info)' }}>זיכויים ממתינים</h3>
         </div>
-        <div className="moc-card-panel" style={{ padding: pendingRefunds.length > 0 ? 0 : undefined }}>
-          {pendingRefunds.length > 0 ? (
-            <table className="moc-data-table">
+        {pendingRefunds.length > 0 ? (
+          <div className="table-wrap">
+            <table className="data">
               <thead>
-                <tr><th>פרטים / סיבה</th><th>תאריך בקשה</th><th>סכום</th><th style={{ width: '110px' }}>פעולות</th></tr>
+                <tr><th>פרטים / סיבה</th><th>תאריך בקשה</th><th>סכום</th><th style={{ width: '110px' }}></th></tr>
               </thead>
               <tbody>
                 {pendingRefunds.map((r, idx) => (
                   <tr key={idx}>
-                    <td style={{ fontWeight: 600 }}>{r.reason || 'ללא סיבה'}</td>
-                    <td className="moc-hint">{fmtDate(r.createdAt)}</td>
-                    <td style={{ fontWeight: 700, color: '#2563eb', direction: 'ltr', textAlign: 'left' }}>₪{r.amount}</td>
+                    <td className="cell-primary">{r.reason || 'ללא סיבה'}</td>
+                    <td className="cell-muted">{fmtDate(r.createdAt)}</td>
+                    <td style={{ fontWeight: 700, color: 'var(--info)', direction: 'ltr', textAlign: 'left' }}>₪{r.amount}</td>
                     <td>
-                      <button className="moc-btn moc-btn-gold moc-btn-sm" disabled={isProcessing} onClick={() => approveRefund(r.id)}>
-                        {isProcessing ? <span className="moc-spinner" /> : 'אשר ביצוע'}
+                      <button type="button" className="btn btn-primary btn-sm" disabled={isProcessing} onClick={() => approveRefund(r.id)}>
+                        {isProcessing ? <span className="spinner" style={{ width: '13px', height: '13px', borderWidth: '2px' }} /> : 'אשר ביצוע'}
                       </button>
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
-          ) : (
-            <div className="moc-empty-state" style={{ padding: '20px 0' }}>אין זיכויים ממתינים</div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="table-wrap">
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-refresh" /></svg>
+              <h4>אין זיכויים ממתינים</h4>
+              <p>בקשות זיכוי שנוצרו יופיעו כאן וימתינו לאישור ביצוע.</p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ===== מודל העברה מהירה (קורא מגנטי) ===== */}
       {mounted && showQuickSwipeModal && createPortal(
-        <div className="moc moc-modal-overlay">
-          <div className="moc-modal-box" style={{ maxWidth: '440px', textAlign: 'center' }}>
-            <div className="moc-modal-body" style={{ paddingTop: '30px' }}>
-              <div style={{ margin: '0 auto 16px', width: '84px', height: '84px', background: 'var(--moc-warning-bg)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '3rem' }}>🧲</span>
-              </div>
-              <h3 style={{ margin: '0 0 8px', fontSize: '1.4rem' }}>העברת כרטיס מהירה</h3>
-              <p style={{ color: 'var(--moc-text-muted)', marginTop: 0 }}>אנא העבר כעת את כרטיס האשראי בקורא המגנטי...</p>
-              <input
-                autoFocus
-                type="text"
-                value={swipeInput}
-                onChange={handleSwipeInputChange}
-                onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-                onBlur={(e) => { if (showQuickSwipeModal) setTimeout(() => e.target?.focus(), 100); }}
-                style={{ opacity: 0, position: 'absolute', top: '-1000px' }}
-              />
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal confirm-modal" style={{ margin: 0 }}>
+            <div className="modal-icon-circle" style={{ background: 'var(--warning-tint)', color: 'var(--warning)' }}>
+              <svg className="icon"><use href="#i-tag" /></svg>
             </div>
-            <div className="moc-modal-foot" style={{ justifyContent: 'center' }}>
-              <button className="moc-btn moc-btn-outline" onClick={() => setShowQuickSwipeModal(false)}>ביטול חלון מהיר</button>
+            <h3>העברת כרטיס מהירה</h3>
+            <p>אנא העבר כעת את כרטיס האשראי בקורא המגנטי...</p>
+            <input
+              autoFocus
+              type="text"
+              value={swipeInput}
+              onChange={handleSwipeInputChange}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+              onBlur={(e) => { if (showQuickSwipeModal) setTimeout(() => e.target?.focus(), 100); }}
+              style={{ opacity: 0, position: 'absolute', top: '-1000px' }}
+            />
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowQuickSwipeModal(false)}>ביטול חלון מהיר</button>
             </div>
           </div>
         </div>,
@@ -771,73 +803,81 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
       {/* ===== מודל סליקת אשראי (נדרים פלוס) ===== */}
       {mounted && showCreditModal && createPortal(
-        <div className="moc moc-modal-overlay">
-          <div className="moc-modal-box" style={{ position: 'relative' }}>
-            <div className="moc-modal-head">
-              <h3>תשלום בכרטיס אשראי (נדרים פלוס)</h3>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal" style={{ margin: 0 }}>
+            <div className="modal-head">
+              <strong>תשלום בכרטיס אשראי (נדרים פלוס)</strong>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                <button className="moc-btn moc-btn-outline moc-btn-sm" title="העברת כרטיס מהירה בקורא מגנטי"
+                <button type="button" className="btn btn-secondary btn-sm" title="העברת כרטיס מהירה בקורא מגנטי"
                   onClick={(e) => { e.preventDefault(); setShowCreditModal(false); setShowQuickSwipeModal(true); setSwipeInput(''); setCreditError(''); }}>
-                  <Zap size={14} /> העברה מהירה
+                  <svg className="icon"><use href="#i-activity" /></svg>העברה מהירה
                 </button>
-                <button className="moc-close-x" onClick={() => setShowCreditModal(false)}><X size={15} /></button>
+                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowCreditModal(false)}>
+                  <svg className="icon"><use href="#i-x" /></svg>
+                </button>
               </div>
             </div>
-            <div className="moc-modal-body">
-              <label className="moc-field-label">שם לקוח</label>
-              <input type="text" readOnly value={`${customer?.firstName || ''} ${customer?.lastName || ''}`} style={{ marginBottom: '12px', background: 'var(--moc-neutral-bg)' }} />
+            <div className="modal-body">
+              <div className="field">
+                <label>שם לקוח</label>
+                <input type="text" className="input" readOnly value={`${customer?.firstName || ''} ${customer?.lastName || ''}`} style={{ background: 'var(--surface-alt)' }} />
+              </div>
 
-              <label className="moc-field-label">סכום לחיוב (₪)</label>
-              <input type="number" value={creditCardData.amount}
-                onChange={e => setCreditCardData({ ...creditCardData, amount: e.target.value })}
-                style={{ marginBottom: '12px', fontWeight: 700 }} />
+              <div className="field">
+                <label>סכום לחיוב (₪)</label>
+                <input type="number" className="input" value={creditCardData.amount}
+                  onChange={e => setCreditCardData({ ...creditCardData, amount: e.target.value })}
+                  style={{ fontWeight: 700 }} />
+              </div>
 
-              <label className="moc-field-label">מספר כרטיס אשראי</label>
-              <input type="text" value={creditCardData.cardNumber} onChange={handleCardNumberChange}
-                placeholder="0000 0000 0000 0000" maxLength={19}
-                style={{ marginBottom: '12px', direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
+              <div className="field">
+                <label>מספר כרטיס אשראי</label>
+                <input type="text" className="input" value={creditCardData.cardNumber} onChange={handleCardNumberChange}
+                  placeholder="0000 0000 0000 0000" maxLength={19}
+                  style={{ direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
+              </div>
 
-              <div className="moc-grid-2">
-                <div>
-                  <label className="moc-field-label">תוקף (MM/YY)</label>
-                  <input type="text" value={creditCardData.tokef} onChange={handleTokefChange}
+              <div className="form-grid">
+                <div className="field">
+                  <label>תוקף (MM/YY)</label>
+                  <input type="text" className="input" value={creditCardData.tokef} onChange={handleTokefChange}
                     placeholder="12/28" maxLength={5} style={{ direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
                 </div>
-                <div>
-                  <label className="moc-field-label">תשלומים</label>
-                  <input type="number" min={1} max={36} value={creditCardData.installments}
+                <div className="field">
+                  <label>תשלומים</label>
+                  <input type="number" className="input" min={1} max={36} value={creditCardData.installments}
                     onChange={e => setCreditCardData({ ...creditCardData, installments: e.target.value })} />
                 </div>
               </div>
 
-              <label className="moc-field-label" style={{ marginTop: '12px' }}>הערות</label>
-              <input type="text" value={creditCardData.notes}
-                onChange={e => setCreditCardData({ ...creditCardData, notes: e.target.value })}
-                placeholder="הערות לחיוב" />
+              <div className="field" style={{ marginBottom: creditError ? '14px' : 0 }}>
+                <label>הערות</label>
+                <input type="text" className="input" value={creditCardData.notes}
+                  onChange={e => setCreditCardData({ ...creditCardData, notes: e.target.value })}
+                  placeholder="הערות לחיוב" />
+              </div>
 
               {creditError && (
-                <div style={{ padding: '10px 14px', background: 'var(--moc-danger-bg)', color: 'var(--moc-danger-text)', borderRadius: '8px', marginTop: '14px', fontSize: '0.92rem', fontWeight: 600 }}>
-                  ⚠️ {creditError}
+                <div className="callout callout-danger">
+                  <svg className="icon"><use href="#i-alert-tri" /></svg>
+                  <span>{creditError}</span>
                 </div>
               )}
             </div>
-            <div className="moc-modal-foot">
+            <div className="modal-foot">
               <button
                 type="button"
+                className="btn btn-ghost btn-icon-only"
                 title="מעקף מתכנת: רישום ידני כאילו שולם, ללא חיוב אשראי בפועל (מוגבל למתכנת)"
                 disabled={isProcessing}
                 onClick={handleBypassCreditPayment}
-                style={{
-                  background: 'transparent', border: 'none', color: '#b45309',
-                  cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  padding: '8px', marginInlineEnd: 'auto'
-                }}
+                style={{ color: 'var(--warning)', marginInlineEnd: 'auto' }}
               >
-                <SkipForward size={18} />
+                <svg className="icon"><use href="#i-arrow-end" /></svg>
               </button>
-              <button className="moc-btn moc-btn-outline" disabled={isProcessing} onClick={() => setShowCreditModal(false)}>ביטול</button>
-              <button className="moc-btn moc-btn-gold" disabled={isProcessing} onClick={handleProcessCreditCard}>
-                {isProcessing ? <><span className="moc-spinner" /> מעבד...</> : 'בצע חיוב'}
+              <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={() => setShowCreditModal(false)}>ביטול</button>
+              <button type="button" className="btn btn-primary" disabled={isProcessing} onClick={handleProcessCreditCard}>
+                {isProcessing ? <><span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> מעבד...</> : 'בצע חיוב'}
               </button>
             </div>
           </div>
@@ -847,25 +887,30 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
       {/* ===== מודל הוספת חיוב ידני ===== */}
       {mounted && showAddChargeModal && createPortal(
-        <div className="moc moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowAddChargeModal(false); }}>
-          <div className="moc-modal-box">
-            <div className="moc-modal-head">
-              <h3>הוספת חיוב ידני</h3>
-              <button className="moc-close-x" onClick={() => setShowAddChargeModal(false)}><X size={15} /></button>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget) setShowAddChargeModal(false); }}>
+          <div className="modal" style={{ margin: 0 }}>
+            <div className="modal-head">
+              <strong>הוספת חיוב ידני</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowAddChargeModal(false)}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
             </div>
-            <div className="moc-modal-body">
-              <label className="moc-field-label">תיאור החיוב</label>
-              <input type="text" placeholder="לדוגמא: שמלה נוספת" value={newObligation.description}
-                onChange={e => setNewObligation({ ...newObligation, description: e.target.value })}
-                style={{ marginBottom: '12px' }} />
-              <label className="moc-field-label">סכום (₪)</label>
-              <input type="number" placeholder="0" value={newObligation.amount}
-                onChange={e => setNewObligation({ ...newObligation, amount: e.target.value })}
-                style={{ fontWeight: 700 }} />
+            <div className="modal-body">
+              <div className="field">
+                <label>תיאור החיוב</label>
+                <input type="text" className="input" placeholder="לדוגמא: שמלה נוספת" value={newObligation.description}
+                  onChange={e => setNewObligation({ ...newObligation, description: e.target.value })} />
+              </div>
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label>סכום (₪)</label>
+                <input type="number" className="input" placeholder="0" value={newObligation.amount}
+                  onChange={e => setNewObligation({ ...newObligation, amount: e.target.value })}
+                  style={{ fontWeight: 700 }} />
+              </div>
             </div>
-            <div className="moc-modal-foot">
-              <button className="moc-btn moc-btn-outline" onClick={() => setShowAddChargeModal(false)}>ביטול</button>
-              <button className="moc-btn moc-btn-gold" disabled={!newObligation.description || !newObligation.amount} onClick={addObligation}>שמור חיוב</button>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowAddChargeModal(false)}>ביטול</button>
+              <button type="button" className="btn btn-primary" disabled={!newObligation.description || !newObligation.amount} onClick={addObligation}>שמור חיוב</button>
             </div>
           </div>
         </div>,
@@ -874,43 +919,47 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
       {/* ===== מודל פרטי תשלום ===== */}
       {mounted && selectedPaymentDetails && createPortal(
-        <div className="moc moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setSelectedPaymentDetails(null); }}>
-          <div className="moc-modal-box wide">
-            <div className="moc-modal-head">
-              <h3>פרטי תשלום מלאים</h3>
-              <button className="moc-close-x" onClick={() => setSelectedPaymentDetails(null)}><X size={15} /></button>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedPaymentDetails(null); }}>
+          <div className="modal" style={{ margin: 0, maxWidth: '620px', width: '95%' }}>
+            <div className="modal-head">
+              <strong>פרטי תשלום מלאים</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setSelectedPaymentDetails(null)}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
             </div>
-            <div className="moc-modal-body">
-              <div className="moc-grid-2" style={{ marginBottom: '14px' }}>
-                <div>
-                  <span className="moc-field-label">אופן תשלום</span>
-                  <div className="moc-field-value">{selectedPaymentDetails.paymentMethod || '-'}</div>
+            <div className="modal-body">
+              <div className="form-grid" style={{ marginBottom: '14px' }}>
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>אופן תשלום</label>
+                  <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{selectedPaymentDetails.paymentMethod || '-'}</div>
                 </div>
-                <div>
-                  <span className="moc-field-label">סכום</span>
-                  <div className="moc-field-value" style={{ color: selectedPaymentDetails.amount < 0 ? '#2563eb' : '#16a34a', direction: 'ltr', textAlign: 'right' }}>
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>סכום</label>
+                  <div style={{ fontWeight: 700, fontSize: '13.5px', color: selectedPaymentDetails.amount < 0 ? 'var(--info)' : 'var(--success)', direction: 'ltr', textAlign: 'right' }}>
                     {selectedPaymentDetails.amount < 0 ? `-₪${Math.abs(selectedPaymentDetails.amount)}` : `₪${selectedPaymentDetails.amount}`}
                   </div>
                 </div>
               </div>
-              <span className="moc-field-label">תאריך</span>
-              <div className="moc-field-value" style={{ fontSize: '0.95rem', marginBottom: '14px' }}>
-                {getHebrewDateString(selectedPaymentDetails.paymentDate)}, {new Date(selectedPaymentDetails.paymentDate).toLocaleTimeString('he-IL')}
+              <div className="field">
+                <label>תאריך</label>
+                <div style={{ fontSize: '13px', fontWeight: 600 }}>
+                  {getHebrewDateString(selectedPaymentDetails.paymentDate)}, {new Date(selectedPaymentDetails.paymentDate).toLocaleTimeString('he-IL')}
+                </div>
               </div>
 
-              <span className="moc-field-label">הערות ופירוט (נדרים פלוס / אחר)</span>
-              <div className="moc-card-panel" style={{ padding: '12px 14px', maxHeight: '280px', overflowY: 'auto' }}>
+              <span className="hint" style={{ color: 'var(--text-2)', fontWeight: 700 }}>הערות ופירוט (נדרים פלוס / אחר)</span>
+              <div className="card" style={{ marginTop: '8px', padding: '12px 14px', maxHeight: '280px', overflowY: 'auto' }}>
                 {(() => {
                   const notes = selectedPaymentDetails.notes;
-                  if (!notes) return <span className="moc-hint">אין הערות</span>;
+                  if (!notes) return <span className="hint" style={{ color: 'var(--text-3)' }}>אין הערות</span>;
                   try {
                     if (typeof notes === 'string' && notes.trim().startsWith('{')) {
                       const parsed = JSON.parse(notes);
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {Object.entries(parsed).map(([k, v]) => (
-                            <div key={k} style={{ display: 'flex', borderBottom: '1px solid var(--moc-divider)', paddingBottom: '6px', gap: '8px' }}>
-                              <strong style={{ width: '140px', flexShrink: 0, fontSize: '0.88rem', color: 'var(--moc-text-muted)' }}>{k}:</strong>
+                            <div key={k} style={{ display: 'flex', borderBottom: '1px solid var(--border)', paddingBottom: '6px', gap: '8px' }}>
+                              <strong style={{ width: '140px', flexShrink: 0, fontSize: '0.88rem', color: 'var(--text-3)' }}>{k}:</strong>
                               <span style={{ flex: 1, wordBreak: 'break-word', fontSize: '0.92rem', direction: 'ltr', textAlign: 'right', fontWeight: 500 }}>{String(v)}</span>
                             </div>
                           ))}
@@ -922,8 +971,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 })()}
               </div>
             </div>
-            <div className="moc-modal-foot">
-              <button className="moc-btn moc-btn-outline" onClick={() => setSelectedPaymentDetails(null)}>סגור</button>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setSelectedPaymentDetails(null)}>סגור</button>
             </div>
           </div>
         </div>,
@@ -932,36 +981,40 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
       {/* ===== מודל פרטי חיוב ===== */}
       {mounted && selectedObligationDetails && createPortal(
-        <div className="moc moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setSelectedObligationDetails(null); }}>
-          <div className="moc-modal-box wide">
-            <div className="moc-modal-head">
-              <h3>פרטי חיוב</h3>
-              <button className="moc-close-x" onClick={() => setSelectedObligationDetails(null)}><X size={15} /></button>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget) setSelectedObligationDetails(null); }}>
+          <div className="modal" style={{ margin: 0, maxWidth: '620px', width: '95%' }}>
+            <div className="modal-head">
+              <strong>פרטי חיוב</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setSelectedObligationDetails(null)}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
             </div>
-            <div className="moc-modal-body">
-              <div className="moc-grid-2" style={{ marginBottom: '14px' }}>
-                <div>
-                  <span className="moc-field-label">סוג חיוב</span>
-                  <div className="moc-field-value">
+            <div className="modal-body">
+              <div className="form-grid" style={{ marginBottom: '14px' }}>
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>סוג חיוב</label>
+                  <div style={{ fontWeight: 700, fontSize: '13.5px' }}>
                     {selectedObligationDetails.isManual === false
                       ? (selectedObligationDetails.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב אוטומטי')
                       : (selectedObligationDetails.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב ידני')}
                   </div>
                 </div>
-                <div>
-                  <span className="moc-field-label">סכום</span>
-                  <div className="moc-field-value" style={{ color: selectedObligationDetails.amount < 0 ? '#16a34a' : 'var(--moc-danger-text)', direction: 'ltr', textAlign: 'right' }}>
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>סכום</label>
+                  <div style={{ fontWeight: 700, fontSize: '13.5px', color: selectedObligationDetails.amount < 0 ? 'var(--success)' : 'var(--danger)', direction: 'ltr', textAlign: 'right' }}>
                     {selectedObligationDetails.amount < 0 ? `-₪${Math.abs(selectedObligationDetails.amount)}` : `₪${selectedObligationDetails.amount}`}
                   </div>
                 </div>
               </div>
-              <span className="moc-field-label">תאריך</span>
-              <div className="moc-field-value" style={{ fontSize: '0.95rem', marginBottom: '14px' }}>
-                {getHebrewDateString(selectedObligationDetails.createdAt || new Date())}, {new Date(selectedObligationDetails.createdAt || new Date()).toLocaleTimeString('he-IL')}
+              <div className="field">
+                <label>תאריך</label>
+                <div style={{ fontSize: '13px', fontWeight: 600 }}>
+                  {getHebrewDateString(selectedObligationDetails.createdAt || new Date())}, {new Date(selectedObligationDetails.createdAt || new Date()).toLocaleTimeString('he-IL')}
+                </div>
               </div>
 
-              <span className="moc-field-label">תיאור מפורט</span>
-              <div className="moc-notes-box">
+              <span className="hint" style={{ color: 'var(--text-2)', fontWeight: 700 }}>תיאור מפורט</span>
+              <div className="card" style={{ marginTop: '8px', padding: '14px 16px', fontSize: '13px', lineHeight: 1.7 }}>
                 <div><strong>פירוט:</strong> {selectedObligationDetails.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'ללא תיאור'}</div>
                 {selectedObligationDetails.priceCategory && (
                   <div style={{ marginTop: '8px' }}><strong>קטגוריה (מחירון):</strong> {selectedObligationDetails.priceCategory}</div>
@@ -971,8 +1024,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 )}
               </div>
             </div>
-            <div className="moc-modal-foot">
-              <button className="moc-btn moc-btn-outline" onClick={() => setSelectedObligationDetails(null)}>סגור</button>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setSelectedObligationDetails(null)}>סגור</button>
             </div>
           </div>
         </div>,
@@ -981,39 +1034,49 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
       {/* ===== מודל בקשת זיכוי ===== */}
       {mounted && showRefundModal && createPortal(
-        <div className="moc moc-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowRefundModal(false); }}>
-          <div className="moc-modal-box wide">
-            <div className="moc-modal-head">
-              <h3>יצירת בקשת זיכוי</h3>
-              <button className="moc-close-x" onClick={() => setShowRefundModal(false)}><X size={15} /></button>
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget) setShowRefundModal(false); }}>
+          <div className="modal" style={{ margin: 0, maxWidth: '620px', width: '95%' }}>
+            <div className="modal-head">
+              <strong>יצירת בקשת זיכוי</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowRefundModal(false)}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
             </div>
-            <div className="moc-modal-body">
-              <label className="moc-field-label">סכום לזיכוי (₪) *</label>
-              <input type="number" value={refundData.amount} onChange={e => setRefundData({ ...refundData, amount: e.target.value })} style={{ marginBottom: '12px', fontWeight: 700 }} />
-
-              <label className="moc-field-label">סיבה לזיכוי / הערות</label>
-              <input type="text" value={refundData.reason} onChange={e => setRefundData({ ...refundData, reason: e.target.value })} style={{ marginBottom: '14px' }} />
-
-              <span className="moc-field-label" style={{ fontSize: '0.95rem', color: 'var(--moc-text-main)', fontWeight: 700, marginBottom: '8px' }}>פרטי בנק לזיכוי</span>
-              <div className="moc-grid-2" style={{ marginBottom: '12px' }}>
-                <div><label className="moc-field-label">בנק</label><input type="text" value={refundData.bankName} onChange={e => setRefundData({ ...refundData, bankName: e.target.value })} /></div>
-                <div><label className="moc-field-label">סניף</label><input type="text" value={refundData.bankBranch} onChange={e => setRefundData({ ...refundData, bankBranch: e.target.value })} /></div>
-              </div>
-              <div className="moc-grid-2" style={{ marginBottom: '12px' }}>
-                <div><label className="moc-field-label">מספר חשבון</label><input type="text" value={refundData.bankAccount} onChange={e => setRefundData({ ...refundData, bankAccount: e.target.value })} /></div>
-                <div><label className="moc-field-label">שם בעל החשבון</label><input type="text" value={refundData.bankAccountName} onChange={e => setRefundData({ ...refundData, bankAccountName: e.target.value })} /></div>
+            <div className="modal-body">
+              <div className="field">
+                <label>סכום לזיכוי (₪) *</label>
+                <input type="number" className="input" value={refundData.amount} onChange={e => setRefundData({ ...refundData, amount: e.target.value })} style={{ fontWeight: 700 }} />
               </div>
 
-              <label className="moc-field-label">אמצעי תשלום לזיכוי (נלקח אוטומטית מתשלום אחרון)</label>
-              <input type="text" readOnly value={refundData.paymentDetails} style={{ marginBottom: '12px', background: 'var(--moc-neutral-bg)' }} title="שדה זה מתמלא אוטומטית מהתשלום האחרון במערכת" />
+              <div className="field">
+                <label>סיבה לזיכוי / הערות</label>
+                <input type="text" className="input" value={refundData.reason} onChange={e => setRefundData({ ...refundData, reason: e.target.value })} />
+              </div>
 
-              <label className="moc-field-label">מייל לקוח (לשליחת אישור זיכוי)</label>
-              <input type="email" value={refundData.email} onChange={e => setRefundData({ ...refundData, email: e.target.value })} style={{ direction: 'ltr' }} />
+              <span className="hint" style={{ display: 'block', fontSize: '13px', color: 'var(--text)', fontWeight: 700, marginBottom: '8px' }}>פרטי בנק לזיכוי</span>
+              <div className="form-grid">
+                <div className="field"><label>בנק</label><input type="text" className="input" value={refundData.bankName} onChange={e => setRefundData({ ...refundData, bankName: e.target.value })} /></div>
+                <div className="field"><label>סניף</label><input type="text" className="input" value={refundData.bankBranch} onChange={e => setRefundData({ ...refundData, bankBranch: e.target.value })} /></div>
+              </div>
+              <div className="form-grid">
+                <div className="field"><label>מספר חשבון</label><input type="text" className="input" value={refundData.bankAccount} onChange={e => setRefundData({ ...refundData, bankAccount: e.target.value })} /></div>
+                <div className="field"><label>שם בעל החשבון</label><input type="text" className="input" value={refundData.bankAccountName} onChange={e => setRefundData({ ...refundData, bankAccountName: e.target.value })} /></div>
+              </div>
+
+              <div className="field">
+                <label>אמצעי תשלום לזיכוי (נלקח אוטומטית מתשלום אחרון)</label>
+                <input type="text" className="input" readOnly value={refundData.paymentDetails} style={{ background: 'var(--surface-alt)' }} title="שדה זה מתמלא אוטומטית מהתשלום האחרון במערכת" />
+              </div>
+
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label>מייל לקוח (לשליחת אישור זיכוי)</label>
+                <input type="email" className="input" value={refundData.email} onChange={e => setRefundData({ ...refundData, email: e.target.value })} style={{ direction: 'ltr' }} />
+              </div>
             </div>
-            <div className="moc-modal-foot">
-              <button className="moc-btn moc-btn-outline" onClick={() => setShowRefundModal(false)}>ביטול</button>
-              <button className="moc-btn moc-btn-gold" disabled={isProcessing} onClick={submitRefund}>
-                {isProcessing ? <><span className="moc-spinner" /> מעבד...</> : 'צור בקשת זיכוי'}
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowRefundModal(false)}>ביטול</button>
+              <button type="button" className="btn btn-primary" disabled={isProcessing} onClick={submitRefund}>
+                {isProcessing ? <><span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> מעבד...</> : 'צור בקשת זיכוי'}
               </button>
             </div>
           </div>

@@ -2,15 +2,12 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { CalendarSearch, Edit2, Trash2, ArrowLeft, ArrowRight, Plus, Check, UserPlus, CreditCard, ShieldCheck, RefreshCw, ExternalLink, AlertTriangle, X, ChevronDown } from 'lucide-react';
 import HebrewDatePicker from '../../../components/HebrewDatePicker';
 import HebrewDateRangePicker from '../../../components/HebrewDateRangePicker';
 import CustomerSelector from '../../../components/CustomerSelector';
 import OrderModelSelector from '../../../components/orders/OrderModelSelector';
 import ItemCapacityModal from '../../../components/orders/ItemCapacityModal';
 import NewOrderShell from '../../../components/orders/new/NewOrderShell';
-import newOrderCss from '../../../components/orders/new/newOrderStyles';
 import { calculateDynamicAvailability } from '../../../lib/clientInventory';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from '../../../components/orders/modern/mocAuth';
@@ -1168,68 +1165,57 @@ export default function NewOrderPage() {
 
   return (
     <>
-      <style>{newOrderCss}</style>
-
       <NewOrderShell
         step={step}
         steps={stepsMeta}
         onStepChange={handleStepChange}
-        draftOrderId={draftOrderId}
-        itemsCount={activeItems.length}
-        repairsTotal={repairsTotal}
-        totalAmount={totalAmount}
-        calculating={calculating}
+        flash={flash}
         topBar={
           <>
-            {flash && (
-              <span className={`noc-flash ${flash.type === 'err' ? 'err' : ''}`}>
-                <ShieldCheck size={14} /> {flash.text}
-              </span>
-            )}
             {draftOrderId && (
-              <a className="noc-ghost" href={`/orders/${draftOrderId}`} target="_blank" rel="noopener noreferrer" title="פתח את הטיוטה בכרטיסייה נפרדת">
-                <ExternalLink size={15} /> טיוטה #{draftOrderId}
+              <a className="btn btn-ghost" href={`/orders/${draftOrderId}`} target="_blank" rel="noopener noreferrer" title="פתח את הטיוטה בכרטיסייה נפרדת">
+                <svg className="icon"><use href="#i-link" /></svg> טיוטה #{draftOrderId}
               </a>
             )}
-            <button type="button" className="noc-ghost" onClick={handleExit} disabled={busy} title="יציאה מהמסך">
-              <X size={16} />
+            <button type="button" className="btn btn-ghost btn-icon-only" onClick={handleExit} disabled={busy} title="יציאה מהמסך" aria-label="יציאה מהמסך">
+              <svg className="icon"><use href="#i-x" /></svg>
             </button>
           </>
         }
         footer={
           <>
             {step > 1 && (
-              <button type="button" className="noc-ghost" onClick={() => setStep(step - 1)} disabled={busy}>
-                <ArrowRight size={16} /> חזור
+              <button type="button" className="btn btn-secondary" onClick={() => setStep(step - 1)} disabled={busy}>
+                <svg className="icon"><use href="#i-chevron-end" /></svg> חזור
               </button>
             )}
             {step === 1 && (
-              <button type="button" className="noc-ghost" onClick={handleExit} disabled={busy}>ביטול</button>
+              <button type="button" className="btn btn-ghost" onClick={handleExit} disabled={busy}>ביטול</button>
             )}
-            <span className="noc-spacer" />
+            <span style={{ flex: 1 }} />
             {step === 1 && (
-              <button type="button" className="noc-btn gold" onClick={proceedToStep2} disabled={!order.customerId}>
-                המשך <ArrowLeft size={16} />
+              <button type="button" className="btn btn-primary" onClick={proceedToStep2} disabled={!order.customerId}>
+                המשך <svg className="icon"><use href="#i-chevron-start" /></svg>
               </button>
             )}
             {step === 2 && (
-              <button type="button" className="noc-btn gold" onClick={() => setStep(3)} disabled={!datesFilled}>
-                המשך לבחירת פריטים <ArrowLeft size={16} />
+              <button type="button" className="btn btn-primary" onClick={() => setStep(3)} disabled={!datesFilled}>
+                המשך לבחירת פריטים <svg className="icon"><use href="#i-chevron-start" /></svg>
               </button>
             )}
             {step === 3 && (
-              <button type="button" className="noc-btn gold" onClick={() => setStep(4)} disabled={activeItems.length === 0}>
-                המשך לסיכום <ArrowLeft size={16} />
+              <button type="button" className="btn btn-primary" onClick={() => setStep(4)} disabled={activeItems.length === 0}>
+                המשך לסיכום <svg className="icon"><use href="#i-chevron-start" /></svg>
               </button>
             )}
             {step === 4 && (
-              <button type="button" className="noc-btn gold" onClick={() => setStep(5)}>
-                המשך לתשלום <ArrowLeft size={16} />
+              <button type="button" className="btn btn-primary" onClick={() => setStep(5)}>
+                המשך לתשלום <svg className="icon"><use href="#i-chevron-start" /></svg>
               </button>
             )}
             {step === 5 && (
-              <button type="button" className="noc-btn ok" onClick={saveOrder} disabled={busy} aria-busy={saving}>
-                {saving ? <><span className="noc-spin sm" /> שומר...</> : <><ShieldCheck size={16} /> סיום ויצירת ההזמנה</>}
+              <button type="button" className="btn btn-primary" onClick={saveOrder} disabled={busy} aria-busy={saving}>
+                {saving ? <><span className="spinner" /> שומר...</> : <><svg className="icon"><use href="#i-check" /></svg> סיום ויצירת ההזמנה</>}
               </button>
             )}
           </>
@@ -1237,202 +1223,223 @@ export default function NewOrderPage() {
       >
         {/* ==================== שלב 1 · לקוח ==================== */}
         {step === 1 && (
-          <div className="noc-scroll">
-            <div className="noc-mid">
-              <div className="noc-ask">
-                <h2>מי הלקוח?</h2>
-                <p>חיפוש לפי טלפון, בחירה מהרשימה, או יצירת כרטיס לקוח חדש.</p>
-              </div>
+          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+            <h2>מי הלקוח?</h2>
+            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>חיפוש לפי טלפון, בחירה מהרשימה, או יצירת כרטיס לקוח חדש.</p>
 
-              <div className="noc-switch">
-                <button
-                  type="button"
-                  className={searchMode === 'phone' ? 'on' : ''}
-                  onClick={() => { setSearchMode('phone'); setFoundCustomerFromPhone(null); }}
-                >לפי טלפון</button>
-                <button
-                  type="button"
-                  className={searchMode === 'name' ? 'on' : ''}
-                  onClick={() => setSearchMode('name')}
-                >מהרשימה</button>
-                <button
-                  type="button"
-                  className={searchMode === 'new' ? 'on' : ''}
-                  onClick={() => setSearchMode('new')}
-                >לקוח חדש</button>
-              </div>
+            <div className="tabs">
+              <button
+                type="button"
+                className={searchMode === 'phone' ? 'tab active' : 'tab'}
+                style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
+                onClick={() => { setSearchMode('phone'); setFoundCustomerFromPhone(null); }}
+              >
+                <svg className="icon"><use href="#i-phone" /></svg> לפי טלפון
+              </button>
+              <button
+                type="button"
+                className={searchMode === 'name' ? 'tab active' : 'tab'}
+                style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
+                onClick={() => setSearchMode('name')}
+              >
+                <svg className="icon"><use href="#i-search" /></svg> מהרשימה
+              </button>
+              <button
+                type="button"
+                className={searchMode === 'new' ? 'tab active' : 'tab'}
+                style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
+                onClick={() => setSearchMode('new')}
+              >
+                <svg className="icon"><use href="#i-user" /></svg> לקוח חדש
+              </button>
+            </div>
 
-              {searchMode === 'phone' && !foundCustomerFromPhone && (
-                <div className="noc-card">
-                  <label className="noc-lbl" htmlFor="cust-phone">מספר טלפון <span className="req">*</span></label>
+            {searchMode === 'phone' && !foundCustomerFromPhone && (
+              <div className="card card-pad">
+                <div className="field">
+                  <label htmlFor="cust-phone">מספר טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
                   <input
                     id="cust-phone"
                     type="tel"
                     dir="ltr"
-                    className="noc-big-input"
+                    className="input"
                     value={phoneSearchInput}
                     onChange={e => setPhoneSearchInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCheckPhone()}
                     placeholder="05..."
                     autoFocus
                   />
-                  <button
-                    type="button"
-                    className="noc-btn gold wide"
-                    style={{ marginTop: '14px' }}
-                    onClick={handleCheckPhone}
-                    disabled={isCheckingPhone}
-                  >
-                    {isCheckingPhone ? <><span className="noc-spin sm" /> מחפש...</> : <>בדיקה והמשך <ArrowLeft size={16} /></>}
-                  </button>
-                  <p className="noc-hint" style={{ textAlign: 'center', marginTop: '12px' }}>
-                    מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן.
-                  </p>
                 </div>
-              )}
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  style={{ width: '100%' }}
+                  onClick={handleCheckPhone}
+                  disabled={isCheckingPhone}
+                >
+                  {isCheckingPhone ? <><span className="spinner" /> מחפש...</> : <><svg className="icon"><use href="#i-search" /></svg> בדיקה והמשך</>}
+                </button>
+                <p className="field hint" style={{ margin: '14px 0 0', textAlign: 'center' }}>
+                  מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן.
+                </p>
+              </div>
+            )}
 
-              {searchMode === 'phone' && foundCustomerFromPhone && (
-                <div className="noc-card">
-                  <h3 style={{ fontSize: '1.3rem' }}>{getCustomerFullName(foundCustomerFromPhone)}</h3>
-                  <p className="noc-hint" style={{ marginTop: '6px' }}>
-                    {foundCustomerFromPhone.phone1}
-                    {foundCustomerFromPhone.city ? ` · ${foundCustomerFromPhone.city}` : ''}
-                    {foundCustomerFromPhone.street ? `, ${foundCustomerFromPhone.street} ${foundCustomerFromPhone.houseNum || ''}` : ''}
-                  </p>
-                  <div style={{ display: 'flex', gap: '10px', marginTop: '20px', flexWrap: 'wrap' }}>
-                    <button type="button" className="noc-btn gold" style={{ flex: 1, minWidth: '160px' }} onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)}>
-                      <Check size={16} /> כן, זה הלקוח
-                    </button>
-                    <button
-                      type="button"
-                      className="noc-btn line"
-                      onClick={() => {
-                        setNewCustomer(prev => ({ ...prev, phone1: phoneSearchInput.trim() }));
-                        setFoundCustomerFromPhone(null);
-                        setSearchMode('new');
-                      }}
-                    >לקוח אחר</button>
+            {searchMode === 'phone' && foundCustomerFromPhone && (
+              <div className="card card-pad">
+                <div className="card-title-row" style={{ marginBottom: '14px' }}>
+                  <div className="avatar">
+                    {`${(foundCustomerFromPhone.firstName || '')[0] || ''}${(foundCustomerFromPhone.lastName || '')[0] || ''}`}
+                  </div>
+                  <div>
+                    <strong style={{ fontSize: '15px' }}>{getCustomerFullName(foundCustomerFromPhone)}</strong>
+                    <p className="hint" style={{ color: 'var(--text-3)', margin: '2px 0 0' }}>
+                      {foundCustomerFromPhone.phone1}
+                      {foundCustomerFromPhone.city ? ` · ${foundCustomerFromPhone.city}` : ''}
+                      {foundCustomerFromPhone.street ? `, ${foundCustomerFromPhone.street} ${foundCustomerFromPhone.houseNum || ''}` : ''}
+                    </p>
                   </div>
                 </div>
-              )}
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <button type="button" className="btn btn-primary" style={{ flex: 1, minWidth: '160px' }} onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)}>
+                    <svg className="icon"><use href="#i-check" /></svg> כן, זה הלקוח
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setNewCustomer(prev => ({ ...prev, phone1: phoneSearchInput.trim() }));
+                      setFoundCustomerFromPhone(null);
+                      setSearchMode('new');
+                    }}
+                  >לקוח אחר</button>
+                </div>
+              </div>
+            )}
 
-              {searchMode === 'name' && (
-                <div className="noc-card">
-                  <label className="noc-lbl">חיפוש לפי שם, טלפון או עיר</label>
+            {searchMode === 'name' && (
+              <div className="card card-pad">
+                <div className="field">
+                  <label>חיפוש לפי שם, טלפון או עיר</label>
                   <CustomerSelector
                     value={order.selectedCustomer}
                     onChange={(c) => setOrder(prev => ({ ...prev, customerId: c.id, selectedCustomer: c }))}
                     placeholder="חפש לקוח לפי שם, טלפון, עיר..."
                   />
-                  {order.selectedCustomer && (
-                    <div className="noc-row" style={{ marginTop: '14px' }}>
-                      <span className="noc-k">נבחר</span>
-                      <span className="noc-v"><strong>{selectedCustomerName}</strong> <small>{order.selectedCustomer.phone1 || ''}</small></span>
-                    </div>
-                  )}
                 </div>
-              )}
+                {order.selectedCustomer && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 4px 4px', borderTop: '1px solid var(--border)', marginTop: '8px' }}>
+                    <span className="hint" style={{ color: 'var(--text-3)' }}>נבחר</span>
+                    <strong>{selectedCustomerName} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{order.selectedCustomer.phone1 || ''}</span></strong>
+                  </div>
+                )}
+              </div>
+            )}
 
-              {searchMode === 'new' && (
-                <div className="noc-card">
-                  <div className="noc-fields">
-                    <div>
-                      <label className="noc-lbl" htmlFor="cust-firstName">שם פרטי <span className="req">*</span></label>
-                      <input id="cust-firstName" type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} />
+            {searchMode === 'new' && (
+              <div className="card card-pad">
+                <div className="form-grid">
+                  <div className="field">
+                    <label htmlFor="cust-firstName">שם פרטי <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <input id="cust-firstName" className="input" type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="cust-lastName">שם משפחה <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <input id="cust-lastName" className="input" type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="field">
+                  <label htmlFor="cust-phone1">טלפון נייד <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <input id="cust-phone1" className="input" type="tel" dir="ltr" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} />
+                </div>
+
+                <NocCollapsible title="פרטים נוספים (לא חובה)">
+                  <div className="form-grid">
+                    <div className="field">
+                      <label htmlFor="cust-email">אימייל</label>
+                      <input id="cust-email" className="input" type="email" dir="ltr" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} placeholder="לשליחת ההזמנה במייל" />
                     </div>
-                    <div>
-                      <label className="noc-lbl" htmlFor="cust-lastName">שם משפחה <span className="req">*</span></label>
-                      <input id="cust-lastName" type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} />
+                    <div className="field">
+                      <label htmlFor="cust-city">עיר מגורים</label>
+                      <input id="cust-city" className="input" type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="cust-street">רחוב</label>
+                      <input id="cust-street" className="input" type="text" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} />
+                    </div>
+                    <div className="field">
+                      <label htmlFor="cust-house">מספר בית</label>
+                      <input id="cust-house" className="input" type="text" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} />
                     </div>
                   </div>
-                  <div style={{ marginTop: '13px' }}>
-                    <label className="noc-lbl" htmlFor="cust-phone1">טלפון נייד <span className="req">*</span></label>
-                    <input id="cust-phone1" type="tel" dir="ltr" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} />
-                  </div>
+                </NocCollapsible>
 
-                  <NocCollapsible title="פרטים נוספים (לא חובה)">
-                    <div className="noc-fields">
-                      <div>
-                        <label className="noc-lbl" htmlFor="cust-email">אימייל</label>
-                        <input id="cust-email" type="email" dir="ltr" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} placeholder="לשליחת ההזמנה במייל" />
-                      </div>
-                      <div>
-                        <label className="noc-lbl" htmlFor="cust-city">עיר מגורים</label>
-                        <input id="cust-city" type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} />
-                      </div>
-                      <div>
-                        <label className="noc-lbl" htmlFor="cust-street">רחוב</label>
-                        <input id="cust-street" type="text" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} />
-                      </div>
-                      <div>
-                        <label className="noc-lbl" htmlFor="cust-house">מספר בית</label>
-                        <input id="cust-house" type="text" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} />
-                      </div>
-                    </div>
-                  </NocCollapsible>
-
-                  <button type="button" className="noc-btn gold wide" style={{ marginTop: '16px' }} onClick={() => handleSaveNewCustomerAndProceed()}>
-                    <UserPlus size={16} /> שמור לקוח והמשך
-                  </button>
-                </div>
-              )}
-            </div>
+                <button type="button" className="btn btn-primary" style={{ width: '100%', marginTop: '16px' }} onClick={() => handleSaveNewCustomerAndProceed()}>
+                  <svg className="icon"><use href="#i-check" /></svg> שמור לקוח והמשך
+                </button>
+              </div>
+            )}
           </div>
         )}
 
         {/* ==================== שלב 2 · תאריכים ==================== */}
         {step === 2 && (
-          <div className="noc-scroll">
-            <div className="noc-mid">
-              <div className="noc-ask">
-                <h2>מתי האירוע?</h2>
-                <p>התאריך קובע את חישוב המלאי ואת מועדי הלקיחה וההחזרה.</p>
-              </div>
+          <div style={{ maxWidth: '520px', margin: '0 auto' }}>
+            <h2>מתי האירוע?</h2>
+            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>התאריך קובע את חישוב המלאי ואת מועדי הלקיחה וההחזרה.</p>
 
-              <div className="noc-pick" style={{ marginBottom: '16px' }}>
-                <label className={!order.isAbroad ? 'on' : ''} onClick={() => handleDateChangeWithValidation('isAbroad', false)}>
-                  <div className="noc-pick-t">אירוע רגיל</div>
-                  <div className="noc-pick-d">תאריך אירוע אחד</div>
-                </label>
-                <label className={order.isAbroad ? 'on' : ''} onClick={() => handleDateChangeWithValidation('isAbroad', true)}>
-                  <div className="noc-pick-t">חו"ל / תפוסה ארוכה</div>
-                  <div className="noc-pick-d">טווח תאריכים מלא</div>
-                </label>
-              </div>
+            <div className="pill-tabs" style={{ marginBottom: '14px' }}>
+              <button
+                type="button"
+                className={`pill-tab${!order.isAbroad ? ' active' : ''}`}
+                aria-pressed={!order.isAbroad}
+                onClick={() => handleDateChangeWithValidation('isAbroad', false)}
+              >אירוע רגיל</button>
+              <button
+                type="button"
+                className={`pill-tab${order.isAbroad ? ' active' : ''}`}
+                aria-pressed={!!order.isAbroad}
+                onClick={() => handleDateChangeWithValidation('isAbroad', true)}
+              >חו&quot;ל / תפוסה ארוכה</button>
+            </div>
 
-              <div className="noc-card">
-                {!order.isAbroad ? (
-                  <div>
-                    <label className="noc-lbl">תאריך אירוע <span className="req">*</span></label>
-                    <HebrewDatePicker value={order.eventDate} onChange={(date) => handleDateChangeWithValidation('eventDate', date)} />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="noc-lbl">טווח תאריכים (מתאריך עד תאריך) <span className="req">*</span></label>
-                    <HebrewDateRangePicker
-                      startDate={order.fromDate}
-                      endDate={order.toDate}
-                      onChange={(start, end) => handleDateChangeWithValidation({ fromDate: start, toDate: end })}
-                    />
-                  </div>
-                )}
+            <div className="card card-pad">
+              {!order.isAbroad ? (
+                <div className="field">
+                  <label>תאריך אירוע <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <HebrewDatePicker value={order.eventDate} onChange={(date) => handleDateChangeWithValidation('eventDate', date)} />
+                </div>
+              ) : (
+                <div className="field">
+                  <label>טווח תאריכים (מתאריך עד תאריך) <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <HebrewDateRangePicker
+                    startDate={order.fromDate}
+                    endDate={order.toDate}
+                    onChange={(start, end) => handleDateChangeWithValidation({ fromDate: start, toDate: end })}
+                  />
+                </div>
+              )}
 
-                <NocCollapsible
-                  title="הערות וריווח ימים"
-                  badge={(order.customSpacing !== null && order.customSpacing !== undefined) ? spacingLabel : (order.notes ? 'יש הערה' : null)}
-                >
-                  <label className="noc-lbl" htmlFor="order-notes">הערות כלליות להזמנה</label>
+              <NocCollapsible
+                title="הערות וריווח ימים"
+                badge={(order.customSpacing !== null && order.customSpacing !== undefined) ? spacingLabel : (order.notes ? 'יש הערה' : null)}
+              >
+                <div className="field">
+                  <label htmlFor="order-notes">הערות כלליות להזמנה</label>
                   <textarea
                     id="order-notes"
                     name="notes"
+                    className="textarea"
                     rows={2}
                     value={order.notes}
                     onChange={handleOrderChange}
                     placeholder="בקשות מיוחדות, סיכומים עם הלקוח..."
                   />
+                </div>
 
-                  <label className="noc-lbl" style={{ marginTop: '16px' }}>ריווח ימים בין השכרות</label>
-                  <div className="noc-chips">
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>ריווח ימים בין השכרות</label>
+                  <div className="pill-tabs">
                     {[
                       { val: null, label: 'רגיל' },
                       { val: 0, label: 'ללא' },
@@ -1440,77 +1447,86 @@ export default function NewOrderPage() {
                       { val: 2, label: 'יומיים' },
                       { val: 3, label: '3 ימים' },
                       { val: 4, label: '4 ימים' }
-                    ].map(opt => (
-                      <button
-                        key={String(opt.val)}
-                        type="button"
-                        className={`noc-chip ${order.customSpacing === opt.val ? 'on' : ''}`}
-                        onClick={() => handleSpacingChange(opt.val)}
-                      >{opt.label}</button>
-                    ))}
+                    ].map(opt => {
+                      const on = order.customSpacing === opt.val;
+                      return (
+                        <button
+                          key={String(opt.val)}
+                          type="button"
+                          className={`pill-tab${on ? ' active' : ''}`}
+                          aria-pressed={on}
+                          onClick={() => handleSpacingChange(opt.val)}
+                        >{opt.label}</button>
+                      );
+                    })}
                   </div>
-                  <p className={`noc-hint ${(order.customSpacing !== null && order.customSpacing !== undefined && order.customSpacing < 3) ? 'warn' : ''}`} style={{ marginTop: '10px' }}>
+                  <p className="hint" style={{ marginTop: '8px', color: (order.customSpacing !== null && order.customSpacing !== undefined && order.customSpacing < 3) ? 'var(--warning)' : 'var(--text-3)' }}>
                     {(order.customSpacing === null || order.customSpacing === undefined)
                       ? 'ברירת המחדל של המערכת.'
                       : order.customSpacing < 3
                         ? 'ציפוף מיוחד — משפיע על בדיקת המלאי להזמנה זו בלבד, מסמן את ההזמנה ודורש אישור מנהל.'
                         : 'ריווח מורחב — פחות זמינות לשאר ההזמנות.'}
                   </p>
-                </NocCollapsible>
-              </div>
+                </div>
+              </NocCollapsible>
             </div>
           </div>
         )}
 
         {/* ==================== שלב 3 · פריטים ==================== */}
         {step === 3 && (
-          <div className="noc-scroll">
-            <div className="noc-ask">
-              <h2>אילו פריטים?</h2>
-              <p>בחירת דגם ומידה — הסל והמחיר מתעדכנים בזמן אמת.</p>
-            </div>
+          <div>
+            <h2>אילו פריטים?</h2>
+            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>בחירת דגם ומידה — הסל והמחיר מתעדכנים בזמן אמת.</p>
 
-            <div className="noc-split">
+            <div className="two-col">
               {/* --- הוספת פריט --- */}
-              <div className="noc-card">
-                <label className="noc-lbl" htmlFor="item-model">דגם <span className="req">*</span></label>
-                <OrderModelSelector
-                  inputId="item-model"
-                  value={{ name: newItem.dressName }}
-                  onChange={(model) => {
-                    setNewItem(prev => ({
-                      ...prev,
-                      dressModelId: model.id,
-                      dressName: model.name,
-                      sizeText: '',
-                      sampleItemId: '',
-                      basePrice: 0,
-                      finalPrice: 0
-                    }));
-                  }}
-                  placeholder="חפש דגם פריט..."
-                />
+              <div className="card card-pad">
+                <div className="card-title-row" style={{ marginBottom: '14px' }}>
+                  <svg className="icon"><use href="#i-bag" /></svg>
+                  <h3 style={{ margin: 0 }}>הוספת פריט</h3>
+                </div>
 
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
-                  <label className="noc-lbl" style={{ margin: 0 }}>
-                    מידה <span className="req">*</span>
+                <div className="field">
+                  <label htmlFor="item-model">דגם <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <OrderModelSelector
+                    inputId="item-model"
+                    value={{ name: newItem.dressName }}
+                    onChange={(model) => {
+                      setNewItem(prev => ({
+                        ...prev,
+                        dressModelId: model.id,
+                        dressName: model.name,
+                        sizeText: '',
+                        sampleItemId: '',
+                        basePrice: 0,
+                        finalPrice: 0
+                      }));
+                    }}
+                    placeholder="חפש דגם פריט..."
+                  />
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-2)' }}>
+                    מידה <span style={{ color: 'var(--danger)' }}>*</span>
                     {loadingSizes && <span style={{ fontWeight: 400 }}> (בודק זמינות...)</span>}
-                  </label>
+                  </div>
                   <button
                     type="button"
-                    className="noc-mini"
+                    className="btn btn-ghost btn-icon-only btn-sm"
                     onClick={refreshInventory}
                     disabled={loadingPreload || loadingSizes}
                     title="רענן זמינות מלאי"
                     aria-label="רענן זמינות מלאי"
                   >
-                    <RefreshCw size={15} />
+                    <svg className="icon"><use href="#i-refresh" /></svg>
                   </button>
                 </div>
 
-                <div className="noc-sizes" style={{ marginTop: '8px' }}>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBottom: '6px', minHeight: '38px', alignItems: 'center' }}>
                   {availableSizes.length === 0 ? (
-                    <p className="noc-hint">
+                    <p className="hint">
                       {newItem.dressModelId ? 'אין מידות זמינות לתאריך זה.' : 'בחר דגם כדי לראות מידות זמינות.'}
                     </p>
                   ) : (
@@ -1528,21 +1544,20 @@ export default function NewOrderPage() {
                         <button
                           key={s.sizeText}
                           type="button"
-                          className={`noc-size ${isSelected ? 'on' : ''}`}
+                          className={`pill-tab${isSelected ? ' active' : ''}`}
                           disabled={!isAvailable}
                           aria-pressed={isSelected}
                           title={tooltipText}
+                          style={!isAvailable ? { opacity: 0.45, textDecoration: 'line-through' } : undefined}
                           onClick={() => handleNewItemChange({ target: { name: 'sizeText', value: s.sizeText } })}
                         >
-                          <span className="noc-sz">{s.sizeText}</span>
-                          <span className="noc-av">
-                            {!isAvailable ? 'אזל' : s.withCustomSpacing ? (
-                              <>
-                                {normalAvail} פנויות
-                                {s.withCustomSpacing.gain > 0 && <span className="noc-gain"> +{s.withCustomSpacing.gain}</span>}
-                              </>
-                            ) : `${normalAvail} פנויות`}
+                          {s.sizeText}{' '}
+                          <span style={{ opacity: 0.75, fontWeight: 600 }}>
+                            {!isAvailable ? '· אזל' : `· ${normalAvail} פנויות`}
                           </span>
+                          {isAvailable && s.withCustomSpacing && s.withCustomSpacing.gain > 0 && (
+                            <span style={{ color: 'var(--success)', fontWeight: 800 }}> +{s.withCustomSpacing.gain}</span>
+                          )}
                         </button>
                       );
                     })
@@ -1554,24 +1569,30 @@ export default function NewOrderPage() {
                   badge={alterationsChosen ? alterationsSummary : null}
                   openWhen={alterationsChosen}
                 >
-                  <div className="noc-chips">
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                     <button
                       type="button"
                       aria-pressed={!!newItem.neckAlteration}
-                      className={`noc-chip ${newItem.neckAlteration ? 'on' : ''}`}
+                      className={`pill-tab${newItem.neckAlteration ? ' active' : ''}`}
                       onClick={() => handleNewItemChange({ target: { name: 'neckAlteration', value: !newItem.neckAlteration } })}
-                    >צוואר</button>
+                    >
+                      <svg className="icon"><use href="#i-scissors" /></svg> צוואר
+                    </button>
                     <button
                       type="button"
                       aria-pressed={!!newItem.sleeveAlteration}
-                      className={`noc-chip ${newItem.sleeveAlteration ? 'on' : ''}`}
+                      className={`pill-tab${newItem.sleeveAlteration ? ' active' : ''}`}
                       onClick={() => handleNewItemChange({ target: { name: 'sleeveAlteration', value: !newItem.sleeveAlteration } })}
-                    >שרוול</button>
-                    <span className="noc-chip-len">
+                    >
+                      <svg className="icon"><use href="#i-scissors" /></svg> שרוול
+                    </button>
+                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-2)' }}>
                       אורך
                       <input
                         type="number"
                         name="lengthAlteration"
+                        className="input"
+                        style={{ width: '70px', padding: '6px 8px' }}
                         value={newItem.lengthAlteration || ''}
                         onChange={handleNewItemChange}
                         placeholder="ס״מ"
@@ -1581,73 +1602,85 @@ export default function NewOrderPage() {
                     </span>
                   </div>
 
-                  <div style={{ marginTop: '14px' }}>
-                    <label className="noc-lbl" htmlFor="item-repairs">
-                      פירוט לתופרת {alterationsChosen && <span className="req">* (חובה)</span>}
+                  <div className="field" style={{ marginTop: '14px', marginBottom: 0 }}>
+                    <label htmlFor="item-repairs">
+                      פירוט לתופרת {alterationsChosen && <span style={{ color: 'var(--danger)' }}>* (חובה)</span>}
                     </label>
                     <input
                       id="item-repairs"
                       type="text"
                       name="repairs"
+                      className="input"
                       value={newItem.repairs || ''}
                       onChange={handleNewItemChange}
                       placeholder="מה בדיוק לתקן..."
-                      style={{ borderColor: (alterationsChosen && !(newItem.repairs || '').trim()) ? 'var(--noc-alert)' : undefined }}
+                      style={{ borderColor: (alterationsChosen && !(newItem.repairs || '').trim()) ? 'var(--danger)' : undefined }}
                     />
                   </div>
                 </NocCollapsible>
 
                 <button
                   type="button"
-                  className="noc-btn gold wide"
-                  style={{ marginTop: '16px' }}
+                  className="btn btn-primary"
+                  style={{ width: '100%', marginTop: '16px' }}
                   onClick={addItemToOrder}
                   disabled={!newItem.sampleItemId || !newItem.sizeText}
                 >
-                  <Plus size={16} /> הוסף לסל
+                  <svg className="icon"><use href="#i-plus" /></svg> הוסף לסל
                 </button>
               </div>
 
               {/* --- הסל --- */}
-              <div className="noc-card">
-                <div className="noc-cap">
-                  <span>בסל{activeItems.length ? ` · ${activeItems.length}` : ''}</span>
-                  {calculating && <span className="noc-hint">מחשב מחירים...</span>}
+              <div className="card card-pad">
+                <div className="card-title-row" style={{ justifyContent: 'space-between', marginBottom: '12px', display: 'flex' }}>
+                  <div className="card-title-row">
+                    <svg className="icon"><use href="#i-receipt" /></svg>
+                    <h3 style={{ margin: 0 }}>בסל{activeItems.length ? ` · ${activeItems.length}` : ''}</h3>
+                  </div>
+                  {calculating && (
+                    <span className="hint" style={{ color: 'var(--text-3)' }}>
+                      <span className="spinner" style={{ width: '13px', height: '13px', borderWidth: '2px', verticalAlign: '-2px' }} /> מחשב מחירים...
+                    </span>
+                  )}
                 </div>
 
                 {order.items.length === 0 ? (
-                  <div className="noc-empty">טרם הוספת פריטים להזמנה</div>
+                  <div className="empty-state">
+                    <svg className="icon"><use href="#i-bag" /></svg>
+                    <p>טרם הוספת פריטים להזמנה</p>
+                  </div>
                 ) : (
                   <>
-                    <div className="noc-list" role="region" aria-label="פריטים בסל" tabIndex={0}>
+                    <div role="region" aria-label="פריטים בסל" tabIndex={0}>
                       {order.items.map((item, idx) => (
-                        <div key={idx} className="noc-item">
-                          <span className="noc-it-main">
-                            <span className="noc-nm">{item.dressName || 'דגם לא ידוע'}</span>
-                            <span className="noc-meta">מידה {item.sizeText} · {describeAlterations(item)}</span>
-                          </span>
-                          <span className="noc-pr">
+                        <div key={idx} className="list-card">
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{item.dressName || 'דגם לא ידוע'}</div>
+                            <div className="hint" style={{ color: 'var(--text-3)' }}>מידה {item.sizeText} · {describeAlterations(item)}</div>
+                          </div>
+                          <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
                             ₪{(calculatedData.items[idx] ? calculatedData.items[idx].calculatedPrice : item.finalPrice) || 0}
-                          </span>
-                          <span className="noc-acts">
-                            <button type="button" className="noc-mini" title="בדוק תפוסה לתאריך האירוע" aria-label="בדוק תפוסה" onClick={() => setCapacityModalItem(item)}>
-                              <CalendarSearch size={15} />
+                          </strong>
+                          <div className="row-actions">
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="בדוק תפוסה לתאריך האירוע" aria-label="בדוק תפוסה" onClick={() => setCapacityModalItem(item)}>
+                              <svg className="icon"><use href="#i-calendar" /></svg>
                             </button>
-                            <button type="button" className="noc-mini" title="ערוך פריט" aria-label="ערוך פריט" onClick={() => editItem(idx)}>
-                              <Edit2 size={15} />
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ערוך פריט" aria-label="ערוך פריט" onClick={() => editItem(idx)}>
+                              <svg className="icon"><use href="#i-edit" /></svg>
                             </button>
-                            <button type="button" className="noc-mini del" title="הסר פריט" aria-label="הסר פריט" onClick={() => removeItem(idx)}>
-                              <Trash2 size={15} />
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="הסר פריט" aria-label="הסר פריט" style={{ color: 'var(--danger)' }} onClick={() => removeItem(idx)}>
+                              <svg className="icon"><use href="#i-trash" /></svg>
                             </button>
-                          </span>
+                          </div>
                         </div>
                       ))}
                     </div>
 
-                    <div className="noc-row total">
-                      <span className="noc-k">סה"כ</span>
-                      <span style={{ flex: 1 }} />
-                      <span className="noc-amt">₪{(totalAmount || 0).toLocaleString('he-IL')}</span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 4px 4px', borderTop: '1px solid var(--border)', marginTop: '10px' }}>
+                      <span style={{ fontWeight: 700, fontSize: '13.5px' }}>סה&quot;כ</span>
+                      <span style={{ fontWeight: 800, fontSize: '18px', color: 'var(--primary-solid)', fontVariantNumeric: 'tabular-nums' }}>
+                        ₪{(totalAmount || 0).toLocaleString('he-IL')}
+                      </span>
                     </div>
                   </>
                 )}
@@ -1658,63 +1691,74 @@ export default function NewOrderPage() {
 
         {/* ==================== שלב 4 · סיכום ==================== */}
         {step === 4 && (
-          <div className="noc-scroll">
-            <div style={{ maxWidth: '720px', margin: '0 auto' }}>
-              <div className="noc-ask">
-                <h2>הכול נכון?</h2>
-                <p>בדיקה אחרונה של פרטי ההזמנה לפני מעבר לתשלום.</p>
+          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+            <h2>הכול נכון?</h2>
+            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>בדיקה אחרונה של פרטי ההזמנה לפני מעבר לתשלום.</p>
+
+            <div className="card card-pad" style={{ marginBottom: '16px' }}>
+              <div className="card-title-row" style={{ justifyContent: 'space-between', display: 'flex', marginBottom: '12px' }}>
+                <h3 style={{ margin: 0 }}>פרטי ההזמנה</h3>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(1)}>עריכה</button>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
+                <span className="hint" style={{ color: 'var(--text-3)' }}>לקוח</span>
+                <strong>{selectedCustomerName} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{order.selectedCustomer?.phone1 || ''}</span></strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
+                <span className="hint" style={{ color: 'var(--text-3)' }}>סוג אירוע</span>
+                <strong>{order.isAbroad ? 'אירוע חו"ל / תפוסה ארוכה' : 'אירוע רגיל'}</strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
+                <span className="hint" style={{ color: 'var(--text-3)' }}>תאריכים</span>
+                <strong>
+                  {order.isAbroad
+                    ? <>{`מ-${getHebrewDateString(order.fromDate)} עד ${getHebrewDateString(order.toDate)}`} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{`(${order.fromDate} - ${order.toDate})`}</span></>
+                    : <>{getHebrewDateString(order.eventDate)} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{`(${order.eventDate})`}</span></>}
+                </strong>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
+                <span className="hint" style={{ color: 'var(--text-3)' }}>ריווח ימים</span>
+                <strong>{spacingLabel}</strong>
+              </div>
+              {order.notes && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '8px 4px 4px' }}>
+                  <span className="hint" style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>הערות</span>
+                  <strong style={{ textAlign: 'left' }}>{order.notes}</strong>
+                </div>
+              )}
+            </div>
+
+            <div className="card card-pad">
+              <div className="card-title-row" style={{ justifyContent: 'space-between', display: 'flex', marginBottom: '12px' }}>
+                <h3 style={{ margin: 0 }}>פריטים ({order.items.length})</h3>
+                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(3)}>עריכה</button>
               </div>
 
-              <div className="noc-card">
-                <div className="noc-cap">
-                  <span>פרטי ההזמנה</span>
-                  <button type="button" className="noc-link" onClick={() => setStep(1)}>עריכה</button>
-                </div>
-                <div className="noc-row"><span className="noc-k">לקוח</span><span className="noc-v">{selectedCustomerName} <small>{order.selectedCustomer?.phone1 || ''}</small></span></div>
-                <div className="noc-row"><span className="noc-k">סוג אירוע</span><span className="noc-v">{order.isAbroad ? 'אירוע חו"ל / תפוסה ארוכה' : 'אירוע רגיל'}</span></div>
-                <div className="noc-row">
-                  <span className="noc-k">תאריכים</span>
-                  <span className="noc-v">
-                    {order.isAbroad
-                      ? <>{`מ-${getHebrewDateString(order.fromDate)} עד ${getHebrewDateString(order.toDate)}`} <small>{`(${order.fromDate} - ${order.toDate})`}</small></>
-                      : <>{getHebrewDateString(order.eventDate)} <small>{`(${order.eventDate})`}</small></>}
-                  </span>
-                </div>
-                <div className="noc-row"><span className="noc-k">ריווח ימים</span><span className="noc-v">{spacingLabel}</span></div>
-                {order.notes && <div className="noc-row"><span className="noc-k">הערות</span><span className="noc-v">{order.notes}</span></div>}
-              </div>
-
-              <div className="noc-card">
-                <div className="noc-cap">
-                  <span>פריטים ({order.items.length})</span>
-                  <button type="button" className="noc-link" onClick={() => setStep(3)}>עריכה</button>
-                </div>
-
-                <div className="noc-list tall" role="region" aria-label="רשימת פריטים בהזמנה" tabIndex={0}>
-                  {order.items.map((item, idx) => {
-                    const calcItem = calculatedData.items[idx];
-                    const displayPrice = calcItem ? calcItem.calculatedPrice : item.finalPrice;
-                    const repairsCost = calcItem && calcItem.repairsCost ? calcItem.repairsCost : 0;
-                    return (
-                      <div key={idx} className="noc-item">
-                        <span className="noc-it-main">
-                          <span className="noc-nm">{item.dressName} · מידה {item.sizeText}</span>
-                          <span className="noc-meta">
-                            תיקונים: {describeAlterations(item)}
-                            {repairsCost > 0 && <span style={{ color: '#a9702a' }}> (+₪{repairsCost})</span>}
-                          </span>
-                        </span>
-                        <span className="noc-pr">₪{displayPrice || 0}</span>
+              <div style={{ maxHeight: '42vh', overflowY: 'auto' }} role="region" aria-label="רשימת פריטים בהזמנה" tabIndex={0}>
+                {order.items.map((item, idx) => {
+                  const calcItem = calculatedData.items[idx];
+                  const displayPrice = calcItem ? calcItem.calculatedPrice : item.finalPrice;
+                  const repairsCost = calcItem && calcItem.repairsCost ? calcItem.repairsCost : 0;
+                  return (
+                    <div key={idx} className="list-card">
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{item.dressName} · מידה {item.sizeText}</div>
+                        <div className="hint" style={{ color: 'var(--text-3)' }}>
+                          תיקונים: {describeAlterations(item)}
+                          {repairsCost > 0 && <span style={{ color: 'var(--warning)' }}> (+₪{repairsCost})</span>}
+                        </div>
                       </div>
-                    );
-                  })}
-                </div>
+                      <strong style={{ fontVariantNumeric: 'tabular-nums' }}>₪{displayPrice || 0}</strong>
+                    </div>
+                  );
+                })}
+              </div>
 
-                <div className="noc-row total">
-                  <span className="noc-k">סה"כ לתשלום</span>
-                  <span style={{ flex: 1 }} />
-                  <span className="noc-amt">₪{(totalAmount || 0).toLocaleString('he-IL')}</span>
-                </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 4px 4px', borderTop: '1px solid var(--border)', marginTop: '10px' }}>
+                <span style={{ fontWeight: 700, fontSize: '13.5px' }}>סה&quot;כ לתשלום</span>
+                <span style={{ fontWeight: 800, fontSize: '18px', color: 'var(--primary-solid)', fontVariantNumeric: 'tabular-nums' }}>
+                  ₪{(totalAmount || 0).toLocaleString('he-IL')}
+                </span>
               </div>
             </div>
           </div>
@@ -1722,32 +1766,35 @@ export default function NewOrderPage() {
 
         {/* ==================== שלב 5 · תשלום ==================== */}
         {step === 5 && (
-          <div className="noc-scroll">
-            <div className="noc-ask">
-              <h2>תשלום וסיום</h2>
-              <p>אפשר לפצל למספר אמצעי תשלום, או לסיים עם יתרה פתוחה באישור מנהל.</p>
-            </div>
+          <div>
+            <h2>תשלום וסיום</h2>
+            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>אפשר לפצל למספר אמצעי תשלום, או לסיים עם יתרה פתוחה באישור מנהל.</p>
 
-            <div className="noc-split">
-              <div className="noc-card">
+            <div className="two-col">
+              <div className="card card-pad">
                 <form onSubmit={(e) => { e.preventDefault(); handleAddPaymentClick(); }}>
-                  <label className="noc-lbl" htmlFor="pay-amount">סכום לתשלום כעת (₪)</label>
-                  <input
-                    id="pay-amount"
-                    type="number"
-                    className="noc-big-input"
-                    value={payment.amount}
-                    onChange={e => setPayment(prev => ({ ...prev, amount: e.target.value }))}
-                  />
+                  <div className="field">
+                    <label htmlFor="pay-amount">סכום לתשלום כעת (₪)</label>
+                    <input
+                      id="pay-amount"
+                      type="number"
+                      className="input"
+                      value={payment.amount}
+                      onChange={e => setPayment(prev => ({ ...prev, amount: e.target.value }))}
+                    />
+                  </div>
 
-                  <label className="noc-lbl" style={{ marginTop: '14px' }} htmlFor="pay-method">אופן תשלום</label>
-                  <select id="pay-method" value={payment.method} onChange={e => setPayment(prev => ({ ...prev, method: e.target.value }))}>
-                    {paymentMethodOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-                  </select>
+                  <div className="field">
+                    <label htmlFor="pay-method">אופן תשלום</label>
+                    <select id="pay-method" className="select" value={payment.method} onChange={e => setPayment(prev => ({ ...prev, method: e.target.value }))}>
+                      {paymentMethodOptions.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+                    </select>
+                  </div>
 
                   <NocCollapsible title="הערה לתשלום" badge={payment.notes ? 'יש הערה' : null}>
                     <input
                       type="text"
+                      className="input"
                       value={payment.notes}
                       onChange={e => setPayment(prev => ({ ...prev, notes: e.target.value }))}
                       placeholder="מספר אישור, פרטי הבנק, שם המשלם..."
@@ -1755,13 +1802,13 @@ export default function NewOrderPage() {
                   </NocCollapsible>
 
                   <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
-                    <button type="submit" className="noc-btn line" style={{ flex: 1, minWidth: '150px' }} disabled={busy}>
-                      <Plus size={16} /> פצל / הוסף תשלום
+                    <button type="submit" className="btn btn-secondary" style={{ flex: 1, minWidth: '150px' }} disabled={busy}>
+                      <svg className="icon"><use href="#i-plus" /></svg> פצל / הוסף תשלום
                     </button>
                     {settings.nedarim_plus_enabled !== 'false' && (
                       <button
                         type="button"
-                        className="noc-btn gold"
+                        className="btn btn-primary"
                         style={{ flex: 1, minWidth: '150px' }}
                         disabled={busy}
                         onClick={() => {
@@ -1770,7 +1817,7 @@ export default function NewOrderPage() {
                           setShowCreditModal(true);
                         }}
                       >
-                        <CreditCard size={16} /> חיוב אשראי
+                        <svg className="icon"><use href="#i-card" /></svg> חיוב אשראי
                       </button>
                     )}
                   </div>
@@ -1778,45 +1825,61 @@ export default function NewOrderPage() {
               </div>
 
               <div>
-                <div className="noc-card tight">
-                  <div className="noc-row"><span className="noc-k">סה"כ חיובים</span><span style={{ flex: 1 }} /><span className="noc-amt">₪{(totalAmount || 0).toLocaleString('he-IL')}</span></div>
-                  <div className="noc-row"><span className="noc-k">שולם</span><span style={{ flex: 1 }} /><span className="noc-amt" style={{ color: 'var(--noc-ok)' }}>₪{totalPaid.toLocaleString('he-IL')}</span></div>
-                  <div className="noc-row"><span className="noc-k">יתרה</span><span style={{ flex: 1 }} /><span className="noc-amt" style={{ color: remaining > 0 ? 'var(--noc-alert)' : 'var(--noc-ok)' }}>₪{remaining.toLocaleString('he-IL')}</span></div>
+                <div className="card card-pad" style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
+                    <span className="hint" style={{ color: 'var(--text-3)' }}>סה&quot;כ חיובים</span>
+                    <strong style={{ fontVariantNumeric: 'tabular-nums' }}>₪{(totalAmount || 0).toLocaleString('he-IL')}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
+                    <span className="hint" style={{ color: 'var(--text-3)' }}>שולם</span>
+                    <strong style={{ color: 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>₪{totalPaid.toLocaleString('he-IL')}</strong>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
+                    <span className="hint" style={{ color: 'var(--text-3)' }}>יתרה</span>
+                    <strong style={{ color: remaining > 0 ? 'var(--danger)' : 'var(--success)', fontVariantNumeric: 'tabular-nums' }}>₪{remaining.toLocaleString('he-IL')}</strong>
+                  </div>
                 </div>
 
-                <div className="noc-card tight" style={{ marginTop: '16px' }}>
-                  <div className="noc-cap"><span>תשלומים שנרשמו</span></div>
+                <div className="card card-pad">
+                  <div className="card-title-row" style={{ marginBottom: '10px' }}>
+                    <svg className="icon"><use href="#i-receipt" /></svg>
+                    <h3 style={{ margin: 0 }}>תשלומים שנרשמו</h3>
+                  </div>
                   {paymentsList.length === 0 ? (
-                    <div className="noc-empty">טרם נרשמו תשלומים</div>
+                    <div className="empty-state">
+                      <svg className="icon"><use href="#i-wallet" /></svg>
+                      <p>טרם נרשמו תשלומים</p>
+                    </div>
                   ) : (
-                    <div className="noc-list">
+                    <div>
                       {paymentsList.map((p, idx) => (
-                        <div key={idx} className="noc-item">
-                          <span className="noc-it-main">
-                            <span className="noc-nm">{p.method}</span>
-                            {p.notes && <span className="noc-meta">{p.notes}</span>}
-                          </span>
-                          <span className="noc-pr">₪{Number(p.amount).toLocaleString('he-IL')}</span>
-                          <span className="noc-acts">
+                        <div key={idx} className="list-card">
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{p.method}</div>
+                            {p.notes && <div className="hint" style={{ color: 'var(--text-3)' }}>{p.notes}</div>}
+                          </div>
+                          <strong style={{ fontVariantNumeric: 'tabular-nums' }}>₪{Number(p.amount).toLocaleString('he-IL')}</strong>
+                          <div className="row-actions">
                             <button
                               type="button"
-                              className="noc-mini del"
+                              className="btn btn-ghost btn-icon-only btn-sm"
                               disabled={isChargedPayment(p)}
                               title={isChargedPayment(p) ? 'חיוב אשראי שכבר בוצע — לא ניתן להסרה' : 'הסר תשלום'}
                               aria-label="הסר תשלום"
+                              style={{ color: 'var(--danger)' }}
                               onClick={() => removePayment(idx)}
                             >
-                              <Trash2 size={15} />
+                              <svg className="icon"><use href="#i-trash" /></svg>
                             </button>
-                          </span>
+                          </div>
                         </div>
                       ))}
                     </div>
                   )}
 
                   {remaining > 0 && (
-                    <p className="noc-hint warn" style={{ marginTop: '12px' }}>
-                      נותרה יתרה של ₪{remaining.toLocaleString('he-IL')}. סיום ההזמנה ללא תשלום מלא אפשרי רק באמצעות "יציאה באישור מנהל".
+                    <p className="field hint" style={{ margin: '12px 0 0', color: 'var(--warning)' }}>
+                      נותרה יתרה של ₪{remaining.toLocaleString('he-IL')}. סיום ההזמנה ללא תשלום מלא אפשרי רק באמצעות &quot;יציאה באישור מנהל&quot;.
                     </p>
                   )}
                 </div>
@@ -1836,185 +1899,218 @@ export default function NewOrderPage() {
         />
       )}
 
-      <div className="noc">
-        {showExitConfirm && (
-          <div className="noc-ov" onClick={(e) => { if (e.target === e.currentTarget) setShowExitConfirm(false); }}>
-            <div className="noc-box" role="dialog" aria-modal="true">
-              <h3>יציאה מההזמנה</h3>
-              <p>
+      {showExitConfirm && (
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowExitConfirm(false); }}
+        >
+          <div className="modal" style={{ maxWidth: '420px' }} role="dialog" aria-modal="true">
+            <div className="modal-head">
+              <strong>יציאה מההזמנה</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה" onClick={() => setShowExitConfirm(false)}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: 0, color: 'var(--text-2)', fontSize: '13.5px' }}>
                 {draftOrderId
                   ? `ההזמנה שמורה כטיוטה #${draftOrderId} עם ${activeItems.length} פריטים, ואפשר להמשיך אותה מרשימת ההזמנות.`
                   : 'ההזמנה עדיין לא נשמרה. יציאה עכשיו תמחק את מה שהוזן במסך.'}
               </p>
-              <div className="noc-box-acts">
-                <button type="button" className="noc-btn line" onClick={() => setShowExitConfirm(false)}>המשך בהזמנה</button>
-                <button type="button" className="noc-btn gold" onClick={() => router.push('/orders')}>
-                  {draftOrderId ? 'צא — הטיוטה נשמרה' : 'צא בלי לשמור'}
-                </button>
-              </div>
+            </div>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowExitConfirm(false)}>המשך בהזמנה</button>
+              <button type="button" className="btn btn-primary" onClick={() => router.push('/orders')}>
+                {draftOrderId ? 'צא — הטיוטה נשמרה' : 'צא בלי לשמור'}
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {duplicateCustomer && (
-          <div className="noc-ov">
-            <div className="noc-box" role="dialog" aria-modal="true" aria-labelledby="dup-title">
-              <h3 id="dup-title" style={{ color: 'var(--noc-alert)' }}>
-                <AlertTriangle size={18} style={{ verticalAlign: '-3px', marginLeft: '6px' }} /> לקוח קיים במערכת
-              </h3>
-              <p>הלקוח שהוזן זוהה במערכת לפי מספר הטלפון. אפשר להשתמש בכרטיס הקיים, או ליצור כרטיס נוסף.</p>
-              <div className="noc-card tight" style={{ marginBottom: '20px' }}>
-                <div className="noc-row"><span className="noc-k">שם</span><span className="noc-v"><strong>{getCustomerFullName(duplicateCustomer)}</strong></span></div>
-                <div className="noc-row"><span className="noc-k">טלפון</span><span className="noc-v" dir="ltr" style={{ textAlign: 'right' }}>{duplicateCustomer.phone1}{duplicateCustomer.phone2 ? ` | ${duplicateCustomer.phone2}` : ''}</span></div>
-                <div className="noc-row"><span className="noc-k">עיר</span><span className="noc-v">{duplicateCustomer.city || 'לא צוינה'}</span></div>
-              </div>
-              <div className="noc-box-acts">
-                <button type="button" className="noc-ghost danger" onClick={() => handleSaveNewCustomerAndProceed(true)}>צור לקוח חדש בכל זאת</button>
-                <span style={{ flex: 1 }} />
-                <button type="button" className="noc-btn gold" onClick={() => handleUseExistingCustomer(duplicateCustomer)}>השתמש בלקוח הקיים</button>
-              </div>
+      {duplicateCustomer && (
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="dup-title">
+            <div className="modal-icon-circle" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
+              <svg className="icon"><use href="#i-alert-tri" /></svg>
+            </div>
+            <h3 id="dup-title">לקוח קיים במערכת</h3>
+            <p>הלקוח שהוזן זוהה במערכת לפי מספר הטלפון. אפשר להשתמש בכרטיס הקיים, או ליצור כרטיס נוסף.</p>
+            <div className="card card-pad" style={{ textAlign: 'start', marginBottom: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>שם</span><strong>{getCustomerFullName(duplicateCustomer)}</strong></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>טלפון</span><span dir="ltr">{duplicateCustomer.phone1}{duplicateCustomer.phone2 ? ` | ${duplicateCustomer.phone2}` : ''}</span></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>עיר</span><span>{duplicateCustomer.city || 'לא צוינה'}</span></div>
+            </div>
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-danger-ghost" onClick={() => handleSaveNewCustomerAndProceed(true)}>צור לקוח חדש בכל זאת</button>
+              <button type="button" className="btn btn-primary" onClick={() => handleUseExistingCustomer(duplicateCustomer)}>השתמש בלקוח הקיים</button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {duplicateOrderWarning && (
-          <div className="noc-ov">
-            <div className="noc-box" role="dialog" aria-modal="true" aria-labelledby="dup-order-title">
-              <h3 id="dup-order-title" style={{ color: 'var(--noc-alert)' }}>
-                <AlertTriangle size={18} style={{ verticalAlign: '-3px', marginLeft: '6px' }} /> הזמנה זו כבר נשמרה
-              </h3>
-              <p>
-                כבר קיימת הזמנה שמורה עבור אותו לקוח ואותו תאריך — הזמנה מס' {duplicateOrderWarning.existingOrderId}.
-                כדאי לבדוק אותה לפני שממשיכים, כדי לא ליצור הזמנה כפולה.
-              </p>
-              <a
-                href={`/orders/${duplicateOrderWarning.existingOrderId}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="noc-btn line"
-                style={{ textDecoration: 'none', marginBottom: '20px' }}
+      {duplicateOrderWarning && (
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div className="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="dup-order-title">
+            <div className="modal-icon-circle" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
+              <svg className="icon"><use href="#i-alert-tri" /></svg>
+            </div>
+            <h3 id="dup-order-title">הזמנה זו כבר נשמרה</h3>
+            <p>
+              כבר קיימת הזמנה שמורה עבור אותו לקוח ואותו תאריך — הזמנה מס&apos; {duplicateOrderWarning.existingOrderId}.
+              כדאי לבדוק אותה לפני שממשיכים, כדי לא ליצור הזמנה כפולה.
+            </p>
+            <a
+              href={`/orders/${duplicateOrderWarning.existingOrderId}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="btn btn-secondary"
+              style={{ marginBottom: '20px' }}
+            >
+              <svg className="icon"><use href="#i-link" /></svg> פתח את הזמנה #{duplicateOrderWarning.existingOrderId}
+            </a>
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-danger-ghost" onClick={handleConfirmDuplicateSave}>שמור בכל זאת כהזמנה נפרדת</button>
+              <button type="button" className="btn btn-primary" onClick={handleCancelDuplicateSave}>אבדוק את הקיימת</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showCreditModal && (
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => !isProcessingCredit && setShowCreditModal(false)}
+        >
+          <div className="modal" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="credit-title">
+            <div className="modal-head">
+              <strong id="credit-title"><svg className="icon"><use href="#i-card" /></svg> חיוב באשראי (נדרים פלוס)</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה" onClick={() => setShowCreditModal(false)} disabled={isProcessingCredit}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ marginBottom: '18px' }}
+                title="העברת כרטיס מהירה בקורא מגנטי"
+                onClick={() => { setShowCreditModal(false); setShowQuickSwipeModal(true); setSwipeInput(''); setCreditError(''); }}
               >
-                <ExternalLink size={16} /> פתח את הזמנה #{duplicateOrderWarning.existingOrderId}
-              </a>
-              <div className="noc-box-acts">
-                <button type="button" className="noc-ghost danger" onClick={handleConfirmDuplicateSave}>שמור בכל זאת כהזמנה נפרדת</button>
-                <span style={{ flex: 1 }} />
-                <button type="button" className="noc-btn gold" onClick={handleCancelDuplicateSave}>אבדוק את הקיימת</button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {showCreditModal && (
-          <div className="noc-ov" onClick={() => !isProcessingCredit && setShowCreditModal(false)}>
-            <div className="noc-box wide" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="credit-title">
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
-                <h3 id="credit-title" style={{ margin: 0 }}>חיוב באשראי (נדרים פלוס)</h3>
-                <button
-                  type="button"
-                  className="noc-btn line"
-                  style={{ padding: '7px 12px', fontSize: '0.85rem' }}
-                  title="העברת כרטיס מהירה בקורא מגנטי"
-                  onClick={() => { setShowCreditModal(false); setShowQuickSwipeModal(true); setSwipeInput(''); setCreditError(''); }}
-                >העברה מהירה</button>
-              </div>
+                <svg className="icon"><use href="#i-refresh" /></svg> העברה מהירה
+              </button>
 
               {creditError && (
-                <div className="noc-note-box err" style={{ marginBottom: '16px' }}>
-                  <AlertTriangle size={16} /> <span>{creditError}</span>
+                <div className="callout callout-danger" style={{ marginBottom: '16px' }}>
+                  <svg className="icon"><use href="#i-alert-circle" /></svg> <span>{creditError}</span>
                 </div>
               )}
 
-              <form onSubmit={(e) => { e.preventDefault(); handleProcessCreditCard(); }}>
-                <label className="noc-lbl" htmlFor="cc-number">מספר כרטיס אשראי (או העברה בקורא)</label>
-                <input
-                  id="cc-number"
-                  type="text"
-                  inputMode="numeric"
-                  autoComplete="cc-number"
-                  value={creditCardData.cardNumber}
-                  onChange={handleCardNumberChange}
-                  placeholder="0000 0000 0000 0000"
-                  maxLength="19"
-                  dir="ltr"
-                  style={{ textAlign: 'left', letterSpacing: '2px', fontSize: '1.1rem' }}
-                />
-
-                <div className="noc-fields" style={{ marginTop: '13px' }}>
-                  <div>
-                    <label className="noc-lbl" htmlFor="cc-exp">תוקף (MM/YY)</label>
-                    <input id="cc-exp" type="text" autoComplete="cc-exp" value={creditCardData.tokef} onChange={handleTokefChange} placeholder="12/25" maxLength="5" dir="ltr" style={{ textAlign: 'left', letterSpacing: '2px' }} />
-                  </div>
-                  <div>
-                    <label className="noc-lbl" htmlFor="cc-amount">סכום לחיוב (₪)</label>
-                    <input id="cc-amount" type="number" value={creditCardData.amount} onChange={e => setCreditCardData(prev => ({ ...prev, amount: e.target.value }))} style={{ fontWeight: 700, textAlign: 'center' }} />
-                  </div>
-                  <div>
-                    <label className="noc-lbl" htmlFor="cc-installments">תשלומים</label>
-                    <input id="cc-installments" type="number" min="1" max="12" value={creditCardData.installments} onChange={e => setCreditCardData(prev => ({ ...prev, installments: e.target.value }))} style={{ textAlign: 'center' }} />
-                  </div>
-                  <div>
-                    <label className="noc-lbl" htmlFor="cc-notes">הערות לנדרים</label>
-                    <input id="cc-notes" type="text" value={creditCardData.notes} onChange={e => setCreditCardData(prev => ({ ...prev, notes: e.target.value }))} />
-                  </div>
+              <form id="credit-charge-form" onSubmit={(e) => { e.preventDefault(); handleProcessCreditCard(); }}>
+                <div className="field">
+                  <label htmlFor="cc-number">מספר כרטיס אשראי (או העברה בקורא)</label>
+                  <input
+                    id="cc-number"
+                    type="text"
+                    className="input"
+                    inputMode="numeric"
+                    autoComplete="cc-number"
+                    value={creditCardData.cardNumber}
+                    onChange={handleCardNumberChange}
+                    placeholder="0000 0000 0000 0000"
+                    maxLength="19"
+                    dir="ltr"
+                    style={{ textAlign: 'left', letterSpacing: '2px' }}
+                  />
                 </div>
 
-                <div className="noc-box-acts" style={{ marginTop: '20px' }}>
-                  <button type="button" className="noc-btn line" onClick={() => setShowCreditModal(false)} disabled={isProcessingCredit}>ביטול</button>
-                  <button type="submit" className="noc-btn gold" disabled={isProcessingCredit} aria-busy={isProcessingCredit}>
-                    {isProcessingCredit ? <><span className="noc-spin sm" /> מבצע חיוב...</> : <><CreditCard size={16} /> בצע חיוב ושמור הזמנה</>}
-                  </button>
+                <div className="form-grid">
+                  <div className="field">
+                    <label htmlFor="cc-exp">תוקף (MM/YY)</label>
+                    <input id="cc-exp" type="text" className="input" autoComplete="cc-exp" value={creditCardData.tokef} onChange={handleTokefChange} placeholder="12/25" maxLength="5" dir="ltr" style={{ textAlign: 'left', letterSpacing: '2px' }} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="cc-amount">סכום לחיוב (₪)</label>
+                    <input id="cc-amount" type="number" className="input" value={creditCardData.amount} onChange={e => setCreditCardData(prev => ({ ...prev, amount: e.target.value }))} style={{ fontWeight: 700, textAlign: 'center' }} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="cc-installments">תשלומים</label>
+                    <input id="cc-installments" type="number" className="input" min="1" max="12" value={creditCardData.installments} onChange={e => setCreditCardData(prev => ({ ...prev, installments: e.target.value }))} style={{ textAlign: 'center' }} />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="cc-notes">הערות לנדרים</label>
+                    <input id="cc-notes" type="text" className="input" value={creditCardData.notes} onChange={e => setCreditCardData(prev => ({ ...prev, notes: e.target.value }))} />
+                  </div>
                 </div>
               </form>
             </div>
-          </div>
-        )}
-
-        {showQuickSwipeModal && (
-          <div className="noc-ov" onClick={() => setShowQuickSwipeModal(false)}>
-            <div className="noc-box" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="swipe-title" style={{ textAlign: 'center' }}>
-              <div className="noc-spin" />
-              <h3 id="swipe-title">העברת כרטיס מהירה</h3>
-              <p>אנא העבר כעת את כרטיס האשראי בקורא המגנטי. פרטי הכרטיס ייקלטו אוטומטית.</p>
-              <input
-                autoFocus
-                type="text"
-                value={swipeInput}
-                onChange={handleSwipeInputChange}
-                onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-                onBlur={(e) => { if (showQuickSwipeModal) setTimeout(() => e.target?.focus(), 100); }}
-                style={{ opacity: 0, position: 'absolute', top: '-1000px' }}
-                aria-label="קלט קורא כרטיסים"
-              />
-              <div className="noc-box-acts" style={{ justifyContent: 'center' }}>
-                <button type="button" className="noc-btn line" onClick={() => setShowQuickSwipeModal(false)}>ביטול</button>
-              </div>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowCreditModal(false)} disabled={isProcessingCredit}>ביטול</button>
+              <button type="submit" form="credit-charge-form" className="btn btn-primary" disabled={isProcessingCredit} aria-busy={isProcessingCredit}>
+                {isProcessingCredit ? <><span className="spinner" /> מבצע חיוב...</> : <><svg className="icon"><use href="#i-card" /></svg> בצע חיוב ושמור הזמנה</>}
+              </button>
             </div>
           </div>
-        )}
+        </div>
+      )}
 
-        {/* חסימת המסך בזמן חיוב/שמירה, כדי שאיש לא ילחץ פעמיים או ינווט באמצע */}
-        {busy && (
-          <div className="noc-ov" role="alertdialog" aria-live="assertive" aria-busy="true" aria-label="פעולה מתבצעת" style={{ zIndex: 1600 }}>
-            <div className="noc-box" style={{ maxWidth: '320px', textAlign: 'center' }}>
-              <div className="noc-spin" />
-              <h3>{isProcessingCredit ? 'מבצע חיוב מול נדרים פלוס' : 'יוצר את ההזמנה'}</h3>
-              <p style={{ margin: '8px 0 0' }}>
-                {isProcessingCredit
-                  ? 'אין לסגור את החלון עד לקבלת אישור מחברת האשראי.'
-                  : 'מאמת זמינות מלאי, רושם פריטים ומחשב חיובים. נא לא לסגור את החלון.'}
-              </p>
+      {showQuickSwipeModal && (
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={() => setShowQuickSwipeModal(false)}
+        >
+          <div className="modal confirm-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="swipe-title">
+            <span className="spinner lg" style={{ margin: '0 auto 16px' }} />
+            <h3 id="swipe-title">העברת כרטיס מהירה</h3>
+            <p>אנא העבר כעת את כרטיס האשראי בקורא המגנטי. פרטי הכרטיס ייקלטו אוטומטית.</p>
+            <input
+              autoFocus
+              type="text"
+              value={swipeInput}
+              onChange={handleSwipeInputChange}
+              onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
+              onBlur={(e) => { if (showQuickSwipeModal) setTimeout(() => e.target?.focus(), 100); }}
+              style={{ opacity: 0, position: 'absolute', top: '-1000px' }}
+              aria-label="קלט קורא כרטיסים"
+            />
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-secondary" onClick={() => setShowQuickSwipeModal(false)}>ביטול</button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* חסימת המסך בזמן חיוב/שמירה, כדי שאיש לא ילחץ פעמיים או ינווט באמצע */}
+      {busy && (
+        <div
+          className="modal-backdrop"
+          role="alertdialog"
+          aria-live="assertive"
+          aria-busy="true"
+          aria-label="פעולה מתבצעת"
+          style={{ position: 'fixed', inset: 0, zIndex: 1600, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+        >
+          <div className="modal confirm-modal" style={{ maxWidth: '320px' }}>
+            <span className="spinner lg" style={{ margin: '0 auto 16px' }} />
+            <h3>{isProcessingCredit ? 'מבצע חיוב מול נדרים פלוס' : 'יוצר את ההזמנה'}</h3>
+            <p style={{ margin: '8px 0 0' }}>
+              {isProcessingCredit
+                ? 'אין לסגור את החלון עד לקבלת אישור מחברת האשראי.'
+                : 'מאמת זמינות מלאי, רושם פריטים ומחשב חיובים. נא לא לסגור את החלון.'}
+            </p>
+          </div>
+        </div>
+      )}
     </>
   );
 }
 
 /**
  * מגירה מתקפלת — כל מה שאינו חובה במסך יושב בתוכה, כדי שכל שלב יציג
- * רק את השדות שבאמת נדרשים כדי להתקדם.
+ * רק את השדות שבאמת נדרשים כדי להתקדם (details/summary בשפת "אריג").
  */
 function NocCollapsible({ title, badge, defaultOpen = false, openWhen = false, children }) {
   const [open, setOpen] = useState(defaultOpen || openWhen);
@@ -2023,13 +2119,13 @@ function NocCollapsible({ title, badge, defaultOpen = false, openWhen = false, c
     if (openWhen) setOpen(true);
   }, [openWhen]);
   return (
-    <div className={`noc-more ${open ? 'open' : ''}`}>
-      <button type="button" className="noc-more-t" onClick={() => setOpen(o => !o)} aria-expanded={open}>
+    <details className="faq-item" open={open} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>
         {title}
-        {!open && badge ? <span className="noc-more-badge">{badge}</span> : null}
-        <ChevronDown size={14} />
-      </button>
-      <div className="noc-more-c">{children}</div>
-    </div>
+        {!open && badge ? <span className="badge badge-primary">{badge}</span> : null}
+        <svg className="icon"><use href="#i-chevron-down" /></svg>
+      </summary>
+      <div className="faq-body">{children}</div>
+    </details>
   );
 }
