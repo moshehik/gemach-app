@@ -53,6 +53,28 @@ const getPaymentBadgeClass = (status) => {
   }
 };
 
+// בונה משפט חיפוש טבעי מתוך שדות הסינון המתקדם שמולאו בפועל, לשימוש כשמסמנים
+// "חפש עם AI על השדות שמולאו" ולוחצים "החל סינון" — במקום סינון מילולי, השאילתה
+// המורכבת נשלחת ל-handleAiSearch הקיים (ראה item 32 בפאנץ'-ליסט).
+const RENTAL_STATUS_LABELS = { pendingOnly: 'ממתינים', activeOnly: 'מושכרים', returnedOnly: 'מוחזרים' };
+const buildOrdersAiPrompt = (f) => {
+  const parts = [];
+  if (f.advOrderId) parts.push(`מספר הזמנה ${f.advOrderId}`);
+  if (f.customerName) parts.push(`של לקוח בשם ${f.customerName}`);
+  if (f.customerPhone) parts.push(`עם טלפון ${f.customerPhone}`);
+  if (f.customerCity) parts.push(`בעיר ${f.customerCity}`);
+  if (f.advModelName) parts.push(`בדגם ${f.advModelName}`);
+  if (f.itemDetails) parts.push(`עם פריט/ברקוד ${f.itemDetails}`);
+  if (f.eventDateFrom && f.eventDateTo) parts.push(`בטווח תאריכי אירוע מ-${f.eventDateFrom} עד ${f.eventDateTo}`);
+  else if (f.eventDateFrom) parts.push(`מתאריך אירוע ${f.eventDateFrom}`);
+  else if (f.eventDateTo) parts.push(`עד תאריך אירוע ${f.eventDateTo}`);
+  if (Array.isArray(f.rentalStatus) && f.rentalStatus.length > 0) {
+    parts.push(`בסטטוס ${f.rentalStatus.map(s => RENTAL_STATUS_LABELS[s] || s).join(' או ')}`);
+  }
+  if (parts.length === 0) return '';
+  return `הזמנות ${parts.join(', ')}`;
+};
+
 const PendingTimer = ({ cartStatusDate, holdMinutes = 15 }) => {
   const [timeLeft, setTimeLeft] = useState('');
 
@@ -133,6 +155,9 @@ export default function OrdersPage() {
 
   const [advFilters, setAdvFilters] = useState(defaultOrdersAdvFilters);
   const [showAdvSearch, setShowAdvSearch] = useState(false);
+  // לשוניות מודל הסינון המתקדם (item 33) + מצב חיפוש AI על השדות שמולאו (item 32)
+  const [advTab, setAdvTab] = useState('basic');
+  const [advAiMode, setAdvAiMode] = useState(false);
   const [showCapacitySearch, setShowCapacitySearch] = useState(false);
   const [showPrintWizard, setShowPrintWizard] = useState(false);
   const [rentalModalOrderId, setRentalModalOrderId] = useState(null);
@@ -514,124 +539,156 @@ export default function OrdersPage() {
                 <svg className="icon"><use href="#i-x" /></svg>
               </button>
             </div>
-            <div className="modal-body">
-              <div className="field">
-                <label>טווח תאריכי אירוע</label>
-                <HebrewDateRangePicker
-                  startDate={advFilters.eventDateFrom}
-                  endDate={advFilters.eventDateTo}
-                  onChange={(start, end) => setAdvFilters(p => ({ ...p, eventDateFrom: start, eventDateTo: end }))}
-                />
-              </div>
 
-              <div className="field">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label style={{ margin: 0 }}>סטטוס פריטים</label>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-sm"
-                    onClick={() => {
-                      const allSelected = advFilters.rentalStatus.length === 3;
-                      setAdvFilters(p => ({
-                        ...p,
-                        rentalStatus: allSelected ? [] : ['pendingOnly', 'activeOnly', 'returnedOnly']
-                      }));
-                    }}
-                  >
-                    {advFilters.rentalStatus.length === 3 ? 'בטל בחירת הכל' : 'בחר הכל'}
-                  </button>
-                </div>
-                <div className="pill-tabs">
-                  {[
-                    { value: 'pendingOnly', label: 'ממתינים', icon: 'i-clock' },
-                    { value: 'activeOnly', label: 'מושכרים', icon: 'i-bag' },
-                    { value: 'returnedOnly', label: 'מוחזרים', icon: 'i-check' }
-                  ].map(opt => {
-                    const isSelected = advFilters.rentalStatus.includes(opt.value);
-                    return (
+            {/* פיצול השדות הקיימים לשתי לשוניות (item 33): תאריך אירוע + סטטוס פריטים מול
+               פרטי הזמנה/פריט/לקוח. סגנון הלשוניות מבוסס על app/components/ErrorReportButton.js */}
+            <div className="tabs" style={{ margin: '0 22px' }}>
+              <button type="button" className={`tab${advTab === 'basic' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('basic')}>
+                תאריך וסטטוס
+              </button>
+              <button type="button" className={`tab${advTab === 'details' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('details')}>
+                פרטי הזמנה ולקוח
+              </button>
+            </div>
+
+            <div className="modal-body">
+              {advTab === 'basic' && (
+                <>
+                  <div className="field">
+                    <label>טווח תאריכי אירוע</label>
+                    <HebrewDateRangePicker
+                      startDate={advFilters.eventDateFrom}
+                      endDate={advFilters.eventDateTo}
+                      onChange={(start, end) => setAdvFilters(p => ({ ...p, eventDateFrom: start, eventDateTo: end }))}
+                    />
+                  </div>
+
+                  <div className="field">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <label style={{ margin: 0 }}>סטטוס פריטים</label>
                       <button
-                        key={opt.value}
                         type="button"
-                        className={isSelected ? 'pill-tab active' : 'pill-tab'}
+                        className="btn btn-ghost btn-sm"
                         onClick={() => {
-                          setAdvFilters(p => {
-                            const current = p.rentalStatus;
-                            const next = current.includes(opt.value)
-                              ? current.filter(x => x !== opt.value)
-                              : [...current, opt.value];
-                            return { ...p, rentalStatus: next };
-                          });
+                          const allSelected = advFilters.rentalStatus.length === 3;
+                          setAdvFilters(p => ({
+                            ...p,
+                            rentalStatus: allSelected ? [] : ['pendingOnly', 'activeOnly', 'returnedOnly']
+                          }));
                         }}
                       >
-                        <svg className="icon"><use href={`#${opt.icon}`} /></svg>
-                        {opt.label}
+                        {advFilters.rentalStatus.length === 3 ? 'בטל בחירת הכל' : 'בחר הכל'}
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
+                    </div>
+                    <div className="pill-tabs">
+                      {[
+                        { value: 'pendingOnly', label: 'ממתינים', icon: 'i-clock' },
+                        { value: 'activeOnly', label: 'מושכרים', icon: 'i-bag' },
+                        { value: 'returnedOnly', label: 'מוחזרים', icon: 'i-check' }
+                      ].map(opt => {
+                        const isSelected = advFilters.rentalStatus.includes(opt.value);
+                        return (
+                          <button
+                            key={opt.value}
+                            type="button"
+                            className={isSelected ? 'pill-tab active' : 'pill-tab'}
+                            onClick={() => {
+                              setAdvFilters(p => {
+                                const current = p.rentalStatus;
+                                const next = current.includes(opt.value)
+                                  ? current.filter(x => x !== opt.value)
+                                  : [...current, opt.value];
+                                return { ...p, rentalStatus: next };
+                              });
+                            }}
+                          >
+                            <svg className="icon"><use href={`#${opt.icon}`} /></svg>
+                            {opt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </>
+              )}
 
-              <div className="form-grid">
-                <div className="field">
-                  <label>{getLabel('order_id', 'מספר הזמנה')}</label>
-                  <div className="input-icon-wrap">
-                    <svg className="icon"><use href="#i-search" /></svg>
-                    <input type="text" className="input" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({ ...p, advOrderId: e.target.value }))} placeholder="חפש לפי מספר..." />
+              {advTab === 'details' && (
+                <div className="form-grid">
+                  <div className="field">
+                    <label>{getLabel('order_id', 'מספר הזמנה')}</label>
+                    <div className="input-icon-wrap">
+                      <svg className="icon"><use href="#i-search" /></svg>
+                      <input type="text" className="input" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({ ...p, advOrderId: e.target.value }))} placeholder="חפש לפי מספר..." />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>ברקוד/פרטי פריט</label>
+                    <div className="input-icon-wrap">
+                      <svg className="icon"><use href="#i-tag" /></svg>
+                      <input type="text" className="input" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({ ...p, itemDetails: e.target.value }))} placeholder="ברקוד או תיאור..." />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>דגם</label>
+                    <div style={{ position: 'relative' }}>
+                      <OrderModelSelector
+                        value={{ name: advFilters.advModelName }}
+                        onChange={m => setAdvFilters(p => ({ ...p, advModelName: m ? m.name : '' }))}
+                        placeholder="בחר דגם..."
+                      />
+                      {advFilters.advModelName && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-icon-only btn-sm"
+                          onClick={() => setAdvFilters(p => ({ ...p, advModelName: '' }))}
+                          style={{ position: 'absolute', left: '4px', top: '50%', transform: 'translateY(-50%)', color: 'var(--danger)' }}
+                          title="נקה בחירה"
+                        >
+                          <svg className="icon"><use href="#i-x" /></svg>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>{getLabel('order_customerName', 'שם לקוח')}</label>
+                    <input type="text" className="input" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({ ...p, customerName: e.target.value }))} placeholder="שם הלקוח..." />
+                  </div>
+                  <div className="field">
+                    <label>טלפון לקוח</label>
+                    <div className="input-icon-wrap">
+                      <svg className="icon"><use href="#i-phone" /></svg>
+                      <input type="text" className="input" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({ ...p, customerPhone: e.target.value }))} placeholder="מספר טלפון..." />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>עיר מגורים</label>
+                    <div className="input-icon-wrap">
+                      <svg className="icon"><use href="#i-pin" /></svg>
+                      <input type="text" className="input" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({ ...p, customerCity: e.target.value }))} placeholder="עיר..." />
+                    </div>
                   </div>
                 </div>
-                <div className="field">
-                  <label>ברקוד/פרטי פריט</label>
-                  <div className="input-icon-wrap">
-                    <svg className="icon"><use href="#i-tag" /></svg>
-                    <input type="text" className="input" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({ ...p, itemDetails: e.target.value }))} placeholder="ברקוד או תיאור..." />
-                  </div>
-                </div>
-                <div className="field">
-                  <label>דגם</label>
-                  <div style={{ position: 'relative' }}>
-                    <OrderModelSelector
-                      value={{ name: advFilters.advModelName }}
-                      onChange={m => setAdvFilters(p => ({ ...p, advModelName: m ? m.name : '' }))}
-                      placeholder="בחר דגם..."
-                    />
-                    {advFilters.advModelName && (
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-icon-only btn-sm"
-                        onClick={() => setAdvFilters(p => ({ ...p, advModelName: '' }))}
-                        style={{ position: 'absolute', left: '4px', top: '50%', transform: 'translateY(-50%)', color: 'var(--danger)' }}
-                        title="נקה בחירה"
-                      >
-                        <svg className="icon"><use href="#i-x" /></svg>
-                      </button>
-                    )}
-                  </div>
-                </div>
-                <div className="field">
-                  <label>{getLabel('order_customerName', 'שם לקוח')}</label>
-                  <input type="text" className="input" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({ ...p, customerName: e.target.value }))} placeholder="שם הלקוח..." />
-                </div>
-                <div className="field">
-                  <label>טלפון לקוח</label>
-                  <div className="input-icon-wrap">
-                    <svg className="icon"><use href="#i-phone" /></svg>
-                    <input type="text" className="input" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({ ...p, customerPhone: e.target.value }))} placeholder="מספר טלפון..." />
-                  </div>
-                </div>
-                <div className="field">
-                  <label>עיר מגורים</label>
-                  <div className="input-icon-wrap">
-                    <svg className="icon"><use href="#i-pin" /></svg>
-                    <input type="text" className="input" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({ ...p, customerCity: e.target.value }))} placeholder="עיר..." />
-                  </div>
-                </div>
+              )}
+
+              {/* AI על השדות שמולאו (item 32) — מוצג משתי הלשוניות, מוסתר לגמרי כשה-AI כבוי ברמת המערכת */}
+              <div className="checkbox-row ai-feature-element" style={{ marginTop: '16px' }}>
+                <input type="checkbox" id="orders-adv-ai-mode" checked={advAiMode} onChange={e => setAdvAiMode(e.target.checked)} />
+                <label htmlFor="orders-adv-ai-mode">חפש עם AI על השדות שמולאו</label>
               </div>
             </div>
             <div className="modal-foot">
               <button type="button" className="btn btn-secondary" onClick={() => {
                 setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '', rentalStatus: [] });
               }}>נקה הכל</button>
-              <button type="button" className="btn btn-primary" onClick={() => setShowAdvSearch(false)}>
+              <button type="button" className="btn btn-primary" onClick={() => {
+                if (advAiMode) {
+                  const prompt = buildOrdersAiPrompt(advFilters);
+                  setShowAdvSearch(false);
+                  if (prompt) handleAiSearch(prompt);
+                } else {
+                  setShowAdvSearch(false);
+                }
+              }}>
                 <svg className="icon"><use href="#i-check" /></svg>
                 החל סינון
               </button>

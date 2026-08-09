@@ -12,6 +12,20 @@ import { buildCustomersListParams } from '@/app/lib/prefetchRoutes';
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const customersCache = cacheNamespace('customers');
 
+// בונה משפט חיפוש טבעי מתוך שדות הסינון המתקדם שמולאו בפועל, לשימוש כשמסמנים
+// "חפש עם AI על השדות שמולאו" ולוחצים "סגור והחל סינון" — נשלח ל-handleAiSearch
+// הקיים במקום סינון מילולי (ראה item 32 בפאנץ'-ליסט).
+const buildCustomersAiPrompt = (f) => {
+  const parts = [];
+  const fullName = [f.firstName, f.lastName].filter(Boolean).join(' ');
+  if (fullName) parts.push(`בשם ${fullName}`);
+  if (f.phone) parts.push(`עם טלפון ${f.phone}`);
+  if (f.city) parts.push(`מהעיר ${f.city}`);
+  if (f.email) parts.push(`עם דוא"ל ${f.email}`);
+  if (parts.length === 0) return '';
+  return `לקוחות ${parts.join(', ')}`;
+};
+
 export default function CustomersPage() {
   const router = useRouter();
   const { getLabel } = useLabels();
@@ -32,6 +46,9 @@ export default function CustomersPage() {
     firstName: '', lastName: '', phone: '', city: '', email: ''
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);
+  // לשוניות מודל הסינון המתקדם (item 33) + מצב חיפוש AI על השדות שמולאו (item 32)
+  const [advTab, setAdvTab] = useState('basic');
+  const [advAiMode, setAdvAiMode] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiQueryUsed, setAiQueryUsed] = useState('');
@@ -407,58 +424,83 @@ export default function CustomersPage() {
                 <svg className="icon"><use href="#i-x" /></svg>
               </button>
             </div>
+
+            {/* פיצול השדות הקיימים לשתי לשוניות (item 33): שם הלקוח מול פרטי הקשר שלו.
+               סגנון הלשוניות מבוסס על app/components/ErrorReportButton.js */}
+            <div className="tabs" style={{ margin: '0 22px' }}>
+              <button type="button" className={`tab${advTab === 'basic' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('basic')}>
+                שם
+              </button>
+              <button type="button" className={`tab${advTab === 'details' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('details')}>
+                פרטי קשר
+              </button>
+            </div>
+
             <div className="modal-body">
-              <div className="form-grid">
-                <div className="field">
-                  <label htmlFor="adv-search-firstname">{getLabel('customer_firstName', 'שם פרטי')}</label>
-                  <input
-                    id="adv-search-firstname"
-                    type="text"
-                    className="input"
-                    value={advFilters.firstName}
-                    onChange={e => setAdvFilters(p => ({ ...p, firstName: e.target.value }))}
-                  />
+              {advTab === 'basic' && (
+                <div className="form-grid">
+                  <div className="field">
+                    <label htmlFor="adv-search-firstname">{getLabel('customer_firstName', 'שם פרטי')}</label>
+                    <input
+                      id="adv-search-firstname"
+                      type="text"
+                      className="input"
+                      value={advFilters.firstName}
+                      onChange={e => setAdvFilters(p => ({ ...p, firstName: e.target.value }))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="adv-search-lastname">{getLabel('customer_lastName', 'שם משפחה')}</label>
+                    <input
+                      id="adv-search-lastname"
+                      type="text"
+                      className="input"
+                      value={advFilters.lastName}
+                      onChange={e => setAdvFilters(p => ({ ...p, lastName: e.target.value }))}
+                    />
+                  </div>
                 </div>
-                <div className="field">
-                  <label htmlFor="adv-search-lastname">{getLabel('customer_lastName', 'שם משפחה')}</label>
-                  <input
-                    id="adv-search-lastname"
-                    type="text"
-                    className="input"
-                    value={advFilters.lastName}
-                    onChange={e => setAdvFilters(p => ({ ...p, lastName: e.target.value }))}
-                  />
+              )}
+
+              {advTab === 'details' && (
+                <div className="form-grid">
+                  <div className="field">
+                    <label htmlFor="adv-search-phone">{getLabel('customer_phone1', 'טלפון')}</label>
+                    <input
+                      id="adv-search-phone"
+                      type="text"
+                      className="input"
+                      value={advFilters.phone}
+                      onChange={e => setAdvFilters(p => ({ ...p, phone: e.target.value }))}
+                    />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="adv-search-city">{getLabel('customer_city', 'עיר מגורים')}</label>
+                    <input
+                      id="adv-search-city"
+                      type="text"
+                      className="input"
+                      value={advFilters.city}
+                      onChange={e => setAdvFilters(p => ({ ...p, city: e.target.value }))}
+                    />
+                  </div>
+                  <div className="field" style={{ gridColumn: '1 / -1' }}>
+                    <label htmlFor="adv-search-email">{getLabel('customer_email', 'דוא"ל')}</label>
+                    <input
+                      id="adv-search-email"
+                      type="text"
+                      className="input"
+                      value={advFilters.email}
+                      onChange={e => setAdvFilters(p => ({ ...p, email: e.target.value }))}
+                    />
+                  </div>
                 </div>
-                <div className="field">
-                  <label htmlFor="adv-search-phone">{getLabel('customer_phone1', 'טלפון')}</label>
-                  <input
-                    id="adv-search-phone"
-                    type="text"
-                    className="input"
-                    value={advFilters.phone}
-                    onChange={e => setAdvFilters(p => ({ ...p, phone: e.target.value }))}
-                  />
-                </div>
-                <div className="field">
-                  <label htmlFor="adv-search-city">{getLabel('customer_city', 'עיר מגורים')}</label>
-                  <input
-                    id="adv-search-city"
-                    type="text"
-                    className="input"
-                    value={advFilters.city}
-                    onChange={e => setAdvFilters(p => ({ ...p, city: e.target.value }))}
-                  />
-                </div>
-                <div className="field" style={{ gridColumn: '1 / -1' }}>
-                  <label htmlFor="adv-search-email">{getLabel('customer_email', 'דוא"ל')}</label>
-                  <input
-                    id="adv-search-email"
-                    type="text"
-                    className="input"
-                    value={advFilters.email}
-                    onChange={e => setAdvFilters(p => ({ ...p, email: e.target.value }))}
-                  />
-                </div>
+              )}
+
+              {/* AI על השדות שמולאו (item 32) — מוצג משתי הלשוניות, מוסתר לגמרי כשה-AI כבוי ברמת המערכת */}
+              <div className="checkbox-row ai-feature-element" style={{ marginTop: '16px' }}>
+                <input type="checkbox" id="customers-adv-ai-mode" checked={advAiMode} onChange={e => setAdvAiMode(e.target.checked)} />
+                <label htmlFor="customers-adv-ai-mode">חפש עם AI על השדות שמולאו</label>
               </div>
             </div>
             <div className="modal-foot">
@@ -467,7 +509,15 @@ export default function CustomersPage() {
               }}>
                 נקה הכל
               </button>
-              <button className="btn btn-primary" onClick={() => setShowAdvSearch(false)}>
+              <button className="btn btn-primary" onClick={() => {
+                if (advAiMode) {
+                  const prompt = buildCustomersAiPrompt(advFilters);
+                  setShowAdvSearch(false);
+                  if (prompt) handleAiSearch(prompt);
+                } else {
+                  setShowAdvSearch(false);
+                }
+              }}>
                 <svg className="icon"><use href="#i-check" /></svg>
                 סגור והחל סינון
               </button>

@@ -15,6 +15,23 @@ import { buildBoardMonthParams } from '@/app/lib/prefetchRoutes';
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const boardCache = cacheNamespace('board');
 
+// בונה משפט חיפוש טבעי מתוך שדות הסינון המתקדם שמולאו בפועל, לשימוש כשמסמנים
+// "חפש עם AI על השדות שמולאו" ולוחצים "החל סינון" — נשלח ל-handleAiSearch
+// הקיים במקום סינון מילולי (ראה item 32 בפאנץ'-ליסט).
+const buildBoardAiPrompt = (f) => {
+  const parts = [];
+  if (f.advOrderId) parts.push(`מספר הזמנה ${f.advOrderId}`);
+  if (f.customerName) parts.push(`של לקוח בשם ${f.customerName}`);
+  if (f.customerPhone) parts.push(`עם טלפון ${f.customerPhone}`);
+  if (f.customerCity) parts.push(`בעיר ${f.customerCity}`);
+  if (f.itemDetails) parts.push(`עם פריט/ברקוד ${f.itemDetails}`);
+  if (f.eventDateFrom && f.eventDateTo) parts.push(`בטווח תאריכי אירוע מ-${f.eventDateFrom} עד ${f.eventDateTo}`);
+  else if (f.eventDateFrom) parts.push(`מתאריך אירוע ${f.eventDateFrom}`);
+  else if (f.eventDateTo) parts.push(`עד תאריך אירוע ${f.eventDateTo}`);
+  if (parts.length === 0) return '';
+  return `הזמנות ${parts.join(', ')}`;
+};
+
 // מיפוי קטגוריית סטטוס הזמנה (getOrderCategory למטה) אל מחלקת badge + צבע מסגרת + אייקון
 // של מערכת העיצוב "אריג" — לא נוגעים בלוגיקת הקטגוריזציה עצמה, רק בייצוג הוויזואלי שלה.
 const CATEGORY_STYLE = {
@@ -47,6 +64,9 @@ export default function BoardPage() {
     advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: ''
   });
   const [showAdvSearch, setShowAdvSearch] = useState(false);
+  // לשוניות מודל הסינון המתקדם (item 33) + מצב חיפוש AI על השדות שמולאו (item 32)
+  const [advTab, setAdvTab] = useState('basic');
+  const [advAiMode, setAdvAiMode] = useState(false);
   const [showStatistics, setShowStatistics] = useState(false);
   const [selectedRentalOrderId, setSelectedRentalOrderId] = useState(null);
   const [selectedDayOrders, setSelectedDayOrders] = useState(null);
@@ -164,7 +184,7 @@ export default function BoardPage() {
       const res = await fetch('/api/ai/smart-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: query, pageContext: 'orders' })
+        body: JSON.stringify({ prompt: query, pageContext: 'board' })
       });
       const result = await res.json();
       if (res.ok) {
@@ -726,52 +746,87 @@ export default function BoardPage() {
                 <svg className="icon"><use href="#i-x" /></svg>
               </button>
             </div>
+
+            {/* פיצול השדות הקיימים לשתי לשוניות (item 33): תאריך אירוע + זיהוי הזמנה/פריט מול
+               פרטי לקוח (אין כאן פילטר סטטוס פריטים כמו בעמוד ההזמנות, אז הלשונית הראשונה
+               מרכזת את שדות ה"מתי/מה" והשנייה את שדות ה"מי"). סגנון הלשוניות מבוסס על
+               app/components/ErrorReportButton.js */}
+            <div className="tabs" style={{ margin: '0 22px' }}>
+              <button type="button" className={`tab${advTab === 'basic' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('basic')}>
+                תאריך והזמנה
+              </button>
+              <button type="button" className={`tab${advTab === 'details' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('details')}>
+                פרטי לקוח
+              </button>
+            </div>
+
             <div className="modal-body">
-              <div className="form-grid">
-                <div className="field">
-                  <label>מתאריך אירוע</label>
-                  <HebrewDatePicker value={advFilters.eventDateFrom} onChange={d => setAdvFilters(p => ({...p, eventDateFrom: d}))} placeholder="מתאריך..." />
-                </div>
-                <div className="field">
-                  <label>עד תאריך אירוע</label>
-                  <HebrewDatePicker value={advFilters.eventDateTo} onChange={d => setAdvFilters(p => ({...p, eventDateTo: d}))} placeholder="עד תאריך..." />
-                </div>
-                <div className="field">
-                  <label>מספר הזמנה</label>
-                  <div className="input-icon-wrap">
-                    <svg className="icon"><use href="#i-search" /></svg>
-                    <input type="text" className="input" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} placeholder="חפש לפי מספר..." />
+              {advTab === 'basic' && (
+                <div className="form-grid">
+                  <div className="field">
+                    <label>מתאריך אירוע</label>
+                    <HebrewDatePicker value={advFilters.eventDateFrom} onChange={d => setAdvFilters(p => ({...p, eventDateFrom: d}))} placeholder="מתאריך..." />
+                  </div>
+                  <div className="field">
+                    <label>עד תאריך אירוע</label>
+                    <HebrewDatePicker value={advFilters.eventDateTo} onChange={d => setAdvFilters(p => ({...p, eventDateTo: d}))} placeholder="עד תאריך..." />
+                  </div>
+                  <div className="field">
+                    <label>מספר הזמנה</label>
+                    <div className="input-icon-wrap">
+                      <svg className="icon"><use href="#i-search" /></svg>
+                      <input type="text" className="input" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({...p, advOrderId: e.target.value}))} placeholder="חפש לפי מספר..." />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>ברקוד/פרטי פריט</label>
+                    <div className="input-icon-wrap">
+                      <svg className="icon"><use href="#i-bag" /></svg>
+                      <input type="text" className="input" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} placeholder="ברקוד או תיאור..." />
+                    </div>
                   </div>
                 </div>
-                <div className="field">
-                  <label>ברקוד/פרטי פריט</label>
-                  <div className="input-icon-wrap">
-                    <svg className="icon"><use href="#i-bag" /></svg>
-                    <input type="text" className="input" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({...p, itemDetails: e.target.value}))} placeholder="ברקוד או תיאור..." />
+              )}
+
+              {advTab === 'details' && (
+                <div className="form-grid">
+                  <div className="field">
+                    <label>שם לקוח</label>
+                    <input type="text" className="input" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} placeholder="שם הלקוח..." />
+                  </div>
+                  <div className="field">
+                    <label>טלפון לקוח</label>
+                    <input type="text" className="input" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} placeholder="מספר טלפון..." />
+                  </div>
+                  <div className="field">
+                    <label>עיר מגורים</label>
+                    <div className="input-icon-wrap">
+                      <svg className="icon"><use href="#i-pin" /></svg>
+                      <input type="text" className="input" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} placeholder="עיר..." />
+                    </div>
                   </div>
                 </div>
-                <div className="field">
-                  <label>שם לקוח</label>
-                  <input type="text" className="input" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({...p, customerName: e.target.value}))} placeholder="שם הלקוח..." />
-                </div>
-                <div className="field">
-                  <label>טלפון לקוח</label>
-                  <input type="text" className="input" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({...p, customerPhone: e.target.value}))} placeholder="מספר טלפון..." />
-                </div>
-                <div className="field">
-                  <label>עיר מגורים</label>
-                  <div className="input-icon-wrap">
-                    <svg className="icon"><use href="#i-pin" /></svg>
-                    <input type="text" className="input" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({...p, customerCity: e.target.value}))} placeholder="עיר..." />
-                  </div>
-                </div>
+              )}
+
+              {/* AI על השדות שמולאו (item 32) — מוצג משתי הלשוניות, מוסתר לגמרי כשה-AI כבוי ברמת המערכת */}
+              <div className="checkbox-row ai-feature-element" style={{ marginTop: '16px' }}>
+                <input type="checkbox" id="board-adv-ai-mode" checked={advAiMode} onChange={e => setAdvAiMode(e.target.checked)} />
+                <label htmlFor="board-adv-ai-mode">חפש עם AI על השדות שמולאו</label>
               </div>
             </div>
             <div className="modal-foot">
               <button type="button" className="btn btn-secondary" onClick={() => {
                 setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', eventDateFrom: '', eventDateTo: '' });
               }}>נקה הכל</button>
-              <button type="button" className="btn btn-primary" onClick={() => setShowAdvSearch(false)}>
+              <button type="button" className="btn btn-primary" onClick={() => {
+                if (advAiMode) {
+                  const prompt = buildBoardAiPrompt(advFilters);
+                  setShowAdvSearch(false);
+                  if (prompt) handleAiSearch(prompt);
+                } else {
+                  setShowAdvSearch(false);
+                }
+              }}>
                 <svg className="icon"><use href="#i-check" /></svg>
                 החל סינון
               </button>

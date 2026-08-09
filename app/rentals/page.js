@@ -16,6 +16,21 @@ import { buildRentalsListParams, defaultRentalsAdvFilters } from '@/app/lib/pref
 // שמור על 50 רשומות בטעינה - עקבי עם app/orders/page.js ו-app/refunds/page.js.
 const PAGE_SIZE = 50;
 
+// בונה משפט חיפוש טבעי מתוך שדות הסינון המתקדם שמולאו בפועל, לשימוש כשמסמנים
+// "חפש עם AI על השדות שמולאו" ולוחצים "סגור והחל סינון" — נשלח ל-handleAiSearch
+// הקיים במקום סינון מילולי (ראה item 32 בפאנץ'-ליסט).
+const buildRentalsAiPrompt = (f) => {
+  const parts = [];
+  if (f.advOrderId) parts.push(`מספר הזמנה ${f.advOrderId}`);
+  if (f.customerName) parts.push(`של לקוח בשם ${f.customerName}`);
+  if (f.customerPhone) parts.push(`עם טלפון ${f.customerPhone}`);
+  if (f.customerCity) parts.push(`בעיר ${f.customerCity}`);
+  if (f.advModelName) parts.push(`בדגם ${f.advModelName}`);
+  if (f.itemDetails) parts.push(`עם פריט/ברקוד ${f.itemDetails}`);
+  if (parts.length === 0) return '';
+  return `השכרות ${parts.join(', ')}`;
+};
+
 // מטמון SWR משותף — ראה app/lib/pageCache.js; בניית ה-query עברה ל-prefetchRoutes.js
 // כדי שה-prefetch מדפים אחרים ייצר את אותו מפתח בדיוק.
 const rentalsCache = cacheNamespace('rentals');
@@ -42,6 +57,9 @@ export default function RentalsPage() {
 
   const [advFilters, setAdvFilters] = useState(defaultRentalsAdvFilters());
   const [showAdvSearch, setShowAdvSearch] = useState(false);
+  // לשוניות מודל הסינון המתקדם (item 33) + מצב חיפוש AI על השדות שמולאו (item 32)
+  const [advTab, setAdvTab] = useState('basic');
+  const [advAiMode, setAdvAiMode] = useState(false);
 
   // Quick return state
   const [quickBarcode, setQuickBarcode] = useState('');
@@ -368,63 +386,96 @@ export default function RentalsPage() {
                 <svg className="icon"><use href="#i-x" /></svg>
               </button>
             </div>
+
+            {/* פיצול השדות הקיימים לשתי לשוניות (item 33): זיהוי הזמנה/פריט/דגם מול פרטי לקוח.
+               סגנון הלשוניות מבוסס על app/components/ErrorReportButton.js */}
+            <div className="tabs" style={{ margin: '0 22px' }}>
+              <button type="button" className={`tab${advTab === 'basic' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('basic')}>
+                הזמנה ופריט
+              </button>
+              <button type="button" className={`tab${advTab === 'details' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setAdvTab('details')}>
+                פרטי לקוח
+              </button>
+            </div>
+
             <div className="modal-body">
-              <div className="form-grid">
-                <div className="field">
-                  <label>{getLabel('order_id', 'מספר הזמנה')}</label>
-                  <input type="text" className="input" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({ ...p, advOrderId: e.target.value }))} />
-                </div>
-                <div className="field">
-                  <label>ברקוד/פרטי פריט</label>
-                  <div className="input-icon-wrap">
-                    <svg className="icon"><use href="#i-tag" /></svg>
-                    <input type="text" className="input" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({ ...p, itemDetails: e.target.value }))} />
+              {advTab === 'basic' && (
+                <div className="form-grid">
+                  <div className="field">
+                    <label>{getLabel('order_id', 'מספר הזמנה')}</label>
+                    <input type="text" className="input" value={advFilters.advOrderId} onChange={e => setAdvFilters(p => ({ ...p, advOrderId: e.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label>ברקוד/פרטי פריט</label>
+                    <div className="input-icon-wrap">
+                      <svg className="icon"><use href="#i-tag" /></svg>
+                      <input type="text" className="input" value={advFilters.itemDetails} onChange={e => setAdvFilters(p => ({ ...p, itemDetails: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>דגם</label>
+                    <div style={{ position: 'relative' }}>
+                      <OrderModelSelector
+                        value={{ name: advFilters.advModelName }}
+                        onChange={m => setAdvFilters(p => ({ ...p, advModelName: m ? m.name : '' }))}
+                        placeholder="בחר דגם..."
+                      />
+                      {advFilters.advModelName && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-icon-only btn-sm"
+                          onClick={() => setAdvFilters(p => ({ ...p, advModelName: '' }))}
+                          style={{ position: 'absolute', left: '4px', top: '50%', transform: 'translateY(-50%)', color: 'var(--danger)' }}
+                          title="נקה בחירה"
+                        >
+                          <svg className="icon"><use href="#i-x" /></svg>
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
-                <div className="field">
-                  <label>דגם</label>
-                  <div style={{ position: 'relative' }}>
-                    <OrderModelSelector
-                      value={{ name: advFilters.advModelName }}
-                      onChange={m => setAdvFilters(p => ({ ...p, advModelName: m ? m.name : '' }))}
-                      placeholder="בחר דגם..."
-                    />
-                    {advFilters.advModelName && (
-                      <button
-                        type="button"
-                        className="btn btn-ghost btn-icon-only btn-sm"
-                        onClick={() => setAdvFilters(p => ({ ...p, advModelName: '' }))}
-                        style={{ position: 'absolute', left: '4px', top: '50%', transform: 'translateY(-50%)', color: 'var(--danger)' }}
-                        title="נקה בחירה"
-                      >
-                        <svg className="icon"><use href="#i-x" /></svg>
-                      </button>
-                    )}
+              )}
+
+              {advTab === 'details' && (
+                <div className="form-grid">
+                  <div className="field">
+                    <label>{getLabel('order_customerName', 'שם לקוח')}</label>
+                    <input type="text" className="input" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({ ...p, customerName: e.target.value }))} />
+                  </div>
+                  <div className="field">
+                    <label>טלפון לקוח</label>
+                    <div className="input-icon-wrap">
+                      <svg className="icon"><use href="#i-phone" /></svg>
+                      <input type="text" className="input" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({ ...p, customerPhone: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="field">
+                    <label>עיר מגורים</label>
+                    <div className="input-icon-wrap">
+                      <svg className="icon"><use href="#i-pin" /></svg>
+                      <input type="text" className="input" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({ ...p, customerCity: e.target.value }))} />
+                    </div>
                   </div>
                 </div>
-                <div className="field">
-                  <label>{getLabel('order_customerName', 'שם לקוח')}</label>
-                  <input type="text" className="input" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({ ...p, customerName: e.target.value }))} />
-                </div>
-                <div className="field">
-                  <label>טלפון לקוח</label>
-                  <div className="input-icon-wrap">
-                    <svg className="icon"><use href="#i-phone" /></svg>
-                    <input type="text" className="input" value={advFilters.customerPhone} onChange={e => setAdvFilters(p => ({ ...p, customerPhone: e.target.value }))} />
-                  </div>
-                </div>
-                <div className="field">
-                  <label>עיר מגורים</label>
-                  <div className="input-icon-wrap">
-                    <svg className="icon"><use href="#i-pin" /></svg>
-                    <input type="text" className="input" value={advFilters.customerCity} onChange={e => setAdvFilters(p => ({ ...p, customerCity: e.target.value }))} />
-                  </div>
-                </div>
+              )}
+
+              {/* AI על השדות שמולאו (item 32) — מוצג משתי הלשוניות, מוסתר לגמרי כשה-AI כבוי ברמת המערכת */}
+              <div className="checkbox-row ai-feature-element" style={{ marginTop: '16px' }}>
+                <input type="checkbox" id="rentals-adv-ai-mode" checked={advAiMode} onChange={e => setAdvAiMode(e.target.checked)} />
+                <label htmlFor="rentals-adv-ai-mode">חפש עם AI על השדות שמולאו</label>
               </div>
             </div>
             <div className="modal-foot">
               <button type="button" className="btn btn-secondary" onClick={() => setAdvFilters(defaultRentalsAdvFilters())}>נקה הכל</button>
-              <button type="button" className="btn btn-primary" onClick={() => setShowAdvSearch(false)}>
+              <button type="button" className="btn btn-primary" onClick={() => {
+                if (advAiMode) {
+                  const prompt = buildRentalsAiPrompt(advFilters);
+                  setShowAdvSearch(false);
+                  if (prompt) handleAiSearch(prompt);
+                } else {
+                  setShowAdvSearch(false);
+                }
+              }}>
                 <svg className="icon"><use href="#i-check" /></svg>
                 סגור והחל סינון
               </button>
