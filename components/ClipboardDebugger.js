@@ -288,8 +288,8 @@ export default function ClipboardDebugger() {
             position: 'fixed',
             bottom: buttonRect ? (window.innerHeight - buttonRect.top + 10) : 80,
             right: buttonRect ? (window.innerWidth - buttonRect.right) : 20,
-            background: 'var(--card-bg, #ffffff)',
-            border: '1px solid var(--border-color, #e5e7eb)',
+            background: 'var(--card-bg)',
+            border: '1px solid var(--border-color)',
             borderRadius: '16px',
             boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.15), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
             padding: '1.25rem',
@@ -311,9 +311,9 @@ export default function ClipboardDebugger() {
               <button 
                 title="רענן שאילתות בזמן אמת"
                 onClick={() => setRefreshKey(prev => prev + 1)}
-                style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', cursor: 'pointer', color: '#4f46e5', padding: '5px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', fontWeight: 'bold', transition: 'all 0.2s' }}
+                style={{ background: 'var(--element-bg)', border: '1px solid var(--element-border)', cursor: 'pointer', color: '#4f46e5', padding: '5px 10px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.8rem', fontWeight: 'bold', transition: 'all 0.2s' }}
                 onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#e0e7ff'; e.currentTarget.style.transform = 'scale(1.04)'; }}
-                onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#f1f5f9'; e.currentTarget.style.transform = 'scale(1)'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'var(--element-bg)'; e.currentTarget.style.transform = 'scale(1)'; }}
               >
                 <RefreshCw size={14} style={{ animation: loading ? 'spin 1s linear infinite' : 'none' }} /> רענן
               </button>
@@ -322,8 +322,8 @@ export default function ClipboardDebugger() {
                   setIsQueryOpen(false);
                   setElementCopyMode(false);
                 }} 
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9ca3af', padding: '4px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#f3f4f6'}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--element-bg)'}
                 onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
               >
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
@@ -373,16 +373,16 @@ export default function ClipboardDebugger() {
                 width: '100%',
                 padding: '0.6rem 0.75rem 0.6rem 2.2rem',
                 borderRadius: '10px',
-                border: '1.5px solid #cbd5e1',
+                border: '1.5px solid var(--element-border)',
                 fontSize: '0.85rem',
                 outline: 'none',
-                background: 'var(--input-bg, #f8fafc)',
+                background: 'var(--input-bg)',
                 color: 'var(--text-color, #1f2937)',
                 transition: 'border-color 0.2s',
                 boxSizing: 'border-box'
               }}
               onFocus={e => e.currentTarget.style.borderColor = '#4f46e5'}
-              onBlur={e => e.currentTarget.style.borderColor = '#cbd5e1'}
+              onBlur={e => e.currentTarget.style.borderColor = 'var(--element-border)'}
             />
             {searchQuery && (
               <button
@@ -394,7 +394,7 @@ export default function ClipboardDebugger() {
                   transform: 'translateY(-50%)',
                   background: 'none',
                   border: 'none',
-                  color: '#94a3b8',
+                  color: 'var(--text-muted)',
                   cursor: 'pointer',
                   padding: 0
                 }}
@@ -414,12 +414,12 @@ export default function ClipboardDebugger() {
             paddingRight: '2px'
           }}>
             {loading ? (
-              <div style={{ textAlign: 'center', padding: '1.5rem', color: '#6b7280', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
-                <div style={{ width: '16px', height: '16px', border: '2px solid #e5e7eb', borderTop: '2px solid #4f46e5', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+              <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+                <div style={{ width: '16px', height: '16px', border: '2px solid var(--element-border)', borderTop: '2px solid #4f46e5', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
                 <span>טוען שאילתות...</span>
               </div>
             ) : queries.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '1.5rem', color: '#9ca3af', fontSize: '0.85rem', background: '#f8fafc', borderRadius: '10px', border: '1px dashed #e5e7eb' }}>
+              <div style={{ textAlign: 'center', padding: '1.5rem', color: 'var(--text-muted)', fontSize: '0.85rem', background: 'var(--element-bg)', borderRadius: '10px', border: '1px dashed var(--element-border)' }}>
                 {searchQuery ? 'לא נמצאו שאילתות תואמות לחיפוש' : 'אין שאילתות מוגדרות למסך זה'}
               </div>
             ) : (
@@ -427,10 +427,10 @@ export default function ClipboardDebugger() {
                 <div 
                   key={idx} 
                   style={{
-                    border: q.isMain ? '1.5px solid #4f46e5' : '1px solid var(--border-color, #e5e7eb)',
+                    border: q.isMain ? '1.5px solid #4f46e5' : '1px solid var(--border-color)',
                     borderRadius: '10px',
                     padding: '0.75rem',
-                    background: q.isMain ? 'rgba(79, 70, 229, 0.04)' : 'var(--card-bg, #ffffff)',
+                    background: q.isMain ? 'rgba(79, 70, 229, 0.04)' : 'var(--card-bg)',
                     boxShadow: q.isMain ? '0 2px 8px rgba(79, 70, 229, 0.12)' : '0 1px 3px rgba(0,0,0,0.02)',
                     display: 'flex',
                     flexDirection: 'column',
@@ -440,13 +440,13 @@ export default function ClipboardDebugger() {
                   onMouseEnter={e => e.currentTarget.style.boxShadow = '0 4px 6px -1px rgba(0,0,0,0.08)'}
                   onMouseLeave={e => e.currentTarget.style.boxShadow = q.isMain ? '0 2px 8px rgba(79, 70, 229, 0.12)' : '0 1px 3px rgba(0,0,0,0.02)'}
                 >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontWeight: '700', color: '#1e293b' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', fontWeight: '700', color: 'var(--text-main)' }}>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
-                      <span style={{ fontSize: '0.8rem', wordBreak: 'break-all', color: q.isMain ? '#4f46e5' : '#334155' }}>
+                      <span style={{ fontSize: '0.8rem', wordBreak: 'break-all', color: q.isMain ? '#4f46e5' : 'var(--text-main)' }}>
                         {q.name.replace('~sq_c', '').replace('~sq_f', '').replace('~sq_r', '')}
                       </span>
                       {q.subtitle && (
-                        <span style={{ fontSize: '0.7rem', color: '#64748b', fontWeight: '500' }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '500' }}>
                           {q.subtitle}
                         </span>
                       )}
@@ -476,7 +476,7 @@ export default function ClipboardDebugger() {
                     style={{ 
                       margin: 0, 
                       padding: '0.5rem', 
-                      background: '#f1f5f9', 
+                      background: 'var(--element-bg)', 
                       borderRadius: '6px',
                       fontSize: '0.72rem', 
                       maxHeight: '70px', 
@@ -486,8 +486,8 @@ export default function ClipboardDebugger() {
                       fontFamily: 'Consolas, Monaco, monospace', 
                       whiteSpace: 'pre-wrap', 
                       wordBreak: 'break-all',
-                      color: '#475569',
-                      border: '1px solid #e2e8f0'
+                      color: 'var(--text-muted)',
+                      border: '1px solid var(--element-border)'
                     }}
                   >
                     {q.sql}
@@ -498,7 +498,7 @@ export default function ClipboardDebugger() {
           </div>
 
           {/* Action buttons footer */}
-          <div style={{ display: 'flex', borderTop: '1px solid var(--border-color, #e5e7eb)', paddingTop: '0.75rem' }}>
+          <div style={{ display: 'flex', borderTop: '1px solid var(--border-color)', paddingTop: '0.75rem' }}>
             <button 
               onClick={() => {
                 const nextState = !elementCopyMode;

@@ -116,9 +116,9 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
           style={{
             padding: '0.6rem 0.8rem',
             cursor: 'pointer',
-            borderBottom: '1px solid #f1f5f9',
+            borderBottom: '1px solid var(--element-border)',
             textAlign: 'right',
-            color: '#1e293b',
+            color: 'var(--text-main)',
             fontWeight: '500'
           }}
           onMouseEnter={(e) => {
@@ -130,7 +130,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
             e.currentTarget.style.color = '#1e293b';
           }}
         >
-          {m.name} {m.barcodePrefix ? <span style={{ color: '#64748b', fontSize: '0.9em' }}>(קוד: {m.barcodePrefix})</span> : ''}
+          {m.name} {m.barcodePrefix ? <span style={{ color: 'var(--text-muted)', fontSize: '0.9em' }}>(קוד: {m.barcodePrefix})</span> : ''}
         </div>
       ))}
     </div>
@@ -155,9 +155,9 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
             height: '42px',
             padding: '0.5rem 0.8rem',
             borderRadius: '8px',
-            border: '1px solid #cbd5e1',
+            border: '1px solid var(--element-border)',
             textAlign: 'right',
-            backgroundColor: 'white',
+            backgroundColor: 'var(--card-bg)',
             boxSizing: 'border-box',
             fontSize: '0.95rem',
             outline: 'none',
@@ -166,7 +166,7 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
         />
         {isLoading && (
           <div style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-            <div style={{ width: '16px', height: '16px', border: '2px solid #e2e8f0', borderTop: '2px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+            <div style={{ width: '16px', height: '16px', border: '2px solid var(--element-border)', borderTop: '2px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
             <style>{`@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`}</style>
           </div>
         )}

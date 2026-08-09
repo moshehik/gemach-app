@@ -552,28 +552,28 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
   const pendingRefunds = refunds.filter(r => !r.isDeleted && !r.isExecuted);
 
   return (
-    <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+    <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid var(--element-border)' }}>
       <div 
         onClick={() => setIsExpanded(!isExpanded)}
         style={{ 
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
           cursor: 'pointer',
-          borderBottom: isExpanded ? '2px solid #f1f5f9' : 'none',
+          borderBottom: isExpanded ? '2px solid var(--element-border)' : 'none',
           paddingBottom: isExpanded ? '1rem' : '0',
           marginBottom: isExpanded ? '1.5rem' : '0'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-          <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem', fontWeight: '800' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem', fontWeight: '800' }}>
             תשלומים וחובות
           </h2>
           {!isExpanded && (
-            <span style={{ color: '#64748b', fontSize: '1.1rem', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ color: '#cbd5e1' }}>|</span> {summaryText}
+            <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ color: 'var(--element-border)' }}>|</span> {summaryText}
             </span>
           )}
         </div>
-        <div style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
+        <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--element-bg)', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
           {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
         </div>
       </div>
@@ -588,7 +588,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
           </div>
           
           {activeObligations.length > 0 ? (
-            <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #fca5a5', marginBottom: '1.5rem' }}>
+            <div style={{ background: 'var(--card-bg)', borderRadius: '8px', overflow: 'hidden', border: '1px solid #fca5a5', marginBottom: '1.5rem' }}>
               <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #fca5a5', background: '#fef2f2', color: '#7f1d1d' }}>
@@ -627,7 +627,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
               </table>
             </div>
           ) : (
-            <div style={{ color: '#991b1b', padding: '1rem', textAlign: 'center', background: 'white', borderRadius: '8px', border: '1px dashed #fca5a5', marginBottom: '1.5rem' }}>אין חיובים מתועדים.</div>
+            <div style={{ color: '#991b1b', padding: '1rem', textAlign: 'center', background: 'var(--card-bg)', borderRadius: '8px', border: '1px dashed #fca5a5', marginBottom: '1.5rem' }}>אין חיובים מתועדים.</div>
           )}
 
           <div style={{ display: 'flex', justifyContent: 'center' }}>
@@ -663,7 +663,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
           </div>
           
           {activePayments.length > 0 ? (
-            <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #86efac', marginBottom: '1.5rem' }}>
+            <div style={{ background: 'var(--card-bg)', borderRadius: '8px', overflow: 'hidden', border: '1px solid #86efac', marginBottom: '1.5rem' }}>
               <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #86efac', background: '#f0fdf4', color: '#14532d' }}>
@@ -699,7 +699,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
               </table>
             </div>
           ) : (
-            <div style={{ color: '#166534', padding: '1rem', textAlign: 'center', background: 'white', borderRadius: '8px', border: '1px dashed #86efac', marginBottom: '1.5rem' }}>לא בוצעו תשלומים.</div>
+            <div style={{ color: '#166534', padding: '1rem', textAlign: 'center', background: 'var(--card-bg)', borderRadius: '8px', border: '1px dashed #86efac', marginBottom: '1.5rem' }}>לא בוצעו תשלומים.</div>
           )}
 
           <div style={{ display: 'flex', gap: '0.5rem', flex: '1 0 auto', minWidth: '220px', flexWrap: 'wrap' }}>
@@ -732,7 +732,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
               <h3 style={{ color: '#1e40af', margin: 0, fontSize: '1.2rem', fontWeight: '700' }}>זיכויים ממתינים</h3>
             </div>
             
-            <div style={{ background: 'white', borderRadius: '8px', overflow: 'hidden', border: '1px solid #93c5fd', marginBottom: '0.5rem' }}>
+            <div style={{ background: 'var(--card-bg)', borderRadius: '8px', overflow: 'hidden', border: '1px solid #93c5fd', marginBottom: '0.5rem' }}>
               <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
                 <thead>
                   <tr style={{ borderBottom: '1px solid #93c5fd', background: '#eff6ff', color: '#1e3a8a' }}>
@@ -765,20 +765,20 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
 
       {mounted && showQuickSwipeModal && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(8px)' }}>
-          <div style={{ background: 'white', padding: '3rem', borderRadius: '24px', width: '450px', maxWidth: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ background: 'var(--card-bg)', padding: '3rem', borderRadius: '24px', width: '450px', maxWidth: '90%', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
             {/* Animated top border */}
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', background: 'linear-gradient(to right, #f59e0b, #d97706, #fbbf24)' }}></div>
             
-            <button onClick={() => setShowQuickSwipeModal(false)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#94a3b8' }}>&times;</button>
+            <button onClick={() => setShowQuickSwipeModal(false)} style={{ position: 'absolute', top: '15px', right: '20px', background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
             
             <div style={{ margin: '0 auto 1.5rem', width: '90px', height: '90px', background: '#fef3c7', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 12px rgba(245,158,11,0.2)' }}>
               <span style={{ fontSize: '3.5rem' }}>🧲</span>
             </div>
             
-            <h2 style={{ margin: '0 0 0.5rem 0', color: '#1e293b', fontSize: '1.8rem', fontWeight: '800' }}>
+            <h2 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)', fontSize: '1.8rem', fontWeight: '800' }}>
               העברת כרטיס מהירה
             </h2>
-            <p style={{ color: '#64748b', fontSize: '1.1rem', marginBottom: '2rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.1rem', marginBottom: '2rem' }}>
               אנא העבר כעת את כרטיס האשראי בקורא השפתיים...
             </p>
             
@@ -801,7 +801,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
             <div style={{ display: 'flex', justifyContent: 'center' }}>
               <button 
                 onClick={() => setShowQuickSwipeModal(false)} 
-                style={{ padding: '0.8rem 2rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s', fontSize: '1.1rem' }}
+                style={{ padding: '0.8rem 2rem', background: 'var(--element-bg)', color: 'var(--text-muted)', border: 'none', borderRadius: '12px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s', fontSize: '1.1rem' }}
                 onMouseOver={e => e.currentTarget.style.backgroundColor='#e2e8f0'}
                 onMouseOut={e => e.currentTarget.style.backgroundColor='#f1f5f9'}
               >
@@ -815,9 +815,9 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
 
       {mounted && showCreditModal && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '450px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 1.5rem 0', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>
-              <h2 style={{ margin: 0, color: '#1e293b' }}>
+          <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', width: '450px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', margin: '0 0 1.5rem 0', borderBottom: '2px solid var(--element-border)', paddingBottom: '1rem' }}>
+              <h2 style={{ margin: 0, color: 'var(--text-main)' }}>
                 סליקת כרטיס אשראי
               </h2>
               <button data-agy-id="orderpaymentsmanager_button_quick_swipe" 
@@ -832,12 +832,12 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>שם לקוח:</label>
-                <input data-agy-id="orderpaymentsmanager_input_11" type="text" readOnly value={`${customer?.firstName || ''} ${customer?.lastName || ''}`} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b' }} />
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>שם לקוח:</label>
+                <input data-agy-id="orderpaymentsmanager_input_11" type="text" readOnly value={`${customer?.firstName || ''} ${customer?.lastName || ''}`} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--element-bg)', color: 'var(--text-muted)' }} />
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>סכום לחיוב (₪):</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>סכום לחיוב (₪):</label>
                 <input data-agy-id="orderpaymentsmanager_input_12" 
                   type="number" 
                   value={creditCardData.amount} 
@@ -847,49 +847,49 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>מספר כרטיס אשראי:</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>מספר כרטיס אשראי:</label>
                 <input data-agy-id="orderpaymentsmanager_input_13" 
                   type="text" 
                   value={creditCardData.cardNumber} 
                   onChange={handleCardNumberChange}
                   placeholder="0000 0000 0000 0000"
                   maxLength="19"
-                  style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} 
+                  style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)', direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} 
                 />
               </div>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>תוקף (MM/YY):</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>תוקף (MM/YY):</label>
                   <input data-agy-id="orderpaymentsmanager_input_14" 
                     type="text" 
                     value={creditCardData.tokef} 
                     onChange={handleTokefChange}
                     placeholder="12/25"
                     maxLength="5"
-                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} 
+                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)', direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} 
                   />
                 </div>
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>תשלומים:</label>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>תשלומים:</label>
                   <input data-agy-id="orderpaymentsmanager_input_15" 
                     type="number" 
                     min="1" max="36"
                     value={creditCardData.installments} 
                     onChange={e => setCreditCardData({...creditCardData, installments: e.target.value})}
-                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} 
+                    style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} 
                   />
                 </div>
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>הערות:</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>הערות:</label>
                 <input data-agy-id="orderpaymentsmanager_input_16" 
                   type="text" 
                   value={creditCardData.notes} 
                   onChange={e => setCreditCardData({...creditCardData, notes: e.target.value})}
                   placeholder="הערות לחיוב"
-                  style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} 
+                  style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} 
                 />
               </div>
             </div>
@@ -904,7 +904,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
               <button data-agy-id="orderpaymentsmanager_button_17" 
                 onClick={() => setShowCreditModal(false)} 
                 disabled={isProcessing}
-                style={{ padding: '0.8rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s' }}
+                style={{ padding: '0.8rem 1.5rem', background: 'var(--element-bg)', color: 'var(--text-muted)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s' }}
                 onMouseOver={e => e.currentTarget.style.backgroundColor='#e2e8f0'}
                 onMouseOut={e => e.currentTarget.style.backgroundColor='#f1f5f9'}
               >
@@ -925,35 +925,35 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
 
       {mounted && selectedPaymentDetails && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>
+          <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ borderBottom: '2px solid var(--element-border)', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem' }}>
                 פרטי תשלום מלאים
               </h2>
-              <button data-agy-id="orderpaymentsmanager_button_19" onClick={() => setSelectedPaymentDetails(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+              <button data-agy-id="orderpaymentsmanager_button_19" onClick={() => setSelectedPaymentDetails(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'var(--element-bg)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--element-border)' }}>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>אופן תשלום</span>
-                <span style={{ fontWeight: '600', color: '#334155', fontSize: '1.1rem' }}>{selectedPaymentDetails.paymentMethod || '-'}</span>
+                <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>אופן תשלום</span>
+                <span style={{ fontWeight: '600', color: 'var(--text-main)', fontSize: '1.1rem' }}>{selectedPaymentDetails.paymentMethod || '-'}</span>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>סכום</span>
+                <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>סכום</span>
                 <span style={{ fontWeight: 'bold', color: '#16a34a', fontSize: '1.2rem', background: '#dcfce7', padding: '0.2rem 0.6rem', borderRadius: '6px', display: 'inline-block', direction: 'rtl' }}>₪{selectedPaymentDetails.amount}</span>
               </div>
               <div style={{ gridColumn: '1 / -1', textAlign: 'right' }}>
-                <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>תאריך</span>
-                <span style={{ color: '#334155', fontWeight: '500' }}>{getHebrewDateString(selectedPaymentDetails.paymentDate)}, {new Date(selectedPaymentDetails.paymentDate).toLocaleTimeString('he-IL')}</span>
+                <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>תאריך</span>
+                <span style={{ color: 'var(--text-main)', fontWeight: '500' }}>{getHebrewDateString(selectedPaymentDetails.paymentDate)}, {new Date(selectedPaymentDetails.paymentDate).toLocaleTimeString('he-IL')}</span>
               </div>
             </div>
 
             <div>
-              <h3 style={{ margin: '0 0 0.8rem 0', fontSize: '1.1rem', color: '#334155' }}>הערות ופירוט (נדרים פלוס / אחר)</h3>
-              <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', maxHeight: '300px', overflowY: 'auto', border: '1px solid #e2e8f0' }}>
+              <h3 style={{ margin: '0 0 0.8rem 0', fontSize: '1.1rem', color: 'var(--text-main)' }}>הערות ופירוט (נדרים פלוס / אחר)</h3>
+              <div style={{ background: 'var(--element-bg)', padding: '1.5rem', borderRadius: '12px', maxHeight: '300px', overflowY: 'auto', border: '1px solid var(--element-border)' }}>
                 {(() => {
                   const notes = selectedPaymentDetails.notes;
-                  if (!notes) return <span style={{ color: '#94a3b8' }}>אין הערות</span>;
+                  if (!notes) return <span style={{ color: 'var(--text-muted)' }}>אין הערות</span>;
                   
                   try {
                     if (typeof notes === 'string' && notes.trim().startsWith('{')) {
@@ -961,9 +961,9 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
                       return (
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '0.8rem' }}>
                           {Object.entries(parsed).map(([k, v]) => (
-                            <div key={k} style={{ display: 'flex', borderBottom: '1px solid #e2e8f0', paddingBottom: '0.5rem' }}>
-                              <strong style={{ width: '150px', color: '#475569', fontSize: '0.9rem', flexShrink: 0 }}>{k}:</strong>
-                              <span style={{ flex: 1, color: '#1e293b', wordBreak: 'break-word', fontSize: '0.95rem', direction: 'ltr', textAlign: 'right', fontWeight: '500' }}>{String(v)}</span>
+                            <div key={k} style={{ display: 'flex', borderBottom: '1px solid var(--element-border)', paddingBottom: '0.5rem' }}>
+                              <strong style={{ width: '150px', color: 'var(--text-muted)', fontSize: '0.9rem', flexShrink: 0 }}>{k}:</strong>
+                              <span style={{ flex: 1, color: 'var(--text-main)', wordBreak: 'break-word', fontSize: '0.95rem', direction: 'ltr', textAlign: 'right', fontWeight: '500' }}>{String(v)}</span>
                             </div>
                           ))}
                         </div>
@@ -971,7 +971,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
                     }
                   } catch (e) {}
                   
-                  return <div style={{ whiteSpace: 'pre-wrap', color: '#1e293b', lineHeight: '1.6' }}>{typeof notes === 'string' ? notes.split(' | ').join('\n') : String(notes)}</div>;
+                  return <div style={{ whiteSpace: 'pre-wrap', color: 'var(--text-main)', lineHeight: '1.6' }}>{typeof notes === 'string' ? notes.split(' | ').join('\n') : String(notes)}</div>;
                 })()}
               </div>
             </div>
@@ -979,7 +979,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
               <button data-agy-id="orderpaymentsmanager_button_20" 
                 onClick={() => setSelectedPaymentDetails(null)} 
-                style={{ padding: '0.8rem 2rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s' }}
+                style={{ padding: '0.8rem 2rem', background: 'var(--element-bg)', color: 'var(--text-muted)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s' }}
                 onMouseOver={e => e.currentTarget.style.backgroundColor='#e2e8f0'}
                 onMouseOut={e => e.currentTarget.style.backgroundColor='#f1f5f9'}
               >
@@ -993,38 +993,38 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
 
       {mounted && selectedObligationDetails && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
-            <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>
+          <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '1.5rem', maxHeight: '90vh', overflowY: 'auto' }}>
+            <div style={{ borderBottom: '2px solid var(--element-border)', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem' }}>
                 פרטי חיוב
               </h2>
-              <button data-agy-id="orderpaymentsmanager_button_21" onClick={() => setSelectedObligationDetails(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+              <button data-agy-id="orderpaymentsmanager_button_21" onClick={() => setSelectedObligationDetails(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
             </div>
             
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', background: 'var(--element-bg)', padding: '1.5rem', borderRadius: '12px', border: '1px solid var(--element-border)' }}>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>סוג חיוב</span>
-                <span style={{ fontWeight: '600', color: '#334155', fontSize: '1.1rem' }}>{selectedObligationDetails.isManual === false ? (selectedObligationDetails.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב אוטומטי') : (selectedObligationDetails.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב ידני')}</span>
+                <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>סוג חיוב</span>
+                <span style={{ fontWeight: '600', color: 'var(--text-main)', fontSize: '1.1rem' }}>{selectedObligationDetails.isManual === false ? (selectedObligationDetails.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב אוטומטי') : (selectedObligationDetails.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'חיוב ידני')}</span>
               </div>
               <div style={{ textAlign: 'right' }}>
-                <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>סכום</span>
+                <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>סכום</span>
                 <span style={{ fontWeight: 'bold', color: '#dc2626', fontSize: '1.2rem', background: '#fef2f2', padding: '0.2rem 0.6rem', borderRadius: '6px', display: 'inline-block', direction: 'rtl' }}>₪{selectedObligationDetails.amount}</span>
               </div>
               <div style={{ gridColumn: '1 / -1', textAlign: 'right' }}>
-                <span style={{ display: 'block', fontSize: '0.85rem', color: '#64748b', marginBottom: '0.3rem' }}>תאריך</span>
-                <span style={{ color: '#334155', fontWeight: '500' }}>{getHebrewDateString(selectedObligationDetails.createdAt || new Date())}, {new Date(selectedObligationDetails.createdAt || new Date()).toLocaleTimeString('he-IL')}</span>
+                <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>תאריך</span>
+                <span style={{ color: 'var(--text-main)', fontWeight: '500' }}>{getHebrewDateString(selectedObligationDetails.createdAt || new Date())}, {new Date(selectedObligationDetails.createdAt || new Date()).toLocaleTimeString('he-IL')}</span>
               </div>
             </div>
 
             <div>
-              <h3 style={{ margin: '0 0 0.8rem 0', fontSize: '1.1rem', color: '#334155' }}>תיאור מפורט</h3>
-              <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '12px', color: '#1e293b', lineHeight: '1.6', whiteSpace: 'pre-wrap', border: '1px solid #e2e8f0' }}>
-                <div><span style={{fontWeight:'600', color:'#475569'}}>פירוט:</span> <span style={{fontWeight:'500'}}>{selectedObligationDetails.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'ללא תיאור'}</span></div>
+              <h3 style={{ margin: '0 0 0.8rem 0', fontSize: '1.1rem', color: 'var(--text-main)' }}>תיאור מפורט</h3>
+              <div style={{ background: 'var(--element-bg)', padding: '1.5rem', borderRadius: '12px', color: 'var(--text-main)', lineHeight: '1.6', whiteSpace: 'pre-wrap', border: '1px solid var(--element-border)' }}>
+                <div><span style={{fontWeight:'600', color:'var(--text-muted)'}}>פירוט:</span> <span style={{fontWeight:'500'}}>{selectedObligationDetails.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || 'ללא תיאור'}</span></div>
                 {selectedObligationDetails.priceCategory && (
-                   <div style={{marginTop:'0.8rem'}}><span style={{fontWeight:'600', color:'#475569'}}>קטגוריה (מחירון):</span> <span style={{fontWeight:'500'}}>{selectedObligationDetails.priceCategory}</span></div>
+                   <div style={{marginTop:'0.8rem'}}><span style={{fontWeight:'600', color:'var(--text-muted)'}}>קטגוריה (מחירון):</span> <span style={{fontWeight:'500'}}>{selectedObligationDetails.priceCategory}</span></div>
                 )}
                 {selectedObligationDetails.priceDescription && (
-                   <div style={{marginTop:'0.8rem'}}><span style={{fontWeight:'600', color:'#475569'}}>תיאור (מחירון):</span> <span style={{fontWeight:'500'}}>{selectedObligationDetails.priceDescription}</span></div>
+                   <div style={{marginTop:'0.8rem'}}><span style={{fontWeight:'600', color:'var(--text-muted)'}}>תיאור (מחירון):</span> <span style={{fontWeight:'500'}}>{selectedObligationDetails.priceDescription}</span></div>
                 )}
               </div>
             </div>
@@ -1032,7 +1032,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
             <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1rem' }}>
               <button data-agy-id="orderpaymentsmanager_button_22" 
                 onClick={() => setSelectedObligationDetails(null)} 
-                style={{ padding: '0.8rem 2rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s' }}
+                style={{ padding: '0.8rem 2rem', background: 'var(--element-bg)', color: 'var(--text-muted)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'background 0.2s' }}
                 onMouseOver={e => e.currentTarget.style.backgroundColor='#e2e8f0'}
                 onMouseOut={e => e.currentTarget.style.backgroundColor='#f1f5f9'}
               >
@@ -1046,17 +1046,17 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
 
       {mounted && showAddChargeModal && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '400px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>
+          <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', width: '400px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ borderBottom: '2px solid var(--element-border)', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem' }}>
                 הוספת חיוב ידני
               </h2>
-              <button data-agy-id="orderpaymentsmanager_button_23" onClick={() => setShowAddChargeModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+              <button data-agy-id="orderpaymentsmanager_button_23" onClick={() => setShowAddChargeModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem' }}>
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>תיאור החיוב:</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>תיאור החיוב:</label>
                 <input data-agy-id="orderpaymentsmanager_input_24" 
                   type="text" 
                   placeholder="לדוגמא: שמלה נוספת" 
@@ -1067,7 +1067,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
               </div>
               
               <div>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>סכום (₪):</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>סכום (₪):</label>
                 <input data-agy-id="orderpaymentsmanager_input_25" 
                   type="number" 
                   placeholder="0" 
@@ -1081,7 +1081,7 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
               <button data-agy-id="orderpaymentsmanager_button_26" 
                 onClick={() => setShowAddChargeModal(false)} 
-                style={{ padding: '0.8rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s' }}
+                style={{ padding: '0.8rem 1.5rem', background: 'var(--element-bg)', color: 'var(--text-muted)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600', transition: 'background 0.2s' }}
                 onMouseOver={e => e.currentTarget.style.backgroundColor='#e2e8f0'}
                 onMouseOut={e => e.currentTarget.style.backgroundColor='#f1f5f9'}
               >
@@ -1102,54 +1102,54 @@ export default function OrderPaymentsManager({ orderId, items = [], order = {}, 
 
       {mounted && showRefundModal && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <div style={{ borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem' }}>יצירת בקשת זיכוי</h2>
-              <button onClick={() => setShowRefundModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+          <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', width: '500px', maxWidth: '90%', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ borderBottom: '2px solid var(--element-border)', paddingBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+              <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem' }}>יצירת בקשת זיכוי</h2>
+              <button onClick={() => setShowRefundModal(false)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', maxHeight: '60vh', overflowY: 'auto', paddingRight: '0.5rem' }}>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>סכום לזיכוי (₪) *</label>
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>סכום לזיכוי (₪) *</label>
                 <input type="number" value={refundData.amount} onChange={e => setRefundData({...refundData, amount: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #c4b5fd', background: '#f5f3ff', color: '#6d28d9', fontWeight: 'bold', fontSize: '1.1rem' }} />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: '#475569', fontSize: '0.9rem' }}>סיבה לזיכוי / הערות</label>
-                <input type="text" value={refundData.reason} onChange={e => setRefundData({...refundData, reason: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                <label style={{ display: 'block', marginBottom: '0.5rem', fontWeight: '600', color: 'var(--text-muted)', fontSize: '0.9rem' }}>סיבה לזיכוי / הערות</label>
+                <input type="text" value={refundData.reason} onChange={e => setRefundData({...refundData, reason: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
               </div>
               
               <div style={{ gridColumn: '1 / -1', marginTop: '1rem' }}>
-                <h4 style={{ margin: '0 0 0.5rem 0', color: '#1e293b' }}>פרטי בנק לזיכוי</h4>
+                <h4 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>פרטי בנק לזיכוי</h4>
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>בנק</label>
-                <input type="text" value={refundData.bankName} onChange={e => setRefundData({...refundData, bankName: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                <input type="text" value={refundData.bankName} onChange={e => setRefundData({...refundData, bankName: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>סניף</label>
-                <input type="text" value={refundData.bankBranch} onChange={e => setRefundData({...refundData, bankBranch: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                <input type="text" value={refundData.bankBranch} onChange={e => setRefundData({...refundData, bankBranch: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>מספר חשבון</label>
-                <input type="text" value={refundData.bankAccount} onChange={e => setRefundData({...refundData, bankAccount: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                <input type="text" value={refundData.bankAccount} onChange={e => setRefundData({...refundData, bankAccount: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
               </div>
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>שם בעל החשבון</label>
-                <input type="text" value={refundData.bankAccountName} onChange={e => setRefundData({...refundData, bankAccountName: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1' }} />
+                <input type="text" value={refundData.bankAccountName} onChange={e => setRefundData({...refundData, bankAccountName: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)' }} />
               </div>
               
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>אמצעי תשלום לזיכוי (נלקח אוטומטית מתשלום אחרון)</label>
-                <input type="text" readOnly value={refundData.paymentDetails} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #e2e8f0', background: '#f8fafc', color: '#64748b' }} title="שדה זה מתמלא אוטומטית מהתשלום האחרון במערכת" />
+                <input type="text" readOnly value={refundData.paymentDetails} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--element-bg)', color: 'var(--text-muted)' }} title="שדה זה מתמלא אוטומטית מהתשלום האחרון במערכת" />
               </div>
               <div style={{ gridColumn: '1 / -1' }}>
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.85rem' }}>מייל לקוח (לשליחת אישור זיכוי)</label>
-                <input type="email" value={refundData.email} onChange={e => setRefundData({...refundData, email: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid #cbd5e1', direction: 'ltr', textAlign: 'right' }} />
+                <input type="email" value={refundData.email} onChange={e => setRefundData({...refundData, email: e.target.value})} style={{ width: '100%', padding: '0.8rem', borderRadius: '8px', border: '1px solid var(--element-border)', direction: 'ltr', textAlign: 'right' }} />
               </div>
             </div>
 
             <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '2rem' }}>
-              <button onClick={() => setShowRefundModal(false)} style={{ padding: '0.8rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>ביטול</button>
+              <button onClick={() => setShowRefundModal(false)} style={{ padding: '0.8rem 1.5rem', background: 'var(--element-bg)', color: 'var(--text-muted)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>ביטול</button>
               <button onClick={submitRefund} disabled={isProcessing} style={{ padding: '0.8rem 2rem', background: '#8b5cf6', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}>
                 {isProcessing ? 'מעבד...' : 'צור בקשת זיכוי'}
               </button>

@@ -109,7 +109,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
     borderRadius: '16px',
     overflow: 'hidden',
     boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
-    background: 'var(--bg-color, white)',
+    background: 'var(--bg-color)',
     ...(position ? {
       position: 'absolute',
       top: `${Math.min(position.y, window.innerHeight - 620)}px`,
@@ -149,7 +149,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
         </div>
 
         {/* Chat Area */}
-        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', background: '#f8fafc', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', background: 'var(--element-bg)', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
           {messages.map((msg, idx) => (
             <div key={idx} style={{ 
               display: 'flex', 
@@ -157,7 +157,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
               gap: '0.5rem'
             }}>
               {msg.role === 'assistant' && (
-                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669', flexShrink: 0 }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--element-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669', flexShrink: 0 }}>
                   <Bot data-element-name="רכיב_StatisticsModal_6" size={18} />
                 </div>
               )}
@@ -168,7 +168,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
                 borderTopRightRadius: msg.role === 'user' ? '4px' : '16px',
                 borderTopLeftRadius: msg.role === 'assistant' ? '4px' : '16px',
                 background: msg.role === 'user' ? '#10b981' : 'var(--card-bg)',
-                color: msg.role === 'user' ? 'white' : '#1e293b',
+                color: msg.role === 'user' ? 'white' : 'var(--text-main)',
                 boxShadow: '0 2px 5px rgba(0,0,0,0.05)',
                 lineHeight: '1.5',
                 whiteSpace: 'pre-wrap'
@@ -179,10 +179,10 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
           ))}
           {loading && (
             <div style={{ display: 'flex', justifyContent: 'flex-start', gap: '0.5rem' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
+              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: 'var(--element-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#059669' }}>
                 <Bot data-element-name="רכיב_StatisticsModal_8" size={18} />
               </div>
-              <div style={{ padding: '0.8rem 1.2rem', borderRadius: '16px', borderTopLeftRadius: '4px', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b' }}>
+              <div style={{ padding: '0.8rem 1.2rem', borderRadius: '16px', borderTopLeftRadius: '4px', background: 'var(--card-bg)', display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'var(--text-muted)' }}>
                 <Loader2 data-element-name="רכיב_StatisticsModal_9" size={16} className="animate-spin" /> מנתח נתונים...
               </div>
             </div>
@@ -191,7 +191,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
         </div>
 
         {/* Input Area */}
-        <div style={{ padding: '1rem', background: 'var(--card-bg)', borderTop: '1px solid #e2e8f0' }}>
+        <div style={{ padding: '1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--element-border)' }}>
           <form onSubmit={sendMessage} style={{ display: 'flex', gap: '0.5rem' }}>
             <input data-element-name="שדה_StatisticsModal_10" 
               type="text" 
@@ -203,10 +203,10 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
                 flex: 1, 
                 padding: '0.8rem 1rem', 
                 borderRadius: '24px', 
-                border: '1px solid #cbd5e1',
+                border: '1px solid var(--element-border)',
                 outline: 'none',
                 fontSize: '1rem',
-                backgroundColor: '#f8fafc'
+                backgroundColor: 'var(--element-bg)'
               }}
             />
             <button data-element-name="כפתור_StatisticsModal_11" 
@@ -216,7 +216,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
                 width: '45px', 
                 height: '45px', 
                 borderRadius: '50%', 
-                background: input.trim() && !loading ? '#10b981' : '#cbd5e1', 
+                background: input.trim() && !loading ? '#10b981' : 'var(--element-border)', 
                 color: 'white', 
                 border: 'none', 
                 cursor: input.trim() && !loading ? 'pointer' : 'not-allowed',

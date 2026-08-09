@@ -407,7 +407,7 @@ export default function EmployeePage({ params }) {
               ) : (
                 <>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
-                    <input data-element-name="שדה_page_22" type="password" value="********" disabled style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: '#f8fafc', color: '#64748b' }} />
+                    <input data-element-name="שדה_page_22" type="password" value="********" disabled style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', background: 'var(--element-bg)', color: 'var(--text-muted)' }} />
                     <button data-element-name="כפתור_page_24" type="button" onClick={() => setShowChangePassword(true)} className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>שינוי סיסמא</button>
                     <button data-element-name="כפתור_page_23" type="button" onClick={async () => {
                       const authResult = await window.customAuthPrompt("הזן קוד מנהל לאיפוס הסיסמה ושליחתה למייל העובד:", "מנהל");
@@ -429,22 +429,22 @@ export default function EmployeePage({ params }) {
                       }
                     }} className="btn btn-outline" style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>אפס ושלח למייל</button>
                   </div>
-                  <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '0.4rem', marginBottom: 0 }}>
+                  <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.4rem', marginBottom: 0 }}>
                     מטעמי אבטחה לא ניתן לצפות בסיסמה קיימת - ניתן לשנות אותה (בידיעת הסיסמה הנוכחית) או לאפס ולשלוח סיסמה זמנית לעובד במייל.
                   </p>
 
                   {showChangePassword && (
-                    <div style={{ marginTop: '1rem', padding: '1rem', background: '#f1f5f9', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+                    <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--element-bg)', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
                       <div style={{ marginBottom: '0.5rem' }}>
                         <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>סיסמא ישנה</label>
-                        <input data-element-name="שדה_page_25" type="password" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                        <input data-element-name="שדה_page_25" type="password" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }} />
                       </div>
                       <div style={{ marginBottom: '1rem' }}>
                         <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>סיסמא חדשה</label>
-                        <input data-element-name="שדה_page_26" type="password" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                        <input data-element-name="שדה_page_26" type="password" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }} />
                       </div>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                        <button data-element-name="כפתור_page_27" type="button" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); }} className="btn" style={{ background: 'white', border: '1px solid #cbd5e1' }}>ביטול</button>
+                        <button data-element-name="כפתור_page_27" type="button" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); }} className="btn" style={{ background: 'var(--card-bg)', border: '1px solid var(--element-border)' }}>ביטול</button>
                         <button data-element-name="כפתור_page_28" type="button" onClick={async () => {
                           if (!newPasswordInput) {
                               window.alert('יש להזין סיסמא חדשה');
@@ -517,7 +517,7 @@ export default function EmployeePage({ params }) {
             </div>
           </div>
           
-          <hr style={{ border: 'none', borderTop: '1px solid #eee', margin: '2rem 0' }} />
+          <hr style={{ border: 'none', borderTop: '1px solid var(--element-border)', margin: '2rem 0' }} />
           <h3 style={{ color: 'var(--primary-color)', marginBottom: '1rem' }}>נתוני שכר</h3>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
@@ -613,7 +613,7 @@ export default function EmployeePage({ params }) {
                   תקופה: {new Date(filterYear, filterMonth).toLocaleString('he-IL', { month: 'long', year: 'numeric' })}
                 </th>
               </tr>
-              <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
+              <tr style={{ borderBottom: '1px solid var(--element-border)', color: 'var(--text-muted)' }}>
                 <th style={{ padding: '0.4rem 0.5rem' }}>תאריך לועזי</th>
                 <th style={{ padding: '0.4rem 0.5rem' }}>תאריך עברי</th>
                 <th style={{ padding: '0.4rem 0.5rem' }}>שעת כניסה</th>
@@ -626,7 +626,7 @@ export default function EmployeePage({ params }) {
             </thead>
             <tbody>
               {isAddingShift && (
-                <tr style={{ borderBottom: '1px solid #eee', background: '#f9f9f9' }}>
+                <tr style={{ borderBottom: '1px solid var(--element-border)', background: 'var(--element-bg)' }}>
                   <td colSpan="2" style={{ padding: '0.5rem' }}>
                     <div style={{ position: 'relative', width: '250px' }}>
                       <HebrewDatePicker data-element-name="רכיב_page_46" 
@@ -642,10 +642,10 @@ export default function EmployeePage({ params }) {
                     <input data-element-name="שדה_page_48" type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
-                    <input data-element-name="שדה_page_49" type="number" disabled placeholder="מחושב אוטומטית" style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
+                    <input data-element-name="שדה_page_49" type="number" disabled placeholder="מחושב אוטומטית" style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: 'var(--element-bg)' }} />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
-                    <input data-element-name="שדה_page_50" type="number" disabled placeholder="מחושב אוטומטית" style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
+                    <input data-element-name="שדה_page_50" type="number" disabled placeholder="מחושב אוטומטית" style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: 'var(--element-bg)' }} />
                   </td>
                   <td style={{ padding: '0.5rem' }}>
                     <input data-element-name="שדה_page_51" type="text" name="notes" value={editShiftData.notes || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
@@ -659,7 +659,7 @@ export default function EmployeePage({ params }) {
 
               {filteredShifts.map(shift => (
                 <tr key={shift.id} style={{
-                  borderBottom: '1px solid #eee',
+                  borderBottom: '1px solid var(--element-border)',
                   opacity: shift.isDeleted ? 0.6 : 1,
                   textDecoration: shift.isDeleted ? 'line-through' : 'none',
                   background: (!shift.isDeleted && isIncompleteShift(shift)) ? '#ffeb3b4a' : 'transparent'
@@ -667,10 +667,10 @@ export default function EmployeePage({ params }) {
                   {editingShiftId === shift.id ? (
                     <>
                       <td style={{ padding: '0.5rem' }}>
-                         <input data-element-name="שדה_page_54" type="date" value={editShiftData.date || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
+                         <input data-element-name="שדה_page_54" type="date" value={editShiftData.date || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: 'var(--element-bg)' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                         <input data-element-name="שדה_page_55" type="text" value={shift.hebrewDate || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
+                         <input data-element-name="שדה_page_55" type="text" value={shift.hebrewDate || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: 'var(--element-bg)' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
                         <input data-element-name="שדה_page_56" type="time" name="entryTime" value={editShiftData.entryTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
@@ -679,13 +679,13 @@ export default function EmployeePage({ params }) {
                         <input data-element-name="שדה_page_57" type="time" name="exitTime" value={editShiftData.exitTime || ''} onChange={handleShiftEditChange} style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input data-element-name="שדה_page_58" type="number" value={shift.totalMinutes || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
+                        <input data-element-name="שדה_page_58" type="number" value={shift.totalMinutes || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: 'var(--element-bg)' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input data-element-name="שדה_page_59" type="number" value={shift.totalCalculated || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
+                        <input data-element-name="שדה_page_59" type="number" value={shift.totalCalculated || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: 'var(--element-bg)' }} />
                       </td>
                       <td style={{ padding: '0.5rem' }}>
-                        <input data-element-name="שדה_page_60" type="text" value={shift.notes || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: '#f0f0f0' }} />
+                        <input data-element-name="שדה_page_60" type="text" value={shift.notes || ''} disabled style={{ width: '100%', padding: '0.4rem', border: '1px solid var(--element-border)', borderRadius: '4px', background: 'var(--element-bg)' }} />
                       </td>
                       <td className="no-print" style={{ padding: '0.5rem', display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                         <button data-element-name="כפתור_page_61" onClick={saveShift} className="btn" style={{ background: '#2e7d32', color: 'white', padding: '0.4rem 0.8rem', fontSize: '0.9rem', borderRadius: '6px' }}>שמור</button>

@@ -145,8 +145,8 @@ export default function StatisticsPage() {
               border: 'none',
               cursor: 'pointer',
               fontWeight: activeTab === t.id ? 'bold' : 'normal',
-              backgroundColor: activeTab === t.id ? 'var(--primary-color, #1e40af)' : '#e2e8f0',
-              color: activeTab === t.id ? 'white' : '#475569',
+              backgroundColor: activeTab === t.id ? 'var(--primary-color, #1e40af)' : 'var(--element-border)',
+              color: activeTab === t.id ? 'white' : 'var(--text-muted)',
               transition: 'all 0.2s',
               whiteSpace: 'nowrap'
             }}>
@@ -172,13 +172,13 @@ export default function StatisticsPage() {
 
       {summaryData && (
          <div style={{ marginTop: '4rem' }}>
-            <h3 style={{ borderBottom: '2px solid #eee', paddingBottom: '0.5rem', color: 'var(--text-color)' }}>מידע כללי נוסף</h3>
-            <div className="dress-card" style={{ padding: '2rem', marginTop: '1rem', background: 'linear-gradient(135deg, #f8fafc, #e2e8f0)', display: 'inline-block', minWidth: '300px' }}>
+            <h3 style={{ borderBottom: '2px solid var(--element-border)', paddingBottom: '0.5rem', color: 'var(--text-color)' }}>מידע כללי נוסף</h3>
+            <div className="dress-card" style={{ padding: '2rem', marginTop: '1rem', background: 'linear-gradient(135deg, var(--element-bg), var(--element-border))', display: 'inline-block', minWidth: '300px' }}>
               <h4 style={{ margin: 0, color: 'var(--text-color)' }}>שיא עובדים בו-זמנית בחנות</h4>
               <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-muted)' }}>
                 זמן השיא: {summaryData.maxEmp?.peakTime ? new Date(summaryData.maxEmp.peakTime).toLocaleString('he-IL') : 'אין נתונים'}
               </p>
-              <div style={{ fontSize: '3rem', fontWeight: '900', color: '#475569', marginTop: '1rem' }}>
+              <div style={{ fontSize: '3rem', fontWeight: '900', color: 'var(--text-muted)', marginTop: '1rem' }}>
                 {summaryData.maxEmp?.maxEmployees || 0} עובדים
               </div>
             </div>

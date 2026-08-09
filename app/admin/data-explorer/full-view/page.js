@@ -55,27 +55,27 @@ export default function FullViewPage() {
   const currentData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const paginationControls = totalPages > 1 && (
-    <div style={{ padding: '1rem 2rem', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#f8fafc' }}>
-      <div style={{ color: '#64748b', fontSize: '0.9rem' }}>
+    <div style={{ padding: '1rem 2rem', borderTop: '1px solid var(--element-border)', borderBottom: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--element-bg)' }}>
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>
         מציג {(currentPage - 1) * itemsPerPage + 1} עד {Math.min(currentPage * itemsPerPage, data.length)} מתוך {data.length}
       </div>
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-        <button data-element-name="כפתור_page_1" 
+        <button data-element-name="כפתור_page_1"
           onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
           disabled={currentPage === 1}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #cbd5e1', background: currentPage === 1 ? '#f1f5f9' : 'white', color: currentPage === 1 ? '#94a3b8' : '#334155', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '8px', border: '1px solid var(--element-border)', background: currentPage === 1 ? 'var(--element-bg)' : 'var(--card-bg)', color: currentPage === 1 ? 'var(--text-muted)' : 'var(--text-main)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
         >
           <ChevronLeft data-element-name="רכיב_page_2" size={18} />
         </button>
-        
-        <span style={{ fontWeight: '500', color: '#0f172a', margin: '0 0.5rem' }}>
+
+        <span style={{ fontWeight: '500', color: 'var(--text-main)', margin: '0 0.5rem' }}>
           עמוד {currentPage} מתוך {totalPages}
         </span>
-        
-        <button data-element-name="כפתור_page_3" 
+
+        <button data-element-name="כפתור_page_3"
           onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
           disabled={currentPage === totalPages}
-          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '8px', border: '1px solid #cbd5e1', background: currentPage === totalPages ? '#f1f5f9' : 'white', color: currentPage === totalPages ? '#94a3b8' : '#334155', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+          style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '36px', height: '36px', borderRadius: '8px', border: '1px solid var(--element-border)', background: currentPage === totalPages ? 'var(--element-bg)' : 'var(--card-bg)', color: currentPage === totalPages ? 'var(--text-muted)' : 'var(--text-main)', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
         >
           <ChevronRight data-element-name="רכיב_page_4" size={18} />
         </button>
@@ -117,9 +117,9 @@ export default function FullViewPage() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f8fafc' }}>
-        <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid #e2e8f0', borderTop: '4px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-        <p style={{ marginTop: '1rem', color: '#64748b', fontSize: '1.1rem' }}>טוען נתונים...</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg-color)' }}>
+        <div className="spinner" style={{ width: '40px', height: '40px', border: '4px solid var(--element-border)', borderTop: '4px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '1.1rem' }}>טוען נתונים...</p>
         <style dangerouslySetInnerHTML={{__html: `@keyframes spin { 100% { transform: rotate(360deg); } }`}} />
       </div>
     );
@@ -127,9 +127,9 @@ export default function FullViewPage() {
 
   if (error) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f8fafc', padding: '2rem' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--bg-color)', padding: '2rem' }}>
         <AlertCircle data-element-name="רכיב_page_5" size={48} color="#ef4444" style={{ marginBottom: '1rem' }} />
-        <h2 style={{ color: '#1e293b', marginBottom: '1rem' }}>שגיאה</h2>
+        <h2 style={{ color: 'var(--text-main)', marginBottom: '1rem' }}>שגיאה</h2>
         <div style={{ background: '#fef2f2', color: '#991b1b', padding: '1rem 2rem', borderRadius: '8px', border: '1px solid #fecaca', textAlign: 'center' }}>
           {error}
         </div>
@@ -138,17 +138,17 @@ export default function FullViewPage() {
   }
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', padding: '2rem', direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <div style={{ maxWidth: '1400px', margin: '0 auto', background: 'white', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 4rem)' }}>
-        
+    <div style={{ minHeight: '100vh', background: 'var(--bg-color)', padding: '2rem', direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+      <div style={{ maxWidth: '1400px', margin: '0 auto', background: 'var(--card-bg)', borderRadius: '16px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06)', overflow: 'hidden', display: 'flex', flexDirection: 'column', height: 'calc(100vh - 4rem)' }}>
+
         {/* Header */}
-        <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
+        <div style={{ padding: '1.5rem 2rem', borderBottom: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--card-bg)' }}>
           <div>
-            <h1 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <h1 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Maximize data-element-name="רכיב_page_6" size={24} color="#3b82f6" />
               תצוגת טבלה מלאה
             </h1>
-            <p style={{ margin: '0.5rem 0 0 0', color: '#64748b', fontSize: '0.9rem', maxWidth: '600px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={query}>
+            <p style={{ margin: '0.5rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '600px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={query}>
               {query}
             </p>
           </div>
@@ -173,12 +173,12 @@ export default function FullViewPage() {
 
         {/* Table Area */}
         <div style={{ flex: 1, overflow: 'auto', padding: '1.5rem' }}>
-          <div style={{ border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px 0 rgba(0,0,0,0.02)' }}>
+          <div style={{ border: '1px solid var(--element-border)', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 1px 3px 0 rgba(0,0,0,0.02)' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.95rem' }}>
-              <thead style={{ background: '#f1f5f9', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)' }}>
+              <thead style={{ background: 'var(--element-bg)', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 1px 2px 0 rgba(0,0,0,0.05)' }}>
                 <tr>
                   {columns.map(col => (
-                    <th key={col} style={{ padding: '0.4rem 0.5rem', color: '#475569', fontWeight: '600', borderBottom: '2px solid #e2e8f0', whiteSpace: 'nowrap' }}>
+                    <th key={col} style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)', fontWeight: '600', borderBottom: '2px solid var(--element-border)', whiteSpace: 'nowrap' }}>
                       {col}
                     </th>
                   ))}
@@ -186,16 +186,16 @@ export default function FullViewPage() {
               </thead>
               <tbody>
                 {currentData.length > 0 ? currentData.map((row, i) => (
-                  <tr key={i} style={{ borderBottom: '1px solid #f1f5f9', background: i % 2 === 0 ? '#ffffff' : '#f8fafc', transition: 'background 0.1s' }} onMouseOver={e => e.currentTarget.style.background = '#f1f5f9'} onMouseOut={e => e.currentTarget.style.background = i % 2 === 0 ? '#ffffff' : '#f8fafc'}>
+                  <tr key={i} style={{ borderBottom: '1px solid var(--element-border)', background: i % 2 === 0 ? 'var(--card-bg)' : 'var(--element-bg)', transition: 'background 0.1s' }} onMouseOver={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseOut={e => e.currentTarget.style.background = i % 2 === 0 ? 'var(--card-bg)' : 'var(--element-bg)'}>
                     {columns.map(col => (
-                      <td key={col} style={{ padding: '0.875rem 1rem', color: '#334155', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[col])}>
-                        {row[col] !== null ? String(row[col]) : <span style={{ color: '#cbd5e1', fontStyle: 'italic', fontSize: '0.85em' }}>NULL</span>}
+                      <td key={col} style={{ padding: '0.875rem 1rem', color: 'var(--text-main)', maxWidth: '300px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }} title={String(row[col])}>
+                        {row[col] !== null ? String(row[col]) : <span style={{ color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.85em' }}>NULL</span>}
                       </td>
                     ))}
                   </tr>
                 )) : (
                   <tr>
-                    <td colSpan={columns.length || 1} style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+                    <td colSpan={columns.length || 1} style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                       אין נתונים להצגה
                     </td>
                   </tr>

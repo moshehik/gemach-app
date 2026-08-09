@@ -266,28 +266,28 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
   const tableHeaderStyle = {
     padding: '1.2rem 1rem',
     textAlign: 'right',
-    color: '#334155',
-    backgroundColor: '#f8fafc',
-    borderBottom: '2px solid #e2e8f0',
+    color: 'var(--text-main)',
+    backgroundColor: 'var(--element-bg)',
+    borderBottom: '2px solid var(--element-border)',
     fontWeight: '700',
     whiteSpace: 'nowrap'
   };
 
   return (
-    <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', overflowX: 'auto', border: '1px solid #f1f5f9' }}>
+    <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', overflowX: 'auto', border: '1px solid var(--element-border)' }}>
       <div 
         onClick={() => setIsExpanded(!isExpanded)} 
-        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isExpanded ? '1.5rem' : '0', borderBottom: isExpanded ? '2px solid #f1f5f9' : 'none', paddingBottom: isExpanded ? '1rem' : '0', cursor: 'pointer' }}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isExpanded ? '1.5rem' : '0', borderBottom: isExpanded ? '2px solid var(--element-border)' : 'none', paddingBottom: isExpanded ? '1rem' : '0', cursor: 'pointer' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-          <h2 style={{ color: '#0f172a', margin: 0, fontSize: '1.4rem', fontWeight: '800' }}>השכרות והחזרות</h2>
+          <h2 style={{ color: 'var(--text-main)', margin: 0, fontSize: '1.4rem', fontWeight: '800' }}>השכרות והחזרות</h2>
           {!isExpanded && (
-            <span style={{ color: '#64748b', fontSize: '1.1rem', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ color: '#cbd5e1' }}>|</span> {summaryText}
+            <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ color: 'var(--element-border)' }}>|</span> {summaryText}
             </span>
           )}
         </div>
-        <div style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
+        <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--element-bg)', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
           {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
         </div>
       </div>
@@ -302,7 +302,7 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
                 value={barcodeInput}
                 onChange={e => setBarcodeInput(e.target.value)}
                 placeholder="סרוק ברקוד..."
-                style={{ width: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1rem' }}
+                style={{ width: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1rem' }}
               />
               <Scan size={18} color="#64748b" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
             </div>
@@ -319,8 +319,8 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
           {showManualScanModal && (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100000, backdropFilter: 'blur(4px)' }}>
               <div className="animate-fade-in" style={{ backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--element-border)' }}>
-                <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', textAlign: 'center' }}>הזנת ברקוד ידנית</h3>
-                <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '1.5rem', textAlign: 'center' }}>הזן את הברקוד המופיע על הפריט כדי לאשר את הפעולה.</p>
+                <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', textAlign: 'center' }}>הזנת ברקוד ידנית</h3>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '1.5rem', textAlign: 'center' }}>הזן את הברקוד המופיע על הפריט כדי לאשר את הפעולה.</p>
                 <form data-agy-id="orderrentalsmanager_form_4" onSubmit={(e) => {
                   e.preventDefault();
                   setShowManualScanModal(false);
@@ -333,11 +333,11 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
                     value={manualBarcode}
                     onChange={e => setManualBarcode(e.target.value)}
                     placeholder="הקלד ברקוד..."
-                    style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '10px', border: '1px solid #cbd5e1', fontSize: '1.1rem', marginBottom: '1.5rem', textAlign: 'center' }}
+                    style={{ width: '100%', padding: '0.8rem 1rem', borderRadius: '10px', border: '1px solid var(--element-border)', fontSize: '1.1rem', marginBottom: '1.5rem', textAlign: 'center' }}
                   />
                   <div style={{ display: 'flex', gap: '1rem' }}>
                     <button data-agy-id="orderrentalsmanager_button_6" type="submit" style={{ flex: 1, padding: '0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>אשר והמשך</button>
-                    <button data-agy-id="orderrentalsmanager_button_7" type="button" onClick={() => { setShowManualScanModal(false); setManualBarcode(''); setSelectedItemForScan(null); }} style={{ flex: 1, padding: '0.8rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>ביטול</button>
+                    <button data-agy-id="orderrentalsmanager_button_7" type="button" onClick={() => { setShowManualScanModal(false); setManualBarcode(''); setSelectedItemForScan(null); }} style={{ flex: 1, padding: '0.8rem', background: 'var(--element-bg)', color: 'var(--text-muted)', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold' }}>ביטול</button>
                   </div>
                 </form>
               </div>
@@ -345,7 +345,7 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
           )}
 
           {activeItems.length > 0 ? (
-            <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
+            <div style={{ borderRadius: '12px', border: '1px solid var(--element-border)', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.95rem' }}>
                 <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                   <tr>
@@ -364,8 +364,8 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
                     const isReturned = item.isReturned;
                     
                     const rowStyle = {
-                      borderBottom: '1px solid #f1f5f9',
-                      backgroundColor: isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'white',
+                      borderBottom: '1px solid var(--element-border)',
+                      backgroundColor: isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'var(--card-bg)',
                       transition: 'all 0.2s'
                     };
 
@@ -376,7 +376,7 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
                     
                     return (
                       <tr key={item.id || index} style={rowStyle} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = isRented ? '#dbeafe' : isReturned ? '#dcfce7' : '#f8fafc'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'white'}>
-                        <td style={{ padding: '1rem', fontWeight: 'bold', color: '#1e293b' }}>
+                        <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                           {item.dressItem?.dress?.name 
                             ? `${item.dressItem.dress.name} ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix ? `(קוד: ${item.dressItem.dress.barcodePrefix || item.dressItem.barcodePrefix || item.barcodePrefix})` : ''}`
                             : (item.description || item.dressItem?.dressName || 'פריט כללי')}
@@ -384,13 +384,13 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
                         <td style={{ padding: '1rem' }}>
                           {item.sizeText || '-'}
                         </td>
-                        <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '1.05rem', color: '#475569' }}>
+                        <td style={{ padding: '1rem', fontFamily: 'monospace', fontSize: '1.05rem', color: 'var(--text-muted)' }}>
                           {barcode}
                         </td>
-                        <td style={{ padding: '1rem', color: item.isTaken ? '#2563eb' : '#64748b' }}>
+                        <td style={{ padding: '1rem', color: item.isTaken ? '#2563eb' : 'var(--text-muted)' }}>
                           {takenDate}
                         </td>
-                        <td style={{ padding: '1rem', color: item.isReturned ? '#16a34a' : '#64748b' }}>
+                        <td style={{ padding: '1rem', color: item.isReturned ? '#16a34a' : 'var(--text-muted)' }}>
                           {returnDate}
                         </td>
                         <td style={{ padding: '1rem', textAlign: 'center' }}>
@@ -412,7 +412,7 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
                               בהשכרה
                             </span>
                           ) : (
-                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#f1f5f9', color: '#64748b', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
+                            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--element-bg)', color: 'var(--text-muted)', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
                               ממתין
                             </span>
                           )}
@@ -450,8 +450,8 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
               </table>
             </div>
           ) : (
-            <div style={{ textAlign: 'center', color: '#64748b', padding: '3rem 0', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-              <div style={{ fontSize: '1.2rem', color: '#94a3b8' }}>אין פריטים להצגה בהשכרות והחזרות</div>
+            <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 0', background: 'var(--element-bg)', borderRadius: '12px', border: '1px dashed var(--element-border)' }}>
+              <div style={{ fontSize: '1.2rem', color: 'var(--text-muted)' }}>אין פריטים להצגה בהשכרות והחזרות</div>
             </div>
           )}
         </div>
@@ -459,17 +459,17 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
 
       {confirmModal.isOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000, backdropFilter: 'blur(4px)' }} onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}>
-          <div style={{ background: 'white', padding: '2rem', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', width: '90%', maxWidth: '400px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background: 'var(--card-bg)', padding: '2rem', borderRadius: '16px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04)', width: '90%', maxWidth: '400px', textAlign: 'center' }} onClick={e => e.stopPropagation()}>
             <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: confirmModal.actionType === 'return' ? '#dcfce7' : '#fee2e2', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem auto' }}>
               {confirmModal.actionType === 'return' ? <PackageCheck size={32} color="#16a34a" /> : <XCircle size={32} color="#ef4444" />}
             </div>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', fontSize: '1.4rem', fontWeight: '800' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', fontSize: '1.4rem', fontWeight: '800' }}>
               {confirmModal.actionType === 'return' ? 'אישור החזרה' : confirmModal.actionType === 'cancelReturn' ? 'ביטול החזרה' : 'ביטול השכרה'}
             </h3>
-            <p style={{ color: '#64748b', fontSize: '1.05rem', lineHeight: '1.5', marginBottom: '2rem' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', lineHeight: '1.5', marginBottom: '2rem' }}>
               האם אתה בטוח שברצונך {confirmModal.actionType === 'return' ? 'לבצע החזרה' : confirmModal.actionType === 'cancelReturn' ? 'לבטל את ההחזרה' : 'לבטל את ההשכרה'} של פריט זה?
               <br />
-              <strong style={{ display: 'inline-block', marginTop: '0.5rem', padding: '0.3rem 0.8rem', background: '#f1f5f9', borderRadius: '8px', color: '#0f172a' }}>{(confirmModal.item?.barcode || confirmModal.item?.dressItem?.dressBarcode || 'ללא ברקוד')}</strong>
+              <strong style={{ display: 'inline-block', marginTop: '0.5rem', padding: '0.3rem 0.8rem', background: 'var(--element-bg)', borderRadius: '8px', color: 'var(--text-main)' }}>{(confirmModal.item?.barcode || confirmModal.item?.dressItem?.dressBarcode || 'ללא ברקוד')}</strong>
             </p>
             <div style={{ display: 'flex', gap: '1rem' }}>
               <button data-agy-id="orderrentalsmanager_button_12"
@@ -485,7 +485,7 @@ const OrderRentalsManager = forwardRef(function OrderRentalsManager({ items, onI
               </button>
               <button data-agy-id="orderrentalsmanager_button_13"
                 onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}
-                style={{ flex: 1, padding: '0.8rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.05rem', transition: 'all 0.2s' }}
+                style={{ flex: 1, padding: '0.8rem', background: 'var(--element-bg)', color: 'var(--text-muted)', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1.05rem', transition: 'all 0.2s' }}
               >
                 חזור
               </button>

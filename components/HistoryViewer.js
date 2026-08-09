@@ -268,7 +268,7 @@ export default function HistoryViewer({ entityType, entityId }) {
               if (isLongText) {
                 return (
                   <div key={key} style={{ width: '100%', background: 'var(--element-bg)', borderRadius: '12px', padding: '10px 14px', fontSize: '0.85rem', border: '1px solid var(--border-main)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                    <span style={{ fontWeight: '600', color: '#64748b' }}>{label}:</span>
+                    <span style={{ fontWeight: '600', color: 'var(--text-muted)' }}>{label}:</span>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', background: 'var(--card-bg)', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-main)' }}>
                       {!isEmptyFrom && (
                         <div style={{ textDecoration: 'line-through', color: '#ef4444', whiteSpace: 'pre-wrap' }}>{formatValue(change.from)}</div>
@@ -281,11 +281,11 @@ export default function HistoryViewer({ entityType, entityId }) {
 
               return (
                 <div key={key} style={{ display: 'flex', alignItems: 'center', background: 'var(--element-bg)', borderRadius: '20px', padding: '6px 12px', fontSize: '0.85rem', border: '1px solid var(--border-main)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-                  <span style={{ fontWeight: '600', color: '#64748b', marginLeft: '6px' }}>{label}:</span>
+                  <span style={{ fontWeight: '600', color: 'var(--text-muted)', marginLeft: '6px' }}>{label}:</span>
                   {!isEmptyFrom && (
                     <>
                       <span style={{ textDecoration: 'line-through', color: '#ef4444', marginLeft: '4px' }}>{formatValue(change.from)}</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '12px', height: '12px', color: '#94a3b8', marginLeft: '4px', marginRight: '4px', transform: 'rotate(180deg)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '12px', height: '12px', color: 'var(--text-muted)', marginLeft: '4px', marginRight: '4px', transform: 'rotate(180deg)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                       </svg>
                     </>
@@ -298,7 +298,7 @@ export default function HistoryViewer({ entityType, entityId }) {
             if (isLongText) {
               return (
                 <div key={key} style={{ width: '100%', background: 'var(--element-bg)', borderRadius: '12px', padding: '10px 14px', fontSize: '0.85rem', border: '1px solid var(--border-main)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                  <span style={{ fontWeight: '600', color: '#64748b' }}>{label}:</span>
+                  <span style={{ fontWeight: '600', color: 'var(--text-muted)' }}>{label}:</span>
                   <div style={{ color: 'var(--text-main)', fontWeight: '500', whiteSpace: 'pre-wrap', background: 'var(--card-bg)', padding: '8px', borderRadius: '8px', border: '1px solid var(--border-main)' }}>
                     {formatValue(change)}
                   </div>
@@ -308,8 +308,8 @@ export default function HistoryViewer({ entityType, entityId }) {
 
             return (
               <div key={key} style={{ display: 'flex', alignItems: 'center', background: 'var(--element-bg)', borderRadius: '20px', padding: '6px 12px', fontSize: '0.85rem', border: '1px solid var(--border-main)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-                <span style={{ fontWeight: '600', color: '#64748b', marginLeft: '6px' }}>{label}:</span>
-                <span style={{ color: '#0f172a', fontWeight: '500' }}>{formatValue(change)}</span>
+                <span style={{ fontWeight: '600', color: 'var(--text-muted)', marginLeft: '6px' }}>{label}:</span>
+                <span style={{ color: 'var(--text-main)', fontWeight: '500' }}>{formatValue(change)}</span>
               </div>
             );
           })}
@@ -317,7 +317,7 @@ export default function HistoryViewer({ entityType, entityId }) {
       );
     } catch (e) {
       return (
-        <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-main)', background: 'var(--card-bg)', padding: '12px', borderRadius: '8px', border: '1px solid #eee', fontFamily: 'monospace', whiteSpace: 'pre-wrap', overflowX: 'auto' }} dir="ltr">
+        <div style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-main)', background: 'var(--card-bg)', padding: '12px', borderRadius: '8px', border: '1px solid var(--element-border)', fontFamily: 'monospace', whiteSpace: 'pre-wrap', overflowX: 'auto' }} dir="ltr">
           {changesJson}
         </div>
       );
@@ -329,7 +329,7 @@ export default function HistoryViewer({ entityType, entityId }) {
     <div data-agy-id="history_viewer_container" style={{ background: 'var(--card-bg)', borderRadius: '12px', padding: '24px', boxShadow: 'var(--shadow-sm, 0 4px 6px rgba(0,0,0,0.05))', border: '1px solid var(--border-main)', marginTop: '1rem', /* Remove fixed height so it's less squished, except when in modal it can naturally scroll if restricted externally */ }} dir="rtl">
       <div 
         onClick={() => setIsExpanded(!isExpanded)}
-        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: isExpanded ? '24px' : '0', borderBottom: isExpanded ? '1px solid #eee' : 'none', paddingBottom: isExpanded ? '12px' : '0' }}
+        style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer', marginBottom: isExpanded ? '24px' : '0', borderBottom: isExpanded ? '1px solid var(--element-border)' : 'none', paddingBottom: isExpanded ? '12px' : '0' }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <svg xmlns="http://www.w3.org/2000/svg" style={{ width: '24px', height: '24px', color: 'var(--primary-color)' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -337,12 +337,12 @@ export default function HistoryViewer({ entityType, entityId }) {
           </svg>
           <h3 style={{ fontWeight: 'bold', color: 'var(--text-main, #333)', fontSize: '1.2rem', margin: 0 }}>היסטוריית שינויים</h3>
           {!isExpanded && (
-            <span style={{ color: '#64748b', fontSize: '1.1rem', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginRight: '0.5rem' }}>
-              <span style={{ color: '#cbd5e1' }}>|</span> {logs.length} תיעודי פעולות
+            <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginRight: '0.5rem' }}>
+              <span style={{ color: 'var(--element-border)' }}>|</span> {logs.length} תיעודי פעולות
             </span>
           )}
         </div>
-        <div style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--element-bg)', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
+        <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--element-bg)', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
           {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
         </div>
       </div>
@@ -373,11 +373,11 @@ export default function HistoryViewer({ entityType, entityId }) {
             </form>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>פעולה</label>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '500' }}>פעולה</label>
               <select 
                 data-agy-id="history_viewer_action_filter_select"                value={filterAction} 
                 onChange={e => setFilterAction(e.target.value)}
-                style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }}
+                style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--element-border)', outline: 'none', fontSize: '0.9rem' }}
               >
                 <option value="">הכל</option>
                 <option value="CREATE">יצירה</option>
@@ -387,22 +387,22 @@ export default function HistoryViewer({ entityType, entityId }) {
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>מתאריך</label>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '500' }}>מתאריך</label>
               <input 
                 data-agy-id="history_viewer_start_date_input"                type="date" 
                 value={filterStartDate} 
                 onChange={e => setFilterStartDate(e.target.value)}
-                style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }}
+                style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--element-border)', outline: 'none', fontSize: '0.9rem' }}
               />
             </div>
             
             <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '0.75rem', color: '#64748b', fontWeight: '500' }}>עד תאריך</label>
+              <label style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '500' }}>עד תאריך</label>
               <input 
                 data-agy-id="history_viewer_end_date_input"                type="date" 
                 value={filterEndDate} 
                 onChange={e => setFilterEndDate(e.target.value)}
-                style={{ padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', outline: 'none', fontSize: '0.9rem' }}
+                style={{ padding: '8px', borderRadius: '6px', border: '1px solid var(--element-border)', outline: 'none', fontSize: '0.9rem' }}
               />
             </div>
 
@@ -454,12 +454,12 @@ export default function HistoryViewer({ entityType, entityId }) {
               {/* Timeline line */}
               <div style={{ position: 'absolute', right: '11px', top: '32px', bottom: '-24px', width: '2px', background: '#eaeaea' }}></div>
               
-              <div style={{ fontSize: '0.9rem', borderRight: '4px solid var(--primary-color, #d4af37)', paddingRight: '16px', background: 'rgba(249, 250, 251, 0.8)', padding: '16px', borderRadius: '12px', position: 'relative', zIndex: 10, transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f3f4f6'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(249, 250, 251, 0.8)'}>
+              <div style={{ fontSize: '0.9rem', borderRight: '4px solid var(--primary-color, #d4af37)', paddingRight: '16px', background: 'rgba(249, 250, 251, 0.8)', padding: '16px', borderRadius: '12px', position: 'relative', zIndex: 10, transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--element-bg)'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(249, 250, 251, 0.8)'}>
                 {/* Timeline dot */}
                 <div style={{ position: 'absolute', right: '-15px', top: '20px', width: '16px', height: '16px', borderRadius: '50%', background: 'var(--card-bg)', border: '4px solid var(--primary-color, #d4af37)' }}></div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: 'var(--text-main)', fontSize: '0.8rem', marginBottom: '12px', gap: '8px' }}>
-                  <span style={{ fontWeight: '600', color: 'var(--text-muted)', background: 'var(--card-bg)', padding: '4px 8px', borderRadius: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid #eee' }}>
+                  <span style={{ fontWeight: '600', color: 'var(--text-muted)', background: 'var(--card-bg)', padding: '4px 8px', borderRadius: '4px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid var(--element-border)' }}>
                     {new Date(log.createdAt).toLocaleString('he-IL', {
                       year: 'numeric',
                       month: '2-digit',

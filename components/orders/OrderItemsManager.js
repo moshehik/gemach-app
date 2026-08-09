@@ -343,9 +343,9 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
   const tableHeaderStyle = {
     padding: '1.2rem 1rem',
     textAlign: 'right',
-    color: '#334155',
-    backgroundColor: '#f8fafc',
-    borderBottom: '2px solid #e2e8f0',
+    color: 'var(--text-main)',
+    backgroundColor: 'var(--element-bg)',
+    borderBottom: '2px solid var(--element-border)',
     fontWeight: '700',
     whiteSpace: 'nowrap',
     position: 'sticky',
@@ -358,31 +358,31 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
     height: '42px',
     padding: '0.5rem 0.8rem',
     borderRadius: '8px',
-    border: '1px solid #cbd5e1',
+    border: '1px solid var(--element-border)',
     textAlign: 'center',
     transition: 'all 0.2s',
     outline: 'none',
-    backgroundColor: 'white',
+    backgroundColor: 'var(--card-bg)',
     boxSizing: 'border-box',
     fontSize: '0.95rem'
   };
 
   return (
-    <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', overflowX: 'auto', border: '1px solid #f1f5f9' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isExpanded ? '1.5rem' : '0', borderBottom: isExpanded ? '2px solid #f1f5f9' : 'none', paddingBottom: isExpanded ? '1rem' : '0' }}>
+    <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', overflowX: 'auto', border: '1px solid var(--element-border)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: isExpanded ? '1.5rem' : '0', borderBottom: isExpanded ? '2px solid var(--element-border)' : 'none', paddingBottom: isExpanded ? '1rem' : '0' }}>
         <div 
           onClick={() => setIsExpanded(!isExpanded)} 
           style={{ display: 'flex', alignItems: 'center', gap: '1rem', cursor: 'pointer', flex: 1, flexWrap: 'wrap' }}
         >
-          <h2 style={{ color: '#0f172a', margin: 0, fontSize: '1.4rem', fontWeight: '800' }}>פירוט פריטים בהזמנה</h2>
+          <h2 style={{ color: 'var(--text-main)', margin: 0, fontSize: '1.4rem', fontWeight: '800' }}>פירוט פריטים בהזמנה</h2>
           {!isExpanded && (
-            <span style={{ color: '#64748b', fontSize: '1.1rem', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ color: '#cbd5e1' }}>|</span> {summaryText}
+            <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ color: 'var(--element-border)' }}>|</span> {summaryText}
             </span>
           )}
           <div style={{ marginRight: 'auto', display: 'flex', alignItems: 'center', gap: '1rem' }}>
             {isExpanded && (
-              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.95rem', color: '#475569', background: '#f8fafc', padding: '0.6rem 1.2rem', borderRadius: '10px', border: '1px solid #e2e8f0', transition: 'all 0.2s', fontWeight: '600' }} onClick={(e) => e.stopPropagation()} onMouseOver={e => e.currentTarget.style.backgroundColor='#f1f5f9'} onMouseOut={e => e.currentTarget.style.backgroundColor='#f8fafc'}>
+              <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer', fontSize: '0.95rem', color: 'var(--text-muted)', background: 'var(--element-bg)', padding: '0.6rem 1.2rem', borderRadius: '10px', border: '1px solid var(--element-border)', transition: 'all 0.2s', fontWeight: '600' }} onClick={(e) => e.stopPropagation()} onMouseOver={e => e.currentTarget.style.backgroundColor='#f1f5f9'} onMouseOut={e => e.currentTarget.style.backgroundColor='#f8fafc'}>
                 <input data-agy-id="orderitemsmanager_input_1" 
                   type="checkbox" 
                   checked={showDeleted} 
@@ -407,7 +407,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                 +
               </button>
             )}
-            <div style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
+            <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--element-bg)', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
               {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
             </div>
           </div>
@@ -417,7 +417,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
       {isExpanded && (
         <>
           {items && items.length > 0 ? (
-        <div style={{ borderRadius: '12px', border: '1px solid #e2e8f0', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
+        <div style={{ borderRadius: '12px', border: '1px solid var(--element-border)', overflowX: 'auto', overflowY: 'auto', maxHeight: '500px' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.95rem' }}>
             <thead>
               <tr>
@@ -456,9 +456,9 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                 const isEditingMode = item.isNew || item.isEditing;
                 
                 const rowStyle = {
-                  borderBottom: '1px solid #f1f5f9',
+                  borderBottom: '1px solid var(--element-border)',
                   opacity: isDeletedRow ? 0.6 : 1,
-                  backgroundColor: isDeletedRow ? '#f8fafc' : isEditingMode ? '#fffbeb' : isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'white',
+                  backgroundColor: isDeletedRow ? 'var(--element-bg)' : isEditingMode ? '#fffbeb' : isRented ? '#eff6ff' : isReturned ? '#f0fdf4' : 'var(--card-bg)',
                   transition: 'all 0.2s',
                   fontWeight: isRented ? 'bold' : 'normal',
                   boxShadow: isEditingMode ? 'inset -4px 0 0 #f59e0b' : 'none'
@@ -474,10 +474,10 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                           toggleDeleted(originalIndex);
                         }}
                         style={{
-                          background: isDeletedRow ? '#f1f5f9' : '#fef2f2', 
-                          border: `1px solid ${isDeletedRow ? '#cbd5e1' : '#fecaca'}`,
+                          background: isDeletedRow ? 'var(--element-bg)' : '#fef2f2', 
+                          border: `1px solid ${isDeletedRow ? 'var(--element-border)' : '#fecaca'}`,
                           cursor: 'pointer', 
-                          color: isDeletedRow ? '#64748b' : '#ef4444',
+                          color: isDeletedRow ? 'var(--text-muted)' : '#ef4444',
                           display: 'inline-flex',
                           alignItems: 'center',
                           justifyContent: 'center',
@@ -499,7 +499,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                         {isDeletedRow ? <RotateCcw size={18} strokeWidth={2.5} /> : <Trash2 size={18} strokeWidth={2.5} />}
                       </button>
                     </td>
-                    <td style={{ padding: '1rem', fontWeight: 'bold', color: '#1e293b' }}>
+                    <td style={{ padding: '1rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                       {item.isNew ? (
                         <OrderModelSelector 
                           value={{ name: item.description, id: item.dressModelId }} 
@@ -526,7 +526,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                           type="text" 
                           value={item.sizeText || ''} 
                           disabled
-                          style={{ ...inputStyle, backgroundColor: '#f1f5f9', color: '#475569', cursor: 'not-allowed', borderColor: '#e2e8f0' }}
+                          style={{ ...inputStyle, backgroundColor: 'var(--element-bg)', color: 'var(--text-muted)', cursor: 'not-allowed', borderColor: 'var(--element-border)' }}
                         />
                       )}
                     </td>
@@ -559,7 +559,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                             onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
                             disabled={!item.isNew && (!item.isEditing || !canFullyEditItem(item))}
                             title={(!item.isNew && item.isEditing && !canFullyEditItem(item)) ? 'חלון העריכה המלא (15 דק׳) נסגר' : undefined}
-                            style={{ ...inputStyle, width: '60px', padding: '0.5rem', backgroundColor: (!item.isNew && (!item.isEditing || !canFullyEditItem(item))) ? '#f1f5f9' : 'white', cursor: (!item.isNew && (!item.isEditing || !canFullyEditItem(item))) ? 'not-allowed' : 'text' }}
+                            style={{ ...inputStyle, width: '60px', padding: '0.5rem', backgroundColor: (!item.isNew && (!item.isEditing || !canFullyEditItem(item))) ? 'var(--element-bg)' : 'var(--card-bg)', cursor: (!item.isNew && (!item.isEditing || !canFullyEditItem(item))) ? 'not-allowed' : 'text' }}
                             placeholder="-"
                           />
                         </td>
@@ -569,7 +569,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                             value={item.alterationDetails || item.repairs || ''} 
                             onChange={(e) => handleItemChange(originalIndex, 'alterationDetails', e.target.value)}
                             disabled={!item.isNew && !item.isEditing}
-                            style={{ ...inputStyle, textAlign: 'right', backgroundColor: (!item.isNew && !item.isEditing) ? '#f1f5f9' : 'white', cursor: (!item.isNew && !item.isEditing) ? 'not-allowed' : 'text' }}
+                            style={{ ...inputStyle, textAlign: 'right', backgroundColor: (!item.isNew && !item.isEditing) ? 'var(--element-bg)' : 'var(--card-bg)', cursor: (!item.isNew && !item.isEditing) ? 'not-allowed' : 'text' }}
                             placeholder="הערות לתיקון..."
                           />
                         </td>
@@ -600,7 +600,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                             <PackageOpen size={16} /> בהשכרה
                           </span>
                         ) : (
-                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: '#f1f5f9', color: '#64748b', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', background: 'var(--element-bg)', color: 'var(--text-muted)', padding: '0.4rem 0.8rem', borderRadius: '20px', fontWeight: '600', fontSize: '0.85rem' }}>
                             ממתין
                           </span>
                         )}
@@ -826,26 +826,26 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
           <div ref={listEndRef} />
         </div>
       ) : (
-        <div style={{ textAlign: 'center', color: '#64748b', padding: '3rem 0', background: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
-          <div style={{ fontSize: '1.2rem', marginBottom: '0.5rem', color: '#94a3b8' }}>אין פריטים להזמנה זו</div>
+        <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 0', background: 'var(--element-bg)', borderRadius: '12px', border: '1px dashed var(--element-border)' }}>
+          <div style={{ fontSize: '1.2rem', marginBottom: '0.5rem', color: 'var(--text-muted)' }}>אין פריטים להזמנה זו</div>
           <div>לחץ על הכפתור למטה כדי להתחיל להוסיף פריטים</div>
         </div>
       )}
       
       {mounted && detailsModalItem && createPortal(
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '90%', maxWidth: '550px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-              <h3 style={{ margin: 0, color: '#1e293b', fontSize: '1.4rem' }}>פרטים נוספים לפריט</h3>
-              <button data-agy-id="orderitemsmanager_button_12" onClick={() => setDetailsModalItem(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b' }}>&times;</button>
+          <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', width: '90%', maxWidth: '550px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '2px solid var(--element-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+              <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem' }}>פרטים נוספים לפריט</h3>
+              <button data-agy-id="orderitemsmanager_button_12" onClick={() => setDetailsModalItem(null)} style={{ background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: 'var(--text-muted)' }}>&times;</button>
             </div>
             
             <div style={{ margin: '1.5rem 0' }}>
-              <p style={{ fontWeight: 'bold', color: '#334155', marginBottom: '0.5rem' }}>פירוט חיובים לפריט זה:</p>
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', color: '#1e293b', marginBottom: '1.5rem', maxHeight: '150px', overflowY: 'auto', border: '1px solid #e2e8f0' }}>
+              <p style={{ fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '0.5rem' }}>פירוט חיובים לפריט זה:</p>
+              <div style={{ background: 'var(--element-bg)', padding: '1rem', borderRadius: '10px', color: 'var(--text-main)', marginBottom: '1.5rem', maxHeight: '150px', overflowY: 'auto', border: '1px solid var(--element-border)' }}>
                 {(() => {
                   const dressName = detailsModalItem.dressItem?.dress?.name || detailsModalItem.description;
-                  if (!order || !order.obligations) return <span style={{ color: '#64748b' }}>לא נמצאו חיובים מפורטים</span>;
+                  if (!order || !order.obligations) return <span style={{ color: 'var(--text-muted)' }}>לא נמצאו חיובים מפורטים</span>;
                   
                   // Filter obligations by the unique item ID that is now embedded in the description
                   const searchStr = `(פריט #${detailsModalItem.id})`;
@@ -854,7 +854,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                     ((obs.description && obs.description.includes(searchStr)) || obs.orderItemId === detailsModalItem.id)
                   );
                   
-                  if (relatedObligations.length === 0) return <span style={{ color: '#64748b' }}>אין חיובים מפורטים לפריט זה</span>;
+                  if (relatedObligations.length === 0) return <span style={{ color: 'var(--text-muted)' }}>אין חיובים מפורטים לפריט זה</span>;
                   
                   return (
                     <table style={{ width: '100%', fontSize: '0.95rem', textAlign: 'right', borderCollapse: 'collapse' }}>
@@ -862,16 +862,16 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                         {relatedObligations.map((obs, idx) => {
                           const isNegative = obs.amount < 0;
                           return (
-                            <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                            <tr key={idx} style={{ borderBottom: '1px solid var(--element-border)' }}>
                               <td style={{ padding: '0.6rem 0.2rem', fontWeight: '500' }}>{obs.productName?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '') || (obs.description?.includes('תיקון') ? 'תיקון' : 'חיוב')}</td>
-                              <td style={{ padding: '0.6rem 0.2rem', color: '#64748b', fontSize: '0.85rem' }}>{obs.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '')}</td>
+                              <td style={{ padding: '0.6rem 0.2rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{obs.description?.replace(/\s*\(פריט #[a-zA-Z0-9-]+\)/g, '')}</td>
                               <td style={{ padding: '0.6rem 0.2rem', fontWeight: 'bold', color: isNegative ? '#ef4444' : '#16a34a', direction: 'ltr' }}>
                                 {isNegative ? '-' : ''}₪{Math.abs(obs.amount)}
                               </td>
                             </tr>
                           );
                         })}
-                        <tr style={{ fontWeight: 'bold', background: '#f1f5f9' }}>
+                        <tr style={{ fontWeight: 'bold', background: 'var(--element-bg)' }}>
                           <td colSpan="2" style={{ padding: '0.8rem 0.5rem', borderRadius: '0 8px 8px 0' }}>סה"כ לפריט</td>
                           <td style={{ padding: '0.8rem 0.5rem', color: relatedObligations.reduce((sum, obs) => sum + obs.amount, 0) < 0 ? '#ef4444' : '#16a34a', direction: 'ltr', borderRadius: '8px 0 0 8px' }}>
                             {relatedObligations.reduce((sum, obs) => sum + obs.amount, 0) < 0 ? '-' : ''}₪{Math.abs(relatedObligations.reduce((sum, obs) => sum + obs.amount, 0))}
@@ -884,18 +884,18 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1.5rem' }}>
-                <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
-                  <p style={{ margin: '0 0 0.2rem 0', color: '#64748b', fontSize: '0.85rem' }}>תאריך הוספה</p>
-                  <p style={{ margin: 0, fontWeight: '600', color: '#1e293b' }}>
+                <div style={{ background: 'var(--element-bg)', padding: '1rem', borderRadius: '10px', border: '1px solid var(--element-border)' }}>
+                  <p style={{ margin: '0 0 0.2rem 0', color: 'var(--text-muted)', fontSize: '0.85rem' }}>תאריך הוספה</p>
+                  <p style={{ margin: 0, fontWeight: '600', color: 'var(--text-main)' }}>
                     {new Date(detailsModalItem.orderDate || order?.orderDate || detailsModalItem.createdAt || new Date()).toLocaleDateString('he-IL')} {new Date(detailsModalItem.orderDate || order?.orderDate || detailsModalItem.createdAt || new Date()).toLocaleTimeString('he-IL')}
                   </p>
                 </div>
               </div>
               
-              <p style={{ fontWeight: 'bold', color: '#334155', marginBottom: '0.5rem' }}>היסטוריית שינויים:</p>
-              <div style={{ background: '#f8fafc', padding: '1rem', borderRadius: '10px', color: '#1e293b', minHeight: '80px', maxHeight: '250px', overflowY: 'auto', border: '1px solid #e2e8f0' }}>
+              <p style={{ fontWeight: 'bold', color: 'var(--text-main)', marginBottom: '0.5rem' }}>היסטוריית שינויים:</p>
+              <div style={{ background: 'var(--element-bg)', padding: '1rem', borderRadius: '10px', color: 'var(--text-main)', minHeight: '80px', maxHeight: '250px', overflowY: 'auto', border: '1px solid var(--element-border)' }}>
                 {detailsModalItem.loadingLogs ? (
-                  <div style={{ textAlign: 'center', color: '#64748b', padding: '1rem' }}>טוען היסטוריה...</div>
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '1rem' }}>טוען היסטוריה...</div>
                 ) : detailsModalItem.auditLogs && detailsModalItem.auditLogs.length > 0 ? (
                   detailsModalItem.auditLogs.map((log, idx) => {
                     const actionLabel = ACTION_TRANSLATIONS[log.action] || log.action;
@@ -916,9 +916,9 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                            if (fromStr === toStr) continue;
                            items.push(
                              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.95rem', padding: '0.3rem 0' }}>
-                               <strong style={{ color: '#475569', minWidth: '90px' }}>{label}:</strong>
+                               <strong style={{ color: 'var(--text-muted)', minWidth: '90px' }}>{label}:</strong>
                                <span style={{ textDecoration: 'line-through', color: '#dc2626', background: '#fee2e2', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.9rem' }}>{fromStr}</span>
-                               <span style={{ color: '#94a3b8' }}>➜</span>
+                               <span style={{ color: 'var(--text-muted)' }}>➜</span>
                                <span style={{ color: '#16a34a', fontWeight: 'bold', background: '#dcfce7', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.9rem' }}>{toStr}</span>
                              </div>
                            );
@@ -926,39 +926,39 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                            const valStr = typeof value === 'boolean' ? (value ? 'כן' : 'לא') : String(value);
                            items.push(
                              <div key={key} style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', fontSize: '0.95rem', padding: '0.3rem 0' }}>
-                               <strong style={{ color: '#475569', minWidth: '90px' }}>{label}:</strong>
+                               <strong style={{ color: 'var(--text-muted)', minWidth: '90px' }}>{label}:</strong>
                                <span style={{ color: '#2563eb', fontWeight: '500', background: '#dbeafe', padding: '0.2rem 0.6rem', borderRadius: '6px', fontSize: '0.9rem' }}>{valStr}</span>
                              </div>
                            );
                         }
                       }
                       if (items.length > 0) {
-                        formattedChanges = <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.75rem', background: 'white', padding: '0.75rem', borderRadius: '8px', border: '1px solid #e2e8f0' }}>{items}</div>;
+                        formattedChanges = <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', marginTop: '0.75rem', background: 'var(--card-bg)', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)' }}>{items}</div>;
                       } else {
-                        formattedChanges = <div style={{ fontSize: '0.9rem', color: '#64748b', fontStyle: 'italic', marginTop: '0.5rem' }}>אין שינויים רלוונטיים להצגה</div>;
+                        formattedChanges = <div style={{ fontSize: '0.9rem', color: 'var(--text-muted)', fontStyle: 'italic', marginTop: '0.5rem' }}>אין שינויים רלוונטיים להצגה</div>;
                       }
                     } catch (e) {
-                      formattedChanges = <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', wordBreak: 'break-all', marginTop: '0.5rem', background: '#f1f5f9', padding: '0.5rem', borderRadius: '6px' }}>{log.changesJson}</div>;
+                      formattedChanges = <div style={{ fontSize: '0.85rem', fontFamily: 'monospace', wordBreak: 'break-all', marginTop: '0.5rem', background: 'var(--element-bg)', padding: '0.5rem', borderRadius: '6px' }}>{log.changesJson}</div>;
                     }
                     
                     return (
-                      <div key={idx} style={{ marginBottom: '1.2rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', transition: 'background-color 0.2s', padding: '0.8rem', borderRadius: '8px' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                      <div key={idx} style={{ marginBottom: '1.2rem', borderBottom: '1px solid var(--element-border)', paddingBottom: '1rem', transition: 'background-color 0.2s', padding: '0.8rem', borderRadius: '8px' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f1f5f9'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: '500' }}>
+                          <span style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: '500' }}>
                             {new Date(log.createdAt).toLocaleDateString('he-IL')} 
-                            <span style={{ color: '#cbd5e1', margin: '0 8px' }}>|</span> 
+                            <span style={{ color: 'var(--element-border)', margin: '0 8px' }}>|</span> 
                             {new Intl.DateTimeFormat('he-IL-u-ca-hebrew', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(log.createdAt))}
-                            <span style={{ color: '#cbd5e1', margin: '0 8px' }}>|</span>
+                            <span style={{ color: 'var(--element-border)', margin: '0 8px' }}>|</span>
                             {new Date(log.createdAt).toLocaleTimeString('he-IL', { timeStyle: 'short' })}
                           </span>
-                          <span style={{ fontSize: '0.85rem', fontWeight: '600', color: '#334155', background: '#e2e8f0', padding: '4px 10px', borderRadius: '12px' }}>{actionLabel}</span>
+                          <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-main)', background: 'var(--element-border)', padding: '4px 10px', borderRadius: '12px' }}>{actionLabel}</span>
                         </div>
                         {formattedChanges}
                       </div>
                     );
                   })
                 ) : (
-                  <div style={{ color: '#64748b', fontStyle: 'italic' }}>אין היסטוריית שינויים להצגה</div>
+                  <div style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>אין היסטוריית שינויים להצגה</div>
                 )}
               </div>
             </div>
@@ -966,7 +966,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
             <div style={{ textAlign: 'left', marginTop: '2rem' }}>
               <button data-agy-id="orderitemsmanager_button_13" 
                 onClick={() => setDetailsModalItem(null)}
-                style={{ padding: '0.8rem 2rem', background: '#e2e8f0', color: '#334155', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
+                style={{ padding: '0.8rem 2rem', background: 'var(--element-border)', color: 'var(--text-main)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', transition: 'all 0.2s' }}
                 onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#cbd5e1'}
                 onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#e2e8f0'}
               >
@@ -989,11 +989,11 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
 
       {confirmModal.isOpen && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100000, backdropFilter: 'blur(4px)' }}>
-          <div className="animate-fade-in" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', textAlign: 'center', fontSize: '1.2rem' }}>
+          <div className="animate-fade-in" style={{ backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--element-border)' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', textAlign: 'center', fontSize: '1.2rem' }}>
               {confirmModal.actionType === 'rent' ? 'אישור השכרה' : confirmModal.actionType === 'return' ? 'אישור החזרה' : confirmModal.actionType === 'cancelRent' ? 'ביטול השכרה' : 'ביטול החזרה'}
             </h3>
-            <p style={{ color: '#475569', fontSize: '1rem', marginBottom: '1.5rem', textAlign: 'center', lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '1rem', marginBottom: '1.5rem', textAlign: 'center', lineHeight: 1.5 }}>
               האם אתה בטוח שברצונך {confirmModal.actionType === 'rent' ? 'לסמן פריט זה כמושכר' : confirmModal.actionType === 'return' ? 'לסמן פריט זה כמוחזר' : confirmModal.actionType === 'cancelRent' ? 'לבטל את השכרת הפריט' : 'לבטל את החזרת הפריט'}?
             </p>
             {!isFullyPaid && (confirmModal.actionType === 'rent' || confirmModal.actionType === 'return') && (
@@ -1027,7 +1027,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
               </button>
               <button 
                 onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}
-                style={{ padding: '0.6rem 1.2rem', background: '#f1f5f9', color: '#64748b', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', flex: 1 }}
+                style={{ padding: '0.6rem 1.2rem', background: 'var(--element-bg)', color: 'var(--text-muted)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold', flex: 1 }}
               >
                 ביטול
               </button>
@@ -1038,9 +1038,9 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
 
       {showManualScanModal && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 100000, backdropFilter: 'blur(4px)' }}>
-          <div className="animate-fade-in" style={{ backgroundColor: 'white', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid #e2e8f0' }}>
-            <h3 style={{ margin: '0 0 1rem 0', color: '#0f172a', textAlign: 'center' }}>הזנת ברקוד ידנית</h3>
-            <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '1.5rem', textAlign: 'center' }}>הזן את הברקוד המופיע על הפריט כדי לאשר את הפעולה.</p>
+          <div className="animate-fade-in" style={{ backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '2rem', width: '90%', maxWidth: '400px', boxShadow: '0 10px 25px rgba(0,0,0,0.2)', border: '1px solid var(--element-border)' }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: 'var(--text-main)', textAlign: 'center' }}>הזנת ברקוד ידנית</h3>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.95rem', marginBottom: '1.5rem', textAlign: 'center' }}>הזן את הברקוד המופיע על הפריט כדי לאשר את הפעולה.</p>
             <form onSubmit={async (e) => {
               e.preventDefault();
               setShowManualScanModal(false);
@@ -1057,7 +1057,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                   placeholder="סרוק או הקלד ברקוד..."
                   value={manualBarcode}
                   onChange={(e) => setManualBarcode(e.target.value)}
-                  style={{ width: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '10px', border: '2px solid #cbd5e1', fontSize: '1rem', outline: 'none', boxSizing: 'border-box' }}
+                  style={{ width: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', borderRadius: '10px', border: '2px solid var(--element-border)', fontSize: '1rem', outline: 'none', boxSizing: 'border-box' }}
                 />
                 <Scan size={18} color="#64748b" style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)' }} />
               </div>
@@ -1065,7 +1065,7 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
                 בצע סריקה
               </button>
             </form>
-            <button onClick={() => { setShowManualScanModal(false); setManualBarcode(''); }} style={{ marginTop: '1rem', width: '100%', padding: '0.8rem', background: 'transparent', color: '#64748b', border: 'none', cursor: 'pointer' }}>
+            <button onClick={() => { setShowManualScanModal(false); setManualBarcode(''); }} style={{ marginTop: '1rem', width: '100%', padding: '0.8rem', background: 'transparent', color: 'var(--text-muted)', border: 'none', cursor: 'pointer' }}>
               ביטול
             </button>
           </div>
@@ -1079,9 +1079,9 @@ export default function OrderItemsManager({ orderId, order, items, onItemsChange
           style={{
             width: '100%',
             padding: '1.2rem',
-            background: '#f8fafc',
+            background: 'var(--element-bg)',
             color: '#3b82f6',
-            border: '2px dashed #cbd5e1',
+            border: '2px dashed var(--element-border)',
             borderRadius: '12px',
             cursor: 'pointer',
             fontWeight: '600',

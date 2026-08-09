@@ -232,7 +232,7 @@ export default function HebrewDateRangePicker({
               onClick={() => handleSelectDay(panelType, d, month, year)}
               onMouseOver={(e) => {
                 if (!isBoundary && !isInRange) {
-                  e.currentTarget.style.background = "var(--element-bg, #f1f5f9)";
+                  e.currentTarget.style.background = "var(--element-bg)";
                 }
               }}
               onMouseOut={(e) => {
@@ -250,7 +250,7 @@ export default function HebrewDateRangePicker({
                   : (isInRange ? "rgba(168,85,247,0.12)" : "transparent"),
                 color: isBoundary 
                   ? "white" 
-                  : (isInRange ? "var(--primary-color, #a855f7)" : "var(--text-main, #0f172a)"),
+                  : (isInRange ? "var(--primary-color, #a855f7)" : "var(--text-main)"),
                 fontWeight: (isBoundary || isInRange) ? "bold" : "500",
                 display: "flex",
                 flexDirection: "column",
@@ -263,7 +263,7 @@ export default function HebrewDateRangePicker({
             >
               <div style={{ fontSize: '0.95rem' }}>{HEBREW_DAYS[d]}</div>
               {isSaturday && parashaName && (
-                <div style={{ fontSize: '0.62rem', color: isBoundary ? '#f0f0f0' : 'var(--text-muted, #64748b)', lineHeight: '1' }}>
+                <div style={{ fontSize: '0.62rem', color: isBoundary ? '#f0f0f0' : 'var(--text-muted)', lineHeight: '1' }}>
                   {parashaName}
                 </div>
               )}
@@ -318,7 +318,7 @@ export default function HebrewDateRangePicker({
           <button 
             type="button" 
             onClick={handlePrevMonth} 
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', cursor: 'pointer', background: "var(--element-bg, #f1f5f9)", border: "1px solid var(--border-main, #e2e8f0)", borderRadius: "8px", color: "var(--text-main, #0f172a)", transition: "all 0.2s" }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', cursor: 'pointer', background: "var(--element-bg)", border: "1px solid var(--border-main)", borderRadius: "8px", color: "var(--text-main)", transition: "all 0.2s" }}
             title="חודש קודם"
           >
             <ChevronRight size={18} />
@@ -331,7 +331,7 @@ export default function HebrewDateRangePicker({
                 const newMonth = parseInt(e.target.value);
                 setCurrentPanel(p => ({ ...p, month: newMonth }));
               }}
-              style={{ padding: '4px 6px', borderRadius: "8px", border: "1px solid var(--border-main, #e2e8f0)", background: "var(--card-bg, #ffffff)", color: "var(--text-main, #0f172a)", fontWeight: "bold", fontSize: "0.85rem", cursor: "pointer", outline: "none" }}
+              style={{ padding: '4px 6px', borderRadius: "8px", border: "1px solid var(--border-main)", background: "var(--card-bg)", color: "var(--text-main)", fontWeight: "bold", fontSize: "0.85rem", cursor: "pointer", outline: "none" }}
             >
               {months.map(m => (
                 <option key={m.value} value={m.value}>{m.label}</option>
@@ -350,7 +350,7 @@ export default function HebrewDateRangePicker({
                   return { ...p, year: newYear, month: newMonth };
                 });
               }}
-              style={{ padding: '4px 6px', borderRadius: "8px", border: "1px solid var(--border-main, #e2e8f0)", background: "var(--card-bg, #ffffff)", color: "var(--text-main, #0f172a)", fontWeight: "bold", fontSize: "0.85rem", cursor: "pointer", outline: "none" }}
+              style={{ padding: '4px 6px', borderRadius: "8px", border: "1px solid var(--border-main)", background: "var(--card-bg)", color: "var(--text-main)", fontWeight: "bold", fontSize: "0.85rem", cursor: "pointer", outline: "none" }}
             >
               {yearOptions.map(y => (
                 <option key={y} value={y}>{gematriya(y)} ({y})</option>
@@ -361,7 +361,7 @@ export default function HebrewDateRangePicker({
           <button 
             type="button" 
             onClick={handleNextMonth} 
-            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', cursor: 'pointer', background: "var(--element-bg, #f1f5f9)", border: "1px solid var(--border-main, #e2e8f0)", borderRadius: "8px", color: "var(--text-main, #0f172a)", transition: "all 0.2s" }}
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '32px', height: '32px', cursor: 'pointer', background: "var(--element-bg)", border: "1px solid var(--border-main)", borderRadius: "8px", color: "var(--text-main)", transition: "all 0.2s" }}
             title="חודש הבא"
           >
             <ChevronLeft size={18} />
@@ -372,9 +372,9 @@ export default function HebrewDateRangePicker({
         <div style={{ 
           display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '4px', textAlign: 'center', 
           marginBottom: '8px', padding: '6px', 
-          background: 'var(--element-bg, #f1f5f9)', 
-          borderRadius: '10px', fontWeight: '700', fontSize: '0.8rem', color: 'var(--text-muted, #64748b)',
-          border: '1px solid var(--border-main, #e2e8f0)'
+          background: 'var(--element-bg)', 
+          borderRadius: '10px', fontWeight: '700', fontSize: '0.8rem', color: 'var(--text-muted)',
+          border: '1px solid var(--border-main)'
         }}>
           <div>א'</div>
           <div>ב'</div>
@@ -404,38 +404,38 @@ export default function HebrewDateRangePicker({
         style={{ 
           display: 'flex', 
           alignItems: 'center', 
-          border: '1px solid #ddd', 
+          border: '1px solid var(--element-border)', 
           borderRadius: '24px', 
-          background: 'var(--card-bg, #ffffff)', 
+          background: 'var(--card-bg)', 
           overflow: 'hidden', 
           height: '45px', 
           width: '100%', 
           cursor: 'pointer',
           boxShadow: isOpen ? '0 0 0 2px rgba(168, 85, 247, 0.2)' : '0 2px 5px rgba(0,0,0,0.05)',
-          borderColor: isOpen ? 'var(--primary-color, #a855f7)' : '#ddd',
+          borderColor: isOpen ? 'var(--primary-color, #a855f7)' : 'var(--element-border)',
           transition: 'all 0.2s ease'
         }}
       >
         <div style={{ flex: 1, padding: '0 10px', display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted, #64748b)', whiteSpace: 'nowrap' }}>מתאריך:</span>
-          <span style={{ fontSize: '0.88rem', color: tempStart ? 'var(--text-main, #0f172a)' : 'var(--text-muted, #64748b)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>מתאריך:</span>
+          <span style={{ fontSize: '0.88rem', color: tempStart ? 'var(--text-main)' : 'var(--text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
             {fromLabel}
           </span>
         </div>
         
-        <div style={{ padding: '0 4px', color: 'var(--text-muted, #64748b)', display: 'flex', alignItems: 'center' }}>
+        <div style={{ padding: '0 4px', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
           <ArrowLeft size={14} />
         </div>
 
-        <div style={{ flex: 1, padding: '0 10px', display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', borderRight: '1px solid var(--element-border, #cbd5e1)' }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted, #64748b)', whiteSpace: 'nowrap' }}>עד תאריך:</span>
-          <span style={{ fontSize: '0.88rem', color: tempEnd ? 'var(--text-main, #0f172a)' : 'var(--text-muted, #64748b)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+        <div style={{ flex: 1, padding: '0 10px', display: 'flex', alignItems: 'center', gap: '6px', overflow: 'hidden', borderRight: '1px solid var(--element-border)' }}>
+          <span style={{ fontSize: '0.75rem', fontWeight: 'bold', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>עד תאריך:</span>
+          <span style={{ fontSize: '0.88rem', color: tempEnd ? 'var(--text-main)' : 'var(--text-muted)', textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
             {toLabel}
           </span>
         </div>
 
-        <div style={{ width: '44px', height: '100%', borderRight: '1px solid var(--element-border, #cbd5e1)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
-          <Calendar size={18} style={{ color: 'var(--text-muted, #64748b)' }} />
+        <div style={{ width: '44px', height: '100%', borderRight: '1px solid var(--element-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--element-bg)' }}>
+          <Calendar size={18} style={{ color: 'var(--text-muted)' }} />
         </div>
       </div>
 
@@ -450,8 +450,8 @@ export default function HebrewDateRangePicker({
               width: '680px',
               maxWidth: '96vw',
               maxHeight: '92vh',
-              background: "var(--card-bg, #ffffff)", 
-              border: "1px solid var(--border-main, #e2e8f0)", 
+              background: "var(--card-bg)", 
+              border: "1px solid var(--border-main)", 
               borderRadius: "20px", 
               padding: "20px", 
               boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.25)", 
@@ -465,11 +465,11 @@ export default function HebrewDateRangePicker({
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-main, #e2e8f0)', paddingBottom: '12px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-main)', paddingBottom: '12px', marginBottom: '12px' }}>
               <div>
-                <h3 style={{ margin: 0, color: 'var(--text-main, #0f172a)', fontWeight: '800', fontSize: '1.2rem' }}>בחירת טווח תאריכים עברי</h3>
+                <h3 style={{ margin: 0, color: 'var(--text-main)', fontWeight: '800', fontSize: '1.2rem' }}>בחירת טווח תאריכים עברי</h3>
                 {tempStart && (
-                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted, #64748b)' }}>
+                  <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
                     טווח נבחר: <strong>{getHebrewLabel(tempStart)}</strong> עד <strong>{tempEnd ? getHebrewLabel(tempEnd) : 'אנא בחר...'}</strong>
                   </p>
                 )}
@@ -477,19 +477,19 @@ export default function HebrewDateRangePicker({
               <button 
                 type="button" 
                 onClick={() => setIsOpen(false)} 
-                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted, #64748b)', padding: '4px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', padding: '4px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
               >
                 <X size={22} />
               </button>
             </div>
 
             {/* Quick Presets */}
-            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px', paddingBottom: '12px', borderBottom: '1px solid var(--border-main, #e2e8f0)' }}>
-              <span style={{ fontSize: '0.85rem', alignSelf: 'center', fontWeight: 'bold', color: 'var(--text-muted, #64748b)' }}>בחירה מהירה:</span>
-              <button type="button" onClick={() => applyPreset(7)} style={{ padding: '6px 12px', background: 'var(--element-bg, #f1f5f9)', border: 'none', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-main, #0f172a)' }}>שבוע (7 ימים)</button>
-              <button type="button" onClick={() => applyPreset(14)} style={{ padding: '6px 12px', background: 'var(--element-bg, #f1f5f9)', border: 'none', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-main, #0f172a)' }}>שבועיים (14 יום)</button>
-              <button type="button" onClick={() => applyPreset(30)} style={{ padding: '6px 12px', background: 'var(--element-bg, #f1f5f9)', border: 'none', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-main, #0f172a)' }}>חודש (30 יום)</button>
-              <button type="button" onClick={() => applyPreset(90)} style={{ padding: '6px 12px', background: 'var(--element-bg, #f1f5f9)', border: 'none', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-main, #0f172a)' }}>3 חודשים</button>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '14px', paddingBottom: '12px', borderBottom: '1px solid var(--border-main)' }}>
+              <span style={{ fontSize: '0.85rem', alignSelf: 'center', fontWeight: 'bold', color: 'var(--text-muted)' }}>בחירה מהירה:</span>
+              <button type="button" onClick={() => applyPreset(7)} style={{ padding: '6px 12px', background: 'var(--element-bg)', border: 'none', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-main)' }}>שבוע (7 ימים)</button>
+              <button type="button" onClick={() => applyPreset(14)} style={{ padding: '6px 12px', background: 'var(--element-bg)', border: 'none', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-main)' }}>שבועיים (14 יום)</button>
+              <button type="button" onClick={() => applyPreset(30)} style={{ padding: '6px 12px', background: 'var(--element-bg)', border: 'none', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-main)' }}>חודש (30 יום)</button>
+              <button type="button" onClick={() => applyPreset(90)} style={{ padding: '6px 12px', background: 'var(--element-bg)', border: 'none', borderRadius: '8px', fontSize: '0.82rem', fontWeight: '600', cursor: 'pointer', transition: 'all 0.2s', color: 'var(--text-main)' }}>3 חודשים</button>
               <button 
                 type="button" 
                 onClick={() => {
@@ -516,17 +516,17 @@ export default function HebrewDateRangePicker({
               {renderPanel('from', fromPanel, setFromPanel, '')}
               
               {/* Divider in desktop */}
-              <div style={{ width: '1px', background: 'var(--border-main, #e2e8f0)', alignSelf: 'stretch' }} className="calendar-divider-y" />
+              <div style={{ width: '1px', background: 'var(--border-main)', alignSelf: 'stretch' }} className="calendar-divider-y" />
               
               {renderPanel('to', toPanel, setToPanel, '')}
             </div>
 
             {/* Footer actions */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-main, #e2e8f0)', paddingTop: '14px', marginTop: 'auto', gap: '8px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border-main)', paddingTop: '14px', marginTop: 'auto', gap: '8px' }}>
               <button 
                 type="button" 
                 onClick={handleClear} 
-                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border-main, #e2e8f0)', background: 'var(--element-bg, #f1f5f9)', color: 'var(--text-main, #0f172a)', fontWeight: 'bold', fontSize: '0.88rem', cursor: 'pointer' }}
+                style={{ padding: '8px 16px', borderRadius: '8px', border: '1px solid var(--border-main)', background: 'var(--element-bg)', color: 'var(--text-main)', fontWeight: 'bold', fontSize: '0.88rem', cursor: 'pointer' }}
               >
                 נקה בחירה
               </button>
@@ -535,7 +535,7 @@ export default function HebrewDateRangePicker({
                 <button 
                   type="button" 
                   onClick={() => setIsOpen(false)} 
-                  style={{ padding: '8px 18px', borderRadius: '8px', border: '1px solid var(--border-main, #e2e8f0)', background: 'var(--card-bg, #ffffff)', color: 'var(--text-main, #0f172a)', fontWeight: 'bold', fontSize: '0.88rem', cursor: 'pointer' }}
+                  style={{ padding: '8px 18px', borderRadius: '8px', border: '1px solid var(--border-main)', background: 'var(--card-bg)', color: 'var(--text-main)', fontWeight: 'bold', fontSize: '0.88rem', cursor: 'pointer' }}
                 >
                   ביטול
                 </button>
@@ -549,7 +549,7 @@ export default function HebrewDateRangePicker({
                     fontWeight: 'bold', 
                     fontSize: '0.88rem', 
                     cursor: (!tempStart || !tempEnd) ? 'not-allowed' : 'pointer', 
-                    background: (!tempStart || !tempEnd) ? '#cbd5e1' : 'var(--gradient-primary, linear-gradient(135deg, #a855f7 0%, #7c3aed 100%))', 
+                    background: (!tempStart || !tempEnd) ? 'var(--element-border)' : 'var(--gradient-primary, linear-gradient(135deg, #a855f7 0%, #7c3aed 100%))', 
                     color: 'white', 
                     border: 'none', 
                     boxShadow: (!tempStart || !tempEnd) ? 'none' : '0 4px 12px rgba(168,85,247,0.3)',

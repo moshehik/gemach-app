@@ -84,25 +84,25 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
 
   return createPortal(
     <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(4px)' }}>
-      <div className="modal-content animate-fade-in" style={{ width: '95%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '0', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid #e2e8f0', direction: 'rtl' }}>
+      <div className="modal-content animate-fade-in" style={{ width: '95%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', backgroundColor: 'var(--card-bg)', borderRadius: '16px', padding: '0', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', border: '1px solid var(--element-border)', direction: 'rtl' }}>
         
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', background: 'linear-gradient(to right, #f8fafc, #f1f5f9)', borderBottom: '1px solid #e2e8f0', borderTopRightRadius: '16px', borderTopLeftRadius: '16px' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem', background: 'linear-gradient(to right, var(--element-bg), var(--element-bg))', borderBottom: '1px solid var(--element-border)', borderTopRightRadius: '16px', borderTopLeftRadius: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div style={{ background: '#e0f2fe', color: '#0284c7', padding: '0.5rem', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <CalendarIcon size={24} />
             </div>
-            <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem', fontWeight: 'bold' }}>
+            <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem', fontWeight: 'bold' }}>
               זמינות: {item.dressItem?.dress?.name || item.description || 'פריט'} ({item.sizeText || item.size || 'ללא מידה'})
             </h2>
           </div>
-          <button data-agy-id="itemcapacitymodal_button_1" onClick={onClose} style={{ background: 'var(--card-bg)', border: '1px solid #e2e8f0', cursor: 'pointer', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+          <button data-agy-id="itemcapacitymodal_button_1" onClick={onClose} style={{ background: 'var(--card-bg)', border: '1px solid var(--element-border)', cursor: 'pointer', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
             <X size={20} />
           </button>
         </div>
 
         <div style={{ padding: '2rem' }}>
-            <div style={{ marginBottom: '1.5rem', color: '#475569', fontSize: '1.1rem' }}>
+            <div style={{ marginBottom: '1.5rem', color: 'var(--text-muted)', fontSize: '1.1rem' }}>
                 <p style={{ margin: '0 0 0.5rem 0' }}><strong>תאריך אירוע:</strong> {new Date(order.eventDate).toLocaleDateString('he-IL')} {getHebrewDateString(order.eventDate)}</p>
                 <p style={{ margin: 0, fontSize: '0.95rem', opacity: 0.8 }}>(מוצג טווח של חודש לפני ואחרי)</p>
             </div>
@@ -110,7 +110,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
             {loading && (
                 <div style={{ display: 'flex', justifyContent: 'center', padding: '3rem 0', flexDirection: 'column', alignItems: 'center' }}>
                     <div className="spinner" style={{ width: '40px', height: '40px', border: '3px solid #f3f3f3', borderTop: '3px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                    <p style={{ marginTop: '1rem', color: '#64748b' }}>טוען נתוני תפוסה...</p>
+                    <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>טוען נתוני תפוסה...</p>
                 </div>
             )}
             
@@ -136,7 +136,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
 
                 {results.occupiedCount > 0 && (
                 <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                  <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+                  <div style={{ display: 'flex', background: 'var(--element-bg)', padding: '4px', borderRadius: '8px' }}>
                     <button
                       data-agy-id="itemcapacitymodal_view_list_btn"
                       type="button"
@@ -182,21 +182,21 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
                 )}
 
                 {viewMode === 'list' && (results.occupiedCount > 0 ? (
-                <div style={{ background: 'var(--card-bg)', border: '1px solid #e2e8f0', borderRadius: '12px', overflow: 'hidden' }}>
+                <div style={{ background: 'var(--card-bg)', border: '1px solid var(--element-border)', borderRadius: '12px', overflow: 'hidden' }}>
                     <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                     <thead>
-                        <tr style={{ background: '#f8fafc', borderBottom: '2px solid #e2e8f0' }}>
-                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>תאריך אירוע</th>
-                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>שם לקוח</th>
-                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>כמות בתפוסה</th>
-                        <th style={{ padding: '0.5rem 1rem', color: '#475569', fontWeight: '600' }}>הזמנה</th>
+                        <tr style={{ background: 'var(--element-bg)', borderBottom: '2px solid var(--element-border)' }}>
+                        <th style={{ padding: '0.5rem 1rem', color: 'var(--text-muted)', fontWeight: '600' }}>תאריך אירוע</th>
+                        <th style={{ padding: '0.5rem 1rem', color: 'var(--text-muted)', fontWeight: '600' }}>שם לקוח</th>
+                        <th style={{ padding: '0.5rem 1rem', color: 'var(--text-muted)', fontWeight: '600' }}>כמות בתפוסה</th>
+                        <th style={{ padding: '0.5rem 1rem', color: 'var(--text-muted)', fontWeight: '600' }}>הזמנה</th>
                         </tr>
                     </thead>
                     <tbody>
                         {[...results.occupiedOrders].sort((a,b) => new Date(a.eventDate) - new Date(b.eventDate)).map(occOrder => (
-                        <tr key={occOrder.id} style={{ borderBottom: '1px solid #f1f5f9', background: occOrder.orderId === order.orderId ? '#eff6ff' : 'transparent', transition: 'background-color 0.2s' }}>
+                        <tr key={occOrder.id} style={{ borderBottom: '1px solid var(--element-border)', background: occOrder.orderId === order.orderId ? '#eff6ff' : 'transparent', transition: 'background-color 0.2s' }}>
                             <td style={{ padding: '0.5rem 1rem', fontWeight: occOrder.orderId === order.orderId ? 'bold' : 'normal' }}>
-                                {new Date(occOrder.eventDate).toLocaleDateString('he-IL')} <span style={{ color: '#64748b', fontSize: '0.9em', margin: '0 0.3rem' }}>({getHebrewDateString(occOrder.eventDate)})</span>
+                                {new Date(occOrder.eventDate).toLocaleDateString('he-IL')} <span style={{ color: 'var(--text-muted)', fontSize: '0.9em', margin: '0 0.3rem' }}>({getHebrewDateString(occOrder.eventDate)})</span>
                                 {occOrder.orderId === order.orderId && <span style={{ marginRight: '0.5rem', fontSize: '0.8rem', background: '#3b82f6', color: 'white', padding: '0.1rem 0.5rem', borderRadius: '12px' }}>הזמנה נוכחית</span>}
                             </td>
                             <td style={{ padding: '0.5rem 1rem' }}>{occOrder.customerName}</td>
@@ -208,7 +208,7 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
                                 href={`/orders/${occOrder.orderId}`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                style={{ padding: '0.3rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', background: '#f1f5f9', color: '#3b82f6', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', border: '1px solid #e2e8f0' }}
+                                style={{ padding: '0.3rem 1rem', display: 'inline-flex', alignItems: 'center', gap: '0.4rem', textDecoration: 'none', background: 'var(--element-bg)', color: '#3b82f6', borderRadius: '8px', fontWeight: '600', transition: 'all 0.2s', border: '1px solid var(--element-border)' }}
                                 onMouseOver={e => { e.currentTarget.style.background = '#e2e8f0'; }}
                                 onMouseOut={e => { e.currentTarget.style.background = '#f1f5f9'; }}
                             >
@@ -221,9 +221,9 @@ export default function ItemCapacityModal({ item, order, isOpen, onClose }) {
                     </table>
                 </div>
                 ) : (
-                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px dashed #cbd5e1' }}>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', backgroundColor: 'var(--element-bg)', borderRadius: '12px', border: '1px dashed var(--element-border)' }}>
                     <CalendarIcon size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
-                    <h3 style={{ margin: '0 0 0.5rem 0', color: '#334155' }}>אין הזמנות תפוסות בטווח התאריכים</h3>
+                    <h3 style={{ margin: '0 0 0.5rem 0', color: 'var(--text-main)' }}>אין הזמנות תפוסות בטווח התאריכים</h3>
                     <p style={{ margin: 0 }}>הפריט פנוי לחלוטין בתאריכים אלו.</p>
                 </div>
                 ))}

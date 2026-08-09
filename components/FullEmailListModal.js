@@ -101,7 +101,7 @@ export default function FullEmailListModal({ isOpen, onClose }) {
     >
       <div 
         style={{
-          background: '#ffffff',
+          background: 'var(--card-bg)',
           borderRadius: '24px',
           width: '100%',
           maxWidth: '1000px',
@@ -174,8 +174,8 @@ export default function FullEmailListModal({ isOpen, onClose }) {
         <div 
           style={{
             padding: '1.25rem 2rem',
-            background: '#f8fafc',
-            borderBottom: '1px solid #e2e8f0',
+            background: 'var(--element-bg)',
+            borderBottom: '1px solid var(--element-border)',
             display: 'flex',
             flexWrap: 'wrap',
             gap: '1rem',
@@ -187,7 +187,7 @@ export default function FullEmailListModal({ isOpen, onClose }) {
           <div style={{ position: 'relative', flex: 1, minWidth: '280px' }}>
             <Search 
               size={18} 
-              style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8' }} 
+              style={{ position: 'absolute', right: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} 
             />
             <input 
               type="text"
@@ -198,7 +198,7 @@ export default function FullEmailListModal({ isOpen, onClose }) {
                 width: '100%',
                 padding: '0.65rem 2.8rem 0.65rem 1rem',
                 borderRadius: '12px',
-                border: '1px solid #cbd5e1',
+                border: '1px solid var(--element-border)',
                 outline: 'none',
                 fontSize: '0.95rem',
                 boxSizing: 'border-box'
@@ -239,17 +239,17 @@ export default function FullEmailListModal({ isOpen, onClose }) {
                 alignItems: 'center',
                 gap: '0.5rem',
                 padding: '0.65rem 1.25rem',
-                background: 'white',
-                color: '#0f172a',
-                border: '1px solid #cbd5e1',
+                background: 'var(--card-bg)',
+                color: 'var(--text-main)',
+                border: '1px solid var(--element-border)',
                 borderRadius: '12px',
                 fontWeight: '600',
                 fontSize: '0.95rem',
                 cursor: 'pointer',
                 transition: 'all 0.2s'
               }}
-              onMouseOver={(e) => e.currentTarget.style.background = '#f1f5f9'}
-              onMouseOut={(e) => e.currentTarget.style.background = 'white'}
+              onMouseOver={(e) => e.currentTarget.style.background = 'var(--element-bg)'}
+              onMouseOut={(e) => e.currentTarget.style.background = 'var(--card-bg)'}
             >
               <Download size={18} color="#2563eb" />
               ייצא ל-CSV
@@ -260,18 +260,18 @@ export default function FullEmailListModal({ isOpen, onClose }) {
         {/* Content Body - Table */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '1rem 2rem' }}>
           {loading ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
               <RefreshCw size={32} className="animate-spin" style={{ margin: '0 auto 1rem auto', color: '#2563eb' }} />
               <div>טוען רשימת מיילים...</div>
             </div>
           ) : filteredEmails.length === 0 ? (
-            <div style={{ padding: '3rem', textAlign: 'center', color: '#64748b' }}>
+            <div style={{ padding: '3rem', textAlign: 'center', color: 'var(--text-muted)' }}>
               לא נמצאו מיילים התואמים לחיפוש.
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'right', fontSize: '0.95rem' }}>
               <thead>
-                <tr style={{ borderBottom: '2px solid #e2e8f0', color: '#64748b' }}>
+                <tr style={{ borderBottom: '2px solid var(--element-border)', color: 'var(--text-muted)' }}>
                   <th style={{ padding: '0.75rem 1rem' }}>#</th>
                   <th style={{ padding: '0.75rem 1rem' }}>שם לקוח</th>
                   <th style={{ padding: '0.75rem 1rem' }}>כתובת דוא"ל</th>
@@ -285,28 +285,28 @@ export default function FullEmailListModal({ isOpen, onClose }) {
                   <tr 
                     key={item.id || idx}
                     style={{
-                      borderBottom: '1px solid #f1f5f9',
+                      borderBottom: '1px solid var(--element-border)',
                       transition: 'background 0.15s'
                     }}
-                    onMouseOver={(e) => e.currentTarget.style.background = '#f8fafc'}
+                    onMouseOver={(e) => e.currentTarget.style.background = 'var(--element-bg)'}
                     onMouseOut={(e) => e.currentTarget.style.background = 'transparent'}
                   >
-                    <td style={{ padding: '0.75rem 1rem', color: '#94a3b8', fontSize: '0.85rem' }}>{startIndex + idx + 1}</td>
-                    <td style={{ padding: '0.75rem 1rem', fontWeight: '600', color: '#0f172a' }}>{item.name}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>{startIndex + idx + 1}</td>
+                    <td style={{ padding: '0.75rem 1rem', fontWeight: '600', color: 'var(--text-main)' }}>{item.name}</td>
                     <td style={{ padding: '0.75rem 1rem', color: '#2563eb', fontWeight: '500', direction: 'ltr', textAlign: 'right' }}>
                       {item.email}
                     </td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#475569' }}>{item.phone || '-'}</td>
-                    <td style={{ padding: '0.75rem 1rem', color: '#475569' }}>{item.city || '-'}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>{item.phone || '-'}</td>
+                    <td style={{ padding: '0.75rem 1rem', color: 'var(--text-muted)' }}>{item.city || '-'}</td>
                     <td style={{ padding: '0.75rem 1rem', textAlign: 'center' }}>
                       <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
                         <button
                           onClick={() => handleCopySingle(item.email, item.id)}
                           title="העתק מייל"
                           style={{
-                            background: copiedSingle === item.id ? '#f0fdf4' : '#f1f5f9',
-                            color: copiedSingle === item.id ? '#16a34a' : '#475569',
-                            border: '1px solid #e2e8f0',
+                            background: copiedSingle === item.id ? '#f0fdf4' : 'var(--element-bg)',
+                            color: copiedSingle === item.id ? '#16a34a' : 'var(--text-muted)',
+                            border: '1px solid var(--element-border)',
                             borderRadius: '8px',
                             padding: '0.4rem 0.6rem',
                             cursor: 'pointer',
@@ -352,14 +352,14 @@ export default function FullEmailListModal({ isOpen, onClose }) {
           <div 
             style={{
               padding: '1rem 2rem',
-              background: '#f8fafc',
-              borderTop: '1px solid #e2e8f0',
+              background: 'var(--element-bg)',
+              borderTop: '1px solid var(--element-border)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center'
             }}
           >
-            <div style={{ color: '#475569', fontSize: '0.95rem' }}>
+            <div style={{ color: 'var(--text-muted)', fontSize: '0.95rem' }}>
               מציג <strong>{startIndex + 1}</strong> עד <strong>{Math.min(startIndex + itemsPerPage, filteredEmails.length)}</strong> מתוך <strong>{filteredEmails.length}</strong> רשומות
             </div>
             
@@ -370,9 +370,9 @@ export default function FullEmailListModal({ isOpen, onClose }) {
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: '36px', height: '36px', borderRadius: '8px',
-                  background: currentPage === 1 ? '#e2e8f0' : 'white',
-                  color: currentPage === 1 ? '#94a3b8' : '#0f172a',
-                  border: '1px solid #cbd5e1',
+                  background: currentPage === 1 ? 'var(--element-border)' : 'var(--card-bg)',
+                  color: currentPage === 1 ? 'var(--text-muted)' : 'var(--text-main)',
+                  border: '1px solid var(--element-border)',
                   cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s'
                 }}
@@ -380,7 +380,7 @@ export default function FullEmailListModal({ isOpen, onClose }) {
                 <ChevronRight size={18} />
               </button>
               
-              <span style={{ fontSize: '0.95rem', fontWeight: '600', color: '#0f172a', margin: '0 0.5rem' }}>
+              <span style={{ fontSize: '0.95rem', fontWeight: '600', color: 'var(--text-main)', margin: '0 0.5rem' }}>
                 עמוד {currentPage} מתוך {totalPages}
               </span>
               
@@ -390,9 +390,9 @@ export default function FullEmailListModal({ isOpen, onClose }) {
                 style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: '36px', height: '36px', borderRadius: '8px',
-                  background: currentPage === totalPages ? '#e2e8f0' : 'white',
-                  color: currentPage === totalPages ? '#94a3b8' : '#0f172a',
-                  border: '1px solid #cbd5e1',
+                  background: currentPage === totalPages ? 'var(--element-border)' : 'var(--card-bg)',
+                  color: currentPage === totalPages ? 'var(--text-muted)' : 'var(--text-main)',
+                  border: '1px solid var(--element-border)',
                   cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
                   transition: 'all 0.2s'
                 }}

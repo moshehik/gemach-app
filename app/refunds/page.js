@@ -39,7 +39,7 @@ async function fetchDebtOrdersPage(filterStatus, page, searchTerm) {
 /** מציג את הסטטוס האחרון (DEBT_APPROVED/CANCEL_DEBT_APPROVAL) עבור הזמנה אחת בטבלת חובות. */
 function ApprovalCell({ orderId, approval, onUndo, isBusy }) {
   if (!approval || !approval.isApproved) {
-    return <span style={{ color: '#94a3b8', fontSize: '0.8rem' }}>לא אושר</span>;
+    return <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>לא אושר</span>;
   }
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', alignItems: 'flex-start' }}>
@@ -130,7 +130,7 @@ function DebtsTable({
                   const approval = approvals[order.orderId];
                   const hebrewDate = hebrewDateFor(order);
                   return (
-                    <tr key={order.orderId} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                    <tr key={order.orderId} style={{ borderBottom: '1px solid var(--element-border)' }}>
                       <td style={{ padding: '0.4rem 0.5rem', textAlign: 'center' }}>
                         {approval?.isApproved ? (
                           <CheckCircle size={18} color="#16a34a" />
@@ -143,8 +143,8 @@ function DebtsTable({
                           />
                         )}
                       </td>
-                      <td style={{ padding: '0.4rem 0.5rem', color: '#64748b' }}>
-                        <div style={{ fontWeight: '500', color: '#334155' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'ללא תאריך'}</div>
+                      <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)' }}>
+                        <div style={{ fontWeight: '500', color: 'var(--text-main)' }}>{order.eventDate ? new Date(order.eventDate).toLocaleDateString('he-IL') : 'ללא תאריך'}</div>
                         {hebrewDate && <div style={{ fontSize: '0.8rem' }}>{hebrewDate}</div>}
                       </td>
                       <td style={{ padding: '0.4rem 0.5rem' }}>
@@ -153,7 +153,7 @@ function DebtsTable({
                             {order.customerName || 'לקוח לא ידוע'}
                           </Link>
                         </div>
-                        <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{order.customerPhone || ''}</div>
+                        <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{order.customerPhone || ''}</div>
                       </td>
                       <td style={{ padding: '0.4rem 0.5rem' }}>
                         <Link href={`/orders/${order.orderId}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: '#0ea5e9', textDecoration: 'none', fontWeight: 'bold', background: '#e0f2fe', padding: '0.4rem 0.8rem', borderRadius: '8px', transition: 'background 0.2s' }} onMouseOver={(e) => e.currentTarget.style.background = '#bae6fd'} onMouseOut={(e) => e.currentTarget.style.background = '#e0f2fe'}>
@@ -161,7 +161,7 @@ function DebtsTable({
                           <ArrowUpRight size={14} />
                         </Link>
                       </td>
-                      <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: '#334155' }}>
+                      <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: 'var(--text-main)' }}>
                         ₪{order.totalAmount}
                       </td>
                       <td style={{ padding: '0.4rem 0.5rem', color: '#16a34a' }}>
@@ -666,9 +666,9 @@ export default function RefundsPage() {
               </thead>
               <tbody>
                 {filteredRefunds.map(refund => (
-                  <tr key={refund.id} style={{ borderBottom: '1px solid #f1f5f9', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
-                    <td style={{ padding: '0.4rem 0.5rem', color: '#64748b' }}>
-                      <div style={{ fontWeight: '500', color: '#334155' }}>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</div>
+                  <tr key={refund.id} style={{ borderBottom: '1px solid var(--element-border)', transition: 'background-color 0.2s' }} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'transparent'}>
+                    <td style={{ padding: '0.4rem 0.5rem', color: 'var(--text-muted)' }}>
+                      <div style={{ fontWeight: '500', color: 'var(--text-main)' }}>{new Date(refund.createdAt).toLocaleDateString('he-IL')}</div>
                       {refund.isExecuted && <div style={{ fontSize: '0.8rem' }}>בוצע: {new Date(refund.executionDate).toLocaleDateString('he-IL')}</div>}
                     </td>
                     <td style={{ padding: '0.4rem 0.5rem' }}>
@@ -677,8 +677,8 @@ export default function RefundsPage() {
                           {refund.customer ? `${refund.customer.firstName || ''} ${refund.customer.lastName || ''}`.trim() : 'לקוח לא ידוע'}
                         </Link>
                       </div>
-                      <div style={{ fontSize: '0.85rem', color: '#64748b' }}>{refund.customer?.phone1}</div>
-                      {refund.email && <div style={{ fontSize: '0.85rem', color: '#64748b', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Mail data-element-name="רכיב_page_10" size={12}/> {refund.email}</div>}
+                      <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{refund.customer?.phone1}</div>
+                      {refund.email && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.2rem' }}><Mail data-element-name="רכיב_page_10" size={12}/> {refund.email}</div>}
                     </td>
                     <td style={{ padding: '0.4rem 0.5rem' }}>
                       {refund.orderId ? (
@@ -690,25 +690,25 @@ export default function RefundsPage() {
                     </td>
                     <td style={{ padding: '0.4rem 0.5rem', fontWeight: 'bold', color: '#ef4444', fontSize: '1.1rem' }}>
                       ₪{refund.amount}
-                      {refund.reason && <div style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 'normal' }}>{refund.reason}</div>}
+                      {refund.reason && <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 'normal' }}>{refund.reason}</div>}
                     </td>
                     <td style={{ padding: '0.4rem 0.5rem' }}>
                       {refund.bankName || refund.bankAccount ? (
-                        <div style={{ fontSize: '0.9rem', color: '#334155' }}>
+                        <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
                           <div>{refund.bankName || 'בנק חסר'} {refund.bankBranch ? `(סניף ${refund.bankBranch})` : ''}</div>
                           <div style={{ fontWeight: '600' }}>{refund.bankAccount || 'חשבון חסר'}</div>
-                          {refund.bankAccountName && <div style={{ color: '#64748b', fontSize: '0.8rem' }}>{refund.bankAccountName}</div>}
+                          {refund.bankAccountName && <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{refund.bankAccountName}</div>}
                         </div>
                       ) : (
-                        <span style={{ color: '#94a3b8' }}>לא הוזנו</span>
+                        <span style={{ color: 'var(--text-muted)' }}>לא הוזנו</span>
                       )}
                     </td>
                     <td style={{ padding: '0.4rem 0.5rem' }}>
                       {refund.paymentDetails ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#334155', fontSize: '0.9rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: 'var(--text-main)', fontSize: '0.9rem' }}>
                           <CreditCard data-element-name="רכיב_page_12" size={14} /> {refund.paymentDetails}
                         </div>
-                      ) : <span style={{ color: '#94a3b8' }}>-</span>}
+                      ) : <span style={{ color: 'var(--text-muted)' }}>-</span>}
                     </td>
                     <td style={{ padding: '0.4rem 0.5rem' }}>
                       <span className={refund.isExecuted ? 'status-dot c-green' : 'status-dot c-amber'}>

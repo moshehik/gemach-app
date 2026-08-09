@@ -243,7 +243,7 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
       <div 
         style={{ 
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'white', border: '2px solid #cbd5e1', borderRadius: '12px',
+          background: 'var(--card-bg)', border: '2px solid var(--element-border)', borderRadius: '12px',
           padding: '0.35rem 0.65rem', gap: '0.5rem', transition: 'all 0.2s',
           boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.15)' : 'none',
           boxSizing: 'border-box', overflow: 'hidden'
@@ -257,7 +257,7 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
           placeholder="בחר שדות חובה או הקלד ערך..."
           style={{ 
             flex: 1, border: 'none', outline: 'none', background: 'transparent',
-            fontSize: '0.95rem', color: '#0f172a', fontWeight: '500', fontFamily: 'inherit',
+            fontSize: '0.95rem', color: 'var(--text-main)', fontWeight: '500', fontFamily: 'inherit',
             boxSizing: 'border-box'
           }}
         />
@@ -276,7 +276,7 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
         >
           <CheckSquare size={15} color={isOpen ? 'white' : '#2563eb'} />
           <span>שדות חובה ({count})</span>
-          {isOpen ? <ChevronUp size={15} color="white" /> : <ChevronDown size={15} color="#64748b" />}
+          {isOpen ? <ChevronUp size={15} color="white" /> : <ChevronDown size={15} color="var(--text-muted)" />}
         </button>
       </div>
 
@@ -284,13 +284,13 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
         <div 
           style={{ 
             position: 'absolute', top: '105%', right: 0, left: 0,
-            background: 'white', border: '1px solid #cbd5e1', borderRadius: '16px',
+            background: 'var(--card-bg)', border: '1px solid var(--element-border)', borderRadius: '16px',
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.12), 0 10px 10px -5px rgba(0,0,0,0.04)',
             zIndex: 100, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#1e293b' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--element-border)', paddingBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-main)' }}>
               בחירת שדות חובה
             </span>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -301,7 +301,7 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
               >
                 בחר הכל
               </button>
-              <span style={{ color: '#cbd5e1' }}>|</span>
+              <span style={{ color: 'var(--element-border)' }}>|</span>
               <button 
                 type="button" 
                 onClick={clearAll}
@@ -323,8 +323,8 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
                   style={{ 
                     display: 'flex', alignItems: 'center', gap: '0.6rem',
                     padding: '0.55rem 0.75rem', borderRadius: '10px',
-                    background: active ? '#eff6ff' : '#f8fafc',
-                    border: active ? '1px solid #93c5fd' : '1px solid #e2e8f0',
+                    background: active ? '#eff6ff' : 'var(--element-bg)',
+                    border: active ? '1px solid #93c5fd' : '1px solid var(--element-border)',
                     cursor: 'pointer', transition: 'all 0.15s'
                   }}
                 >
@@ -335,10 +335,10 @@ function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
                     style={{ width: '16px', height: '16px', accentColor: '#2563eb', cursor: 'pointer' }}
                   />
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    <span style={{ fontWeight: '600', fontSize: '0.88rem', color: active ? '#1e40af' : '#334155' }}>
+                    <span style={{ fontWeight: '600', fontSize: '0.88rem', color: active ? '#1e40af' : 'var(--text-main)' }}>
                       {field.name}
                     </span>
-                    <span style={{ fontSize: '0.72rem', color: '#94a3b8' }}>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                       {field.alias}
                     </span>
                   </div>
@@ -402,7 +402,7 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
       <div 
         style={{ 
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          background: 'white', border: '2px solid #cbd5e1', borderRadius: '12px',
+          background: 'var(--card-bg)', border: '2px solid var(--element-border)', borderRadius: '12px',
           padding: '0.35rem 0.65rem', gap: '0.5rem', transition: 'all 0.2s',
           boxShadow: isOpen ? '0 0 0 3px rgba(59, 130, 246, 0.15)' : 'none',
           boxSizing: 'border-box', overflow: 'hidden'
@@ -416,7 +416,7 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
           placeholder="בחר מחלקות או הקלד ערך..."
           style={{ 
             flex: 1, border: 'none', outline: 'none', background: 'transparent',
-            fontSize: '0.95rem', color: '#0f172a', fontWeight: '500', fontFamily: 'inherit',
+            fontSize: '0.95rem', color: 'var(--text-main)', fontWeight: '500', fontFamily: 'inherit',
             boxSizing: 'border-box'
           }}
         />
@@ -435,7 +435,7 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
         >
           <ShieldCheck size={15} color={isOpen ? 'white' : '#2563eb'} />
           <span>מחלקות ({selectedList.length})</span>
-          {isOpen ? <ChevronUp size={15} color="white" /> : <ChevronDown size={15} color="#64748b" />}
+          {isOpen ? <ChevronUp size={15} color="white" /> : <ChevronDown size={15} color="var(--text-muted)" />}
         </button>
       </div>
 
@@ -443,13 +443,13 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
         <div 
           style={{ 
             position: 'absolute', top: '105%', right: 0, left: 0,
-            background: 'white', border: '1px solid #cbd5e1', borderRadius: '16px',
+            background: 'var(--card-bg)', border: '1px solid var(--element-border)', borderRadius: '16px',
             boxShadow: '0 20px 25px -5px rgba(0,0,0,0.12), 0 10px 10px -5px rgba(0,0,0,0.04)',
             zIndex: 100, padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem'
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '0.5rem' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: '#1e293b' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--element-border)', paddingBottom: '0.5rem' }}>
+            <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--text-main)' }}>
               בחירת מחלקות מורשות
             </span>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
@@ -460,7 +460,7 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
               >
                 בחר הכל
               </button>
-              <span style={{ color: '#cbd5e1' }}>|</span>
+              <span style={{ color: 'var(--element-border)' }}>|</span>
               <button 
                 type="button" 
                 onClick={clearAll}
@@ -482,30 +482,30 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
                   style={{ 
                     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                     padding: '0.5rem 0.75rem', borderRadius: '10px',
-                    background: isActive ? '#eff6ff' : '#f8fafc',
-                    border: isActive ? '1px solid #93c5fd' : '1px solid #e2e8f0',
+                    background: isActive ? '#eff6ff' : 'var(--element-bg)',
+                    border: isActive ? '1px solid #93c5fd' : '1px solid var(--element-border)',
                     cursor: 'pointer', transition: 'all 0.15s'
                   }}
                 >
-                  <span style={{ fontWeight: '600', fontSize: '0.9rem', color: isActive ? '#1e40af' : '#334155' }}>
+                  <span style={{ fontWeight: '600', fontSize: '0.9rem', color: isActive ? '#1e40af' : 'var(--text-main)' }}>
                     {dept.name}
                   </span>
 
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: isActive ? '#2563eb' : '#94a3b8' }}>
+                    <span style={{ fontSize: '0.8rem', fontWeight: '600', color: isActive ? '#2563eb' : 'var(--text-muted)' }}>
                       {isActive ? 'מורשה' : 'חסום'}
                     </span>
                     <div 
                       style={{ 
                         position: 'relative', width: '44px', height: '24px', borderRadius: '999px',
-                        background: isActive ? '#2563eb' : '#cbd5e1', transition: 'background-color 0.2s',
+                        background: isActive ? '#2563eb' : 'var(--element-border)', transition: 'background-color 0.2s',
                         display: 'flex', alignItems: 'center'
                       }}
                     >
                       <div 
                         style={{ 
                           position: 'absolute', width: '18px', height: '18px', borderRadius: '50%',
-                          background: 'white', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
+                          background: 'var(--card-bg)', boxShadow: '0 1px 3px rgba(0,0,0,0.2)',
                           right: isActive ? '22px' : '3px', transition: 'right 0.2s'
                         }}
                       />
@@ -688,9 +688,9 @@ export default function SettingsClient() {
 
   if (loading) {
     return (
-      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: '#f8fafc' }}>
-        <div data-element-name="רכיב_SettingsClient_1" style={{ width: '40px', height: '40px', border: '4px solid #e2e8f0', borderTop: '4px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-        <p style={{ marginTop: '1rem', color: '#64748b', fontSize: '1.1rem' }}>טוען הגדרות...</p>
+      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', background: 'var(--element-bg)' }}>
+        <div data-element-name="רכיב_SettingsClient_1" style={{ width: '40px', height: '40px', border: '4px solid var(--element-border)', borderTop: '4px solid #3b82f6', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
+        <p style={{ marginTop: '1rem', color: 'var(--text-muted)', fontSize: '1.1rem' }}>טוען הגדרות...</p>
         <style dangerouslySetInnerHTML={{__html: `@keyframes spin { 100% { transform: rotate(360deg); } }`}} />
       </div>
     );
@@ -706,7 +706,7 @@ export default function SettingsClient() {
   const CurrentIcon = currentConfig.icon;
 
   return (
-    <div data-agy-id="settings-page-container" style={{ minHeight: '100vh', background: '#f1f5f9', padding: '2rem', direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
+    <div data-agy-id="settings-page-container" style={{ minHeight: '100vh', background: 'var(--element-bg)', padding: '2rem', direction: 'rtl', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         
         {/* Header Section */}
@@ -729,7 +729,7 @@ export default function SettingsClient() {
               }}>
                 הגדרות מערכת
               </h1>
-              <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '1.1rem', fontWeight: '500' }}>
+              <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500' }}>
                 ניהול תצורת הגמ״ח, התאמה אישית והעדפות
               </p>
             </div>
@@ -742,14 +742,14 @@ export default function SettingsClient() {
               onClick={() => setIsEmailModalOpen(true)}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
-                background: 'white', color: '#1e3a8a', border: '1px solid #cbd5e1', padding: '0.75rem 1.25rem',
+                background: 'white', color: '#1e3a8a', border: '1px solid var(--element-border)', padding: '0.75rem 1.25rem',
                 borderRadius: '12px', fontWeight: '700', fontSize: '0.95rem',
                 cursor: 'pointer',
                 boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
                 transition: 'all 0.2s'
               }}
               onMouseOver={(e) => { e.currentTarget.style.borderColor = '#2563eb'; e.currentTarget.style.color = '#2563eb'; }}
-              onMouseOut={(e) => { e.currentTarget.style.borderColor = '#cbd5e1'; e.currentTarget.style.color = '#1e3a8a'; }}
+              onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--element-border)'; e.currentTarget.style.color = '#1e3a8a'; }}
             >
               <Mail size={18} color="#2563eb" />
               רשימת מיילים מלאה
@@ -762,8 +762,8 @@ export default function SettingsClient() {
               title={hasValidationErrors ? 'יש לתקן ערכים לא תקינים לפני השמירה' : undefined}
               style={{
                 display: 'flex', alignItems: 'center', gap: '0.5rem',
-                background: hasValidationErrors ? '#fecaca' : hasChanges ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : '#cbd5e1',
-                color: hasValidationErrors ? '#991b1b' : hasChanges ? 'white' : '#94a3b8', border: 'none', padding: '0.75rem 1.5rem',
+                background: hasValidationErrors ? '#fecaca' : hasChanges ? 'linear-gradient(135deg, #2563eb, #1d4ed8)' : 'var(--element-border)',
+                color: hasValidationErrors ? '#991b1b' : hasChanges ? 'white' : 'var(--text-muted)', border: 'none', padding: '0.75rem 1.5rem',
                 borderRadius: '12px', fontWeight: '600', fontSize: '1rem',
                 cursor: (hasChanges && !hasValidationErrors) ? 'pointer' : 'not-allowed',
                 boxShadow: (hasChanges && !hasValidationErrors) ? '0 4px 6px -1px rgba(37, 99, 235, 0.3)' : 'none',
@@ -799,9 +799,9 @@ export default function SettingsClient() {
           
           {/* Sidebar - Floating Card */}
           <div style={{ 
-            width: '260px', 
-            background: 'white', 
-            borderRadius: '20px', 
+            width: '260px',
+            background: 'var(--card-bg)',
+            borderRadius: '20px',
             padding: '1.25rem 0.75rem', 
             display: 'flex', 
             flexDirection: 'column', 
@@ -825,12 +825,12 @@ export default function SettingsClient() {
                     display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1rem', width: '100%',
                     borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: '600', fontSize: '1rem',
                     background: isActive ? '#e0f2fe' : 'transparent',
-                    color: isActive ? '#0369a1' : '#475569',
+                    color: isActive ? '#0369a1' : 'var(--text-muted)',
                     textAlign: 'right',
                     transition: 'all 0.2s'
                   }}
                 >
-                  <IconComp size={20} data-element-name="רכיב_SettingsClient_4" color={isActive ? '#0369a1' : '#64748b'} />
+                  <IconComp size={20} data-element-name="רכיב_SettingsClient_4" color={isActive ? '#0369a1' : 'var(--text-muted)'} />
                   {cat}
                 </button>
               );
@@ -839,19 +839,19 @@ export default function SettingsClient() {
 
           {/* Content Pane - Floating Card */}
           <div style={{ 
-            flex: 1, 
-            padding: '2.5rem', 
-            background: 'white', 
-            borderRadius: '20px', 
+            flex: 1,
+            padding: '2.5rem',
+            background: 'var(--card-bg)',
+            borderRadius: '20px',
             boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.01)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid #e2e8f0', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
-              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', color: '#475569' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', borderBottom: '1px solid var(--element-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'var(--element-bg)', display: 'flex', alignItems: 'center', justifySelf: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
                 <CurrentIcon size={24} data-element-name="רכיב_SettingsClient_9" />
               </div>
               <div>
-                <h2 style={{ margin: 0, fontSize: '1.5rem', color: '#0f172a' }}>{activeTab}</h2>
-                <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem' }}>ערוך את הגדרות המערכת בקטגוריה זו</p>
+                <h2 style={{ margin: 0, fontSize: '1.5rem', color: 'var(--text-main)' }}>{activeTab}</h2>
+                <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>ערוך את הגדרות המערכת בקטגוריה זו</p>
               </div>
             </div>
 
@@ -860,20 +860,20 @@ export default function SettingsClient() {
               {activeTab === 'מסד נתונים' && <NeonUsageCard data-element-name="רכיב_SettingsClient_neon" />}
 
               {activeTab === 'תצוגה' && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1.5rem 0', borderBottom: '1px solid var(--element-border)' }}>
                   <div style={{ flex: 1 }}>
-                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <ImageIcon size={18} color="#64748b" />
+                    <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <ImageIcon size={18} color="var(--text-muted)" />
                       לוגו ראשי של הגמ״ח
                     </h3>
-                    <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem', maxWidth: '450px' }}>
+                    <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem', maxWidth: '450px' }}>
                       העלה קובץ תמונה (PNG/JPG) שיופיע בראש עמודי המערכת וכן בהדפסות ומסמכים רשמיים.
                     </p>
                   </div>
                   <div>
                     <label style={{ 
                       display: 'flex', alignItems: 'center', gap: '0.5rem', 
-                      background: 'white', border: '2px solid #e2e8f0', color: '#3b82f6', 
+                      background: 'var(--card-bg)', border: '2px solid var(--element-border)', color: '#3b82f6',
                       padding: '0.6rem 1.2rem', borderRadius: '10px', fontWeight: '600', fontSize: '0.95rem',
                       cursor: 'pointer', transition: 'all 0.2s'
                     }}>
@@ -971,11 +971,11 @@ export default function SettingsClient() {
                 );
 
                 return (
-                  <div key={setting.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '1.5rem 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <div key={setting.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', padding: '1.5rem 0', borderBottom: '1px solid var(--element-border)' }}>
                     <div style={{ flex: 1, paddingLeft: '2rem' }}>
-                      <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#0f172a', fontWeight: '700' }}>{displayName}</h3>
+                      <h3 style={{ margin: 0, fontSize: '1.1rem', color: 'var(--text-main)', fontWeight: '700' }}>{displayName}</h3>
                       {notes && (
-                        <p style={{ margin: '0.25rem 0 0 0', color: '#64748b', fontSize: '0.9rem', lineHeight: '1.4' }}>
+                        <p style={{ margin: '0.25rem 0 0 0', color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: '1.4' }}>
                           {notes}
                         </p>
                       )}
@@ -984,7 +984,7 @@ export default function SettingsClient() {
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', width: '360px', flexShrink: 0 }}>
                       {isBoolean ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <span style={{ fontSize: '0.9rem', fontWeight: '600', color: '#64748b', width: '40px', textAlign: 'left' }}>
+                          <span style={{ fontSize: '0.9rem', fontWeight: '600', color: 'var(--text-muted)', width: '40px', textAlign: 'left' }}>
                             {uiValue === 'true' ? 'פעיל' : 'כבוי'}
                           </span>
                           <button
@@ -994,7 +994,7 @@ export default function SettingsClient() {
                             style={{
                               position: 'relative', display: 'inline-flex', height: '28px', width: '52px', 
                               borderRadius: '999px', border: 'none', cursor: 'pointer', outline: 'none',
-                              background: uiValue === 'true' ? '#2563eb' : '#cbd5e1',
+                              background: uiValue === 'true' ? '#2563eb' : 'var(--element-border)',
                               transition: 'background-color 0.2s',
                               alignItems: 'center', boxSizing: 'border-box', overflow: 'hidden', padding: 0
                             }}
@@ -1004,7 +1004,7 @@ export default function SettingsClient() {
                                 position: 'absolute',
                                 top: '4px',
                                 height: '20px', width: '20px', borderRadius: '50%',
-                                background: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                                background: 'var(--card-bg)', boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
                                 transition: 'right 0.2s',
                                 right: uiValue === 'true' ? '28px' : '4px'
                               }}
@@ -1024,7 +1024,7 @@ export default function SettingsClient() {
                           onChange={(e) => handleChange(setting.key, e.target.value)}
                           style={{ 
                             width: '100%', padding: '0.65rem 1rem', borderRadius: '12px', 
-                            border: '2px solid #cbd5e1', background: 'white', color: '#0f172a', 
+                            border: '2px solid var(--element-border)', background: 'var(--card-bg)', color: 'var(--text-main)',
                             fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s',
                             fontFamily: 'inherit'
                           }}
@@ -1047,7 +1047,7 @@ export default function SettingsClient() {
                           onChange={(e) => handleChange(setting.key, e.target.value)}
                           style={{ 
                             width: '100%', padding: '0.65rem 1rem', borderRadius: '12px', 
-                            border: '2px solid #cbd5e1', background: 'white', color: '#0f172a', 
+                            border: '2px solid var(--element-border)', background: 'var(--card-bg)', color: 'var(--text-main)',
                             fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s',
                             minHeight: '120px', resize: 'vertical', fontFamily: 'inherit', lineHeight: '1.5'
                           }}
@@ -1073,7 +1073,7 @@ export default function SettingsClient() {
                             }}
                             style={{
                               width: '100%', padding: '0.65rem 1rem', borderRadius: '12px',
-                              border: numberError ? '2px solid #ef4444' : '2px solid #cbd5e1', background: 'white', color: '#0f172a',
+                              border: numberError ? '2px solid #ef4444' : '2px solid var(--element-border)', background: 'var(--card-bg)', color: 'var(--text-main)',
                               fontSize: '1rem', outline: 'none', transition: 'border-color 0.2s'
                             }}
                             placeholder={isNumber ? (numberLimit ? `מספר בין ${numberLimit.min} ל-${numberLimit.max}...` : 'הזן מספר בלבד...') : 'הקלד ערך...'}
@@ -1089,7 +1089,7 @@ export default function SettingsClient() {
               })}
 
               {activeSettings.length === 0 && activeTab !== 'תצוגה' && activeTab !== 'מסד נתונים' && (
-                <div style={{ textAlign: 'center', padding: '4rem 0', color: '#94a3b8' }}>
+                <div style={{ textAlign: 'center', padding: '4rem 0', color: 'var(--text-muted)' }}>
                   <p style={{ fontSize: '1.1rem' }}>אין הגדרות בקטגוריה זו</p>
                 </div>
               )}

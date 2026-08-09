@@ -1368,7 +1368,7 @@ export default function CustomerInventoryViewer() {
 
                           <div className="sizes-row">
                             {visibleSizesArr.length === 0 ? (
-                              <span style={{ color: '#94a3b8', fontSize: '0.85rem' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי לתאריך זה'}</span>
+                              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי לתאריך זה'}</span>
                             ) : (
                               visibleSizesArr.map(([sName, sData]) => (
                                 <div
@@ -1381,8 +1381,8 @@ export default function CustomerInventoryViewer() {
                                   }}
                                   style={{ cursor: isLocked ? 'default' : 'pointer', display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 6px 6px 12px' }}
                                 >
-                                  <span style={{ fontSize: '1.25rem', fontWeight: '900', color: sData.available > 0 ? '#14532d' : '#475569', whiteSpace: 'nowrap', display: 'inline-block' }}>{sName}</span>
-                                  <span style={{ whiteSpace: 'nowrap', fontWeight: '700', fontSize: '0.78rem', background: sData.available > 0 ? '#bbf7d0' : 'var(--border-main)', color: sData.available > 0 ? '#166534' : '#64748b', padding: '3px 9px', borderRadius: '10px' }}>
+                                  <span style={{ fontSize: '1.25rem', fontWeight: '900', color: sData.available > 0 ? '#14532d' : 'var(--text-muted)', whiteSpace: 'nowrap', display: 'inline-block' }}>{sName}</span>
+                                  <span style={{ whiteSpace: 'nowrap', fontWeight: '700', fontSize: '0.78rem', background: sData.available > 0 ? '#bbf7d0' : 'var(--border-main)', color: sData.available > 0 ? '#166534' : 'var(--text-muted)', padding: '3px 9px', borderRadius: '10px' }}>
                                     פנוי {sData.available} מתוך {sData.total}
                                   </span>
                                 </div>
@@ -1459,7 +1459,7 @@ export default function CustomerInventoryViewer() {
                         </div>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        <div style={{ background: order.status === 'סגור' ? '#f1f5f9' : 'var(--primary-light)', color: order.status === 'סגור' ? '#475569' : '#1e40af', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 'bold' }}>
+                        <div style={{ background: order.status === 'סגור' ? 'var(--element-bg)' : 'var(--primary-light)', color: order.status === 'סגור' ? 'var(--text-muted)' : '#1e40af', padding: '6px 12px', borderRadius: '999px', fontSize: '12px', fontWeight: 'bold' }}>
                           {order.status || 'פעיל'}
                         </div>
                         <a 

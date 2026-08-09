@@ -105,7 +105,7 @@ export default function AiHistoryPage() {
                   } catch(e) {}
                   
                   return (
-                    <tr key={session.id} style={{ borderBottom: '1px solid #f1f5f9' }} className="table-row-hover">
+                    <tr key={session.id} style={{ borderBottom: '1px solid var(--element-border)' }} className="table-row-hover">
                       <td style={{ padding: '0.4rem 0.5rem' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                           <Calendar data-element-name="רכיב_page_7" size={16} color="var(--text-muted)" />
@@ -209,7 +209,7 @@ export default function AiHistoryPage() {
               </button>
             </div>
             
-            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f8fafc' }}>
+            <div style={{ padding: '1.5rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--element-bg)' }}>
               {(() => {
                 let msgs = [];
                 try {
@@ -223,7 +223,7 @@ export default function AiHistoryPage() {
                     gap: '1rem'
                   }}>
                     {msg.role !== 'user' && (
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6', flexShrink: 0 }}>
+                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--element-border)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3b82f6', flexShrink: 0 }}>
                         <Bot data-element-name="רכיב_page_17" size={20} />
                       </div>
                     )}
@@ -233,12 +233,12 @@ export default function AiHistoryPage() {
                       borderRadius: '16px',
                       borderTopRightRadius: msg.role === 'user' ? '4px' : '16px',
                       borderTopLeftRadius: msg.role !== 'user' ? '4px' : '16px',
-                      background: msg.role === 'user' ? '#3b82f6' : 'white',
-                      color: msg.role === 'user' ? 'white' : '#1e293b',
+                      background: msg.role === 'user' ? '#3b82f6' : 'var(--card-bg)',
+                      color: msg.role === 'user' ? 'white' : 'var(--text-main)',
                       boxShadow: '0 4px 6px -1px rgba(0,0,0,0.05)',
                       lineHeight: '1.6',
                       whiteSpace: 'pre-wrap',
-                      border: msg.role !== 'user' ? '1px solid #e2e8f0' : 'none',
+                      border: msg.role !== 'user' ? '1px solid var(--element-border)' : 'none',
                       fontSize: '1.05rem'
                     }}>
                       <FormattedMessage data-element-name="רכיב_page_18" content={msg.content} />

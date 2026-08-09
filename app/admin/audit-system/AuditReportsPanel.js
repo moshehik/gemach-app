@@ -49,10 +49,10 @@ function AgentMiniCard({ agent }) {
 
   return (
     <div style={{
-      border: '1px solid var(--border-color, #e2e8f0)',
+      border: '1px solid var(--border-color)',
       borderRight: `4px solid ${meta.color}`,
       borderRadius: '10px',
-      background: 'var(--card-bg, #fff)',
+      background: 'var(--card-bg)',
       overflow: 'hidden'
     }}>
       <button
@@ -78,7 +78,7 @@ function AgentMiniCard({ agent }) {
           {findings.map((f, i) => {
             const sMeta = SEVERITY_META[f.severity] || SEVERITY_META.low;
             return (
-              <li key={i} style={{ fontSize: '0.85rem', lineHeight: 1.6, borderTop: '1px solid var(--border-color, #f1f5f9)', paddingTop: '0.6rem' }}>
+              <li key={i} style={{ fontSize: '0.85rem', lineHeight: 1.6, borderTop: '1px solid var(--border-color)', paddingTop: '0.6rem' }}>
                 <span style={{
                   display: 'inline-block', fontSize: '0.72rem', fontWeight: 800, color: sMeta.color,
                   background: sMeta.bg, borderRadius: '6px', padding: '0.1rem 0.5rem', marginLeft: '0.4rem'
@@ -108,9 +108,9 @@ function ReportCard({ report }) {
 
   return (
     <div style={{
-      border: '1px solid var(--border-color, #e2e8f0)',
+      border: '1px solid var(--border-color)',
       borderRadius: '12px',
-      background: 'var(--card-bg, #fff)',
+      background: 'var(--card-bg)',
       overflow: 'hidden'
     }}>
       <button
@@ -169,7 +169,7 @@ export default function AuditReportsPanel() {
     <section style={{ marginBottom: '2.5rem' }}>
       <div style={{
         display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        marginBottom: '0.9rem', borderBottom: '2px solid var(--border-color, #e2e8f0)', paddingBottom: '0.5rem'
+        marginBottom: '0.9rem', borderBottom: '2px solid var(--border-color)', paddingBottom: '0.5rem'
       }}>
         <h2 style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--primary-color)', margin: 0 }}>
           דוחות אחרונים
@@ -178,7 +178,7 @@ export default function AuditReportsPanel() {
           onClick={load}
           style={{
             fontSize: '0.85rem', fontWeight: 600, color: 'var(--primary-color)',
-            background: 'none', border: '1px solid var(--border-color, #e2e8f0)',
+            background: 'none', border: '1px solid var(--border-color)',
             borderRadius: '8px', padding: '0.35rem 0.8rem', cursor: 'pointer'
           }}
         >
@@ -199,7 +199,7 @@ export default function AuditReportsPanel() {
       {!error && reports !== null && reports.length === 0 && (
         <div style={{
           color: 'var(--text-muted)', fontSize: '0.9rem', lineHeight: 1.7,
-          border: '1px dashed var(--border-color, #cbd5e1)', borderRadius: '10px', padding: '1.25rem'
+          border: '1px dashed var(--border-color)', borderRadius: '10px', padding: '1.25rem'
         }}>
           עדיין לא נשמר אף דוח ביקורת. הרצה של הפקודה <code style={{ direction: 'ltr', display: 'inline-block' }}>/audit-system</code> מ-Claude Code
           תיצור כאן את הדוח הראשון.

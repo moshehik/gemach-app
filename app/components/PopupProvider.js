@@ -223,13 +223,13 @@ export function PopupProvider({ children }) {
                      <div style={{ background: 'rgba(212, 175, 55, 0.14)', color: '#b5952f', padding: '10px', borderRadius: '12px' }}>
                         <HelpCircle data-element-name="רכיב_PopupProvider_7" size={28} />
                      </div>
-                     <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: '700' }}>{confirmConfig.title}</h3>
+                     <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.25rem', fontWeight: '700' }}>{confirmConfig.title}</h3>
                  </div>
-                 <div style={{ padding: '20px 24px', fontSize: '1.05rem', color: '#475569', lineHeight: '1.5' }}>
+                 <div style={{ padding: '20px 24px', fontSize: '1.05rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
                      {confirmConfig.message}
                  </div>
-                 <div style={{ background: '#f8fafc', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
-                     <button data-element-name="כפתור_PopupProvider_8" onClick={() => handleConfirmResponse(false)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
+                 <div style={{ background: 'var(--element-bg)', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid var(--element-border)' }}>
+                     <button data-element-name="כפתור_PopupProvider_8" onClick={() => handleConfirmResponse(false)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: 'var(--text-muted)', border: '1px solid var(--element-border)', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
                      <button data-element-name="כפתור_PopupProvider_9" onClick={() => handleConfirmResponse(true)} style={{ padding: '10px 20px', background: '#d4af37', color: '#1e293b', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(212, 175, 55, 0.35)' }} onMouseOver={e => { e.currentTarget.style.background='#b5952f'; e.currentTarget.style.color='#fff'; }} onMouseOut={e => { e.currentTarget.style.background='#d4af37'; e.currentTarget.style.color='#1e293b'; }}>אישור</button>
                  </div>
              </div>
@@ -244,16 +244,16 @@ export function PopupProvider({ children }) {
                      <div style={{ background: 'rgba(212, 175, 55, 0.14)', color: '#b5952f', padding: '10px', borderRadius: '12px' }}>
                         <HelpCircle data-element-name="רכיב_PopupProvider_19_3way" size={28} />
                      </div>
-                     <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: '700' }}>{threeWayConfirmConfig.title}</h3>
+                     <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.25rem', fontWeight: '700' }}>{threeWayConfirmConfig.title}</h3>
                  </div>
-                 <div style={{ padding: '20px 24px', fontSize: '1.05rem', color: '#475569', lineHeight: '1.5' }}>
+                 <div style={{ padding: '20px 24px', fontSize: '1.05rem', color: 'var(--text-muted)', lineHeight: '1.5' }}>
                      {threeWayConfirmConfig.message}
                  </div>
-                 <div style={{ background: '#f8fafc', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-start', flexWrap: 'wrap', borderTop: '1px solid #e2e8f0' }}>
+                 <div style={{ background: 'var(--element-bg)', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-start', flexWrap: 'wrap', borderTop: '1px solid var(--element-border)' }}>
                      <button data-element-name="כפתור_שמור_PopupProvider" onClick={() => handleThreeWayConfirmResponse('save')} style={{ padding: '10px 20px', background: '#d4af37', color: '#1e293b', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(212, 175, 55, 0.35)' }} onMouseOver={e => { e.currentTarget.style.background='#b5952f'; e.currentTarget.style.color='#fff'; }} onMouseOut={e => { e.currentTarget.style.background='#d4af37'; e.currentTarget.style.color='#1e293b'; }}>לשמור</button>
                      <button data-element-name="כפתור_אל_תשמור_PopupProvider" onClick={() => handleThreeWayConfirmResponse('discard')} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#ef4444', border: '1px solid #ef4444', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#fef2f2'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>אל תשמור</button>
                      <div style={{ flex: 1 }}></div>
-                     <button data-element-name="כפתור_ביטול_PopupProvider" onClick={() => handleThreeWayConfirmResponse('cancel')} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
+                     <button data-element-name="כפתור_ביטול_PopupProvider" onClick={() => handleThreeWayConfirmResponse('cancel')} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: 'var(--text-muted)', border: '1px solid var(--element-border)', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
                  </div>
              </div>
          </div>
@@ -267,10 +267,10 @@ export function PopupProvider({ children }) {
                      <div style={{ background: 'rgba(212, 175, 55, 0.14)', color: '#b5952f', padding: '10px', borderRadius: '12px' }}>
                         <Info data-element-name="רכיב_PopupProvider_10" size={28} />
                      </div>
-                     <h3 style={{ margin: 0, color: '#0f172a', fontSize: '1.25rem', fontWeight: '700' }}>{promptConfig.title}</h3>
+                     <h3 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.25rem', fontWeight: '700' }}>{promptConfig.title}</h3>
                  </div>
                  <div style={{ padding: '20px 24px' }}>
-                     <div style={{ fontSize: '1.05rem', color: '#475569', marginBottom: '12px', lineHeight: '1.5' }}>
+                     <div style={{ fontSize: '1.05rem', color: 'var(--text-muted)', marginBottom: '12px', lineHeight: '1.5' }}>
                          {promptConfig.message}
                      </div>
                      <input data-element-name="שדה_PopupProvider_11"
@@ -282,13 +282,13 @@ export function PopupProvider({ children }) {
                             if (e.key === 'Enter') handlePromptResponse(e.target.value);
                             if (e.key === 'Escape') handlePromptResponse(null);
                          }}
-                         style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid #e2e8f0', fontSize: '1.05rem', outline: 'none', transition: 'border-color 0.2s', background: '#f8fafc' }}
+                         style={{ width: '100%', padding: '12px 16px', borderRadius: '10px', border: '2px solid var(--element-border)', fontSize: '1.05rem', outline: 'none', transition: 'border-color 0.2s', background: 'var(--element-bg)' }}
                          onFocus={(e) => e.target.style.borderColor = '#d4af37'}
-                         onBlur={(e) => e.target.style.borderColor = '#e2e8f0'}
+                         onBlur={(e) => e.target.style.borderColor = 'var(--element-border)'}
                      />
                  </div>
-                 <div style={{ background: '#f8fafc', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid #e2e8f0' }}>
-                     <button data-element-name="כפתור_PopupProvider_12" onClick={() => handlePromptResponse(null)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
+                 <div style={{ background: 'var(--element-bg)', padding: '16px 24px', display: 'flex', gap: '12px', justifyContent: 'flex-end', borderTop: '1px solid var(--element-border)' }}>
+                     <button data-element-name="כפתור_PopupProvider_12" onClick={() => handlePromptResponse(null)} style={{ padding: '10px 20px', background: 'var(--card-bg)', color: 'var(--text-muted)', border: '1px solid var(--element-border)', borderRadius: '10px', cursor: 'pointer', fontWeight: '600', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} onMouseOver={e => e.currentTarget.style.background='#f7f4ec'} onMouseOut={e => e.currentTarget.style.background='var(--card-bg)'}>ביטול</button>
                      <button data-element-name="כפתור_PopupProvider_13" onClick={() => handlePromptResponse(promptInputRef.current.value)} style={{ padding: '10px 20px', background: '#d4af37', color: '#1e293b', border: 'none', borderRadius: '10px', cursor: 'pointer', fontWeight: '700', transition: 'all 0.2s', boxShadow: '0 4px 6px -1px rgba(212, 175, 55, 0.35)' }} onMouseOver={e => { e.currentTarget.style.background='#b5952f'; e.currentTarget.style.color='#fff'; }} onMouseOut={e => { e.currentTarget.style.background='#d4af37'; e.currentTarget.style.color='#1e293b'; }}>אישור</button>
                  </div>
              </div>

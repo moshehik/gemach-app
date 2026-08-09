@@ -193,7 +193,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
 
         {/* History */}
         {showHistory && (
-          <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: '#f1f5f9', borderRadius: '12px', border: '1px solid #cbd5e1' }}>
+          <div style={{ marginBottom: '2rem', padding: '1rem', backgroundColor: 'var(--element-bg)', borderRadius: '12px', border: '1px solid var(--element-border)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
               <h3 style={{ margin: 0, fontSize: '1.1rem', color: '#334155' }}>היסטוריית חיפושים</h3>
             </div>
@@ -208,7 +208,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                   const searchTimeStr = searchTime.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
                   return (
-                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderBottom: '1px solid #e2e8f0', background: 'var(--card-bg)', marginBottom: '0.5rem', borderRadius: '6px' }}>
+                    <div key={h.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.75rem', borderBottom: '1px solid var(--element-border)', background: 'var(--card-bg)', marginBottom: '0.5rem', borderRadius: '6px' }}>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.9rem', flex: 1 }}>
                         <span style={{ minWidth: '120px' }}><strong>דגם:</strong> {modelName}</span>
                         <span style={{ minWidth: '80px' }}><strong>מידה:</strong> {h.size}</span>
@@ -218,7 +218,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                         {h.employeeCode && (
                           <span style={{ minWidth: '100px' }}><strong>עובד:</strong> {h.employeeCode}</span>
                         )}
-                        <span style={{ color: '#64748b' }}>{searchHebrewDate}, {searchTimeStr}</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{searchHebrewDate}, {searchTimeStr}</span>
                       </div>
                       <button 
                         data-agy-id="capacity_search_history_select_btn"                        onClick={() => {
@@ -248,7 +248,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                   );
                 })}
               {searchHistory.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '1rem', color: '#64748b' }}>לא נמצאו חיפושים</div>
+                <div style={{ textAlign: 'center', padding: '1rem', color: 'var(--text-muted)' }}>לא נמצאו חיפושים</div>
               )}
             </div>
           </div>
@@ -277,12 +277,12 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
               onFocus={() => setShowModelDropdown(true)}
               placeholder="הקלד לחיפוש דגם..."
               autoComplete="off"
-              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid #cbd5e1', boxSizing: 'border-box' }}
+              style={{ width: '100%', padding: '0.75rem', borderRadius: '8px', border: '1px solid var(--element-border)', boxSizing: 'border-box' }}
             />
             {showModelDropdown && filteredModels.length > 0 && (
               <div style={{
                 position: 'absolute', top: '100%', right: 0, left: 0, marginTop: '0.25rem',
-                background: 'var(--card-bg, white)', border: '1px solid #cbd5e1', borderRadius: '8px',
+                background: 'var(--card-bg, white)', border: '1px solid var(--element-border)', borderRadius: '8px',
                 boxShadow: '0 4px 12px rgba(0,0,0,0.15)', maxHeight: '220px', overflowY: 'auto', zIndex: 20
               }}>
                 {filteredModels.map(m => (
@@ -294,11 +294,11 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                       setSize('');
                       setShowModelDropdown(false);
                     }}
-                    style={{ padding: '0.6rem 0.8rem', cursor: 'pointer', borderBottom: '1px solid #f1f5f9', textAlign: 'right' }}
+                    style={{ padding: '0.6rem 0.8rem', cursor: 'pointer', borderBottom: '1px solid var(--element-border)', textAlign: 'right' }}
                     onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8fafc'}
                     onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                   >
-                    {m.name} <span style={{ color: '#64748b', fontSize: '0.85em' }}>({m.barcodePrefix})</span>
+                    {m.name} <span style={{ color: 'var(--text-muted)', fontSize: '0.85em' }}>({m.barcodePrefix})</span>
                   </div>
                 ))}
               </div>
@@ -316,8 +316,8 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                 width: '100%', 
                 padding: '0.75rem', 
                 borderRadius: '8px', 
-                border: '1px solid #cbd5e1', 
-                backgroundColor: (!barcodePrefix || sizes.length === 0) ? '#e2e8f0' : 'var(--card-bg)' 
+                border: '1px solid var(--element-border)', 
+                backgroundColor: (!barcodePrefix || sizes.length === 0) ? 'var(--element-bg)' : 'var(--card-bg)' 
               }}
             >
               <option value="">{(!barcodePrefix) ? 'בחר דגם תחילה' : (sizes.length === 0 ? 'אין מידות לדגם' : 'בחר מידה...')}</option>
@@ -379,7 +379,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
 
             {/* View Toggle */}
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', background: '#f1f5f9', padding: '4px', borderRadius: '8px' }}>
+              <div style={{ display: 'flex', background: 'var(--element-bg)', padding: '4px', borderRadius: '8px' }}>
                 <button 
                   data-agy-id="capacity_search_view_list_btn"                  type="button"
                   onClick={() => setViewMode('list')}
@@ -452,7 +452,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                   </table>
                 </div>
               ) : (
-                <div style={{ textAlign: 'center', padding: '3rem', color: '#64748b', backgroundColor: '#f8fafc', borderRadius: '8px' }}>
+                <div style={{ textAlign: 'center', padding: '3rem', color: 'var(--text-muted)', backgroundColor: 'var(--element-bg)', borderRadius: '8px' }}>
                   <CalendarIcon size={48} style={{ opacity: 0.2, marginBottom: '1rem' }} />
                   <h3>אין הזמנות תפוסות בטווח התאריכים הנבחר</h3>
                   <p>הפריט פנוי לחלוטין בתאריכים אלו.</p>

@@ -86,7 +86,7 @@ export default function MyProfilePage() {
         <button data-element-name="כפתור_profile_back" type="button" onClick={() => router.back()} className="btn" style={{ borderRadius: '50%', width: '40px', height: '40px', padding: 0, border: '1px solid var(--element-border)' }}>→</button>
         <h1 style={{ color: 'var(--primary-color)', margin: 0 }}>הפרופיל שלי</h1>
         {profile.department?.name && (
-          <span style={{ background: '#f1f5f9', color: '#475569', padding: '0.25rem 0.75rem', borderRadius: '16px', fontSize: '0.85rem' }}>
+          <span style={{ background: 'var(--element-bg)', color: 'var(--text-muted)', padding: '0.25rem 0.75rem', borderRadius: '16px', fontSize: '0.85rem' }}>
             {profile.department.name}
           </span>
         )}
@@ -108,7 +108,7 @@ export default function MyProfilePage() {
           </div>
           <div className="form-group">
             <label style={labelStyle}>תאריך כניסה לארגון</label>
-            <input data-element-name="שדה_profile_4" type="text" value={profile.joinDate ? new Date(profile.joinDate).toLocaleDateString('he-IL') : '—'} disabled style={{ ...inputStyle, background: '#f8fafc', color: '#64748b' }} />
+            <input data-element-name="שדה_profile_4" type="text" value={profile.joinDate ? new Date(profile.joinDate).toLocaleDateString('he-IL') : '—'} disabled style={{ ...inputStyle, background: 'var(--element-bg)', color: 'var(--text-muted)' }} />
           </div>
           <div className="form-group">
             <label style={labelStyle}>טלפון 1</label>
@@ -138,21 +138,21 @@ export default function MyProfilePage() {
           <div className="form-group">
             <label style={labelStyle}>סיסמא לשעון נוכחות</label>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input data-element-name="שדה_profile_11" type="password" value="********" disabled style={{ ...inputStyle, background: '#f8fafc', color: '#64748b' }} />
+              <input data-element-name="שדה_profile_11" type="password" value="********" disabled style={{ ...inputStyle, background: 'var(--element-bg)', color: 'var(--text-muted)' }} />
               <button data-element-name="כפתור_profile_pw" type="button" onClick={() => setShowChangePassword(true)} className="btn btn-primary" style={{ whiteSpace: 'nowrap', padding: '0.75rem 1rem' }}>שינוי סיסמא</button>
             </div>
             {showChangePassword && (
-              <div style={{ marginTop: '1rem', padding: '1rem', background: '#f1f5f9', borderRadius: '8px', border: '1px solid #e2e8f0' }}>
+              <div style={{ marginTop: '1rem', padding: '1rem', background: 'var(--element-bg)', borderRadius: '8px', border: '1px solid var(--element-border)' }}>
                 <div style={{ marginBottom: '0.5rem' }}>
                   <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>סיסמא ישנה</label>
-                  <input data-element-name="שדה_profile_12" type="password" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                  <input data-element-name="שדה_profile_12" type="password" value={oldPasswordInput} onChange={e => setOldPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }} />
                 </div>
                 <div style={{ marginBottom: '1rem' }}>
                   <label style={{ display: 'block', fontSize: '0.9rem', marginBottom: '0.2rem' }}>סיסמא חדשה</label>
-                  <input data-element-name="שדה_profile_13" type="password" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid #cbd5e1' }} />
+                  <input data-element-name="שדה_profile_13" type="password" value={newPasswordInput} onChange={e => setNewPasswordInput(e.target.value)} style={{ width: '100%', padding: '0.5rem', borderRadius: '4px', border: '1px solid var(--element-border)' }} />
                 </div>
                 <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-                  <button data-element-name="כפתור_profile_pw_cancel" type="button" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); }} className="btn" style={{ background: 'white', border: '1px solid #cbd5e1' }}>ביטול</button>
+                  <button data-element-name="כפתור_profile_pw_cancel" type="button" onClick={() => { setShowChangePassword(false); setOldPasswordInput(''); setNewPasswordInput(''); }} className="btn" style={{ background: 'var(--card-bg)', border: '1px solid var(--element-border)' }}>ביטול</button>
                   <button data-element-name="כפתור_profile_pw_ok" type="button" onClick={async () => {
                     if (!newPasswordInput) {
                       window.alert('יש להזין סיסמא חדשה');

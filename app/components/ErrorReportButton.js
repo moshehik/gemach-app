@@ -233,7 +233,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
           fontFamily: 'system-ui, -apple-system, sans-serif'
         }}>
           <div style={{
-            background: 'var(--card-bg, #ffffff)',
+            background: 'var(--card-bg)',
             width: '90%',
             maxWidth: '600px',
             maxHeight: '85vh',
@@ -243,7 +243,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
             flexDirection: 'column',
             overflow: 'hidden'
           }}>
-            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color, #e5e7eb)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#eef2ff' }}>
+            <div style={{ padding: '1rem 1.5rem', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#eef2ff' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#4338ca', display: 'flex', alignItems: 'center', gap: '0.5rem', fontWeight: '700' }}>
                   <LifeBuoy data-element-name="רכיב_ErrorReportButton_3" size={22} /> מערכת תמיכה ושגיאות
@@ -263,16 +263,16 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
             
             {/* Header Tabs */}
             {activeTab !== 'thread' && (
-              <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color, #e5e7eb)' }}>
+              <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)' }}>
                 <button 
                   onClick={() => setActiveTab('list')}
-                  style={{ flex: 1, padding: '1rem', background: activeTab === 'list' ? 'transparent' : '#f8fafc', border: 'none', borderBottom: activeTab === 'list' ? '2px solid #6366f1' : '2px solid transparent', color: activeTab === 'list' ? '#6366f1' : '#64748b', fontWeight: '600', cursor: 'pointer', fontSize: '1rem' }}
+                  style={{ flex: 1, padding: '1rem', background: activeTab === 'list' ? 'transparent' : 'var(--element-bg)', border: 'none', borderBottom: activeTab === 'list' ? '2px solid #6366f1' : '2px solid transparent', color: activeTab === 'list' ? '#6366f1' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', fontSize: '1rem' }}
                 >
                   פניות שלי {isProgrammer ? '(כל הדיווחים)' : ''}
                 </button>
                 <button 
                   onClick={() => setActiveTab('new')}
-                  style={{ flex: 1, padding: '1rem', background: activeTab === 'new' ? 'transparent' : '#f8fafc', border: 'none', borderBottom: activeTab === 'new' ? '2px solid #6366f1' : '2px solid transparent', color: activeTab === 'new' ? '#6366f1' : '#64748b', fontWeight: '600', cursor: 'pointer', fontSize: '1rem' }}
+                  style={{ flex: 1, padding: '1rem', background: activeTab === 'new' ? 'transparent' : 'var(--element-bg)', border: 'none', borderBottom: activeTab === 'new' ? '2px solid #6366f1' : '2px solid transparent', color: activeTab === 'new' ? '#6366f1' : 'var(--text-muted)', fontWeight: '600', cursor: 'pointer', fontSize: '1rem' }}
                 >
                   דיווח על תקלה חדשה
                 </button>
@@ -282,26 +282,26 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
             {/* THREAD VIEW */}
             {activeTab === 'thread' && selectedReport && (
               <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
-                <div style={{ padding: '0.75rem 1.5rem', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <button onClick={() => { setActiveTab('list'); fetchReports(); }} style={{ background: 'white', border: '1px solid #cbd5e1', padding: '0.3rem 0.8rem', borderRadius: '8px', cursor: 'pointer', color: '#475569', fontWeight: '600', fontSize: '0.85rem' }}>
+                <div style={{ padding: '0.75rem 1.5rem', background: 'var(--element-bg)', borderBottom: '1px solid var(--element-border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <button onClick={() => { setActiveTab('list'); fetchReports(); }} style={{ background: 'var(--card-bg)', border: '1px solid var(--element-border)', padding: '0.3rem 0.8rem', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-muted)', fontWeight: '600', fontSize: '0.85rem' }}>
                     חזור לרשימה
                   </button>
                   {isProgrammer && (
-                    <button onClick={() => copyDetails(selectedReport)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#f1f5f9', border: '1px solid #cbd5e1', padding: '0.3rem 0.8rem', borderRadius: '8px', cursor: 'pointer', color: '#0f172a', fontWeight: '600', fontSize: '0.85rem' }}>
+                    <button onClick={() => copyDetails(selectedReport)} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--element-bg)', border: '1px solid var(--element-border)', padding: '0.3rem 0.8rem', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-main)', fontWeight: '600', fontSize: '0.85rem' }}>
                       <Copy size={14} /> העתק פרטי מערכת
                     </button>
                   )}
                 </div>
                 
-                <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f1f5f9' }}>
+                <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--element-bg)' }}>
                   {/* Original Report */}
-                  <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', alignSelf: 'flex-start', maxWidth: '85%' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: '#64748b', fontSize: '0.85rem' }}>
+                  <div style={{ background: 'var(--card-bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--element-border)', alignSelf: 'flex-start', maxWidth: '85%' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                       <User size={14} /> <strong>{selectedReport.employee ? selectedReport.employee.firstName + ' ' + selectedReport.employee.lastName : 'משתמש'}</strong>
                       <span>•</span>
                       <span>{getHebrewDateString(selectedReport.createdAt)} {new Date(selectedReport.createdAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}</span>
                     </div>
-                    <p style={{ margin: 0, color: '#0f172a', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                    <p style={{ margin: 0, color: 'var(--text-main)', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
                       {selectedReport.userText}
                     </p>
                   </div>
@@ -311,19 +311,19 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     const isMe = (isProgrammer && reply.isProgrammer) || (!isProgrammer && !reply.isProgrammer);
                     return (
                       <div key={reply.id} style={{ 
-                        background: reply.isProgrammer ? '#eef2ff' : 'white', 
+                        background: reply.isProgrammer ? '#eef2ff' : 'var(--card-bg)', 
                         padding: '1rem', 
                         borderRadius: '12px', 
-                        border: `1px solid ${reply.isProgrammer ? '#c7d2fe' : '#e2e8f0'}`, 
+                        border: `1px solid ${reply.isProgrammer ? '#c7d2fe' : 'var(--element-border)'}`, 
                         alignSelf: isMe ? 'flex-end' : 'flex-start',
                         maxWidth: '85%' 
                       }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: reply.isProgrammer ? '#4338ca' : '#64748b', fontSize: '0.85rem' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', color: reply.isProgrammer ? '#4338ca' : 'var(--text-muted)', fontSize: '0.85rem' }}>
                           <User size={14} /> <strong>{reply.isProgrammer ? 'מתכנת מערכת' : (reply.employee ? reply.employee.firstName + ' ' + reply.employee.lastName : 'משתמש')}</strong>
                           <span>•</span>
                           <span>{getHebrewDateString(reply.createdAt)} {new Date(reply.createdAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
-                        <p style={{ margin: 0, color: '#0f172a', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
+                        <p style={{ margin: 0, color: 'var(--text-main)', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>
                           {reply.text}
                         </p>
                       </div>
@@ -332,13 +332,13 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                 </div>
                 
                 {/* Reply Form */}
-                <form onSubmit={handleReply} style={{ padding: '1rem', background: 'white', borderTop: '1px solid #e2e8f0', display: 'flex', gap: '0.75rem' }}>
+                <form onSubmit={handleReply} style={{ padding: '1rem', background: 'var(--card-bg)', borderTop: '1px solid var(--element-border)', display: 'flex', gap: '0.75rem' }}>
                   <input 
                     type="text" 
                     value={replyText}
                     onChange={e => setReplyText(e.target.value)}
                     placeholder="הקלד תגובה..."
-                    style={{ flex: 1, padding: '0.75rem 1rem', borderRadius: '999px', border: '1px solid #cbd5e1', outline: 'none', background: '#f8fafc', fontSize: '0.95rem' }}
+                    style={{ flex: 1, padding: '0.75rem 1rem', borderRadius: '999px', border: '1px solid var(--element-border)', outline: 'none', background: 'var(--element-bg)', fontSize: '0.95rem' }}
                     required
                   />
                   <button 
@@ -354,9 +354,9 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
             
             {/* LIST VIEW */}
             {activeTab === 'list' && (
-              <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f1f5f9' }}>
+              <div style={{ flex: 1, overflowY: 'auto', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--element-bg)' }}>
                 {reports.length === 0 ? (
-                  <div style={{ textAlign: 'center', color: '#94a3b8', padding: '3rem 0' }}>
+                  <div style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '3rem 0' }}>
                     <MessageSquare size={48} style={{ opacity: 0.2, margin: '0 auto 1rem' }} />
                     <p style={{ fontSize: '1.1rem' }}>אין דיווחים קיימים</p>
                   </div>
@@ -365,8 +365,8 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     const isUnread = (isProgrammer && !report.isReadByProgrammer) || (!isProgrammer && !report.isReadByUser);
                     return (
                       <div key={report.id} onClick={() => openThread(report)} style={{
-                        background: isUnread ? '#eef2ff' : 'white',
-                        border: `1px solid ${isUnread ? '#c7d2fe' : '#e2e8f0'}`,
+                        background: isUnread ? '#eef2ff' : 'var(--card-bg)',
+                        border: `1px solid ${isUnread ? '#c7d2fe' : 'var(--element-border)'}`,
                         borderRadius: '12px',
                         padding: '1.25rem',
                         cursor: 'pointer',
@@ -374,18 +374,18 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                         boxShadow: '0 2px 4px rgba(0,0,0,0.02)'
                       }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem' }}>
-                          <h4 style={{ margin: 0, fontSize: '1.05rem', color: '#0f172a', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <h4 style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-main)', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                             {isUnread && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#6366f1', display: 'inline-block' }} />}
                             {report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'משתמש'}
                           </h4>
-                          <span style={{ fontSize: '0.8rem', color: '#64748b' }}>
+                          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                             {getHebrewDateString(report.updatedAt)} {new Date(report.updatedAt).toLocaleTimeString('he-IL', {hour: '2-digit', minute:'2-digit'})}
                           </span>
                         </div>
-                        <p style={{ margin: '0 0 0.75rem 0', color: '#475569', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        <p style={{ margin: '0 0 0.75rem 0', color: 'var(--text-muted)', fontSize: '0.95rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                           {report.userText}
                         </p>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: '#64748b' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
                           <MessageSquare size={14} />
                           <span>{report.replies?.length || 0} תגובות</span>
                           {isProgrammer && (
@@ -404,17 +404,17 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
             
             {/* NEW REPORT VIEW */}
             {activeTab === 'new' && (
-              <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f8fafc', flex: 1, overflowY: 'auto' }}>
-                <div style={{ background: 'white', padding: '1rem', borderRadius: '12px', border: '1px solid #e2e8f0', fontSize: '0.9rem', color: '#475569', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
+              <form onSubmit={handleSubmit} style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--element-bg)', flex: 1, overflowY: 'auto' }}>
+                <div style={{ background: 'var(--card-bg)', padding: '1rem', borderRadius: '12px', border: '1px solid var(--element-border)', fontSize: '0.9rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'flex-start', gap: '0.75rem' }}>
                   <Info color="#6366f1" size={20} style={{ flexShrink: 0, marginTop: '2px' }} />
                   <div>
-                    <strong style={{ display: 'block', color: '#0f172a', marginBottom: '0.25rem' }}>הנתונים הבאים יישלחו למתכנת אוטומטית ברקע:</strong>
+                    <strong style={{ display: 'block', color: 'var(--text-main)', marginBottom: '0.25rem' }}>הנתונים הבאים יישלחו למתכנת אוטומטית ברקע:</strong>
                     שעת הדיווח, כתובת המסך (URL), שם המסך, ו-5 הלחצנים האחרונים עליהם לחצת לפני שדיווחת.
                   </div>
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: '#0f172a', fontWeight: '600' }}>
+                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.95rem', color: 'var(--text-main)', fontWeight: '600' }}>
                     תאר את התקלה בצורה המפורטת ביותר (מה ניסית לעשות, ומה קרה?):
                   </label>
                   <textarea data-element-name="טקסט_ErrorReportButton_6"
@@ -422,7 +422,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     onChange={e => setUserText(e.target.value)}
                     className="form-control"
                     placeholder="לדוגמה: לחצתי על כפתור השמירה, הופיעה שגיאה אדומה והדף קפא..."
-                    style={{ width: '100%', height: '140px', padding: '1rem', borderRadius: '12px', border: '1px solid #cbd5e1', background: 'white', color: '#0f172a', resize: 'none', fontSize: '1rem' }}
+                    style={{ width: '100%', height: '140px', padding: '1rem', borderRadius: '12px', border: '1px solid var(--element-border)', background: 'var(--card-bg)', color: 'var(--text-main)', resize: 'none', fontSize: '1rem' }}
                     required
                   />
                 </div>
@@ -431,7 +431,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   <button data-element-name="כפתור_ErrorReportButton_7" 
                     type="button"
                     onClick={() => setActiveTab('list')}
-                    style={{ background: 'transparent', color: '#64748b', border: '1px solid #cbd5e1', padding: '0.6rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
+                    style={{ background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--element-border)', padding: '0.6rem 1.25rem', borderRadius: '8px', fontWeight: '600', cursor: 'pointer' }}
                   >
                     ביטול
                   </button>

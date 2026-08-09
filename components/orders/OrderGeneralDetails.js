@@ -153,7 +153,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
     padding: '0.8rem',
     borderRadius: '8px',
     border: '1px solid var(--element-border)',
-    backgroundColor: '#fbfbfb',
+    backgroundColor: 'var(--element-bg)',
     fontSize: '1rem',
     transition: 'border-color 0.2s',
   };
@@ -162,7 +162,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
     display: 'block',
     marginBottom: '0.4rem',
     fontWeight: '600',
-    color: '#444',
+    color: 'var(--text-muted)',
     fontSize: '0.95rem'
   };
 
@@ -178,28 +178,28 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
   };
 
   return (
-    <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid #f1f5f9' }}>
+    <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)', border: '1px solid var(--element-border)' }}>
       <div 
         onClick={() => setIsExpanded(!isExpanded)}
         style={{ 
           display: 'flex', justifyContent: 'space-between', alignItems: 'center', 
           cursor: 'pointer',
-          borderBottom: isExpanded ? '2px solid #f1f5f9' : 'none',
+          borderBottom: isExpanded ? '2px solid var(--element-border)' : 'none',
           paddingBottom: isExpanded ? '1rem' : '0',
           marginBottom: isExpanded ? '2rem' : '0'
         }}
       >
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
-          <h2 style={{ margin: 0, color: '#0f172a', fontSize: '1.4rem', fontWeight: '800' }}>
+          <h2 style={{ margin: 0, color: 'var(--text-main)', fontSize: '1.4rem', fontWeight: '800' }}>
             פרטים כלליים
           </h2>
           {!isExpanded && (
-            <span style={{ color: '#64748b', fontSize: '1.1rem', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ color: '#cbd5e1' }}>|</span> {summaryText}
+            <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ color: 'var(--element-border)' }}>|</span> {summaryText}
             </span>
           )}
         </div>
-        <div style={{ color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
+        <div style={{ color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--element-bg)', borderRadius: '50%', padding: '0.5rem', transition: 'all 0.2s' }}>
           {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
         </div>
       </div>
@@ -207,7 +207,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
       {isExpanded && (
         <>
           {(!isEditingCustomer && !isEditingOrderDetails) ? (
-            <div style={{ padding: '1.2rem 1.5rem', background: 'linear-gradient(to bottom right, #ffffff, #f8fafc)', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
+            <div style={{ padding: '1.2rem 1.5rem', background: 'linear-gradient(to bottom right, var(--card-bg), var(--element-bg))', borderRadius: '12px', border: '1px solid var(--element-border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '1rem' }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '1.2rem', flex: 1 }}>
                 
                 {/* Customer Row */}
@@ -216,7 +216,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                      <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', fontWeight: 'bold', fontSize: '1rem' }}>
                         {order.customer ? (order.customer.firstName?.[0] || '') + (order.customer.lastName?.[0] || '') : '?'}
                      </div>
-                     <span style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a' }}>{customerName}</span>
+                     <span style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-main)' }}>{customerName}</span>
                      {order.customer?.id && (
                         <Link href={`/customers/${order.customer.id}`} target="_blank" title="מעבר לכרטיס לקוח" style={{ color: '#2563eb', display: 'inline-flex', marginLeft: '0.5rem', background: '#eff6ff', padding: '0.4rem', borderRadius: '6px', transition: 'all 0.2s' }}>
                           <ExternalLink size={16}/>
@@ -225,14 +225,14 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   </div>
                   
                   {order.customer?.phone1 && (
-                    <div style={{ color: '#475569', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span style={{ color: '#94a3b8' }}>📱</span>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>📱</span>
                       <span style={{ direction: 'ltr', display: 'inline-block', fontWeight: '500' }}>{order.customer.phone1}</span>
                     </div>
                   )}
                   {order.customer?.phone2 && (
-                    <div style={{ color: '#475569', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span style={{ color: '#94a3b8' }}>☎️</span>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>☎️</span>
                       <span style={{ direction: 'ltr', display: 'inline-block', fontWeight: '500' }}>{order.customer.phone2}</span>
                     </div>
                   )}
@@ -246,9 +246,9 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                     }}
                     style={{
                       display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer',
-                      padding: '0.4rem 0.8rem', background: order.hasSignedRegulations ? '#dcfce7' : '#f8fafc',
-                      borderRadius: '8px', border: `1px solid ${order.hasSignedRegulations ? '#86efac' : '#e2e8f0'}`,
-                      color: order.hasSignedRegulations ? '#166534' : '#475569', fontWeight: '600', fontSize: '0.95rem',
+                      padding: '0.4rem 0.8rem', background: order.hasSignedRegulations ? '#dcfce7' : 'var(--element-bg)',
+                      borderRadius: '8px', border: `1px solid ${order.hasSignedRegulations ? '#86efac' : 'var(--element-border)'}`,
+                      color: order.hasSignedRegulations ? '#166534' : 'var(--text-muted)', fontWeight: '600', fontSize: '0.95rem',
                       transition: 'all 0.2s', marginLeft: 'auto'
                     }}
                   >
@@ -268,11 +268,11 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                     <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#fce7f3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#db2777', fontSize: '1rem' }}>
                       📅
                     </div>
-                    <span style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a' }}>{eventDateStr}</span>
+                    <span style={{ fontSize: '1.15rem', fontWeight: '700', color: 'var(--text-main)' }}>{eventDateStr}</span>
                   </div>
 
-                  <div style={{ color: '#475569', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#f1f5f9', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
-                    <strong style={{ color: '#64748b' }}>תאריך הזמנה:</strong>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '1.05rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'var(--element-bg)', padding: '0.4rem 0.8rem', borderRadius: '8px' }}>
+                    <strong style={{ color: 'var(--text-muted)' }}>תאריך הזמנה:</strong>
                     {isEditingOrderDate ? (
                       <div style={{ minWidth: '180px' }}>
                         <HebrewDatePicker value={order.orderDate} onChange={handleOrderDateChange} />
@@ -284,17 +284,17 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                       type="button"
                       title="ערוך תאריך הזמנה (מתכנת בלבד)"
                       onClick={requestOrderDateEdit}
-                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'white', border: '1px solid #cbd5e1', borderRadius: '6px', padding: '0.3rem', cursor: 'pointer', color: '#475569' }}
+                      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', background: 'var(--card-bg)', border: '1px solid var(--element-border)', borderRadius: '6px', padding: '0.3rem', cursor: 'pointer', color: 'var(--text-muted)' }}
                     >
                       <CalendarClock size={15} />
                     </button>
                   </div>
 
                   {(order.isWeekdayEvent || order.isAbroad) && (
-                    <div style={{ color: '#475569', fontSize: '1.05rem', display: 'flex', gap: '1.5rem', alignItems: 'center', background: '#f1f5f9', padding: '0.4rem 1rem', borderRadius: '8px' }}>
-                      <span><strong style={{ color: '#64748b' }}>לקיחה:</strong> {order.fromDate ? `${new Date(order.fromDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.fromDate)})` : 'לא נבחר'}</span>
-                      <span style={{ color: '#cbd5e1' }}>|</span>
-                      <span><strong style={{ color: '#64748b' }}>החזרה:</strong> {order.toDate || order.returnDate ? `${new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.toDate || order.returnDate)})` : 'לא נבחר'}</span>
+                    <div style={{ color: 'var(--text-muted)', fontSize: '1.05rem', display: 'flex', gap: '1.5rem', alignItems: 'center', background: 'var(--element-bg)', padding: '0.4rem 1rem', borderRadius: '8px' }}>
+                      <span><strong style={{ color: 'var(--text-muted)' }}>לקיחה:</strong> {order.fromDate ? `${new Date(order.fromDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.fromDate)})` : 'לא נבחר'}</span>
+                      <span style={{ color: 'var(--element-border)' }}>|</span>
+                      <span><strong style={{ color: 'var(--text-muted)' }}>החזרה:</strong> {order.toDate || order.returnDate ? `${new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.toDate || order.returnDate)})` : 'לא נבחר'}</span>
                     </div>
                   )}
                   
@@ -310,10 +310,10 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
 
               {/* Edit Buttons */}
               <div style={{ display: 'flex', gap: '0.8rem', flexDirection: 'column', minWidth: '140px' }}>
-                <button type="button" onClick={() => setIsEditingCustomer(true)} style={{ width: '100%', fontSize: '0.9rem', background: 'white', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                <button type="button" onClick={() => setIsEditingCustomer(true)} style={{ width: '100%', fontSize: '0.9rem', background: 'var(--card-bg)', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--element-border)', cursor: 'pointer', fontWeight: '600', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                   <RefreshCw size={16} /> ערוך לקוח
                 </button>
-                <button type="button" onClick={() => setIsEditingOrderDetails(true)} style={{ width: '100%', fontSize: '0.9rem', background: 'white', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+                <button type="button" onClick={() => setIsEditingOrderDetails(true)} style={{ width: '100%', fontSize: '0.9rem', background: 'var(--card-bg)', padding: '0.6rem 1rem', borderRadius: '8px', border: '1px solid var(--element-border)', cursor: 'pointer', fontWeight: '600', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                   <Edit2 size={16} /> ערוך אירוע
                 </button>
               </div>
@@ -322,13 +322,13 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1.5rem', alignItems: 'stretch' }}>
           
           {/* Customer Information */}
-          <div style={{ flex: '1 1 300px', padding: '1rem 1.5rem', background: 'linear-gradient(to bottom right, #ffffff, #f8fafc)', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
+          <div style={{ flex: '1 1 300px', padding: '1rem 1.5rem', background: 'linear-gradient(to bottom right, var(--card-bg), var(--element-bg))', borderRadius: '12px', border: '1px solid var(--element-border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#2563eb', fontWeight: 'bold', fontSize: '1.2rem' }}>
                 {order.customer ? (order.customer.firstName?.[0] || '') + (order.customer.lastName?.[0] || '') : '?'}
               </div>
-              <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '1.2rem' }}>פרטי לקוח</span>
+              <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '1.2rem' }}>פרטי לקוח</span>
             </div>
             
             <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
@@ -337,7 +337,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   <ExternalLink size={18} />
                 </Link>
               )}
-              <button data-agy-id="ordergeneraldetails_button_1" type="button" title="החלף לקוח" onClick={() => setIsEditingCustomer(!isEditingCustomer)} style={{ fontSize: '0.9rem', background: 'white', padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+              <button data-agy-id="ordergeneraldetails_button_1" type="button" title="החלף לקוח" onClick={() => setIsEditingCustomer(!isEditingCustomer)} style={{ fontSize: '0.9rem', background: 'var(--card-bg)', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', cursor: 'pointer', fontWeight: '600', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                 <RefreshCw size={18} />
               </button>
             </div>
@@ -346,21 +346,21 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
           {!isEditingCustomer ? (
             <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap' }}>
               <div>
-                <span style={{...labelStyle, color: '#64748b'}}>שם:</span>
-                <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a' }}>
+                <span style={{...labelStyle, color: 'var(--text-muted)'}}>שם:</span>
+                <div style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-main)' }}>
                   {order.customer ? [order.customer.firstName, order.customer.lastName].filter(Boolean).join(' ') : 'לא ידוע'}
                 </div>
               </div>
               {order.customer?.phone1 && (
                 <div>
-                  <span style={{...labelStyle, color: '#64748b'}}>טלפון 1:</span>
-                  <div style={{ fontSize: '1.1rem', direction: 'ltr', textAlign: 'right', color: '#334155', fontWeight: '500' }}>{order.customer.phone1}</div>
+                  <span style={{...labelStyle, color: 'var(--text-muted)'}}>טלפון 1:</span>
+                  <div style={{ fontSize: '1.1rem', direction: 'ltr', textAlign: 'right', color: 'var(--text-main)', fontWeight: '500' }}>{order.customer.phone1}</div>
                 </div>
               )}
               {order.customer?.phone2 && (
                 <div>
-                  <span style={{...labelStyle, color: '#64748b'}}>טלפון 2:</span>
-                  <div style={{ fontSize: '1.1rem', direction: 'ltr', textAlign: 'right', color: '#334155', fontWeight: '500' }}>{order.customer.phone2}</div>
+                  <span style={{...labelStyle, color: 'var(--text-muted)'}}>טלפון 2:</span>
+                  <div style={{ fontSize: '1.1rem', direction: 'ltr', textAlign: 'right', color: 'var(--text-main)', fontWeight: '500' }}>{order.customer.phone2}</div>
                 </div>
               )}
               <div style={{ flex: '1 1 100%', marginTop: '0.5rem' }}>
@@ -373,9 +373,9 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                   }}
                   style={{
                     display: 'inline-flex', alignItems: 'center', gap: '0.8rem', cursor: 'pointer',
-                    padding: '0.6rem 1.2rem', background: order.hasSignedRegulations ? '#dcfce7' : '#f8fafc',
-                    borderRadius: '10px', border: `1px solid ${order.hasSignedRegulations ? '#86efac' : '#e2e8f0'}`,
-                    color: order.hasSignedRegulations ? '#166534' : '#475569', fontWeight: '700',
+                    padding: '0.6rem 1.2rem', background: order.hasSignedRegulations ? '#dcfce7' : 'var(--element-bg)',
+                    borderRadius: '10px', border: `1px solid ${order.hasSignedRegulations ? '#86efac' : 'var(--element-border)'}`,
+                    color: order.hasSignedRegulations ? '#166534' : 'var(--text-muted)', fontWeight: '700',
                     boxShadow: '0 2px 4px rgba(0,0,0,0.02)', transition: 'all 0.2s'
                   }}
                 >
@@ -391,10 +391,10 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
               </div>
             </div>
           ) : (
-            <div style={{ background: '#f8fafc', padding: '1.5rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <div style={{ background: 'var(--element-bg)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--element-border)' }}>
               <div style={{ display: 'flex', gap: '1rem', marginBottom: '1.5rem' }}>
-                <button data-agy-id="ordergeneraldetails_button_2" type="button" onClick={() => setCustomerMode('existing')} style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid', borderColor: customerMode === 'existing' ? '#2563eb' : '#cbd5e1', background: customerMode === 'existing' ? '#eff6ff' : 'white', color: customerMode === 'existing' ? '#1d4ed8' : '#475569', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}>בחר לקוח קיים</button>
-                <button data-agy-id="ordergeneraldetails_button_3" type="button" onClick={() => setCustomerMode('new')} style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid', borderColor: customerMode === 'new' ? '#2563eb' : '#cbd5e1', background: customerMode === 'new' ? '#eff6ff' : 'white', color: customerMode === 'new' ? '#1d4ed8' : '#475569', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}>צור לקוח חדש</button>
+                <button data-agy-id="ordergeneraldetails_button_2" type="button" onClick={() => setCustomerMode('existing')} style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid', borderColor: customerMode === 'existing' ? '#2563eb' : 'var(--element-border)', background: customerMode === 'existing' ? '#eff6ff' : 'var(--card-bg)', color: customerMode === 'existing' ? '#1d4ed8' : 'var(--text-muted)', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}>בחר לקוח קיים</button>
+                <button data-agy-id="ordergeneraldetails_button_3" type="button" onClick={() => setCustomerMode('new')} style={{ flex: 1, padding: '0.8rem', borderRadius: '8px', border: '1px solid', borderColor: customerMode === 'new' ? '#2563eb' : 'var(--element-border)', background: customerMode === 'new' ? '#eff6ff' : 'var(--card-bg)', color: customerMode === 'new' ? '#1d4ed8' : 'var(--text-muted)', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}>צור לקוח חדש</button>
               </div>
               
               {customerMode === 'existing' ? (
@@ -458,18 +458,18 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
         </div>
 
         {/* Column for Dates and Notes */}
-        <div style={{ flex: '1 1 400px', padding: '1rem 1.5rem', background: 'linear-gradient(to bottom right, #ffffff, #f8fafc)', borderRadius: '12px', border: '1px solid #e2e8f0', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ flex: '1 1 400px', padding: '1rem 1.5rem', background: 'linear-gradient(to bottom right, var(--card-bg), var(--element-bg))', borderRadius: '12px', border: '1px solid var(--element-border)', boxShadow: '0 2px 10px rgba(0,0,0,0.02)', display: 'flex', flexDirection: 'column' }}>
           
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem' }}>
               <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#fce7f3', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#db2777', fontWeight: 'bold', fontSize: '1.2rem' }}>
                 📅
               </div>
-              <span style={{ fontWeight: '700', color: '#1e293b', fontSize: '1.2rem' }}>פרטי אירוע והערות</span>
+              <span style={{ fontWeight: '700', color: 'var(--text-main)', fontSize: '1.2rem' }}>פרטי אירוע והערות</span>
             </div>
             
             <div style={{ display: 'flex', gap: '0.8rem', flexWrap: 'wrap' }}>
-              <button data-agy-id="ordergeneraldetails_button_9" type="button" title={isEditingOrderDetails ? "סיים עריכה" : "ערוך פרטים"} onClick={() => setIsEditingOrderDetails(!isEditingOrderDetails)} style={{ fontSize: '0.9rem', background: 'white', padding: '0.6rem', borderRadius: '8px', border: '1px solid #cbd5e1', cursor: 'pointer', fontWeight: '600', color: '#475569', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
+              <button data-agy-id="ordergeneraldetails_button_9" type="button" title={isEditingOrderDetails ? "סיים עריכה" : "ערוך פרטים"} onClick={() => setIsEditingOrderDetails(!isEditingOrderDetails)} style={{ fontSize: '0.9rem', background: 'var(--card-bg)', padding: '0.6rem', borderRadius: '8px', border: '1px solid var(--element-border)', cursor: 'pointer', fontWeight: '600', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}>
                 {isEditingOrderDetails ? <Check size={18} /> : <Edit2 size={18} />}
               </button>
             </div>
@@ -479,15 +479,15 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
             <div style={{ display: 'flex', gap: '2.5rem', flexWrap: 'wrap' }}>
               {(!order.isWeekdayEvent && !order.isAbroad) ? (
                 <div>
-                  <span style={{...labelStyle, color: '#64748b'}}>תאריך אירוע:</span>
-                  <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a' }}>
+                  <span style={{...labelStyle, color: 'var(--text-muted)'}}>תאריך אירוע:</span>
+                  <div style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-main)' }}>
                     {order.eventDate ? `${new Date(order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.eventDate)})` : 'לא נבחר'}
                   </div>
                 </div>
               ) : (
                 <div>
-                  <span style={{...labelStyle, color: '#64748b'}}>סוג אירוע:</span>
-                  <div style={{ fontSize: '1.2rem', fontWeight: '700', color: '#0f172a' }}>
+                  <span style={{...labelStyle, color: 'var(--text-muted)'}}>סוג אירוע:</span>
+                  <div style={{ fontSize: '1.2rem', fontWeight: '700', color: 'var(--text-main)' }}>
                     אירוע חו"ל
                   </div>
                 </div>
@@ -495,9 +495,9 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
               {(order.isWeekdayEvent || order.isAbroad) ? (
                 <>
                   <div>
-                    <span style={{...labelStyle, color: '#64748b'}}>לקיחה:</span>
+                    <span style={{...labelStyle, color: 'var(--text-muted)'}}>לקיחה:</span>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <div style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: '700' }}>
+                      <div style={{ fontSize: '1.2rem', color: 'var(--text-main)', fontWeight: '700' }}>
                         {(order.fromDate || order.eventDate) ? `${new Date(order.fromDate || order.eventDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.fromDate || order.eventDate)})` : 'לא נבחר'}
                       </div>
                       {(order.fromDate || order.eventDate) && (
@@ -510,15 +510,15 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                             newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
                             validateAndChangeDate({ fromDate: newDate.toISOString() });
                           }}
-                          style={{ padding: '0.2rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '1rem', cursor: 'pointer' }}
+                          style={{ padding: '0.2rem', borderRadius: '4px', border: '1px solid var(--element-border)', fontSize: '1rem', cursor: 'pointer' }}
                         />
                       )}
                     </div>
                   </div>
                   <div>
-                    <span style={{...labelStyle, color: '#64748b'}}>החזרה:</span>
+                    <span style={{...labelStyle, color: 'var(--text-muted)'}}>החזרה:</span>
                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                      <div style={{ fontSize: '1.2rem', color: '#0f172a', fontWeight: '700' }}>
+                      <div style={{ fontSize: '1.2rem', color: 'var(--text-main)', fontWeight: '700' }}>
                         {(order.toDate || order.returnDate) ? `${new Date(order.toDate || order.returnDate).toLocaleDateString('he-IL')} (${getHebrewDateString(order.toDate || order.returnDate)})` : 'לא נבחר'}
                       </div>
                       {(order.toDate || order.returnDate) && (
@@ -531,7 +531,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                             newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
                             validateAndChangeDate({ toDate: newDate.toISOString() });
                           }}
-                          style={{ padding: '0.2rem', borderRadius: '4px', border: '1px solid #cbd5e1', fontSize: '1rem', cursor: 'pointer' }}
+                          style={{ padding: '0.2rem', borderRadius: '4px', border: '1px solid var(--element-border)', fontSize: '1rem', cursor: 'pointer' }}
                         />
                       )}
                     </div>
@@ -539,18 +539,18 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                 </>
               ) : null}
               <div style={{ flex: '1 1 100%', marginTop: '0.5rem' }}>
-                <span style={{...labelStyle, color: '#64748b'}}>הערות להזמנה:</span>
-                <div style={{ fontSize: '1rem', color: '#334155', background: '#f8fafc', padding: '1rem', borderRadius: '8px', border: '1px solid #e2e8f0', whiteSpace: 'pre-wrap', minHeight: '60px' }}>
+                <span style={{...labelStyle, color: 'var(--text-muted)'}}>הערות להזמנה:</span>
+                <div style={{ fontSize: '1rem', color: 'var(--text-main)', background: 'var(--element-bg)', padding: '1rem', borderRadius: '8px', border: '1px solid var(--element-border)', whiteSpace: 'pre-wrap', minHeight: '60px' }}>
                   {order.notes || 'אין הערות'}
                 </div>
               </div>
             </div>
           ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: '#f8fafc', padding: '1.5rem', borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', background: 'var(--element-bg)', padding: '1.5rem', borderRadius: '10px', border: '1px solid var(--element-border)' }}>
               {/* Event Type */}
               <div style={groupStyle}>
                 <label style={labelStyle}>סוג אירוע:</label>
-                <div style={{ display: 'flex', gap: '0.8rem', background: '#f1f5f9', padding: '0.4rem', borderRadius: '12px' }}>
+                <div style={{ display: 'flex', gap: '0.8rem', background: 'var(--element-bg)', padding: '0.4rem', borderRadius: '12px' }}>
                   {[
                     { id: 'regular', label: 'אירוע רגיל' },
                     { id: 'abroad', label: 'אירוע חו"ל' }
@@ -580,8 +580,8 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                           padding: '0.6rem 1rem',
                           borderRadius: '8px',
                           border: 'none',
-                          background: isSelected ? 'white' : 'transparent',
-                          color: isSelected ? '#0f172a' : '#64748b',
+                          background: isSelected ? 'var(--card-bg)' : 'transparent',
+                          color: isSelected ? 'var(--text-main)' : 'var(--text-muted)',
                           fontWeight: '700',
                           fontSize: '0.95rem',
                           boxShadow: isSelected ? '0 2px 8px rgba(0,0,0,0.1)' : 'none',
@@ -658,7 +658,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                                 newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
                                 validateAndChangeDate({ fromDate: newDate.toISOString() });
                               }}
-                              style={{ padding: '0.3rem', borderRadius: '6px', border: '1px solid #bfdbfe', background: 'white' }}
+                              style={{ padding: '0.3rem', borderRadius: '6px', border: '1px solid #bfdbfe', background: 'var(--card-bg)' }}
                             />
                           </div>
                         )}
@@ -674,7 +674,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                                 newDate.setHours(parseInt(hours, 10), parseInt(minutes, 10), 0, 0);
                                 validateAndChangeDate({ toDate: newDate.toISOString(), returnDate: newDate.toISOString() });
                               }}
-                              style={{ padding: '0.3rem', borderRadius: '6px', border: '1px solid #bfdbfe', background: 'white' }}
+                              style={{ padding: '0.3rem', borderRadius: '6px', border: '1px solid #bfdbfe', background: 'var(--card-bg)' }}
                             />
                           </div>
                         )}
@@ -696,7 +696,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                 <textarea data-agy-id="ordergeneraldetails_textarea_11" 
                   value={order.notes || ''} 
                   onChange={(e) => handleChange('notes', e.target.value)}
-                  style={{ ...inputStyle, minHeight: '100px', resize: 'vertical', background: 'white' }}
+                  style={{ ...inputStyle, minHeight: '100px', resize: 'vertical', background: 'var(--card-bg)' }}
                   placeholder="הערות כלליות לגבי ההזמנה..."
                 />
               </div>
@@ -714,7 +714,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                           applyCustomSpacing(val);
                         }
                       }}
-                      style={{ ...inputStyle, width: '150px', backgroundColor: 'white', borderColor: '#fcd34d', fontWeight: 'bold' }}
+                      style={{ ...inputStyle, width: '150px', backgroundColor: 'var(--card-bg)', borderColor: '#fcd34d', fontWeight: 'bold' }}
                     >
                       <option value="">רגיל (לפי המערכת)</option>
                       <option value="1">1 יום רווח</option>
@@ -740,17 +740,17 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
       {/* Simulation Modal */}
       {simulationModalData && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15,23,42,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 3000, direction: 'rtl', backdropFilter: 'blur(4px)' }}>
-          <div style={{ background: 'white', padding: '2.5rem', borderRadius: '16px', width: '90%', maxWidth: '650px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
-            <h3 style={{ margin: '0 0 1.5rem 0', color: '#1e293b', fontSize: '1.4rem', borderBottom: '2px solid #f1f5f9', paddingBottom: '1rem' }}>חוסר במלאי עבור התאריך המבוקש</h3>
-            
-            <p style={{ color: '#475569', fontSize: '1.05rem', marginBottom: '1.5rem' }}>
+          <div style={{ background: 'var(--card-bg)', padding: '2.5rem', borderRadius: '16px', width: '90%', maxWidth: '650px', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)' }}>
+            <h3 style={{ margin: '0 0 1.5rem 0', color: 'var(--text-main)', fontSize: '1.4rem', borderBottom: '2px solid var(--element-border)', paddingBottom: '1rem' }}>חוסר במלאי עבור התאריך המבוקש</h3>
+
+            <p style={{ color: 'var(--text-muted)', fontSize: '1.05rem', marginBottom: '1.5rem' }}>
               שימו לב, אין מספיק מלאי להזמנה זו בציפוף הימים הרגיל. להלן מצב המלאי עבור כל פריט חסר בכל אחד מפוערי הציפוף האפשריים:
             </p>
 
             <div style={{ maxHeight: '350px', overflowY: 'auto', marginBottom: '1.5rem' }}>
               {simulationModalData.errors.map((err, idx) => (
-                <div key={idx} style={{ background: '#f8fafc', border: '1px solid #e2e8f0', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#0f172a', marginBottom: '0.5rem' }}>
+                <div key={idx} style={{ background: 'var(--element-bg)', border: '1px solid var(--element-border)', padding: '1rem', borderRadius: '8px', marginBottom: '1rem' }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: 'var(--text-main)', marginBottom: '0.5rem' }}>
                     {err.dressName} (מידה: {err.sizeText}) - נדרש: {err.requested}
                   </div>
                   
@@ -769,7 +769,7 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
                       const availableQty = sizeError ? sizeError.available : `מספיק (${err.requested}+)`;
                       
                       return (
-                        <div key={spacing} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: isSufficient ? '#dcfce7' : '#f1f5f9', borderRadius: '6px', color: isSufficient ? '#166534' : '#475569', border: isSufficient ? '1px solid #bbf7d0' : 'none' }}>
+                        <div key={spacing} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem', background: isSufficient ? '#dcfce7' : 'var(--element-bg)', borderRadius: '6px', color: isSufficient ? '#166534' : 'var(--text-muted)', border: isSufficient ? '1px solid #bbf7d0' : 'none' }}>
                           <span>בציפוף של {spacing} ימים:</span>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
                             <strong>זמין: {availableQty}</strong>
@@ -790,10 +790,10 @@ export default function OrderGeneralDetails({ order, onOrderChange, items = [], 
               ))}
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '2px solid #f1f5f9', paddingTop: '1.5rem' }}>
-              <button 
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '1rem', borderTop: '2px solid var(--element-border)', paddingTop: '1.5rem' }}>
+              <button
                 onClick={() => setSimulationModalData(null)}
-                style={{ padding: '0.8rem 1.5rem', background: '#f1f5f9', color: '#475569', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
+                style={{ padding: '0.8rem 1.5rem', background: 'var(--element-bg)', color: 'var(--text-muted)', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: 'bold' }}
               >
                 ביטול שינוי התאריך
               </button>

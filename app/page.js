@@ -270,13 +270,13 @@ export default function HomeDashboard() {
                           <tr style={{ background: 'var(--element-bg)' }}>
                             {Object.keys(msg.data[0])
                               .filter(k => !k.startsWith('_action'))
-                              .map(k => <th key={k} style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>{k}</th>)}
-                            {msg.data.some(r => r._actionUrl) && <th style={{ padding: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>פעולות</th>}
+                              .map(k => <th key={k} style={{ padding: '0.5rem', borderBottom: '1px solid var(--element-border)' }}>{k}</th>)}
+                            {msg.data.some(r => r._actionUrl) && <th style={{ padding: '0.5rem', borderBottom: '1px solid var(--element-border)' }}>פעולות</th>}
                           </tr>
                         </thead>
                         <tbody>
                           {msg.data.slice(0, 15).map((row, rIdx) => (
-                            <tr key={rIdx} style={{ borderBottom: '1px solid #e5e7eb' }}>
+                            <tr key={rIdx} style={{ borderBottom: '1px solid var(--element-border)' }}>
                               {Object.entries(row)
                                 .filter(([k]) => !k.startsWith('_action'))
                                 .map(([k, val], vIdx) => <td key={vIdx} style={{ padding: '0.5rem' }}>{val}</td>)}
@@ -293,7 +293,7 @@ export default function HomeDashboard() {
                           ))}
                         </tbody>
                       </table>
-                      {msg.data.length > 15 && <div style={{ textAlign: 'center', padding: '0.5rem', color: '#6b7280', fontStyle: 'italic' }}>מציג 15 תוצאות ראשונות (הורד קובץ לצפייה במלא)</div>}
+                      {msg.data.length > 15 && <div style={{ textAlign: 'center', padding: '0.5rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>מציג 15 תוצאות ראשונות (הורד קובץ לצפייה במלא)</div>}
                     </div>
                   </div>
                 )}
@@ -325,7 +325,7 @@ export default function HomeDashboard() {
            <button data-element-name="כפתור_page_15" onClick={() => handleAiSearch(aiReplyInput, true)} disabled={aiLoading || !aiReplyInput.trim()} style={{ background: aiLoading || !aiReplyInput.trim() ? '#f9a8d4' : '#ec4899', color: 'white', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: aiLoading || !aiReplyInput.trim() ? 'not-allowed' : 'pointer', transition: 'background 0.2s' }}>
              <Send data-element-name="רכיב_page_16" size={20} />
            </button>
-           <button data-element-name="כפתור_page_17" onClick={clearAiChat} title="סגור צ'אט" style={{ background: 'var(--element-bg)', color: '#6b7280', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
+           <button data-element-name="כפתור_page_17" onClick={clearAiChat} title="סגור צ'אט" style={{ background: 'var(--element-bg)', color: 'var(--text-muted)', border: 'none', borderRadius: '50%', width: '45px', height: '45px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
              <X data-element-name="רכיב_page_18" size={20} />
            </button>
         </div>
@@ -346,11 +346,11 @@ export default function HomeDashboard() {
                 <>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {searchResults.customers.slice(0, showMoreCustomers ? undefined : 5).map(c => (
-                      <li key={c.id} style={{ borderBottom: '1px solid #f3f4f6', padding: '0.75rem 0' }}>
+                      <li key={c.id} style={{ borderBottom: '1px solid var(--element-border)', padding: '0.75rem 0' }}>
                         <Link data-element-name="רכיב_page_20" href={`/customers/${c.id}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontWeight: 'bold' }}>{c.firstName} {c.lastName}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>{c.phone1} • {c.city}</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>{c.phone1} • {c.city}</div>
                           </div>
                           <ArrowLeft data-element-name="רכיב_page_21" size={16} color="#9ca3af" />
                         </Link>
@@ -363,7 +363,7 @@ export default function HomeDashboard() {
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>לא נמצאו לקוחות</div>}
+              ) : <div style={{ color: 'var(--text-muted)' }}>לא נמצאו לקוחות</div>}
             </div>
 
             {/* Orders */}
@@ -375,17 +375,17 @@ export default function HomeDashboard() {
                 <>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {searchResults.orders.slice(0, showMoreOrders ? undefined : 5).map(o => (
-                      <li key={o.id} style={{ borderBottom: '1px solid #f3f4f6', padding: '0.75rem 0' }}>
+                      <li key={o.id} style={{ borderBottom: '1px solid var(--element-border)', padding: '0.75rem 0' }}>
                         <Link data-element-name="רכיב_page_24" href={`/orders/${o.orderId}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div style={{ flex: 1 }}>
                             <div style={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#047857', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                               {o.firstName} {o.lastName}
                               {renderStatusIcon(o.status)}
                             </div>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.25rem' }}>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
                               קוד: <strong>#{o.orderId}</strong> | אירוע: <strong>{o.eventDateHebrew || '-'}</strong>
                             </div>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280', marginTop: '0.15rem' }}>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.15rem' }}>
                               סה"כ: <strong>₪{o.totalAmount || 0}</strong> | פריטים: <strong>{o.itemCount || 0}</strong>
                             </div>
                           </div>
@@ -400,7 +400,7 @@ export default function HomeDashboard() {
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>לא נמצאו הזמנות</div>}
+              ) : <div style={{ color: 'var(--text-muted)' }}>לא נמצאו הזמנות</div>}
             </div>
 
             {/* Rentals */}
@@ -412,11 +412,11 @@ export default function HomeDashboard() {
                 <>
                   <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                     {searchResults.rentals.slice(0, showMoreRentals ? undefined : 5).map(r => (
-                      <li key={r.id} style={{ borderBottom: '1px solid #f3f4f6', padding: '0.75rem 0' }}>
+                      <li key={r.id} style={{ borderBottom: '1px solid var(--element-border)', padding: '0.75rem 0' }}>
                         <Link data-element-name="רכיב_page_28" href={`/orders/${r.orderId}`} style={{ textDecoration: 'none', color: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <div>
                             <div style={{ fontWeight: 'bold' }}>{r.catalogName || r.description}</div>
-                            <div style={{ fontSize: '0.85rem', color: '#6b7280' }}>ברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}</div>
+                            <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)' }}>ברקוד: {r.barcode || r.catalogBarcode} • מידה: {r.sizeText}</div>
                           </div>
                           <ArrowLeft data-element-name="רכיב_page_29" size={16} color="#9ca3af" />
                         </Link>
@@ -429,7 +429,7 @@ export default function HomeDashboard() {
                     </button>
                   )}
                 </>
-              ) : <div style={{ color: '#9ca3af' }}>לא נמצאו השכרות</div>}
+              ) : <div style={{ color: 'var(--text-muted)' }}>לא נמצאו השכרות</div>}
             </div>
 
           </div>
@@ -438,7 +438,7 @@ export default function HomeDashboard() {
 
       {/* Footer / Privacy Policy Link */}
       <div style={{ marginTop: 'auto', paddingTop: '3rem', textAlign: 'center', paddingBottom: '1rem' }}>
-        <button data-element-name="כפתור_page_privacy_link" onClick={() => setShowPrivacyPolicy(true)} style={{ background: 'none', border: 'none', color: '#6b7280', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}>
+        <button data-element-name="כפתור_page_privacy_link" onClick={() => setShowPrivacyPolicy(true)} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', textDecoration: 'underline', cursor: 'pointer', fontSize: '0.9rem' }}>
           מדיניות פרטיות
         </button>
       </div>
@@ -447,7 +447,7 @@ export default function HomeDashboard() {
       {showPrivacyPolicy && (
         <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="animate-fade-in" style={{ background: 'var(--card-bg)', width: '90%', maxWidth: '600px', maxHeight: '80vh', overflowY: 'auto', borderRadius: '16px', padding: '2rem', position: 'relative', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <button data-element-name="כפתור_page_close_privacy" onClick={() => setShowPrivacyPolicy(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280' }}>
+            <button data-element-name="כפתור_page_close_privacy" onClick={() => setShowPrivacyPolicy(false)} style={{ position: 'absolute', top: '1rem', right: '1rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
               <X data-element-name="רכיב_page_x_privacy" size={24} />
             </button>
             <h2 style={{ color: 'var(--primary-color)', marginBottom: '1.5rem', textAlign: 'center' }}>מדיניות פרטיות</h2>
@@ -458,7 +458,7 @@ export default function HomeDashboard() {
               <p><strong>1. איסוף נתונים:</strong> המערכת שומרת פרטים אישיים בסיסיים כגון שם, טלפון וכתובת לצורך יצירת קשר בלבד ולמען תפעול תקין של הגמ"ח.</p>
               <p><strong>2. אבטחת מידע:</strong> אנו עושים מאמצים לשמור על בטיחות המידע ולא נעביר אותו לצד שלישי ללא אישור מפורש.</p>
               <br/>
-              <p style={{ color: '#9ca3af', fontSize: '0.9rem', fontStyle: 'italic' }}>* ניתן לערוך טקסט זה בהמשך בקוד המערכת.</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontStyle: 'italic' }}>* ניתן לערוך טקסט זה בהמשך בקוד המערכת.</p>
             </div>
             <div style={{ textAlign: 'center', marginTop: '2rem' }}>
               <button data-element-name="כפתור_page_confirm_privacy" onClick={() => setShowPrivacyPolicy(false)} style={{ background: 'var(--primary-color)', color: 'white', border: 'none', padding: '0.75rem 2rem', borderRadius: '8px', cursor: 'pointer', fontSize: '1rem', fontWeight: 'bold' }}>

@@ -316,7 +316,7 @@ export default function EmployeesPage() {
                 <div style={{ overflow: 'visible', minHeight: '50vh' }}>
                 <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ borderBottom: '1px solid #ddd', color: 'var(--text-muted)' }}>
+                    <tr style={{ borderBottom: '1px solid var(--element-border)', color: 'var(--text-muted)' }}>
                       <th style={{ padding: '0.4rem 0.5rem' }}>קוד עובד</th>
                       <th style={{ padding: '0.4rem 0.5rem' }}>שם מלא</th>
                       <th style={{ padding: '0.4rem 0.5rem' }}>תפקיד</th>
@@ -326,7 +326,7 @@ export default function EmployeesPage() {
                   </thead>
                   <tbody>
                     {filteredEmployees.map(employee => (
-                      <tr data-element-name="לחיץ_page_15" data-agy-id={`employee-row-${employee.id}`} key={employee.id} style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/employees/${employee.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                      <tr data-element-name="לחיץ_page_15" data-agy-id={`employee-row-${employee.id}`} key={employee.id} style={{ borderBottom: '1px solid var(--element-border)', cursor: 'pointer', transition: 'background 0.2s' }} onClick={() => router.push(`/employees/${employee.id}`)} onMouseEnter={e => e.currentTarget.style.background = 'var(--element-bg)'} onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                         <td style={{ padding: '0.4rem 0.5rem' }}>{employee.legacyId || employee.id.substring(0, 5)}</td>
                         <td style={{ padding: '0.4rem 0.5rem', fontWeight: '500' }}>{employee.firstName} {employee.lastName}</td>
                         <td style={{ padding: '0.4rem 0.5rem' }}>{employee.department ? employee.department.name : (employee.roleId || 'עובד')}</td>
@@ -410,7 +410,7 @@ export default function EmployeesPage() {
               <div style={{ overflow: 'visible', minHeight: '50vh' }}>
               <table style={{ width: '100%', textAlign: 'right', borderCollapse: 'collapse' }}>
                 <thead>
-                  <tr style={{ borderBottom: '2px solid #ddd', color: 'var(--text-muted)' }}>
+                  <tr style={{ borderBottom: '2px solid var(--element-border)', color: 'var(--text-muted)' }}>
                     <th style={{ padding: '0.4rem 0.5rem' }}>שם</th>
                     <th style={{ padding: '0.4rem 0.5rem' }}>ס"ה דקות</th>
                     <th style={{ padding: '0.4rem 0.5rem' }}>כמות ימים</th>
@@ -436,7 +436,7 @@ export default function EmployeesPage() {
                   ) : (
                     processedAttendance.map(emp => (
                       <tr key={emp.id} style={{
-                        borderBottom: '1px solid #eee',
+                        borderBottom: '1px solid var(--element-border)',
                         background: emp.issues > 0 ? '#ffeb3b4a' : 'transparent',
                         transition: 'background 0.2s',
                         cursor: 'pointer'
@@ -481,30 +481,30 @@ export default function EmployeesPage() {
 
           {printMode === 'summary' && !loadingAttendance && (
             <div style={{ background: '#fff', color: '#000', padding: '2rem', borderRadius: '12px' }}>
-              <div style={{ borderBottom: '2px solid #eee', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
+              <div style={{ borderBottom: '2px solid var(--element-border)', paddingBottom: '1rem', marginBottom: '1.5rem' }}>
                 <h2 style={{ margin: '0 0 0.5rem 0' }}>טבלת סיכום נוכחות - כלל העובדים</h2>
                 <div style={{ fontSize: '1.1rem', color: '#555' }}>תקופה: {getMonthName(selectedMonth)} {selectedYear}</div>
               </div>
               <table className="summary-print-table" style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.95rem' }}>
                 <thead>
                   <tr style={{ background: '#f8f9fa' }}>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'right' }}>שם</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה"כ שעות</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>כמות ימים</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>תקלות</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה"כ לתשלום</th>
-                    <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>נסיעות</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--element-border)', textAlign: 'right' }}>שם</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--element-border)', textAlign: 'center' }}>סה"כ שעות</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--element-border)', textAlign: 'center' }}>כמות ימים</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--element-border)', textAlign: 'center' }}>תקלות</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--element-border)', textAlign: 'center' }}>סה"כ לתשלום</th>
+                    <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--element-border)', textAlign: 'center' }}>נסיעות</th>
                   </tr>
                 </thead>
                 <tbody>
                   {processedAttendance.map(emp => (
                     <tr key={emp.id}>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', fontWeight: 500 }}>{emp.fullName}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>{emp.timeStr}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>{emp.daysCount}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center', color: emp.issues > 0 ? '#b71c1c' : 'inherit', fontWeight: emp.issues > 0 ? 700 : 400 }}>{emp.issues || '-'}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center', fontWeight: 500 }}>₪{emp.totalCalculated.toFixed(2)}</td>
-                      <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>{emp.hasTravels}</td>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--element-border)', fontWeight: 500 }}>{emp.fullName}</td>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--element-border)', textAlign: 'center' }}>{emp.timeStr}</td>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--element-border)', textAlign: 'center' }}>{emp.daysCount}</td>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--element-border)', textAlign: 'center', color: emp.issues > 0 ? '#b71c1c' : 'inherit', fontWeight: emp.issues > 0 ? 700 : 400 }}>{emp.issues || '-'}</td>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--element-border)', textAlign: 'center', fontWeight: 500 }}>₪{emp.totalCalculated.toFixed(2)}</td>
+                      <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--element-border)', textAlign: 'center' }}>{emp.hasTravels}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -516,7 +516,7 @@ export default function EmployeesPage() {
             const totalHours = (emp.totalMinutes / 60).toFixed(2);
             return (
               <div key={emp.id} className="employee-page" style={{ background: '#fff', color: '#000', padding: '2rem', borderRadius: '12px', marginBottom: '2rem', boxShadow: '0 4px 6px rgba(0,0,0,0.05)' }}>
-                <div style={{ borderBottom: '2px solid #eee', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ borderBottom: '2px solid var(--element-border)', paddingBottom: '1rem', marginBottom: '1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <div>
                     <h2 style={{ margin: '0 0 0.5rem 0' }}>דוח נוכחות עובד: {emp.fullName}</h2>
                     <div style={{ fontSize: '1.1rem', color: '#555' }}>
@@ -531,29 +531,29 @@ export default function EmployeesPage() {
                 <table style={{ width: '100%', borderCollapse: 'collapse', marginBottom: '2rem', fontSize: '0.95rem' }}>
                   <thead>
                     <tr style={{ background: '#f8f9fa' }}>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'right' }}>תאריך</th>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>כניסה</th>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>יציאה</th>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'center' }}>סה"כ שעות</th>
-                      <th style={{ padding: '0.75rem', borderBottom: '2px solid #ddd', textAlign: 'left' }}>סה"כ לתשלום</th>
+                      <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--element-border)', textAlign: 'right' }}>תאריך</th>
+                      <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--element-border)', textAlign: 'center' }}>כניסה</th>
+                      <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--element-border)', textAlign: 'center' }}>יציאה</th>
+                      <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--element-border)', textAlign: 'center' }}>סה"כ שעות</th>
+                      <th style={{ padding: '0.75rem', borderBottom: '2px solid var(--element-border)', textAlign: 'left' }}>סה"כ לתשלום</th>
                     </tr>
                   </thead>
                   <tbody>
                     {emp.shifts.map((shift) => (
                       <tr key={shift.id}>
-                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--element-border)' }}>
                           {shift.date ? new Date(shift.date).toLocaleDateString('he-IL') : '-'}
                         </td>
-                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--element-border)', textAlign: 'center' }}>
                           {shift.entryTime ? new Date(shift.entryTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : '-'}
                         </td>
-                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center', color: !shift.exitTime ? '#d32f2f' : 'inherit' }}>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--element-border)', textAlign: 'center', color: !shift.exitTime ? '#d32f2f' : 'inherit' }}>
                           {shift.exitTime ? new Date(shift.exitTime).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : 'חסר'}
                         </td>
-                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'center' }}>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--element-border)', textAlign: 'center' }}>
                           {shift.totalMinutes ? (shift.totalMinutes / 60).toFixed(2) : '0.00'}
                         </td>
-                        <td style={{ padding: '0.75rem', borderBottom: '1px solid #eee', textAlign: 'left', fontWeight: '500' }}>
+                        <td style={{ padding: '0.75rem', borderBottom: '1px solid var(--element-border)', textAlign: 'left', fontWeight: '500' }}>
                           ₪{shift.totalCalculated ? shift.totalCalculated.toFixed(2) : '0.00'}
                         </td>
                       </tr>
