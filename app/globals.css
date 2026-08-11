@@ -159,8 +159,17 @@ a {
   padding: 0 2rem;
 }
 
-/* Navbar */
-body.hide-global-nav .navbar {
+/* Navbar / app-shell chrome — hidden while the customer kiosk is locked.
+   The kiosk page toggles this body class (app/customer-interface/page.js);
+   it must cover the new "אריג" shell (sidebar + topbar, design-system.css)
+   and the floating AI widget too, not just the legacy .navbar — otherwise a
+   locked kiosk still exposes staff navigation. */
+body.hide-global-nav .navbar,
+body.hide-global-nav .app-shell > .sidebar,
+body.hide-global-nav .main > .topbar,
+body.hide-global-nav .sidebar-backdrop,
+body.hide-global-nav .ai-widget-fab,
+body.hide-global-nav .ai-widget-panel {
   display: none !important;
 }
 

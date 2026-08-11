@@ -11,6 +11,7 @@ import ModernPaymentsManager from '../../../components/orders/modern/ModernPayme
 import ModernInfoTab from '../../../components/orders/modern/ModernInfoTab';
 import { calculateOrderStatus } from '../../../lib/orderStatus';
 import { addHistory } from '../../../lib/historyManager';
+import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '../../lib/orderDrafts';
 
 // שדות בהזמנה שכפתור "ביטול שינויים" צריך לדווח עליהם אם השתנו מאז השמירה האחרונה
 const ORDER_FIELD_LABELS = {
@@ -97,6 +98,31 @@ const CHANGE_GROUPS = [
   { icon: '#i-user', label: 'לקוח', fields: ['customerId'] }
 ];
 
+// גרסאות ברמת המודול של סיכום/שורות השינויים — משמשות גם את מודל "ביטול שינויים"
+// (דרך העטיפות בקומפוננטה) וגם את כותב הטיוטה המקומית (effect שרץ לפני ה-early return,
+// ולכן לא יכול לקרוא לפונקציות שמוגדרות אחריו בגוף הקומפוננטה).
+const buildDraftSummary = (snap, curr) => [
+  ...summarizeOrderFieldChanges(snap.order, curr.order),
+  ...summarizeListDiff(snap.items, curr.items, 'פריטים'),
+  ...summarizeListDiff(snap.obligations, curr.obligations, 'התחייבויות תשלום'),
+  ...summarizeListDiff(snap.payments, curr.payments, 'תשלומים')
+];
+
+const buildDraftRows = (snap, curr) => {
+  const rows = [];
+  CHANGE_GROUPS.forEach(({ icon, label, fields }) => {
+    const changed = fields.some(f => JSON.stringify((snap.order && snap.order[f]) ?? null) !== JSON.stringify((curr.order && curr.order[f]) ?? null));
+    if (changed) rows.push({ icon, text: label });
+  });
+  const itemsText = formatListCounts('פריטים', summarizeListDiffCounts(snap.items, curr.items));
+  if (itemsText) rows.push({ icon: '#i-bag', text: itemsText });
+  const obligationsText = formatListCounts('התחייבויות תשלום', summarizeListDiffCounts(snap.obligations, curr.obligations));
+  if (obligationsText) rows.push({ icon: '#i-receipt', text: obligationsText });
+  const paymentsText = formatListCounts('תשלומים', summarizeListDiffCounts(snap.payments, curr.payments));
+  if (paymentsText) rows.push({ icon: '#i-card', text: paymentsText });
+  return rows;
+};
+
 export default function OrderDetailsPage({ params }) {
   const router = useRouter();
   const unwrappedParams = use(params);
@@ -125,6 +151,12 @@ export default function OrderDetailsPage({ params }) {
   const [showEmployeesModal, setShowEmployeesModal] = useState(false);
   const [inventoryCache, setInventoryCache] = useState(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  // טיוטה מקומית (localStorage) של שינויים שלא נשמרו מביקור קודם בכרטיס — ממתינה
+  // להחלטת המשתמש (שחזור/מחיקה) בבאנר שמעל הכרטיס. ר' app/lib/orderDrafts.js.
+  const [pendingDraft, setPendingDraft] = useState(null);
+  // מבדיל בין "אין שינויים כי רק נטען" ל"אין שינויים כי הרגע נשמרו/בוטלו" —
+  // רק במעבר השני מוחקים את הטיוטה מ-localStorage.
+  const hadUnsavedRef = useRef(false);
   
   // Custom Email Prompt State
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
@@ -174,6 +206,10 @@ export default function OrderDetailsPage({ params }) {
         const loadedTotalPaid = loadedPayments.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
         setOpenedDebt(loadedTotalRequired - loadedTotalPaid);
         setTimeout(() => setHasUnsavedChanges(false), 0);
+        // טיוטה מקומית שלא נשמרה מביקור קודם (למשל דפדפן שנסגר באמצע עריכה) —
+        // מוצגת בבאנר עם אפשרות לשחזר או למחוק, במקום להיעלם בשקט.
+        const existingDraft = loadOrderDraft(data.orderId);
+        if (existingDraft) setPendingDraft(existingDraft);
         setLoading(false);
 
         // Add to history
@@ -309,6 +345,35 @@ export default function OrderDetailsPage({ params }) {
     document.addEventListener('click', handleDocumentClick, true);
     return () => document.removeEventListener('click', handleDocumentClick, true);
   }, [hasUnsavedChanges]);
+
+  // רשת ביטחון לשינויים שלא נשמרו: כל עוד יש כאלה, מצב העריכה המלא נכתב (בהשהיה קצרה)
+  // כטיוטה ב-localStorage — סגירת דפדפן/קריסה לא מעלימה כלום. ברגע שהשינויים נשמרו
+  // או בוטלו (hasUnsavedChanges חוזר ל-false אחרי שהיה true) הטיוטה נמחקת.
+  // כשיש טיוטה קודמת שממתינה להחלטה (pendingDraft) לא כותבים חדשה — עריכה תוך כדי
+  // התלבטות לא דורסת בשקט את הטיוטה מהביקור הקודם.
+  useEffect(() => {
+    if (!order?.orderId) return;
+    if (hasUnsavedChanges) {
+      hadUnsavedRef.current = true;
+      if (pendingDraft) return;
+      const snap = savedSnapshotRef.current;
+      const timer = setTimeout(() => {
+        const curr = { order, items, obligations, payments };
+        saveOrderDraft(order.orderId, {
+          savedAt: Date.now(),
+          baseUpdatedAt: (snap && snap.order && snap.order.updatedAt) || null,
+          summary: snap ? buildDraftSummary(snap, curr) : [],
+          rows: snap ? buildDraftRows(snap, curr) : [],
+          state: { order, items, obligations, payments, refunds }
+        });
+      }, 600);
+      return () => clearTimeout(timer);
+    }
+    if (hadUnsavedRef.current) {
+      hadUnsavedRef.current = false;
+      clearOrderDraft(order.orderId);
+    }
+  }, [hasUnsavedChanges, order, items, obligations, payments, refunds, pendingDraft]);
 
   // טוען מחדש את ההזמנה מהשרת ומאפס את מצב "שינויים שלא נשמרו".
   const reloadOrderFromServer = async () => {
@@ -729,30 +794,40 @@ export default function OrderDetailsPage({ params }) {
   const buildChangeSummary = () => {
     const snap = savedSnapshotRef.current;
     if (!snap) return [];
-    return [
-      ...summarizeOrderFieldChanges(snap.order, order),
-      ...summarizeListDiff(snap.items, items, 'פריטים'),
-      ...summarizeListDiff(snap.obligations, obligations, 'התחייבויות תשלום'),
-      ...summarizeListDiff(snap.payments, payments, 'תשלומים')
-    ];
+    return buildDraftSummary(snap, { order, items, obligations, payments });
   };
 
   // גרסה מקובצת עם איקון + כיתוב קצר לכל שינוי, לתצוגה במודל אישור "ביטול שינויים".
   const buildChangeRows = () => {
     const snap = savedSnapshotRef.current;
     if (!snap) return [];
-    const rows = [];
-    CHANGE_GROUPS.forEach(({ icon, label, fields }) => {
-      const changed = fields.some(f => JSON.stringify((snap.order && snap.order[f]) ?? null) !== JSON.stringify((order && order[f]) ?? null));
-      if (changed) rows.push({ icon, text: label });
-    });
-    const itemsText = formatListCounts('פריטים', summarizeListDiffCounts(snap.items, items));
-    if (itemsText) rows.push({ icon: '#i-bag', text: itemsText });
-    const obligationsText = formatListCounts('התחייבויות תשלום', summarizeListDiffCounts(snap.obligations, obligations));
-    if (obligationsText) rows.push({ icon: '#i-receipt', text: obligationsText });
-    const paymentsText = formatListCounts('תשלומים', summarizeListDiffCounts(snap.payments, payments));
-    if (paymentsText) rows.push({ icon: '#i-card', text: paymentsText });
-    return rows;
+    return buildDraftRows(snap, { order, items, obligations, payments });
+  };
+
+  // שחזור טיוטה מקומית מביקור קודם — מחזיר את כל מצב העריכה שנשמר ב-localStorage
+  // ומסמן "שינויים שלא נשמרו", כאילו המשתמש מעולם לא עזב. אם ההזמנה השתנתה בשרת
+  // מאז, השמירה תעבור דרך דיאלוג ההתנגשות הרגיל (putOrder / 409).
+  const handleRestoreDraft = () => {
+    const d = pendingDraft;
+    if (!d || !d.state) return;
+    setOrder(d.state.order);
+    setItems(d.state.items || []);
+    setObligations(d.state.obligations || []);
+    setPayments(d.state.payments || []);
+    setRefunds(d.state.refunds || []);
+    setPendingDraft(null);
+    setHasUnsavedChanges(true);
+    setSaveMessage('השינויים מהביקור הקודם שוחזרו. לחץ "שמור שינויים" לשמירה, או על כפתור הביטול כדי לוותר עליהם.');
+    setTimeout(() => setSaveMessage(''), 7000);
+  };
+
+  const handleDiscardDraft = async () => {
+    const confirmed = window.customConfirm
+      ? await window.customConfirm('למחוק את השינויים שלא נשמרו מהביקור הקודם? פעולה זו אינה הפיכה.')
+      : window.confirm('למחוק את השינויים שלא נשמרו מהביקור הקודם?');
+    if (!confirmed) return;
+    clearOrderDraft(order.orderId);
+    setPendingDraft(null);
   };
 
   const handleCancelChanges = async () => {
@@ -941,6 +1016,48 @@ export default function OrderDetailsPage({ params }) {
 
   return (
     <>
+      {/* באנר טיוטה מקומית: שינויים שלא נשמרו מביקור קודם בכרטיס (למשל דפדפן שנסגר).
+          לא חוסם — אפשר לעיין בכרטיס לפני שמחליטים לשחזר או למחוק. */}
+      {pendingDraft && (
+        <div className="callout callout-warning" style={{ marginBottom: '18px', flexDirection: 'column', alignItems: 'stretch', gap: '10px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+            <svg className="icon"><use href="#i-alert-tri" /></svg>
+            <strong>נמצאו שינויים שלא נשמרו מביקור קודם בכרטיס</strong>
+            {pendingDraft.savedAt && (
+              <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>
+                ({new Date(pendingDraft.savedAt).toLocaleDateString('he-IL')} · {new Date(pendingDraft.savedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })})
+              </span>
+            )}
+          </div>
+          {(pendingDraft.rows || []).length > 0 && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {pendingDraft.rows.map((r, i) => (
+                <span key={i} className="chip">
+                  <svg className="icon" style={{ width: '12px', height: '12px' }}><use href={r.icon} /></svg>
+                  {r.text}
+                </span>
+              ))}
+            </div>
+          )}
+          {pendingDraft.baseUpdatedAt && order.updatedAt && pendingDraft.baseUpdatedAt !== order.updatedAt && (
+            <div style={{ fontSize: '12.5px', color: 'var(--danger)', display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-alert-circle" /></svg>
+              שים לב: ההזמנה עודכנה בשרת מאז שהשינויים האלה נערכו — שחזור ושמירה ידרשו אישור דריסה.
+            </div>
+          )}
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            <button type="button" className="btn btn-primary btn-sm" onClick={handleRestoreDraft}>
+              <svg className="icon"><use href="#i-refresh" /></svg>
+              שחזר את השינויים
+            </button>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleDiscardDraft}>
+              <svg className="icon"><use href="#i-trash" /></svg>
+              מחק אותם
+            </button>
+          </div>
+        </div>
+      )}
+
       <ModernOrderCard
           order={order}
           items={items}

@@ -67,14 +67,42 @@ export default function StickyTableHeaders() {
   useEffect(() => {
     let timer = null;
 
+    /* שורת הסיכום (.table-foot) דביקה לתחתית עם פינות תחתונות מעוגלות — בזמן שהיא
+       "תקועה" באמצע טבלה ארוכה, תאי הטבלה שמאחוריה נראים דרך מפרצי הפינות השקופים.
+       IntersectionObserver מזהה מתי היא באמת תקועה (נחתכת בתחתית החלון) ומדליק
+       .is-stuck, שמיישר את הפינות; כשמגיעים לתחתית הטבלה המחלקה יורדת והעיגול חוזר. */
+    const footObserver = typeof IntersectionObserver !== 'undefined'
+      ? new IntersectionObserver((entries) => {
+          entries.forEach((en) => {
+            const rootBottom = en.rootBounds ? en.rootBounds.bottom : window.innerHeight;
+            const rect = en.boundingClientRect;
+            const stuck = en.intersectionRatio < 1 && rect.bottom >= rootBottom - 1 && rect.top < rootBottom;
+            en.target.classList.toggle('is-stuck', stuck);
+          });
+        }, { threshold: [0, 0.5, 0.98, 1], rootMargin: '0px 0px -2px 0px' })
+      : null;
+    const observedFoots = new WeakSet();
+    const observeFoots = () => {
+      if (!footObserver) return;
+      document.querySelectorAll('.table-foot:not(.table-foot-top)').forEach((foot) => {
+        if (observedFoots.has(foot)) return;
+        observedFoots.add(foot);
+        footObserver.observe(foot);
+      });
+    };
+
     // בלי requestAnimationFrame: בטאב שאינו מצויר (רקע) הוא לא נקרא כלל
     // והכותרות היו נשארות בלי כיוונון.
     const schedule = () => {
       if (timer) clearTimeout(timer);
-      timer = setTimeout(applyStickyOffsets, 120);
+      timer = setTimeout(() => {
+        applyStickyOffsets();
+        observeFoots();
+      }, 120);
     };
 
     applyStickyOffsets();
+    observeFoots();
     // הנאב-בר משנה גובה אחרי טעינת הפונטים
     if (document.fonts && document.fonts.ready) {
       document.fonts.ready.then(schedule).catch(() => {});
@@ -99,6 +127,7 @@ export default function StickyTableHeaders() {
     return () => {
       observer.disconnect();
       if (resizeObserver) resizeObserver.disconnect();
+      if (footObserver) footObserver.disconnect();
       window.removeEventListener('resize', schedule);
       if (timer) clearTimeout(timer);
     };

@@ -192,14 +192,18 @@ export default function AppShell({
 
           <TopbarSearch />
 
-          <button type="button" className="icon-btn" title="ריענון וניקוי פילטרים" onClick={handleRefresh}>
-            <svg className="icon"><use href="#i-refresh" /></svg>
-          </button>
-          <ThemeToggle employeeId={authToken} initialTheme={themePreference} />
-          {isProgrammer && <MessageHistoryButton />}
-          {!hideErrorReporting && <ErrorReportButton />}
-          {authToken && !hideInternalMessaging && <NotificationBell employeeId={authToken} />}
-          <UserMenu />
+          {/* כל אייקוני הפעולה + הפרופיל יושבים יחד באזור ממוסגר אחד
+              (.topbar-icon-cluster) — הכפתורים עצמם שקופים, ראה design-system.css */}
+          <div className="topbar-icon-cluster">
+            <button type="button" className="icon-btn" title="ריענון וניקוי פילטרים" onClick={handleRefresh}>
+              <svg className="icon"><use href="#i-refresh" /></svg>
+            </button>
+            <ThemeToggle employeeId={authToken} initialTheme={themePreference} />
+            {isProgrammer && <MessageHistoryButton />}
+            {!hideErrorReporting && <ErrorReportButton />}
+            {authToken && !hideInternalMessaging && <NotificationBell employeeId={authToken} />}
+            <UserMenu />
+          </div>
         </div>
 
         {mobileOpen && (

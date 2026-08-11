@@ -2,16 +2,16 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { getHebrewDateString } from '@/lib/hebrewDate';
-import { useLabels } from '@/app/components/LabelsContext';
-import HebrewDatePicker from '@/components/HebrewDatePicker';
+import { HDate, gematriya, Sedra, Locale } from '@hebcal/core';
+import { getHebrewDateString, HEBREW_DAYS } from '@/lib/hebrewDate';
 import { getDressThumbUrl } from '@/app/lib/dressImageUrl';
+import './kiosk.css';
 
-// תמונת דגם בתאים הקטנים (טבלה 44px / שורות 96px): מנסים קודם את קובץ
+// תמונת דגם בתאים הקטנים (טבלה 44px / שורות 80px): מנסים קודם את קובץ
 // ה-thumb (קיים רק להעלאות חדשות — ראה app/lib/dressImageUrl.js), ועם onError
 // נופלים חזרה לתמונה המלאה. loading="lazy" כדי שגלילה בקטלוג לא תוריד את
 // כל התמונות מראש.
-function KioskThumbImg({ model, style }) {
+function KioskThumbImg({ model }) {
   const thumbSrc = getDressThumbUrl(model.imageUrl);
   return (
     <img
@@ -26,13 +26,219 @@ function KioskThumbImg({ model, style }) {
           img.src = model.imageUrl;
         }
       }}
-      style={style}
     />
   );
 }
 
+// עיגול פרופיל לדגם: תמונה אם קיימת (ומותרת), אחרת אותיות הדגם —
+// אות ראשונה משתי המילים הראשונות, או שתי האותיות הראשונות בשם של מילה אחת.
+function ModelAvatar({ model, size, showImage }) {
+  const name = (model.name || '').trim();
+  const parts = name.split(/\s+/).filter(Boolean);
+  const initials = parts.length >= 2
+    ? `${parts[0][0]}${parts[1][0]}`
+    : (name.slice(0, 2) || '?');
+  return (
+    <div className={`ka-avatar ${size}`} title={name}>
+      {showImage && model.imageUrl ? <KioskThumbImg model={model} /> : <span>{initials}</span>}
+    </div>
+  );
+}
+
+const getMonthsForYear = (year) => {
+  const isLeap = HDate.isLeapYear(year);
+  return [
+    { value: 7, label: 'תשרי' },
+    { value: 8, label: 'חשוון' },
+    { value: 9, label: 'כסלו' },
+    { value: 10, label: 'טבת' },
+    { value: 11, label: 'שבט' },
+    { value: 12, label: isLeap ? "אדר א'" : 'אדר' },
+    ...(isLeap ? [{ value: 13, label: "אדר ב'" }] : []),
+    { value: 1, label: 'ניסן' },
+    { value: 2, label: 'אייר' },
+    { value: 3, label: 'סיוון' },
+    { value: 4, label: 'תמוז' },
+    { value: 5, label: 'אב' },
+    { value: 6, label: 'אלול' },
+  ];
+};
+
+// לוח שנה עברי מוטמע (inline) של מסך הלקוח — עיצוב 1:1 מהמוקאפ (אטלייה חמה),
+// במקום הפופאפ של HebrewDatePicker. הבחירה מתעדכנת מיידית (selects/גריד);
+// המעבר לשלב 2 נעשה רק בכפתור "הצג מלאי".
+function AtelierCalendar({ selectedDate, onSelect }) {
+  const selHd = useMemo(() => {
+    try {
+      const d = new Date(selectedDate);
+      return isNaN(d.getTime()) ? new HDate() : new HDate(d);
+    } catch (e) {
+      return new HDate();
+    }
+  }, [selectedDate]);
+
+  const [viewYear, setViewYear] = useState(() => selHd.getFullYear());
+  const [viewMonth, setViewMonth] = useState(() => selHd.getMonth());
+
+  // כשמשנים בחירה (גם דרך ה-AI) — הלוח קופץ לחודש של התאריך הנבחר
+  useEffect(() => {
+    setViewYear(selHd.getFullYear());
+    setViewMonth(selHd.getMonth());
+  }, [selHd]);
+
+  const months = getMonthsForYear(viewYear);
+  const daysInMonth = HDate.daysInMonth(viewMonth, viewYear);
+  const monthLabel = months.find(m => m.value === viewMonth)?.label || '';
+
+  const todayAbs = useMemo(() => {
+    try { return new HDate().abs(); } catch (e) { return null; }
+  }, []);
+  const selAbs = selHd.abs();
+
+  const applyHdate = (hd) => {
+    const g = hd.greg();
+    g.setHours(0, 0, 0, 0);
+    onSelect(g);
+  };
+
+  const changeSelection = (day, month, year) => {
+    let mm = month;
+    if (mm === 13 && !HDate.isLeapYear(year)) mm = 12;
+    const dim = HDate.daysInMonth(mm, year);
+    applyHdate(new HDate(Math.min(day, dim), mm, year));
+  };
+
+  const prevMonth = () => {
+    const p = new HDate(1, viewMonth, viewYear).subtract(1, 'd');
+    setViewMonth(p.getMonth());
+    setViewYear(p.getFullYear());
+  };
+  const nextMonth = () => {
+    const n = new HDate(1, viewMonth, viewYear).add(daysInMonth, 'd');
+    setViewMonth(n.getMonth());
+    setViewYear(n.getFullYear());
+  };
+
+  const yearOptions = useMemo(() => {
+    const cur = new HDate().getFullYear();
+    return Array.from({ length: 32 }, (_, i) => cur - 1 + i);
+  }, []);
+
+  // "י״ג באדר תשפ״ו — פרשת ויקהל" (פרשת השבוע של השבת הקרובה לתאריך הנבחר)
+  const footStr = useMemo(() => {
+    let s = getHebrewDateString(selectedDate) || '';
+    try {
+      const sat = selHd.onOrAfter(6);
+      const sedra = new Sedra(sat.getFullYear(), true);
+      const lookup = sedra.lookup(sat);
+      const p = lookup && lookup.parsha
+        ? lookup.parsha.map(x => Locale.gettext(x, 'he-x-NoNikud')).join('-')
+        : '';
+      if (p) s += ` — פרשת ${p}`;
+    } catch (e) {}
+    return s;
+  }, [selectedDate, selHd]);
+
+  // תאי הגריד: זנב החודש הקודם (מעומעם) + החודש + ראש החודש הבא להשלמת שבוע
+  const cells = useMemo(() => {
+    const out = [];
+    try {
+      const first = new HDate(1, viewMonth, viewYear);
+      const firstDow = first.greg().getDay();
+      for (let i = firstDow; i > 0; i--) {
+        out.push({ hd: first.subtract(i, 'd'), muted: true });
+      }
+      for (let d = 1; d <= daysInMonth; d++) {
+        out.push({ hd: new HDate(d, viewMonth, viewYear), muted: false });
+      }
+      let tail = new HDate(daysInMonth, viewMonth, viewYear);
+      while (out.length % 7 !== 0) {
+        tail = tail.add(1, 'd');
+        out.push({ hd: tail, muted: true });
+      }
+    } catch (e) {}
+    return out;
+  }, [viewMonth, viewYear, daysInMonth]);
+
+  return (
+    <>
+      <div className="ka-hebrew-selects">
+        <div>
+          <label>יום</label>
+          <select data-agy-id="kiosk_cal_day_select" value={selHd.getDate()}
+            onChange={e => changeSelection(parseInt(e.target.value), selHd.getMonth(), selHd.getFullYear())}>
+            {Array.from({ length: HDate.daysInMonth(selHd.getMonth(), selHd.getFullYear()) }, (_, i) => i + 1).map(d => (
+              <option key={d} value={d}>{HEBREW_DAYS[d]}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label>חודש</label>
+          <select data-agy-id="kiosk_cal_month_select" value={selHd.getMonth()}
+            onChange={e => changeSelection(selHd.getDate(), parseInt(e.target.value), selHd.getFullYear())}>
+            {getMonthsForYear(selHd.getFullYear()).map(m => (
+              <option key={m.value} value={m.value}>{m.label}</option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label>שנה</label>
+          <select data-agy-id="kiosk_cal_year_select" value={selHd.getFullYear()}
+            onChange={e => changeSelection(selHd.getDate(), selHd.getMonth(), parseInt(e.target.value))}>
+            {yearOptions.map(y => (
+              <option key={y} value={y}>{gematriya(y)}</option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      <div className="ka-calendar">
+        <div className="ka-cal-head">
+          <button type="button" className="ka-icon-btn" title="חודש קודם" onClick={prevMonth}>
+            <svg className="icon"><use href="#i-chevron-end" /></svg>
+          </button>
+          <span>{monthLabel} {gematriya(viewYear)}</span>
+          <button type="button" className="ka-icon-btn" title="חודש הבא" onClick={nextMonth}>
+            <svg className="icon"><use href="#i-chevron-start" /></svg>
+          </button>
+        </div>
+        <div className="ka-cal-weekdays">
+          <span>א</span><span>ב</span><span>ג</span><span>ד</span><span>ה</span><span>ו</span><span>ש</span>
+        </div>
+        <div className="ka-cal-grid">
+          {cells.map(({ hd, muted }, idx) => {
+            const abs = hd.abs();
+            const isSelected = abs === selAbs;
+            const isToday = todayAbs !== null && abs === todayAbs;
+            return (
+              <button
+                key={idx}
+                type="button"
+                className={`ka-cal-day${muted ? ' muted' : ''}${isSelected ? ' selected' : ''}${isToday && !isSelected ? ' today' : ''}`}
+                onClick={muted ? undefined : () => applyHdate(hd)}
+                tabIndex={muted ? -1 : 0}
+              >
+                <span>{HEBREW_DAYS[hd.getDate()]}</span>
+                <span className="g">{hd.greg().getDate()}</span>
+              </button>
+            );
+          })}
+        </div>
+        <div className="ka-cal-foot">
+          <button type="button" data-agy-id="kiosk_cal_today_btn" onClick={() => applyHdate(new HDate())}>
+            <svg className="icon"><use href="#i-home" /></svg>היום
+          </button>
+          <span className="ka-parsha">{footStr}</span>
+          <button type="button" data-agy-id="kiosk_cal_clear_btn" onClick={() => applyHdate(new HDate())}>
+            <svg className="icon"><use href="#i-x" /></svg>ניקוי
+          </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
 export default function CustomerInventoryViewer() {
-  const { getLabel } = useLabels();
   const router = useRouter();
   const [dresses, setDresses] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -51,6 +257,7 @@ export default function CustomerInventoryViewer() {
   const [employees, setEmployees] = useState([]);
   const [unlockEmployee, setUnlockEmployee] = useState('');
   const [unlockPassword, setUnlockPassword] = useState('');
+  const [showUnlockPassword, setShowUnlockPassword] = useState(false);
   const [unlockError, setUnlockError] = useState('');
   const [unlockLoading, setUnlockLoading] = useState(false);
 
@@ -71,6 +278,8 @@ export default function CustomerInventoryViewer() {
   // True during an employee-authorized print from a locked kiosk, so the
   // fullscreen exit caused by the print popup doesn't re-open the unlock modal.
   const suppressRelockRef = useRef(false);
+
+  const aiEnabled = settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true';
 
   useEffect(() => {
     fetch('/api/settings')
@@ -96,17 +305,11 @@ export default function CustomerInventoryViewer() {
     return () => document.body.classList.remove('hide-global-nav');
   }, [isLocked]);
 
-  // Warm Atelier kiosk palette (see ".kiosk-shell" override in
-  // app/design-system.css) is scoped via CSS variables to .kiosk-shell, but
-  // HebrewDatePicker's calendar popover renders through a React portal
-  // straight into document.body (components/HebrewDatePicker.js), outside
-  // that DOM subtree — so the variable override can't reach it by
-  // inheritance alone. This body class gives the CSS a hook to re-theme that
-  // portaled popover too, for as long as this page is mounted; it's purely
-  // presentational and touches no other state.
+  // רקע "נייר חם" של האטלייה על כל אזור התוכן (העמוד עצמו מוגבל ברוחב) —
+  // ראה body.katelier-bg בקובץ kiosk.css. מוסר אוטומטית בעזיבת המסך.
   useEffect(() => {
-    document.body.classList.add('kiosk-warm-theme');
-    return () => document.body.classList.remove('kiosk-warm-theme');
+    document.body.classList.add('katelier-bg');
+    return () => document.body.classList.remove('katelier-bg');
   }, []);
 
   useEffect(() => {
@@ -158,7 +361,7 @@ export default function CustomerInventoryViewer() {
 
   const handleAiSubmit = async (e) => {
     e.preventDefault();
-    if(!aiInput.trim() || aiLoading) return;
+    if (!aiInput.trim() || aiLoading) return;
     const userMsg = { role: 'user', content: aiInput.trim() };
     setAiInput('');
 
@@ -185,9 +388,9 @@ export default function CustomerInventoryViewer() {
         ? { role: 'assistant', content: data.response, tableData: data.tableData }
         : { role: 'assistant', content: 'שגיאה בחיבור למערכת ה-AI.' };
 
-      setAiChats(prev => ({ ...prev, [stage]: [...(prev[stage]||[]), assistantMsg] }));
+      setAiChats(prev => ({ ...prev, [stage]: [...(prev[stage] || []), assistantMsg] }));
     } catch (err) {
-      setAiChats(prev => ({ ...prev, [stage]: [...(prev[stage]||[]), { role: 'assistant', content: 'שגיאת תקשורת.' }] }));
+      setAiChats(prev => ({ ...prev, [stage]: [...(prev[stage] || []), { role: 'assistant', content: 'שגיאת תקשורת.' }] }));
     } finally {
       setAiLoading(false);
     }
@@ -257,6 +460,7 @@ export default function CustomerInventoryViewer() {
         setShowUnlockModal(false);
         setUnlockPassword('');
         setUnlockEmployee('');
+        setShowUnlockPassword(false);
         if (unlockIntent === 'print') {
           // Employee only authorized a print — the kiosk stays locked.
           setUnlockIntent('unlock');
@@ -305,19 +509,19 @@ export default function CustomerInventoryViewer() {
       const res = await fetch(`/api/orders?itemDetails=${encodeURIComponent(model.name)}${barcodePrefixParam}&eventDateFrom=${fromDate.toISOString()}&eventDateTo=${toDate.toISOString()}&filterStatus=all`);
       const data = await res.json();
       if (res.ok) {
-         let filtered = data.data || [];
-         if (sizeName) {
-           filtered = filtered.filter(order => {
-             return order.items.some(item => {
-               const matchModel = item.dressId === model.id || (item.description && item.description.includes(model.name));
-               const matchSize = item.description && (item.description.includes(`מידה: ${sizeName}`) || item.description.includes(sizeName));
-               return matchModel && matchSize;
-             });
-           });
-         }
-         setOrdersModalOrders(filtered);
+        let filtered = data.data || [];
+        if (sizeName) {
+          filtered = filtered.filter(order => {
+            return order.items.some(item => {
+              const matchModel = item.dressId === model.id || (item.description && item.description.includes(model.name));
+              const matchSize = item.description && (item.description.includes(`מידה: ${sizeName}`) || item.description.includes(sizeName));
+              return matchModel && matchSize;
+            });
+          });
+        }
+        setOrdersModalOrders(filtered);
       }
-    } catch(e) {
+    } catch (e) {
       console.error(e);
     } finally {
       setOrdersModalLoading(false);
@@ -362,15 +566,23 @@ export default function CustomerInventoryViewer() {
     return list;
   }, [dresses, search, selectedCategories]);
 
-  // Distinct sizes across the whole (unfiltered) inventory, for the sidebar quick-filter chips.
-  const sizeChipOptions = useMemo(() => {
-    const set = new Set();
-    dresses.forEach(d => d.items?.forEach(item => {
-      if (item.notInUse || item.isDeleted || item.isUnusable) return;
-      const st = (item.sizeText || '').trim();
-      if (st) set.add(st);
-    }));
-    return Array.from(set).sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
+  // Distinct sizes across the whole (unfiltered) inventory, for the sidebar
+  // quick-filter chips — each with the number of models carrying that size
+  // (the count shown under the chip, as in the mockup).
+  const sizeChipData = useMemo(() => {
+    const map = new Map();
+    dresses.forEach(d => {
+      const seen = new Set();
+      d.items?.forEach(item => {
+        if (item.notInUse || item.isDeleted || item.isUnusable) return;
+        const st = (item.sizeText || '').trim();
+        if (st && !seen.has(st)) {
+          seen.add(st);
+          map.set(st, (map.get(st) || 0) + 1);
+        }
+      });
+    });
+    return Array.from(map.entries()).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }));
   }, [dresses]);
 
   const categoryCounts = useMemo(() => {
@@ -412,7 +624,6 @@ export default function CustomerInventoryViewer() {
     }
 
     const dateStr = getHebrewDateString(selectedDate);
-    const filterText = search ? ` - סינון: ${search}` : '';
 
     let tableRows = '';
     displayDresses.forEach(model => {
@@ -432,7 +643,7 @@ export default function CustomerInventoryViewer() {
         }
       });
 
-      const sizesArray = Array.from(sizeMap.entries()).sort((a,b) => String(a[0]).localeCompare(String(b[0]), undefined, {numeric: true}));
+      const sizesArray = Array.from(sizeMap.entries()).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }));
       let sizesHtml = sizesArray.map(([sName, sData]) => {
         const isAvail = sData.available > 0;
         return `<span style="display:inline-block; margin:2px; padding:4px 8px; border-radius:6px; font-size:13px; border:1px solid ${isAvail ? '#555' : '#ccc'}; color:${isAvail ? '#000' : '#999'}; ${isAvail ? 'font-weight:bold;' : ''}">${sName} (${sData.available}/${sData.total})</span>`;
@@ -513,27 +724,140 @@ export default function CustomerInventoryViewer() {
     printWindow.document.close();
   };
 
-  return (
-    <div data-agy-id="customer_inventory_main_container" className="kiosk-shell" style={{ minHeight: '100vh', direction: 'rtl' }}>
+  // בועת צ'אט אחת (משתמש/עוזר) + כפתורי הפעולה שה-AI מציע ([FILTER:]/[DATE:])
+  const renderAiBubble = (msg, idx) => {
+    let displayContent = msg.content;
+    let isoDateMatch = null;
+    let filterMatchStr = null;
+    if (typeof displayContent === 'string') {
+      const dateMatch = displayContent.match(/\[DATE:(\d{4}-\d{2}-\d{2})\]/);
+      if (dateMatch) isoDateMatch = dateMatch[1];
+      const filterMatch = displayContent.match(/\[FILTER:(.*?)\]/);
+      if (filterMatch) filterMatchStr = filterMatch[1].trim();
+      displayContent = displayContent.replace(/\[DATE:\d{4}-\d{2}-\d{2}\]/g, '').replace(/\[FILTER:(.*?)\]/g, '').trim();
+    }
 
-      {/* Topbar: brand + 2-step stepper (row1, always shown) — a purely visual
-          layer over the existing `stage` state; row2 (results toolbar) only
-          renders on stage 2, replacing the old separate header card + toolbar row below. */}
-      <div className="kiosk-topbar">
-        <div className="kiosk-topbar-row1">
-          <div className="kiosk-brand">
-            <div className="brand-mark"><svg className="icon"><use href="#i-bag" /></svg></div>
+    return (
+      <div key={idx} className={`ka-bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
+        <div>{displayContent}</div>
+        {msg.role === 'assistant' && isoDateMatch && !filterMatchStr && (
+          <div>
+            <button
+              type="button"
+              className="ka-quick-chip"
+              onClick={(e) => {
+                e.preventDefault();
+                setSelectedDate(new Date(`${isoDateMatch}T12:00:00`));
+                setStage(2);
+              }}
+            >
+              <svg className="icon"><use href="#i-calendar" /></svg>
+              הצג מלאי לתאריך {getHebrewDateString(new Date(`${isoDateMatch}T12:00:00`))}
+            </button>
+          </div>
+        )}
+        {msg.role === 'assistant' && filterMatchStr && (
+          <div>
+            <button
+              type="button"
+              className="ka-quick-chip"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setSearch(filterMatchStr);
+                if (isoDateMatch) {
+                  setSelectedDate(new Date(`${isoDateMatch}T12:00:00`));
+                }
+                setStage(2);
+              }}
+            >
+              <svg className="icon"><use href="#i-search" /></svg>
+              סנן והצג: {filterMatchStr} {isoDateMatch ? `(לתאריך ${getHebrewDateString(new Date(`${isoDateMatch}T12:00:00`))})` : ''}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // כרטיס הצ'אט המלא של העוזר החכם (משותף לשלב 1 ולשלב 2)
+  const renderAiChatCard = (onClose) => (
+    <div className="ka-card ka-card-pad ai-feature-element" style={{ width: '100%' }}>
+      <div className="ka-assist-head">
+        <div className="ka-assist-title">
+          <div className="ka-glow"><svg className="icon"><use href="#i-star" /></svg></div>
+          העוזר החכם
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <button data-agy-id="new_ai_chat_btn" type="button" className="ka-icon-btn" title="שיחה חדשה"
+            onClick={() => setAiChats(prev => ({
+              ...prev,
+              [stage]: [{ role: 'assistant', content: stage === 1 ? 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' : 'שלום! אני העוזר החכם של הקטלוג. אני יכול לסנן עבורך דגמים ולענות על שאלות. במה אפשר לעזור?' }]
+            }))}>
+            <svg className="icon"><use href="#i-plus" /></svg>
+          </button>
+          {onClose && (
+            <button data-agy-id="close_ai_chat_btn" type="button" className="ka-icon-btn" title="סגור" onClick={onClose}>
+              <svg className="icon"><use href="#i-x" /></svg>
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="ka-chat-thread">
+        {aiMessages.slice(1).map(renderAiBubble)}
+        {aiLoading && (
+          <div className="ka-bubble assistant" style={{ padding: 0 }}>
+            <div className="ka-typing"><span></span><span></span><span></span></div>
+          </div>
+        )}
+        <div ref={chatEndRef} />
+      </div>
+
+      <form onSubmit={handleAiSubmit} className="ka-assist-input-row">
+        <input
+          data-agy-id="ai_chat_input"
+          type="text"
+          value={aiInput}
+          onChange={e => setAiInput(e.target.value)}
+          disabled={aiLoading}
+          placeholder="מה תרצה לחפש?"
+        />
+        <button data-agy-id="ai_chat_submit_btn" type="submit" className="ka-icon-btn primary" disabled={aiLoading || !aiInput.trim()} title="שלח">
+          {aiLoading ? <span className="ka-spinner sm" style={{ borderTopColor: '#fff' }} /> : <svg className="icon"><use href="#ka-i-send" /></svg>}
+        </button>
+      </form>
+    </div>
+  );
+
+  return (
+    <div data-agy-id="customer_inventory_main_container" className="katelier">
+
+      {/* אייקונים שקיימים במוקאפ אך לא בספרייט הגלובלי (IconSprite.js) */}
+      <svg style={{ display: 'none' }} aria-hidden="true">
+        <symbol id="ka-i-send" viewBox="0 0 24 24"><path d="M4 12l16-8-6 16-3-6z" /></symbol>
+        <symbol id="ka-i-table" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2" /><path d="M3 10h18M3 16h18M10 4v16" /></symbol>
+        <symbol id="ka-i-filter" viewBox="0 0 24 24"><path d="M4 5h16l-6 8v6l-4 2v-8z" /></symbol>
+      </svg>
+
+      {/* Topbar: brand + 2-step stepper (row1, always shown); row2 (results
+          toolbar) only renders on stage 2 — a purely visual layer over the
+          existing `stage` state. */}
+      <div className="ka-topbar">
+        <div className="ka-topbar-row1">
+          <div className="ka-brand">
+            <div className="ka-brand-mark"><svg className="icon"><use href="#i-bag" /></svg></div>
             <div>עמדת לקוחות</div>
           </div>
-          <div className="kiosk-stepper">
-            <button type="button" className={`kiosk-step-btn${stage > 1 ? ' done' : ''}${stage === 1 ? ' current' : ''}`} onClick={() => setStage(1)}>
+          <div className="ka-stepper">
+            <button type="button" className={`ka-step-btn${stage > 1 ? ' done' : ''}${stage === 1 ? ' current' : ''}`} onClick={() => setStage(1)}>
               <span className="num">
                 {stage > 1 ? <svg className="icon" style={{ width: '13px', height: '13px' }}><use href="#i-check-circle" /></svg> : '1'}
               </span>
               שלב 1 · בחירת תאריך
             </button>
-            <div className="kiosk-step-sep" />
-            <button type="button" className={`kiosk-step-btn${stage === 2 ? ' current' : ''}`} onClick={() => setStage(2)}>
+            <div className="ka-step-sep" />
+            <button type="button" className={`ka-step-btn${stage === 2 ? ' current' : ''}`} onClick={() => setStage(2)}>
               <span className="num">2</span>
               שלב 2 · קטלוג ותוצאות
             </button>
@@ -541,81 +865,78 @@ export default function CustomerInventoryViewer() {
         </div>
 
         {stage === 2 && (
-          <div className="kiosk-topbar-row2">
-            <h2 className="kiosk-results-title">
+          <div className="ka-topbar-row2">
+            <h2 className="ka-results-title">
               <svg className="icon"><use href="#i-bag" /></svg>
               קטלוג שמלות זמינות
             </h2>
-            <span className="kiosk-date-chip">
+            <span className="ka-date-chip">
               <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-calendar" /></svg>
               {getHebrewDateString(new Date(selectedDate))} ({(new Date(selectedDate)).toLocaleDateString('he-IL')})
             </span>
-            <span data-agy-id="catalog_results_count" className="kiosk-count-line">
-              {displayDresses.length} דגמים · <span className="good">{grandTotalItems} יחידות פנויות</span>
+            <span data-agy-id="catalog_results_count" className="ka-count-line">
+              {displayDresses.length} דגמים · <span className="good">{grandTotalItems} פנויות</span>
             </span>
 
-            {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && (
+            {aiEnabled && (
               isAiChatVisible ? (
-                <button data-element-name="כפתור_page_36" data-agy-id="catalog_close_ai_btn" type="button" className="ai-feature-element btn btn-secondary"
-                  onClick={() => setIsAiChatVisible(false)} style={{ flex: '1 1 280px' }}>
-                  <svg data-element-name="רכיב_page_37" className="icon"><use href="#i-star" /></svg>
+                <button data-agy-id="catalog_close_ai_btn" type="button" className="ai-feature-element ka-ask-active"
+                  onClick={() => setIsAiChatVisible(false)}>
+                  <svg className="icon"><use href="#i-star" /></svg>
                   העוזר החכם פעיל - לחץ לסגירה
                 </button>
               ) : (
-                <form onSubmit={handleAiSubmit} className="ai-feature-element" style={{ position: 'relative', flex: '1 1 240px', minWidth: '240px' }}>
-                  <svg data-element-name="רכיב_page_38" className="icon" style={{ position: 'absolute', insetInlineStart: '16px', top: '50%', transform: 'translateY(-50%)', color: 'var(--accent)' }}><use href="#i-star" /></svg>
-                  <input data-element-name="שדה_page_39"
+                <form onSubmit={handleAiSubmit} className="ai-feature-element ka-ai-ask">
+                  <svg className="icon"><use href="#i-star" /></svg>
+                  <input
                     data-agy-id="catalog_ai_input"
                     type="text"
-                    className="input"
                     placeholder="שאל את ה-AI..."
                     value={aiInput}
                     onChange={e => setAiInput(e.target.value)}
                     disabled={aiLoading}
-                    style={{ paddingInlineStart: '46px' }}
                   />
                 </form>
               ))}
 
-            <button data-element-name="כפתור_sidebar_toggle" data-agy-id="toggle_sidebar_btn" type="button"
-              className={`btn ${sidebarOpen ? 'btn-primary' : 'btn-secondary'}`}
+            <button data-agy-id="toggle_sidebar_btn" type="button" className="ka-btn-soft"
               onClick={() => setSidebarOpen(o => !o)}>
-              <svg data-element-name="רכיב_sidebar_toggle_icon" className="icon"><use href="#i-category" /></svg>
+              <svg className="icon"><use href="#ka-i-filter" /></svg>
               סינון ותצוגה
-              {(search || selectedCategories.length > 0) && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'currentColor', display: 'inline-block' }} />}
+              {(search || selectedCategories.length > 0) && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--terracotta)', display: 'inline-block' }} />}
             </button>
 
-            <div className="kiosk-actions">
-              <button data-element-name="כפתור_page_21" data-agy-id="exit_to_system_btn" type="button" className="btn btn-secondary btn-icon-only"
+            <div className="ka-action-cluster">
+              <button data-agy-id="exit_to_system_btn" type="button" className="ka-icon-btn"
                 onClick={() => { if (isLocked) { setUnlockIntent('unlock'); setShowUnlockModal(true); return; } router.push('/'); }} title="חזור למערכת">
-                <svg data-element-name="רכיב_page_22" className="icon"><use href="#i-logout" /></svg>
+                <svg className="icon"><use href="#i-logout" /></svg>
               </button>
-              <button data-element-name="כפתור_page_23" data-agy-id="new_search_btn" type="button" className="btn btn-secondary btn-icon-only" onClick={() => setStage(1)} title="חיפוש חדש">
-                <svg data-element-name="רכיב_page_24" className="icon"><use href="#i-search" /></svg>
+              <button data-agy-id="new_search_btn" type="button" className="ka-icon-btn" onClick={() => setStage(1)} title="חיפוש חדש">
+                <svg className="icon"><use href="#i-search" /></svg>
               </button>
-              <button data-element-name="כפתור_page_25" data-agy-id="refresh_inventory_btn" type="button" className="btn btn-secondary btn-icon-only" onClick={fetchInventory} title="רענון מלאי">
-                <svg data-element-name="רכיב_page_26" className="icon"><use href="#i-refresh" /></svg>
+              <button data-agy-id="refresh_inventory_btn" type="button" className="ka-icon-btn" onClick={fetchInventory} title="רענון מלאי">
+                <svg className="icon"><use href="#i-refresh" /></svg>
               </button>
-              <button data-element-name="כפתור_page_27" data-agy-id="print_catalog_btn" type="button" className="btn btn-secondary btn-icon-only"
+              <button data-agy-id="print_catalog_btn" type="button" className="ka-icon-btn"
                 onClick={() => { if (isLocked) { setUnlockIntent('print'); setShowUnlockModal(true); return; } handleCatalogPrint(); }}
                 title={isLocked ? 'הדפסה (באישור עובד)' : 'הדפסה'}>
-                <svg data-element-name="רכיב_page_28" className="icon"><use href="#i-printer" /></svg>
+                <svg className="icon"><use href="#i-printer" /></svg>
               </button>
               {isLocked ? (
-                <button data-element-name="כפתור_page_29" data-agy-id="unlock_screen_btn" type="button" className="btn btn-danger btn-icon-only"
+                <button data-agy-id="unlock_screen_btn" type="button" className="ka-icon-btn danger"
                   onClick={() => { setUnlockIntent('unlock'); setShowUnlockModal(true); }} title="שחרור מסך">
-                  <svg data-element-name="רכיב_page_30" className="icon"><use href="#i-lock" /></svg>
+                  <svg className="icon"><use href="#i-lock" /></svg>
                 </button>
               ) : (
-                <button data-element-name="כפתור_page_31" data-agy-id="lock_screen_btn" type="button" className="btn btn-danger btn-icon-only" onClick={() => {
+                <button data-agy-id="lock_screen_btn" type="button" className="ka-icon-btn danger" onClick={() => {
                   // The orders modal links into staff order pages — never leave it up on a locked kiosk.
                   setShowOrdersModal(false);
                   setIsLocked(true);
                   if (document.documentElement.requestFullscreen) {
                     document.documentElement.requestFullscreen().catch(err => console.warn(err));
                   }
-                }} title="תפיסת מסך ללקוח">
-                  <svg data-element-name="רכיב_page_32" className="icon"><use href="#i-lock" /></svg>
+                }} title="נעילת מסך ללקוח — מעבר למסך מלא, יציאה (Esc) דורשת אישור עובד מחדש">
+                  <svg className="icon"><use href="#i-lock" /></svg>
                 </button>
               )}
             </div>
@@ -625,278 +946,109 @@ export default function CustomerInventoryViewer() {
 
       {/* Stage 1: Search & Date Selection */}
       {stage === 1 && (
-        <div className="kiosk-hero">
-          {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && (
-            <div className="ai-feature-element kiosk-hero-eyebrow">
-              <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-star" /></svg>
-              עוזר חכם זמין
-            </div>
-          )}
-          <h2>מה תחפש היום?</h2>
-          <p className="kiosk-sub">הזן סגנון, מידה או פשוט בחר תאריך מהיומן</p>
-
-          {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && (
-            <div className="ai-feature-element" style={{ width: '100%', maxWidth: '760px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              {/* Chat History Above Input */}
-              {aiMessages.length > 1 ? (
-                <div className="card card-pad">
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                    <div className="card-title-row" style={{ fontWeight: 800, color: 'var(--primary-hover)' }}>
-                      <span className="kiosk-glow-icon"><svg data-element-name="רכיב_page_4" className="icon"><use href="#i-star" /></svg></span>
-                      העוזר החכם
-                    </div>
-                    <button data-element-name="כפתור_page_5" data-agy-id="new_ai_chat_btn" type="button" className="btn btn-ghost btn-icon-only" title="שיחה חדשה"
-                      onClick={() => setAiChats(prev => ({ ...prev, [stage]: [{ role: 'assistant', content: 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' }] }))}>
-                      <svg data-element-name="רכיב_page_6" className="icon"><use href="#i-plus" /></svg>
-                    </button>
-                  </div>
-
-                  <div className="chat-thread" style={{ marginBottom: '16px', maxHeight: '400px', overflowY: 'auto' }}>
-                    {aiMessages.slice(1).map((msg, idx) => {
-                      let displayContent = msg.content;
-                      let isoDateMatch = null;
-                      let filterMatchStr = null;
-                      if (typeof displayContent === 'string') {
-                        const dateRegex = /\[DATE:(\d{4}-\d{2}-\d{2})\]/;
-                        const dateMatch = displayContent.match(dateRegex);
-                        if (dateMatch) {
-                          isoDateMatch = dateMatch[1];
-                        }
-
-                        const filterRegex = /\[FILTER:(.*?)\]/;
-                        const filterMatch = displayContent.match(filterRegex);
-                        if (filterMatch) {
-                          filterMatchStr = filterMatch[1].trim();
-                        }
-
-                        displayContent = displayContent.replace(/\[DATE:\d{4}-\d{2}-\d{2}\]/g, '').replace(/\[FILTER:(.*?)\]/g, '').trim();
-                      }
-
-                      return (
-                        <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
-                          <div>{displayContent}</div>
-                          {msg.role === 'assistant' && isoDateMatch && !filterMatchStr && (
-                            <div className="quick-reply-row">
-                              <button data-element-name="כפתור_page_7"
-                                type="button"
-                                className="quick-reply-chip"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  setSelectedDate(new Date(`${isoDateMatch}T12:00:00`));
-                                  setStage(2);
-                                }}
-                              >
-                                <svg className="icon"><use href="#i-calendar" /></svg>
-                                הצג מלאי לתאריך {getHebrewDateString(new Date(`${isoDateMatch}T12:00:00`))}
-                              </button>
-                            </div>
-                          )}
-                          {msg.role === 'assistant' && filterMatchStr && (
-                            <div className="quick-reply-row">
-                              <button data-element-name="כפתור_page_8"
-                                type="button"
-                                className="quick-reply-chip"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  setSearch(filterMatchStr);
-                                  if (isoDateMatch) {
-                                    setSelectedDate(new Date(`${isoDateMatch}T12:00:00`));
-                                  }
-                                  setStage(2);
-                                }}
-                              >
-                                <svg data-element-name="רכיב_page_9" className="icon"><use href="#i-search" /></svg>
-                                סנן והצג: {filterMatchStr} {isoDateMatch ? `(לתאריך ${getHebrewDateString(new Date(`${isoDateMatch}T12:00:00`))})` : ''}
-                              </button>
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })}
-                    {aiLoading && (
-                      <div className="bubble assistant" style={{ padding: 0 }}>
-                        <div className="typing-indicator"><span></span><span></span><span></span></div>
-                      </div>
-                    )}
-                    <div ref={chatEndRef} />
-                  </div>
-
-                  <form onSubmit={handleAiSubmit} style={{ display: 'flex', gap: '10px' }}>
-                    <input data-element-name="שדה_page_10"
-                      data-agy-id="ai_chat_input"
-                      type="text"
-                      className="input"
-                      value={aiInput}
-                      onChange={e => setAiInput(e.target.value)}
-                      disabled={aiLoading}
-                      placeholder="מה תרצה לחפש?"
-                      style={{ flex: 1 }}
-                    />
-                    <button data-element-name="כפתור_page_11" data-agy-id="ai_chat_submit_btn" type="submit" className="btn btn-primary btn-icon-only" disabled={aiLoading || !aiInput.trim()} title="שלח">
-                      {aiLoading ? <span className="spinner" style={{ borderTopColor: 'var(--text-on-primary)' }} /> : <svg data-element-name="רכיב_page_12" className="icon"><use href="#i-arrow-end" /></svg>}
-                    </button>
-                  </form>
-                </div>
-              ) : (
-                <div className="kiosk-search">
-                  <svg className="icon"><use href="#i-search" /></svg>
-                  <form onSubmit={handleAiSubmit}>
-                    <input data-element-name="שדה_page_13"
-                      data-agy-id="hero_ai_search_input"
-                      type="text"
-                      className="input"
-                      placeholder="לדוגמה: שמלה שחורה מידה 12..."
-                      value={aiInput}
-                      onChange={e => setAiInput(e.target.value)}
-                      disabled={aiLoading}
-                      style={{ paddingInlineEnd: '54px' }}
-                    />
-                    <button data-element-name="כפתור_page_14" data-agy-id="hero_ai_search_btn" type="submit" className="btn btn-primary btn-icon-only" disabled={aiLoading}
-                      style={{ position: 'absolute', insetInlineEnd: '6px', top: '50%', transform: 'translateY(-50%)', borderRadius: 'var(--radius-full)' }}>
-                      {aiLoading ? <span className="spinner" style={{ borderTopColor: 'var(--text-on-primary)' }} /> : <svg data-element-name="רכיב_page_16" className="icon"><use href="#i-star" /></svg>}
-                    </button>
-                  </form>
-                </div>
-              )}
-            </div>
-          )}
-
-          <div className="card card-pad" style={{ width: '100%', maxWidth: '760px' }}>
-            <div className="card-title-row" style={{ marginBottom: '18px', fontSize: '19px', fontWeight: 800, color: 'var(--primary)' }}>
-              <svg data-element-name="רכיב_page_17" className="icon" style={{ width: '22px', height: '22px' }}><use href="#i-calendar" /></svg>
-              מתי האירוע שלכם?
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
-              <HebrewDatePicker data-element-name="רכיב_page_18"
-                selectedDate={selectedDate}
-                onChange={(d) => { setSelectedDate(new Date(d)); setStage(2); }}
-              />
-            </div>
-            <div style={{ display: 'flex', justifyContent: 'center' }}>
-              <button data-element-name="כפתור_page_19"
-                data-agy-id="show_inventory_btn"
-                type="button"
-                className="btn btn-primary btn-lg"
-                onClick={() => setStage(2)}
-              >
-                הצג מלאי
-                <svg data-element-name="רכיב_page_20" className="icon"><use href="#i-star" /></svg>
-              </button>
-            </div>
+        <section>
+          <div className="ka-hero">
+            {aiEnabled && (
+              <div className="ai-feature-element ka-hero-eyebrow">
+                <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-star" /></svg>
+                עוזר חכם זמין
+              </div>
+            )}
+            <h2>מה תחפש היום?</h2>
+            <p className="ka-lead">הזן סגנון, מידה או פשוט בחר תאריך מהיומן</p>
           </div>
-        </div>
-      )}
 
-      {/* Stage 2: Inventory Grid */}
-      {stage === 2 && (
-        <div>
-          {settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true' && isAiChatVisible && stage === 2 && (
-            <div className="ai-feature-element card card-pad" style={{ marginBottom: '20px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '14px' }}>
-                <div className="card-title-row" style={{ fontWeight: 800, color: 'var(--primary-hover)' }}>
-                  <span className="kiosk-glow-icon"><svg data-element-name="רכיב_page_46" className="icon"><use href="#i-star" /></svg></span>
-                  העוזר החכם
-                </div>
-                <div style={{ display: 'flex', gap: '6px' }}>
-                  <button data-element-name="כפתור_page_47" data-agy-id="new_ai_chat_catalog_btn" type="button" className="btn btn-ghost btn-icon-only" title="שיחה חדשה"
-                    onClick={() => setAiChats(prev => ({ ...prev, [stage]: [{ role: 'assistant', content: stage === 1 ? 'שלום! אני העוזר החכם של המסך הראשי. במה אוכל לעזור?' : 'שלום! אני העוזר החכם של הקטלוג. אני יכול לסנן עבורך דגמים ולענות על שאלות. במה אפשר לעזור?' }] }))}>
-                    <svg data-element-name="רכיב_page_48" className="icon"><use href="#i-plus" /></svg>
-                  </button>
-                  <button data-element-name="כפתור_page_49" data-agy-id="close_ai_chat_catalog_btn" type="button" className="btn btn-ghost btn-icon-only" title="סגור" onClick={() => setIsAiChatVisible(false)}>
-                    <svg className="icon"><use href="#i-x" /></svg>
-                  </button>
-                </div>
-              </div>
-
-              <div className="chat-thread" style={{ marginBottom: '16px', maxHeight: '400px', overflowY: 'auto' }}>
-                {aiMessages.slice(1).map((msg, idx) => (
-                  <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
-                    <div>
-                      {msg.content.replace(/\[FILTER:(.*?)\]/g, '').replace(/\[DATE:\d{4}-\d{2}-\d{2}\]/g, '').trim()}
-                    </div>
-                    {(() => {
-                      const match = msg.content.match(/\[FILTER:(.*?)\]/);
-                      if (match && match[1]) {
-                        return (
-                          <div className="quick-reply-row">
-                            <button data-element-name="כפתור_page_50"
-                              type="button"
-                              className="quick-reply-chip"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                setSearch(match[1].trim());
-                              }}
-                            >
-                              <svg data-element-name="רכיב_page_51" className="icon"><use href="#i-search" /></svg>
-                              סנן דגמים: {match[1]}
-                            </button>
-                          </div>
-                        )
-                      }
-                      return null;
-                    })()}
-                  </div>
-                ))}
-                {aiLoading && (
-                  <div className="bubble assistant" style={{ padding: 0 }}>
-                    <div className="typing-indicator"><span></span><span></span><span></span></div>
-                  </div>
-                )}
-                <div ref={chatEndRef} />
-              </div>
-
-              <form onSubmit={handleAiSubmit} style={{ display: 'flex', gap: '10px' }}>
-                <input data-element-name="שדה_page_52"
-                  data-agy-id="catalog_ai_chat_input"
+          {aiEnabled && aiMessages.length <= 1 && (
+            <div className="ai-feature-element ka-search-pill">
+              <svg className="icon"><use href="#i-search" /></svg>
+              <form onSubmit={handleAiSubmit}>
+                <input
+                  data-agy-id="hero_ai_search_input"
                   type="text"
-                  className="input"
+                  placeholder="לדוגמה: שמלה שחורה מידה 12..."
                   value={aiInput}
                   onChange={e => setAiInput(e.target.value)}
                   disabled={aiLoading}
-                  placeholder="מה תרצה לדעת?"
-                  style={{ flex: 1 }}
                 />
-                <button data-element-name="כפתור_page_53" data-agy-id="catalog_ai_chat_submit_btn" type="submit" className="btn btn-primary btn-icon-only" disabled={aiLoading || !aiInput.trim()} title="שלח">
-                  {aiLoading ? <span className="spinner" style={{ borderTopColor: 'var(--text-on-primary)' }} /> : <svg data-element-name="רכיב_page_54" className="icon"><use href="#i-arrow-end" /></svg>}
+                <button data-agy-id="hero_ai_search_btn" type="submit" className="ka-icon-btn primary" disabled={aiLoading} title="שלח">
+                  {aiLoading ? <span className="ka-spinner sm" style={{ borderTopColor: '#fff' }} /> : <svg className="icon"><use href="#i-star" /></svg>}
                 </button>
               </form>
             </div>
           )}
 
-          <div className="kiosk-body">
+          <div className="ka-stack">
+            {aiEnabled && aiMessages.length > 1 && renderAiChatCard(null)}
+
+            <div className="ka-card ka-card-pad">
+              <div className="ka-date-title">
+                <svg className="icon"><use href="#i-calendar" /></svg>
+                מתי האירוע שלכם?
+              </div>
+
+              <AtelierCalendar
+                selectedDate={selectedDate}
+                onSelect={(d) => setSelectedDate(d)}
+              />
+
+              <div className="ka-cta-row">
+                <button
+                  data-agy-id="show_inventory_btn"
+                  type="button"
+                  className="ka-btn-cta"
+                  onClick={() => setStage(2)}
+                >
+                  הצג מלאי
+                  <svg className="icon"><use href="#i-star" /></svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* Stage 2: Inventory Grid */}
+      {stage === 2 && (
+        <section>
+          {aiEnabled && isAiChatVisible && (
+            <div style={{ marginBottom: '20px' }}>
+              {renderAiChatCard(() => setIsAiChatVisible(false))}
+            </div>
+          )}
+
+          <div className={`ka-layout${sidebarOpen ? '' : ' no-panel'}`}>
 
             {/* Sidebar: filters & display settings */}
             {sidebarOpen && (
-              <aside data-agy-id="catalog_sidebar" className="kiosk-filter-panel">
+              <aside data-agy-id="catalog_sidebar" className="ka-filter-panel">
 
-                <div className="kiosk-filter-group">
+                <div className="ka-filter-group">
                   <h4><svg className="icon"><use href="#i-search" /></svg>חיפוש</h4>
-                  <input data-element-name="שדה_page_35"
+                  <input
                     data-agy-id="catalog_search_input"
                     type="text"
-                    className="input"
                     placeholder="שם דגם, מספר, או מידה..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                   />
-                  <div className="hint" style={{ color: 'var(--text-3)', marginTop: '8px' }}>
+                  <div className="ka-filter-hint">
                     אפשר לחפש שם שמלה, מספר קטלוגי, או לכתוב "מידה 40"
                   </div>
                 </div>
 
                 {priceCategories.length > 0 && (
-                  <div className="kiosk-filter-group">
+                  <div className="ka-filter-group">
                     <h4><svg className="icon"><use href="#i-tag" /></svg>קטגוריה</h4>
                     {priceCategories.map(cat => {
                       const count = categoryCounts[cat] || 0;
                       const checked = selectedCategories.includes(cat);
                       return (
-                        <label key={cat} data-agy-id={`category_filter_${cat}`} className="kiosk-filter-check" style={{ opacity: count === 0 && !checked ? 0.5 : 1 }}>
-                          <input type="checkbox" checked={checked}
-                            onChange={() => setSelectedCategories(prev => checked ? prev.filter(c => c !== cat) : [...prev, cat])} />
-                          <span>{cat}</span>
+                        <label key={cat} data-agy-id={`category_filter_${cat}`} className="ka-check-row" style={{ opacity: count === 0 && !checked ? 0.5 : 1 }}>
+                          <span className="ka-check-row-inner">
+                            <input type="checkbox" checked={checked}
+                              onChange={() => setSelectedCategories(prev => checked ? prev.filter(c => c !== cat) : [...prev, cat])} />
+                            <span>{cat}</span>
+                          </span>
                           <span className="count">{count}</span>
                         </label>
                       );
@@ -904,18 +1056,19 @@ export default function CustomerInventoryViewer() {
                   </div>
                 )}
 
-                {sizeChipOptions.length > 0 && (
-                  <div className="kiosk-filter-group">
+                {sizeChipData.length > 0 && (
+                  <div className="ka-filter-group">
                     <h4><svg className="icon"><use href="#i-box" /></svg>סינון מהיר לפי מידה</h4>
-                    <div className="kiosk-size-filter-grid">
-                      {sizeChipOptions.map(sz => {
+                    <div className="ka-size-chip-grid">
+                      {sizeChipData.map(([sz, count]) => {
                         const term = `מידה ${sz}`;
                         const active = search.trim() === term;
                         return (
                           <div key={sz} data-agy-id={`size_chip_${sz}`}
-                            className={`kiosk-size-filter-chip${active ? ' active' : ''}`}
+                            className={`ka-size-chip${active ? ' active' : ''}${count === 0 ? ' zero' : ''}`}
                             onClick={() => setSearch(active ? '' : term)}>
                             <strong>{sz}</strong>
+                            <div className="count">{count}</div>
                           </div>
                         );
                       })}
@@ -923,18 +1076,18 @@ export default function CustomerInventoryViewer() {
                   </div>
                 )}
 
-                <div data-element-name="לחיץ_page_45" data-agy-id="toggle_zero_sizes_div" className="checkbox-row" onClick={() => setShowZeroSizes(!showZeroSizes)}>
-                  <div className={`switch${showZeroSizes ? ' on' : ''}`} />
+                <div data-agy-id="toggle_zero_sizes_div" className="ka-switch-row" onClick={() => setShowZeroSizes(!showZeroSizes)}>
+                  <div className={`ka-switch${showZeroSizes ? ' on' : ''}`} />
                   הצג גם מידות ללא מלאי פנוי
                 </div>
 
-                <div className="kiosk-filter-group">
+                <div className="ka-filter-group">
                   <h4><svg className="icon"><use href="#i-grid" /></svg>צורת תצוגה</h4>
-                  <div className="kiosk-view-toggle">
+                  <div className="ka-view-toggle">
                     {[
                       { key: 'grid', label: 'כרטיסים גדולים', iconId: 'i-grid', agyId: 'view_grid_btn' },
                       { key: 'rows', label: 'רשימה מפורטת', iconId: 'i-list', agyId: 'view_rows_btn' },
-                      { key: 'table', label: 'טבלה קומפקטית', iconId: 'i-category', agyId: 'view_table_btn' },
+                      { key: 'table', label: 'טבלה קומפקטית', iconId: 'ka-i-table', agyId: 'view_table_btn' },
                     ].map(({ key, label, iconId, agyId }) => (
                       <button key={key} data-agy-id={agyId} type="button" title={label}
                         className={viewMode === key ? 'active' : ''}
@@ -945,205 +1098,173 @@ export default function CustomerInventoryViewer() {
                   </div>
                 </div>
 
-                <div className="slider-field">
-                  <div className="slider-head"><span>גודל תצוגה</span><span className="slider-value">{Math.round(zoomLevel * 100)}%</span></div>
-                  <input data-element-name="שדה_page_40"
+                <div className="ka-slider-field">
+                  <div className="s-head"><span>גודל תצוגה</span><span>{Math.round(zoomLevel * 100)}%</span></div>
+                  <input
                     data-agy-id="zoom_range_input"
                     type="range"
-                    className="slider"
                     min="0.5" max="1.5" step="0.1"
                     value={zoomLevel}
                     onChange={e => setZoomLevel(parseFloat(e.target.value))}
                   />
-                  <div className="slider-ticks">
+                  <div className="s-ticks">
                     <span>קטן</span><span>גדול</span>
                   </div>
                 </div>
 
-                {(search || selectedCategories.length > 0) && (
-                  <button data-agy-id="clear_all_filters_btn" type="button" className="btn btn-danger-ghost"
-                    onClick={() => { setSearch(''); setSelectedCategories([]); }}>
-                    <svg className="icon"><use href="#i-x-circle" /></svg>
-                    נקה את כל הסינונים
-                  </button>
-                )}
+                <button data-agy-id="clear_all_filters_btn" type="button" className="ka-btn-clear"
+                  onClick={() => { setSearch(''); setSelectedCategories([]); }}>
+                  <svg className="icon"><use href="#i-x" /></svg>
+                  נקה את כל הסינונים
+                </button>
               </aside>
             )}
 
             {/* Catalog content */}
             <div style={{ minWidth: 0 }}>
               {loading ? (
-                <div className="loading-inline" style={{ padding: '100px 0', fontSize: '1.1rem' }}>
-                  <span className="spinner lg" />
-                  טוען נתונים...
+                <div className="ka-state-box">
+                  <div className="ka-spinner" />
+                  <p>טוען נתונים...</p>
                 </div>
               ) : displayDresses.length === 0 ? (
-                <div className="card">
-                  <div className="empty-state">
-                    <svg className="icon"><use href="#i-search" /></svg>
-                    <h4>לא נמצאו דגמים מתאימים</h4>
-                    <p>נסו לנקות את החיפוש או את סינון הקטגוריה</p>
-                    <button data-agy-id="empty_state_clear_btn" type="button" className="btn btn-primary" style={{ marginTop: '12px' }}
-                      onClick={() => { setSearch(''); setSelectedCategories([]); }}>
-                      נקה סינון ונסה שוב
-                    </button>
-                  </div>
+                <div className="ka-state-box">
+                  <svg className="icon"><use href="#i-search" /></svg>
+                  <h4>לא נמצאו דגמים מתאימים</h4>
+                  <p>נסו לנקות את החיפוש או את סינון הקטגוריה</p>
+                  <button data-agy-id="empty_state_clear_btn" type="button" className="ka-btn-mini"
+                    onClick={() => { setSearch(''); setSelectedCategories([]); }}>
+                    נקה סינון ונסה שוב
+                  </button>
                 </div>
               ) : viewMode === 'table' ? (
-                <div className="table-wrap" style={{ zoom: zoomLevel }}>
-                  <div className="table-scroll">
-                    <table className="data">
-                      <thead>
-                        <tr>
-                          {settings.hide_dress_images !== 'true' && <th></th>}
-                          <th>שם דגם</th>
-                          <th>מק״ט</th>
-                          <th>קטגוריה</th>
-                          <th>סה״כ פנוי</th>
-                          <th>פירוט לפי מידה</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {displayDresses.map(model => {
-                          const { sizesArray, totalAvailable, totalUnits } = getModelSizeInfo(model);
-                          const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
-                          return (
-                            <tr key={model.id} onClick={() => handleModelDoubleClick(model)} style={{ cursor: isLocked ? 'default' : 'pointer' }}>
-                              {settings.hide_dress_images !== 'true' && (
-                                <td style={{ width: '58px' }}>
-                                  <div className="kiosk-img" style={{ width: '44px', height: '44px', minHeight: 0, margin: 0 }}>
-                                    {model.imageUrl ? <KioskThumbImg model={model} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} /> : <svg className="icon" style={{ width: '20px', height: '20px' }}><use href="#i-image" /></svg>}
-                                  </div>
-                                </td>
-                              )}
-                              <td className="cell-primary">{model.name}</td>
-                              <td className="cell-muted">{model.barcodePrefix ? `#${model.barcodePrefix}` : '—'}</td>
-                              <td>
-                                {model.priceCategory ? <span className="badge badge-neutral">{model.priceCategory}</span> : '—'}
-                              </td>
-                              <td style={{ fontWeight: 800, color: totalAvailable > 0 ? 'var(--success)' : 'var(--danger)' }}>{totalAvailable}/{totalUnits}</td>
-                              <td>
-                                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
-                                  {visibleSizesArr.length === 0 ? (
-                                    <span className="hint" style={{ color: 'var(--text-3)' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי'}</span>
-                                  ) : visibleSizesArr.map(([sName, sData]) => (
-                                    <span key={sName}
-                                      className={`kiosk-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
-                                      onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model, sName); }}
-                                      title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
-                                      style={{ cursor: isLocked ? 'default' : 'pointer' }}>
-                                      {sName} · {sData.available}/{sData.total}
-                                    </span>
-                                  ))}
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
+                <div className="ka-table-wrap" style={{ zoom: zoomLevel }}>
+                  <table className="ka-data">
+                    <thead>
+                      <tr>
+                        <th></th>
+                        <th>שם דגם</th>
+                        <th>מק״ט</th>
+                        <th>קטגוריה</th>
+                        <th>סה״כ פנוי</th>
+                        <th>פירוט לפי מידה</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {displayDresses.map(model => {
+                        const { sizesArray, totalAvailable, totalUnits } = getModelSizeInfo(model);
+                        const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
+                        return (
+                          <tr key={model.id} onClick={() => handleModelDoubleClick(model)} style={{ cursor: isLocked ? 'default' : 'pointer' }}>
+                            <td style={{ width: '58px' }}>
+                              <ModelAvatar model={model} size="sm" showImage={settings.hide_dress_images !== 'true'} />
+                            </td>
+                            <td className="ka-cell-primary">{model.name}</td>
+                            <td className="ka-cell-muted">{model.barcodePrefix ? `#${model.barcodePrefix}` : '—'}</td>
+                            <td>
+                              {model.priceCategory ? <span className="ka-badge ka-badge-neutral">{model.priceCategory}</span> : '—'}
+                            </td>
+                            <td style={{ fontWeight: 800, color: totalAvailable > 0 ? 'var(--sage)' : 'var(--brick)' }}>{totalAvailable}/{totalUnits}</td>
+                            <td>
+                              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
+                                {visibleSizesArr.length === 0 ? (
+                                  <span style={{ color: 'var(--ink-faint)', fontSize: '12.5px' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי'}</span>
+                                ) : visibleSizesArr.map(([sName, sData]) => (
+                                  <span key={sName}
+                                    className={`ka-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
+                                    onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model, sName); }}
+                                    title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
+                                    style={{ cursor: isLocked ? 'default' : 'pointer' }}>
+                                    {sName} · {sData.available}/{sData.total}
+                                  </span>
+                                ))}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               ) : viewMode === 'rows' ? (
-                <div style={{ zoom: zoomLevel }}>
+                <div className="ka-results-list" style={{ zoom: zoomLevel }}>
                   {displayDresses.map(model => {
                     const { sizesArray, totalAvailable, totalUnits } = getModelSizeInfo(model);
                     const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
 
                     return (
-                      <div data-element-name="לחיץ_page_56" key={model.id} className="list-card" style={{ cursor: isLocked ? 'default' : 'pointer', alignItems: 'stretch' }}
+                      <div key={model.id} className="ka-dress-row" style={{ cursor: isLocked ? 'default' : 'pointer' }}
                         onClick={() => handleModelDoubleClick(model)}>
-                        <div className="kiosk-img" style={{ width: '96px', height: '96px', minHeight: 0, flexShrink: 0, margin: 0 }}>
-                          {settings.hide_dress_images !== 'true' ? (
-                            model.imageUrl ? (
-                              <KioskThumbImg model={model} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-                            ) : (
-                              <svg data-element-name="רכיב_page_57" className="icon"><use href="#i-image" /></svg>
-                            )
-                          ) : (
-                            <span className="hint" style={{ color: 'var(--text-3)', fontSize: '11px' }}>אין תמונה</span>
-                          )}
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <h3 style={{ margin: '0 0 4px 0', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <ModelAvatar model={model} size="md" showImage={settings.hide_dress_images !== 'true'} />
+                        <div className="ka-rmeta">
+                          <h3>
                             {model.name}
-                            {model.barcodePrefix && <span className="badge badge-neutral">#{model.barcodePrefix}</span>}
-                            {model.priceCategory && model.priceCategory !== 'כללי' && <span className="badge badge-primary">{model.priceCategory}</span>}
+                            {model.barcodePrefix && <span className="ka-badge ka-badge-neutral">#{model.barcodePrefix}</span>}
+                            {model.priceCategory && model.priceCategory !== 'כללי' && <span className="ka-badge ka-badge-primary">{model.priceCategory}</span>}
                           </h3>
+                          <div className="ka-dress-code">{model.barcodePrefix ? `#${model.barcodePrefix}` : ''}{model.priceCategory ? ` · ${model.priceCategory}` : ''}</div>
+                        </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '10px', fontWeight: 700, color: totalAvailable > 0 ? 'var(--success)' : 'var(--danger)' }}>
-                            <svg className="icon"><use href={totalAvailable > 0 ? '#i-check-circle' : '#i-alert-tri'} /></svg>
-                            {totalAvailable > 0 ? `${totalAvailable} יחידות פנויות מתוך ${totalUnits}` : 'אין יחידות פנויות לתאריך זה'}
-                          </div>
+                        <div className={`ka-avail-line ${totalAvailable > 0 ? 'ok' : 'bad'}`}>
+                          <svg className="icon"><use href={totalAvailable > 0 ? '#i-check-circle' : '#i-alert-tri'} /></svg>
+                          {totalAvailable > 0 ? `${totalAvailable} יחידות פנויות מתוך ${totalUnits}` : 'אין יחידות פנויות לתאריך זה'}
+                        </div>
 
-                          <div className="kiosk-size-row">
-                            {visibleSizesArr.length === 0 ? (
-                              <span className="hint" style={{ color: 'var(--text-3)' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי לתאריך זה'}</span>
-                            ) : (
-                              visibleSizesArr.map(([sName, sData]) => (
-                                <span
-                                  key={sName}
-                                  className={`kiosk-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
-                                  title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleModelDoubleClick(model, sName);
-                                  }}
-                                  style={{ cursor: isLocked ? 'default' : 'pointer' }}
-                                >
-                                  {sName} · {sData.available}/{sData.total}
-                                </span>
-                              ))
-                            )}
-                          </div>
+                        <div className="ka-size-row">
+                          {visibleSizesArr.length === 0 ? (
+                            <span style={{ color: 'var(--ink-faint)', fontSize: '12.5px' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי לתאריך זה'}</span>
+                          ) : (
+                            visibleSizesArr.map(([sName, sData]) => (
+                              <span
+                                key={sName}
+                                className={`ka-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
+                                title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleModelDoubleClick(model, sName);
+                                }}
+                                style={{ cursor: isLocked ? 'default' : 'pointer' }}
+                              >
+                                {sName} · {sData.available}/{sData.total}
+                              </span>
+                            ))
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <div className="kiosk-grid" style={{ zoom: zoomLevel }}>
+                <div className="ka-results-grid" style={{ zoom: zoomLevel }}>
                   {displayDresses.map(model => {
                     const { sizesArray, totalAvailable, totalUnits } = getModelSizeInfo(model);
                     const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
 
                     return (
-                      <div data-element-name="לחיץ_page_56b" key={model.id} className="kiosk-card" style={{ cursor: isLocked ? 'default' : 'pointer' }} onClick={() => {
+                      <div key={model.id} className="ka-dress-card" style={{ cursor: isLocked ? 'default' : 'pointer' }} onClick={() => {
                         handleModelDoubleClick(model);
                       }}>
-                        <div className="kiosk-img">
-                          {settings.hide_dress_images !== 'true' ? (
-                            model.imageUrl ? (
-                              // כרטיסיית הגריד הגדולה נשארת על התמונה המלאה (thumb של 300px
-                              // עלול להיראות מרוח כאן) — רק טעינה עצלה נוספה
-                              <img src={model.imageUrl} alt={model.name} loading="lazy" decoding="async" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 'inherit' }} />
-                            ) : (
-                              <svg data-element-name="רכיב_page_57b" className="icon"><use href="#i-image" /></svg>
-                            )
-                          ) : (
-                            <span className="hint" style={{ color: 'var(--text-3)' }}>אין תמונה</span>
-                          )}
-                        </div>
+                        <ModelAvatar model={model} size="lg" showImage={settings.hide_dress_images !== 'true'} />
 
-                        <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                        <h3>
                           {model.name}
-                          {model.priceCategory && model.priceCategory !== 'כללי' && <span className="badge badge-primary">{model.priceCategory}</span>}
+                          {model.priceCategory && model.priceCategory !== 'כללי' && <span className="ka-badge ka-badge-primary">{model.priceCategory}</span>}
                         </h3>
-                        <div className="kiosk-code">{model.barcodePrefix ? `#${model.barcodePrefix}` : '—'}{model.priceCategory ? ` · ${model.priceCategory}` : ''}</div>
+                        <div className="ka-dress-code">{model.barcodePrefix ? `#${model.barcodePrefix}` : '—'}{model.priceCategory ? ` · ${model.priceCategory}` : ''}</div>
 
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: totalAvailable > 0 ? 'var(--success)' : 'var(--danger)', fontWeight: 700, marginBottom: '12px' }}>
+                        <div className={`ka-avail-line ${totalAvailable > 0 ? 'ok' : 'bad'}`}>
                           <svg className="icon"><use href={totalAvailable > 0 ? '#i-check-circle' : '#i-alert-tri'} /></svg>
                           {totalAvailable > 0 ? `${totalAvailable} יחידות פנויות מתוך ${totalUnits}` : 'אין יחידות פנויות לתאריך זה'}
                         </div>
 
-                        <div className="kiosk-size-row">
+                        <div className="ka-size-row">
                           {visibleSizesArr.length === 0 ? (
-                            <span className="hint" style={{ color: 'var(--text-3)' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי לתאריך זה'}</span>
+                            <span style={{ color: 'var(--ink-faint)', fontSize: '12.5px' }}>{sizesArray.length === 0 ? 'אין מידות רשומות' : 'אין מלאי פנוי לתאריך זה'}</span>
                           ) : (
                             visibleSizesArr.map(([sName, sData]) => (
                               <span
                                 key={sName}
-                                className={`kiosk-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
+                                className={`ka-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
                                 title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -1163,43 +1284,48 @@ export default function CustomerInventoryViewer() {
               )}
             </div>
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Modals from old interface */}
+      {/* Unlock modal */}
       {showUnlockModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <form onSubmit={handleUnlock} autoComplete="off" className="modal" style={{ maxWidth: '420px' }}>
-            <div className="modal-head">
-              <strong>
+        <div className="ka-modal-backdrop">
+          <form onSubmit={handleUnlock} autoComplete="off" className="ka-modal">
+            <div className="ka-modal-head">
+              <span className="ka-modal-head-title">
                 <svg className="icon"><use href="#i-lock" /></svg>
                 {unlockIntent === 'print' ? 'אישור עובד להדפסה' : 'שחרור מסך מנעילה'}
-              </strong>
+              </span>
             </div>
-            <div className="modal-body">
-              <div className="field">
+            <div className="ka-modal-body">
+              <div className="ka-field">
                 <label>בחר עובד:</label>
-                <select data-element-name="בחירה_page_58" data-agy-id="unlock_employee_select" className="select" value={unlockEmployee} onChange={e => setUnlockEmployee(e.target.value)}>
+                <select data-agy-id="unlock_employee_select" value={unlockEmployee} onChange={e => setUnlockEmployee(e.target.value)}>
                   <option value="">-- בחר --</option>
                   {employees.map(emp => (
                     <option key={emp.id} value={emp.id}>{emp.firstName} {emp.lastName}</option>
                   ))}
                 </select>
               </div>
-              <div className="field">
+              <div className="ka-field">
                 <label>קוד גישה:</label>
-                <div className="password-field">
+                <div className="ka-pin-field">
                   <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                  <input data-element-name="שדה_page_59" data-agy-id="unlock_password_input" type="password" autoComplete="off" className="input"
+                  <input data-agy-id="unlock_password_input" type={showUnlockPassword ? 'text' : 'password'} autoComplete="off"
+                    placeholder="••••••"
                     value={unlockPassword} onChange={e => setUnlockPassword(e.target.value)} />
+                  <button type="button" className="toggle-eye" title={showUnlockPassword ? 'הסתר סיסמה' : 'הצג סיסמה'}
+                    onClick={() => setShowUnlockPassword(v => !v)}>
+                    <svg className="icon"><use href="#i-eye" /></svg>
+                  </button>
                 </div>
               </div>
-              {unlockError && <div className="error-text" style={{ color: 'var(--danger)', textAlign: 'center' }}>{unlockError}</div>}
+              {unlockError && <div className="ka-error">{unlockError}</div>}
             </div>
-            <div className="modal-foot">
-              <button data-element-name="כפתור_page_60" data-agy-id="cancel_unlock_btn" type="button" className="btn btn-secondary"
-                onClick={() => { setShowUnlockModal(false); setUnlockIntent('unlock'); }}>ביטול</button>
-              <button data-element-name="כפתור_page_61" data-agy-id="submit_unlock_btn" type="submit" className="btn btn-primary" disabled={unlockLoading}>
+            <div className="ka-modal-foot">
+              <button data-agy-id="cancel_unlock_btn" type="button" className="ka-btn ka-btn-ghost"
+                onClick={() => { setShowUnlockModal(false); setUnlockIntent('unlock'); setShowUnlockPassword(false); }}>ביטול</button>
+              <button data-agy-id="submit_unlock_btn" type="submit" className="ka-btn ka-btn-primary" disabled={unlockLoading}>
                 {unlockLoading ? 'בודק...' : (unlockIntent === 'print' ? 'אשר והדפס' : 'שחרר')}
               </button>
             </div>
@@ -1207,37 +1333,36 @@ export default function CustomerInventoryViewer() {
         </div>
       )}
 
+      {/* Orders-for-model modal */}
       {showOrdersModal && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(4px)' }}>
-          <div className="modal" style={{ maxWidth: '600px', width: '90%', maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}>
-            <div className="modal-head">
-              <strong>
+        <div className="ka-modal-backdrop" style={{ zIndex: 10000 }}>
+          <div className="ka-modal wide">
+            <div className="ka-modal-head">
+              <span className="ka-modal-head-title">
                 <svg className="icon"><use href="#i-bag" /></svg>
                 הזמנות - {ordersModalModel?.name} {ordersModalSize ? `(מידה ${ordersModalSize})` : ''}
-              </strong>
-              <button data-element-name="כפתור_page_62" data-agy-id="close_orders_modal_btn" type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowOrdersModal(false)}>
-                <svg className="icon"><use href="#i-x" /></svg>
+              </span>
+              <button data-agy-id="close_orders_modal_btn" type="button" className="ka-icon-btn" style={{ width: '32px', height: '32px' }} title="סגירה" onClick={() => setShowOrdersModal(false)}>
+                <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-x" /></svg>
               </button>
             </div>
-            <div className="modal-body" style={{ overflowY: 'auto', flexGrow: 1 }}>
-              <div className="hint" style={{ color: 'var(--text-3)', marginBottom: '14px' }}>טווח: שבוע לפני ואחרי תאריך האירוע</div>
+            <div className="ka-modal-body">
+              <div className="ka-modal-hint">טווח: שבוע לפני ואחרי תאריך האירוע</div>
               {ordersModalLoading ? (
-                <div className="loading-inline"><span className="spinner" />טוען נתונים...</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px', justifyContent: 'center', padding: '20px 0', color: 'var(--ink-soft)' }}>
+                  <span className="ka-spinner sm" />טוען נתונים...
+                </div>
               ) : ordersModalOrders.length === 0 ? (
-                <div className="hint" style={{ color: 'var(--text-3)', textAlign: 'center', padding: '30px 0' }}>לא נמצאו הזמנות לדגם זה בטווח התאריכים הנבחר.</div>
+                <div style={{ color: 'var(--ink-faint)', textAlign: 'center', padding: '30px 0', fontSize: '13px' }}>לא נמצאו הזמנות לדגם זה בטווח התאריכים הנבחר.</div>
               ) : (
                 <div>
                   {ordersModalOrders.map(order => (
-                    <div key={order.orderId} className="list-card">
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontWeight: 700 }}>
-                          הזמנה #{order.orderId} - {order.customer?.firstName} {order.customer?.lastName}
-                        </div>
-                        <div className="hint" style={{ color: 'var(--text-3)' }}>
-                          תאריך אירוע: {new Date(order.eventDate).toLocaleDateString('he-IL')}
-                        </div>
+                    <div key={order.orderId} className="ka-order-row">
+                      <div className="om">
+                        <strong>הזמנה #{order.orderId} - {order.customer?.firstName} {order.customer?.lastName}</strong>
+                        <span>תאריך אירוע: {new Date(order.eventDate).toLocaleDateString('he-IL')}</span>
                       </div>
-                      <span className={`badge ${order.status === 'סגור' ? 'badge-neutral' : 'badge-primary'}`}>
+                      <span className={`ka-badge ${order.status === 'סגור' ? 'ka-badge-neutral' : 'ka-badge-primary'}`}>
                         {order.status || 'פעיל'}
                       </span>
                       <a
@@ -1245,9 +1370,9 @@ export default function CustomerInventoryViewer() {
                         target="_blank"
                         rel="noopener noreferrer"
                         title="פתח הזמנה"
-                        className="btn btn-secondary btn-icon-only"
+                        className="ka-link-btn"
                       >
-                        <svg data-element-name="רכיב_page_63" className="icon"><use href="#i-link" /></svg>
+                        <svg className="icon"><use href="#i-link" /></svg>
                       </a>
                     </div>
                   ))}

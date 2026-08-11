@@ -694,3 +694,9 @@ AI RESPONSE:
 
 SQL: SELECT DISTINCT DM.name AS "שם דגם", DM.barcodePrefix AS "קידומת דגם" FROM "DressItem" DI JOIN "DressModel" DM ON DI."dressModelId" = DM."id" WHERE DI."barcodePrefix" = 350 AND DI."sizeText" = '50' AND DI."isDeleted" = false AND DI."notInUse" = false AND DI."inRepair" = false AND DM."isDeleted" = false AND DI."location" NOT ILIKE '%מחסן%' AND DI."location" NOT ILIKE '%warehouse%' AND DI."location" NOT ILIKE '%רזרבה%' AND DI."location" NOT ILIKE '%reserve%';
 
+==== NEW REQUEST ====
+PROMPT:
+בדיקה
+AI RESPONSE:
+היי, המערכת תקינה ומוכנה לעבודה. כיצד אוכל לעזור לך היום בחיפוש לקוחות, הזמנות או שמלות?
+

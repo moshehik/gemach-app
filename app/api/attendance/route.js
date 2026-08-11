@@ -1,7 +1,9 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
+import { cookies } from 'next/headers';
 import { checkAuth } from '../../../lib/auth';
 import { verifySecret } from '../../../lib/passwordAuth';
+import { getTrustedDeviceFromCookieStore, markDeviceUsed } from '../../../lib/trustedDevice';
 
 
 
@@ -70,26 +72,40 @@ export async function POST(request) {
     });
 
     if (!employee) {
-      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+      return NextResponse.json({ error: 'עובד לא נמצא' }, { status: 404 });
     }
 
     // Verify password OR check if the logged in user is the same employee
     if (password) {
-      if (!(await verifySecret(password, employee.password))) {
-        return NextResponse.json({ error: 'Invalid password' }, { status: 401 });
+      const fullPasswordOk = await verifySecret(password, employee.password);
+      if (!fullPasswordOk) {
+        // Same trust model as the login screen (app/api/login/route.js): a short code is
+        // only ever honored on a computer a manager marked trusted - on any other machine
+        // the full password is required, no matter what the client typed.
+        const cookieStore = await cookies();
+        const trustedDevice = await getTrustedDeviceFromCookieStore(cookieStore);
+        const shortCodeOk = trustedDevice && employee.pinHash && (await verifySecret(password, employee.pinHash));
+        if (!shortCodeOk) {
+          if (!trustedDevice && String(password).length <= 4) {
+            return NextResponse.json({ error: 'קוד מקוצר אפשרי רק ממחשב מערכת מהימן - יש להזין את הסיסמה המלאה' }, { status: 401 });
+          }
+          return NextResponse.json({ error: 'סיסמה שגויה' }, { status: 401 });
+        }
+        markDeviceUsed(trustedDevice.id);
       }
     } else {
       // If no password provided, ensure the current session belongs to this employee
-      const { cookies } = require('next/headers');
       const cookieStore = await cookies();
       const token = cookieStore.get('auth_token');
-      if (!token || token.value !== String(employeeId)) {
-        return NextResponse.json({ error: 'Unauthorized to punch clock without password' }, { status: 401 });
+      // auth_token holds the employee UUID; the client may have sent either the UUID or
+      // the numeric legacyId, so compare against the resolved employee's UUID.
+      if (!token || token.value !== employee.id) {
+        return NextResponse.json({ error: 'רישום נוכחות ללא סיסמה אפשרי רק לעובד המחובר' }, { status: 401 });
       }
     }
 
     if (!employee.isActive) {
-       return NextResponse.json({ error: 'Employee account is inactive' }, { status: 403 });
+       return NextResponse.json({ error: 'חשבון העובד אינו פעיל' }, { status: 403 });
     }
 
     const now = new Date();
@@ -110,7 +126,7 @@ export async function POST(request) {
 
     if (action === 'IN') {
       if (currentShift) {
-        return NextResponse.json({ error: 'Already punched in' }, { status: 400 });
+        return NextResponse.json({ error: 'כבר נרשמה כניסה - יש לרשום יציאה קודם' }, { status: 400 });
       }
 
       // Create new shift
@@ -127,7 +143,7 @@ export async function POST(request) {
 
     } else if (action === 'OUT') {
       if (!currentShift) {
-        return NextResponse.json({ error: 'No active shift found to punch out from' }, { status: 400 });
+        return NextResponse.json({ error: 'לא נמצאה משמרת פתוחה לרישום יציאה' }, { status: 400 });
       }
 
       const entryTime = new Date(currentShift.entryTime);

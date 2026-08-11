@@ -15,6 +15,7 @@ import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import PrintWizardModal from '../components/PrintWizardModal';
 import { fetchSharedJson, readCache, subscribe, TTL } from '../../lib/apiCache';
 import { buildOrdersListParams, defaultOrdersAdvFilters } from '@/app/lib/prefetchRoutes';
+import { listOrderDrafts } from '@/app/lib/orderDrafts';
 
 // מיפוי סטטוס טקסטואלי (calculateOrderStatus/calculatePaymentStatus ב-lib/orderStatus.js, משותף
 // לכמה עמודים) אל מחלקת ה-badge של מערכת העיצוב "אריג" כאן בעמוד ההזמנות בלבד — לא נוגעים בעוזר המשותף עצמו.
@@ -160,6 +161,21 @@ export default function OrdersPage() {
     setNowTick(Date.now());
     const id = setInterval(() => setNowTick(Date.now()), 1000);
     return () => clearInterval(id);
+  }, []);
+
+  // טיוטות מקומיות של שינויים שלא נשמרו בכרטיסי הזמנה (app/lib/orderDrafts.js) —
+  // { orderId: { savedAt, summary } }. שורה עם טיוטה נצבעת ומקבלת תג "לא נשמר";
+  // נטען במעמד הרכבה ומתעדכן כשחוזרים לטאב/חלון (או מטאב אחר דרך storage).
+  const [unsavedDrafts, setUnsavedDrafts] = useState({});
+  useEffect(() => {
+    const refresh = () => setUnsavedDrafts(listOrderDrafts());
+    refresh();
+    window.addEventListener('focus', refresh);
+    window.addEventListener('storage', refresh);
+    return () => {
+      window.removeEventListener('focus', refresh);
+      window.removeEventListener('storage', refresh);
+    };
   }, []);
 
   const [advFilters, setAdvFilters] = useState(defaultOrdersAdvFilters);
@@ -736,11 +752,16 @@ export default function OrdersPage() {
 
                 const isUnpaid = order.totalPaid < order.totalAmount && order.totalAmount > 0;
                 const hasCustomSpacing = order.customSpacing !== null && order.customSpacing !== undefined;
+                // טיוטה מקומית של שינויים שלא נשמרו בכרטיס (ר' app/lib/orderDrafts.js) —
+                // גוון ייחודי + תג, לפני שאר הצבעים: דורש החלטת משתמש בתוך הכרטיס.
+                const unsavedDraft = unsavedDrafts[order.orderId];
 
                 let rowClassName = '';
                 let rowStyle = {};
                 if (selectedOrder?.orderId === order.orderId) {
                   rowStyle = { background: 'var(--surface-alt)' };
+                } else if (unsavedDraft) {
+                  rowStyle = { background: 'var(--info-tint)', borderRight: '4px solid var(--info)' };
                 } else if (hasCustomSpacing) {
                   rowStyle = { background: 'var(--warning-tint)', borderRight: '4px solid var(--warning)' };
                 } else if (isPending) {
@@ -755,6 +776,15 @@ export default function OrdersPage() {
                     <td className="cell-primary" style={{ color: isUnpaid ? 'var(--danger)' : (isPending ? 'var(--accent)' : undefined) }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                         <span>#{order.orderId}</span>
+                        {unsavedDraft && (
+                          <span
+                            className="badge badge-info"
+                            title={`שינויים שלא נשמרו מ-${unsavedDraft.savedAt ? new Date(unsavedDraft.savedAt).toLocaleString('he-IL') : 'ביקור קודם'}${(unsavedDraft.summary || []).length ? ':\n' + unsavedDraft.summary.join('\n') : ''}\nפתח את הכרטיס כדי לשחזר או למחוק אותם`}
+                          >
+                            <svg className="icon" style={{ width: '10px', height: '10px' }}><use href="#i-edit" /></svg>
+                            לא נשמר
+                          </span>
+                        )}
                         {pendingItem && <PendingTimer cartStatusDate={pendingItem.cartStatusDate} holdMinutes={holdMinutes} />}
                         <span
                           style={{ marginRight: 'auto', display: 'flex', color: 'var(--text-3)', cursor: 'pointer', pointerEvents: 'auto' }}

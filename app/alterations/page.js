@@ -322,11 +322,13 @@ export default function AlterationsPage() {
         </div>
       </div>
 
-      {/* טווח תאריכי אירוע + חיפוש (רגיל / חכם) + שאלות סטטיסטיקה */}
-      <div className="toolbar">
-        <div className="field" style={{ marginBottom: 0, minWidth: '260px' }}>
-          <label>טווח תאריכי אירוע</label>
+      {/* טווח תאריכי אירוע + חיפוש (רגיל / חכם) + שאלות סטטיסטיקה.
+          align-items:stretch + .range-flat: בורר הטווח ושורת החיפוש באותו עיצוב (אותו רדיוס)
+          ובאותו גובה/קו — בלי label צף שמושך את הבורר מעל הקו של שורת החיפוש */}
+      <div className="toolbar" style={{ alignItems: 'stretch' }}>
+        <div title="סינון לפי טווח תאריכי אירוע" style={{ display: 'flex', minWidth: '300px', maxWidth: '400px', flex: '1 1 340px' }}>
           <HebrewDateRangePicker
+            className="range-flat"
             startDate={startDate}
             endDate={endDate}
             onChange={(start, end) => {
