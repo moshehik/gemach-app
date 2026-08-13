@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
-import { verifySecret } from '@/lib/passwordAuth';
+import { verifySecret, isBcryptHash, hashSecret, last4Of } from '@/lib/passwordAuth';
 import { getTrustedDeviceFromCookieStore, markDeviceUsed } from '@/lib/trustedDevice';
 import { issueSessionCookie } from '@/lib/auth';
 
@@ -54,7 +54,28 @@ export async function POST(request) {
       if (!employee.password) {
         return NextResponse.json({ success: false, message: 'לעובד זה טרם הוגדרה סיסמה במערכת. אנא פנה למנהל.' }, { status: 401 });
       }
-      const passwordOk = await verifySecret(password, employee.password);
+      // Many employees imported from the legacy Access system still carry their original
+      // short numeric code as PLAINTEXT in this column (never hashed - only pinHash, derived
+      // from it at import time, is a real bcrypt hash for them). bcrypt.compare against a
+      // non-bcrypt string always returns false, so the normal path alone would permanently
+      // lock these accounts out of full-password login. Fall back to an exact-match check
+      // against the legacy plaintext, and migrate it to a real hash right here on success -
+      // every login organically pays down the migration debt instead of needing a bulk pass.
+      let passwordOk = await verifySecret(password, employee.password);
+      if (!passwordOk && !isBcryptHash(employee.password) && password === employee.password) {
+        passwordOk = true;
+        try {
+          await prisma.employee.update({
+            where: { id: employee.id },
+            data: {
+              password: await hashSecret(password),
+              pinHash: await hashSecret(last4Of(password)),
+            },
+          });
+        } catch (e) {
+          console.warn('Failed to migrate legacy plaintext password on login:', e?.message || e);
+        }
+      }
       if (!passwordOk) {
         return NextResponse.json({ success: false, message: 'סיסמא שגויה' }, { status: 401 });
       }
