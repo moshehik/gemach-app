@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import FullEmailListModal from '@/components/FullEmailListModal';
 import NeonUsageCard from './NeonUsageCard';
+import WebBackupModeToggle from './WebBackupModeToggle';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { NUMBER_FIELD_LIMITS, validateNumericSetting } from '@/app/lib/settingsValidation';
 import { SECRET_SETTING_KEYS, SECRET_MASK, SECRET_SETTING_LINKS } from '@/app/lib/secretSettingKeys';
@@ -726,7 +727,12 @@ export default function SettingsClient() {
             </div>
           </div>
 
-          {activeTab === 'מסד נתונים' && <NeonUsageCard />}
+          {activeTab === 'מסד נתונים' && (
+            <>
+              <WebBackupModeToggle />
+              <NeonUsageCard />
+            </>
+          )}
 
           {activeTab === 'תצוגה' && (
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '24px', padding: '16px 0', borderBottom: '1px solid var(--border)' }}>

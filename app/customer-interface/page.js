@@ -272,6 +272,7 @@ export default function CustomerInventoryViewer() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [priceCategories, setPriceCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
+  const [selectedSizes, setSelectedSizes] = useState([]);
   // What a successful employee login in the unlock modal should do:
   // 'unlock' releases the kiosk lock; 'print' only authorizes a one-off print and keeps the lock.
   const [unlockIntent, setUnlockIntent] = useState('unlock');
@@ -532,6 +533,14 @@ export default function CustomerInventoryViewer() {
     let list = dresses.filter(d => {
       if (selectedCategories.length > 0 && !selectedCategories.includes(d.priceCategory)) return false;
 
+      if (selectedSizes.length > 0) {
+        const hasSelectedSize = d.items?.some(item => {
+          if (item.notInUse || item.isDeleted || item.isUnusable) return false;
+          return selectedSizes.includes((item.sizeText || 'כללי').trim());
+        });
+        if (!hasSelectedSize) return false;
+      }
+
       const term = search.trim().toLowerCase();
       if (!term) return true;
 
@@ -564,7 +573,7 @@ export default function CustomerInventoryViewer() {
       return nameA.localeCompare(nameB);
     });
     return list;
-  }, [dresses, search, selectedCategories]);
+  }, [dresses, search, selectedCategories, selectedSizes]);
 
   // Distinct sizes across the whole (unfiltered) inventory, for the sidebar
   // quick-filter chips — each with the number of models carrying that size
@@ -903,7 +912,7 @@ export default function CustomerInventoryViewer() {
               onClick={() => setSidebarOpen(o => !o)}>
               <svg className="icon"><use href="#ka-i-filter" /></svg>
               סינון ותצוגה
-              {(search || selectedCategories.length > 0) && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--terracotta)', display: 'inline-block' }} />}
+              {(search || selectedCategories.length > 0 || selectedSizes.length > 0) && <span style={{ width: '8px', height: '8px', borderRadius: '50%', background: 'var(--terracotta)', display: 'inline-block' }} />}
             </button>
 
             <div className="ka-action-cluster">
@@ -948,12 +957,6 @@ export default function CustomerInventoryViewer() {
       {stage === 1 && (
         <section>
           <div className="ka-hero">
-            {aiEnabled && (
-              <div className="ai-feature-element ka-hero-eyebrow">
-                <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-star" /></svg>
-                עוזר חכם זמין
-              </div>
-            )}
             <h2>מה תחפש היום?</h2>
             <p className="ka-lead">הזן סגנון, מידה או פשוט בחר תאריך מהיומן</p>
           </div>
@@ -1061,12 +1064,11 @@ export default function CustomerInventoryViewer() {
                     <h4><svg className="icon"><use href="#i-box" /></svg>סינון מהיר לפי מידה</h4>
                     <div className="ka-size-chip-grid">
                       {sizeChipData.map(([sz, count]) => {
-                        const term = `מידה ${sz}`;
-                        const active = search.trim() === term;
+                        const active = selectedSizes.includes(sz);
                         return (
                           <div key={sz} data-agy-id={`size_chip_${sz}`}
                             className={`ka-size-chip${active ? ' active' : ''}${count === 0 ? ' zero' : ''}`}
-                            onClick={() => setSearch(active ? '' : term)}>
+                            onClick={() => setSelectedSizes(prev => active ? prev.filter(s => s !== sz) : [...prev, sz])}>
                             <strong>{sz}</strong>
                             <div className="count">{count}</div>
                           </div>
@@ -1113,7 +1115,7 @@ export default function CustomerInventoryViewer() {
                 </div>
 
                 <button data-agy-id="clear_all_filters_btn" type="button" className="ka-btn-clear"
-                  onClick={() => { setSearch(''); setSelectedCategories([]); }}>
+                  onClick={() => { setSearch(''); setSelectedCategories([]); setSelectedSizes([]); }}>
                   <svg className="icon"><use href="#i-x" /></svg>
                   נקה את כל הסינונים
                 </button>
@@ -1133,7 +1135,7 @@ export default function CustomerInventoryViewer() {
                   <h4>לא נמצאו דגמים מתאימים</h4>
                   <p>נסו לנקות את החיפוש או את סינון הקטגוריה</p>
                   <button data-agy-id="empty_state_clear_btn" type="button" className="ka-btn-mini"
-                    onClick={() => { setSearch(''); setSelectedCategories([]); }}>
+                    onClick={() => { setSearch(''); setSelectedCategories([]); setSelectedSizes([]); }}>
                     נקה סינון ונסה שוב
                   </button>
                 </div>

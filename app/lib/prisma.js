@@ -194,9 +194,61 @@ if (!globalForPrisma.activeDbMode) {
   globalForPrisma.activeDbMode = initialMode;
 }
 
+// "Web backup mode" — a production-safe counterpart to the dev-only .active-db
+// toggle above. That mechanism can't work on Vercel (no persistent disk, no
+// single shared process), so the flag instead lives in the PROD database
+// itself, as SystemSetting key 'web_backup_mode' ('true'/'false'). Every
+// serverless instance polls it (TTL below) via the RAW prod client — never
+// through prismaProxy — so reading/writing the flag is never itself subject
+// to the flag it controls. getWebBackupMode/setWebBackupMode are the only
+// sanctioned way to touch this key; regular app code keeps using
+// prisma.systemSetting.* for every other setting, unaffected.
+const WEB_DB_MODE_TTL_MS = 5000;
+if (!globalForPrisma.webDbModeState) {
+  globalForPrisma.webDbModeState = { mode: 'prod', fetchedAt: 0, inFlight: null };
+}
+
+function ensureWebDbModeFresh() {
+  const state = globalForPrisma.webDbModeState;
+  if (Date.now() - state.fetchedAt < WEB_DB_MODE_TTL_MS || state.inFlight || !globalForPrisma.prismaProd) return;
+  state.inFlight = globalForPrisma.prismaProd.systemSetting.findUnique({ where: { key: 'web_backup_mode' } })
+    .then((row) => {
+      state.mode = row?.value === 'true' ? 'test' : 'prod';
+      state.fetchedAt = Date.now();
+    })
+    .catch(() => { state.fetchedAt = Date.now(); }) // keep last-known mode, just stop hammering prod
+    .finally(() => { state.inFlight = null; });
+}
+
+// Server-side read for the layout banner — always hits prod directly so it
+// reflects the true flag immediately, regardless of the reading instance's
+// own cache freshness or (in local dev) its unrelated .active-db mode.
+export async function getWebBackupMode() {
+  try {
+    const row = await globalForPrisma.prismaProd.systemSetting.findUnique({ where: { key: 'web_backup_mode' } });
+    return row?.value === 'true';
+  } catch (e) {
+    return false;
+  }
+}
+
+export async function setWebBackupMode(enabled) {
+  const value = enabled ? 'true' : 'false';
+  await globalForPrisma.prismaProd.systemSetting.upsert({
+    where: { key: 'web_backup_mode' },
+    update: { value },
+    create: { key: 'web_backup_mode', value, name: 'מצב גיבוי פעיל באתר', category: 'מסד נתונים', type: 'boolean' },
+  });
+  globalForPrisma.webDbModeState.mode = enabled ? 'test' : 'prod';
+  globalForPrisma.webDbModeState.fetchedAt = Date.now();
+}
+
 const prismaProxy = new Proxy({}, {
   get(target, prop) {
-    const isTest = globalForPrisma.activeDbMode === 'test' && globalForPrisma.prismaTest;
+    ensureWebDbModeFresh();
+    const devTest = process.env.NODE_ENV === 'development' && globalForPrisma.activeDbMode === 'test';
+    const webTest = globalForPrisma.webDbModeState.mode === 'test';
+    const isTest = (devTest || webTest) && globalForPrisma.prismaTest;
     const activeClient = isTest ? globalForPrisma.prismaTest : globalForPrisma.prismaProd;
 
     // Interactive transactions stash their `tx` client in AsyncLocalStorage for the duration
