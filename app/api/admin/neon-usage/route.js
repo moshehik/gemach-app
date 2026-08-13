@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
+import prisma from '@/app/lib/prisma';
+import { decryptSecret, isEncryptedSecret } from '@/lib/secretCrypto';
 
 // Proxies the Neon control-plane API so the NEON_API_KEY never reaches the
 // client. Returns current billing-period consumption plus a cost estimate
@@ -19,9 +21,19 @@ export async function GET() {
   if (!(await checkAuth())) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
-  const key = process.env.NEON_API_KEY;
+  // The DB-stored, encrypted key (set from the settings page) takes priority over
+  // the env var - it's how an admin rotates an expired key without a redeploy.
+  let key = process.env.NEON_API_KEY;
+  const stored = await prisma.systemSetting.findUnique({ where: { key: 'neon_api_key' } });
+  if (stored?.value && isEncryptedSecret(stored.value)) {
+    try {
+      key = decryptSecret(stored.value);
+    } catch (e) {
+      console.error('Failed to decrypt neon_api_key:', e);
+    }
+  }
   if (!key) {
-    return NextResponse.json({ error: 'NEON_API_KEY אינו מוגדר בקובץ הסביבה של השרת' }, { status: 500 });
+    return NextResponse.json({ error: 'מפתח ה-API של Neon אינו מוגדר. ניתן להזין אחד בהגדרות מערכת > מסד נתונים.' }, { status: 500 });
   }
   const headers = { Authorization: `Bearer ${key}`, Accept: 'application/json' };
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { chargeNedarimPlus } from '../../lib/nedarim';
 import prisma from '../../lib/prisma'; // Optional: if you need to fetch mosadId from settings
 import { checkAuth } from '../../../lib/auth';
+import { decryptSecret, isEncryptedSecret } from '../../../lib/secretCrypto';
 
 
 export async function POST(request) {
@@ -40,6 +41,18 @@ export async function POST(request) {
        return NextResponse.json({ success: false, error: 'מספר מוסד (MosadId) לא מוגדר במערכת. אנא עדכן את ההגדרות.' }, { status: 400 });
     }
 
+    // Optional API token (nedarim_plus_token) - some Mosad accounts require it
+    // alongside the Mosad ID; stored encrypted, see lib/secretCrypto.js.
+    let token = '';
+    const tokenSetting = await prisma.systemSetting.findUnique({ where: { key: 'nedarim_plus_token' } });
+    if (tokenSetting?.value && isEncryptedSecret(tokenSetting.value)) {
+      try {
+        token = decryptSecret(tokenSetting.value);
+      } catch (e) {
+        console.error('Failed to decrypt nedarim_plus_token:', e);
+      }
+    }
+
     const {
       clientName,
       address,
@@ -67,6 +80,7 @@ export async function POST(request) {
       zeout,
       cvv,
       email,
+      token,
     });
 
     return NextResponse.json(result);

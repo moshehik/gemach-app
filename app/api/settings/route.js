@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth, invalidateRequireLoginCache } from '@/lib/auth';
 import { validateNumericSetting } from '../../lib/settingsValidation';
+import { verifySecret } from '@/lib/passwordAuth';
+import { encryptSecret } from '@/lib/secretCrypto';
+import { SECRET_SETTING_KEYS, SECRET_MASK } from '../../lib/secretSettingKeys';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +25,10 @@ export async function GET() {
         { id: 'asc' }
       ]
     });
-    return NextResponse.json(settings);
+    const masked = settings.map(s =>
+      SECRET_SETTING_KEYS.includes(s.key) ? { ...s, value: s.value ? SECRET_MASK : '' } : s
+    );
+    return NextResponse.json(masked);
   } catch (error) {
     console.error('Error fetching settings:', error);
     return NextResponse.json({ error: 'Failed to fetch settings' }, { status: 500 });
@@ -30,12 +36,32 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  if (!(await checkAuth('מנהל'))) {
-    return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
-  }
   try {
-    const data = await request.json();
-    
+    const body = await request.json();
+
+    // Legacy shape: a plain array, saved only when checkAuth('מנהל') sees a real
+    // logged-in admin session cookie. When require_login is off (the very setting an
+    // admin may be trying to turn ON from a fresh/anonymous browser), there is no
+    // session cookie to check — so the client falls back to the same one-time
+    // employeeId+pin confirmation pattern used elsewhere in the app (e.g. the debt-
+    // approval flow in app/orders/[id]/page.js) instead of the cookie-only checkAuth.
+    const isWrapped = !Array.isArray(body) && body && Array.isArray(body.items);
+    const data = isWrapped ? body.items : body;
+
+    let authorized = await checkAuth('מנהל');
+    if (!authorized && isWrapped && body.employeeId && body.pin) {
+      const employee = await prisma.employee.findUnique({ where: { id: body.employeeId } });
+      authorized = !!(
+        employee &&
+        employee.isActive &&
+        (employee.roleId === 1 || employee.roleId === 2) &&
+        (await verifySecret(body.pin, employee.password))
+      );
+    }
+    if (!authorized) {
+      return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
+    }
+
     if (!Array.isArray(data)) {
       return NextResponse.json({ error: 'Invalid data format, expected array' }, { status: 400 });
     }
@@ -48,17 +74,25 @@ export async function POST(request) {
       }
     }
 
-    const updatePromises = data.map(item => {
+    // The masked placeholder coming back unchanged means "admin didn't touch this
+    // field" - drop it from the batch entirely so the upsert below never overwrites
+    // the real encrypted value with the mask string itself.
+    const writableData = data.filter(item => !(SECRET_SETTING_KEYS.includes(item.key) && item.value === SECRET_MASK));
+
+    const updatePromises = writableData.map(item => {
       if (item.key && item.value !== undefined) {
+        const storedValue = SECRET_SETTING_KEYS.includes(item.key) && item.value
+          ? encryptSecret(item.value)
+          : String(item.value);
         return prisma.systemSetting.upsert({
           where: { key: item.key },
-          update: { 
-            value: String(item.value),
+          update: {
+            value: storedValue,
             name: item.name || item.key,
           },
           create: {
             key: item.key,
-            value: String(item.value),
+            value: storedValue,
             name: item.name || item.key,
           }
         });

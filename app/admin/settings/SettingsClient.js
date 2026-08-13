@@ -5,6 +5,7 @@ import FullEmailListModal from '@/components/FullEmailListModal';
 import NeonUsageCard from './NeonUsageCard';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { NUMBER_FIELD_LIMITS, validateNumericSetting } from '@/app/lib/settingsValidation';
+import { SECRET_SETTING_KEYS, SECRET_MASK, SECRET_SETTING_LINKS } from '@/app/lib/secretSettingKeys';
 
 const CATEGORY_ICONS = {
   'מיילים': 'i-mail',
@@ -546,11 +547,28 @@ export default function SettingsClient() {
     const payload = Object.entries(modified).map(([key, value]) => ({ key, value }));
 
     try {
-      const res = await fetch('/api/settings', {
+      let res = await fetch('/api/settings', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
+        body: JSON.stringify({ items: payload })
       });
+
+      // אין עובד מחובר (למשל כשמנסים להפעיל את "חובת התחברות למערכת" בעצמה,
+      // כשאף אחד עדיין לא מחובר) — נדרש אישור מנהל נקודתי, כמו בפעולות רגישות
+      // אחרות במערכת (למשל שמירת הזמנה עם יתרת חוב).
+      if (res.status === 401) {
+        const authResult = await window.customAuthPrompt('שמירת ההגדרות דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+        if (!authResult || !authResult.pin) {
+          setSaving(false);
+          setSaveMessage('השמירה בוטלה: נדרש אישור מנהל.');
+          return;
+        }
+        res = await fetch('/api/settings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ items: payload, employeeId: authResult.employeeId, pin: authResult.pin })
+        });
+      }
 
       if (!res.ok) throw new Error('שגיאה בשמירת ההגדרות');
 
@@ -800,6 +818,7 @@ export default function SettingsClient() {
 
             const isMandatoryFieldsSetting = setting.key === 'mandatory_fields';
             const isSelectSetting = setting.type === 'select' || setting.key === 'email_routing_strategy';
+            const isSecretSetting = SECRET_SETTING_KEYS.includes(setting.key);
 
             const isDepartmentSetting =
               setting.key.toLowerCase().includes('permission') ||
@@ -809,7 +828,7 @@ export default function SettingsClient() {
               setting.key === 'enable_ai_specific_employees';
 
             // Helper to check if it needs a larger multiline textbox
-            const isMultiline = !isBoolean && !isNumber && !isDepartmentSetting && !isMandatoryFieldsSetting && !isSelectSetting && (
+            const isMultiline = !isBoolean && !isNumber && !isDepartmentSetting && !isMandatoryFieldsSetting && !isSelectSetting && !isSecretSetting && (
               setting.key.toLowerCase().includes('print') ||
               setting.key.toLowerCase().includes('box') ||
               setting.key.toLowerCase().includes('footer') ||
@@ -866,6 +885,32 @@ export default function SettingsClient() {
                       elementName="שדה_SettingsClient_21"
                       onChange={(val) => handleChange(setting.key, val)}
                     />
+                  ) : isSecretSetting ? (
+                    <div style={{ width: '100%' }}>
+                      <input
+                        type="password"
+                        className="input"
+                        style={{ width: '100%' }}
+                        value={rawValue || ''}
+                        autoComplete="off"
+                        onFocus={(e) => {
+                          // ערך ממוסך שלא נגעו בו — מנקים כדי שההקלדה תתחיל מאפס
+                          // ולא תשרשר תווים על גבי הסימון "מוגדר".
+                          if (rawValue === SECRET_MASK) handleChange(setting.key, '');
+                        }}
+                        onChange={(e) => handleChange(setting.key, e.target.value)}
+                        placeholder={rawValue === SECRET_MASK ? 'מוגדר — לחץ כדי להחליף' : 'הדבק ערך חדש...'}
+                      />
+                      <p className="hint" style={{ margin: '4px 0 0', color: 'var(--text-3)' }}>
+                        {SECRET_SETTING_LINKS[setting.key]?.prefix}{' '}
+                        {SECRET_SETTING_LINKS[setting.key] && (
+                          <a href={SECRET_SETTING_LINKS[setting.key].url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary-solid)' }}>
+                            {SECRET_SETTING_LINKS[setting.key].label}
+                          </a>
+                        )}
+                        {' '}הערך נשמר מוצפן ולא מוצג שוב לאחר השמירה.
+                      </p>
+                    </div>
                   ) : isMultiline ? (
                     <textarea
                       className="textarea"

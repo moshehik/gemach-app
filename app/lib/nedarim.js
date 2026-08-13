@@ -16,6 +16,9 @@
  * @param {number} params.installments - Number of installments (Tashloumim).
  * @param {string} params.notes - Notes for the transaction (Avour).
  * @param {boolean} params.isKeva - Whether this is a recurring payment (Horaat Keva).
+ * @param {string} params.token - The institution's Nedarim Plus API token (Employee/Settings
+ *   > nedarim_plus_token), if one has been issued for this Mosad. Optional: older Mosad
+ *   accounts authenticate by Mosad ID alone.
  * @returns {Promise<{success: boolean, confirmation?: string, error?: string, rawResponse: string}>}
  */
 export async function chargeNedarimPlus({
@@ -32,6 +35,7 @@ export async function chargeNedarimPlus({
   zeout = '',
   cvv = '',
   email = '',
+  token = '',
 }) {
   const endpoint = isKeva ? 'DebitKeva.aspx' : 'DebitCard.aspx';
   const url = `https://www.matara.pro/nedarimplus/V6/Files/WebServices/${endpoint}`;
@@ -48,7 +52,7 @@ export async function chargeNedarimPlus({
     Tashloumim: installments.toString(),
     Groupe: '', // Optional
     Avour: notes,
-    Token: '',
+    Token: token || '',
     CVV: cvv || '',
     Zeout: zeout || '',
     Mail: email || '',
