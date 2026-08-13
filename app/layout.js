@@ -2,7 +2,7 @@ import './globals.css';
 import './design-overrides.css';
 import './design-system.css';
 import { cookies, headers } from 'next/headers';
-import prisma, { getWebBackupMode } from './lib/prisma';
+import prisma from './lib/prisma';
 import { readVerifiedSession } from '@/lib/auth';
 import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
 
@@ -18,7 +18,6 @@ import LoginScreen from './components/LoginScreen';
 import PageTracker from './components/PageTracker';
 import AIFloatingWidget from './components/AIFloatingWidget';
 import DevEnvBanner from './components/DevEnvBanner';
-import BackupModeBanner from './components/BackupModeBanner';
 import { Suspense } from 'react';
 import { PopupProvider } from './components/PopupProvider';
 import { LabelsProvider } from './components/LabelsContext';
@@ -91,12 +90,7 @@ export default async function RootLayout({ children }) {
     });
   }
 
-  // Reads the flag directly from prod (bypasses the prod/backup routing it
-  // controls) so the banner is always accurate, on every page, for every
-  // visitor — see app/lib/prisma.js.
-  const backupModePromise = getWebBackupMode().catch(() => false);
-
-  const [settings, employeeRow, isBackupMode] = await Promise.all([settingsPromise, employeePromise, backupModePromise]);
+  const [settings, employeeRow] = await Promise.all([settingsPromise, employeePromise]);
   const emp = session ? { roleId: session.r, showAi: !!session.a } : employeeRow;
 
   {
@@ -521,7 +515,6 @@ function cpCssText(vars) {
         <UniqueNamesProvider data-element-name="רכיב_layout_1">
           <ClipboardDebugger data-element-name="רכיב_layout_2" />
           <DevEnvBanner data-element-name="רכיב_layout_3" />
-          <BackupModeBanner active={isBackupMode} />
         {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator data-element-name="רכיב_layout_4" />}
         <Suspense data-element-name="רכיב_layout_5" fallback={null}>
           <PageTracker data-element-name="רכיב_layout_6" />
