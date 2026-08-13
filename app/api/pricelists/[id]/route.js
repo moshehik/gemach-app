@@ -23,7 +23,10 @@ async function getActingEmployee() {
 }
 
 export async function PUT(request, { params }) {
-    if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    // Same admin-only intent as DELETE below (and the client-side lock in
+    // app/dashboard/pricelist/page.js) - editing a price rule affects what customers
+    // get charged, checkAuth() alone only required being logged in, not being a manager.
+    if (!(await checkAuth('מנהל'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     try {
         const resolvedParams = await params;
         const id = parseInt(resolvedParams.id);

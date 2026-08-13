@@ -5,6 +5,17 @@ import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { HDate } from '@hebcal/core';
+import { fetchJson, getSettingsCached } from '@/app/lib/pageCache';
+
+// Hrefs among QUICK_LINKS below that mirror a gated item in navConfig.js's sidebar
+// (same rules RootLayout computes server-side: showAdminTab-equivalent for the
+// revenue dashboard, hideInternalMessaging for messages) - unlike the sidebar,
+// this card grid had no gating at all, so every employee saw links straight to
+// revenue data and (when the org disabled messaging) the messages page anyway.
+const QUICK_LINK_VISIBILITY = {
+  '/dashboard': 'manager',
+  '/messages': 'messagingEnabled',
+};
 
 // דפים שהוצאו מהתפריט הצדדי (2026-08-08, צומצם ל-11 הפריטים שהיו בתפריט
 // הראשי הישן) אבל אינם קשורי-ניהול — קיצורי דרך אליהם כאן במקום זאת, בטקסט/
@@ -42,6 +53,35 @@ export default function HomeDashboard() {
 
   // Dashboard state
   const [recentSearches, setRecentSearches] = useState([]);
+
+  // Quick-link visibility: starts fail-closed (both gated links hidden) until we
+  // know the employee's role and the messaging setting, so a non-manager never
+  // even briefly sees a card pointing at revenue data.
+  const [quickLinkFlags, setQuickLinkFlags] = useState({ manager: false, messagingEnabled: false });
+  useEffect(() => {
+    Promise.all([
+      fetchJson('/api/me').catch(() => ({ success: false })),
+      getSettingsCached().catch(() => []),
+    ]).then(([me, settings]) => {
+      const isManager = !!(me?.success && me.employee && (me.employee.roleId === 1 || me.employee.roleId === 2));
+      const requireLoginSetting = Array.isArray(settings) ? settings.find(s => s.key === 'require_login') : null;
+      const requireLogin = !!(requireLoginSetting && requireLoginSetting.value === 'true');
+      const hideMessagingSetting = Array.isArray(settings) ? settings.find(s => s.key === 'hide_internal_messaging') : null;
+      const hideMessaging = !!(hideMessagingSetting && hideMessagingSetting.value === 'true');
+      setQuickLinkFlags({
+        // Same rule as checkPageAccess(): a logged-in employee is judged by role
+        // regardless of require_login; an anonymous visitor only passes while
+        // require_login is off.
+        manager: me?.success ? isManager : !requireLogin,
+        messagingEnabled: !hideMessaging,
+      });
+    });
+  }, []);
+  const visibleQuickLinks = QUICK_LINKS.filter((link) => {
+    const requirement = QUICK_LINK_VISIBILITY[link.href];
+    if (!requirement) return true;
+    return !!quickLinkFlags[requirement];
+  });
 
   // מצב תצוגת סרגל החיפוש (חיפוש רגיל / חכם AI) — מחליף את הלוגיקה הפנימית שהייתה
   // חבויה בתוך רכיב AISearchBar הישן; ההתנהגות זהה, רק המבנה/הסגנון עברו לעיצוב החדש.
@@ -336,7 +376,7 @@ export default function HomeDashboard() {
         <div style={{ maxWidth: '800px', width: '100%', margin: '0 auto 32px' }}>
           <div className="section-title">קישורים מהירים</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: '10px' }}>
-            {QUICK_LINKS.map((link) => (
+            {visibleQuickLinks.map((link) => (
               <Link key={link.href} href={link.href} className="list-card" style={{ textDecoration: 'none', color: 'inherit' }}>
                 <svg className="icon" style={{ color: 'var(--text-3)' }}><use href={`#${link.icon}`} /></svg>
                 <span style={{ fontWeight: 600, fontSize: '13px' }}>{link.label}</span>

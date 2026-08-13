@@ -21,8 +21,13 @@ export async function GET() {
     }
 }
 
+// Creating a price rule is admin-only - checkAuth() (no role) only meant "is anyone
+// logged in", so any staff member could add/edit pricing that determines what
+// customers get charged. GET stays role-open on purpose: the customer-facing kiosk
+// (app/customer-interface/page.js) and staff dress-detail pages read prices with no
+// login at all.
 export async function POST(request) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkAuth('מנהל'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     try {
         const data = await request.json();
         const priceList = await prisma.priceList.create({

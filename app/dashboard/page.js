@@ -1,9 +1,19 @@
 import prisma from '../lib/prisma';
 import DashboardCharts from './DashboardCharts';
+import { checkPageAccess } from '@/lib/auth';
+import NoAccessMessage from '@/app/components/NoAccessMessage';
 
 export const dynamic = 'force-dynamic';
 
+// This page shows total revenue and financial breakdowns ("אזור ניהול" per its own
+// heading below) - it had no access control at all (unlike /admin, /employees,
+// /refunds, which are all gated the same way). A guard can't live in a shared
+// app/dashboard/layout.js - that would also wrap /dashboard/dresses and
+// /dashboard/pricelist, which staff DO need to reach - so it's inline here instead.
 export default async function Dashboard() {
+  if (!(await checkPageAccess())) {
+    return <NoAccessMessage />;
+  }
   // Trend window: 35 days back covers the "last 30 active days" chart
   const trendSince = new Date();
   trendSince.setDate(trendSince.getDate() - 35);
