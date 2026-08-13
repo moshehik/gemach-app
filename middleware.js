@@ -1,0 +1,16 @@
+import { NextResponse } from 'next/server';
+
+// Forwards the request pathname as a header so app/layout.js (a server component,
+// with no other way to know the current route) can exempt the customer-facing
+// kiosk (/customer-interface) from the global require_login wall - see the
+// showLogin computation there. The kiosk has its own separate lock/unlock
+// mechanism (see KIOSK.md) and must stay reachable without an employee login.
+export function middleware(request) {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-pathname', request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
+export const config = {
+  matcher: '/:path*',
+};
