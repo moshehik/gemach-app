@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
-import { checkAuth } from '../../../lib/auth';
 import { hashSecret, last4Of } from '../../../lib/passwordAuth';
 
+// GET is intentionally left public (no checkAuth gate): the login screen itself
+// (app/components/LoginScreen.js) fetches this list to populate the employee
+// picker BEFORE anyone is logged in. Gating it behind checkAuth() creates a
+// deadlock once require_login is turned on - nobody can load the picker to log
+// in, in the first place. Never include password/pinHash in the response (see
+// below) - that's the actual sensitive data, not the employee list itself.
 export async function GET(request) {
-  if (!(await checkAuth())) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
   try {
     const { searchParams } = new URL(request.url);
     const all = searchParams.get('all') === 'true';
