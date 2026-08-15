@@ -14,6 +14,8 @@ import { fetchJson, getSettingsCached } from '@/app/lib/pageCache';
 // revenue data and (when the org disabled messaging) the messages page anyway.
 const QUICK_LINK_VISIBILITY = {
   '/dashboard': 'manager',
+  '/dashboard/pricelist': 'manager',
+  '/employees/report': 'manager',
   '/messages': 'messagingEnabled',
 };
 

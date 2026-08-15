@@ -8,8 +8,9 @@ export const dynamic = 'force-dynamic';
 // This page shows total revenue and financial breakdowns ("אזור ניהול" per its own
 // heading below) - it had no access control at all (unlike /admin, /employees,
 // /refunds, which are all gated the same way). A guard can't live in a shared
-// app/dashboard/layout.js - that would also wrap /dashboard/dresses and
-// /dashboard/pricelist, which staff DO need to reach - so it's inline here instead.
+// app/dashboard/layout.js - that would also wrap /dashboard/dresses, which staff
+// DO need to reach - so it's inline here instead. /dashboard/pricelist has its
+// own scoped layout.js with the same manager-only guard for the same reason.
 export default async function Dashboard() {
   if (!(await checkPageAccess())) {
     return <NoAccessMessage />;

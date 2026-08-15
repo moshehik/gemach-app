@@ -1221,9 +1221,15 @@ h1,h2,h3,h4{font-family:var(--font-heading)}
 .sidebar-backdrop{display:none}
 
 /* ultra-wide monitors: keep content from stretching into
-   uncomfortably sparse rows */
+   uncomfortably sparse rows. width:100% is required here - .content is a
+   flex item of .main (column flex, default align-items:stretch), and the
+   auto side-margins used for centering take priority over stretch per the
+   flexbox spec, so without an explicit width the item fell back to
+   shrink-to-fit sizing (hugging its narrowest content, e.g. a table's
+   natural column widths) instead of filling up to max-width - on very wide
+   screens this left the whole page looking mostly empty with a tiny table. */
 @media (min-width:1700px){
-  .content{max-width:1680px; margin:0 auto}
+  .content{max-width:1680px; width:100%; margin:0 auto}
 }
 
 @media (max-width:980px){
