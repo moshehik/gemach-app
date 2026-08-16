@@ -11,6 +11,7 @@ import StatisticsModal from '../components/StatisticsModal';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildBoardMonthParams } from '@/app/lib/prefetchRoutes';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
 const boardCache = cacheNamespace('board');
@@ -79,6 +80,21 @@ export default function BoardPage() {
   const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
 
   const [jumpDate, setJumpDate] = useState(null);
+  const [enableAlterations, setEnableAlterations] = useState(true);
+
+  // כשהתיקונים כבויים בהגדרות, קטגוריית "יש תיקונים" לא רלוונטית ללוח הזה - כולל למקרה
+  // של הזמנות ישנות שיובאו מ-Access עם ערכי תיקון היסטוריים על אף שהתכונה כבויה כעת
+  // (תואם את גיבוי מגדרת_ראשי קוד 24 בגמ"ח הישן - ר' getOrderCategory/מקרא הצבעים למטה).
+  useEffect(() => {
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
+      .then(data => {
+        const altSetting = Array.isArray(data) ? data.find(s => s.key === 'enable_alterations') : null;
+        if (altSetting && altSetting.value === 'false') {
+          setEnableAlterations(false);
+        }
+      })
+      .catch(console.error);
+  }, []);
 
   // מצב תצוגת סרגל החיפוש (חיפוש רגיל / חכם AI) — מחליף את המצב הפנימי שהיה
   // חבוי בתוך רכיב AISearchBar הישן; ההתנהגות זהה, רק המבנה/הסגנון עברו לעיצוב החדש.
@@ -254,7 +270,7 @@ export default function BoardPage() {
     if (isEmpty) return 'empty';
     if (allReturned) return 'returned';
     if (allTaken || someTaken || someReturned) return 'rented';
-    if (hasRepairs) return 'repairs';
+    if (enableAlterations && hasRepairs) return 'repairs';
     if (isUnpaid) return 'unpaid';
     if (isPaidInFull) return 'completed';
     return 'other';
@@ -614,7 +630,7 @@ export default function BoardPage() {
       {/* מקרא צבעים: כל קטגוריית סטטוס של הזמנה בתא היום */}
       <div className="toolbar" style={{ marginBottom: '20px', flexWrap: 'wrap' }}>
         <strong style={{ fontSize: '13px', color: 'var(--text)' }}>מקרא:</strong>
-        {['repairs', 'unpaid', 'rented', 'returned', 'completed', 'other'].map(cat => {
+        {(enableAlterations ? ['repairs', 'unpaid', 'rented', 'returned', 'completed', 'other'] : ['unpaid', 'rented', 'returned', 'completed', 'other']).map(cat => {
           const meta = CATEGORY_STYLE[cat];
           return (
             <span key={cat} className={`badge ${meta.badge}`}>

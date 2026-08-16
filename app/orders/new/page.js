@@ -20,6 +20,23 @@ export const getCustomerFullName = (c) => {
   return `${f} ${l}`.trim() || 'לקוח ללא שם';
 };
 
+// אופציות "אופן תשלום" לשלב התשלום של האשף - נגזר גם ברינדור (paymentMethodOptions למטה)
+// וגם ברגע טעינת ההגדרות (כדי לסנכרן את payment.method ההתחלתי, ר' שם) כדי שלא יהיו שתי
+// מימושים שעלולים לסטות זה מזה. כשסליקת נדרים פלוס כבויה בהגדרות (nedarim_plus_enabled),
+// אסור להציע אופציה שתפעיל בפועל את זרימת החיוב בכרטיס - handleSaveAndPay/handleAddPaymentClick
+// בודקים בדיוק את התנאי method.includes('אשראי') && !method.includes('חיצונית') כדי לפתוח את
+// showCreditModal/processCredit, אז מסננים כל אופציה כזו (גם אם ALLOWED_PAYMENT_METHODS הוגדר
+// ידנית עם אופציה כזו). תואם את הסתרת הכפתור המקביל ב-ModernPaymentsManager ואת הסתרת הכפתורים
+// "תשלום"/"עבור לנדרים פלוס" בטופס כרטיס_הזמנה_תשלום בגמ"ח הישן.
+const computePaymentMethodOptions = (settingsObj) => {
+  const raw = settingsObj.ALLOWED_PAYMENT_METHODS
+    ? settingsObj.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean)
+    : ['אשראי (דרך נדרים פלוס)', 'יציאה באישור מנהל'];
+  if (settingsObj.nedarim_plus_enabled !== 'false') return raw;
+  const withoutCredit = raw.filter(opt => !(opt.includes('אשראי') && !opt.includes('חיצונית')));
+  return withoutCredit.length > 0 ? withoutCredit : ['יציאה באישור מנהל'];
+};
+
 export default function NewOrderPage() {
   const router = useRouter();
   
@@ -318,11 +335,15 @@ export default function NewOrderPage() {
         if (Array.isArray(data)) {
           const settingsObj = data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {});
           setSettings(settingsObj);
-          if (settingsObj.ALLOWED_PAYMENT_METHODS) {
-            const opts = settingsObj.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean);
-            if (opts.length > 0) {
-              setPayment(prev => ({...prev, method: opts[0]}));
-            }
+          // מסונכרן דרך computePaymentMethodOptions (ולא רק כש-ALLOWED_PAYMENT_METHODS מוגדר
+          // ידנית כמו קודם) - כדי ש-payment.method ההתחלתי ('אשראי', ר' useState למעלה) לא
+          // יישאר תקוע על ברירת המחדל הזו כשנדרים פלוס כבוי וה-select מציג אופציה אחרת
+          // לחלוטין: <select value={payment.method}> לא היה מעדכן את ה-state בעצמו, אז
+          // handleSaveAndPay עדיין היה רואה method.includes('אשראי') ופותח את חלון האשראי
+          // המושבת גם בלי לגעת בתפריט בכלל.
+          const opts = computePaymentMethodOptions(settingsObj);
+          if (opts.length > 0) {
+            setPayment(prev => ({ ...prev, method: opts[0] }));
           }
         } else {
           setSettings(data || {});
@@ -331,9 +352,7 @@ export default function NewOrderPage() {
       .catch(err => console.error(err));
   }, []);
 
-  const paymentMethodOptions = settings.ALLOWED_PAYMENT_METHODS 
-    ? settings.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean) 
-    : ['אשראי (דרך נדרים פלוס)', 'יציאה באישור מנהל'];
+  const paymentMethodOptions = computePaymentMethodOptions(settings);
 
   const handleCheckPhone = async () => {
     if (!phoneSearchInput || phoneSearchInput.trim().length < 9) {
@@ -650,7 +669,10 @@ export default function NewOrderPage() {
       return;
     }
 
-    if ((newItem.neckAlteration || newItem.sleeveAlteration || newItem.lengthAlteration) && (!newItem.repairs || !newItem.repairs.trim())) {
+    // כשהתיקונים כבויים בהגדרות (settings.enable_alterations) שדות התיקון עצמם מוסתרים למטה
+    // (ר' עטיפת ה-NocCollapsible "תיקונים לפריט"), אז הם תמיד ריקים - אבל השארת הבדיקה בכל
+    // מקרה עקבית עם התבנית ב-ModernItemsManager.handleConfirmItem
+    if (settings.enable_alterations !== 'false' && (newItem.neckAlteration || newItem.sleeveAlteration || newItem.lengthAlteration) && (!newItem.repairs || !newItem.repairs.trim())) {
       alert('יש להזין פרטי תיקון (בהערות לתיקון) מכיוון שסימנת שנדרש תיקון (צוואר, שרוול, או אורך).');
       return;
     }
@@ -1564,60 +1586,62 @@ export default function NewOrderPage() {
                   )}
                 </div>
 
-                <NocCollapsible
-                  title="תיקונים לפריט"
-                  badge={alterationsChosen ? alterationsSummary : null}
-                  openWhen={alterationsChosen}
-                >
-                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
-                    <button
-                      type="button"
-                      aria-pressed={!!newItem.neckAlteration}
-                      className={`pill-tab${newItem.neckAlteration ? ' active' : ''}`}
-                      onClick={() => handleNewItemChange({ target: { name: 'neckAlteration', value: !newItem.neckAlteration } })}
-                    >
-                      <svg className="icon"><use href="#i-scissors" /></svg> צוואר
-                    </button>
-                    <button
-                      type="button"
-                      aria-pressed={!!newItem.sleeveAlteration}
-                      className={`pill-tab${newItem.sleeveAlteration ? ' active' : ''}`}
-                      onClick={() => handleNewItemChange({ target: { name: 'sleeveAlteration', value: !newItem.sleeveAlteration } })}
-                    >
-                      <svg className="icon"><use href="#i-scissors" /></svg> שרוול
-                    </button>
-                    <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-2)' }}>
-                      אורך
-                      <input
-                        type="number"
-                        name="lengthAlteration"
-                        className="input"
-                        style={{ width: '70px', padding: '6px 8px' }}
-                        value={newItem.lengthAlteration || ''}
-                        onChange={handleNewItemChange}
-                        placeholder="ס״מ"
-                        aria-label="קיצור אורך בסנטימטרים"
-                      />
-                      ס״מ
-                    </span>
-                  </div>
+                {settings.enable_alterations !== 'false' && (
+                  <NocCollapsible
+                    title="תיקונים לפריט"
+                    badge={alterationsChosen ? alterationsSummary : null}
+                    openWhen={alterationsChosen}
+                  >
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                      <button
+                        type="button"
+                        aria-pressed={!!newItem.neckAlteration}
+                        className={`pill-tab${newItem.neckAlteration ? ' active' : ''}`}
+                        onClick={() => handleNewItemChange({ target: { name: 'neckAlteration', value: !newItem.neckAlteration } })}
+                      >
+                        <svg className="icon"><use href="#i-scissors" /></svg> צוואר
+                      </button>
+                      <button
+                        type="button"
+                        aria-pressed={!!newItem.sleeveAlteration}
+                        className={`pill-tab${newItem.sleeveAlteration ? ' active' : ''}`}
+                        onClick={() => handleNewItemChange({ target: { name: 'sleeveAlteration', value: !newItem.sleeveAlteration } })}
+                      >
+                        <svg className="icon"><use href="#i-scissors" /></svg> שרוול
+                      </button>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-2)' }}>
+                        אורך
+                        <input
+                          type="number"
+                          name="lengthAlteration"
+                          className="input"
+                          style={{ width: '70px', padding: '6px 8px' }}
+                          value={newItem.lengthAlteration || ''}
+                          onChange={handleNewItemChange}
+                          placeholder="ס״מ"
+                          aria-label="קיצור אורך בסנטימטרים"
+                        />
+                        ס״מ
+                      </span>
+                    </div>
 
-                  <div className="field" style={{ marginTop: '14px', marginBottom: 0 }}>
-                    <label htmlFor="item-repairs">
-                      פירוט לתופרת {alterationsChosen && <span style={{ color: 'var(--danger)' }}>* (חובה)</span>}
-                    </label>
-                    <input
-                      id="item-repairs"
-                      type="text"
-                      name="repairs"
-                      className="input"
-                      value={newItem.repairs || ''}
-                      onChange={handleNewItemChange}
-                      placeholder="מה בדיוק לתקן..."
-                      style={{ borderColor: (alterationsChosen && !(newItem.repairs || '').trim()) ? 'var(--danger)' : undefined }}
-                    />
-                  </div>
-                </NocCollapsible>
+                    <div className="field" style={{ marginTop: '14px', marginBottom: 0 }}>
+                      <label htmlFor="item-repairs">
+                        פירוט לתופרת {alterationsChosen && <span style={{ color: 'var(--danger)' }}>* (חובה)</span>}
+                      </label>
+                      <input
+                        id="item-repairs"
+                        type="text"
+                        name="repairs"
+                        className="input"
+                        value={newItem.repairs || ''}
+                        onChange={handleNewItemChange}
+                        placeholder="מה בדיוק לתקן..."
+                        style={{ borderColor: (alterationsChosen && !(newItem.repairs || '').trim()) ? 'var(--danger)' : undefined }}
+                      />
+                    </div>
+                  </NocCollapsible>
+                )}
 
                 <button
                   type="button"
@@ -1656,7 +1680,7 @@ export default function NewOrderPage() {
                         <div key={idx} className="list-card">
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{item.dressName || 'דגם לא ידוע'}</div>
-                            <div className="hint" style={{ color: 'var(--text-3)' }}>מידה {item.sizeText} · {describeAlterations(item)}</div>
+                            <div className="hint" style={{ color: 'var(--text-3)' }}>מידה {item.sizeText}{settings.enable_alterations !== 'false' ? ` · ${describeAlterations(item)}` : ''}</div>
                           </div>
                           <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
                             ₪{(calculatedData.items[idx] ? calculatedData.items[idx].calculatedPrice : item.finalPrice) || 0}
@@ -1743,10 +1767,12 @@ export default function NewOrderPage() {
                     <div key={idx} className="list-card">
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{item.dressName} · מידה {item.sizeText}</div>
-                        <div className="hint" style={{ color: 'var(--text-3)' }}>
-                          תיקונים: {describeAlterations(item)}
-                          {repairsCost > 0 && <span style={{ color: 'var(--warning)' }}> (+₪{repairsCost})</span>}
-                        </div>
+                        {settings.enable_alterations !== 'false' && (
+                          <div className="hint" style={{ color: 'var(--text-3)' }}>
+                            תיקונים: {describeAlterations(item)}
+                            {repairsCost > 0 && <span style={{ color: 'var(--warning)' }}> (+₪{repairsCost})</span>}
+                          </div>
+                        )}
                       </div>
                       <strong style={{ fontVariantNumeric: 'tabular-nums' }}>₪{displayPrice || 0}</strong>
                     </div>

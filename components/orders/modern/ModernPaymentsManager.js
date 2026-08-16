@@ -315,6 +315,12 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   };
 
   const handleOpenCreditModal = () => {
+    // מוגן גם כאן (לא רק בהסתרת הכפתור למטה) - נקודת הכניסה השנייה לחלון הזה היא
+    // אייקון החוב בטופ-בר (handleWalletClick ב-app/orders/[id]/page.js) שקורא ל-
+    // openCreditModal() החשוף דרך ref בלי לדעת את ההגדרות בכלל; בלי השמירה כאן, גמ"ח
+    // שכיבה את נדרים פלוס עדיין רואה את חלון החיוב באשראי נפתח מהאייקון (והיה נכשל
+    // רק בשליחה, מול השרת ב-app/api/nedarim/route.js).
+    if (settings.nedarim_plus_enabled === 'false') return;
     setCreditCardData({ cardNumber: '', tokef: '', installments: 1, notes: '', amount: Math.max(0, totalRequired - totalPaid).toString() });
     setCreditError('');
     setShowCreditModal(true);
