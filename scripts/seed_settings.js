@@ -28,7 +28,12 @@ async function main() {
     
     { key: "barcode_length", name: "אורך ברקוד", value: "7", category: "מאגר", notes: "אורך תווים חוקי לברקוד במאגר השמלות", type: "number" },
     { key: "has_underskirts", name: "יש תחתיות", value: "false", category: "מאגר", notes: "האם יש למלאי גם פריטי עזר כמו תחתיות", type: "boolean" },
-    { key: "has_variations", name: "יש סוגים שונים לאותו דגם", value: "false", category: "מאגר", notes: "למשל: חליפה, מכנס, ווסט וכדומה תחת אותו מספר דגם", type: "boolean" }
+    { key: "has_variations", name: "יש סוגים שונים לאותו דגם", value: "false", category: "מאגר", notes: "למשל: חליפה, מכנס, ווסט וכדומה תחת אותו מספר דגם", type: "boolean" },
+
+    { key: "enable_deliveries", name: "הצג משלוחים", value: "false", category: "משלוחים", notes: "הצגת מסך המשלוחים והוספת חיוב משלוח בטאב התשלומים של הזמנה", type: "boolean" },
+    { key: "delivery_days_before", name: "ימים לפני האירוע (משלוח הלוך)", value: "1", category: "משלוחים", notes: "כמה ימים לפני תאריך האירוע יש לשלוח את הפריט ללקוח", type: "number" },
+    { key: "delivery_days_after", name: "ימים אחרי האירוע (משלוח חזור)", value: "1", category: "משלוחים", notes: "כמה ימים אחרי תאריך האירוע יש לאסוף את הפריט בחזרה מהלקוח", type: "number" },
+    { key: "delivery_price", name: "מחיר משלוח", value: "50", category: "משלוחים", notes: "סכום קבוע לחיוב עבור משלוח הלוך או חזור", type: "number" }
   ];
 
   for (const s of settingsToSeed) {

@@ -49,6 +49,7 @@ export default async function RootLayout({ children }) {
   let hideGregorianCalendar = false;
   let enableAiSpecific = false;
   let hideErrorReporting = false;
+  let showDeliveries = false;
 
   // The settings query and the employee-role query are independent — run
   // them in parallel instead of the old sequential awaits (each one is a
@@ -58,7 +59,7 @@ export default async function RootLayout({ children }) {
   // lib/auth.js; legacy sessions without that cookie use the DB path below,
   // exactly as before).
   const settingsPromise = prisma.systemSetting.findMany({
-    where: { key: { in: ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting'] } }
+    where: { key: { in: ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries'] } }
   }).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
@@ -128,6 +129,11 @@ export default async function RootLayout({ children }) {
     if (hideErrorReportingSetting && hideErrorReportingSetting.value === 'true') {
       hideErrorReporting = true;
     }
+
+    const enableDeliveriesSetting = settings.find(s => s.key === 'enable_deliveries');
+    if (enableDeliveriesSetting && enableDeliveriesSetting.value === 'true') {
+      showDeliveries = true;
+    }
   }
 
   let isManager = false;
@@ -159,6 +165,7 @@ export default async function RootLayout({ children }) {
     showRefundsTab,
     enableAlterations,
     showMessages: !hideInternalMessaging,
+    showDeliveries,
   });
 
   const themeCookie = authToken?.value ? cookieStore.get(`theme_${authToken.value}`) : null;

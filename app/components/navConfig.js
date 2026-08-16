@@ -27,6 +27,7 @@ export const NAV_GROUPS = [
     items: [
       { href: '/orders', label: 'רשימת הזמנות', icon: 'i-file' },
       { href: '/rentals', label: 'השכרות והחזרות', icon: 'i-truck' },
+      { href: '/deliveries', label: 'משלוחים', icon: 'i-box', gate: 'showDeliveries' },
       { href: '/refunds', label: 'זיכויים וחובות', icon: 'i-wallet', gate: 'showRefundsTab' },
       { href: '/alterations', label: 'תיקונים', icon: 'i-scissors', gate: 'enableAlterations' },
     ],

@@ -524,6 +524,27 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     return hebStr ? `${hebStr} · ${timeStr}` : timeStr;
   };
 
+  // חיוב משלוח מהיר (חדש 2026-08): אותה מנגנון חיוב ידני שכבר קיים כאן (isNew + isManual, נשמר
+  // רק כשההזמנה כולה נשמרת) - רק עם תיאור/סכום קבועים מראש. הגנה מפני כפילות: כפתור מוסתר/מנוטרל
+  // אם כבר יש בפועל שורת חיוב פעילה (לא-מחוקה) עם אותו תיאור מדויק בהזמנה הזו.
+  const enableDeliveries = settings.enable_deliveries === 'true';
+  const parsedDeliveryPrice = parseFloat(settings.delivery_price);
+  const deliveryPrice = isNaN(parsedDeliveryPrice) ? 50 : parsedDeliveryPrice;
+
+  const hasActiveObligationWithDescription = (description) => obligations.some(o => !o.isDeleted && o.description === description);
+
+  const addDeliveryObligation = (description) => {
+    if (hasActiveObligationWithDescription(description)) return;
+    const added = {
+      isNew: true,
+      description,
+      amount: deliveryPrice,
+      isManual: true,
+      createdAt: new Date().toISOString()
+    };
+    onObligationsChange([...obligations, added]);
+  };
+
   const activeObligations = obligations.filter(o => !o.isDeleted);
   const activePayments = payments.filter(p => !p.isDeleted);
   const pendingRefunds = refunds.filter(r => !r.isDeleted && !r.isExecuted);
@@ -615,6 +636,28 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
         <div className="toolbar">
           <h3 style={{ fontSize: '15px', color: 'var(--danger)' }}>חיובים</h3>
           <span className="spacer" />
+          {enableDeliveries && (
+            <>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={hasActiveObligationWithDescription('משלוח הלוך')}
+                onClick={() => addDeliveryObligation('משלוח הלוך')}
+                title={hasActiveObligationWithDescription('משלוח הלוך') ? 'כבר קיים חיוב משלוח הלוך פעיל בהזמנה זו' : `הוספת חיוב משלוח הלוך בסך ₪${deliveryPrice}`}
+              >
+                <svg className="icon"><use href="#i-box" /></svg>הוסף חיוב משלוח הלוך
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                disabled={hasActiveObligationWithDescription('משלוח חזור')}
+                onClick={() => addDeliveryObligation('משלוח חזור')}
+                title={hasActiveObligationWithDescription('משלוח חזור') ? 'כבר קיים חיוב משלוח חזור פעיל בהזמנה זו' : `הוספת חיוב משלוח חזור בסך ₪${deliveryPrice}`}
+              >
+                <svg className="icon"><use href="#i-box" /></svg>הוסף חיוב משלוח חזור
+              </button>
+            </>
+          )}
           <button type="button" className="btn btn-secondary btn-sm" onClick={() => setShowAddChargeModal(true)}>
             <svg className="icon"><use href="#i-plus" /></svg>הוסף חיוב
           </button>
