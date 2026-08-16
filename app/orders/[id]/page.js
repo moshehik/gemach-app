@@ -64,6 +64,18 @@ const summarizeListDiffCounts = (snapList = [], currList = []) => {
   return { added, removed, restored, modified };
 };
 
+// האם משהו שמשפיע על חישוב המחיר (הפריטים, או שדות ההזמנה שנשלחים ל-preview-pricing)
+// השתנה מאז השמירה האחרונה. hasUnsavedChanges לבדו לא מספיק כתנאי לתצוגה המקדימה: הוא
+// נדלק גם על הוספת חיוב ידני / תשלום בלבד, ואז ה-preview רץ מיותר ומחליף את החיובים
+// האוטומטיים השמורים בתוצאה שחושבה מחדש - שעלולה להיות ריקה (למשל כשלפריטים אין
+// dressItem.dress מקושר, ר' הסינון ב-preview-pricing/route.js) ואז "החיובים נעלמים".
+const PRICING_ORDER_FIELDS = ['eventDate', 'isAbroad', 'isWeekdayEvent', 'fromDate', 'toDate'];
+const pricingInputsChanged = (snap, currItems, currOrder) => {
+  if (!snap) return false;
+  if (JSON.stringify(snap.items || []) !== JSON.stringify(currItems || [])) return true;
+  return PRICING_ORDER_FIELDS.some(f => (snap.order?.[f] ?? null) !== (currOrder?.[f] ?? null));
+};
+
 const summarizeListDiff = (snapList, currList, label) => {
   const { added, removed, restored, modified } = summarizeListDiffCounts(snapList, currList);
   const parts = [];
@@ -275,6 +287,7 @@ export default function OrderDetailsPage({ params }) {
   // חיובים ידניים שהמשתמש הוסיף/ערך נשארים כמות שהם. ר' app/api/orders/[id]/preview-pricing.
   useEffect(() => {
     if (activeTab !== 'payments' || !hasUnsavedChanges || !order?.orderId) return;
+    if (!pricingInputsChanged(savedSnapshotRef.current, items, order)) return;
     const mySeq = ++previewSeqRef.current;
     const timer = setTimeout(async () => {
       setIsLivePreviewing(true);
