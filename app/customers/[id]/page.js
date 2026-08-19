@@ -93,6 +93,12 @@ export default function CustomerPage({ params }) {
 
   const handleSave = async (e) => {
     e.preventDefault();
+
+    if (id === 'new' && !String(customer.phone2 || '').trim() && !String(customer.email || '').trim()) {
+      alert('כל הזמנה מחייבת 2 אמצעי תקשורת: יש למלא טלפון נוסף או כתובת מייל.');
+      return;
+    }
+
     setSaving(true);
 
     const url = id === 'new' ? '/api/customers' : `/api/customers/${id}`;
@@ -181,19 +187,22 @@ export default function CustomerPage({ params }) {
               </div>
             </div>
             <div className="field">
-              <label>טלפון נוסף</label>
+              <label>טלפון נוסף <span style={{ color: 'var(--danger)' }}>*</span></label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-phone" /></svg>
                 <input type="text" className="input" name="phone2" value={customer.phone2 || ''} onChange={handleChange} />
               </div>
             </div>
             <div className="field">
-              <label>דוא&quot;ל</label>
+              <label>דוא&quot;ל <span style={{ color: 'var(--danger)' }}>*</span></label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-mail" /></svg>
                 <input type="email" className="input" name="email" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} />
               </div>
             </div>
+            <p className="hint" style={{ gridColumn: '1 / -1', margin: '-6px 0 0', color: 'var(--text-2)' }}>
+              כל הזמנה מחייבת 2 אמצעי תקשורת — יש למלא לפחות אחד מבין טלפון נוסף / אימייל.
+            </p>
             <div className="field">
               <label>עיר</label>
               <input type="text" className="input" name="city" value={customer.city || ''} onChange={handleChange} />

@@ -7,6 +7,7 @@ import HebrewDateRangePicker from '../../../components/HebrewDateRangePicker';
 import CustomerSelector from '../../../components/CustomerSelector';
 import OrderModelSelector from '../../../components/orders/OrderModelSelector';
 import ItemCapacityModal from '../../../components/orders/ItemCapacityModal';
+import CapacitySearchModal from '../../../components/CapacitySearchModal';
 import NewOrderShell from '../../../components/orders/new/NewOrderShell';
 import { calculateDynamicAvailability } from '../../../lib/clientInventory';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
@@ -93,6 +94,8 @@ export default function NewOrderPage() {
   const [availableSizes, setAvailableSizes] = useState([]);
   const [loadingSizes, setLoadingSizes] = useState(false);
   const [capacityModalItem, setCapacityModalItem] = useState(null);
+  const [pendingSpacingChange, setPendingSpacingChange] = useState(null);
+  const [showSpacingCapacitySearch, setShowSpacingCapacitySearch] = useState(false);
   const [inventoryCache, setInventoryCache] = useState(null);
   const [loadingPreload, setLoadingPreload] = useState(false);
   
@@ -101,7 +104,7 @@ export default function NewOrderPage() {
   const [saving, setSaving] = useState(false);
   
   const [newCustomer, setNewCustomer] = useState({
-    firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: ''
+    firstName: '', lastName: '', phone1: '', phone2: '', email: '', city: '', street: '', houseNum: ''
   });
 
   const [duplicateCustomer, setDuplicateCustomer] = useState(null);
@@ -406,6 +409,11 @@ export default function NewOrderPage() {
 
     if (missingFields.length > 0) {
        alert(`יש למלא: ${missingFields.map(k => CUSTOMER_FIELD_LABELS[k]).join(', ')}`);
+       return;
+    }
+
+    if (!newCustomer.phone2.trim() && !newCustomer.email.trim()) {
+       alert('כל הזמנה מחייבת 2 אמצעי תקשורת: יש למלא טלפון נוסף או כתובת מייל.');
        return;
     }
 
@@ -1137,31 +1145,41 @@ export default function NewOrderPage() {
   };
 
   // ציפוף ימים מותאם — אותה בקרה של המסך הקודם: ציפוף קטן מברירת המחדל (3)
-  // וגם קטן ממה שנבחר עד כה דורש אישור מנהל.
-  const handleSpacingChange = async (val) => {
+  // וגם קטן ממה שנבחר עד כה דורש אישור מנהל. המסך "רגע, בדקת מלאי?" (מודל
+  // מותאם ולא customConfirm הגנרי) כדי לאפשר חץ שפותח את חיפוש התפוסה המהיר
+  // בלי לצאת מזרימת ההזמנה.
+  const handleSpacingChange = (val) => {
     const prevSpacing = (order.customSpacing !== null && order.customSpacing !== undefined) ? order.customSpacing : 3;
     const newSpacing = (val !== null && val !== undefined) ? val : 3;
 
     if (newSpacing < 3 && newSpacing < prevSpacing) {
-      if (!(await window.customConfirm('רגע, בדקת מלאי?'))) return;
+      setPendingSpacingChange(val);
+      return;
+    }
 
-      const authResult = await window.customAuthPrompt('שינוי ציפוף ימים מיוחד להזמנה דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
-      if (!authResult || !authResult.pin) return;
-      try {
-        const res = await fetch('/api/auth/verify-pin', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
-        });
-        const data = await res.json();
-        if (!data.success) {
-          alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
-          return;
-        }
-      } catch (err) {
-        alert('שגיאה באימות קוד מנהל.');
+    handleDateChangeWithValidation('customSpacing', val);
+  };
+
+  const confirmSpacingChange = async () => {
+    const val = pendingSpacingChange;
+    setPendingSpacingChange(null);
+
+    const authResult = await window.customAuthPrompt('שינוי ציפוף ימים מיוחד להזמנה דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+    if (!authResult || !authResult.pin) return;
+    try {
+      const res = await fetch('/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
         return;
       }
+    } catch (err) {
+      alert('שגיאה באימות קוד מנהל.');
+      return;
     }
 
     handleDateChangeWithValidation('customSpacing', val);
@@ -1404,12 +1422,22 @@ export default function NewOrderPage() {
                   <input id="cust-phone1" className="input" type="tel" dir="ltr" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} placeholder="נייד או קווי" />
                 </div>
 
+                <p className="hint" style={{ margin: '0 0 6px', color: 'var(--text-2)' }}>
+                  כל הזמנה מחייבת 2 אמצעי תקשורת — יש למלא לפחות אחד מהשניים:
+                </p>
+                <div className="form-grid">
+                  <div className="field">
+                    <label htmlFor="cust-phone2">טלפון נוסף <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <input id="cust-phone2" className="input" type="tel" dir="ltr" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} placeholder="נייד או קווי" />
+                  </div>
+                  <div className="field">
+                    <label htmlFor="cust-email">אימייל <span style={{ color: 'var(--danger)' }}>*</span></label>
+                    <input id="cust-email" className="input" type="email" dir="ltr" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} placeholder="לשליחת ההזמנה במייל" />
+                  </div>
+                </div>
+
                 <NocCollapsible title="פרטים נוספים">
                   <div className="form-grid">
-                    <div className="field">
-                      <label htmlFor="cust-email">אימייל</label>
-                      <input id="cust-email" className="input" type="email" dir="ltr" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} placeholder="לשליחת ההזמנה במייל" />
-                    </div>
                     <div className="field">
                       <label htmlFor="cust-city">עיר מגורים</label>
                       <input id="cust-city" className="input" type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} />
@@ -1723,7 +1751,7 @@ export default function NewOrderPage() {
                             <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ערוך פריט" aria-label="ערוך פריט" onClick={() => editItem(idx)}>
                               <svg className="icon"><use href="#i-edit" /></svg>
                             </button>
-                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="הסר פריט" aria-label="הסר פריט" style={{ color: 'var(--danger)' }} onClick={() => removeItem(idx)}>
+                            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="הסר פריט" aria-label="הסר פריט" style={{ color: 'var(--danger)' }} onClick={async () => { if (await window.customConfirm('האם אתה בטוח שברצונך להסיר את הפריט מהסל?')) removeItem(idx); }}>
                               <svg className="icon"><use href="#i-trash" /></svg>
                             </button>
                           </div>
@@ -1953,6 +1981,43 @@ export default function NewOrderPage() {
           order={order}
           isOpen={true}
           onClose={() => setCapacityModalItem(null)}
+        />
+      )}
+
+      {pendingSpacingChange !== null && !showSpacingCapacitySearch && (
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setPendingSpacingChange(null); }}
+        >
+          <div className="modal" style={{ maxWidth: '420px' }} role="dialog" aria-modal="true">
+            <div className="modal-head">
+              <strong>רגע, בדקת מלאי?</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" aria-label="סגירה" onClick={() => setPendingSpacingChange(null)}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <p style={{ margin: '0 0 12px', color: 'var(--text-2)', fontSize: '13.5px' }}>
+                ציפוף מיוחד משפיע על בדיקת המלאי להזמנה זו בלבד, ומסמן את ההזמנה לאישור מנהל.
+              </p>
+              <button type="button" className="btn btn-secondary" style={{ width: '100%' }} onClick={() => setShowSpacingCapacitySearch(true)}>
+                פתח חיפוש תפוסה מהיר
+                <svg className="icon"><use href="#i-chevron-start" /></svg>
+              </button>
+            </div>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" onClick={() => setPendingSpacingChange(null)}>ביטול</button>
+              <button type="button" className="btn btn-primary" onClick={confirmSpacingChange}>כן, המשך</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSpacingCapacitySearch && (
+        <CapacitySearchModal
+          isOpen={showSpacingCapacitySearch}
+          onClose={() => setShowSpacingCapacitySearch(false)}
         />
       )}
 
