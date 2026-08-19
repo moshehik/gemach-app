@@ -21,7 +21,7 @@ export default function ErrorReportButton() {
   // סימון אלמנט בעמוד — "מצב איתור": המודל נסגר זמנית, כל קליק בעמוד
   // נחסם ונאסף כתיאור האלמנט במקום להפעיל את הפעולה האמיתית שלו.
   const [isPicking, setIsPicking] = useState(false);
-  const [pickedElement, setPickedElement] = useState(null);
+  const [pickedElements, setPickedElements] = useState([]);
   const [hoverRect, setHoverRect] = useState(null);
   const hoveredElRef = useRef(null);
 
@@ -106,7 +106,8 @@ export default function ErrorReportButton() {
       e.preventDefault();
       e.stopPropagation();
       const el = hoveredElRef.current || e.target;
-      setPickedElement(describeElement(el));
+      const described = describeElement(el);
+      if (described) setPickedElements(prev => [...prev, described]);
       stopPicking();
     };
     const handleKey = (e) => {
@@ -165,8 +166,8 @@ export default function ErrorReportButton() {
 
     showToast('שולח דיווח למתכנת, אנא המתן...', 'info');
 
-    const fullText = pickedElement
-      ? `${userText}\n\n[אלמנט מסומן: ${pickedElement.label}]`
+    const fullText = pickedElements.length > 0
+      ? `${userText}\n\n[אלמנטים מסומנים:\n${pickedElements.map((el, i) => `${i + 1}. ${el.label}`).join('\n')}]`
       : userText;
 
     const payload = {
@@ -188,7 +189,7 @@ export default function ErrorReportButton() {
       if (res.ok && data.success) {
         showToast('הדיווח נשלח בהצלחה למתכנת! תודה.', 'success');
         setUserText('');
-        setPickedElement(null);
+        setPickedElements([]);
         setActiveTab('list');
         fetchReports();
       } else {
@@ -453,12 +454,66 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
 
             {activeTab === 'new' && (
               <form onSubmit={handleSubmit} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14, flex: 1, overflowY: 'auto' }}>
-                <div className="callout callout-info">
-                  <svg className="icon"><use href="#i-info" /></svg>
-                  <div>
-                    <strong style={{ display: 'block', color: 'var(--text)', marginBottom: 4 }}>הנתונים הבאים יישלחו למתכנת אוטומטית ברקע:</strong>
-                    שעת הדיווח, כתובת המסך (URL), שם המסך, ו-5 הלחצנים האחרונים עליהם לחצת לפני שדיווחת.
-                  </div>
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>סימון אלמנטים בעמוד (לא חובה)</label>
+
+                  {pickedElements.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 10 }}>
+                      {pickedElements.map((el, idx) => (
+                        <div
+                          key={idx}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 10,
+                            padding: '10px 12px',
+                            borderRadius: 'var(--radius-sm)',
+                            background: 'var(--primary-tint)',
+                            border: '1px solid var(--primary-tint-2)'
+                          }}
+                        >
+                          <span
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              width: 22, height: 22, borderRadius: '50%',
+                              background: 'var(--primary-solid)', color: '#fff',
+                              fontSize: 11.5, fontWeight: 700, flexShrink: 0
+                            }}
+                          >{idx + 1}</span>
+                          <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 }}>
+                            {el.label}
+                          </span>
+                          <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setPickedElements(prev => prev.filter((_, i) => i !== idx))} title="הסר סימון זה">
+                            <svg className="icon"><use href="#i-x" /></svg>
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={startPicking}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                      padding: '12px 14px', cursor: 'pointer',
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1.5px dashed var(--primary-tint-2)',
+                      background: 'var(--primary-tint)',
+                      color: 'var(--primary-solid)', fontWeight: 700, fontSize: 13.5
+                    }}
+                  >
+                    <span
+                      style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        width: 30, height: 30, borderRadius: '50%',
+                        background: 'var(--primary-solid)', color: '#fff', flexShrink: 0
+                      }}
+                    >
+                      <svg className="icon" style={{ width: 15, height: 15 }}><use href="#i-pin" /></svg>
+                    </span>
+                    {pickedElements.length > 0 ? 'סמן אלמנט נוסף' : 'סמן אלמנט בעמוד שקשור לתקלה'}
+                  </button>
                 </div>
 
                 <div className="field">
@@ -473,28 +528,8 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   />
                 </div>
 
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>סימון אלמנט בעמוד (לא חובה)</label>
-                  {pickedElement ? (
-                    <div className="callout callout-info" style={{ alignItems: 'center' }}>
-                      <svg className="icon"><use href="#i-pin" /></svg>
-                      <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        <strong>אלמנט מסומן:</strong> {pickedElement.label}
-                      </div>
-                      <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setPickedElement(null)} title="הסר סימון">
-                        <svg className="icon"><use href="#i-x" /></svg>
-                      </button>
-                    </div>
-                  ) : (
-                    <button type="button" className="btn btn-secondary" onClick={startPicking}>
-                      <svg className="icon"><use href="#i-pin" /></svg>
-                      סמן את האלמנט בעמוד שאליו מתייחס הדיווח
-                    </button>
-                  )}
-                </div>
-
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 'auto', paddingTop: 10 }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => { setActiveTab('list'); setPickedElement(null); }}>ביטול</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => { setActiveTab('list'); setPickedElements([]); }}>ביטול</button>
                   <button type="submit" className="btn btn-primary">
                     <svg className="icon"><use href="#i-arrow-end" /></svg>
                     שליחה למתכנת
