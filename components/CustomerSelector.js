@@ -134,6 +134,11 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
               <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
                 {c.phone1} {c.city ? ` | ${c.city}` : ''}
               </div>
+              {(c.phone2 || c.email) && (
+                <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                  {[c.phone2, c.email].filter(Boolean).join(' · ')}
+                </div>
+              )}
             </div>
           ))}
         </div>

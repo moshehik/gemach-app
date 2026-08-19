@@ -174,7 +174,7 @@ export default function CustomerPage({ params }) {
               <input type="text" className="input" name="lastName" value={customer.lastName || ''} onChange={handleChange} required />
             </div>
             <div className="field">
-              <label>טלפון נייד *</label>
+              <label>טלפון *</label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-phone" /></svg>
                 <input type="text" className="input" name="phone1" value={customer.phone1 || ''} onChange={handleChange} required />

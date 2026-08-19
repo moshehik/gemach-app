@@ -744,12 +744,12 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                                   onClick={() => handleItemChange(originalIndex, 'sleeveAlteration', isChecked(item.sleeveAlteration) ? 0 : 1)}>
                                   <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-scissors" /></svg>שרוול
                                 </button>
-                                <input type="number" className="input" style={{ maxWidth: '100px' }} value={item.lengthAlteration || ''}
+                                <input type="text" inputMode="decimal" className="input" style={{ maxWidth: '100px' }} value={item.lengthAlteration || ''}
                                   disabled={!fullyEditableNow}
                                   onChange={(e) => handleItemChange(originalIndex, 'lengthAlteration', e.target.value)}
                                   placeholder="אורך (ס״מ)" />
                               </div>
-                              <input type="text" className="input" value={item.alterationDetails || item.repairs || ''}
+                              <input type="text" className="input" autoComplete="off" value={item.alterationDetails || item.repairs || ''}
                                 onChange={(e) => handleItemChange(originalIndex, 'alterationDetails', e.target.value)}
                                 placeholder="פירוט התיקון הנדרש..." />
                             </div>

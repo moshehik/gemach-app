@@ -1143,6 +1143,8 @@ export default function NewOrderPage() {
     const newSpacing = (val !== null && val !== undefined) ? val : 3;
 
     if (newSpacing < 3 && newSpacing < prevSpacing) {
+      if (!(await window.customConfirm('רגע, בדקת מלאי?'))) return;
+
       const authResult = await window.customAuthPrompt('שינוי ציפוף ימים מיוחד להזמנה דורש הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
       if (!authResult || !authResult.pin) return;
       try {
@@ -1317,11 +1319,23 @@ export default function NewOrderPage() {
                     <strong style={{ fontSize: '15px' }}>{getCustomerFullName(foundCustomerFromPhone)}</strong>
                     <p className="hint" style={{ color: 'var(--text-3)', margin: '2px 0 0' }}>
                       {foundCustomerFromPhone.phone1}
+                      {foundCustomerFromPhone.phone2 ? ` · ${foundCustomerFromPhone.phone2}` : ''}
+                      {foundCustomerFromPhone.email ? ` · ${foundCustomerFromPhone.email}` : ''}
                       {foundCustomerFromPhone.city ? ` · ${foundCustomerFromPhone.city}` : ''}
                       {foundCustomerFromPhone.street ? `, ${foundCustomerFromPhone.street} ${foundCustomerFromPhone.houseNum || ''}` : ''}
                     </p>
                   </div>
                 </div>
+                {!foundCustomerFromPhone.phone2 && !foundCustomerFromPhone.email && (
+                  <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
+                    חסר אמצעי תקשורת נוסף (טלפון 2 או אימייל) — כל הזמנה מחייבת 2 אמצעים.
+                    {' '}
+                    <a href={`/customers/${foundCustomerFromPhone.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
+                      עריכת פרטי לקוח
+                    </a>
+                  </p>
+                )}
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <button type="button" className="btn btn-primary" style={{ flex: 1, minWidth: '160px' }} onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)}>
                     <svg className="icon"><use href="#i-check" /></svg> כן, זה הלקוח
@@ -1350,9 +1364,24 @@ export default function NewOrderPage() {
                   />
                 </div>
                 {order.selectedCustomer && (
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 4px 4px', borderTop: '1px solid var(--border)', marginTop: '8px' }}>
-                    <span className="hint" style={{ color: 'var(--text-3)' }}>נבחר</span>
-                    <strong>{selectedCustomerName} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{order.selectedCustomer.phone1 || ''}</span></strong>
+                  <div style={{ padding: '12px 4px 4px', borderTop: '1px solid var(--border)', marginTop: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span className="hint" style={{ color: 'var(--text-3)' }}>נבחר</span>
+                      <strong>{selectedCustomerName} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{order.selectedCustomer.phone1 || ''}</span></strong>
+                    </div>
+                    {(order.selectedCustomer.phone2 || order.selectedCustomer.email) && (
+                      <p className="hint" style={{ color: 'var(--text-3)', textAlign: 'end', margin: '2px 0 0' }}>
+                        {[order.selectedCustomer.phone2, order.selectedCustomer.email].filter(Boolean).join(' · ')}
+                      </p>
+                    )}
+                    {!order.selectedCustomer.phone2 && !order.selectedCustomer.email && (
+                      <p className="hint" style={{ color: 'var(--warning)', textAlign: 'end', margin: '4px 0 0' }}>
+                        חסר אמצעי תקשורת נוסף —{' '}
+                        <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
+                          עריכת פרטי לקוח
+                        </a>
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
@@ -1371,11 +1400,11 @@ export default function NewOrderPage() {
                   </div>
                 </div>
                 <div className="field">
-                  <label htmlFor="cust-phone1">טלפון נייד <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input id="cust-phone1" className="input" type="tel" dir="ltr" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} />
+                  <label htmlFor="cust-phone1">טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
+                  <input id="cust-phone1" className="input" type="tel" dir="ltr" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} placeholder="נייד או קווי" />
                 </div>
 
-                <NocCollapsible title="פרטים נוספים (לא חובה)">
+                <NocCollapsible title="פרטים נוספים">
                   <div className="form-grid">
                     <div className="field">
                       <label htmlFor="cust-email">אימייל</label>
@@ -1612,7 +1641,8 @@ export default function NewOrderPage() {
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '13px', color: 'var(--text-2)' }}>
                         אורך
                         <input
-                          type="number"
+                          type="text"
+                          inputMode="decimal"
                           name="lengthAlteration"
                           className="input"
                           style={{ width: '70px', padding: '6px 8px' }}
@@ -1633,6 +1663,7 @@ export default function NewOrderPage() {
                         id="item-repairs"
                         type="text"
                         name="repairs"
+                        autoComplete="off"
                         className="input"
                         value={newItem.repairs || ''}
                         onChange={handleNewItemChange}
@@ -1736,8 +1767,8 @@ export default function NewOrderPage() {
                 <span className="hint" style={{ color: 'var(--text-3)' }}>תאריכים</span>
                 <strong>
                   {order.isAbroad
-                    ? <>{`מ-${getHebrewDateString(order.fromDate)} עד ${getHebrewDateString(order.toDate)}`} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{`(${order.fromDate} - ${order.toDate})`}</span></>
-                    : <>{getHebrewDateString(order.eventDate)} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{`(${order.eventDate})`}</span></>}
+                    ? `מ-${getHebrewDateString(order.fromDate)} עד ${getHebrewDateString(order.toDate)}`
+                    : getHebrewDateString(order.eventDate)}
                 </strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>

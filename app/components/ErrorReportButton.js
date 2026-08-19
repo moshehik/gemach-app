@@ -18,6 +18,13 @@ export default function ErrorReportButton() {
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
 
+  // סימון אלמנט בעמוד — "מצב איתור": המודל נסגר זמנית, כל קליק בעמוד
+  // נחסם ונאסף כתיאור האלמנט במקום להפעיל את הפעולה האמיתית שלו.
+  const [isPicking, setIsPicking] = useState(false);
+  const [pickedElement, setPickedElement] = useState(null);
+  const [hoverRect, setHoverRect] = useState(null);
+  const hoveredElRef = useRef(null);
+
   // אין משתמש מחובר (עמדת לקוחות, דפי הדפסה) - הבקשה תמיד תחזיר 401, אז אחרי
   // הפעם הראשונה מפסיקים לגמרי כדי לא להציף את הקונסול כל 30 שניות.
   const authFailedRef = useRef(false);
@@ -65,6 +72,70 @@ export default function ErrorReportButton() {
     }
   }, [isOpen, activeTab]);
 
+  const describeElement = (el) => {
+    if (!el) return null;
+    const tag = el.tagName ? el.tagName.toLowerCase() : 'אלמנט';
+    const text = (el.innerText || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60);
+    const idPart = el.id ? `#${el.id}` : '';
+    const classNames = (typeof el.className === 'string' ? el.className : '').trim().split(/\s+/).filter(Boolean).slice(0, 2);
+    const classPart = classNames.length ? `.${classNames.join('.')}` : '';
+    const selector = `${tag}${idPart}${classPart}`;
+    const label = text ? `${selector} — "${text}"` : selector;
+    return { selector, text, label };
+  };
+
+  // מצב איתור אלמנט: המודל סגור בזמן שהמצב פעיל, כך שהמשתמש רואה ולוחץ על
+  // העמוד האמיתי. הקליק נתפס בשלב ה-capture ונחסם כדי שלא יפעיל את האלמנט עצמו.
+  useEffect(() => {
+    if (!isPicking) return;
+
+    const handleMove = (e) => {
+      const el = document.elementFromPoint(e.clientX, e.clientY);
+      if (el && el !== hoveredElRef.current) {
+        hoveredElRef.current = el;
+        setHoverRect(el.getBoundingClientRect());
+      }
+    };
+    const stopPicking = () => {
+      setIsPicking(false);
+      setIsOpen(true);
+      setActiveTab('new');
+      setHoverRect(null);
+    };
+    const handleClick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const el = hoveredElRef.current || e.target;
+      setPickedElement(describeElement(el));
+      stopPicking();
+    };
+    const handleKey = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        stopPicking();
+      }
+    };
+
+    document.addEventListener('mousemove', handleMove, true);
+    document.addEventListener('click', handleClick, true);
+    document.addEventListener('keydown', handleKey, true);
+    const prevCursor = document.body.style.cursor;
+    document.body.style.cursor = 'crosshair';
+
+    return () => {
+      document.removeEventListener('mousemove', handleMove, true);
+      document.removeEventListener('click', handleClick, true);
+      document.removeEventListener('keydown', handleKey, true);
+      document.body.style.cursor = prevCursor;
+      hoveredElRef.current = null;
+    };
+  }, [isPicking]);
+
+  const startPicking = () => {
+    setIsOpen(false);
+    setIsPicking(true);
+  };
+
   async function fetchReports() {
     if (authFailedRef.current) return;
     try {
@@ -94,8 +165,12 @@ export default function ErrorReportButton() {
 
     showToast('שולח דיווח למתכנת, אנא המתן...', 'info');
 
+    const fullText = pickedElement
+      ? `${userText}\n\n[אלמנט מסומן: ${pickedElement.label}]`
+      : userText;
+
     const payload = {
-      userText,
+      userText: fullText,
       url: window.location.href,
       title: document.title,
       time: getHebrewDateString(new Date()) + ' ' + new Date().toLocaleTimeString('he-IL'),
@@ -113,6 +188,7 @@ export default function ErrorReportButton() {
       if (res.ok && data.success) {
         showToast('הדיווח נשלח בהצלחה למתכנת! תודה.', 'success');
         setUserText('');
+        setPickedElement(null);
         setActiveTab('list');
         fetchReports();
       } else {
@@ -397,8 +473,28 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   />
                 </div>
 
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label>סימון אלמנט בעמוד (לא חובה)</label>
+                  {pickedElement ? (
+                    <div className="callout callout-info" style={{ alignItems: 'center' }}>
+                      <svg className="icon"><use href="#i-pin" /></svg>
+                      <div style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        <strong>אלמנט מסומן:</strong> {pickedElement.label}
+                      </div>
+                      <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setPickedElement(null)} title="הסר סימון">
+                        <svg className="icon"><use href="#i-x" /></svg>
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" className="btn btn-secondary" onClick={startPicking}>
+                      <svg className="icon"><use href="#i-pin" /></svg>
+                      סמן את האלמנט בעמוד שאליו מתייחס הדיווח
+                    </button>
+                  )}
+                </div>
+
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 'auto', paddingTop: 10 }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => setActiveTab('list')}>ביטול</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => { setActiveTab('list'); setPickedElement(null); }}>ביטול</button>
                   <button type="submit" className="btn btn-primary">
                     <svg className="icon"><use href="#i-arrow-end" /></svg>
                     שליחה למתכנת
@@ -408,6 +504,48 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
             )}
           </div>
         </div>,
+        document.body
+      )}
+
+      {isPicking && mounted && createPortal(
+        <>
+          {hoverRect && (
+            <div
+              style={{
+                position: 'fixed',
+                top: hoverRect.top,
+                left: hoverRect.left,
+                width: hoverRect.width,
+                height: hoverRect.height,
+                border: '2px solid var(--primary-solid)',
+                background: 'var(--primary-tint)',
+                opacity: 0.55,
+                borderRadius: 4,
+                pointerEvents: 'none',
+                zIndex: 999998
+              }}
+            />
+          )}
+          <div
+            style={{
+              position: 'fixed',
+              top: 16,
+              left: '50%',
+              transform: 'translateX(-50%)',
+              zIndex: 999999,
+              background: 'var(--text)',
+              color: 'var(--surface)',
+              padding: '10px 18px',
+              borderRadius: 999,
+              fontSize: 13.5,
+              fontWeight: 600,
+              boxShadow: 'var(--shadow-lg)',
+              pointerEvents: 'none'
+            }}
+          >
+            לחץ על האלמנט הרצוי בעמוד לסימונו · Esc לביטול
+          </div>
+        </>,
         document.body
       )}
 

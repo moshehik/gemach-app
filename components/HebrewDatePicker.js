@@ -180,12 +180,6 @@ export default function HebrewDatePicker({
     try { return new HDate().abs(); } catch (e) { return null; }
   }, [isOpen]);
 
-  const safeNativeDate = React.useMemo(() => {
-    if (!actualValue) return '';
-    const d = new Date(actualValue);
-    return isNaN(d.getTime()) ? '' : d.toISOString().split('T')[0];
-  }, [actualValue]);
-
   const goToPrevYear = () => {
     const newYear = hYear - 1;
     setHYear(newYear);
@@ -373,21 +367,6 @@ export default function HebrewDatePicker({
         >
           <span>{displayString}</span>
         </button>
-        <div className="native-toggle" title="בחר תאריך לועזי">
-          <svg className="icon"><use href="#i-refresh" /></svg>
-          <input
-             data-agy-id="hebrew_date_picker_native_input"
-             type="date"
-             value={safeNativeDate}
-             onChange={(e) => {
-                 if (e.target.value) {
-                     onChange(e.target.value);
-                     setIsOpen(false);
-                 }
-             }}
-             title="בחר תאריך לועזי"
-          />
-        </div>
       </div>
 
       {isOpen && typeof document !== 'undefined' && createPortal(
