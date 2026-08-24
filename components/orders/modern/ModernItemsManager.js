@@ -933,6 +933,12 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                 <span>שים לב: ההזמנה לא שולמה במלואה! נדרש אישור מנהל.</span>
               </div>
             )}
+            {confirmModal.actionType === 'rent' && (confirmModal.item?.barcodePrefix || confirmModal.item?.dressItem?.barcodePrefix) && (
+              <div className="callout" style={{ marginBottom: '20px', textAlign: 'start' }}>
+                <svg className="icon"><use href="#i-info" /></svg>
+                <span>טיפ: אפשר לדלג על החלון הזה — סריקת הברקוד בשדה &quot;סריקה מהירה&quot; למעלה משכירה כמה שמלות ברצף, אחת אחרי השנייה.</span>
+              </div>
+            )}
             <div className="confirm-actions">
               <button type="button" className="btn btn-secondary" onClick={() => setConfirmModal({ isOpen: false, item: null, actionType: null })}>ביטול</button>
               <button type="button" className="btn btn-primary" onClick={async () => {

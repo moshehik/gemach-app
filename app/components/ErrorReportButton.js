@@ -24,6 +24,10 @@ export default function ErrorReportButton() {
   const [pickedElements, setPickedElements] = useState([]);
   const [hoverRect, setHoverRect] = useState(null);
   const hoveredElRef = useRef(null);
+  // 'new' = טופס דיווח חדש (pickedElements, כמו קודם), 'reply' = תגובה בתוך
+  // שרשור קיים (מוסיף ישירות לטקסט התגובה) - כדי שאיתור אלמנטים יעבוד גם
+  // כשעונים על דיווח פתוח, לא רק בהודעה הראשונה.
+  const pickingContextRef = useRef('new');
 
   // אין משתמש מחובר (עמדת לקוחות, דפי הדפסה) - הבקשה תמיד תחזיר 401, אז אחרי
   // הפעם הראשונה מפסיקים לגמרי כדי לא להציף את הקונסול כל 30 שניות.
@@ -99,7 +103,9 @@ export default function ErrorReportButton() {
     const stopPicking = () => {
       setIsPicking(false);
       setIsOpen(true);
-      setActiveTab('new');
+      // בתגובה לשרשור קיים נשארים על אותה חלונית 'thread' (selectedReport כבר
+      // מוגדר); בדיווח חדש חוזרים לטופס 'new' כמו קודם.
+      setActiveTab(pickingContextRef.current === 'reply' ? 'thread' : 'new');
       setHoverRect(null);
     };
     const handleClick = (e) => {
@@ -107,7 +113,13 @@ export default function ErrorReportButton() {
       e.stopPropagation();
       const el = hoveredElRef.current || e.target;
       const described = describeElement(el);
-      if (described) setPickedElements(prev => [...prev, described]);
+      if (described) {
+        if (pickingContextRef.current === 'reply') {
+          setReplyText(prev => `${prev ? prev + ' ' : ''}[אלמנט מסומן: ${described.label}]`);
+        } else {
+          setPickedElements(prev => [...prev, described]);
+        }
+      }
       stopPicking();
     };
     const handleKey = (e) => {
@@ -132,7 +144,8 @@ export default function ErrorReportButton() {
     };
   }, [isPicking]);
 
-  const startPicking = () => {
+  const startPicking = (context = 'new') => {
+    pickingContextRef.current = context;
     setIsOpen(false);
     setIsPicking(true);
   };
@@ -388,6 +401,14 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                 </div>
 
                 <form onSubmit={handleReply} style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 10 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-icon-only"
+                    title="סמן אלמנט בעמוד וצרף לתגובה"
+                    onClick={() => startPicking('reply')}
+                  >
+                    <svg className="icon"><use href="#i-pin" /></svg>
+                  </button>
                   <input
                     type="text"
                     className="input"
@@ -493,7 +514,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
 
                   <button
                     type="button"
-                    onClick={startPicking}
+                    onClick={() => startPicking('new')}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10, width: '100%',
                       padding: '12px 14px', cursor: 'pointer',

@@ -518,7 +518,10 @@ export default function PrintAlterationsPage() {
                       : `מתאריך: ${formatDate(startDate)} | עד תאריך: ${formatDate(endDate)}`}
                 </h3>
                 {!loading && !error && items.length > 0 && (
-                  <div style={{ fontSize: '12.5px', color: '#aaa', marginTop: '4px' }}>
+                  // אדום זמנית: תוקן כתשובה חלקית/לא ודאית לדיווח 3a5d9f8b ("לעדכן את
+                  // פרטי ההשכרה בלוגו") - לא היה ברור מה בדיוק ביקשו כאן בדוח מרוכז על
+                  // כמה הזמנות, אז זו רק סיכום היקף כברירת מחדל עד לאישור/הבהרה.
+                  <div style={{ fontSize: '12.5px', color: '#c0392b', marginTop: '4px', fontWeight: 600 }}>
                     {new Set(items.map(i => i.order?.orderId).filter(Boolean)).size} הזמנות | {items.length} פריטים
                   </div>
                 )}

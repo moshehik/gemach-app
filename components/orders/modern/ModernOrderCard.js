@@ -232,16 +232,23 @@ export default function ModernOrderCard({
             {updatedLabel && <span style={{ color: 'var(--text-3)' }}>{updatedLabel}</span>}
           </div>
         </div>
-        <form className="input-icon-wrap" style={{ maxWidth: '270px', width: '100%' }} onSubmit={handleScanSubmit}>
-          <svg className="icon"><use href="#i-tag" /></svg>
-          <input
-            type="text"
-            className="input"
-            value={scanValue}
-            onChange={e => setScanValue(e.target.value)}
-            placeholder="סריקה מהירה — השכרה / החזרה"
-          />
-        </form>
+        <div style={{ maxWidth: '270px', width: '100%' }}>
+          <form className="input-icon-wrap" style={{ width: '100%' }} onSubmit={handleScanSubmit}>
+            <svg className="icon"><use href="#i-tag" /></svg>
+            <input
+              type="text"
+              className="input"
+              value={scanValue}
+              onChange={e => setScanValue(e.target.value)}
+              placeholder="סריקה מהירה — השכרה / החזרה"
+            />
+          </form>
+          {/* השדה מתאפס ונשאר בפוקוס אחרי כל סריקה (handleScanSubmit) - אפשר
+              לסרוק ברקוד אחרי ברקוד ברצף בלי ללחוץ בכל פריט בנפרד על "השכרה". */}
+          <div style={{ fontSize: '11px', color: 'var(--text-3)', marginTop: '3px' }}>
+            אפשר לסרוק כאן ברקוד אחרי ברקוד ברצף — כל שמלה תושכר/תוחזר אוטומטית בלי לפתוח אותה בנפרד למטה
+          </div>
+        </div>
       </div>
 
       <div className="tabs">

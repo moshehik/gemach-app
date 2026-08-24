@@ -81,13 +81,16 @@ export async function POST(request) {
       }
     }
 
-    // Set cookie
+    // Set cookie — a session cookie (no maxAge) on purpose: closing the browser
+    // entirely should require logging in again (2026-08-24, per user-role bug
+    // report 91c1fe06 — reopening the app after a full browser close silently
+    // resumed the previous employee). Still persists across reloads/new tabs
+    // within the same browser session, same as before.
     cookieStore.set({
       name: 'auth_token',
       value: employee.id, // Ensure we store the UUID string
       httpOnly: true,
       path: '/',
-      maxAge: 60 * 60 * 24 * 7 // 1 week
     });
 
     // Signed session cookie (auth_session) — DB-free role verification fast
