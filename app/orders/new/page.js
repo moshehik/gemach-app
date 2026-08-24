@@ -1456,7 +1456,19 @@ export default function NewOrderPage() {
                   </div>
                   <div className="field">
                     <label htmlFor="cust-email">אימייל <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-email" className="input" type="email" dir="ltr" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} placeholder="לשליחת ההזמנה במייל" />
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input id="cust-email" className="input" type="email" dir="ltr" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
+                      {newCustomer.email && !newCustomer.email.includes('@') && (
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          style={{ flexShrink: 0 }}
+                          onClick={() => setNewCustomer(prev => ({ ...prev, email: `${prev.email}@gmail.com` }))}
+                        >
+                          השלם ל- @gmail.com
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
 
