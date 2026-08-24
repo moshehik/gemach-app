@@ -29,9 +29,6 @@ export default function HistoryPage() {
   // Deletion
   const [selectedIds, setSelectedIds] = useState(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
-  // mode: 'selected' | 'all' | 'old' — which delete action the confirmation modal is gating
-  const [deleteModal, setDeleteModal] = useState({ open: false, mode: 'selected', username: '', password: '', error: '' });
-  const [showDeletePassword, setShowDeletePassword] = useState(false);
   const OLD_RECORDS_DAYS = 90;
 
   const fetchHistory = useCallback(async () => {
@@ -103,44 +100,42 @@ export default function HistoryPage() {
     }
   };
 
-  const promptDelete = (mode = 'selected') => {
+  // mode: 'selected' | 'all' | 'old' — which delete action is being confirmed
+  const promptDelete = async (mode = 'selected') => {
     if (mode === 'selected' && selectedIds.size === 0) return;
-    setShowDeletePassword(false);
-    setDeleteModal({ open: true, mode, username: '', password: '', error: '' });
-  };
 
-  const confirmDelete = async (e) => {
-    e.preventDefault();
-    if (!deleteModal.username || !deleteModal.password) {
-      setDeleteModal(prev => ({ ...prev, error: 'נא להזין שם משתמש וסיסמה' }));
-      return;
-    }
+    const messages = {
+      selected: `האם למחוק ${selectedIds.size} רשומות שנבחרו?`,
+      old: `האם למחוק את כל הרשומות שגילן מעל ${OLD_RECORDS_DAYS} יום? רשומות מ-${OLD_RECORDS_DAYS} הימים האחרונים לא יימחקו.`,
+      all: 'האם אתה בטוח שברצונך למחוק את כל ההיסטוריה לחלוטין?'
+    };
+
+    const auth = await window.customAuthPrompt(messages[mode], 'מנהל');
+    if (!auth || !auth.pin) return;
 
     setIsDeleting(true);
-    setDeleteModal(prev => ({ ...prev, error: '' }));
     try {
       const res = await fetch('/api/history', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ids: deleteModal.mode === 'selected' ? Array.from(selectedIds) : [],
-          deleteAll: deleteModal.mode === 'all',
-          olderThanDays: deleteModal.mode === 'old' ? OLD_RECORDS_DAYS : undefined,
-          username: deleteModal.username,
-          password: deleteModal.password
+          ids: mode === 'selected' ? Array.from(selectedIds) : [],
+          deleteAll: mode === 'all',
+          olderThanDays: mode === 'old' ? OLD_RECORDS_DAYS : undefined,
+          username: auth.employeeId,
+          password: auth.pin
         })
       });
       const data = await res.json();
       if (data.success) {
         setSelectedIds(new Set());
-        setDeleteModal({ open: false, mode: 'selected', username: '', password: '', error: '' });
         fetchHistory();
       } else {
-        setDeleteModal(prev => ({ ...prev, error: data.message || 'שגיאה במחיקה' }));
+        alert(data.message || 'שגיאה במחיקה');
       }
     } catch (e) {
       console.error(e);
-      setDeleteModal(prev => ({ ...prev, error: 'שגיאת תקשורת' }));
+      alert('שגיאת תקשורת');
     } finally {
       setIsDeleting(false);
     }
@@ -435,82 +430,6 @@ export default function HistoryPage() {
           </div>
         </div>
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {deleteModal.open && typeof document !== 'undefined' && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setDeleteModal({ open: false, mode: 'selected', username: '', password: '', error: '' })}>
-          <div className="modal" style={{ maxWidth: '400px', margin: 0 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>
-                <svg className="icon"><use href="#i-alert-tri" /></svg>
-                אישור מחיקה
-              </strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={() => setDeleteModal({ open: false, mode: 'selected', username: '', password: '', error: '' })}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <form onSubmit={confirmDelete}>
-              <div className="modal-body">
-                <p style={{ marginTop: 0, color: 'var(--text-2)', fontSize: '13px' }}>
-                  {deleteModal.mode === 'all'
-                    ? 'האם אתה בטוח שברצונך למחוק את כל ההיסטוריה לחלוטין?'
-                    : deleteModal.mode === 'old'
-                    ? `האם למחוק את כל הרשומות שגילן מעל ${OLD_RECORDS_DAYS} יום? רשומות מ-${OLD_RECORDS_DAYS} הימים האחרונים לא יימחקו.`
-                    : `האם למחוק ${selectedIds.size} רשומות שנבחרו?`}
-                  <br /><br />
-                  <strong style={{ color: 'var(--text)' }}>למחיקה דרוש שם משתמש וסיסמא בדרגת ניהול.</strong>
-                </p>
-
-                {deleteModal.error && (
-                  <div className="callout callout-danger" style={{ marginBottom: '14px' }}>
-                    <svg className="icon"><use href="#i-alert-circle" /></svg>
-                    <span>{deleteModal.error}</span>
-                  </div>
-                )}
-
-                <div className="field">
-                  <label htmlFor="mgmt-history-delUser">שם משתמש (או קוד עובד)</label>
-                  <input
-                    id="mgmt-history-delUser"
-                    type="text"
-                    className="input"
-                    value={deleteModal.username}
-                    onChange={e => setDeleteModal(prev => ({ ...prev, username: e.target.value }))}
-                    required
-                  />
-                </div>
-
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label htmlFor="mgmt-history-delPass">סיסמה</label>
-                  <div className="password-field">
-                    <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                    <input
-                      id="mgmt-history-delPass"
-                      type={showDeletePassword ? 'text' : 'password'}
-                      className="input"
-                      value={deleteModal.password}
-                      onChange={e => setDeleteModal(prev => ({ ...prev, password: e.target.value }))}
-                      required
-                    />
-                    <button type="button" className="toggle-visibility" title="הצג/הסתר סיסמה" onClick={() => setShowDeletePassword(v => !v)}>
-                      <svg className="icon"><use href="#i-eye" /></svg>
-                    </button>
-                  </div>
-                </div>
-              </div>
-              <div className="modal-foot">
-                <button type="button" className="btn btn-secondary" onClick={() => setDeleteModal({ open: false, mode: 'selected', username: '', password: '', error: '' })} disabled={isDeleting}>
-                  ביטול
-                </button>
-                <button type="submit" className="btn btn-danger" disabled={isDeleting}>
-                  {isDeleting ? 'מוחק...' : 'אשר מחיקה'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* Query Detail Modal */}
       {activeQueryModal && typeof document !== 'undefined' && createPortal(

@@ -218,7 +218,6 @@ export default function PrintOrderPage() {
           .rental-notes-box,
           .summary-section,
           .terms,
-          .signatures,
           .print-footer {
             break-inside: avoid;
             page-break-inside: avoid;
@@ -388,19 +387,6 @@ export default function PrintOrderPage() {
         }
         .terms strong {
           color: #555;
-        }
-        .signatures {
-          display: flex;
-          justify-content: space-around;
-          font-size: 14.5px;
-          color: #666;
-          margin-top: 20px;
-        }
-        .signatures div {
-          text-align: center;
-          width: 220px;
-          border-top: 1px solid #ccc;
-          padding-top: 10px;
         }
         .rental-notes-box {
           border: 1px solid #e5e5e5;
@@ -614,20 +600,9 @@ export default function PrintOrderPage() {
                     </div>
                   )}
 
-                  {printType === 'rental' ? (
+                  {printType === 'rental' && (
                     <div className="terms">
                       <strong>תנאים:</strong> הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב. אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
-                    </div>
-                  ) : (
-                    <div className="terms">
-                      <strong>תנאים:</strong> הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב בדיוק. אין לכבס בשום אופן באופן עצמאי. במקרה של קרע או נזק בלתי הפיך, הלקוח יישא בעלות התיקון או רכישה מחדש לפי שיקול דעת הגמ&quot;ח.
-                    </div>
-                  )}
-
-                  {printType === 'order' && (
-                    <div className="signatures">
-                      <div>חתימת הלקוח</div>
-                      <div>אישור הגמ&quot;ח</div>
                     </div>
                   )}
 

@@ -27,7 +27,7 @@ export async function GET() {
 // (app/customer-interface/page.js) and staff dress-detail pages read prices with no
 // login at all.
 export async function POST(request) {
-  if (!(await checkAuth('מנהל'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     try {
         const data = await request.json();
         const priceList = await prisma.priceList.create({

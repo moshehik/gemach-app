@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 import { verifyEmployeeCredentials } from '../../../lib/employeeAuth';
+import { verifySecret } from '@/lib/passwordAuth';
 
 
 export async function GET(request) {
@@ -73,13 +74,27 @@ export async function DELETE(request) {
     const body = await request.json();
     const { ids, deleteAll, olderThanDays, username, password } = body;
 
-    if (!username || !password) {
+    // username (employeeId) may legitimately be blank - see the fallback scan below
+    if (!password) {
       return NextResponse.json({ success: false, message: 'נדרש שם משתמש וסיסמה לאישור המחיקה' }, { status: 401 });
     }
 
     // Verify employee credentials - passwords are hashed, so this compares via bcrypt in JS
     // (see lib/employeeAuth.js) rather than a plaintext `password: password` clause.
-    const validEmployee = await verifyEmployeeCredentials(username, password);
+    let validEmployee = await verifyEmployeeCredentials(username, password);
+
+    // כשהדף שולח לכאן את ה-employeeId שהוחזר מ-customAuthPrompt (PopupProvider) הוא עלול
+    // להישאר ריק אם המשתמש לא בחר את עצמו מרשימת "בחר מנהל" - כמו ב-/api/auth/verify-pin,
+    // נופלים במקרה הזה לסריקת כל העובדים הפעילים במקום לדחות אישור שכבר תקף.
+    if (!validEmployee && !username) {
+      const candidates = await prisma.employee.findMany({ where: { isActive: true } });
+      for (const candidate of candidates) {
+        if (await verifySecret(password, candidate.password)) {
+          validEmployee = candidate;
+          break;
+        }
+      }
+    }
 
     if (!validEmployee) {
       return NextResponse.json({ success: false, message: 'שם משתמש או סיסמה שגויים' }, { status: 401 });

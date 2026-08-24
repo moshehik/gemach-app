@@ -7,7 +7,7 @@ import { checkAuth } from '@/lib/auth';
 export const dynamic = 'force-dynamic';
 
 export async function GET(request) {
-  if (!(await checkAuth('מנהל'))) {
+  if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
   }
   try {

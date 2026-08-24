@@ -12,10 +12,13 @@ import { fetchJson, getSettingsCached } from '@/app/lib/pageCache';
 // revenue dashboard, hideInternalMessaging for messages) - unlike the sidebar,
 // this card grid had no gating at all, so every employee saw links straight to
 // revenue data and (when the org disabled messaging) the messages page anyway.
+// '/dashboard' (revenue), '/dashboard/pricelist' and '/employees/report' are
+// הנהלה ראשית-only screens (roleId 0/2) since 2026-08-24 - a regular branch
+// מנהל (roleId 1) no longer has access, so these cards must match.
 const QUICK_LINK_VISIBILITY = {
-  '/dashboard': 'manager',
-  '/dashboard/pricelist': 'manager',
-  '/employees/report': 'manager',
+  '/dashboard': 'headManagement',
+  '/dashboard/pricelist': 'headManagement',
+  '/employees/report': 'headManagement',
   '/messages': 'messagingEnabled',
 };
 
@@ -59,22 +62,25 @@ export default function HomeDashboard() {
   // Quick-link visibility: starts fail-closed (both gated links hidden) until we
   // know the employee's role and the messaging setting, so a non-manager never
   // even briefly sees a card pointing at revenue data.
-  const [quickLinkFlags, setQuickLinkFlags] = useState({ manager: false, messagingEnabled: false });
+  const [quickLinkFlags, setQuickLinkFlags] = useState({ headManagement: false, messagingEnabled: false });
+  const [welcomeTitle, setWelcomeTitle] = useState('ברוכים הבאים למערכת ניהול הגמ"ח');
   useEffect(() => {
     Promise.all([
       fetchJson('/api/me').catch(() => ({ success: false })),
       getSettingsCached().catch(() => []),
     ]).then(([me, settings]) => {
-      const isManager = !!(me?.success && me.employee && (me.employee.roleId === 1 || me.employee.roleId === 2));
+      const isHeadManagement = !!(me?.success && me.employee && (me.employee.roleId === 0 || me.employee.roleId === 2));
       const requireLoginSetting = Array.isArray(settings) ? settings.find(s => s.key === 'require_login') : null;
       const requireLogin = !!(requireLoginSetting && requireLoginSetting.value === 'true');
       const hideMessagingSetting = Array.isArray(settings) ? settings.find(s => s.key === 'hide_internal_messaging') : null;
       const hideMessaging = !!(hideMessagingSetting && hideMessagingSetting.value === 'true');
+      const welcomeTitleSetting = Array.isArray(settings) ? settings.find(s => s.key === 'home_welcome_title') : null;
+      if (welcomeTitleSetting?.value) setWelcomeTitle(welcomeTitleSetting.value);
       setQuickLinkFlags({
         // Same rule as checkPageAccess(): a logged-in employee is judged by role
         // regardless of require_login; an anonymous visitor only passes while
         // require_login is off.
-        manager: me?.success ? isManager : !requireLogin,
+        headManagement: me?.success ? isHeadManagement : !requireLogin,
         messagingEnabled: !hideMessaging,
       });
     });
@@ -317,7 +323,7 @@ export default function HomeDashboard() {
 
       {/* Header & Search */}
       <div style={{ marginBottom: '32px', textAlign: 'center' }}>
-        <h1 style={{ marginBottom: '20px' }}>ברוכים הבאים למערכת ניהול הגמ&quot;ח</h1>
+        <h1 style={{ marginBottom: '20px' }}>{welcomeTitle}</h1>
         <div className="card card-pad" style={{ maxWidth: '800px', margin: '0 auto' }}>
           {aiInputMode ? (
             <form onSubmit={handleAiInputSubmit} className="search-toolbar" style={{ maxWidth: 'none' }}>

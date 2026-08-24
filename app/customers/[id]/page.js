@@ -24,6 +24,9 @@ export default function CustomerPage({ params }) {
   const [saving, setSaving] = useState(false);
   const [emailModalOpen, setEmailModalOpen] = useState(false);
   const [emailAuthResult, setEmailAuthResult] = useState(null);
+  // מועבר ל-ModernCustomerDetailsTab כדי לסגור את מצב "עריכת פרטים אישיים" המקומי שלו
+  // כשלוחצים על "ביטול שינויים" בכותרת - אחרת השדות מתאפסים אבל הטופס נשאר פתוח
+  const [cancelTick, setCancelTick] = useState(0);
 
   const handleSendEmailClick = async () => {
     if (!customer?.email) {
@@ -140,6 +143,7 @@ export default function CustomerPage({ params }) {
 
   const handleCancelChanges = () => {
     if (originalCustomer) setCustomer(originalCustomer);
+    setCancelTick(t => t + 1);
   };
 
   const hasUnsavedChanges = originalCustomer && JSON.stringify(customer) !== JSON.stringify(originalCustomer);
@@ -254,6 +258,7 @@ export default function CustomerPage({ params }) {
               saving={saving}
               onCopyEmail={() => navigator.clipboard.writeText(customer.email)}
               onOpenEmailModal={handleSendEmailClick}
+              cancelSignal={cancelTick}
             />
           ),
           orders: (

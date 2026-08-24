@@ -137,10 +137,14 @@ export default async function RootLayout({ children }) {
   }
 
   let isManager = false;
+  let isHeadManagement = false;
   let employeeShowAi = false;
   let isProgrammer = false;
   if (emp && (emp.roleId === 1 || emp.roleId === 2)) {
     isManager = true;
+  }
+  if (emp && (emp.roleId === 0 || emp.roleId === 2)) {
+    isHeadManagement = true;
   }
   if (emp && emp.roleId === 2) {
     isProgrammer = true;
@@ -149,14 +153,19 @@ export default async function RootLayout({ children }) {
     employeeShowAi = true;
   }
 
-  if (enableAiSpecific && (!isAuthenticated || !employeeShowAi)) {
+  // הנהלה ראשית (roleId 0) ומתכנת (roleId 2) מקבלים AI תמיד; מעבר לזה, ה-AI
+  // מוצג רק כשעובד ספציפי סומן ל-showAi וגם ההגדרה הזו הופעלה. סוכם ב-2026-08-24:
+  // AI לא אמור להיות זמין למנהל סניף רגיל או לעובדים כברירת מחדל.
+  if (!isHeadManagement && (!enableAiSpecific || !employeeShowAi)) {
     hideAIFeatures = true;
   }
 
-  // מחובר — נשפט לפי תפקיד (מנהל/מתכנת בלבד), גם כשההתחברות אופציונלית;
-  // אורח — רואה הכל רק כשחובת התחברות כבויה. אותו כלל כמו checkPageAccess.
-  const showAdminTab = isAuthenticated ? isManager : !requireLogin;
-  const showEmployeesTab = isAuthenticated ? isManager : !requireLogin;
+  // מחובר — נשפט לפי תפקיד, גם כשההתחברות אופציונלית; אורח — רואה הכל רק
+  // כשחובת התחברות כבויה. אותו כלל כמו checkPageAccess. אזורי הניהול והעובדים
+  // צומצמו ב-2026-08-24 להנהלה ראשית/מתכנת בלבד (roleId 0/2) — לא מספיק
+  // שמנהל סניף רגיל (roleId 1) יהיה מחובר, בעקבות דיווחי משתמש מנהל.
+  const showAdminTab = isAuthenticated ? isHeadManagement : !requireLogin;
+  const showEmployeesTab = isAuthenticated ? isHeadManagement : !requireLogin;
   const showRefundsTab = isAuthenticated ? isManager : !requireLogin;
 
   const navGroups = buildNavGroups({

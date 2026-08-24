@@ -90,11 +90,36 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       return changed ? next : prev;
     });
   }, [items]);
+  // פריטים ש"נפתחו מחדש" לעריכה מלאה באישור מנהל אחרי שחלון ה-15 הדקות נסגר (ר' handleReopenFullEdit) —
+  // נשאר בתוקף לכל שאר הביקור באותו כרטיס, בדיוק כמו sessionEditableIds.
+  const [forceEditableIds, setForceEditableIds] = useState(() => new Set());
   const canFullyEditItem = (item) => {
     if (!item) return false;
     if (item.isTaken && !item.isReturned) return false;
     if (item.isNew || !item.id) return true;
-    return sessionEditableIds.has(item.id);
+    return sessionEditableIds.has(item.id) || forceEditableIds.has(item.id);
+  };
+
+  // חלון העריכה המלא (15 דק') נעל את הפריט - נדרש אישור מנהל כדי לפתוח אותו מחדש לעריכה
+  // מלאה (דגם/מידה/תיקונים), כמו הפתיחה מחדש של הזמנה נעולה למעלה (handleUnlock בעמוד ההזמנה).
+  const handleReopenFullEdit = async (item) => {
+    const authResult = await window.customAuthPrompt('חלון העריכה המלא (15 דק׳) לפריט זה נסגר. נדרש אישור מנהל לפתיחתו מחדש לעריכה מלאה. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+    if (!authResult || !authResult.pin) return;
+    try {
+      const res = await fetch('/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'סיסמה שגויה או הרשאה לא מספקת.');
+        return;
+      }
+      setForceEditableIds(prev => new Set(prev).add(item.id));
+    } catch (err) {
+      alert('שגיאה באימות קוד מנהל.');
+    }
   };
 
   useEffect(() => {
@@ -294,10 +319,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       const isEditing = !!item.id && !item.isNew;
       const url = isEditing ? `/api/orders/${orderId}/items/${item.id}` : `/api/orders/${orderId}/items`;
       const method = isEditing ? 'PUT' : 'POST';
+      // forceFullEdit מועבר רק כשחלון ה-15 הדקות כבר נסגר ונפתח מחדש באישור מנהל (ר' handleReopenFullEdit) -
+      // השרת בודק את זה מול חלון העריכה בפועל, לא רק מסתמך על ה-state המקומי כאן.
+      const body = forceEditableIds.has(item.id) ? { ...item, forceFullEdit: true } : item;
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(item)
+        body: JSON.stringify(body)
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה בשמירת הפריט');
@@ -496,10 +524,14 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     const current = item.returnedOk !== false;
     if (current === ok) return;
 
+    // ההערה נאספת כאן, ברגע הסימון עצמו - לא רק בשלב נפרד אחרי - כדי שאפשר יהיה
+    // לתעד מיד מה בדיוק לא תקין בפריט (למשל "לא ענו לגבי כתם בשרוול").
+    let note = null;
     if (!ok) {
-      const promptFunc = window.customConfirm || window.confirm;
-      const confirmed = await promptFunc('לסמן את הפריט כ"הוחזר - לא תקין"? תתווסף הערה אוטומטית בכרטיס הלקוח.', 'דיווח על פריט פגום');
-      if (!confirmed) return;
+      note = window.customPrompt
+        ? await window.customPrompt('לסמן את הפריט כ"הוחזר - לא תקין"? ניתן להוסיף הערה על הבעיה (אופציונלי) - תתווסף גם הערה אוטומטית בכרטיס הלקוח:', '', 'text')
+        : window.prompt('לסמן את הפריט כ"הוחזר - לא תקין"? ניתן להוסיף הערה על הבעיה (אופציונלי):', '');
+      if (note === null) return;
     }
 
     setSavingConditionId(item.id);
@@ -512,7 +544,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
           })
         : await fetch('/api/returns/report-issue', {
             method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ orderItemId: item.id, issueType: 'returned-bad' })
+            body: JSON.stringify({ orderItemId: item.id, issueType: 'returned-bad', note })
           });
       if (!res.ok) throw new Error('API failed');
     } catch (err) {
@@ -727,8 +759,12 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                           {isEditingMode ? (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               {!item.isNew && !fullyEditableNow && (
-                                <div className="hint" style={{ flexBasis: '100%', fontSize: '11.5px', color: 'var(--text-3)' }}>
-                                  חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך כעת רק את פירוט התיקון
+                                <div className="hint" style={{ flexBasis: '100%', fontSize: '11.5px', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                                  <span>חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך כעת רק את פירוט התיקון</span>
+                                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleReopenFullEdit(item)}>
+                                    <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-unlock" /></svg>
+                                    פתיחת עריכה מלאה (אישור מנהל)
+                                  </button>
                                 </div>
                               )}
                               <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', alignItems: 'center' }}>

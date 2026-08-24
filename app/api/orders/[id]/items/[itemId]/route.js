@@ -170,7 +170,9 @@ export async function PUT(request, { params }) {
 
       // עריכה מלאה (דגם/מידה/תיקונים המשפיעים על הסכומים) מותרת רק בתוך 15 דקות מהעדכון
       // האחרון של הפריט. סימון "תיקון בוצע" ופירוט התיקון נשארים פתוחים תמיד — לא כפופים לחלון.
-      if (!isWithinItemEditWindow(freshItem)) {
+      // forceFullEdit: המשתמש כבר עבר אישור מנהל בצד הלקוח (ר' handleReopenFullEdit
+      // ב-ModernItemsManager) כדי לפתוח מחדש עריכה מלאה אחרי שהחלון נסגר.
+      if (!itemData.forceFullEdit && !isWithinItemEditWindow(freshItem)) {
         const lockedFieldChanged = LOCKED_FIELDS.some(field => formatVal(freshItem[field]) !== formatVal(updateData[field]));
         if (lockedFieldChanged) {
           throw ruleError(`חלון העריכה של הפריט (${ITEM_EDIT_WINDOW_MINUTES} דקות מהעדכון האחרון) נסגר. ניתן לערוך כעת רק את תיאור התיקון.`);

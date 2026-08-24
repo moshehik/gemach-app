@@ -40,6 +40,15 @@ const getStatusBadgeClass = (status) => {
   }
 };
 
+// דגמי הפריטים (לא מחוקים) בהזמנה, ללא כפילויות - להצגה בעמודת "דגם" בטבלת ההזמנות,
+// לפני עמודות הסכומים (דיווח ba717a16: שם הדגם חשוב יותר מהסכום בתצוגת החיפוש).
+const getOrderModelNames = (order) => {
+  const names = (order.items || [])
+    .filter(i => !i.isDeleted && i.dressName)
+    .map(i => i.dressName);
+  return Array.from(new Set(names));
+};
+
 const getPaymentBadgeClass = (status) => {
   switch (status) {
     case 'שולם':
@@ -188,14 +197,8 @@ export default function OrdersPage() {
   const [rentalModalOrderId, setRentalModalOrderId] = useState(null);
 
   const [showStatistics, setShowStatistics] = useState(false);
-  const [aiLoading, setAiLoading] = useState(false);
   const [aiQueryUsed, setAiQueryUsed] = useState('');
   const [isAiModeActive, setIsAiModeActive] = useState(false);
-
-  // מצב תצוגת סרגל החיפוש (חיפוש רגיל / חכם AI) — מחליף את המצב הפנימי שהיה
-  // חבוי בתוך רכיב AISearchBar הישן; ההתנהגות זהה, רק המבנה/הסגנון עברו לעיצוב החדש.
-  const [aiInputMode, setAiInputMode] = useState(false);
-  const [aiInputText, setAiInputText] = useState('');
 
   useEffect(() => {
     let cancelled = false;
@@ -288,7 +291,6 @@ export default function OrdersPage() {
   };
 
   const handleAiSearch = async (query) => {
-    setAiLoading(true);
     try {
       const res = await fetch('/api/ai/smart-search', {
         method: 'POST',
@@ -308,8 +310,6 @@ export default function OrdersPage() {
     } catch (e) {
       console.error(e);
       alert('שגיאת תקשורת');
-    } finally {
-      setAiLoading(false);
     }
   };
 
@@ -341,22 +341,6 @@ export default function OrdersPage() {
         <use href="#i-chevron-down" />
       </svg>
     );
-  };
-
-  // סרגל החיפוש: מצב רגיל מול מצב AI — מחליף את הלוגיקה הפנימית שהייתה ברכיב AISearchBar
-  const toggleAiInputMode = () => {
-    if (!aiInputMode) {
-      setAiInputText(searchInput || '');
-    } else {
-      setSearchInput(aiInputText || '');
-    }
-    setAiInputMode(v => !v);
-  };
-
-  const handleAiInputSubmit = (e) => {
-    e.preventDefault();
-    if (!aiInputText.trim()) return;
-    handleAiSearch(aiInputText);
   };
 
   const handleDeleteOrder = async (order, e) => {
@@ -466,62 +450,28 @@ export default function OrdersPage() {
         </div>
       </div>
 
-      {/* סרגל חיפוש: חיפוש טקסטואלי רגיל + מעבר לחיפוש חכם (AI) + שאלות סטטיסטיקה, במסגרת אחת */}
+      {/* סרגל חיפוש: חיפוש טקסטואלי (Enter או כפתור) + שאלות סטטיסטיקה */}
       <div className="toolbar">
-        {aiInputMode ? (
-          <form onSubmit={handleAiInputSubmit} className="search-toolbar">
-            {aiLoading
-              ? <span className="spinner" style={{ width: '15px', height: '15px', borderWidth: '2px' }} />
-              : <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>}
-            <input
-              type="text"
-              value={aiInputText}
-              onChange={(e) => setAiInputText(e.target.value)}
-              placeholder="בקש מה-AI למצוא נתונים (למשל: 'הזמנות של משפחת שיינועטר')..."
-              disabled={aiLoading}
-            />
-            <div className="search-toolbar-actions">
-              {aiInputText && !aiLoading && (
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="נקה" onClick={() => setAiInputText('')}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" style={{ color: 'var(--accent)', background: 'var(--accent-tint)' }} onClick={toggleAiInputMode}>
-                <svg className="icon"><use href="#i-star" /></svg>
+        <form onSubmit={handleSearch} className="search-toolbar">
+          <svg className="icon"><use href="#i-search" /></svg>
+          <input
+            type="text"
+            value={searchInput}
+            onChange={(e) => setSearchInput(e.target.value)}
+            placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח, דגם)..."
+          />
+          <div className="search-toolbar-actions">
+            {searchInput && (
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ניקוי חיפוש" onClick={handleClearSearch}>
+                <svg className="icon"><use href="#i-x" /></svg>
               </button>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                <svg className="icon"><use href="#i-activity" /></svg>
-              </button>
-              <button type="submit" className="btn btn-primary btn-sm" disabled={aiLoading}>
-                {aiLoading ? 'מייצר שאילתה...' : 'חפש בחכמה'}
-              </button>
-            </div>
-          </form>
-        ) : (
-          <form onSubmit={handleSearch} className="search-toolbar">
-            <svg className="icon"><use href="#i-search" /></svg>
-            <input
-              type="text"
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="חיפוש הזמנה (מספר הזמנה, שם לקוח)..."
-            />
-            <div className="search-toolbar-actions">
-              {searchInput && (
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="ניקוי חיפוש" onClick={handleClearSearch}>
-                  <svg className="icon"><use href="#i-x" /></svg>
-                </button>
-              )}
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="חיפוש חכם (AI)" onClick={toggleAiInputMode}>
-                <svg className="icon" style={{ color: 'var(--accent)' }}><use href="#i-star" /></svg>
-              </button>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
-                <svg className="icon"><use href="#i-activity" /></svg>
-              </button>
-              <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
-            </div>
-          </form>
-        )}
+            )}
+            <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="שאלות סטטיסטיקה" onClick={(e) => setShowStatistics({ x: e.clientX, y: e.clientY })}>
+              <svg className="icon"><use href="#i-activity" /></svg>
+            </button>
+            <button type="submit" className="btn btn-primary btn-sm">חיפוש</button>
+          </div>
+        </form>
       </div>
 
       {/* סינון סטטוס: הכפתור הפעיל קובע אילו הזמנות מוצגות בטבלה */}
@@ -736,10 +686,11 @@ export default function OrdersPage() {
               <tr>
                 <th className={sort === 'orderId' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('orderId')}>{getLabel('order_id', 'קוד הזמנה')} {renderSortIcon('orderId')}</th>
                 <th className={sort === 'customerName' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('customerName')}>{getLabel('order_customerName', 'לקוח')} {renderSortIcon('customerName')}</th>
+                <th>דגם</th>
                 <th>כמות פריטים</th>
                 <th className={sort === 'eventDate' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('eventDate')}>תאריך אירוע {renderSortIcon('eventDate')}</th>
-                <th className={sort === 'totalAmount' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('totalAmount')}>{getLabel('order_totalAmount', 'סכום לחיוב')} {renderSortIcon('totalAmount')}</th>
-                <th className={sort === 'totalPaid' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('totalPaid')}>שולם {renderSortIcon('totalPaid')}</th>
+                <th className={sort === 'totalAmount' ? 'sortable sort-active' : 'sortable'} style={{ color: 'var(--text-3)', fontWeight: 500 }} onClick={() => handleSort('totalAmount')}>{getLabel('order_totalAmount', 'סכום לחיוב')} {renderSortIcon('totalAmount')}</th>
+                <th className={sort === 'totalPaid' ? 'sortable sort-active' : 'sortable'} style={{ color: 'var(--text-3)', fontWeight: 500 }} onClick={() => handleSort('totalPaid')}>שולם {renderSortIcon('totalPaid')}</th>
                 <th className={sort === 'status' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('status')}>{getLabel('order_status', 'סטטוס')} {renderSortIcon('status')}</th>
                 <th></th>
               </tr>
@@ -802,10 +753,11 @@ export default function OrdersPage() {
                       </div>
                     </td>
                     <td>{order.customerName}</td>
+                    <td className="cell-primary">{getOrderModelNames(order).join(', ') || '—'}</td>
                     <td>{order.items ? order.items.filter(i => !i.isDeleted).length : 0}</td>
                     <td>{order.eventDateHebrew || ''}</td>
-                    <td>₪{order.totalAmount}</td>
-                    <td style={{ color: order.totalPaid >= order.totalAmount && order.totalAmount > 0 ? 'var(--success)' : (isUnpaid ? 'var(--danger)' : undefined), fontWeight: isUnpaid ? '700' : undefined }}>
+                    <td style={{ color: 'var(--text-3)', fontSize: '12.5px' }}>₪{order.totalAmount}</td>
+                    <td style={{ color: order.totalPaid >= order.totalAmount && order.totalAmount > 0 ? 'var(--success)' : (isUnpaid ? 'var(--danger)' : 'var(--text-3)'), fontWeight: isUnpaid ? '700' : undefined, fontSize: isUnpaid ? undefined : '12.5px' }}>
                       ₪{order.totalPaid}
                     </td>
                     <td>

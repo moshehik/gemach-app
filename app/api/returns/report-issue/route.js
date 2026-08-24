@@ -5,7 +5,7 @@ import { checkAuth } from '@/lib/auth';
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
-    const { orderItemId, issueType } = await request.json(); // issueType: 'not-returned' | 'returned-bad'
+    const { orderItemId, issueType, note } = await request.json(); // issueType: 'not-returned' | 'returned-bad'
 
     if (!orderItemId || !issueType) {
       return NextResponse.json({ error: 'חסרים נתונים' }, { status: 400 });
@@ -28,11 +28,12 @@ export async function POST(request) {
       // Don't change isReturned/returnedOk, it's already not returned. Just add the note.
     } else if (issueType === 'returned-bad') {
       notePrefix = `[${dateStr}] אוטומטי: שמלה ${item.description || item.barcode} (הזמנה ${item.order?.orderId}) חזרה לא תקינה.`;
-      
+      if (note && note.trim()) notePrefix += ` הערה: ${note.trim()}`;
+
       await prisma.orderItem.update(auditAs(
         'RETURN_CONDITION',
         { where: { id: orderItemId }, data: { returnedOk: false } },
-        { returnedOk: { from: item.returnedOk, to: false }, note: 'דווח כחזר לא תקין' }
+        { returnedOk: { from: item.returnedOk, to: false }, note: (note && note.trim()) ? `דווח כחזר לא תקין - ${note.trim()}` : 'דווח כחזר לא תקין' }
       ));
     }
 

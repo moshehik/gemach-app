@@ -397,15 +397,20 @@ export default function NewOrderPage() {
     firstName: 'שם פרטי', lastName: 'שם משפחה', phone1: 'טלפון', email: 'אימייל', city: 'עיר', street: 'רחוב', houseNum: 'מספר בית'
   };
 
-  const handleSaveNewCustomerAndProceed = async (skipDuplicateCheck = false) => {
+  // משותף בין טופס "לקוח חדש" (חסימה קשיחה) לבין אישור התאמת לקוח קיים
+  // (חסימה רכה עם אפשרות לדלג באישור מפורש) — כדי ששני המסלולים יבדקו בדיוק אותם שדות.
+  const getMissingMandatoryCustomerFields = (customerObj) => {
     const configuredMandatory = (settings.mandatory_fields || '')
       .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-
-    const missingFields = Object.keys(CUSTOMER_FIELD_ALIASES).filter((key) => {
+    return Object.keys(CUSTOMER_FIELD_ALIASES).filter((key) => {
       const alwaysRequired = key === 'firstName' || key === 'lastName' || key === 'phone1';
       const isRequired = alwaysRequired || CUSTOMER_FIELD_ALIASES[key].some(alias => configuredMandatory.includes(alias.toLowerCase()));
-      return isRequired && !String(newCustomer[key] || '').trim();
+      return isRequired && !String(customerObj[key] || '').trim();
     });
+  };
+
+  const handleSaveNewCustomerAndProceed = async (skipDuplicateCheck = false) => {
+    const missingFields = getMissingMandatoryCustomerFields(newCustomer);
 
     if (missingFields.length > 0) {
        alert(`יש למלא: ${missingFields.map(k => CUSTOMER_FIELD_LABELS[k]).join(', ')}`);
@@ -450,7 +455,23 @@ export default function NewOrderPage() {
     }
   };
 
-  const handleUseExistingCustomer = (existingCustomer) => {
+  // לחיצה על "כן, זה הלקוח" נתנה להמשיך גם כשחסרים פרטי חובה אצל הלקוח שנמצא.
+  // עכשיו, אם חסר משהו, מבקשים אישור מפורש לדלג במקום להמשיך בשקט.
+  const handleUseExistingCustomer = async (existingCustomer) => {
+    const missingFields = getMissingMandatoryCustomerFields(existingCustomer);
+    const missingContactMethod = !String(existingCustomer.phone2 || '').trim() && !String(existingCustomer.email || '').trim();
+
+    if (missingFields.length > 0 || missingContactMethod) {
+      const missingParts = [
+        ...missingFields.map(k => CUSTOMER_FIELD_LABELS[k]),
+        ...(missingContactMethod ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
+      ];
+      const confirmed = await window.customConfirm(
+        `ללקוח זה חסרים פרטי חובה: ${missingParts.join(', ')}.\nהאם לאשר חריגה ולהמשיך בכל זאת בלי להשלים את הפרטים?`
+      );
+      if (!confirmed) return;
+    }
+
     setOrder(prev => ({ ...prev, customerId: existingCustomer.id, selectedCustomer: existingCustomer }));
     setStep(2);
     setDuplicateCustomer(null);
@@ -864,6 +885,9 @@ export default function NewOrderPage() {
   const saveOrder = async () => {
     const hasDates = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
     if (!order.customerId) return alert('יש לבחור לקוח');
+    if (!String(order.selectedCustomer?.phone1 || '').trim() && !String(order.selectedCustomer?.phone2 || '').trim()) {
+      return alert('לא ניתן לסגור הזמנה ללקוח ללא מספר טלפון. יש להשלים מספר טלפון בכרטיס הלקוח.');
+    }
     if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
 

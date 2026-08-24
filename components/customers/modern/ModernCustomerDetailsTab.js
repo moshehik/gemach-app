@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 const renderCustomerNotes = (notes) => {
@@ -41,8 +41,20 @@ const renderCustomerNotes = (notes) => {
   });
 };
 
-export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal }) {
+export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal, cancelSignal }) {
   const [isEditing, setIsEditing] = useState(false);
+  const isFirstCancelSignal = useRef(true);
+
+  // "ביטול שינויים" בכותרת העמוד משחזר את נתוני הלקוח, אבל לא ידע לסגור את מצב
+  // העריכה המקומי הזה בלעדי אות מפורש - בלי זה השדות מתאפסים אבל הטופס נשאר פתוח
+  // ונראה כאילו לחיצת הביטול לא עשתה כלום.
+  useEffect(() => {
+    if (isFirstCancelSignal.current) {
+      isFirstCancelSignal.current = false;
+      return;
+    }
+    setIsEditing(false);
+  }, [cancelSignal]);
 
   const handleToggleEdit = (e) => {
     if (e) e.preventDefault();

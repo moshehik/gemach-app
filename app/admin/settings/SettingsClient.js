@@ -84,7 +84,8 @@ const HEBREW_NAMES = {
 
   print_rental_box1: 'הערות השכרה - תיבה 1 (עליונה)',
   print_rental_box2: 'הערות השכרה - תיבה 2 (אמצעית)',
-  print_rental_footer: 'הערות השכרה - טקסט תחתון ותקנון'
+  print_rental_footer: 'הערות השכרה - טקסט תחתון ותקנון',
+  home_welcome_title: 'כותרת ברוכים הבאים בדף הבית'
 };
 
 const HEBREW_NOTES = {
@@ -147,7 +148,8 @@ const HEBREW_NOTES = {
 
   print_rental_box1: 'טקסט הערות שיופיע בתיבה העליונה בכרטיס השכרה מודפס.',
   print_rental_box2: 'טקסט הערות שיופיע בתיבה האמצעית בכרטיס השכרה מודפס.',
-  print_rental_footer: 'טקסט תקנון וחתימה בתחתית כרטיס השכרה מודפס.'
+  print_rental_footer: 'טקסט תקנון וחתימה בתחתית כרטיס השכרה מודפס.',
+  home_welcome_title: 'הכותרת הראשית שמופיעה בראש דף הבית של המערכת.'
 };
 
 const CUSTOMER_FIELDS = [

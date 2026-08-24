@@ -539,7 +539,19 @@ export default function RentalsPage() {
                         <svg className="icon" style={{ color: 'var(--warning)', marginInlineStart: '4px' }} title="מרווח החזרה מותאם אישית להזמנה זו"><use href="#i-alert-tri" /></svg>
                       )}
                     </td>
-                    <td>{ord.customerName}</td>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span>{ord.customerName}</span>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-icon-only btn-sm"
+                          title="פתח השכרה/החזרה"
+                          onClick={(e) => { e.stopPropagation(); openOrder(ord.orderId); }}
+                        >
+                          <svg className="icon"><use href="#i-box" /></svg>
+                        </button>
+                      </div>
+                    </td>
                     <td><strong>{ord.eventDateHebrew || (ord.eventDate ? getHebrewDateString(ord.eventDate) : 'לא צוין תאריך')}</strong></td>
                     <td><span className="dot-badge" style={{ color: statusColor }}>{statusLabel}</span></td>
                     <td>

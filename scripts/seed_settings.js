@@ -25,6 +25,7 @@ async function main() {
     { key: "main_email", name: "מייל ראשי", value: "amechubad@gmail.com", category: "כללי", notes: "מוצג בדפי הלקוח / הדפסה", type: "text" },
     { key: "items_name_plural", name: "שם הפריטים - רבים", value: "שמלות", category: "כותרות", notes: "הכיתוב שיופיע בכל הטבלאות השונות (למשל: שמלות / חליפות / פריטים)", type: "text" },
     { key: "items_name_singular", name: "שם הפריטים - יחיד", value: "פריט", category: "כותרות", notes: "למשל: שמלה / חליפה / פריט", type: "text" },
+    { key: "home_welcome_title", name: "כותרת ברוכים הבאים בדף הבית", value: "ברוכים הבאים למערכת ניהול הגמ\"ח", category: "כותרות", notes: "הכותרת הראשית שמופיעה בראש דף הבית של המערכת.", type: "text" },
     
     { key: "barcode_length", name: "אורך ברקוד", value: "7", category: "מאגר", notes: "אורך תווים חוקי לברקוד במאגר השמלות", type: "number" },
     { key: "has_underskirts", name: "יש תחתיות", value: "false", category: "מאגר", notes: "האם יש למלאי גם פריטי עזר כמו תחתיות", type: "boolean" },

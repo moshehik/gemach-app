@@ -26,7 +26,7 @@ export async function PUT(request, { params }) {
     // Same admin-only intent as DELETE below (and the client-side lock in
     // app/dashboard/pricelist/page.js) - editing a price rule affects what customers
     // get charged, checkAuth() alone only required being logged in, not being a manager.
-    if (!(await checkAuth('מנהל'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+    if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     try {
         const resolvedParams = await params;
         const id = parseInt(resolvedParams.id);
@@ -56,12 +56,13 @@ export async function DELETE(request, { params }) {
     if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
     try {
         // Mirrors the client-side lock in app/dashboard/pricelist/page.js (handleLockSubmit),
-        // which only allows unlocking delete for roleId 1/2 (מנהל/מתכנת) — enforce it server-side too,
-        // since the lock is a UI affordance only and the DELETE endpoint itself must reject anyone else.
+        // now roleId 0/2 (הנהלה ראשית/מתכנת) only, matching the PUT handler above and the
+        // page-level guard in app/dashboard/pricelist/layout.js — a regular מנהל (roleId 1)
+        // shouldn't reach this page at all anymore, so the API must reject them too.
         const employee = await getActingEmployee();
-        const isManager = employee && (employee.roleId === 1 || employee.roleId === 2);
-        if (!isManager) {
-            return NextResponse.json({ error: 'אין הרשאה למחיקה (נדרש סיווג מנהל/מתכנת)' }, { status: 403 });
+        const isHeadManagement = employee && (employee.roleId === 0 || employee.roleId === 2);
+        if (!isHeadManagement) {
+            return NextResponse.json({ error: 'אין הרשאה למחיקה (נדרש סיווג הנהלה ראשית/מתכנת)' }, { status: 403 });
         }
 
         const resolvedParams = await params;

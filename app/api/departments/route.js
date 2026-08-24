@@ -24,7 +24,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  if (!(await checkAuth('מנהל'))) {
+  if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'נדרשת הרשאת מנהל ליצירת מחלקה' }, { status: 401 });
   }
   try {

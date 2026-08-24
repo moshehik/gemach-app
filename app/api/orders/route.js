@@ -78,6 +78,19 @@ export async function GET(request) {
       itemStatuses.push({ isReturned: true, isDeleted: false });
     }
 
+    // הזמנה שרק שריינה דגם (בר-קוד קידומת) ועדיין לא קיבלה פריט פיזי (dressItemId) אין לה
+    // dressItem.dress.name לסינון מולו - אותה בעיה שהתגובה הזאת עצמה פותרת בהצגה (dressModelMap
+    // למטה). כדי שחיפוש טקסט חופשי ימצא גם הזמנות "בקרוב" כאלה, מאתרים קודם אילו דגמים תואמים
+    // את מחרוזת החיפוש ומסננים גם לפי בר-הקוד שלהם.
+    let searchModelPrefixes = [];
+    if (search) {
+      const matchingModels = await prisma.dressModel.findMany({
+        where: { name: { contains: search }, barcodePrefix: { not: null } },
+        select: { barcodePrefix: true }
+      });
+      searchModelPrefixes = matchingModels.map(m => m.barcodePrefix).filter(p => p !== null && p !== undefined);
+    }
+
     const where = {
       ...(filterStatus === 'deleted' ? { isDeleted: true } : { isDeleted: false }),
       ...(filterStatus === 'drafts' ? { status: DRAFT_ORDER_STATUS } : {}),
@@ -115,7 +128,8 @@ export async function GET(request) {
           { orderId: isNaN(parseInt(search)) ? undefined : parseInt(search) },
           { customer: { firstName: { contains: search } } },
           { customer: { lastName: { contains: search } } },
-          { items: { some: { isDeleted: false, dressItem: { dress: { name: { contains: search } } } } } }
+          { items: { some: { isDeleted: false, dressItem: { dress: { name: { contains: search } } } } } },
+          ...(searchModelPrefixes.length > 0 ? [{ items: { some: { isDeleted: false, barcodePrefix: { in: searchModelPrefixes } } } }] : [])
         ]
       } : {}),
       ...(advOrderId ? { orderId: parseInt(advOrderId) } : {}),
@@ -459,6 +473,7 @@ export async function GET(request) {
             id: i.id,
             dressId: i.dressItem?.dress?.id,
             itemId: i.dressItemId,
+            dressName: dressName || null,
             description: itemDesc,
             price: i.price,
             isTaken: i.isTaken,

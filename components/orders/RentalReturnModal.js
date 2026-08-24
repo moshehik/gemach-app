@@ -312,13 +312,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     }
   };
 
-  const doReportIssue = async (itemId, issueType) => {
+  const doReportIssue = async (itemId, issueType, note = null) => {
     setIsBusy(true);
     try {
       const res = await fetch('/api/returns/report-issue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ orderItemId: itemId, issueType })
+        body: JSON.stringify({ orderItemId: itemId, issueType, note })
       });
       if (res.ok) {
         await refreshOrder();
@@ -337,8 +337,11 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   };
 
   const reportIssue = async (itemId, issueType) => {
-    if (!await window.customConfirm('האם אתה בטוח? תוסף הערה אוטומטית בכרטיס הלקוח.')) return;
-    const success = await doReportIssue(itemId, issueType);
+    const note = window.customPrompt
+      ? await window.customPrompt('האם אתה בטוח? ניתן להוסיף הערה על הבעיה (אופציונלי) - תתווסף גם הערה אוטומטית בכרטיס הלקוח:', '', 'text')
+      : (window.confirm('האם אתה בטוח? תוסף הערה אוטומטית בכרטיס הלקוח.') ? '' : null);
+    if (note === null) return;
+    const success = await doReportIssue(itemId, issueType, note);
     if (success) alert('הערה נוספה בהצלחה.');
   };
 
@@ -373,9 +376,14 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
   const handleMarkReturnBad = async (item) => {
     if (item.isReturned) return;
-    if (!await window.customConfirm(`לסמן את "${item.description}" כהוחזר לא תקין?`, 'דיווח על פריט פגום')) return;
+    // ההערה נאספת כאן, ברגע הסימון "לא תקין" עצמו - לא רק בשלב נפרד אחרי (כמו ב"דווח על
+    // בעיה" למעלה) - כדי לתעד מיד מה בדיוק לא תקין, למשל דבר שלא ענו עליו קודם.
+    const note = window.customPrompt
+      ? await window.customPrompt(`לסמן את "${item.description}" כהוחזר לא תקין? ניתן להוסיף הערה על הבעיה (אופציונלי):`, '', 'text')
+      : (window.confirm(`לסמן את "${item.description}" כהוחזר לא תקין?`) ? '' : null);
+    if (note === null) return;
     await handleReturnScan(item.barcode);
-    await doReportIssue(item.id, 'returned-bad');
+    await doReportIssue(item.id, 'returned-bad', note);
   };
 
   const handleHeaderSave = async () => {

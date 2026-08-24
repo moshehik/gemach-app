@@ -13,7 +13,7 @@ export async function GET() {
 }
 
 export async function POST(request) {
-  if (!(await checkAuth('מנהל'))) {
+  if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
   }
 

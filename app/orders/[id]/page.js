@@ -632,12 +632,23 @@ export default function OrderDetailsPage({ params }) {
   ];
 
   const handleOrderUpdate = (updatedOrder, { savedLocalId } = {}) => {
+    // Every caller of onOrderUpdated (item confirm, refund create/approve, pricing
+    // recalc) has already round-tripped the change to the server before calling this -
+    // it's a sync of local state to server truth, not a local edit. Unconditionally
+    // marking hasUnsavedChanges=true here made the exit-guard nag about "unsaved
+    // changes" right after an action that was already saved. Only a still-pending,
+    // never-confirmed new item row (no server id yet) is a genuine unsaved change.
+    const mergedItems = mergePendingItems(updatedOrder.items || [], items, savedLocalId ? [savedLocalId] : []);
+    const stillPending = mergedItems.some(it => !it.id && it._localId);
     setOrder(updatedOrder);
-    setHasUnsavedChanges(true);
-    setItems(prev => mergePendingItems(updatedOrder.items || [], prev, savedLocalId ? [savedLocalId] : []));
+    setItems(mergedItems);
     setObligations(updatedOrder.obligations || []);
     setPayments(updatedOrder.payments || []);
     setRefunds(updatedOrder.refunds || []);
+    setHasUnsavedChanges(stillPending);
+    if (!stillPending) {
+      savedSnapshotRef.current = { order: updatedOrder, items: mergedItems, obligations: updatedOrder.obligations || [], payments: updatedOrder.payments || [], refunds: updatedOrder.refunds || [] };
+    }
   };
 
   // עדכון "טלאי" חלקי של ההזמנה מ-OrderPrintMenu (ר' components/orders/OrderPrintMenu.js) —
@@ -1145,6 +1156,7 @@ export default function OrderDetailsPage({ params }) {
                 totalPaid={totalPaid}
                 customer={order.customer}
                 onOrderUpdated={handleOrderUpdate}
+                onSignRegulations={() => handlePrintMenuOrderUpdate({ hasSignedRegulations: true })}
                 isLivePreviewing={isLivePreviewing}
               />
             ),

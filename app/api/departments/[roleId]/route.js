@@ -8,7 +8,7 @@ import { checkAuth } from '@/lib/auth';
 const SYSTEM_ROLE_IDS = [1, 2];
 
 export async function PUT(request, { params }) {
-  if (!(await checkAuth('מנהל'))) {
+  if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'נדרשת הרשאת מנהל לעדכון מחלקה' }, { status: 401 });
   }
   try {
@@ -49,7 +49,7 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  if (!(await checkAuth('מנהל'))) {
+  if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'נדרשת הרשאת מנהל למחיקת מחלקה' }, { status: 401 });
   }
   try {

@@ -517,6 +517,11 @@ export default function PrintAlterationsPage() {
                       ? 'הנתונים המוצגים כעת (לפי הסינון הנוכחי)'
                       : `מתאריך: ${formatDate(startDate)} | עד תאריך: ${formatDate(endDate)}`}
                 </h3>
+                {!loading && !error && items.length > 0 && (
+                  <div style={{ fontSize: '12.5px', color: '#aaa', marginTop: '4px' }}>
+                    {new Set(items.map(i => i.order?.orderId).filter(Boolean)).size} הזמנות | {items.length} פריטים
+                  </div>
+                )}
               </div>
             </td>
           </tr>

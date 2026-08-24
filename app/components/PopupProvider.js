@@ -380,6 +380,7 @@ export function PopupProvider({ children }) {
                     type="password"
                     className="input"
                     placeholder="הקלד סיסמה..."
+                    autoComplete="new-password"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter') handleAuthPromptResponse({ pin: e.target.value, employeeId: selectedAuthEmployee });
                       if (e.key === 'Escape') handleAuthPromptResponse(null);

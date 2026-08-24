@@ -6,7 +6,7 @@ import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 
 export async function POST(request) {
-  if (!(await checkAuth('מנהל'))) {
+  if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
   }
 

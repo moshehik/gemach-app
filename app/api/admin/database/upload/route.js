@@ -6,7 +6,7 @@ import fs from 'fs';
 import { checkAuth } from '@/lib/auth';
 
 export async function POST(req) {
-  if (!(await checkAuth('מנהל'))) {
+  if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
   }
   try {

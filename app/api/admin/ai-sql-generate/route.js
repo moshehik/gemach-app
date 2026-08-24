@@ -38,7 +38,7 @@ Rules for SQL query generation:
 6. Make sure to format strings properly (using single quotes for string values).`;
 
 export async function POST(req) {
-  if (!(await checkAuth('מנהל'))) {
+  if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
   }
 

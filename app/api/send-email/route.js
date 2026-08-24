@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { verifyEmployeeCredentials } from '../../../lib/employeeAuth';
+import { verifySecret } from '@/lib/passwordAuth';
 import { renderGenericEmailHtml } from '../../../lib/emailTemplates';
 
 export async function POST(request) {
@@ -9,7 +10,8 @@ export async function POST(request) {
     const { username, password, to, cc, subject, emailBody, fileName, fileContent, customerId, employeeId } = body;
 
     // 1. Verify admin credentials
-    if (!username || !password) {
+    // username (employeeId) may legitimately be blank - see the fallback scan below
+    if (!password) {
       return NextResponse.json({ success: false, message: 'נדרש שם משתמש וסיסמה لاישור השליחה' }, { status: 401 });
     }
 
@@ -17,7 +19,22 @@ export async function POST(request) {
     // name/legacyId login is also supported - see lib/employeeAuth.js for the identifier
     // matching. Passwords are hashed, so the match happens via bcrypt compare in JS instead
     // of a plaintext `password: password` clause in the Prisma query.
-    const validEmployee = await verifyEmployeeCredentials(username, password);
+    let validEmployee = await verifyEmployeeCredentials(username, password);
+
+    // ModernSendEmailModal מזין כאן את ה-employeeId שהוחזר מ-customAuthPrompt (PopupProvider),
+    // שיכול להישאר ריק אם המשתמש לא הספיק לבחור עצמו מרשימת "בחר מנהל" (למשל טופס נטען
+    // מהר יותר מרשימת העובדים) - זה בדיוק המצב שבו /api/auth/verify-pin כבר מאשר בהצלחה
+    // באמצעות סריקת כל העובדים הפעילים, אז מיישמים כאן את אותו fallback במקום לדחות בקשה
+    // שכבר אושרה פעם אחת קודם לכן.
+    if (!validEmployee && !username) {
+      const candidates = await prisma.employee.findMany({ where: { isActive: true } });
+      for (const candidate of candidates) {
+        if (await verifySecret(password, candidate.password)) {
+          validEmployee = candidate;
+          break;
+        }
+      }
+    }
 
     if (!validEmployee) {
       return NextResponse.json({ success: false, message: 'שם משתמש או סיסמה שגויים' }, { status: 401 });

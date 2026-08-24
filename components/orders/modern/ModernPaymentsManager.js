@@ -82,10 +82,15 @@ function getObligationIcon(obs) {
  * (כולל העברה מהירה בקורא מגנטי), בקשות זיכוי וזיכויים ממתינים.
  * חשוף דרך ref: openCreditModal() — אייקון החוב בטופ-בר פותח את חלון נדרים.
  */
-const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderId, items = [], order = {}, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated, isLivePreviewing = false }, ref) {
+const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderId, items = [], order = {}, obligations = [], payments = [], refunds = [], onObligationsChange, onPaymentsChange, onRefundsChange, totalRequired, totalPaid, customer = {}, onOrderUpdated, onSignRegulations, isLivePreviewing = false }, ref) {
   const [newObligation, setNewObligation] = useState({ description: '', amount: '' });
 
   const [showCreditModal, setShowCreditModal] = useState(false);
+  // חתימה על התקנון נבדקה עד כה רק לפני הדפסה/מייל (ר' OrderPrintMenu) - הלקוח לא תמיד
+  // מדפיס, כך שהחתימה הייתה עלולה להידלג לגמרי. נשאלת כאן גם לפני תשלום בפועל, כדי
+  // שהיא תישאל בוודאות בשלב כלשהו של סגירת ההזמנה.
+  const [showRegulationsModal, setShowRegulationsModal] = useState(false);
+  const [confirmingSigned, setConfirmingSigned] = useState(false);
   const [showQuickSwipeModal, setShowQuickSwipeModal] = useState(false);
   const [swipeInput, setSwipeInput] = useState('');
   const [showAddChargeModal, setShowAddChargeModal] = useState(false);
@@ -314,6 +319,12 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     }
   };
 
+  const openCreditModalNow = () => {
+    setCreditCardData({ cardNumber: '', tokef: '', installments: 1, notes: '', amount: Math.max(0, totalRequired - totalPaid).toString() });
+    setCreditError('');
+    setShowCreditModal(true);
+  };
+
   const handleOpenCreditModal = () => {
     // מוגן גם כאן (לא רק בהסתרת הכפתור למטה) - נקודת הכניסה השנייה לחלון הזה היא
     // אייקון החוב בטופ-בר (handleWalletClick ב-app/orders/[id]/page.js) שקורא ל-
@@ -321,9 +332,33 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     // שכיבה את נדרים פלוס עדיין רואה את חלון החיוב באשראי נפתח מהאייקון (והיה נכשל
     // רק בשליחה, מול השרת ב-app/api/nedarim/route.js).
     if (settings.nedarim_plus_enabled === 'false') return;
-    setCreditCardData({ cardNumber: '', tokef: '', installments: 1, notes: '', amount: Math.max(0, totalRequired - totalPaid).toString() });
-    setCreditError('');
-    setShowCreditModal(true);
+    if (!order.hasSignedRegulations) {
+      setShowRegulationsModal(true);
+      return;
+    }
+    openCreditModalNow();
+  };
+
+  const confirmSignedThenOpenCredit = async () => {
+    setConfirmingSigned(true);
+    try {
+      const res = await fetch(`/api/orders/${orderId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hasSignedRegulations: true })
+      });
+      if (res.ok) {
+        onSignRegulations?.();
+        setShowRegulationsModal(false);
+        openCreditModalNow();
+      } else {
+        alert('שגיאה בשמירת אישור החתימה');
+      }
+    } catch (e) {
+      alert('שגיאת תקשורת בשמירת אישור החתימה');
+    } finally {
+      setConfirmingSigned(false);
+    }
   };
 
   // handleOpenCreditModal חייב להיות מוגדר לפני ה-hook הזה (ולא רק לפני שימוש בפועל בזמן
@@ -835,6 +870,27 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
           </div>
         )}
       </div>
+
+      {/* ===== מודל חתימה על תקנון (נשאל גם כאן, לפני תשלום - ר' הערה למעלה) ===== */}
+      {mounted && showRegulationsModal && createPortal(
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => { if (!confirmingSigned) setShowRegulationsModal(false); }}>
+          <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
+            <div className="modal-icon-circle" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
+              <svg className="icon"><use href="#i-edit" /></svg>
+            </div>
+            <h3>חתימה על תקנון</h3>
+            <p>לפני קבלת תשלום יש לוודא שהלקוח חתם על התקנון. האם הלקוח חתם על התקנון?</p>
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-primary" onClick={confirmSignedThenOpenCredit} disabled={confirmingSigned}>
+                {confirmingSigned && <span className="spinner" style={{ width: '16px', height: '16px', borderWidth: '2px' }} />}
+                כן, חתם
+              </button>
+              <button type="button" className="btn btn-secondary" onClick={() => setShowRegulationsModal(false)} disabled={confirmingSigned}>לא (ביטול)</button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
 
       {/* ===== מודל העברה מהירה (קורא מגנטי) ===== */}
       {mounted && showQuickSwipeModal && createPortal(

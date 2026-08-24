@@ -1,6 +1,6 @@
 import prisma from '../lib/prisma';
 import DashboardCharts from './DashboardCharts';
-import { checkPageAccess } from '@/lib/auth';
+import { checkPageAccess, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
 import NoAccessMessage from '@/app/components/NoAccessMessage';
 
 export const dynamic = 'force-dynamic';
@@ -10,9 +10,12 @@ export const dynamic = 'force-dynamic';
 // /refunds, which are all gated the same way). A guard can't live in a shared
 // app/dashboard/layout.js - that would also wrap /dashboard/dresses, which staff
 // DO need to reach - so it's inline here instead. /dashboard/pricelist has its
-// own scoped layout.js with the same manager-only guard for the same reason.
+// own scoped layout.js with the same guard for the same reason.
+// Gated to הנהלה ראשית (roleId 0) + מתכנת (roleId 2) only, not a regular branch
+// מנהל (roleId 1) — this revenue/financial breakdown page is company-wide data.
+// Tightened 2026-08-24 following user-role bug reports.
 export default async function Dashboard() {
-  if (!(await checkPageAccess())) {
+  if (!(await checkPageAccess(HEAD_MANAGEMENT_ROLES))) {
     return <NoAccessMessage />;
   }
   // Trend window: 35 days back covers the "last 30 active days" chart

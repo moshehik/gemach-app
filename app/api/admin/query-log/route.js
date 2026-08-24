@@ -5,7 +5,7 @@ import { checkAuth } from '../../../../lib/auth';
 import prisma from '@/app/lib/prisma';
 
 export async function GET(request) {
-  if (!(await checkAuth('מנהל'))) {
+  if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
