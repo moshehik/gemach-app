@@ -8,6 +8,7 @@ import fs from 'fs';
 import path from 'path';
 import { HDate } from '@hebcal/core';
 import { getHebrewYearContext, processHebrewDateMacro, getHebrewDateString } from '../../../lib/hebrewDate';
+import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 
 let cachedSchema = null;
 function getSchemaContext() {
@@ -63,7 +64,8 @@ IMPORTANT: If the user explicitly asks to SEE OR FIND ORDERS (e.g., "When was it
 14. CRITICAL RULE FOR DELETED/INACTIVE DATA: Whenever you query ANY table (e.g. "Customer", "Order", "DressItem", "DressModel", "OrderItem"), you MUST ALWAYS filter out deleted items by adding '"isDeleted" = false' to your WHERE clause. For "DressItem", also add '"notInUse" = false' and '"inRepair" = false' unless explicitly asked about them. Never include deleted or inactive records in counts or lists unless the user specifically asks for them.
 15. CRITICAL RULE FOR CONVERSATION: Never attempt to translate Gregorian dates to Hebrew dates in your head or invent Hebrew dates! If you are referring to a date the user mentioned, use the EXACT Hebrew text the user provided (e.g. if the user said 'כ"ה בסיוון', reply with 'כ"ה בסיוון'). Do not shift the date by a day or invent dates like 'כ"ד' or 'כ"ו'.
 16. CRITICAL SORTING RULE: Whenever you query the "Order" or "OrderItem" tables, you MUST ALWAYS sort the results by "eventDate" DESC NULLS LAST. Do NOT sort by orderId or id unless explicitly requested!
-17. CRITICAL DATE CONTEXT RULE: Do NOT carry over dates from previous user messages into new queries unless the user explicitly refers to them. If the user asks a new question without specifying a date, DO NOT assume they are still asking about a date mentioned earlier in the chat history.`;
+17. CRITICAL DATE CONTEXT RULE: Do NOT carry over dates from previous user messages into new queries unless the user explicitly refers to them. If the user asks a new question without specifying a date, DO NOT assume they are still asking about a date mentioned earlier in the chat history.
+18. CRITICAL RULE FOR DRAFT/PLACEHOLDER ORDERS: The "Order" table's "status" column can hold two internal placeholder values that are NOT real orders and must NEVER be counted, summed, or listed as orders/rentals/revenue unless the user explicitly asks about drafts or placeholders: '${DRAFT_ORDER_STATUS}' (an unfinished order the new-order screen autosaved and the employee never completed) and '${RESERVED_ORDER_STATUS}' (a temporary row that only reserves an order number for a card charge). Whenever you query or aggregate "Order" (directly, or by joining through it from "OrderItem"/"Payment"/"PaymentObligation"), you MUST add '"status" NOT IN (''${DRAFT_ORDER_STATUS}'', ''${RESERVED_ORDER_STATUS}'')' to your WHERE clause in addition to the isDeleted filter.`;
 
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });

@@ -44,6 +44,17 @@ export async function GET(request) {
     const archiveAndPastOnly = searchParams.get('archiveAndPastOnly') === 'true';
     const filterStatus = searchParams.get('filterStatus') || 'all';
 
+    // When the admin toggle is on, autosaved-but-never-finished draft orders ('טיוטה') are
+    // displayed as deleted instead of getting their own tab (see app/orders/page.js, which hides
+    // the "טיוטות" pill in that case) - so the "מחוקים" filter here has to actually match them
+    // too, not just isDeleted:true rows. Read directly rather than trusting a client-supplied flag,
+    // so this stays correct even for callers that don't know about the setting.
+    let draftsAsDeleted = false;
+    if (filterStatus === 'deleted') {
+      const draftsAsDeletedSetting = await prisma.systemSetting.findUnique({ where: { key: 'draft_orders_show_as_deleted' } });
+      draftsAsDeleted = draftsAsDeletedSetting?.value === 'true';
+    }
+
     // מיון ברירת המחדל של טאב ההשכרות: היום → מחר → קדימה עד חלון של כמה ימים,
     // ואז ממשיך אחורה בעבר (מהאירוע האחרון שהיה ועד הישן ביותר). אירועים עתידיים
     // שרחוקים מהחלון מוסתרים לגמרי (בכל מצבי הסינון), כי הטאב הזה תפעולי (לקיחה/
@@ -92,7 +103,12 @@ export async function GET(request) {
     }
 
     const where = {
-      ...(filterStatus === 'deleted' ? { isDeleted: true } : { isDeleted: false }),
+      ...(filterStatus === 'deleted'
+        // AND-wrapped (not a bare top-level OR) so this doesn't collide with the other
+        // top-level `OR` keys this object can also gain further down (search/date-range
+        // filters) - a later spread with the same key name would silently replace this one.
+        ? (draftsAsDeleted ? { AND: [{ OR: [{ isDeleted: true }, { status: DRAFT_ORDER_STATUS }] }] } : { isDeleted: true })
+        : { isDeleted: false }),
       ...(filterStatus === 'drafts' ? { status: DRAFT_ORDER_STATUS } : {}),
       ...(filterStatus === 'archive' ? { eventDate: { lt: today } } : {}),
       ...(filterStatus === 'soon' ? { OR: [{ eventDate: null }, { eventDate: { gte: today } }] } : {}),

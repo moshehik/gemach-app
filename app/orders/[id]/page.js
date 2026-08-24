@@ -12,6 +12,7 @@ import ModernInfoTab from '../../../components/orders/modern/ModernInfoTab';
 import { calculateOrderStatus } from '../../../lib/orderStatus';
 import { addHistory } from '../../../lib/historyManager';
 import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '../../lib/orderDrafts';
+import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 
 // שדות בהזמנה שכפתור "ביטול שינויים" צריך לדווח עליהם אם השתנו מאז השמירה האחרונה
 const ORDER_FIELD_LABELS = {
@@ -187,6 +188,22 @@ export default function OrderDetailsPage({ params }) {
   // שתשובה איטית ממרוץ קודם לא תדרוס תוצאה חדשה יותר.
   const [isLivePreviewing, setIsLivePreviewing] = useState(false);
   const previewSeqRef = useRef(0);
+
+  // draft_orders_show_as_deleted (SystemSetting, default "true") — see lib/orderStatus.js
+  // calculateOrderStatus and app/orders/page.js for the fuller explanation. Same fetch pattern
+  // (fetchSharedJson('/api/settings')) as that list page, so both surfaces agree on the toggle.
+  const [draftsAsDeleted, setDraftsAsDeleted] = useState(true);
+  useEffect(() => {
+    let cancelled = false;
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
+      .then(data => {
+        if (cancelled || !Array.isArray(data)) return;
+        const setting = data.find(s => s.key === 'draft_orders_show_as_deleted');
+        if (setting) setDraftsAsDeleted(setting.value === 'true');
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, []);
 
   // Fetch Order
   useEffect(() => {
@@ -904,7 +921,7 @@ export default function OrderDetailsPage({ params }) {
 
   // מחיקת ההזמנה — אותה פעולה בדיוק כמו איקון המחיקה בטבלת ההזמנות (מחיקה רכה + אותם תנאי חסימה).
   const handleDeleteOrder = async () => {
-    const status = calculateOrderStatus({ ...order, items });
+    const status = calculateOrderStatus({ ...order, items }, { draftsAsDeleted });
     if (status === 'הוחזר' || status === 'הוחזר חלקי' || status === 'הושכר' || status === 'הושכר חלקי') {
       alert('לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר');
       return;
@@ -1085,6 +1102,7 @@ export default function OrderDetailsPage({ params }) {
       <ModernOrderCard
           order={order}
           items={items}
+          draftsAsDeleted={draftsAsDeleted}
           activeTab={activeTab}
           onTabChange={setActiveTab}
           totalRequired={totalRequired}

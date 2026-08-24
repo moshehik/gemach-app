@@ -200,17 +200,36 @@ export default function OrdersPage() {
   const [aiQueryUsed, setAiQueryUsed] = useState('');
   const [isAiModeActive, setIsAiModeActive] = useState(false);
 
+  // draft_orders_show_as_deleted (SystemSetting, default "true"): when on, autosaved-but-never-
+  // finished 'טיוטה' orders are shown to staff as deleted instead of surfacing their own confusing
+  // "טיוטות" tab (real bug report - see calculateOrderStatus in lib/orderStatus.js for the actual
+  // status-string swap, and app/api/orders/route.js for the matching "מחוקים" query change).
+  const [draftsAsDeleted, setDraftsAsDeleted] = useState(true);
+
   useEffect(() => {
     let cancelled = false;
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
       .then(data => {
-        const setting = Array.isArray(data) ? data.find(s => s.key === 'inventory_hold_minutes') : null;
-        const parsed = parseInt(setting?.value, 10);
-        if (!cancelled && !isNaN(parsed) && parsed > 0) setHoldMinutes(parsed);
+        if (cancelled || !Array.isArray(data)) return;
+        const holdSetting = data.find(s => s.key === 'inventory_hold_minutes');
+        const parsed = parseInt(holdSetting?.value, 10);
+        if (!isNaN(parsed) && parsed > 0) setHoldMinutes(parsed);
+
+        const draftsSetting = data.find(s => s.key === 'draft_orders_show_as_deleted');
+        if (draftsSetting) setDraftsAsDeleted(draftsSetting.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  // אם הוגדר להציג טיוטות כמחוקות אבל נשאר מצב-כתובת ישן על 'drafts' (טאב שהוסתר), נופלים
+  // חזרה לתצוגת ברירת המחדל במקום להשאיר סינון שבור/בלתי-נגיש דרך ה-UI.
+  useEffect(() => {
+    if (draftsAsDeleted && filterStatus === 'drafts') {
+      setFilterStatus('soon');
+      setPage(1);
+    }
+  }, [draftsAsDeleted, filterStatus]);
 
   // בניית ה-query דרך prefetchRoutes כדי שה-prefetch מדפים אחרים ייצר
   // את אותו מפתח מטמון בדיוק, תו בתו.
@@ -345,7 +364,7 @@ export default function OrdersPage() {
 
   const handleDeleteOrder = async (order, e) => {
     e.stopPropagation();
-    const status = calculateOrderStatus(order);
+    const status = calculateOrderStatus(order, { draftsAsDeleted });
     if (status === 'הוחזר' || status === 'הוחזר חלקי' || status === 'הושכר' || status === 'הושכר חלקי') {
       alert('לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר');
       return;
@@ -391,7 +410,7 @@ export default function OrdersPage() {
       const data = await res.json();
       return (data.data || []).map(o => ({
         ...o,
-        status: calculateOrderStatus(o),
+        status: calculateOrderStatus(o, { draftsAsDeleted }),
         paymentStatus: calculatePaymentStatus(o.totalAmount || 0, o.totalPaid || 0)
       }));
     } catch (e) {
@@ -429,7 +448,7 @@ export default function OrdersPage() {
           <ExportButtons
             data={orders.map(o => ({
               ...o,
-              status: calculateOrderStatus(o)
+              status: calculateOrderStatus(o, { draftsAsDeleted })
             }))}
             filename="הזמנות"
             columns={[
@@ -492,10 +511,13 @@ export default function OrdersPage() {
           <svg className="icon"><use href="#i-alert-circle" /></svg>
           לא שולם
         </button>
-        <button type="button" onClick={() => { setFilterStatus('drafts'); setPage(1); }} className={filterStatus === 'drafts' ? 'pill-tab active' : 'pill-tab'} title="טיוטות">
-          <svg className="icon"><use href="#i-edit" /></svg>
-          טיוטות
-        </button>
+        {/* מוסתר כש-draft_orders_show_as_deleted דלוק: טיוטות שלא הושלמו מוצגות כ"מחוק" ולא כטאב נפרד (ר' ההערה למעלה) */}
+        {!draftsAsDeleted && (
+          <button type="button" onClick={() => { setFilterStatus('drafts'); setPage(1); }} className={filterStatus === 'drafts' ? 'pill-tab active' : 'pill-tab'} title="טיוטות">
+            <svg className="icon"><use href="#i-edit" /></svg>
+            טיוטות
+          </button>
+        )}
         <button type="button" onClick={() => { setFilterStatus('all'); setPage(1); }} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
           <svg className="icon"><use href="#i-list" /></svg>
           הכל
@@ -762,7 +784,7 @@ export default function OrdersPage() {
                     </td>
                     <td>
                       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'nowrap', alignItems: 'center' }}>
-                        <span className={`badge ${getStatusBadgeClass(calculateOrderStatus(order))}`}>{calculateOrderStatus(order)}</span>
+                        <span className={`badge ${getStatusBadgeClass(calculateOrderStatus(order, { draftsAsDeleted }))}`}>{calculateOrderStatus(order, { draftsAsDeleted })}</span>
                         <span className={`badge ${getPaymentBadgeClass(calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0))}`}>{calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0)}</span>
                       </div>
                     </td>
@@ -933,7 +955,7 @@ export default function OrdersPage() {
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
               <span style={{ color: 'var(--text-2)' }}>סטטוס פריטים:</span>
-              <span className={`badge ${getStatusBadgeClass(calculateOrderStatus(hoveredOrder))}`}>{calculateOrderStatus(hoveredOrder)}</span>
+              <span className={`badge ${getStatusBadgeClass(calculateOrderStatus(hoveredOrder, { draftsAsDeleted }))}`}>{calculateOrderStatus(hoveredOrder, { draftsAsDeleted })}</span>
             </div>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
               <span style={{ color: 'var(--text-2)' }}>סטטוס תשלום:</span>

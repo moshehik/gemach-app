@@ -62,7 +62,10 @@ export default function ModernOrderCard({
   onOrderUpdate,
   onQuickScan,
   onWalletClick,
-  tabContents
+  tabContents,
+  // draft_orders_show_as_deleted (SystemSetting) - see lib/orderStatus.js calculateOrderStatus;
+  // when on, an autosaved-but-never-finished order shows this badge as "מחוק" instead of "טיוטה".
+  draftsAsDeleted = false
 }) {
   const [scanValue, setScanValue] = useState('');
   const [showUnlockModal, setShowUnlockModal] = useState(false);
@@ -76,7 +79,7 @@ export default function ModernOrderCard({
     && Math.round(debt * 100) === Math.round(openedDebt * 100);
   const saveNeedsApproval = debt > 0 && !debtUnchangedSinceOpen;
 
-  const orderStatus = calculateOrderStatus(order);
+  const orderStatus = calculateOrderStatus(order, { draftsAsDeleted });
 
   const customer = order.customer;
   const customerName = customer ? [customer.firstName, customer.lastName].filter(Boolean).join(' ') : 'לא נבחר לקוח';

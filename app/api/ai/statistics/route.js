@@ -4,17 +4,23 @@ import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
 import { HDate } from '@hebcal/core';
 import { getHebrewYearContext, processHebrewDateMacro } from '../../../../lib/hebrewDate';
+import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../../lib/orderReservation';
 
+// Types below mirror prisma/schema.prisma: all `id` / foreign-key columns are UUID strings
+// (Prisma's `@id @default(uuid())`), never numeric, except Order.orderId/legacyId/DressModel
+// fields explicitly typed Int. Getting this wrong makes the AI emit numeric comparisons like
+// "id" = 5 against a UUID column, which fail or silently return nothing.
 const SCHEMA_MAP = {
-  customers: "model Customer { id Int, firstName String, lastName String, phone1 String, phone2 String, city String, street String, houseNum Int, email String, notes String, isDeleted Boolean }",
-  orders: "model Order { id Int, orderId Int, customerId Int, totalAmount Float, paymentDate DateTime, paymentMethod String, status String, isPaid Boolean, isDeleted Boolean, eventDate DateTime, returnDate DateTime }",
-  dresses: "model DressItem { id Int, dressModelId Int, dressName String, barcodePrefix Int, sizeText String, serialNumber Int, dressBarcode String, location String, locationNum Int, quantity Int, inRepair Boolean, notInUse Boolean }",
-  rentals: "model OrderItem { id Int, orderId Int, dressItemId Int, price Float, sizeText String, finalPrice Float, isTaken Boolean, isReturned Boolean, returnedOk Boolean }"
+  customers: "model Customer { id String (UUID), legacyId Int, firstName String, lastName String, phone1 String, phone2 String, city String, street String, houseNum Int, email String, notes String, isDeleted Boolean }",
+  orders: "model Order { id String (UUID), orderId Int, legacyId Int, customerId String (UUID, FK->Customer.id), totalAmount Float, paymentDate DateTime, paymentMethod String, status String, isPaid Boolean, isDeleted Boolean, eventDate DateTime, eventDateHebrew String, orderDate DateTime, returnDate DateTime }",
+  dresses: "model DressItem { id String (UUID), legacyId Int, dressModelId String (UUID, FK->DressModel.id), dressName String, barcodePrefix Int, sizeText String, serialNumber Int, dressBarcode String, location String, locationNum Int, quantity Int, inRepair Boolean, notInUse Boolean, isDeleted Boolean }",
+  dressModels: "model DressModel { id String (UUID), legacyId Int, name String, barcodePrefix Int, priceCategory String, isDeleted Boolean } -- the dress DESIGN; DressItem.dressModelId joins here for the model's name/category. DressItem.dressName mirrors DressModel.name and can be used directly without a join.",
+  rentals: "model OrderItem { id String (UUID), legacyId Int, orderId Int (FK->Order.orderId), dressItemId String (UUID, FK->DressItem.id), price Float, sizeText String, finalPrice Float, isTaken Boolean, isReturned Boolean, returnedOk Boolean, isDeleted Boolean }"
 };
 
-const SYSTEM_PROMPT = `You are a helpful and smart AI statistics assistant for a dress rental management system. 
+const SYSTEM_PROMPT = `You are a helpful and smart AI statistics assistant for a dress rental management system.
 You have access to the PostgreSQL database.
-When the user asks a statistics question, you must FIRST output ONLY a valid PostgreSQL SQL query starting with the exact prefix "SQL: ". 
+When the user asks a statistics question, you must FIRST output ONLY a valid PostgreSQL SQL query starting with the exact prefix "SQL: ".
 
 Rules for SQL query generation:
 1. Do NOT include markdown formatting or backticks around the SQL query.
@@ -25,6 +31,7 @@ Rules for SQL query generation:
 6. If it's a general question that doesn't need database access, just answer it naturally in Hebrew without the "SQL: " prefix.
 7. CRITICAL RULE FOR DELETED/INACTIVE DATA: Whenever you query ANY table (e.g. "Customer", "Order", "DressItem", "DressModel", "OrderItem"), you MUST ALWAYS filter out deleted items by adding '"isDeleted" = false' to your WHERE clause. For "DressItem", also add '"notInUse" = false' and '"inRepair" = false' unless explicitly asked about them. Never include deleted or inactive records in counts or lists unless the user specifically asks for them.
 8. VERY IMPORTANT FOR DATES: For Gregorian dates, use 'YYYY-MM-DD'. If the user searches by Hebrew date, DO NOT GUESS THE GREGORIAN DATE! Instead, use the exact macro HEBREW_DATE(day, 'MONTH', year) in your SQL string, and we will replace it automatically. Example: "eventDate" = HEBREW_DATE(10, 'SIVAN', 5786). Month must be one of: NISAN, IYYAR, SIVAN, TAMUZ, AV, ELUL, TISHREI, CHESHVAN, KISLEV, TEVET, SHVAT, ADAR_I, ADAR_II. If year is unknown, use the current Hebrew year from context.
+9. CRITICAL RULE FOR DRAFT/PLACEHOLDER ORDERS: The "Order" table's "status" column can hold two internal placeholder values that are NOT real orders and must NEVER be counted, summed, or listed as orders/rentals/revenue unless the user explicitly asks about drafts or placeholders: '${DRAFT_ORDER_STATUS}' (an unfinished order the new-order screen autosaved and the employee never completed) and '${RESERVED_ORDER_STATUS}' (a temporary row that only reserves an order number for a card charge). Whenever you query or aggregate "Order" (directly, or by joining through it from "OrderItem"/"Payment"/"PaymentObligation"), you MUST add '"status" NOT IN (''${DRAFT_ORDER_STATUS}'', ''${RESERVED_ORDER_STATUS}'')' to your WHERE clause in addition to the isDeleted filter.
 `;
 
 export async function POST(req) {

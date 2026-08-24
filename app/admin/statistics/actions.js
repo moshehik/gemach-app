@@ -1,6 +1,14 @@
 'use server';
 
 import prisma from '../../lib/prisma';
+import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
+
+// Draft ("טיוטה" - an unfinished order the new-order screen autosaved and the employee
+// never completed) and reservation-placeholder ("שמור לחיוב" - a row that only reserves an
+// order number for a card charge) rows are not real orders. Every statistic below aggregates
+// "Order" and must exclude them the same way app/api/orders/route.js does, or draft carts
+// with real totalAmount/items would quietly inflate counts, revenue and model/size totals.
+const REAL_ORDER_STATUS_FILTER = { notIn: [DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS] };
 
 export async function getAlterationsSetting() {
   try {
@@ -27,12 +35,12 @@ export async function getDailyStatistics(startDate, endDate) {
   end.setHours(23, 59, 59, 999);
 
   const orders = await prisma.order.findMany({
-    where: { orderDate: { gte: start, lte: end }, isDeleted: false },
+    where: { orderDate: { gte: start, lte: end }, isDeleted: false, status: REAL_ORDER_STATUS_FILTER },
     select: { orderDate: true, totalAmount: true, items: { select: { id: true } } }
   });
 
   const returnedItems = await prisma.orderItem.findMany({
-    where: { returnDate: { gte: start, lte: end }, isDeleted: false, isReturned: true }
+    where: { returnDate: { gte: start, lte: end }, isDeleted: false, isReturned: true, order: { status: REAL_ORDER_STATUS_FILTER } }
   });
 
   // Group by day string
@@ -62,7 +70,7 @@ export async function getStatisticsByModel(startDate, endDate) {
   const end = endDate ? new Date(endDate) : new Date('2100-01-01');
   
   const items = await prisma.orderItem.findMany({
-    where: { order: { eventDate: { gte: start, lte: end }, isDeleted: false }, isDeleted: false },
+    where: { order: { eventDate: { gte: start, lte: end }, isDeleted: false, status: REAL_ORDER_STATUS_FILTER }, isDeleted: false },
     include: { dressItem: { include: { dress: true } } }
   });
 
@@ -84,7 +92,7 @@ export async function getStatisticsBySize(startDate, endDate) {
   const end = endDate ? new Date(endDate) : new Date('2100-01-01');
   
   const items = await prisma.orderItem.findMany({
-    where: { order: { eventDate: { gte: start, lte: end }, isDeleted: false }, isDeleted: false }
+    where: { order: { eventDate: { gte: start, lte: end }, isDeleted: false, status: REAL_ORDER_STATUS_FILTER }, isDeleted: false }
   });
 
   const grouped = {};
@@ -105,9 +113,13 @@ export async function getSeamstressWork(startDate, endDate) {
   const end = endDate ? new Date(endDate) : new Date('2100-01-01');
   
   const items = await prisma.orderItem.findMany({
-    where: { 
-      order: { eventDate: { gte: start, lte: end }, isDeleted: false }, 
+    where: {
+      order: { eventDate: { gte: start, lte: end }, isDeleted: false, status: REAL_ORDER_STATUS_FILTER },
       isDeleted: false,
+      // "load" means work still owed to the seamstress - once an alteration is marked done
+      // (/alterations "בוצע"), it's finished work, not a pending load. The legacy Access
+      // report (תופרות_עבודות_לפי_ימים) excluded בוצע_תיקון=True rows the same way.
+      alterationDone: false,
     },
     include: { order: true }
   });
@@ -139,7 +151,7 @@ export async function getPaymentStatistics(startDate, endDate) {
   const end = endDate ? new Date(endDate) : new Date();
 
   const orders = await prisma.order.findMany({
-    where: { orderDate: { gte: start, lte: end }, isDeleted: false },
+    where: { orderDate: { gte: start, lte: end }, isDeleted: false, status: REAL_ORDER_STATUS_FILTER },
     include: { payments: true, customer: true }
   });
 

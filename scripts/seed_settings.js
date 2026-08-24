@@ -19,7 +19,8 @@ async function main() {
     { key: "cancel_order_permission", name: "הרשאה לביטול הזמנה", value: "מנהל", category: "הזמנות", notes: "מי מורשה לבטל הזמנה", type: "text" },
     { key: "reserve_permission", name: "הרשאה לשימוש ברזרבה", value: "מנהל", category: "הזמנות", notes: "מי מורשה לאשר שמלות רזרבה", type: "text" },
     { key: "mandatory_fields", name: "שדות חובה", value: "טלפון_1,שם_משפחה", category: "הזמנות", notes: "שדות חובה במילוי פרטי הזמנה", type: "text" },
-    
+    { key: "draft_orders_show_as_deleted", name: "הצג הזמנות טיוטה כמחוקות", value: "true", category: "הזמנות", notes: "כשמופעל, הזמנות טיוטה שנשמרו אוטומטית ולא הושלמו מוצגות בסטטוס/סינון \"מחוק\" במקום בטאב \"טיוטות\" נפרד", type: "boolean" },
+
     { key: "gmach_name", name: "שם הגמ\"ח", value: "מכובד", category: "כללי", notes: "שם המערכת / הגמ\"ח", type: "text" },
     { key: "gmach_subtitle", name: "כותרת משנה", value: "השכרת שמלות", category: "כללי", notes: "כותרת שמופיעה מתחת לשם הגמ\"ח", type: "text" },
     { key: "main_email", name: "מייל ראשי", value: "amechubad@gmail.com", category: "כללי", notes: "מוצג בדפי הלקוח / הדפסה", type: "text" },
