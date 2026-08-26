@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { verifySecret } from '@/lib/passwordAuth';
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
-    const { orderId, barcode, itemIdToForce } = await request.json();
+    const { orderId, barcode, itemIdToForce, overridePin, overrideEmployeeId } = await request.json();
 
     if (!orderId || !barcode) {
       return NextResponse.json({ error: 'חסרים נתונים (מספר הזמנה או ברקוד)' }, { status: 400 });
@@ -23,9 +25,7 @@ export async function POST(request) {
         where: { dressBarcode: barcode },
         include: { dress: true }
       }),
-      prisma.systemSetting.findUnique({
-        where: { key: 'inventory_include_warehouse' }
-      })
+      getCachedSetting('inventory_include_warehouse')
     ]);
 
     if (!order) {
@@ -50,15 +50,39 @@ export async function POST(request) {
 
     const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
 
+    // חסימת רזרבה/מחסן ניתנת לעקיפה באישור מנהל - יש מצבים בפועל שבהם שמלה
+    // שמסומנת רזרבה/מחסן כן ניתנת להוצאה, וזו החלטה תפעולית של מנהל. האימות
+    // נעשה כאן בשרת (לא סומך על דגל overrideReserved מהלקוח) - הלקוח שולח את
+    // הסיסמה שהמנהל הקליד (overridePin/overrideEmployeeId) ואנו מוודאים אותה
+    // מול ה-DB בדיוק כמו /api/auth/verify-pin, כדי שעובד רגיל לא יוכל לשלוח
+    // בקשה ישירה עם overrideReserved=true ולעקוף את החסימה בלי אישור מנהל אמיתי.
     if (!includeWarehouse && dressItem.location) {
       const locLower = dressItem.location.toLowerCase();
-      if (
+      const isReserved = (
         locLower.includes('מחסן') ||
         locLower.includes('רזרבה') ||
         locLower.includes('warehouse') ||
         locLower.includes('reserve')
-      ) {
-        return NextResponse.json({ error: `הפריט עם ברקוד ${barcode} נמצא ב"${dressItem.location}" (רזרבה/מחסן) ולא ניתן להשכרה` }, { status: 400 });
+      );
+      if (isReserved) {
+        let overrideVerified = false;
+        if (overridePin) {
+          const candidates = await prisma.employee.findMany({
+            where: { isActive: true, ...(overrideEmployeeId ? { id: overrideEmployeeId } : {}) }
+          });
+          for (const candidate of candidates) {
+            if ((candidate.roleId === 1 || candidate.roleId === 2) && await verifySecret(overridePin, candidate.password)) {
+              overrideVerified = true;
+              break;
+            }
+          }
+        }
+        if (!overrideVerified) {
+          return NextResponse.json({
+            error: `הפריט עם ברקוד ${barcode} נמצא ב"${dressItem.location}" (רזרבה/מחסן) ולא ניתן להשכרה`,
+            reservedLocation: true
+          }, { status: 400 });
+        }
       }
     }
 

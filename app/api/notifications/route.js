@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { parseIdList } from '../../../lib/notificationLists';
@@ -113,9 +114,7 @@ export async function POST(request) {
 
     // Always try to send emails, filtering by receiveEmailAlerts
     try {
-      const settings = await prisma.systemSetting.findMany({
-        where: { key: { in: ['email_link_a', 'email_link_b', 'email_routing_strategy', 'gmach_name'] } }
-      });
+      const settings = (await getAllCachedSettings()).filter(s => ['email_link_a', 'email_link_b', 'email_routing_strategy', 'gmach_name'].includes(s.key));
       const linkA = settings.find(s => s.key === 'email_link_a')?.value;
       const linkB = settings.find(s => s.key === 'email_link_b')?.value;
       const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';

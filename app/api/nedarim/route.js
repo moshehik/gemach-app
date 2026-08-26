@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { chargeNedarimPlus } from '../../lib/nedarim';
 import prisma from '../../lib/prisma'; // Optional: if you need to fetch mosadId from settings
 import { checkAuth } from '../../../lib/auth';
@@ -10,7 +11,7 @@ export async function POST(request) {
   try {
     const data = await request.json();
 
-    const enabledSetting = await prisma.systemSetting.findUnique({ where: { key: 'nedarim_plus_enabled' } });
+    const enabledSetting = await getCachedSetting('nedarim_plus_enabled');
     if (enabledSetting && enabledSetting.value === 'false') {
       return NextResponse.json({ success: false, error: 'סליקת אשראי בנדרים פלוס מושבתת בהגדרות המערכת.' }, { status: 400 });
     }
@@ -21,14 +22,7 @@ export async function POST(request) {
 
     if (!mosadId) {
       // Check database settings
-      const setting = await prisma.systemSetting.findFirst({
-        where: { 
-          OR: [
-            { key: 'nedarimMosadId' },
-            { key: 'NEDARIM_MOSAD' }
-          ]
-        }
-      });
+      const setting = (await getAllCachedSettings()).find(s => s.key === 'nedarimMosadId' || s.key === 'NEDARIM_MOSAD') || null;
       if (setting && setting.value) {
         mosadId = setting.value;
       } else {
@@ -44,7 +38,7 @@ export async function POST(request) {
     // Optional API token (nedarim_plus_token) - some Mosad accounts require it
     // alongside the Mosad ID; stored encrypted, see lib/secretCrypto.js.
     let token = '';
-    const tokenSetting = await prisma.systemSetting.findUnique({ where: { key: 'nedarim_plus_token' } });
+    const tokenSetting = await getCachedSetting('nedarim_plus_token');
     if (tokenSetting?.value && isEncryptedSecret(tokenSetting.value)) {
       try {
         token = decryptSecret(tokenSetting.value);

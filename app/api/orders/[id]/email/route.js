@@ -1,11 +1,19 @@
 import { NextResponse } from 'next/server';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../../../lib/prisma';
-import { getHebrewDateString } from '../../../../../lib/hebrewDate';
+import { getHebrewDateString, getHebrewWeekdayLabel } from '../../../../../lib/hebrewDate';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
 import { renderGenericEmailHtml } from '../../../../../lib/emailTemplates';
+import { addDaysSkippingWeekends } from '../../../../../lib/inventory';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
 const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
+
+// "פרטי החזרה" top-of-rental-report line - same best-effort logic as app/print/order/page.js
+// (no dedicated return-deadline field/SystemSetting exists for the standard flow); this is a
+// server-only route so it imports the same lib/inventory.js helper directly, no bundle-size
+// concern the client-side print page has (which uses the lib/clientInventory.js copy instead).
+const STANDARD_RETURN_HOUR = '13:00';
 
 // Minimal inline SVGs (lucide-react's shirt/scissors/ruler/check paths) - the emailed
 // report is a raw HTML string, not JSX, so icon components can't be imported here.
@@ -64,7 +72,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'הזמנה לא נמצאה' }, { status: 404 });
     }
 
-    const settingsData = await prisma.systemSetting.findMany();
+    const settingsData = await getAllCachedSettings();
     const enableAlterations = settingsData.find(s => s.key === 'enable_alterations')?.value !== 'false';
     const printSettings = {
       box1: settingsData.find(s => s.key === 'print_rental_box1')?.value || '',
@@ -242,6 +250,10 @@ export async function POST(request, { params }) {
       </div>
     `;
 
+    const returnByDate = order.toDate || order.returnDate
+      ? new Date(order.toDate || order.returnDate)
+      : (order.eventDate ? addDaysSkippingWeekends(order.eventDate, 1) : null);
+
     // Visual design mirrors app/print/order/page.js exactly (same "style_19" mockup the owner
     // picked) so the emailed report and the in-app printed report look identical. Colors are
     // hardcoded (no CSS custom properties) since this HTML is rendered outside the app's CSS
@@ -259,6 +271,8 @@ export async function POST(request, { params }) {
           .invoice-box { width: 100%; max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; box-sizing: border-box; }
 
           .bsd { text-align: right; font-size: 13px; font-weight: 600; color: #999; margin-bottom: 6px; letter-spacing: 0.5px; }
+          .return-details-box { border: 1.5px solid #333; border-radius: 4px; padding: 10px 15px; margin-bottom: 20px; text-align: center; font-size: 15px; color: #262626; background-color: #f4f4f4; }
+          .return-details-box strong { color: #111; }
           .print-header { text-align: center; border-bottom: 1px solid #eaeaea; padding-bottom: 22px; margin-bottom: 32px; }
           .print-header h1 { margin: 0 0 8px 0; font-family: 'Frank Ruhl Libre', 'David Libre', serif; font-size: 30px; color: #262626; font-weight: 700; letter-spacing: 0.5px; }
           .company-details { color: #999; font-size: 13px; margin-top: 8px; }
@@ -301,6 +315,7 @@ export async function POST(request, { params }) {
       <body>
         <div class="invoice-box">
           <div class="bsd">בס"ד</div>
+          ${printType === 'rental' && returnByDate ? `<div class="return-details-box"><strong>פרטי החזרה:</strong> ${getHebrewWeekdayLabel(returnByDate)} ${getHebrewDateString(returnByDate)} עד השעה ${STANDARD_RETURN_HOUR}</div>` : ''}
           <div class="print-header">
             <h1>${printSettings.gmachName}</h1>
             <div class="company-details">${[
@@ -319,9 +334,8 @@ export async function POST(request, { params }) {
               </td>
               <td width="50%" class="order-cell">
                 <strong>${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}</strong><br />
-                תאריך הזמנה: ${order.createdAt ? getHebrewDateString(order.createdAt) : '-'}<br />
                 ${(!order.isWeekdayEvent && !order.isAbroad) ? `תאריך אירוע: ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}` : 'סוג אירוע: אירוע חו"ל'}
-                ${printType === 'order' && order.notes ? `<br />הערות: ${order.notes}` : ''}
+                ${order.notes ? `<br />הערות: ${order.notes}` : ''}
               </td>
             </tr>
           </table>
@@ -370,7 +384,7 @@ export async function POST(request, { params }) {
 
           ${printType === 'rental' ? `
             <div class="terms">
-              <strong>תנאים:</strong> הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב. אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
+              אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
             </div>
           ` : `
             <div class="terms">

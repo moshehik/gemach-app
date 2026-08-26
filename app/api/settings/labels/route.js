@@ -1,5 +1,6 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { checkAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -10,9 +11,7 @@ export const dynamic = 'force-dynamic';
 // admin-only (see POST below).
 export async function GET() {
   try {
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'ui_labels_mapping' }
-    });
+    const setting = await getCachedSetting('ui_labels_mapping');
 
     if (!setting || !setting.value) {
       return NextResponse.json({});

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { generateContent } from '../../../lib/ai/gemini';
 import { checkAuth } from '../../../lib/auth';
 import { getBulkAvailableInventory } from '../../../lib/inventory';
@@ -99,7 +100,7 @@ export async function POST(req) {
     const dateContext = `\nCRITICAL DATE CONTEXT: Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. You MUST use this as the anchor to calculate any relative dates or Hebrew dates provided by the user. For example, if the user asks for a date in the current Hebrew year, it is the year ${todayHebrew.split(' ').pop()}.
 Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearContext()}.`;
     
-    const warehouseSetting = await prisma.systemSetting.findUnique({ where: { key: 'inventory_include_warehouse' } });
+    const warehouseSetting = await getCachedSetting('inventory_include_warehouse');
     const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
     const warehouseContext = includeWarehouse ? '' : `\nCRITICAL INVENTORY RULE: The system settings define that dresses in the warehouse MUST NOT be shown to customers! Whenever you query the "DressItem" table in SQL, you MUST add: AND "location" NOT ILIKE '%מחסן%' AND "location" NOT ILIKE '%warehouse%' AND "location" NOT ILIKE '%רזרבה%' AND "location" NOT ILIKE '%reserve%'.`;
     

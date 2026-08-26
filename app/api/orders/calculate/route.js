@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import prisma from '@/app/lib/prisma';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 
 export async function POST(request) {
   try {
@@ -11,8 +12,8 @@ export async function POST(request) {
       return NextResponse.json({ totalAmount: 0, items: [] });
     }
 
-    // 1. Fetch settings and pricelist
-    const settings = await prisma.systemSetting.findMany();
+    // 1. Fetch settings and pricelist (cached)
+    const settings = await getAllCachedSettings();
     const getSetting = (key, def) => {
       const setting = settings.find(s => s.key === key);
       return setting ? setting.value : def;

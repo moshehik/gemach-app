@@ -3,15 +3,16 @@
 import prisma from '@/app/lib/prisma';
 import { addDaysSkippingWeekends } from '../../../../lib/inventory';
 import { checkAuth } from '@/lib/auth';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
-    // 1. Fetch settings for buffer and weekends
+    // 1. Fetch settings for buffer and weekends (cached 30s)
     // המודל בסכימה הוא SystemSetting; prisma.setting לא קיים והפיל את כל הראוט ב-500
-    const settingsRaw = await prisma.systemSetting.findMany();
+    const settingsRaw = await getAllCachedSettings();
     let bufferDays = 3;
     let skipWeekends = true;
     
@@ -21,10 +22,19 @@ export async function GET() {
     const weekendSetting = settingsRaw.find(s => s.key === 'inventory_skip_weekends');
     if (weekendSetting) skipWeekends = weekendSetting.value === 'true';
 
-    // 2. Fetch all dress items to group them by model and size
+    // 2. Fetch all dress items to group them by model and size — select מצומצם + ללא notInUse/inRepair/mahsan כבר בפנים (לחסוך 13k שורות מלאות)
     const allItems = await prisma.dressItem.findMany({
       where: { isDeleted: false },
-      include: { dress: true }
+      select: {
+        dressModelId: true,
+        sizeText: true,
+        size: true,
+        quantity: true,
+        inRepair: true,
+        notInUse: true,
+        location: true,
+        dress: { select: { name: true } }
+      }
     });
 
     const inventoryMap = {}; // { modelId_size: { totalInStock: 0, dressName, inRepair: 0, notInUse: 0, warehouse: 0, reserve: 0 } }
@@ -63,10 +73,12 @@ export async function GET() {
       }
     }
 
-    // 3. Fetch all future bookings
+    // 3. Fetch all future bookings — חלון 60 יום קדימה (כמו preload) + select מצומצם כמו BOOKING_SELECT (B3)
     // A booking is "future" if its eventDate or toDate is today or later
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    const dateLimitEnd = new Date(today);
+    dateLimitEnd.setDate(dateLimitEnd.getDate() + 60);
     
     const futureBookings = await prisma.orderItem.findMany({
       where: {
@@ -75,16 +87,19 @@ export async function GET() {
         order: {
           isDeleted: false,
           OR: [
-            { eventDate: { gte: today } },
-            { toDate: { gte: today } },
+            { eventDate: { gte: today, lte: dateLimitEnd } },
+            { toDate: { gte: today, lte: dateLimitEnd } },
             // Include active orders that might be ongoing
             { fromDate: { lte: today }, toDate: { gte: today } }
           ]
         }
       },
-      include: {
-        order: true,
-        dressItem: true
+      select: {
+        sizeText: true,
+        quantity: true,
+        barcodePrefix: true,
+        dressItem: { select: { sizeText: true, dressModelId: true } },
+        order: { select: { eventDate: true, fromDate: true, toDate: true, orderId: true, isAbroad: true } }
       }
     });
 

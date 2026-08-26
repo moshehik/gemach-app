@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 import { checkAuth } from '@/lib/auth';
 import { calculateOrderStatus } from '@/lib/orderStatus';
 import { getHebrewDateString } from '@/lib/hebrewDate';
@@ -52,9 +53,8 @@ export async function GET(request) {
     const { searchParams } = new URL(request.url);
     const requestedDate = parseDateParam(searchParams.get('date'));
 
-    const settingsRows = await prisma.systemSetting.findMany({
-      where: { key: { in: ['delivery_days_before', 'delivery_days_after'] } }
-    });
+    const allSettings = await getAllCachedSettings();
+    const settingsRows = allSettings.filter(s => ['delivery_days_before', 'delivery_days_after'].includes(s.key));
     const settingsMap = settingsRows.reduce((acc, s) => ({ ...acc, [s.key]: s.value }), {});
     const parsedBefore = parseInt(settingsMap.delivery_days_before, 10);
     const parsedAfter = parseInt(settingsMap.delivery_days_after, 10);

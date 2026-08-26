@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 import { checkAuth } from '@/lib/auth';
 
 export const dynamic = 'force-dynamic';
@@ -32,11 +33,7 @@ export async function GET(request) {
     dateLimitEnd.setDate(dateLimitEnd.getDate() + 60);
 
     // 1. Fetch system settings
-    const settingsRaw = await prisma.systemSetting.findMany({
-      where: {
-        key: { in: ['inventory_buffer_days', 'inventory_skip_weekends', 'inventory_include_warehouse', 'inventory_hold_minutes'] }
-      }
-    });
+    const settingsRaw = (await getAllCachedSettings()).filter(s => ['inventory_buffer_days', 'inventory_skip_weekends', 'inventory_include_warehouse', 'inventory_hold_minutes'].includes(s.key));
 
     let bufferDays = 3;
     let skipWeekends = true;

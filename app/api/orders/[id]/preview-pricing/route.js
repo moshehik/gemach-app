@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 import { computeOrderObligations } from '@/lib/pricingEngine';
 
 export const dynamic = 'force-dynamic';
@@ -44,7 +45,7 @@ export async function POST(request, { params }) {
     const [baseOrder, priceList, settings] = await Promise.all([
       prisma.order.findUnique({ where: { orderId: parsedOrderId } }),
       prisma.priceList.findMany(),
-      prisma.systemSetting.findMany({ where: { key: { in: SETTING_KEYS } } })
+      getAllCachedSettings().then(all => all.filter(s => SETTING_KEYS.includes(s.key)))
     ]);
 
     if (!baseOrder) {

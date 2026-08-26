@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 import { recalculateOrderObligations } from '../../../../../lib/pricingEngine';
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../../lib/inventoryHold';
@@ -44,7 +45,7 @@ export async function POST(request, { params }) {
           items: { select: { cartStatus: true, isDeleted: true } }
         }
       }),
-      prisma.systemSetting.findMany()
+      getAllCachedSettings()
     ]);
     if (!order) throw ruleError('הזמנה לא נמצאה');
 

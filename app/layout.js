@@ -5,6 +5,7 @@ import { cookies, headers } from 'next/headers';
 import prisma from './lib/prisma';
 import { readVerifiedSession } from '@/lib/auth';
 import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 
 export const metadata = {
   title: 'גמ"ח שמלות - קטלוג וניהול',
@@ -58,9 +59,9 @@ export default async function RootLayout({ children }) {
   // is skipped entirely — roleId/showAi come from the token (see
   // lib/auth.js; legacy sessions without that cookie use the DB path below,
   // exactly as before).
-  const settingsPromise = prisma.systemSetting.findMany({
-    where: { key: { in: ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries'] } }
-  }).catch(err => {
+  const settingsPromise = getAllCachedSettings().then(all =>
+    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries'].includes(s.key))
+  ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
   });
@@ -136,6 +137,16 @@ export default async function RootLayout({ children }) {
     }
   }
 
+  // שני הטוגלים האלה (ר' /admin/settings) שולטים על הרשאת קטלוג הדגמים ודף
+  // הזיכויים/חובות - ברירת המחדל של שניהם 'true' (ההגבלה שהתבקשה במקור).
+  // הערך בפועל נאכף בשרת ב-app/dashboard/dresses/layout.js ו-app/refunds/layout.js;
+  // כאן רק קובעים אם הקישורים האלה בסיידבר יוצגו בכלל, כדי לא להראות לעובד קישור
+  // שיוביל אותו למסך "אין הרשאה".
+  const restrictDressCatalogSetting = settings.find(s => s.key === 'restrict_dress_catalog_to_head_management');
+  const restrictDressCatalogToHeadManagement = !restrictDressCatalogSetting || restrictDressCatalogSetting.value !== 'false';
+  const restrictRefundsSetting = settings.find(s => s.key === 'restrict_refunds_to_head_management');
+  const restrictRefundsToHeadManagement = !restrictRefundsSetting || restrictRefundsSetting.value !== 'false';
+
   let isManager = false;
   let isHeadManagement = false;
   let employeeShowAi = false;
@@ -166,12 +177,18 @@ export default async function RootLayout({ children }) {
   // שמנהל סניף רגיל (roleId 1) יהיה מחובר, בעקבות דיווחי משתמש מנהל.
   const showAdminTab = isAuthenticated ? isHeadManagement : !requireLogin;
   const showEmployeesTab = isAuthenticated ? isHeadManagement : !requireLogin;
-  const showRefundsTab = isAuthenticated ? isManager : !requireLogin;
+  const showRefundsTab = isAuthenticated
+    ? (restrictRefundsToHeadManagement ? isHeadManagement : isManager)
+    : !requireLogin;
+  const showDressesTab = isAuthenticated
+    ? (restrictDressCatalogToHeadManagement ? isHeadManagement : true)
+    : !requireLogin;
 
   const navGroups = buildNavGroups({
     showAdminTab,
     showEmployeesTab,
     showRefundsTab,
+    showDressesTab,
     enableAlterations,
     showMessages: !hideInternalMessaging,
     showDeliveries,
@@ -550,6 +567,7 @@ function cpCssText(vars) {
               <AppShell
                 navGroups={navGroups}
                 isProgrammer={isProgrammer}
+                isHeadManagement={isHeadManagement}
                 hideErrorReporting={hideErrorReporting}
                 hideInternalMessaging={hideInternalMessaging}
                 authToken={authToken?.value}

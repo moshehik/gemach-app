@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { checkAuth } from '@/lib/auth';
 import prisma from '@/app/lib/prisma';
 import { decryptSecret, isEncryptedSecret } from '@/lib/secretCrypto';
@@ -24,7 +25,7 @@ export async function GET() {
   // The DB-stored, encrypted key (set from the settings page) takes priority over
   // the env var - it's how an admin rotates an expired key without a redeploy.
   let key = process.env.NEON_API_KEY;
-  const stored = await prisma.systemSetting.findUnique({ where: { key: 'neon_api_key' } });
+  const stored = await getCachedSetting('neon_api_key');
   if (stored?.value && isEncryptedSecret(stored.value)) {
     try {
       key = decryptSecret(stored.value);

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
+import { getCachedSetting } from '@/lib/settingsCache';
 
 
 export const dynamic = 'force-dynamic';
@@ -11,7 +12,7 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const eventDateStr = searchParams.get('eventDate');
-    const warehouseSetting = await prisma.systemSetting.findUnique({ where: { key: 'inventory_include_warehouse' } });
+    const warehouseSetting = await getCachedSetting('inventory_include_warehouse');
     const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
     const pageParam = searchParams.get('page');
     const limitParam = searchParams.get('limit');

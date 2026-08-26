@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth, invalidateRequireLoginCache } from '@/lib/auth';
+import { invalidateSettingsCache } from '@/lib/settingsCache';
 import { validateNumericSetting } from '../../lib/settingsValidation';
 import { verifySecret } from '@/lib/passwordAuth';
 import { encryptSecret } from '@/lib/secretCrypto';
@@ -141,6 +142,7 @@ export async function POST(request) {
     // so a toggle takes effect immediately on this server instance (other
     // warm serverless instances converge within the TTL).
     invalidateRequireLoginCache();
+    invalidateSettingsCache();
 
     return NextResponse.json({ success: true, message: 'Settings saved successfully' });
   } catch (error) {

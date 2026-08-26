@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 
@@ -77,9 +78,7 @@ export async function POST(request) {
       }
 
       // Check warehouse setting
-      const warehouseSetting = await prisma.systemSetting.findUnique({
-        where: { key: 'inventory_include_warehouse' }
-      });
+      const warehouseSetting = await getCachedSetting('inventory_include_warehouse');
       const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
 
       if (!includeWarehouse && dressItem.location) {

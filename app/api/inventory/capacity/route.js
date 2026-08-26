@@ -42,7 +42,8 @@ export async function GET(request) {
             ]
           }
         ]
-      }
+      },
+      select: { quantity: true }
     });
     const inStock = inStockItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
 
@@ -58,7 +59,8 @@ export async function GET(request) {
           { location: { contains: 'רזרבה' } },
           { location: { contains: 'reserve' } }
         ]
-      }
+      },
+      select: { quantity: true }
     });
     const reserve = reserveItems.reduce((acc, item) => acc + (item.quantity || 1), 0);
 
@@ -88,13 +90,18 @@ export async function GET(request) {
           eventDate: {
             lte: toDateLimit, // StartA <= EndB
           },
-          // EndA >= StartB -> returnDate (if exists) >= fromDate, OR eventDate >= fromDate
         }
       },
-      include: {
+      select: {
+        quantity: true,
         order: {
-          include: {
-            customer: true
+          select: {
+            id: true,
+            orderId: true,
+            eventDate: true,
+            returnDate: true,
+            eventDateHebrew: true,
+            customer: { select: { firstName: true, lastName: true } }
           }
         }
       }

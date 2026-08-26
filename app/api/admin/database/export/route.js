@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 
 
 import prisma from '@/app/lib/prisma';
@@ -21,7 +22,7 @@ export async function GET(request) {
     const dressItems = await prisma.dressItem.findMany();
     const employees = await prisma.employee.findMany();
     const shifts = await prisma.shift.findMany();
-    const systemSettings = await prisma.systemSetting.findMany();
+    const systemSettings = await getAllCachedSettings();
     const priceLists = await prisma.priceList.findMany();
     const priceRules = await prisma.priceRule.findMany();
 

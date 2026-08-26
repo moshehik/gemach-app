@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
 import { renderErrorReportEmailHtml } from '../../../lib/emailTemplates';
 
@@ -57,8 +58,15 @@ export async function PATCH(request) {
       return NextResponse.json({ success: false, error: 'משתמש לא נמצא' }, { status: 404 });
     }
 
-    const { reportId, status } = await request.json();
-    if (!reportId || !['OPEN', 'ARCHIVED'].includes(status)) {
+    const { reportId, status, isHandled } = await request.json();
+    const statusProvided = status !== undefined;
+    const isHandledProvided = isHandled !== undefined;
+    if (
+      !reportId ||
+      (!statusProvided && !isHandledProvided) ||
+      (statusProvided && !['OPEN', 'ARCHIVED'].includes(status)) ||
+      (isHandledProvided && typeof isHandled !== 'boolean')
+    ) {
       return NextResponse.json({ success: false, error: 'נתונים חסרים או לא תקינים' }, { status: 400 });
     }
 
@@ -71,9 +79,13 @@ export async function PATCH(request) {
       return NextResponse.json({ success: false, error: 'אין לך הרשאה לדיווח זה' }, { status: 403 });
     }
 
+    const data = {};
+    if (statusProvided) data.status = status;
+    if (isHandledProvided) data.isHandled = isHandled;
+
     const updated = await prisma.errorReport.update({
       where: { id: reportId },
-      data: { status },
+      data,
     });
 
     return NextResponse.json({ success: true, report: updated });
@@ -128,11 +140,7 @@ export async function POST(request) {
 
     if (programmers.length > 0) {
       // Determine Script URL from settings
-      const settings = await prisma.systemSetting.findMany({
-        where: {
-          key: { in: ['email_link_a', 'email_link_b', 'email_routing_strategy', 'gmach_name'] }
-        }
-      });
+      const settings = (await getAllCachedSettings()).filter(s => ['email_link_a', 'email_link_b', 'email_routing_strategy', 'gmach_name'].includes(s.key));
       const linkA = settings.find(s => s.key === 'email_link_a')?.value;
       const linkB = settings.find(s => s.key === 'email_link_b')?.value;
       const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';

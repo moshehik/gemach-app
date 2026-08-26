@@ -27,6 +27,8 @@ model Customer {
   registrationDate String? // תאריך_רישום
   officeNotes      String? // נתוני_משרד
   isDeleted        Boolean @default(false) // לקוח_מחוק
+  isBlocked        Boolean @default(false) // חסום מהזמנות חדשות
+  blockedReason    String? // סיבת החסימה
 
   // Bank details for refunds
   bankName        String? // שם בנק
@@ -221,6 +223,7 @@ model DressItem {
   inRepair        Boolean     @default(false) // שמלה_בתיקון
   notInUse        Boolean     @default(false) // לא_בשימוש
   notInUseSince   DateTime? // לא_בשימוש_מתאריך
+  notInUseReason  String? // סיבת אי-שימוש
   entryDateToRepo DateTime? // תאריך_כניסה_למאגר
   isDeleted       Boolean     @default(false) // מחוק
   deletedAt       DateTime? // תאריך_מחיקה
@@ -246,6 +249,7 @@ model Order {
   paymentMethod        String? // צורת_תשלום
   status               String? // סטטוס נגזר מהתשלום
   notes                String? // הערות
+  internalNotes        String?   @db.Text // הערות פנימיות לצוות בלבד - לעולם לא מוצג ללקוח (הדפסה/מייל)
   isPaid               Boolean   @default(false) // שולם
   isDeleted            Boolean   @default(false) // מחוק - הזמנה מבוטלת
   orderNotes           String? // הערות_להזמנה
@@ -281,6 +285,9 @@ model Order {
   @@index([orderDate])
   @@index([isDeleted])
   @@index([status])
+  @@index([fromDate])
+  @@index([toDate])
+  // 2026-08-26 perf: partial indexes for inventory date range (see apply_indexes.js) — Prisma generates simple btree, partial WHERE added manually via SQL
 }
 
 model Payment {
@@ -381,6 +388,8 @@ model OrderItem {
   @@index([isTaken])
   @@index([isReturned])
   @@index([takenDate])
+  @@index([barcodePrefix, isReturned])
+  // 2026-08-26: trigram GIN indexes on Customer (firstName/lastName/phone1/phone2) and partial OrderItem/Order indexes created via direct SQL (pg_trgm) — not expressible in Prisma @@index, see apply_indexes.js
 }
 
 model PriceList {
@@ -559,6 +568,7 @@ model ErrorReport {
   status             String    @default("OPEN")
   isReadByUser       Boolean   @default(true)
   isReadByProgrammer Boolean   @default(false)
+  isHandled          Boolean   @default(false) // סומן ע"י המשתמש/מתכנת כ"טופל" — עצמאי מ-status/ארכיון, נועד רק להבחנה חזותית ברשימה כדי למנוע פתיחות חוזרות
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

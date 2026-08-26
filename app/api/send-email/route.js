@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 import { verifyEmployeeCredentials } from '../../../lib/employeeAuth';
 import { verifySecret } from '@/lib/passwordAuth';
 import { renderGenericEmailHtml } from '../../../lib/emailTemplates';
@@ -50,11 +51,7 @@ export async function POST(request) {
     const finalFileContent = fileContent || Buffer.from('נשלח ממערכת הגמ"ח').toString('base64');
 
     // 3. Call Google Apps Script - Get URL from settings
-    const settings = await prisma.systemSetting.findMany({
-      where: {
-        key: { in: ['email_link_a', 'email_link_b', 'email_routing_strategy', 'gmach_name'] }
-      }
-    });
+    const settings = (await getAllCachedSettings()).filter(s => ['email_link_a', 'email_link_b', 'email_routing_strategy', 'gmach_name'].includes(s.key));
     const linkA = settings.find(s => s.key === 'email_link_a')?.value;
     const linkB = settings.find(s => s.key === 'email_link_b')?.value;
     const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';

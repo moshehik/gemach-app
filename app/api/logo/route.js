@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '@/app/lib/prisma';
 
 export async function GET() {
   try {
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'BRAND_LOGO' }
-    });
+    const setting = await getCachedSetting('BRAND_LOGO');
 
     if (!setting || !setting.value) {
       // Return a 404 or a transparent 1x1 pixel image

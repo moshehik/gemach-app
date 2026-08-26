@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -105,7 +106,7 @@ export async function GET(request, { params }) {
       prisma.refund.findMany({ where: { orderId: parsedOrderId } }),
       prisma.priceList.findMany({ select: { id: true, legacyId: true, category: true, description: true, fromSize: true, toSize: true, price: true } }),
       prisma.paymentObligation.findMany({ where: { orderId: parsedOrderId } }),
-      prisma.systemSetting.findMany({ where: { key: { in: RECALC_SETTING_KEYS } } })
+      getAllCachedSettings().then(all => all.filter(s => RECALC_SETTING_KEYS.includes(s.key)))
     ]);
 
     let obligations = obligationsRaw;
@@ -310,9 +311,7 @@ export async function PUT(request, { params }) {
     let inventoryBufferDays = 3;
     let inventorySkipWeekends = true;
     if (hasNewItems) {
-      const inventorySettings = await prisma.systemSetting.findMany({
-        where: { key: { in: ['inventory_buffer_days', 'inventory_skip_weekends'] } }
-      });
+      const inventorySettings = (await getAllCachedSettings()).filter(s => ['inventory_buffer_days', 'inventory_skip_weekends'].includes(s.key));
       const bufferSetting = inventorySettings.find(s => s.key === 'inventory_buffer_days');
       if (bufferSetting && !isNaN(parseInt(bufferSetting.value, 10))) {
         inventoryBufferDays = parseInt(bufferSetting.value, 10);
@@ -485,6 +484,7 @@ export async function PUT(request, { params }) {
           toDate: parsedToDate,
           customSpacing: data.customSpacing !== undefined ? (data.customSpacing === null || data.customSpacing === '' ? null : parseInt(data.customSpacing, 10)) : undefined,
           notes: data.notes !== undefined ? data.notes : undefined,
+          internalNotes: data.internalNotes !== undefined ? data.internalNotes : undefined,
           status: shellExitStatus !== undefined ? shellExitStatus : (data.status !== undefined ? data.status : undefined),
           hasSignedRegulations: data.hasSignedRegulations !== undefined ? data.hasSignedRegulations : undefined,
         }

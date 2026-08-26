@@ -1,12 +1,11 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 
 export async function GET() {
   try {
     // 1. Get length setting
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'barcodePrefixLength' }
-    });
+    const setting = await getCachedSetting('barcodePrefixLength');
     const length = setting && setting.value ? parseInt(setting.value) : 3;
 
     // 2. Build the start number (e.g. length 3 -> 100)

@@ -1,4 +1,5 @@
 import prisma from '@/app/lib/prisma';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import { hashSecret, verifySecret, last4Of, generateTempPassword } from '@/lib/passwordAuth';
@@ -63,9 +64,7 @@ export async function POST(request, { params }) {
       }
     });
 
-    const settings = await prisma.systemSetting.findMany({
-      where: { key: { in: ['gmach_name', 'gmach_phone'] } }
-    });
+    const settings = (await getAllCachedSettings()).filter(s => ['gmach_name', 'gmach_phone'].includes(s.key));
     const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
     const gmachPhone = settings.find(s => s.key === 'gmach_phone')?.value || '';
 

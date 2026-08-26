@@ -1,7 +1,9 @@
 'use server';
 
 import prisma from '../../lib/prisma';
+import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
+import { checkAuth } from '@/lib/auth';
 
 // Draft ("טיוטה" - an unfinished order the new-order screen autosaved and the employee
 // never completed) and reservation-placeholder ("שמור לחיוב" - a row that only reserves an
@@ -10,11 +12,22 @@ import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderRes
 // with real totalAmount/items would quietly inflate counts, revenue and model/size totals.
 const REAL_ORDER_STATUS_FILTER = { notIn: [DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS] };
 
+// Server Actions are independently network-reachable regardless of what the /admin/statistics
+// page's own layout.js gate blocks — a client that already holds a reference to one of these
+// actions could call it directly. Every /admin/* API route got this same checkAuth('הנהלה ראשית')
+// guard in the 2026-08-24 permission-tier pass (see lib/auth.js's HEAD_MANAGEMENT_ROLES); this
+// file was missed because it's Server Actions, not a route.js, so it never got swept up in that
+// "underlying API routes" pass. Mirrors the pattern, doesn't invent a new one.
+async function requireHeadManagement() {
+  if (!(await checkAuth('הנהלה ראשית'))) {
+    throw new Error('Unauthorized');
+  }
+}
+
 export async function getAlterationsSetting() {
+  await requireHeadManagement();
   try {
-    const setting = await prisma.systemSetting.findUnique({
-      where: { key: 'enable_alterations' }
-    });
+    const setting = await getCachedSetting('enable_alterations');
     return setting ? setting.value === 'true' : true;
   } catch (err) {
     return true;
@@ -30,6 +43,7 @@ function startOfDay(date) {
 
 // 1. Daily Statistics
 export async function getDailyStatistics(startDate, endDate) {
+  await requireHeadManagement();
   const start = startDate ? new Date(startDate) : new Date(new Date().setMonth(new Date().getMonth() - 1));
   const end = endDate ? new Date(endDate) : new Date();
   end.setHours(23, 59, 59, 999);
@@ -66,6 +80,7 @@ export async function getDailyStatistics(startDate, endDate) {
 
 // 2. Statistics By Model
 export async function getStatisticsByModel(startDate, endDate) {
+  await requireHeadManagement();
   const start = startDate ? new Date(startDate) : new Date(0);
   const end = endDate ? new Date(endDate) : new Date('2100-01-01');
   
@@ -88,6 +103,7 @@ export async function getStatisticsByModel(startDate, endDate) {
 
 // 3. Statistics By Size
 export async function getStatisticsBySize(startDate, endDate) {
+  await requireHeadManagement();
   const start = startDate ? new Date(startDate) : new Date(0);
   const end = endDate ? new Date(endDate) : new Date('2100-01-01');
   
@@ -109,6 +125,7 @@ export async function getStatisticsBySize(startDate, endDate) {
 
 // 4. Seamstress Work By Event Date
 export async function getSeamstressWork(startDate, endDate) {
+  await requireHeadManagement();
   const start = startDate ? new Date(startDate) : new Date(0);
   const end = endDate ? new Date(endDate) : new Date('2100-01-01');
   
@@ -147,6 +164,7 @@ export async function getSeamstressWork(startDate, endDate) {
 
 // 5. Payment Statistics
 export async function getPaymentStatistics(startDate, endDate) {
+  await requireHeadManagement();
   const start = startDate ? new Date(startDate) : new Date(new Date().setMonth(new Date().getMonth() - 1));
   const end = endDate ? new Date(endDate) : new Date();
 
@@ -171,6 +189,7 @@ export async function getPaymentStatistics(startDate, endDate) {
 
 // 6. Dress Consumption (Inventory Overlap Check)
 export async function getDressConsumptionStats(startDate, endDate) {
+  await requireHeadManagement();
   const start = startDate ? new Date(startDate) : new Date(new Date().setMonth(new Date().getMonth() - 1));
   const end = endDate ? new Date(endDate) : new Date(new Date().setMonth(new Date().getMonth() + 6));
   
@@ -278,12 +297,14 @@ export async function getDressConsumptionStats(startDate, endDate) {
 
 // Keep old actions for backward compatibility
 export async function getDailyReport() {
+  await requireHeadManagement();
   const res = await getDailyStatistics(new Date(new Date().setHours(0,0,0,0)), new Date(new Date().setHours(23,59,59,999)));
   if (res.length > 0) return { newOrders: res[0].newOrders, itemsReturned: res[0].itemsReturned, revenue: res[0].revenue };
   return { newOrders: 0, itemsReturned: 0, revenue: 0 };
 }
 
 export async function getOrderSummaryStats() {
+  await requireHeadManagement();
   const recentOrders = await prisma.order.findMany({
     take: 10,
     orderBy: { eventDate: { sort: 'desc', nulls: 'last' } },
@@ -299,6 +320,7 @@ export async function getOrderSummaryStats() {
 }
 
 export async function getMaxConcurrentEmployees() {
+  await requireHeadManagement();
   const attendances = await prisma.shift.findMany({
     where: { entryTime: { not: null }, exitTime: { not: null } },
     orderBy: { entryTime: 'asc' }

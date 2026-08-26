@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { recalculateOrderObligations } from '../../../lib/pricingEngine';
 import { checkAuth } from '../../../lib/auth';
+import { getCachedSetting } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { validateOrderItemsAvailability } from '../../../lib/inventory';
@@ -51,7 +52,7 @@ export async function GET(request) {
     // so this stays correct even for callers that don't know about the setting.
     let draftsAsDeleted = false;
     if (filterStatus === 'deleted') {
-      const draftsAsDeletedSetting = await prisma.systemSetting.findUnique({ where: { key: 'draft_orders_show_as_deleted' } });
+      const draftsAsDeletedSetting = await getCachedSetting('draft_orders_show_as_deleted');
       draftsAsDeleted = draftsAsDeletedSetting?.value === 'true';
     }
 
@@ -124,7 +125,7 @@ export async function GET(request) {
           { eventDate: { gte: today } }
         ]
       } : {}),
-      ...(filterStatus === 'unpaid' ? {
+      ...(isUnpaidQuery ? {
         OR: [
           { eventDate: null },
           { eventDate: { gte: threeMonthsAgo } }
@@ -218,7 +219,8 @@ export async function GET(request) {
       const minimalOrders = await prisma.order.findMany({
         where,
         select: minimalSelect,
-        orderBy: { eventDate: { sort: 'desc', nulls: 'last' } }
+        orderBy: { eventDate: { sort: 'desc', nulls: 'last' } },
+        take: 2000
       });
 
       let minimalFormatted = minimalOrders.map(o => {
@@ -250,7 +252,8 @@ export async function GET(request) {
     } else if (isSmartRentalsSort) {
       const minimalOrders = await prisma.order.findMany({
         where,
-        select: { orderId: true, eventDate: true }
+        select: { orderId: true, eventDate: true },
+        take: 2000
       });
 
       const todayTime = today.getTime();

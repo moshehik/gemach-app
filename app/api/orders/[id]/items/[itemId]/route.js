@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma, { auditAs } from '../../../../../lib/prisma';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 import { recalculateOrderObligations } from '../../../../../../lib/pricingEngine';
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../../lib/inventory';
 import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES } from '../../../../../../lib/orderItemEditWindow';
@@ -81,7 +82,7 @@ export async function PUT(request, { params }) {
         where: { id: itemId },
         include: { dressItem: true }
       }),
-      prisma.systemSetting.findMany()
+      getAllCachedSettings()
     ]);
 
     if (!order) throw ruleError('הזמנה לא נמצאה');
