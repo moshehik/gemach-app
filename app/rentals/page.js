@@ -12,6 +12,7 @@ import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import useDebounce from '@/hooks/useDebounce';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildRentalsListParams, defaultRentalsAdvFilters } from '@/app/lib/prefetchRoutes';
+import { getLateReturnInfo } from '@/lib/lateReturn';
 
 // שמור על 50 רשומות בטעינה - עקבי עם app/orders/page.js ו-app/refunds/page.js.
 const PAGE_SIZE = 50;
@@ -233,6 +234,35 @@ export default function RentalsPage() {
     setIsProcessing(true);
     try {
       const cleanBarcode = quickBarcode.replace(/\s+/g, '');
+
+      // בדיקת איחור (ר' lib/lateReturn.js, אותה לוגיקה כמו RentalReturnModal.js) לפני
+      // ביצוע ההחזרה בפועל - בר ההחזרה המהיר הזה לא עובר דרך RentalReturnModal, ולכן
+      // בלי הבדיקה כאן החזרה מאוחרת הייתה מסומנת "תקין" בשקט. אם ההחזרה מאוחרת ומאשרים,
+      // פותחים את כרטיס ההזמנה המלא ונותנים לו לטפל בסימון "לא תקין" + הערה - כדי לא
+      // לשכפל את הזרימה הזו גם כאן.
+      try {
+        const lookupRes = await fetch(`/api/returns/scan?barcode=${encodeURIComponent(cleanBarcode)}`);
+        if (lookupRes.ok) {
+          const lookupData = await lookupRes.json();
+          const { isLate, daysLate } = getLateReturnInfo(lookupData.order);
+          if (isLate) {
+            const wantsFullCard = await window.customConfirm(
+              `ההחזרה מאוחרת ב-${daysLate} ימים ממועד ההחזרה הצפוי. יש לטפל בהחזרה זו דרך כרטיס ההשכרה המלא (כדי לתעד ולסמן במידת הצורך כלא תקין). לפתוח את כרטיס ההזמנה?`,
+              'החזרה באיחור'
+            );
+            if (wantsFullCard) {
+              setQuickBarcode('');
+              setSelectedOrderId(lookupData.order.orderId);
+              setIsProcessing(false);
+              return;
+            }
+          }
+        }
+      } catch (lookupErr) {
+        console.error(lookupErr);
+        // בעיית תקשורת בבדיקת האיחור לא צריכה לחסום החזרה רגילה - ממשיכים לניסיון ההחזרה עצמו
+      }
+
       const res = await fetch('/api/returns/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -414,24 +444,11 @@ export default function RentalsPage() {
                   </div>
                   <div className="field">
                     <label>דגם</label>
-                    <div style={{ position: 'relative' }}>
                       <OrderModelSelector
                         value={{ name: advFilters.advModelName }}
                         onChange={m => setAdvFilters(p => ({ ...p, advModelName: m ? m.name : '' }))}
                         placeholder="בחר דגם..."
                       />
-                      {advFilters.advModelName && (
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-icon-only btn-sm"
-                          onClick={() => setAdvFilters(p => ({ ...p, advModelName: '' }))}
-                          style={{ position: 'absolute', left: '4px', top: '50%', transform: 'translateY(-50%)', color: 'var(--danger)' }}
-                          title="נקה בחירה"
-                        >
-                          <svg className="icon"><use href="#i-x" /></svg>
-                        </button>
-                      )}
-                    </div>
                   </div>
                 </div>
               )}

@@ -12,6 +12,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
   const [dropdownPos, setDropdownPos] = useState({ top: 0, left: 0, width: 0 });
   const wrapperRef = useRef(null);
   const dropdownRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     setMounted(true);
@@ -52,6 +53,17 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
 
   const debouncedQuery = useDebounce(query, 300);
 
+  // Display string for the currently selected value (same format as handleSelect)
+  const displayValue = value && value.firstName && value.lastName
+    ? `${[value.firstName, value.lastName].filter(Boolean).join(' ')} ${value.phone1 ? `(${value.phone1})` : ''}`.trim()
+    : value && value.firstName
+      ? `${value.firstName} ${value.phone1 ? `(${value.phone1})` : ''}`.trim()
+      : '';
+
+  // When input still shows the selected customer's display string and dropdown is open,
+  // treat search as empty to show full list instead of filtering to that single name.
+  const debouncedQueryEffective = isOpen && displayValue && query === displayValue ? '' : debouncedQuery;
+
   // Fetch customers when debounced query changes
   useEffect(() => {
     const controller = new AbortController();
@@ -59,7 +71,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     const fetchCustomers = async () => {
       setLoading(true);
       try {
-        const res = await fetch(`/api/customers?search=${encodeURIComponent(debouncedQuery)}&limit=50`, {
+        const res = await fetch(`/api/customers?search=${encodeURIComponent(debouncedQueryEffective)}&limit=50`, {
           signal: controller.signal
         });
         const data = await res.json();
@@ -77,12 +89,12 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     };
 
     // Only search if user types or opens dropdown
-    if (isOpen || debouncedQuery) {
+    if (isOpen || debouncedQueryEffective) {
       fetchCustomers();
     }
 
     return () => controller.abort();
-  }, [debouncedQuery, isOpen]);
+  }, [debouncedQueryEffective, isOpen]);
 
   // Set initial text if value exists
   useEffect(() => {
@@ -97,6 +109,18 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     setQuery(`${[customer.firstName, customer.lastName].filter(Boolean).join(' ')} ${customer.phone1 ? `(${customer.phone1})` : ''}`.trim());
     onChange(customer);
     setIsOpen(false);
+  };
+
+  const handleClear = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setQuery('');
+    setIsOpen(true);
+    onChange(null);
+    // Return focus to input for immediate re-selection
+    requestAnimationFrame(() => {
+      inputRef.current?.focus();
+    });
   };
 
   const dropdownBaseStyle = {
@@ -130,7 +154,12 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
               onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'var(--element-bg)'}
               onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
             >
-              <div style={{ fontWeight: 'bold' }}>{c.firstName} {c.lastName}</div>
+              <div style={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                {c.firstName} {c.lastName}
+                {c.isBlocked && (
+                  <span className="badge badge-danger" style={{ fontSize: '0.7rem' }}>לקוח חסום</span>
+                )}
+              </div>
               <div style={{ fontSize: '0.9rem', color: 'var(--text-main)' }}>
                 {c.phone1} {c.city ? ` | ${c.city}` : ''}
               </div>
@@ -143,7 +172,7 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
           ))}
         </div>
       )}
-      {isOpen && !loading && query && customers.length === 0 && (
+      {isOpen && !loading && debouncedQueryEffective && customers.length === 0 && (
         <div ref={dropdownRef} style={{ ...dropdownBaseStyle, padding: '1rem', textAlign: 'center', color: 'var(--text-main)' }}>
           לא נמצאו לקוחות.
         </div>
@@ -151,10 +180,13 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
     </>
   );
 
+  const hasSelection = Boolean(value && displayValue);
+
   return (
     <div data-agy-id="customer_selector_container" ref={wrapperRef} style={{ position: 'relative', width: '100%' }}>
       <input
         data-agy-id="customer_selector_input"
+        ref={inputRef}
         type="text"
         value={query}
         onChange={(e) => {
@@ -162,10 +194,12 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
           setIsOpen(true);
         }}
         onFocus={() => setIsOpen(true)}
+        onClick={() => setIsOpen(true)}
         placeholder={placeholder}
         style={{
           width: '100%',
           padding: '1.2rem',
+          paddingLeft: hasSelection ? '3rem' : '1.2rem',
           borderRadius: '12px',
           border: `2px solid ${error ? 'var(--danger)' : 'var(--element-border)'}`,
           fontSize: '1.1rem',
@@ -177,8 +211,52 @@ export default function CustomerSelector({ value, onChange, placeholder = 'חי�
         onMouseEnter={(e) => { if (!error) e.target.style.borderColor = 'var(--primary-color)' }}
         onMouseLeave={(e) => { if (!error) e.target.style.borderColor = 'var(--element-border)' }}
       />
+      {hasSelection && (
+        <button
+          type="button"
+          aria-label="נקה בחירה"
+          title="נקה בחירה"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={handleClear}
+          style={{
+            position: 'absolute',
+            left: '0.6rem',
+            top: '50%',
+            transform: 'translateY(-50%)',
+            width: '28px',
+            height: '28px',
+            borderRadius: '50%',
+            border: '1px solid var(--border)',
+            backgroundColor: 'var(--element-bg)',
+            color: 'var(--text-muted)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer',
+            transition: 'all 0.2s ease',
+            opacity: 0.9,
+            zIndex: 1
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--surface)';
+            e.currentTarget.style.color = 'var(--text-main)';
+            e.currentTarget.style.borderColor = 'var(--element-border)';
+            e.currentTarget.style.transform = 'translateY(-50%) scale(1.05)';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.backgroundColor = 'var(--element-bg)';
+            e.currentTarget.style.color = 'var(--text-muted)';
+            e.currentTarget.style.borderColor = 'var(--border)';
+            e.currentTarget.style.transform = 'translateY(-50%) scale(1)';
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+            <path d="M1 1L11 11M11 1L1 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+          </svg>
+        </button>
+      )}
       {loading && isOpen && (
-        <div style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.9rem' }}>טוען...</div>
+        <div style={{ position: 'absolute', left: hasSelection ? '3.2rem' : '1rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', fontSize: '0.9rem', pointerEvents: 'none', transition: 'left 0.2s ease' }}>טוען...</div>
       )}
 
       {mounted && createPortal(dropdownContent, document.body)}

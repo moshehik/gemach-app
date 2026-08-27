@@ -627,24 +627,11 @@ export default function OrdersPage() {
                   </div>
                   <div className="field">
                     <label>דגם</label>
-                    <div style={{ position: 'relative' }}>
                       <OrderModelSelector
                         value={{ name: advFilters.advModelName }}
                         onChange={m => setAdvFilters(p => ({ ...p, advModelName: m ? m.name : '' }))}
                         placeholder="בחר דגם..."
                       />
-                      {advFilters.advModelName && (
-                        <button
-                          type="button"
-                          className="btn btn-ghost btn-icon-only btn-sm"
-                          onClick={() => setAdvFilters(p => ({ ...p, advModelName: '' }))}
-                          style={{ position: 'absolute', left: '4px', top: '50%', transform: 'translateY(-50%)', color: 'var(--danger)' }}
-                          title="נקה בחירה"
-                        >
-                          <svg className="icon"><use href="#i-x" /></svg>
-                        </button>
-                      )}
-                    </div>
                   </div>
                   <div className="field">
                     <label>{getLabel('order_customerName', 'שם לקוח')}</label>

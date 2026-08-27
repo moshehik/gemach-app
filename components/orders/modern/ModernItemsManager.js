@@ -163,13 +163,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
     }
 
     if (!isFullyPaid) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע פעולה ללא תשלום מלא. נדרש אישור מנהל או עובד מורשה:", 'עובד');
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע פעולה ללא תשלום מלא. נדרש אישור מנהל:", 'מנהל');
       if (!authResult || !authResult.pin) return;
       try {
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'עובד' })
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
         });
         const data = await res.json();
         if (!data.success) {
@@ -286,6 +286,20 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   };
 
   const handleModelChange = (index, model) => {
+    if (!model || !model.id) {
+      onItemsChange(prev => {
+        const updatedItems = [...prev];
+        updatedItems[index] = {
+          ...updatedItems[index],
+          dressModelId: '',
+          barcodePrefix: '',
+          description: '',
+          sizeText: ''
+        };
+        return updatedItems;
+      });
+      return;
+    }
     onItemsChange(prev => {
       const updatedItems = [...prev];
       updatedItems[index] = {
@@ -439,8 +453,23 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   // עריכה אחרת שקרתה באותו חלון זמן (למשל שינוי בפריט אחר) עלולה להידרס.
   const handleRent = async (item, barcodeToAssign = null, skipAuth = false) => {
     if (!isFullyPaid && !skipAuth) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע השכרה ללא תשלום מלא. נדרש אישור:", 'עובד');
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע השכרה ללא תשלום מלא. נדרש אישור מנהל:", 'מנהל');
       if (!authResult || !authResult.pin) return;
+      try {
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert('סיסמה שגויה או שאין מספיק הרשאות');
+          return;
+        }
+      } catch (e) {
+        console.error(e);
+        return;
+      }
     }
     onItemsChange(prev => prev.map(i => {
       if (i.id !== item.id) return i;
@@ -465,8 +494,23 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
   const handleReturn = async (item, skipAuth = false) => {
     if (!isFullyPaid && !skipAuth) {
-      const authResult = await window.customAuthPrompt("לא ניתן לבצע החזרה ללא תשלום מלא. נדרש אישור:", 'עובד');
+      const authResult = await window.customAuthPrompt("לא ניתן לבצע החזרה ללא תשלום מלא. נדרש אישור מנהל:", 'מנהל');
       if (!authResult || !authResult.pin) return;
+      try {
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert('סיסמה שגויה או שאין מספיק הרשאות');
+          return;
+        }
+      } catch (e) {
+        console.error(e);
+        return;
+      }
     }
     onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isReturned: true, returnDate: new Date() } : i));
 

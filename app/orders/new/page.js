@@ -455,9 +455,25 @@ export default function NewOrderPage() {
     }
   };
 
+  // לקוח חסום (Customer.isBlocked) - חוסם לגמרי את ההמשך אלא אם עובד בדרג "הנהלה
+  // ראשית" מאשר עם PIN (ר' requiredLevel === 'הנהלה ראשית' ב-verify-pin/route.js).
+  // מוחזק כאן, לא ב-handleUseExistingCustomer בלבד, כי יש עוד נתיב שמאשר לקוח קיים
+  // בלי לעבור דרכה - חיפוש-שם דרך CustomerSelector, ששם customerId ישירות ורק
+  // proceedToStep2 (כפתור "המשך") הוא נקודת המעבר המשותפת שלו.
+  const confirmBlockedCustomerOverride = async (customer) => {
+    if (!customer || !customer.isBlocked) return true;
+    const authResult = await verifyPin(
+      `לקוח זה חסום מהזמנות חדשות${customer.blockedReason ? ` (${customer.blockedReason})` : ''}.\nלעקוף את החסימה ולהמשיך בכל זאת? נדרש אישור הנהלה ראשית.`,
+      'הנהלה ראשית'
+    );
+    return !!authResult;
+  };
+
   // לחיצה על "כן, זה הלקוח" נתנה להמשיך גם כשחסרים פרטי חובה אצל הלקוח שנמצא.
   // עכשיו, אם חסר משהו, מבקשים אישור מפורש לדלג במקום להמשיך בשקט.
   const handleUseExistingCustomer = async (existingCustomer) => {
+    if (!await confirmBlockedCustomerOverride(existingCustomer)) return;
+
     const missingFields = getMissingMandatoryCustomerFields(existingCustomer);
     const missingContactMethod = !String(existingCustomer.phone2 || '').trim() && !String(existingCustomer.email || '').trim();
 
@@ -477,11 +493,12 @@ export default function NewOrderPage() {
     setDuplicateCustomer(null);
   };
 
-  const proceedToStep2 = () => {
+  const proceedToStep2 = async () => {
     if (!order.customerId) {
        alert('יש לבחור לקוח');
        return;
     }
+    if (!await confirmBlockedCustomerOverride(order.selectedCustomer)) return;
     setStep(2);
   };
 
@@ -1358,7 +1375,12 @@ export default function NewOrderPage() {
                     {`${(foundCustomerFromPhone.firstName || '')[0] || ''}${(foundCustomerFromPhone.lastName || '')[0] || ''}`}
                   </div>
                   <div>
-                    <strong style={{ fontSize: '15px' }}>{getCustomerFullName(foundCustomerFromPhone)}</strong>
+                    <strong style={{ fontSize: '15px' }}>
+                      {getCustomerFullName(foundCustomerFromPhone)}
+                      {foundCustomerFromPhone.isBlocked && (
+                        <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
+                      )}
+                    </strong>
                     <p className="hint" style={{ color: 'var(--text-3)', margin: '2px 0 0' }}>
                       {foundCustomerFromPhone.phone1}
                       {foundCustomerFromPhone.phone2 ? ` · ${foundCustomerFromPhone.phone2}` : ''}
@@ -1401,7 +1423,10 @@ export default function NewOrderPage() {
                   <label>חיפוש לפי שם, טלפון או עיר</label>
                   <CustomerSelector
                     value={order.selectedCustomer}
-                    onChange={(c) => setOrder(prev => ({ ...prev, customerId: c.id, selectedCustomer: c }))}
+                    onChange={(c) => {
+                      if (!c) { setOrder(prev => ({ ...prev, customerId: '', selectedCustomer: null })); return; }
+                      setOrder(prev => ({ ...prev, customerId: c.id, selectedCustomer: c }));
+                    }}
                     placeholder="חפש לקוח לפי שם, טלפון, עיר..."
                   />
                 </div>
@@ -1409,7 +1434,12 @@ export default function NewOrderPage() {
                   <div style={{ padding: '12px 4px 4px', borderTop: '1px solid var(--border)', marginTop: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                       <span className="hint" style={{ color: 'var(--text-3)' }}>נבחר</span>
-                      <strong>{selectedCustomerName} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{order.selectedCustomer.phone1 || ''}</span></strong>
+                      <strong>
+                        {selectedCustomerName} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{order.selectedCustomer.phone1 || ''}</span>
+                        {order.selectedCustomer.isBlocked && (
+                          <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
+                        )}
+                      </strong>
                     </div>
                     {(order.selectedCustomer.phone2 || order.selectedCustomer.email) && (
                       <p className="hint" style={{ color: 'var(--text-3)', textAlign: 'end', margin: '2px 0 0' }}>
@@ -1434,16 +1464,16 @@ export default function NewOrderPage() {
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-firstName">שם פרטי <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-firstName" className="input" type="text" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} />
+                    <input id="cust-firstName" className="input" type="text" autoComplete="new-password" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} />
                   </div>
                   <div className="field">
                     <label htmlFor="cust-lastName">שם משפחה <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-lastName" className="input" type="text" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} />
+                    <input id="cust-lastName" className="input" type="text" autoComplete="new-password" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} />
                   </div>
                 </div>
                 <div className="field">
                   <label htmlFor="cust-phone1">טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input id="cust-phone1" className="input" type="tel" dir="ltr" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} placeholder="נייד או קווי" />
+                  <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} placeholder="נייד או קווי" />
                 </div>
 
                 <p className="hint" style={{ margin: '0 0 6px', color: 'var(--text-2)' }}>
@@ -1452,12 +1482,12 @@ export default function NewOrderPage() {
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-phone2">טלפון נוסף <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-phone2" className="input" type="tel" dir="ltr" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} placeholder="נייד או קווי" />
+                    <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} placeholder="נייד או קווי" />
                   </div>
                   <div className="field">
                     <label htmlFor="cust-email">אימייל <span style={{ color: 'var(--danger)' }}>*</span></label>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <input id="cust-email" className="input" type="email" dir="ltr" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
+                      <input id="cust-email" className="input" type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
                       {newCustomer.email && !newCustomer.email.includes('@') && (
                         <button
                           type="button"
@@ -1476,15 +1506,15 @@ export default function NewOrderPage() {
                   <div className="form-grid">
                     <div className="field">
                       <label htmlFor="cust-city">עיר מגורים</label>
-                      <input id="cust-city" className="input" type="text" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} />
+                      <input id="cust-city" className="input" type="text" autoComplete="new-password" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} />
                     </div>
                     <div className="field">
                       <label htmlFor="cust-street">רחוב</label>
-                      <input id="cust-street" className="input" type="text" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} />
+                      <input id="cust-street" className="input" type="text" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} />
                     </div>
                     <div className="field">
                       <label htmlFor="cust-house">מספר בית</label>
-                      <input id="cust-house" className="input" type="text" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} />
+                      <input id="cust-house" className="input" type="text" autoComplete="new-password" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} />
                     </div>
                   </div>
                 </NocCollapsible>
@@ -1608,6 +1638,18 @@ export default function NewOrderPage() {
                     inputId="item-model"
                     value={{ name: newItem.dressName }}
                     onChange={(model) => {
+                      if (!model || !model.id) {
+                        setNewItem(prev => ({
+                          ...prev,
+                          dressModelId: '',
+                          dressName: '',
+                          sizeText: '',
+                          sampleItemId: '',
+                          basePrice: 0,
+                          finalPrice: 0
+                        }));
+                        return;
+                      }
                       setNewItem(prev => ({
                         ...prev,
                         dressModelId: model.id,
@@ -1727,7 +1769,7 @@ export default function NewOrderPage() {
                         id="item-repairs"
                         type="text"
                         name="repairs"
-                        autoComplete="off"
+                        autoComplete="new-password"
                         className="input"
                         value={newItem.repairs || ''}
                         onChange={handleNewItemChange}
@@ -2096,7 +2138,15 @@ export default function NewOrderPage() {
             <h3 id="dup-title">לקוח קיים במערכת</h3>
             <p>הלקוח שהוזן זוהה במערכת לפי מספר הטלפון. אפשר להשתמש בכרטיס הקיים, או ליצור כרטיס נוסף.</p>
             <div className="card card-pad" style={{ textAlign: 'start', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>שם</span><strong>{getCustomerFullName(duplicateCustomer)}</strong></div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
+                <span className="hint" style={{ color: 'var(--text-3)' }}>שם</span>
+                <strong>
+                  {getCustomerFullName(duplicateCustomer)}
+                  {duplicateCustomer.isBlocked && (
+                    <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
+                  )}
+                </strong>
+              </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>טלפון</span><span dir="ltr">{duplicateCustomer.phone1}{duplicateCustomer.phone2 ? ` | ${duplicateCustomer.phone2}` : ''}</span></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>עיר</span><span>{duplicateCustomer.city || 'לא צוינה'}</span></div>
             </div>

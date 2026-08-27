@@ -29,6 +29,7 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
   const [modelQuery, setModelQuery] = useState('');
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const modelSelectRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
     const prev = JSON.parse(localStorage.getItem('capacity_search_history') || '[]');
@@ -100,9 +101,14 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const filteredModels = modelQuery.trim()
-    ? models.filter(m => String(m.name || '').includes(modelQuery.trim()) || String(m.barcodePrefix || '').includes(modelQuery.trim()))
-    : models;
+  const selectedModel = models.find(m => String(m.barcodePrefix) === String(barcodePrefix));
+  const selectedDisplay = selectedModel ? `${selectedModel.name} (${selectedModel.barcodePrefix})` : '';
+  const isShowingSelectedDisplay = showModelDropdown && selectedDisplay && modelQuery === selectedDisplay;
+  const filteredModels = isShowingSelectedDisplay
+    ? models
+    : modelQuery.trim()
+      ? models.filter(m => String(m.name || '').includes(modelQuery.trim()) || String(m.barcodePrefix || '').includes(modelQuery.trim()))
+      : models;
 
   const performSearch = async (searchParams = null) => {
     const pPrefix = searchParams ? searchParams.barcodePrefix : barcodePrefix;
@@ -289,9 +295,10 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
             <div className="form-grid" style={{ marginBottom: '4px' }}>
               <div className="field combobox" ref={modelSelectRef}>
                 <label htmlFor="capacity-search-model">דגם</label>
-                <div className="input-icon-wrap">
+                <div className="input-icon-wrap" style={{ position: 'relative' }}>
                   <svg className="icon"><use href="#i-search" /></svg>
                   <input
+                    ref={inputRef}
                     id="capacity-search-model"
                     data-agy-id="capacity_search_model_select"
                     type="text"
@@ -303,9 +310,52 @@ export default function CapacitySearchModal({ isOpen, onClose }) {
                       if (barcodePrefix) { setBarcodePrefix(''); setSize(''); }
                     }}
                     onFocus={() => setShowModelDropdown(true)}
+                    onClick={() => { if (barcodePrefix) setShowModelDropdown(true); }}
                     placeholder="הקלד לחיפוש דגם..."
                     autoComplete="off"
+                    style={barcodePrefix ? { paddingInlineEnd: '36px' } : undefined}
                   />
+                  {barcodePrefix && (
+                    <button
+                      data-agy-id="capacity_search_model_clear_btn"
+                      type="button"
+                      aria-label="נקה בחירה"
+                      title="נקה בחירה"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setBarcodePrefix('');
+                        setModelQuery('');
+                        setSize('');
+                        setShowModelDropdown(true);
+                        requestAnimationFrame(() => inputRef.current?.focus());
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = 'var(--text-1)'; }}
+                      onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}
+                      style={{
+                        position: 'absolute',
+                        insetInlineEnd: '8px',
+                        top: '50%',
+                        transform: 'translateY(-50%)',
+                        width: '22px',
+                        height: '22px',
+                        borderRadius: '50%',
+                        border: '1px solid var(--border)',
+                        background: '#fff',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        cursor: 'pointer',
+                        color: 'var(--text-2)',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                        transition: 'all 0.15s ease',
+                        padding: 0,
+                        lineHeight: 1,
+                        flexShrink: 0
+                      }}
+                    >
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 3L9 9M9 3L3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+                    </button>
+                  )}
                 </div>
                 {showModelDropdown && filteredModels.length > 0 && (
                   <div className="combobox-results">

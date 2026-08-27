@@ -93,6 +93,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   };
 
   const selectCustomer = (c) => {
+    if (!c) { handleChange({ customerId: '', customer: null }); setShowCustomerModal(false); return; }
     handleChange({ customerId: c.id, customer: c });
     setShowCustomerModal(false);
   };
@@ -306,7 +307,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
               </div>
             )}
 
-            <div className="field" style={{ marginBottom: 0 }}>
+            <div className="field">
               <label>הערות להזמנה</label>
               <textarea
                 className="textarea"
@@ -314,6 +315,17 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                 value={order.notes || ''}
                 onChange={(e) => handleChange({ notes: e.target.value })}
                 placeholder="הערות כלליות לגבי ההזמנה..."
+              />
+            </div>
+
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>הערות פנימיות (לא מוצג ללקוח)</label>
+              <textarea
+                className="textarea"
+                rows={3}
+                value={order.internalNotes || ''}
+                onChange={(e) => handleChange({ internalNotes: e.target.value })}
+                placeholder="הערות לצוות בלבד - לא יופיעו בהדפסה או במייל ללקוח..."
               />
             </div>
           </>
@@ -375,14 +387,14 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
               ) : (
                 <div>
                   <div className="form-grid">
-                    <div className="field"><label>שם פרטי *</label><input type="text" className="input" value={newCustomer.firstName} onChange={e => setNewCustomer({ ...newCustomer, firstName: e.target.value })} /></div>
-                    <div className="field"><label>שם משפחה *</label><input type="text" className="input" value={newCustomer.lastName} onChange={e => setNewCustomer({ ...newCustomer, lastName: e.target.value })} /></div>
+                    <div className="field"><label>שם פרטי *</label><input type="text" className="input" autoComplete="off" value={newCustomer.firstName} onChange={e => setNewCustomer({ ...newCustomer, firstName: e.target.value })} /></div>
+                    <div className="field"><label>שם משפחה *</label><input type="text" className="input" autoComplete="off" value={newCustomer.lastName} onChange={e => setNewCustomer({ ...newCustomer, lastName: e.target.value })} /></div>
                   </div>
                   <div className="form-grid">
-                    <div className="field"><label>טלפון *</label><input type="text" className="input" style={{ direction: 'ltr' }} value={newCustomer.phone1} onChange={e => setNewCustomer({ ...newCustomer, phone1: e.target.value })} /></div>
+                    <div className="field"><label>טלפון *</label><input type="text" className="input" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.phone1} onChange={e => setNewCustomer({ ...newCustomer, phone1: e.target.value })} /></div>
                     <div className="field">
                       <label>דוא&quot;ל *</label>
-                      <input type="email" className="input" style={{ direction: 'ltr' }} value={newCustomer.email} onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })} />
+                      <input type="email" className="input" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.email} onChange={e => setNewCustomer({ ...newCustomer, email: e.target.value })} />
                       {(!newCustomer.email || !newCustomer.email.includes('@')) && (
                         <button
                           type="button"
@@ -396,10 +408,10 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                     </div>
                   </div>
                   <div className="form-grid">
-                    <div className="field"><label>עיר</label><input type="text" className="input" value={newCustomer.city} onChange={e => setNewCustomer({ ...newCustomer, city: e.target.value })} /></div>
+                    <div className="field"><label>עיר</label><input type="text" className="input" autoComplete="off" value={newCustomer.city} onChange={e => setNewCustomer({ ...newCustomer, city: e.target.value })} /></div>
                     <div style={{ display: 'flex', gap: '10px' }}>
-                      <div className="field" style={{ flex: 2 }}><label>רחוב</label><input type="text" className="input" value={newCustomer.street} onChange={e => setNewCustomer({ ...newCustomer, street: e.target.value })} /></div>
-                      <div className="field" style={{ flex: 1 }}><label>בית</label><input type="text" className="input" value={newCustomer.houseNum} onChange={e => setNewCustomer({ ...newCustomer, houseNum: e.target.value })} /></div>
+                      <div className="field" style={{ flex: 2 }}><label>רחוב</label><input type="text" className="input" autoComplete="off" value={newCustomer.street} onChange={e => setNewCustomer({ ...newCustomer, street: e.target.value })} /></div>
+                      <div className="field" style={{ flex: 1 }}><label>בית</label><input type="text" className="input" autoComplete="off" value={newCustomer.houseNum} onChange={e => setNewCustomer({ ...newCustomer, houseNum: e.target.value })} /></div>
                     </div>
                   </div>
                 </div>
