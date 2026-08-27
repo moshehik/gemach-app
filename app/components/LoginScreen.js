@@ -202,7 +202,13 @@ export default function LoginScreen({ isModal = false, onClose }) {
     }
   };
 
-  const filteredEmployees = employees.filter(emp => `${emp.firstName} ${emp.lastName}`.includes(searchTerm));
+  // Fix: when input still shows selected employee's display name and dropdown is open, show full list instead of filtering to that single name
+  const selectedEmployeeObj = employees.find(emp => emp.id === selectedEmployee) || null;
+  const selectedDisplay = selectedEmployeeObj ? `${selectedEmployeeObj.firstName} ${selectedEmployeeObj.lastName}`.trim() : '';
+  const isShowingSelectedDisplay = isDropdownOpen && selectedDisplay && searchTerm === selectedDisplay;
+  const filteredEmployees = isShowingSelectedDisplay
+    ? employees
+    : employees.filter(emp => `${emp.firstName} ${emp.lastName}`.includes(searchTerm));
 
   const trustedNote = deviceTrusted && (
     <div className="badge badge-success" style={{ margin: '10px auto 0', width: 'fit-content' }}>
@@ -223,7 +229,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
 
       <div className="field combobox" ref={dropdownRef}>
         <label htmlFor="login-employee">שם העובד</label>
-        <div className="input-icon-wrap">
+        <div className="input-icon-wrap" style={{ position: 'relative' }}>
           {isFetchingEmployees ? (
             <span className="spinner" style={{ position: 'absolute', insetInlineStart: '12px', top: '50%', transform: 'translateY(-50%)', width: '15px', height: '15px', borderWidth: '2px' }} />
           ) : (
@@ -244,7 +250,43 @@ export default function LoginScreen({ isModal = false, onClose }) {
             disabled={isFetchingEmployees}
             placeholder={isFetchingEmployees ? '-- טוען עובדים... --' : 'הקלד או בחר מהרשימה'}
             onFocus={() => setIsDropdownOpen(true)}
+            onClick={() => { if (selectedDisplay) setIsDropdownOpen(true); }}
+            style={selectedEmployee ? { paddingInlineEnd: '36px' } : undefined}
           />
+          {selectedEmployee && !isFetchingEmployees && (
+            <button
+              type="button"
+              aria-label="נקה בחירה"
+              title="נקה בחירה"
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { setSelectedEmployee(''); setSearchTerm(''); setIsDropdownOpen(true); }}
+              style={{
+                position: 'absolute',
+                insetInlineEnd: '8px',
+                top: '50%',
+                transform: 'translateY(-50%)',
+                width: '22px',
+                height: '22px',
+                borderRadius: '50%',
+                border: '1px solid var(--border)',
+                background: '#fff',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                cursor: 'pointer',
+                color: 'var(--text-2)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                transition: 'all 0.15s ease',
+                padding: 0,
+                lineHeight: 1,
+                flexShrink: 0
+              }}
+              onMouseEnter={e => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.borderColor = '#d1d5db'; e.currentTarget.style.color = 'var(--text-1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-2)'; }}
+            >
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true"><path d="M3 3L9 9M9 3L3 9" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" /></svg>
+            </button>
+          )}
         </div>
 
         {isDropdownOpen && !isFetchingEmployees && (
