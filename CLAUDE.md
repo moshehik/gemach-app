@@ -1,4 +1,4 @@
-# CLAUDE.md
+﻿# CLAUDE.md
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
@@ -63,6 +63,9 @@ reports, internal-message alerts) goes through a shared Google Apps Script maile
 shared HTML template in [lib/emailTemplates.js](lib/emailTemplates.js). See
 [EMAILS.md](EMAILS.md) for the full list of send sites, attachment filenames, and how to
 add a new templated email.
+
+## Keep-alive (2026-09-01 בוטל)
+Task GemachApp-NeonKeepAlive כל 5 דקות (07:55-21:55) בוטל ונמחק לבקשת הבעלים - Neon ישן כדי לחסוך compute. נשאר רק cron יומי 04:00 ב-vercel.json. התכנית החדשה: דגל ב-Vercel יעיר את Neon רק כשיש שינויים. קובץ scripts/neon_keepalive.ps1 מסומן DEPRECATED.
 
 ## Backups
 Neon's built-in point-in-time restore (7-day window) is the first line of defense but never leaves Neon. [scripts/backup_prod_db.js](scripts/backup_prod_db.js) adds a second, independent layer — a nightly compressed logical SQL dump written to `backups/` (gitignored), scheduled via a Windows Task Scheduler job (`GemachApp-ProdDbBackup`, daily 03:30). See [BACKUPS.md](BACKUPS.md) for what each layer covers, retention/rotation, the restore command, and how to verify the nightly job actually ran.

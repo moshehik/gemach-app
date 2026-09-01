@@ -1,10 +1,10 @@
-# neon_keepalive.ps1
-# Pings the production /api/health endpoint so Neon's compute doesn't autosuspend
-# during working hours. Scheduled via Windows Task Scheduler task
-# "GemachApp-NeonKeepAlive" (daily 07:55, repeats every 5 minutes for 14 hours),
-# same pattern as the GemachApp-ProdDbBackup nightly job.
-# Vercel Hobby crons only run once a day, so the frequent keep-alive runs from
-# this machine instead (see vercel.json for the daily cloud cron).
+﻿# neon_keepalive.ps1 - DEPRECATED 2026-09-01 - מבוטל לבקשת הבעלים
+# היה שומר את Neon ער כל 5 דקות בשעות פעילות (07:55-21:55) דרך /api/health
+# בוטל ב-01/09/2026: Task GemachApp-NeonKeepAlive נמחק מהמחשב - Neon מורשה לישון
+# כדי לחסוך שעות חישוב. נשאר רק cron יומי 04:00 ב-vercel.json (פעם ביום).
+# התכנית החדשה: דגל ב-Vercel יעיר את Neon רק כשיש שינויים, לא כל 5 דקות.
+# אם צריך להחזיר: צור מחדש Task עם: powershell.exe -WindowStyle Hidden -File "$PSScriptRoot\neon_keepalive.ps1"
+# ראה BACKUPS.md ו-CLAUDE.md
 try {
     Invoke-RestMethod -Uri 'https://gemach-app-uyh4-beryl.vercel.app/api/health' -TimeoutSec 30 | Out-Null
 } catch {

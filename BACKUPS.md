@@ -1,4 +1,4 @@
-# Database backups
+﻿# Database backups
 
 Two independent layers protect the production Neon database. Neither replaces the other.
 
@@ -169,3 +169,7 @@ production, override the connection string for that one run:
 ```bash
 CLEANUP_DATABASE_URL="$TEST_DATABASE_URL" node scripts/cleanup_old_logs.js
 ```
+
+## 2026-09-01 - ביטול keep-alive כל 5 דקות
+
+Task GemachApp-NeonKeepAlive (כל 5 דקות 07:55-21:55) בוטל ונמחק לבקשת הבעלים (01/09/2026). Neon מורשה לישון כדי לחסוך compute. נשאר רק cron יומי 04:00 ב-vercel.json. התכנית החדשה: דגל ב-Vercel יעיר את Neon רק כשיש שינויים. קובץ scripts/neon_keepalive.ps1 נשאר כמזכרת עם הערת DEPRECATED. החלון השחור כל 5 דקות נפסק.
