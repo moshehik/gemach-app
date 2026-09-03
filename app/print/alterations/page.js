@@ -11,6 +11,7 @@ export default function PrintAlterationsPage() {
   const [error, setError] = useState('');
   const [enableAlterations, setEnableAlterations] = useState(true);
   const [printSettings, setPrintSettings] = useState(null);
+  const [logoBust] = useState(() => Date.now());
 
   const reportType = searchParams.get('reportType') || 'alterations_pending';
   const dateMode = searchParams.get('dateMode') || 'today';
@@ -73,7 +74,7 @@ export default function PrintAlterationsPage() {
       // Settings and alterations are independent - fetch them together instead of
       // waiting on settings before even starting the alterations request.
       const [settingsRes, res] = await Promise.all([
-        fetch('/api/settings'),
+        fetch('/api/settings', { cache: 'no-store' }),
         fetch(url)
       ]);
 
@@ -492,9 +493,10 @@ export default function PrintAlterationsPage() {
               <div className="bsd">בס&quot;ד</div>
               <div className="print-header">
                 {/* הלוגו מוגש מ-/api/logo (הגדרת BRAND_LOGO); כשאין לוגו מוגדר הנתיב
-                    מחזיר 404 - onError מסתיר את התמונה והכותרת נשארת טקסטואלית בלבד. */}
+                    מחזיר 404 - onError מסתיר את התמונה והכותרת נשארת טקסטואלית בלבד.
+                    ?v=logoBust מבטל cache דפדפן אחרי העלאת לוגו חדש (Cache-Control immutable). */}
                 <img
-                  src="/api/logo"
+                  src={`/api/logo?v=${logoBust}`}
                   alt=""
                   style={{ height: '64px', objectFit: 'contain', marginBottom: '10px' }}
                   onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -518,10 +520,10 @@ export default function PrintAlterationsPage() {
                       : `מתאריך: ${formatDate(startDate)} | עד תאריך: ${formatDate(endDate)}`}
                 </h3>
                 {!loading && !error && items.length > 0 && (
-                  // אדום זמנית: תוקן כתשובה חלקית/לא ודאית לדיווח 3a5d9f8b ("לעדכן את
-                  // פרטי ההשכרה בלוגו") - לא היה ברור מה בדיוק ביקשו כאן בדוח מרוכז על
-                  // כמה הזמנות, אז זו רק סיכום היקף כברירת מחדל עד לאישור/הבהרה.
-                  <div style={{ fontSize: '12.5px', color: '#c0392b', marginTop: '4px', fontWeight: 600 }}>
+                  // סיכום היקף הדוח המרוכז (מס' הזמנות ופריטים) — מוצג בכותרת ליד הלוגו
+                  // כפרטי ההשכרה המבוקשים בדוח על כמה הזמנות (דיווח 3a5d9f8b). הערות ההזמנה
+                  // עצמן מופיעות בכל בלוק הזמנה בנפרד (block.notes).
+                  <div style={{ fontSize: '12.5px', color: '#555', marginTop: '4px', fontWeight: 600 }}>
                     {new Set(items.map(i => i.order?.orderId).filter(Boolean)).size} הזמנות | {items.length} פריטים
                   </div>
                 )}

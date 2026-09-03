@@ -513,6 +513,8 @@ export default function EmployeePage({ params }) {
                 העדפות עיצוב פר-עובד (JSON, /api/me/design-prefs); כל עובד
                 בוחר לעצמו בעמוד "עיצוב ותצוגה". */}
 
+            {/* הוסתר לפי בקשת הנהלה (c764bef4) - תמונת פרופיל הפכה למשחק; הוסתר כדי למנוע שימוש לא רציני. ניתן להחזיר אם תרצו. */}
+            {false && (
             <div className="field" style={{ gridColumn: '1 / -1' }}>
               <label htmlFor="employee-detail-profileImage">תמונת פרופיל / מסמך (העלאת קובץ)</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
@@ -543,6 +545,7 @@ export default function EmployeePage({ params }) {
                 )}
               </div>
             </div>
+            )}
 
             <div className="field" style={{ gridColumn: 'span 2' }}>
               <label htmlFor="employee-detail-notes">הערות</label>

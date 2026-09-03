@@ -19,6 +19,7 @@ export async function GET(request) {
     }
 
     const isProgrammer = employee.roleId === 2;
+    const isManager = [0, 1, 2].includes(employee.roleId);
     
     // Fetch reports: programmers see all, regular users see their own
     const whereClause = isProgrammer ? {} : { employeeId: employee.id };
@@ -37,7 +38,7 @@ export async function GET(request) {
       }
     });
 
-    return NextResponse.json({ success: true, reports, isProgrammer });
+    return NextResponse.json({ success: true, reports, isProgrammer, isManager });
   } catch (error) {
     console.error('Error fetching error reports:', error);
     return NextResponse.json({ success: false, error: error.message || 'Internal Server Error' }, { status: 500 });
@@ -58,14 +59,18 @@ export async function PATCH(request) {
       return NextResponse.json({ success: false, error: 'משתמש לא נמצא' }, { status: 404 });
     }
 
-    const { reportId, status, isHandled } = await request.json();
+    const { reportId, status, isHandled, isReadByUser, isReadByProgrammer } = await request.json();
     const statusProvided = status !== undefined;
     const isHandledProvided = isHandled !== undefined;
+    const isReadByUserProvided = isReadByUser !== undefined;
+    const isReadByProgrammerProvided = isReadByProgrammer !== undefined;
     if (
       !reportId ||
-      (!statusProvided && !isHandledProvided) ||
+      (!statusProvided && !isHandledProvided && !isReadByUserProvided && !isReadByProgrammerProvided) ||
       (statusProvided && !['OPEN', 'ARCHIVED'].includes(status)) ||
-      (isHandledProvided && typeof isHandled !== 'boolean')
+      (isHandledProvided && typeof isHandled !== 'boolean') ||
+      (isReadByUserProvided && typeof isReadByUser !== 'boolean') ||
+      (isReadByProgrammerProvided && typeof isReadByProgrammer !== 'boolean')
     ) {
       return NextResponse.json({ success: false, error: 'נתונים חסרים או לא תקינים' }, { status: 400 });
     }
@@ -82,6 +87,8 @@ export async function PATCH(request) {
     const data = {};
     if (statusProvided) data.status = status;
     if (isHandledProvided) data.isHandled = isHandled;
+    if (isReadByUserProvided) data.isReadByUser = isReadByUser;
+    if (isReadByProgrammerProvided) data.isReadByProgrammer = isReadByProgrammer;
 
     const updated = await prisma.errorReport.update({
       where: { id: reportId },
@@ -102,13 +109,19 @@ export async function POST(request) {
 
     let employeeId = null;
     let employeeName = 'לא ידוע / אורח';
+    let requester = null;
     
     if (token?.value) {
       const emp = await prisma.employee.findUnique({ where: { id: token.value } });
       if (emp) {
         employeeId = emp.id;
         employeeName = `${emp.firstName || ''} ${emp.lastName || ''}`.trim();
+        requester = emp;
       }
+    }
+    // הגבלת יצירת דיווח חדש למנהלים/הנהלה ראשית/מתכנת בלבד (בקשה 4191ef31)
+    if (!requester || ![0, 1, 2].includes(requester.roleId)) {
+      return NextResponse.json({ success: false, error: 'יצירת דיווח חדש מותרת למנהלים בלבד' }, { status: 403 });
     }
 
     const body = await request.json();

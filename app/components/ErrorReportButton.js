@@ -13,10 +13,17 @@ export default function ErrorReportButton() {
 
   const [reports, setReports] = useState([]);
   const [isProgrammer, setIsProgrammer] = useState(false);
+  const [isManager, setIsManager] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [selectedReport, setSelectedReport] = useState(null);
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
+
+  // שימור מיקום הגלילה ברשימת הפניות/ארכיון: כשפותחים פנייה (thread) וחוזרים
+  // חזרה, הרשימה נטענת/מוצגת מחדש ובלי זה הגלילה הייתה קופצת לראש בכל פעם.
+  const listScrollRef = useRef(null);
+  const scrollPositions = useRef({ list: 0, archive: 0 });
 
   // סימון אלמנט בעמוד — "מצב איתור": המודל נסגר זמנית, כל קליק בעמוד
   // נחסם ונאסף כתיאור האלמנט במקום להפעיל את הפעולה האמיתית שלו.
@@ -35,10 +42,32 @@ export default function ErrorReportButton() {
 
   useEffect(() => {
     let intervalId;
-    if (mounted && !isOpen) {
+    // Background/minimized tabs polled forever at 30s - pause while hidden so an
+    // idle tab doesn't keep hitting the API all day, and catch up immediately
+    // when the tab regains focus instead of waiting for the next tick.
+    const start = () => {
+      if (intervalId) return;
       intervalId = setInterval(fetchReports, 30000);
-    }
-    return () => clearInterval(intervalId);
+    };
+    const stop = () => {
+      clearInterval(intervalId);
+      intervalId = undefined;
+    };
+    const handleVisibility = () => {
+      if (!mounted || isOpen) return;
+      if (document.hidden) {
+        stop();
+      } else {
+        fetchReports();
+        start();
+      }
+    };
+    if (mounted && !isOpen && !document.hidden) start();
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      stop();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [mounted, isOpen]);
 
   useEffect(() => {
@@ -75,6 +104,14 @@ export default function ErrorReportButton() {
       fetchReports();
     }
   }, [isOpen, activeTab]);
+
+  // משחזר את מיקום הגלילה שנשמר לכל טאב (רשימה/ארכיון) בכל פעם שחוזרים אליו -
+  // למשל אחרי סגירת פנייה בודדת (thread) וחזרה לרשימה.
+  useEffect(() => {
+    if ((activeTab === 'list' || activeTab === 'archive') && listScrollRef.current) {
+      listScrollRef.current.scrollTop = scrollPositions.current[activeTab] || 0;
+    }
+  }, [activeTab]);
 
   const describeElement = (el) => {
     if (!el) return null;
@@ -163,6 +200,7 @@ export default function ErrorReportButton() {
         if (data.success) {
           setReports(data.reports || []);
           setIsProgrammer(data.isProgrammer || false);
+          setIsManager(data.isManager ?? data.isProgrammer ?? false);
         }
       }
     } catch (err) {
@@ -172,6 +210,10 @@ export default function ErrorReportButton() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!isManager && !isProgrammer) {
+      showToast('יצירת דיווח חדש מותרת למנהלים בלבד', 'error');
+      return;
+    }
     if (!userText.trim()) {
       showToast('יש להזין תיאור שגיאה', 'error');
       return;
@@ -261,6 +303,32 @@ export default function ErrorReportButton() {
     }
   };
 
+  // מסמן/מבטל סימון "טופל" - עצמאי לגמרי מהעברה לארכיון, נועד רק להבחין
+  // ויזואלית ברשימה בין פניות שכבר טופלו לכאלה שעדיין לא, כדי למנוע פתיחות
+  // חוזרות ונשנות של פניות שכבר נענו.
+  const toggleHandled = async (report) => {
+    const newHandled = !report.isHandled;
+    try {
+      const res = await fetch('/api/error-report', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: report.id, isHandled: newHandled }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setReports(prev => prev.map(r => r.id === report.id ? { ...r, isHandled: newHandled } : r));
+        if (selectedReport?.id === report.id) {
+          setSelectedReport(prev => ({ ...prev, isHandled: newHandled }));
+        }
+        showToast(newHandled ? 'הפנייה סומנה כטופלה' : 'סימון "טופל" הוסר', 'success');
+      } else {
+        showToast(data.error || 'שגיאה בעדכון הדיווח', 'error');
+      }
+    } catch (err) {
+      showToast('שגיאת תקשורת', 'error');
+    }
+  };
+
   const copyDetails = (report) => {
     const details = `
 מאת: ${report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'לא ידוע'}
@@ -285,21 +353,48 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
     setTimeout(() => setToast(null), 4000);
   };
 
-  const openThread = (report) => {
+  const openThread = async (report) => {
     setSelectedReport(report);
     setActiveTab('thread');
-    if ((isProgrammer && !report.isReadByProgrammer) || (!isProgrammer && !report.isReadByUser)) {
+    const needMarkRead = (isProgrammer && !report.isReadByProgrammer) || (!isProgrammer && !report.isReadByUser);
+    if (needMarkRead) {
       setReports(prev => prev.map(r => r.id === report.id ? {
         ...r,
         isReadByProgrammer: isProgrammer ? true : r.isReadByProgrammer,
         isReadByUser: !isProgrammer ? true : r.isReadByUser,
       } : r));
+      // Persist read status to DB so next fetch doesn't revert
+      try {
+        await fetch('/api/error-report', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            reportId: report.id,
+            isReadByProgrammer: isProgrammer ? true : undefined,
+            isReadByUser: !isProgrammer ? true : undefined,
+          }),
+        });
+      } catch {}
     }
   };
 
   const unreadCount = reports.filter(r => r.status !== 'ARCHIVED' && ((isProgrammer && !r.isReadByProgrammer) || (!isProgrammer && !r.isReadByUser))).length;
   const openReports = reports.filter(r => r.status !== 'ARCHIVED');
   const archivedReports = reports.filter(r => r.status === 'ARCHIVED');
+
+  // חיפוש בפניות - כמו במייל, מחפש בטקסט, בשם המדווח, בכותרת ובתגובות
+  const filterBySearch = (list) => {
+    if (!searchQuery.trim()) return list;
+    const q = searchQuery.trim().toLowerCase();
+    return list.filter(r => {
+      const inMain = (r.userText || '').toLowerCase().includes(q)
+        || (r.title || '').toLowerCase().includes(q)
+        || (r.url || '').toLowerCase().includes(q)
+        || `${r.employee?.firstName || ''} ${r.employee?.lastName || ''}`.toLowerCase().includes(q);
+      const inReplies = (r.replies || []).some(rep => (rep.text || '').toLowerCase().includes(q));
+      return inMain || inReplies;
+    });
+  };
 
   return (
     <>
@@ -331,18 +426,40 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
             </div>
 
             {activeTab !== 'thread' && (
-              <div className="tabs" style={{ margin: '0 22px' }}>
-                <button type="button" className={`tab${activeTab === 'list' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('list')}>
-                  פניות שלי {isProgrammer ? '(כל הדיווחים)' : ''}
-                </button>
-                <button type="button" className={`tab${activeTab === 'archive' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('archive')}>
-                  <svg className="icon" style={{ width: 13, height: 13, verticalAlign: -2, marginInlineEnd: 4 }}><use href="#i-archive" /></svg>
-                  ארכיון {archivedReports.length > 0 ? `(${archivedReports.length})` : ''}
-                </button>
-                <button type="button" className={`tab${activeTab === 'new' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('new')}>
-                  דיווח על תקלה חדשה
-                </button>
-              </div>
+              <>
+                <div className="tabs" style={{ margin: '0 22px' }}>
+                  <button type="button" className={`tab${activeTab === 'list' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('list')}>
+                    פניות שלי {isProgrammer ? '(כל הדיווחים)' : ''}
+                  </button>
+                  <button type="button" className={`tab${activeTab === 'archive' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('archive')}>
+                    <svg className="icon" style={{ width: 13, height: 13, verticalAlign: -2, marginInlineEnd: 4 }}><use href="#i-archive" /></svg>
+                    ארכיון {archivedReports.length > 0 ? `(${archivedReports.length})` : ''}
+                  </button>
+                  {(isManager || isProgrammer) && (
+                    <button type="button" className={`tab${activeTab === 'new' ? ' active' : ''}`} style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }} onClick={() => setActiveTab('new')}>
+                      דיווח על תקלה חדשה
+                    </button>
+                  )}
+                </div>
+                {(activeTab === 'list' || activeTab === 'archive') && (
+                  <div style={{ padding: '10px 22px 0', display: 'flex', gap: 8, alignItems: 'center' }}>
+                    <div style={{ position: 'relative', flex: 1 }}>
+                      <svg className="icon" style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', width: 14, height: 14, color: 'var(--text-3)', pointerEvents: 'none' }}><use href="#i-search" /></svg>
+                      <input
+                        type="text"
+                        className="input"
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        placeholder="חיפוש בפניות (טקסט, שם, תגובות)..."
+                        style={{ width: '100%', paddingInlineStart: 30, fontSize: 13 }}
+                      />
+                    </div>
+                    {searchQuery && (
+                      <button type="button" className="btn btn-ghost btn-sm" onClick={() => setSearchQuery('')}>נקה</button>
+                    )}
+                  </div>
+                )}
+              </>
             )}
 
             {activeTab === 'thread' && selectedReport && (
@@ -350,6 +467,14 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                 <div style={{ padding: '10px 22px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)' }}>
                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => { setActiveTab(selectedReport.status === 'ARCHIVED' ? 'archive' : 'list'); fetchReports(); }}>חזור לרשימה</button>
                   <div style={{ display: 'flex', gap: 6 }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => toggleHandled(selectedReport)}
+                    >
+                      <svg className="icon"><use href="#i-check-circle" /></svg>
+                      {selectedReport.isHandled ? 'בטל סימון "טופל"' : 'סמן כטופל'}
+                    </button>
                     <button
                       type="button"
                       className="btn btn-secondary btn-sm"
@@ -424,32 +549,68 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
               </div>
             )}
 
-            {(activeTab === 'list' || activeTab === 'archive') && (
-              <div style={{ flex: 1, overflowY: 'auto', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {(activeTab === 'archive' ? archivedReports : openReports).length === 0 ? (
+            {(activeTab === 'list' || activeTab === 'archive') && (() => {
+              const baseList = activeTab === 'archive' ? archivedReports : openReports;
+              const displayList = filterBySearch(baseList);
+              const isSearchActive = searchQuery.trim().length > 0;
+              return (
+              <div
+                ref={listScrollRef}
+                onScroll={(e) => { scrollPositions.current[activeTab] = e.currentTarget.scrollTop; }}
+                style={{ flex: 1, overflowY: 'auto', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}
+              >
+                {baseList.length === 0 ? (
                   <div className="empty-state">
                     <svg className="icon"><use href={activeTab === 'archive' ? '#i-archive' : '#i-message'} /></svg>
                     <p>{activeTab === 'archive' ? 'אין דיווחים בארכיון' : 'אין דיווחים קיימים'}</p>
                   </div>
+                ) : displayList.length === 0 ? (
+                  <div className="empty-state">
+                    <svg className="icon"><use href="#i-search" /></svg>
+                    <p>לא נמצאו תוצאות ל־"{searchQuery}"</p>
+                  </div>
                 ) : (
-                  (activeTab === 'archive' ? archivedReports : openReports).map(report => {
+                  displayList.map(report => {
                     const isUnread = (isProgrammer && !report.isReadByProgrammer) || (!isProgrammer && !report.isReadByUser);
+                    // "טופל" נצבע רק אם אין התראת "לא נקרא" פעילה - הודעה חדשה
+                    // תמיד גוברת חזותית על סימון טופל ישן, כדי שלא תפספס.
+                    const rowBackground = isUnread
+                      ? 'var(--primary-tint)'
+                      : (report.isHandled ? 'var(--success-tint)' : 'var(--surface)');
                     return (
                       <div
                         key={report.id}
                         className="list-card"
                         onClick={() => openThread(report)}
-                        style={{ cursor: 'pointer', flexDirection: 'column', alignItems: 'stretch', background: isUnread ? 'var(--primary-tint)' : 'var(--surface)' }}
+                        style={{ cursor: 'pointer', flexDirection: 'column', alignItems: 'stretch', background: rowBackground }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                           <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             {isUnread && <span className="dot-badge" />}
                             {report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'משתמש'}
+                            {!isUnread && report.isHandled && (
+                              <span
+                                className="badge badge-success"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}
+                                title="פנייה זו סומנה כטופלה"
+                              >
+                                <svg className="icon" style={{ width: 11, height: 11 }}><use href="#i-check-circle" /></svg>
+                                טופל
+                              </span>
+                            )}
                           </strong>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                             <span style={{ fontSize: 12, color: 'var(--text-3)' }}>
                               {getHebrewDateString(report.updatedAt)} {new Date(report.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}
                             </span>
+                            <button
+                              type="button"
+                              className="btn btn-ghost btn-icon-only btn-sm"
+                              title={report.isHandled ? 'בטל סימון "טופל"' : 'סמן כטופל'}
+                              onClick={(e) => { e.stopPropagation(); toggleHandled(report); }}
+                            >
+                              <svg className="icon"><use href="#i-check-circle" /></svg>
+                            </button>
                             <button
                               type="button"
                               className="btn btn-ghost btn-icon-only btn-sm"
@@ -471,9 +632,17 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   })
                 )}
               </div>
-            )}
+            ); })()}
 
             {activeTab === 'new' && (
+              (!isManager && !isProgrammer) ? (
+                <div style={{ padding: 30, textAlign: 'center', color: 'var(--text-3)', display: 'flex', flexDirection: 'column', gap: 12, alignItems: 'center' }}>
+                  <svg className="icon" style={{ width: 36, height: 36, color: 'var(--text-3)' }}><use href="#i-shield" /></svg>
+                  <p style={{ margin: 0, fontWeight: 600 }}>יצירת דיווח חדש מותרת למנהלים בלבד</p>
+                  <p style={{ margin: 0, fontSize: 13 }}>פנה למנהל/הנהלה ראשית כדי לדווח על תקלה.</p>
+                  <button type="button" className="btn btn-secondary" onClick={() => setActiveTab('list')}>חזור לרשימה</button>
+                </div>
+              ) : (
               <form onSubmit={handleSubmit} style={{ padding: 22, display: 'flex', flexDirection: 'column', gap: 14, flex: 1, overflowY: 'auto' }}>
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label>סימון אלמנטים בעמוד (לא חובה)</label>
@@ -557,6 +726,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   </button>
                 </div>
               </form>
+              )
             )}
           </div>
         </div>,

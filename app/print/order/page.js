@@ -3,12 +3,26 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Shirt, Scissors, Ruler, Check } from 'lucide-react';
-import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { getHebrewDateString, getHebrewWeekdayLabel } from '../../../lib/hebrewDate';
+import { addDaysSkippingWeekends } from '../../../lib/clientInventory';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - item.description bakes the
 // model code into the name with a "קוד:" label; the print report wants the
 // bare number without that word.
 const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
+
+// "פרטי החזרה" (top-of-rental-report line): the app has no dedicated
+// return-deadline field/setting for the standard flow - Order.returnDate is only
+// ever populated for the abroad/multi-day flow (see Order.toDate), and there's no
+// SystemSetting for a standard return hour. Best-effort: use the order's actual
+// toDate/returnDate when set (abroad/long-term orders), otherwise fall back to the
+// day after the event (skipping Fri/Sat, via lib/clientInventory.js's client-safe
+// addDaysSkippingWeekends - same helper components/orders/RentalReturnModal.js uses
+// for the late-return check, so both stay in sync with one implementation).
+
+// שעת ההחזרה המוצגת אינה נשלפת מהמערכת - אין הגדרת SystemSetting לשעת החזרה
+// סטנדרטית - ומוצגת כברירת מחדל קבועה לפי הדוגמה שנמסרה לדוח הבאגים.
+const STANDARD_RETURN_HOUR = '13:00';
 
 export default function PrintOrderPage() {
   const searchParams = useSearchParams();
@@ -17,6 +31,8 @@ export default function PrintOrderPage() {
   const [error, setError] = useState('');
   const [enableAlterations, setEnableAlterations] = useState(true);
   const [printSettings, setPrintSettings] = useState(null);
+  // bust לוגו: מאפשר לרענן את התמונה גם כשה-API מחזיר Cache-Control immutable (אחרי העלאת לוגו חדש)
+  const [logoBust] = useState(() => Date.now());
 
   const orderId = searchParams.get('orderId');
   const printType = searchParams.get('type') || 'order';
@@ -26,7 +42,7 @@ export default function PrintOrderPage() {
       setLoading(true);
       const [res, settingsRes] = await Promise.all([
         fetch(`/api/orders/${orderId}`),
-        fetch('/api/settings')
+        fetch('/api/settings', { cache: 'no-store' })
       ]);
       if (!res.ok) throw new Error('Failed to fetch order data');
       const data = await res.json();
@@ -88,6 +104,12 @@ export default function PrintOrderPage() {
   const balance = Math.max(0, totalObligations - totalPayments);
   const activeItems = order?.items ? order.items.filter(i => !i.isDeleted) : [];
   const activePayments = order?.payments ? order.payments.filter(p => !p.isDeleted) : [];
+
+  const returnByDate = order
+    ? (order.toDate || order.returnDate
+      ? new Date(order.toDate || order.returnDate)
+      : (order.eventDate ? addDaysSkippingWeekends(order.eventDate, 1) : null))
+    : null;
   const colCount = enableAlterations ? 5 : 4;
 
   const renderRepairChips = (item) => {
@@ -215,6 +237,7 @@ export default function PrintOrderPage() {
             page-break-inside: auto !important;
           }
           .order-details-card,
+          .return-details-box,
           .rental-notes-box,
           .summary-section,
           .terms,
@@ -388,6 +411,19 @@ export default function PrintOrderPage() {
         .terms strong {
           color: #555;
         }
+        .return-details-box {
+          border: 1.5px solid #333;
+          border-radius: 4px;
+          padding: 10px 15px;
+          margin-bottom: 20px;
+          text-align: center;
+          font-size: 15px;
+          color: #262626;
+          background-color: #f4f4f4;
+        }
+        .return-details-box strong {
+          color: #111;
+        }
         .rental-notes-box {
           border: 1px solid #e5e5e5;
           padding: 15px;
@@ -450,12 +486,18 @@ export default function PrintOrderPage() {
               <tr>
                 <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
                   <div className="bsd">בס&quot;ד</div>
+                  {printType === 'rental' && returnByDate && (
+                    <div className="return-details-box">
+                      <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {STANDARD_RETURN_HOUR}
+                    </div>
+                  )}
                   <div className="print-header">
                     <div className="print-header-content">
                       {/* הלוגו מוגש מ-/api/logo (הגדרת BRAND_LOGO); כשאין לוגו מוגדר הנתיב
-                          מחזיר 404 - onError מסתיר את התמונה והכותרת נשארת טקסטואלית בלבד. */}
+                           מחזיר 404 - onError מסתיר את התמונה והכותרת נשארת טקסטואלית בלבד.
+                           ?v=logoBust מבטל cache דפדפן אחרי העלאת לוגו חדש (Cache-Control immutable). */}
                       <img
-                        src="/api/logo"
+                        src={`/api/logo?v=${logoBust}`}
                         alt=""
                         style={{ height: '64px', objectFit: 'contain', marginBottom: '10px' }}
                         onError={(e) => { e.currentTarget.style.display = 'none'; }}
@@ -472,22 +514,24 @@ export default function PrintOrderPage() {
                   </div>
 
                   <div className="order-details-card">
-                    {/* Right side: Customer */}
+                    {/* Right side: Customer - כולל הערות ההזמנה בשורת פרטי הלקוח (בקשת יא אלול) */}
                     <div>
                       <strong>לכבוד: {order.customer?.firstName} {order.customer?.lastName}</strong><br />
                       טלפון: <span dir="ltr">{order.customer?.phone1 || order.customer?.phone || '-'}</span><br />
                       כתובת: {order.customer?.city ? `${order.customer.city}${order.customer?.address ? `, ${order.customer.address}` : ''}` : '-'}<br />
+                      {order.notes && (
+                        <>הערות להזמנה: {order.notes}<br /></>
+                      )}
                     </div>
                     {/* Left side: Order Details */}
                     <div>
                       <strong>{printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #{order.orderId}</strong><br />
-                      תאריך הזמנה: {order.createdAt ? getHebrewDateString(order.createdAt) : '-'}<br />
                       {(!order.isWeekdayEvent && !order.isAbroad) ? (
                         <>תאריך אירוע: {order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}</>
                       ) : (
                         <>סוג אירוע: אירוע חו&quot;ל</>
                       )}
-                      {printType === 'order' && order.notes && (
+                      {order.notes && (
                         <><br />הערות: {order.notes}</>
                       )}
                     </div>
@@ -602,7 +646,7 @@ export default function PrintOrderPage() {
 
                   {printType === 'rental' && (
                     <div className="terms">
-                      <strong>תנאים:</strong> הבגדים נמסרים נקיים ומגוהצים ויש להחזירם באותו מצב. אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
+                      אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
                     </div>
                   )}
 
