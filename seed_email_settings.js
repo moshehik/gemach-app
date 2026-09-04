@@ -26,6 +26,14 @@ async function main() {
       category: 'מיילים',
       type: 'select',
       notes: 'קבע מאיזה קישור יישלחו המיילים והדיווחים'
+    },
+    {
+      key: 'email_drive_folder_id',
+      value: '',
+      name: 'תיקיית דרייב לשליחת קבצים',
+      category: 'מיילים',
+      type: 'text',
+      notes: 'מזהה תיקיית יעד בדרייב (ID מה-URL). ריק = שורש הדרייב. הקבצים משותפים עם הנמען בהרשאת הורדה מלאה'
     }
   ];
 

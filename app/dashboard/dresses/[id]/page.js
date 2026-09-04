@@ -350,10 +350,10 @@ export default function DressCardPage({ params }) {
       return;
     }
     if (type === 'export') {
-      const rows = [['מידה', "מס' סידורי", 'ברקוד', 'מיקום', 'בתיקון', 'לא בשימוש', 'מחוק']];
+      const rows = [['מידה', "מס' סידורי", 'ברקוד', 'מיקום', 'בתיקון', 'לא בשימוש', 'סיבת אי-שימוש', 'מחוק']];
       items.forEach(i => rows.push([
         i.sizeText || '', i.serialNumber ?? '', i.dressBarcode || '', i.location || '',
-        i.inRepair ? 'כן' : 'לא', i.notInUse ? 'כן' : 'לא', i.isDeleted ? 'כן' : 'לא'
+        i.inRepair ? 'כן' : 'לא', i.notInUse ? 'כן' : 'לא', i.notInUseReason || '', i.isDeleted ? 'כן' : 'לא'
       ]));
       // BOM כדי שאקסל יזהה עברית ב-UTF-8
       const csv = '﻿' + rows.map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\r\n');

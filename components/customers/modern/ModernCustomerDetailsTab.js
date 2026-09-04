@@ -41,7 +41,7 @@ const renderCustomerNotes = (notes) => {
   });
 };
 
-export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal, cancelSignal }) {
+export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal, cancelSignal, isHeadManagement, onUnblock }) {
   const [isEditing, setIsEditing] = useState(false);
   const isFirstCancelSignal = useRef(true);
 
@@ -75,6 +75,23 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
 
   return (
     <div>
+      {customer.isBlocked && (
+        <div className="callout callout-danger" style={{ marginBottom: '18px', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <svg className="icon"><use href="#i-alert-tri" /></svg>
+            <span>
+              <strong>לקוח חסום מהזמנות חדשות</strong>
+              {customer.blockedReason && <>{' — '}{customer.blockedReason}</>}
+            </span>
+          </span>
+          {isHeadManagement && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={onUnblock}>
+              ביטול חסימה
+            </button>
+          )}
+        </div>
+      )}
+
       <div className="card card-pad" style={{ marginBottom: '18px' }}>
         <div className="card-title-row" style={{ marginBottom: isEditing ? '14px' : 0 }}>
           <svg className="icon"><use href="#i-id" /></svg>
@@ -97,28 +114,28 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
         )}
 
         {isEditing && (
-          <form onSubmit={handleSubmit}>
+          <form onSubmit={handleSubmit} autoComplete="off">
             <div className="form-grid">
               <div className="field">
                 <label>שם פרטי *</label>
-                <input type="text" className="input" name="firstName" value={customer.firstName || ''} onChange={onChange} required />
+                <input type="text" className="input" name="firstName" autoComplete="off" value={customer.firstName || ''} onChange={onChange} required />
               </div>
               <div className="field">
                 <label>שם משפחה *</label>
-                <input type="text" className="input" name="lastName" value={customer.lastName || ''} onChange={onChange} required />
+                <input type="text" className="input" name="lastName" autoComplete="off" value={customer.lastName || ''} onChange={onChange} required />
               </div>
               <div className="field">
                 <label>טלפון *</label>
                 <div className="input-icon-wrap">
                   <svg className="icon"><use href="#i-phone" /></svg>
-                  <input type="text" className="input" style={{ direction: 'ltr' }} name="phone1" value={customer.phone1 || ''} onChange={onChange} required />
+                  <input type="text" className="input" style={{ direction: 'ltr' }} name="phone1" autoComplete="off" value={customer.phone1 || ''} onChange={onChange} required />
                 </div>
               </div>
               <div className="field">
                 <label>טלפון נוסף</label>
                 <div className="input-icon-wrap">
                   <svg className="icon"><use href="#i-phone" /></svg>
-                  <input type="text" className="input" style={{ direction: 'ltr' }} name="phone2" value={customer.phone2 || ''} onChange={onChange} />
+                  <input type="text" className="input" style={{ direction: 'ltr' }} name="phone2" autoComplete="off" value={customer.phone2 || ''} onChange={onChange} />
                 </div>
               </div>
               <div className="field">
@@ -126,7 +143,7 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   <div className="input-icon-wrap" style={{ flex: 1 }}>
                     <svg className="icon"><use href="#i-mail" /></svg>
-                    <input type="email" className="input" style={{ direction: 'ltr' }} name="email" value={customer.email || ''} onChange={onChange} onBlur={onEmailBlur} />
+                    <input type="email" className="input" style={{ direction: 'ltr' }} name="email" autoComplete="off" value={customer.email || ''} onChange={onChange} onBlur={onEmailBlur} />
                   </div>
                   {customer.email && (
                     <>
@@ -152,21 +169,21 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
               </div>
               <div className="field">
                 <label>עיר</label>
-                <input type="text" className="input" name="city" value={customer.city || ''} onChange={onChange} />
+                <input type="text" className="input" name="city" autoComplete="off" value={customer.city || ''} onChange={onChange} />
               </div>
               <div className="field">
                 <label>רחוב</label>
-                <input type="text" className="input" name="street" value={customer.street || ''} onChange={onChange} />
+                <input type="text" className="input" name="street" autoComplete="off" value={customer.street || ''} onChange={onChange} />
               </div>
               <div className="field">
                 <label>מספר בית</label>
-                <input type="number" className="input" name="houseNum" value={customer.houseNum || ''} onChange={onChange} />
+                <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={onChange} />
               </div>
             </div>
 
             <div className="field" style={{ marginBottom: 0 }}>
               <label>הערות</label>
-              <textarea className="textarea" name="notes" value={customer.notes || ''} onChange={onChange} rows={4} />
+              <textarea className="textarea" name="notes" autoComplete="off" value={customer.notes || ''} onChange={onChange} rows={4} />
             </div>
           </form>
         )}

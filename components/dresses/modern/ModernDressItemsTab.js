@@ -177,8 +177,23 @@ export default function ModernDressItemsTab({
     setDraft({
       location: item.location || '',
       inRepair: !!item.inRepair,
-      notInUse: !!item.notInUse
+      notInUse: !!item.notInUse,
+      notInUseReason: item.notInUseReason || ''
     });
+  };
+
+  // הפעלת "לא בשימוש" תמיד עוברת דרך בקשת סיבה (חלון כתיבה חופשי) - כמו הדפוס
+  // הקיים ב"דיווח על בעיה" בהחזרות. ביטול הסימון מנקה את הסיבה הישנה.
+  const toggleNotInUse = async () => {
+    if (draft.notInUse) {
+      setDraft({ ...draft, notInUse: false, notInUseReason: '' });
+      return;
+    }
+    const reason = window.customPrompt
+      ? await window.customPrompt('מסמן פריט כ"לא בשימוש" - מהי הסיבה לתקלה? (ניתן להשאיר ריק)', draft.notInUseReason || '', 'text')
+      : (window.confirm('לסמן פריט כ"לא בשימוש"?') ? (draft.notInUseReason || '') : null);
+    if (reason === null) return; // בוטל - הסימון לא משתנה
+    setDraft({ ...draft, notInUse: true, inRepair: false, notInUseReason: reason.trim() });
   };
 
   const cancelEdit = () => {
@@ -196,7 +211,8 @@ export default function ModernDressItemsTab({
         location: draft.location || null,
         inRepair: draft.inRepair,
         notInUse: draft.notInUse,
-        notInUseSince: draft.notInUse ? (item.notInUseSince || new Date().toISOString()) : null
+        notInUseSince: draft.notInUse ? (item.notInUseSince || new Date().toISOString()) : null,
+        notInUseReason: draft.notInUse ? (draft.notInUseReason || null) : null
       };
       const res = await fetch(`/api/dresses/items/${item.id}`, {
         method: 'PUT',
@@ -550,16 +566,40 @@ export default function ModernDressItemsTab({
                         {/* לא בשימוש */}
                         <td>
                           {isEditing ? (
-                            <button
-                              type="button"
-                              className={`pill-tab${unusedOn ? ' active' : ''}`}
-                              title='שנה סימון "לא בשימוש"'
-                              onClick={() => setDraft({ ...draft, notInUse: !draft.notInUse, inRepair: !draft.notInUse ? false : draft.inRepair })}
-                            >
-                              {unusedOn ? 'לא בשימוש' : 'בשימוש'}
-                            </button>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                              <button
+                                type="button"
+                                className={`pill-tab${unusedOn ? ' active' : ''}`}
+                                title='שנה סימון "לא בשימוש"'
+                                onClick={toggleNotInUse}
+                              >
+                                {unusedOn ? 'לא בשימוש' : 'בשימוש'}
+                              </button>
+                              {unusedOn && (
+                                <button
+                                  type="button"
+                                  className="btn btn-ghost btn-icon-only btn-sm"
+                                  title={draft.notInUseReason ? `עריכת הסיבה: ${draft.notInUseReason}` : 'הוספת סיבה'}
+                                  onClick={async () => {
+                                    const reason = window.customPrompt
+                                      ? await window.customPrompt('מהי הסיבה לכך שהפריט לא בשימוש? (ניתן להשאיר ריק)', draft.notInUseReason || '', 'text')
+                                      : draft.notInUseReason;
+                                    if (reason === null) return;
+                                    setDraft({ ...draft, notInUseReason: reason.trim() });
+                                  }}
+                                >
+                                  <svg className="icon"><use href="#i-edit" /></svg>
+                                </button>
+                              )}
+                            </div>
                           ) : unusedOn ? (
-                            <span className="badge badge-danger"><svg className="icon"><use href="#i-x-circle" /></svg>לא בשימוש</span>
+                            <span
+                              className="badge badge-danger"
+                              title={item.notInUseReason ? `סיבה: ${item.notInUseReason}` : 'לא נרשמה סיבה'}
+                            >
+                              <svg className="icon"><use href="#i-x-circle" /></svg>
+                              לא בשימוש
+                            </span>
                           ) : (
                             <span className="cell-muted">—</span>
                           )}

@@ -63,7 +63,9 @@ export async function GET(request) {
           street: true,
           houseNum: true,
           email: true,
-          emailSuffix: true
+          emailSuffix: true,
+          isBlocked: true,
+          blockedReason: true
         }
       }),
       prisma.customer.count({ where })

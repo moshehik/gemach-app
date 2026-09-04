@@ -14,9 +14,14 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
     password: ''
   });
   const [file, setFile] = useState(null);
+  const [files, setFiles] = useState([]);
+  // יעד שליחה בהתאמה: email = צרופה למייל, drive = העלאה לדרייב+שיתוף, both = גם וגם
+  const [sendMode, setSendMode] = useState('email');
+  const [driveFolderId, setDriveFolderId] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [driveLinks, setDriveLinks] = useState([]);
 
   useEffect(() => {
     if (defaultTo) {
@@ -45,10 +50,21 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
 
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files.length > 0) {
-      setFile(e.target.files[0]);
+      const picked = Array.from(e.target.files);
+      setFiles(picked);
+      setFile(picked[0] || null);
     } else {
+      setFiles([]);
       setFile(null);
     }
+  };
+
+  const removePickedFile = (idx) => {
+    setFiles(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      setFile(next[0] || null);
+      return next;
+    });
   };
 
   const convertFileToBase64 = (file) => {
@@ -68,14 +84,27 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
     setLoading(true);
     setError('');
     setSuccess('');
+    setDriveLinks([]);
 
     try {
-      let fileContent = '';
-      let fileName = '';
+      const attachments = [];
+      // תאימות לאחור: שולחים גם fileName/fileContent בודד (הראשון) וגם מערך מלא
+      let firstFileName = '';
+      let firstFileContent = '';
 
-      if (file) {
-        fileContent = await convertFileToBase64(file);
-        fileName = file.name;
+      for (const f of files) {
+        const base64 = await convertFileToBase64(f);
+        if (!firstFileContent) {
+          firstFileContent = base64;
+          firstFileName = f.name;
+        }
+        attachments.push({
+          fileName: f.name,
+          fileContent: base64,
+          mimeType: f.type || 'application/octet-stream',
+          sizeBytes: f.size || null,
+          dest: sendMode
+        });
       }
 
       const res = await fetch('/api/send-email', {
@@ -84,8 +113,11 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
         body: JSON.stringify({
           ...formData,
           emailBody: formData.body,
-          fileName,
-          fileContent,
+          fileName: firstFileName,
+          fileContent: firstFileContent,
+          attachments,
+          sendMode,
+          driveFolderId,
           customerId,
           employeeId
         })
@@ -93,13 +125,23 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
 
       const data = await res.json();
       if (data.success) {
-        setSuccess('המייל נשלח בהצלחה!');
+        const links = Array.isArray(data.driveLinks) ? data.driveLinks : [];
+        setDriveLinks(links);
+        setSuccess(
+          links.length > 0
+            ? `המייל נשלח בהצלחה! ${links.length} קבצים הועלו לדרייב עם הרשאת הורדה מלאה.`
+            : 'המייל נשלח בהצלחה!'
+        );
         setTimeout(() => {
           onClose();
           setSuccess('');
+          setDriveLinks([]);
           setFormData(prev => ({ ...prev, subject: '', body: '', cc: '', username: '', password: '' }));
           setFile(null);
-        }, 2000);
+          setFiles([]);
+          setSendMode('email');
+          setDriveFolderId('');
+        }, 2600);
       } else {
         setError(data.message || 'שגיאה בשליחת המייל');
       }
@@ -134,6 +176,18 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
               <svg className="icon"><use href="#i-check-circle" /></svg>
               {success}
             </div>
+            {driveLinks.length > 0 && (
+              <div style={{ marginTop: '12px', fontSize: '0.85rem' }}>
+                <strong>קישורי דרייב (הרשאת הורדה מלאה):</strong>
+                <ul style={{ paddingInlineStart: '18px', margin: '8px 0 0 0' }}>
+                  {driveLinks.map((l, i) => (
+                    <li key={i} style={{ marginBottom: '4px' }}>
+                      {l.url ? <a href={l.url} target="_blank" rel="noreferrer">{l.fileName || l.url}</a> : (l.fileName || '')}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit}>
@@ -166,8 +220,59 @@ export default function SendEmailModal({ isOpen, onClose, defaultTo, customerId,
               </div>
 
               <div className="field" style={{ marginBottom: 0 }}>
-                <label>קובץ מצורף</label>
-                <input type="file" className="input" onChange={handleFileChange} disabled={loading} />
+                <label>קבצים מצורפים (ניתן לבחור כמה)</label>
+                <input type="file" className="input" multiple onChange={handleFileChange} disabled={loading} />
+                {files.length > 0 && (
+                  <div style={{ marginTop: '8px', fontSize: '0.82rem', background: 'var(--surface-alt)', border: '1px solid var(--border)', borderRadius: '8px', overflow: 'hidden' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                      <thead>
+                        <tr style={{ background: 'var(--surface)', color: 'var(--text-2)' }}>
+                          <th style={{ textAlign: 'right', padding: '6px 10px' }}>#</th>
+                          <th style={{ textAlign: 'right', padding: '6px 10px' }}>שם הקובץ</th>
+                          <th style={{ textAlign: 'right', padding: '6px 10px' }}>גודל</th>
+                          <th style={{ textAlign: 'right', padding: '6px 10px' }}>יעד</th>
+                          <th style={{ padding: '6px 10px' }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {files.map((f, i) => (
+                          <tr key={i} style={{ borderTop: '1px solid var(--border)' }}>
+                            <td style={{ padding: '6px 10px', color: 'var(--text-3)' }}>{i + 1}</td>
+                            <td style={{ padding: '6px 10px', fontWeight: 600 }}>{f.name}</td>
+                            <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>{f.size > 1048576 ? `${(f.size / 1048576).toFixed(2)} MB` : f.size > 1024 ? `${(f.size / 1024).toFixed(1)} KB` : `${f.size} B`}</td>
+                            <td style={{ padding: '6px 10px', whiteSpace: 'nowrap' }}>{sendMode === 'email' ? 'מצורף למייל' : sendMode === 'drive' ? 'נשמר בדרייב' : 'מייל + דרייב'}</td>
+                            <td style={{ padding: '6px 10px', textAlign: 'center' }}>
+                              <button type="button" className="btn btn-ghost btn-sm" onClick={() => removePickedFile(i)} disabled={loading}>הסר</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <div className="hint" style={{ padding: '8px 10px' }}>טבלת הוראות מסודרת תצורף אוטומטית לגוף המייל דרך ה-GAS, כולל איך מורידים כל קובץ.</div>
+                  </div>
+                )}
+              </div>
+
+              <div className="field" style={{ marginBottom: 0 }}>
+                <label>יעד הקבצים בהתאמה</label>
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                  {[
+                    { v: 'email', label: 'צרופה למייל' },
+                    { v: 'drive', label: 'העלאה לדרייב + שיתוף' },
+                    { v: 'both', label: 'גם וגם' }
+                  ].map(o => (
+                    <label key={o.v} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border)', borderRadius: '20px', padding: '6px 12px', cursor: 'pointer', background: sendMode === o.v ? 'var(--primary-tint)' : 'transparent', fontSize: '0.85rem', fontWeight: 600 }}>
+                      <input type="radio" name="sendMode" value={o.v} checked={sendMode === o.v} onChange={() => setSendMode(o.v)} disabled={loading} />
+                      {o.label}
+                    </label>
+                  ))}
+                </div>
+                {(sendMode === 'drive' || sendMode === 'both') && (
+                  <>
+                    <input type="text" className="input" value={driveFolderId} onChange={e => setDriveFolderId(e.target.value)} placeholder="מזהה תיקיית דרייב (רשות - אחרת ברירת המחדל מההגדרות)" dir="ltr" disabled={loading} style={{ marginTop: '8px' }} />
+                    <div className="hint" style={{ marginTop: '6px' }}>הקבצים יועלו לדרייב וישותפו עם הנמען בהרשאת צפייה והורדה מלאה + קישור פתוח להורדה.</div>
+                  </>
+                )}
               </div>
 
               <div style={{ background: 'var(--surface-alt)', padding: '14px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)' }}>

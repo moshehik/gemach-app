@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   getDailyStatistics,
   getStatisticsByModel,
@@ -35,7 +35,11 @@ export default function StatisticsPage() {
     loadSummary();
   }, []);
 
+  // מספר בקשה עולה, כדי שתשובה איטית מטאב/סינון קודם לא תדרוס נתונים של טאב
+  // חדש יותר שכבר פעיל (מרוץ בין לחיצות מהירות על הטאבים או על "החל סינון").
+  const requestIdRef = useRef(0);
   const fetchData = async () => {
+    const requestId = ++requestIdRef.current;
     setLoading(true);
     try {
       let result = null;
@@ -59,11 +63,11 @@ export default function StatisticsPage() {
           result = await getDressConsumptionStats(startDate || null, endDate || null);
           break;
       }
-      setData(result);
+      if (requestIdRef.current === requestId) setData(result);
     } catch (err) {
       console.error(err);
     } finally {
-      setLoading(false);
+      if (requestIdRef.current === requestId) setLoading(false);
     }
   };
 
@@ -116,7 +120,7 @@ export default function StatisticsPage() {
             key={t.id}
             className={activeTab === t.id ? 'tab active' : 'tab'}
             style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
-            onClick={() => setActiveTab(t.id)}
+            onClick={() => { setData(null); setActiveTab(t.id); }}
           >
             <svg className="icon"><use href={`#${t.icon}`} /></svg>
             {t.label}
@@ -220,7 +224,7 @@ function DailyTable({ data }) {
               <tr key={r.date}>
                 <td className="cell-primary">{new Date(r.date).toLocaleDateString('he-IL')}</td>
                 <td>{r.newOrders}</td>
-                <td style={{ color: 'var(--success)', fontWeight: 700 }}>₪{r.revenue.toLocaleString()}</td>
+                <td style={{ color: 'var(--success)', fontWeight: 700 }}>₪{(r.revenue ?? 0).toLocaleString()}</td>
                 <td>{r.itemsRented}</td>
                 <td>{r.itemsReturned}</td>
               </tr>
@@ -333,13 +337,13 @@ function PaymentsTable({ data }) {
                 <td className="cell-primary">{r.orderId}</td>
                 <td>{r.customerName}</td>
                 <td className="cell-muted">{r.orderDate ? new Date(r.orderDate).toLocaleDateString('he-IL') : ''}</td>
-                <td>₪{r.expectedTotal.toLocaleString()}</td>
-                <td style={{ color: 'var(--success)' }}>₪{r.actualPaid.toLocaleString()}</td>
+                <td>₪{(r.expectedTotal ?? 0).toLocaleString()}</td>
+                <td style={{ color: 'var(--success)' }}>₪{(r.actualPaid ?? 0).toLocaleString()}</td>
                 <td
                   className={r.debt > 0 ? '' : 'cell-muted'}
                   style={r.debt > 0 ? { fontWeight: 700, color: 'var(--danger)' } : undefined}
                 >
-                  ₪{r.debt.toLocaleString()}
+                  ₪{(r.debt ?? 0).toLocaleString()}
                 </td>
               </tr>
             ))}

@@ -23,8 +23,32 @@ export default function NotificationBell({ employeeId }) {
 
   useEffect(() => {
     fetchNotifications();
-    const interval = setInterval(fetchNotifications, 60000);
-    return () => clearInterval(interval);
+    let interval = null;
+    const startPolling = () => {
+      if (interval) return;
+      interval = setInterval(fetchNotifications, 60000);
+    };
+    const stopPolling = () => {
+      clearInterval(interval);
+      interval = null;
+    };
+    // Background/minimized tabs were polling forever - pause while hidden so an
+    // employee's idle tab doesn't keep hitting the API all day, and catch up
+    // immediately when they come back instead of waiting for the next tick.
+    const handleVisibility = () => {
+      if (document.hidden) {
+        stopPolling();
+      } else {
+        fetchNotifications();
+        startPolling();
+      }
+    };
+    if (!document.hidden) startPolling();
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
   }, [employeeId]);
 
   // NotificationBell lives once in AppShell and never remounts on client-side

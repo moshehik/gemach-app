@@ -24,6 +24,7 @@ const PINNED_NAV_KEY = 'gemachPinnedNav';
 export default function AppShell({
   navGroups,
   isProgrammer,
+  isHeadManagement,
   hideErrorReporting,
   hideInternalMessaging,
   authToken,
@@ -132,14 +133,20 @@ export default function AppShell({
               >
                 <svg className="icon"><use href={`#${item.icon}`} /></svg>
                 <span className="nav-label">{item.label}</span>
-                <button
-                  type="button"
-                  className={`nav-pin-btn${isPinned(item.href) ? ' pinned' : ''}`}
-                  title={isPinned(item.href) ? 'הסרה מהתפריט העליון' : 'הצמדה לתפריט העליון'}
-                  onClick={(e) => togglePin(e, item)}
-                >
-                  <svg className="icon"><use href="#i-thumbtack" /></svg>
-                </button>
+                {/* Pinning shortcuts to the topbar is restricted to הנהלה ראשית/מתכנת
+                    (2026-08-25, owner feedback: regular staff shouldn't be able to
+                    rearrange this) - same isHeadManagement (roleId 0/2) rule as the
+                    other gates from the 2026-08-24 permission-tier pass. */}
+                {isHeadManagement && (
+                  <button
+                    type="button"
+                    className={`nav-pin-btn${isPinned(item.href) ? ' pinned' : ''}`}
+                    title={isPinned(item.href) ? 'הסרה מהתפריט העליון' : 'הצמדה לתפריט העליון'}
+                    onClick={(e) => togglePin(e, item)}
+                  >
+                    <svg className="icon"><use href="#i-thumbtack" /></svg>
+                  </button>
+                )}
               </Link>
             ))}
           </div>
@@ -177,6 +184,10 @@ export default function AppShell({
                   title={item.label}
                 >
                   <svg className="icon"><use href={`#${item.icon}`} /></svg>
+                  {/* ההסרה מהתפריט העליון פתוחה לכולם בכוונה, בניגוד להצמדה (לעיל) -
+                      gemachPinnedNav הוא מפתח משותף למחשב (לא פר-עובד), אז אם נגביל גם
+                      את ההסרה להנהלה ראשית, עובד רגיל שמשתמש במחשב משותף עם קיצורים
+                      שהוצמדו על ידי מישהו אחר נשאר בלי שום דרך להסיר אותם. */}
                   <button
                     type="button"
                     className="topbar-pin-remove"

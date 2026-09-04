@@ -119,3 +119,56 @@ export async function PUT(request, { params }) {
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
+
+// עדכון חלקי - כרגע רק חסימת/שחרור לקוח (Customer.isBlocked/blockedReason), בנפרד
+// מ-PUT שדורש את כל שדות טופס עריכת הלקוח. שחרור חסימה (isBlocked: false) מוגבל
+// להנהלה ראשית ברמת ה-API עצמו (לא רק הסתרת כפתור בממשק) - חסימה (isBlocked: true)
+// נגישה לכל עובד מחובר, כחלק מזרימת "סימון החזרה כלא תקין" הקיימת.
+export async function PATCH(request, { params }) {
+  try {
+    const resolvedParams = await params;
+    const id = resolvedParams.id;
+    if (!id) {
+      return NextResponse.json({ error: 'Invalid ID' }, { status: 400 });
+    }
+
+    const body = await request.json();
+
+    if (body.isBlocked === false) {
+      if (!(await checkAuth('הנהלה ראשית'))) {
+        return NextResponse.json({ error: 'פעולה זו מוגבלת להנהלה ראשית בלבד' }, { status: 403 });
+      }
+    } else if (!(await checkAuth())) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const oldCustomer = await prisma.customer.findUnique({ where: { id } });
+    if (!oldCustomer) {
+      return NextResponse.json({ error: 'Customer not found' }, { status: 404 });
+    }
+
+    const data = {};
+    if (body.isBlocked !== undefined) data.isBlocked = !!body.isBlocked;
+    if (body.blockedReason !== undefined) data.blockedReason = body.blockedReason;
+
+    if (Object.keys(data).length === 0) {
+      return NextResponse.json({ error: 'No fields to update' }, { status: 400 });
+    }
+
+    const changes = {};
+    Object.keys(data).forEach(key => {
+      if (data[key] !== oldCustomer[key]) changes[key] = { from: oldCustomer[key], to: data[key] };
+    });
+
+    const updatedCustomer = await prisma.customer.update(auditAs(
+      'UPDATE',
+      { where: { id }, data },
+      changes
+    ));
+
+    return NextResponse.json(updatedCustomer);
+  } catch (error) {
+    console.error('Error patching customer:', error);
+    return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
+  }
+}

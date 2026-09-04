@@ -22,6 +22,9 @@ export default function OrderPrintMenu({
   const [showEmailPrompt, setShowEmailPrompt] = useState(false);
   const [emailInput, setEmailInput] = useState('');
   const [emailTypePending, setEmailTypePending] = useState(null);
+  // קבצים נוספים + יעד בהתאמה (מייל / דרייב / גם וגם) - נשלחים יחד עם ה-PDF
+  const [extraFiles, setExtraFiles] = useState([]);
+  const [orderSendMode, setOrderSendMode] = useState('email');
   const [sending, setSending] = useState(false);
   const [confirmingSigned, setConfirmingSigned] = useState(false);
   const containerRef = useRef(null);
@@ -100,6 +103,16 @@ export default function OrderPrintMenu({
       return;
     }
 
+    // אם יש קבצים נוספים שנבחרו במודאל או שהמשתמש בחר דרייב - שולחים ישירות,
+    // אחרת פותחים קודם את מודאל האפשרויות (קבצים + יעד) כדי לחשוף את הפיצ'ר.
+    if (!forcedEmail && extraFiles.length === 0 && orderSendMode === 'email' && !handleSendEmail._optionsShown) {
+      handleSendEmail._optionsShown = true;
+      setEmailTypePending(type);
+      setEmailInput(targetEmail);
+      setShowEmailPrompt(true);
+      return;
+    }
+
     setSending(true);
     try {
       const htmlRes = await fetch(`/api/orders/${order.orderId}/email`, {
@@ -118,13 +131,36 @@ export default function OrderPrintMenu({
       const { fetchPdfBase64 } = await import('@/app/lib/pdfClient');
       const pdfBase64 = await fetchPdfBase64({ html: htmlData.html, filename: `הזמנה ${order.orderId}` });
 
+      const fileToBase64 = (f) => new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.readAsDataURL(f);
+        r.onload = () => resolve(String(r.result).split(',')[1] || '');
+        r.onerror = reject;
+      });
+      const extraAttachments = [];
+      for (const f of extraFiles) {
+        extraAttachments.push({
+          fileName: f.name,
+          fileContent: await fileToBase64(f),
+          mimeType: f.type || 'application/octet-stream',
+          sizeBytes: f.size || null,
+          dest: orderSendMode
+        });
+      }
+
       const res = await fetch(`/api/orders/${order.orderId}/email`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: targetEmail, type, pdfBase64 })
+        body: JSON.stringify({ email: targetEmail, type, pdfBase64, extraAttachments, sendMode: orderSendMode })
       });
       const data = await res.json();
-      alert(data.success ? 'המייל נשלח בהצלחה!' : ('שגיאה: ' + (data.error || 'השליחה נכשלה')));
+      if (data.success) {
+        const links = Array.isArray(data.driveLinks) ? data.driveLinks : [];
+        alert(links.length > 0 ? `המייל נשלח בהצלחה! ${links.length} קבצים הועלו לדרייב עם הרשאת הורדה מלאה.` : 'המייל נשלח בהצלחה!');
+        setExtraFiles([]);
+      } else {
+        alert('שגיאה: ' + (data.error || 'השליחה נכשלה'));
+      }
     } catch (err) {
       console.error(err);
       alert('שגיאה ביצירת ה-PDF או בשליחת המייל');
@@ -202,12 +238,12 @@ export default function OrderPrintMenu({
 
       {showEmailPrompt && typeof document !== 'undefined' && createPortal(
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={() => setShowEmailPrompt(false)}>
-          <div className="modal confirm-modal" onClick={e => e.stopPropagation()}>
+          <div className="modal confirm-modal" style={{ maxWidth: '480px', width: 'calc(100% - 32px)' }} onClick={e => e.stopPropagation()}>
             <div className="modal-icon-circle" style={{ background: 'var(--info-tint)', color: 'var(--info)' }}>
               <svg className="icon"><use href="#i-mail" /></svg>
             </div>
-            <h3>כתובת מייל חסרה</h3>
-            <p>ללקוח זה לא מעודכנת כתובת מייל במערכת. אנא הזן כתובת מייל (תישמר אוטומטית בכרטיס הלקוח).</p>
+            <h3>שליחת {emailTypePending === 'rental' ? 'מייל השכרה' : 'מייל הזמנה'}</h3>
+            <p>ללקוח זה {order.customer?.email ? 'מעודכנת כתובת מייל' : 'לא מעודכנת כתובת מייל במערכת'}. ניתן לערוך, לצרף קבצים ולבחור יעד (מייל / דרייב / גם וגם). טבלת הוראות מסודרת תצורף אוטומטית למייל.</p>
             <input
               type="email"
               className="input"
@@ -217,8 +253,33 @@ export default function OrderPrintMenu({
               dir="ltr"
               autoFocus
               onKeyDown={(e) => { if (e.key === 'Enter') handleEmailSubmit(); }}
-              style={{ marginBottom: '18px', textAlign: 'start' }}
+              style={{ marginBottom: '12px', textAlign: 'start' }}
             />
+            <div className="field" style={{ marginBottom: '12px', textAlign: 'right' }}>
+              <label>קבצים נוספים (בנוסף ל-PDF ההזמנה)</label>
+              <input type="file" className="input" multiple onChange={(e) => setExtraFiles(e.target.files ? Array.from(e.target.files) : [])} />
+              {extraFiles.length > 0 && (
+                <div className="hint" style={{ marginTop: '6px' }}>{extraFiles.length} קבצים נבחרו: {extraFiles.map(f => f.name).join(', ')}</div>
+              )}
+            </div>
+            <div className="field" style={{ marginBottom: '18px', textAlign: 'right' }}>
+              <label>יעד הקבצים בהתאמה</label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '6px' }}>
+                {[
+                  { v: 'email', label: 'צרופה למייל' },
+                  { v: 'drive', label: 'דרייב + שיתוף' },
+                  { v: 'both', label: 'גם וגם' }
+                ].map(o => (
+                  <label key={o.v} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border)', borderRadius: '20px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.82rem', fontWeight: 600 }}>
+                    <input type="radio" name="orderSendMode" value={o.v} checked={orderSendMode === o.v} onChange={() => setOrderSendMode(o.v)} />
+                    {o.label}
+                  </label>
+                ))}
+              </div>
+              {(orderSendMode === 'drive' || orderSendMode === 'both') && (
+                <div className="hint" style={{ marginTop: '6px' }}>הקבצים יועלו לדרייב וישותפו עם הנמען בהרשאת הורדה מלאה.</div>
+              )}
+            </div>
             <div className="confirm-actions">
               <button type="button" className="btn btn-primary" onClick={handleEmailSubmit}>שלח</button>
               <button type="button" className="btn btn-secondary" onClick={() => setShowEmailPrompt(false)}>ביטול</button>

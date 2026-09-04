@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { verifySecret } from '@/lib/passwordAuth';
+import { HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
 
 export async function POST(request) {
   try {
@@ -51,6 +52,11 @@ export async function POST(request) {
     // in lib/pricingEngine.js) are restricted to roleId 2 specifically, excluding managers.
     if (requiredLevel === 'מתכנת' && employee.roleId !== 2) {
       return NextResponse.json({ success: false, error: 'פעולה זו מוגבלת למתכנת בלבד' }, { status: 403 });
+    }
+
+    // הנהלה ראשית - אותה קבוצת תפקידים כמו HEAD_MANAGEMENT_ROLES ב-lib/auth.js
+    if (requiredLevel === 'הנהלה ראשית' && !HEAD_MANAGEMENT_ROLES.includes(employee.roleId)) {
+      return NextResponse.json({ success: false, error: 'פעולה זו מוגבלת להנהלה ראשית בלבד' }, { status: 403 });
     }
 
     return NextResponse.json({ success: true, employeeId: employee.id, employeeName: employee.firstName + ' ' + employee.lastName });

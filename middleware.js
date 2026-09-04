@@ -11,6 +11,9 @@ export function middleware(request) {
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
+// x-pathname is only read by app/layout.js for page renders (the customer-interface
+// kiosk exemption) - API routes and static assets never look at it, so skip them here
+// to cut Edge Middleware invocations (this used to run on every polling API call too).
 export const config = {
-  matcher: '/:path*',
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)'],
 };

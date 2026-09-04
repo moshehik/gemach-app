@@ -2,6 +2,38 @@
 import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 
+// חיפוש read-only של הזמנה/פריט לפי ברקוד, בלי לבצע החזרה בפועל - משמש את בר
+// ההחזרה המהיר ב-app/rentals/page.js כדי לבדוק איחור (ר' lib/lateReturn.js)
+// לפני שמחליטים אם להשלים את ההחזרה המהירה או לפתוח את כרטיס ההזמנה המלא.
+export async function GET(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  try {
+    const { searchParams } = new URL(request.url);
+    const barcode = searchParams.get('barcode');
+    if (!barcode) {
+      return NextResponse.json({ error: 'חסר ברקוד' }, { status: 400 });
+    }
+
+    const item = await prisma.orderItem.findFirst({
+      where: { barcode, isTaken: true, isReturned: false, isDeleted: false },
+      include: {
+        order: {
+          select: { orderId: true, eventDate: true, toDate: true, returnDate: true }
+        }
+      }
+    });
+
+    if (!item || !item.order) {
+      return NextResponse.json({ error: 'לא הצלחנו למצוא את ההזמנה' }, { status: 404 });
+    }
+
+    return NextResponse.json({ item, order: item.order });
+  } catch (error) {
+    console.error('Error looking up return barcode:', error);
+    return NextResponse.json({ error: 'שגיאה בחיפוש ברקוד' }, { status: 500 });
+  }
+}
+
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {

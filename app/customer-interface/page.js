@@ -1177,7 +1177,7 @@ export default function CustomerInventoryViewer() {
                                     onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model, sName); }}
                                     title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
                                     style={{ cursor: isLocked ? 'default' : 'pointer' }}>
-                                    {sName} · {sData.available}/{sData.total}
+                                    {sName} <span style={{ opacity: 0.45 }}>· {sData.available}/{sData.total}</span>
                                   </span>
                                 ))}
                               </div>
@@ -1227,7 +1227,7 @@ export default function CustomerInventoryViewer() {
                                 }}
                                 style={{ cursor: isLocked ? 'default' : 'pointer' }}
                               >
-                                {sName} · {sData.available}/{sData.total}
+                                {sName} <span style={{ opacity: 0.45 }}>· {sData.available}/{sData.total}</span>
                               </span>
                             ))
                           )}
@@ -1274,7 +1274,7 @@ export default function CustomerInventoryViewer() {
                                 }}
                                 style={{ cursor: isLocked ? 'default' : 'pointer' }}
                               >
-                                {sName} · {sData.available}/{sData.total}
+                                {sName} <span style={{ opacity: 0.45 }}>· {sData.available}/{sData.total}</span>
                               </span>
                             ))
                           )}

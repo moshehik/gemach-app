@@ -91,6 +91,7 @@ export async function POST(request) {
         ) {
           return NextResponse.json({
             valid: false,
+            needsManagerOverride: true,
             error: `הפריט עם ברקוד ${cleanBarcode} נמצא ב"${dressItem.location}" (רזרבה/מחסן) ולא ניתן להשכרה.`
           }, { status: 400 });
         }

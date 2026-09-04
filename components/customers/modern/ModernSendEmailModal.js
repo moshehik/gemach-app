@@ -6,10 +6,22 @@ import { createPortal } from 'react-dom';
 export default function ModernSendEmailModal({ isOpen, onClose, customer, authResult }) {
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
+  const [files, setFiles] = useState([]);
+  const [sendMode, setSendMode] = useState('email');
+  const [driveFolderId, setDriveFolderId] = useState('');
+  const [driveLinks, setDriveLinks] = useState([]);
+  const [sentOk, setSentOk] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   if (!isOpen || typeof document === 'undefined') return null;
+
+  const fileToBase64 = (f) => new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.readAsDataURL(f);
+    r.onload = () => resolve(String(r.result).split(',')[1] || '');
+    r.onerror = reject;
+  });
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -20,8 +32,20 @@ export default function ModernSendEmailModal({ isOpen, onClose, customer, authRe
 
     setLoading(true);
     setError('');
+    setSentOk('');
+    setDriveLinks([]);
 
     try {
+      const attachments = [];
+      for (const f of files) {
+        attachments.push({
+          fileName: f.name,
+          fileContent: await fileToBase64(f),
+          mimeType: f.type || 'application/octet-stream',
+          sizeBytes: f.size || null,
+          dest: sendMode
+        });
+      }
       const res = await fetch('/api/send-email', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -31,16 +55,30 @@ export default function ModernSendEmailModal({ isOpen, onClose, customer, authRe
           emailBody: body,
           username: authResult.employeeId,
           password: authResult.pin,
-          customerId: customer.id
+          customerId: customer.id,
+          fileName: attachments[0]?.fileName || '',
+          fileContent: attachments[0]?.fileContent || '',
+          attachments,
+          sendMode,
+          driveFolderId
         })
       });
 
       const data = await res.json();
       if (data.success) {
-        alert('המייל נשלח בהצלחה!');
-        onClose();
-        setSubject('');
-        setBody('');
+        const links = Array.isArray(data.driveLinks) ? data.driveLinks : [];
+        setDriveLinks(links);
+        setSentOk(links.length > 0 ? `המייל נשלח! ${links.length} קבצים בדרייב עם הרשאת הורדה מלאה.` : 'המייל נשלח בהצלחה!');
+        setTimeout(() => {
+          onClose();
+          setSubject('');
+          setBody('');
+          setFiles([]);
+          setSendMode('email');
+          setDriveFolderId('');
+          setSentOk('');
+          setDriveLinks([]);
+        }, 2400);
       } else {
         setError(data.message || 'שגיאה בשליחת המייל');
       }
@@ -76,6 +114,19 @@ export default function ModernSendEmailModal({ isOpen, onClose, customer, authRe
                 {error}
               </div>
             )}
+            {sentOk && (
+              <div className="callout callout-success">
+                <svg className="icon"><use href="#i-check-circle" /></svg>
+                {sentOk}
+                {driveLinks.length > 0 && (
+                  <ul style={{ paddingInlineStart: '18px', margin: '8px 0 0 0', fontSize: '0.82rem' }}>
+                    {driveLinks.map((l, i) => (
+                      <li key={i}>{l.url ? <a href={l.url} target="_blank" rel="noreferrer">{l.fileName || l.url}</a> : (l.fileName || '')}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
 
             <div className="field" style={{ marginBottom: 0 }}>
               <label>נושא ההודעה</label>
@@ -99,6 +150,38 @@ export default function ModernSendEmailModal({ isOpen, onClose, customer, authRe
                 required
                 disabled={loading}
               />
+            </div>
+
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>קבצים מצורפים (ניתן לבחור כמה)</label>
+              <input type="file" className="input" multiple onChange={e => setFiles(e.target.files ? Array.from(e.target.files) : [])} disabled={loading} />
+              {files.length > 0 && (
+                <div className="hint" style={{ marginTop: '6px' }}>
+                  {files.length} קבצים נבחרו: {files.map(f => f.name).join(', ')} - טבלת הוראות תצורף אוטומטית למייל.
+                </div>
+              )}
+            </div>
+
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label>יעד הקבצים בהתאמה</label>
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {[
+                  { v: 'email', label: 'צרופה למייל' },
+                  { v: 'drive', label: 'דרייב + שיתוף' },
+                  { v: 'both', label: 'גם וגם' }
+                ].map(o => (
+                  <label key={o.v} style={{ display: 'flex', alignItems: 'center', gap: '6px', border: '1px solid var(--border)', borderRadius: '20px', padding: '6px 12px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 600 }}>
+                    <input type="radio" name="modernSendMode" value={o.v} checked={sendMode === o.v} onChange={() => setSendMode(o.v)} disabled={loading} />
+                    {o.label}
+                  </label>
+                ))}
+              </div>
+              {(sendMode === 'drive' || sendMode === 'both') && (
+                <input type="text" className="input" value={driveFolderId} onChange={e => setDriveFolderId(e.target.value)} placeholder="מזהה תיקיית דרייב (רשות)" dir="ltr" disabled={loading} style={{ marginTop: '8px' }} />
+              )}
+              {(sendMode === 'drive' || sendMode === 'both') && (
+                <div className="hint" style={{ marginTop: '6px' }}>הקבצים ישותפו עם הנמען בהרשאת הורדה מלאה.</div>
+              )}
             </div>
           </div>
           <div className="modal-foot">

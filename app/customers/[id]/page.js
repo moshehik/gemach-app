@@ -12,6 +12,7 @@ import ModernCustomerRefundsTab from '../../../components/customers/modern/Moder
 import ModernCustomerHistoryTab from '../../../components/customers/modern/ModernCustomerHistoryTab';
 import { addHistory } from '@/lib/historyManager';
 import { normalizeEmail } from '@/lib/emailUtils';
+import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
 export default function CustomerPage({ params }) {
   const router = useRouter();
@@ -27,6 +28,41 @@ export default function CustomerPage({ params }) {
   // מועבר ל-ModernCustomerDetailsTab כדי לסגור את מצב "עריכת פרטים אישיים" המקומי שלו
   // כשלוחצים על "ביטול שינויים" בכותרת - אחרת השדות מתאפסים אבל הטופס נשאר פתוח
   const [cancelTick, setCancelTick] = useState(0);
+  // ביטול חסימת לקוח (Customer.isBlocked) מוגבל להנהלה ראשית - נאכף גם בשרת
+  // (PATCH /api/customers/[id]), הדגל הזה רק שולט אם הכפתור מוצג בכלל.
+  const [isHeadManagement, setIsHeadManagement] = useState(false);
+
+  useEffect(() => {
+    fetchSharedJson('/api/me', { ttl: TTL.STATIC })
+      .then(data => {
+        if (data && data.success && data.employee) {
+          setIsHeadManagement(data.employee.roleId === 0 || data.employee.roleId === 2);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  const handleUnblockCustomer = async () => {
+    if (!customer?.id) return;
+    if (!await window.customConfirm('לבטל את חסימת הלקוח מהזמנות חדשות?', 'ביטול חסימה')) return;
+    try {
+      const res = await fetch(`/api/customers/${customer.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isBlocked: false, blockedReason: null })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        alert((data && data.error) || 'שגיאה בביטול החסימה');
+        return;
+      }
+      setCustomer(prev => ({ ...prev, isBlocked: false, blockedReason: null }));
+      setOriginalCustomer(prev => prev ? { ...prev, isBlocked: false, blockedReason: null } : prev);
+    } catch (err) {
+      console.error(err);
+      alert('שגיאת רשת בביטול החסימה');
+    }
+  };
 
   const handleSendEmailClick = async () => {
     if (!customer?.email) {
@@ -173,35 +209,35 @@ export default function CustomerPage({ params }) {
           </div>
         </div>
 
-        <form onSubmit={handleSave} className="card card-pad">
+        <form onSubmit={handleSave} className="card card-pad" autoComplete="off">
           <div className="form-grid">
             <div className="field">
               <label>שם פרטי *</label>
-              <input type="text" className="input" name="firstName" value={customer.firstName || ''} onChange={handleChange} required />
+              <input type="text" className="input" name="firstName" autoComplete="off" value={customer.firstName || ''} onChange={handleChange} required />
             </div>
             <div className="field">
               <label>שם משפחה *</label>
-              <input type="text" className="input" name="lastName" value={customer.lastName || ''} onChange={handleChange} required />
+              <input type="text" className="input" name="lastName" autoComplete="off" value={customer.lastName || ''} onChange={handleChange} required />
             </div>
             <div className="field">
               <label>טלפון *</label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-phone" /></svg>
-                <input type="text" className="input" name="phone1" value={customer.phone1 || ''} onChange={handleChange} required />
+                <input type="text" className="input" name="phone1" autoComplete="off" value={customer.phone1 || ''} onChange={handleChange} required />
               </div>
             </div>
             <div className="field">
               <label>טלפון נוסף <span style={{ color: 'var(--danger)' }}>*</span></label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-phone" /></svg>
-                <input type="text" className="input" name="phone2" value={customer.phone2 || ''} onChange={handleChange} />
+                <input type="text" className="input" name="phone2" autoComplete="off" value={customer.phone2 || ''} onChange={handleChange} />
               </div>
             </div>
             <div className="field">
               <label>דוא&quot;ל <span style={{ color: 'var(--danger)' }}>*</span></label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-mail" /></svg>
-                <input type="email" className="input" name="email" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} />
+                <input type="email" className="input" name="email" autoComplete="off" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} />
               </div>
             </div>
             <p className="hint" style={{ gridColumn: '1 / -1', margin: '-6px 0 0', color: 'var(--text-2)' }}>
@@ -209,15 +245,15 @@ export default function CustomerPage({ params }) {
             </p>
             <div className="field">
               <label>עיר</label>
-              <input type="text" className="input" name="city" value={customer.city || ''} onChange={handleChange} />
+              <input type="text" className="input" name="city" autoComplete="off" value={customer.city || ''} onChange={handleChange} />
             </div>
             <div className="field">
               <label>רחוב</label>
-              <input type="text" className="input" name="street" value={customer.street || ''} onChange={handleChange} />
+              <input type="text" className="input" name="street" autoComplete="off" value={customer.street || ''} onChange={handleChange} />
             </div>
             <div className="field">
               <label>מספר בית</label>
-              <input type="number" className="input" name="houseNum" value={customer.houseNum || ''} onChange={handleChange} />
+              <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={handleChange} />
             </div>
           </div>
 
@@ -259,6 +295,8 @@ export default function CustomerPage({ params }) {
               onCopyEmail={() => navigator.clipboard.writeText(customer.email)}
               onOpenEmailModal={handleSendEmailClick}
               cancelSignal={cancelTick}
+              isHeadManagement={isHeadManagement}
+              onUnblock={handleUnblockCustomer}
             />
           ),
           orders: (

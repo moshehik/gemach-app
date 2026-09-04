@@ -3,7 +3,8 @@ import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../../../lib/prisma';
 import { getHebrewDateString, getHebrewWeekdayLabel } from '../../../../../lib/hebrewDate';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
-import { renderGenericEmailHtml } from '../../../../../lib/emailTemplates';
+import { renderGenericEmailHtml, renderAttachmentsGuideTable, renderAttachmentsGuideText } from '../../../../../lib/emailTemplates';
+import { normalizeAttachments } from '@/lib/mailer';
 import { addDaysSkippingWeekends } from '../../../../../lib/inventory';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - same convention as app/print/order/page.js.
@@ -47,6 +48,12 @@ export async function POST(request, { params }) {
     const body = await request.json();
     const { email, type } = body; // type can be 'order' or 'rental'
     const printType = type || 'order';
+    // חדש: קבצים נוספים + יעד בהתאמה (מייל / דרייב / גם וגם)
+    // extraAttachments: [{fileName,fileContent(base64),mimeType,sizeBytes,dest}]
+    // sendMode: 'email' | 'drive' | 'both' | 'pdf_email' (ברירת מחדל - PDF למייל)
+    // driveFolderId: תיקיית יעד בדרייב (רשות, אחרת email_drive_folder_id)
+    const { extraAttachments: extraRaw, sendMode: sendModeRaw, driveFolderId: driveFolderIdRaw } = body;
+    const sendMode = ['email', 'drive', 'both'].includes(sendModeRaw) ? sendModeRaw : 'email';
 
     if (!email) {
       return NextResponse.json({ error: 'כתובת מייל חסרה' }, { status: 400 });
@@ -430,12 +437,32 @@ export async function POST(request, { params }) {
     // בתבנית המעוצבת המשותפת. סקריפט ה-Apps Script מעביר את bodyText כ-htmlBody של
     // ההודעה, כך שהוא יכול לשאת HTML מלא.
     const accompanyingText = `מצורף כרטיס ${printType === 'rental' ? 'השכרה' : 'הזמנה'} עבור אירוע בתאריך ${order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : '')}.`;
-    const accompanyingHtml = renderGenericEmailHtml({
+
+    // רשימת קבצים מלאה: ה-PDF של ההזמנה + קבצים נוספים שהמשתמש צרף,
+    // כל אחד עם יעד בהתאמה (מייל / דרייב / גם וגם) + טבלת הוראות מסודרת.
+    const pdfEntry = pdfBase64 ? [{
+      fileName: `הזמנה ${order.orderId}.pdf`,
+      fileContent: pdfBase64,
+      mimeType: 'application/pdf',
+      sizeBytes: Math.round((String(pdfBase64).length * 3) / 4),
+      dest: sendMode
+    }] : [];
+    const extraNormalized = normalizeAttachments({ attachments: extraRaw, sendMode });
+    const allFiles = [...pdfEntry, ...extraNormalized];
+    const guideTableHtml = renderAttachmentsGuideTable(allFiles);
+    const guideText = renderAttachmentsGuideText(allFiles);
+    const accompanyingHtmlBase = renderGenericEmailHtml({
       title: `${printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #${order.orderId}`,
       bodyText: accompanyingText,
       gmachName: printSettings.gmachName,
       subtitle: 'המסמך המלא מצורף כקובץ PDF'
     });
+    const accompanyingHtml = guideTableHtml
+      ? accompanyingHtmlBase.replace('</div>\n      </div>\n    </body>', `${guideTableHtml}</div>\n      </div>\n    </body>`)
+      : accompanyingHtmlBase;
+
+    const driveFolderDefault = settingsData.find(s => s.key === 'email_drive_folder_id')?.value || '';
+    const driveFolderId = (driveFolderIdRaw || driveFolderDefault || '').trim();
 
     // Use the generic email script OR our new PDF generator action
     const googlePayload = {
@@ -446,10 +473,23 @@ export async function POST(request, { params }) {
       htmlBody: htmlBody,
       bodyText: accompanyingHtml,
       fileName: `הזמנה ${order.orderId}.pdf`,
-      
+
       // Keep old parameters for backwards compatibility just in case the old script is used
-      body: pdfBase64 ? 'מצורף כרטיס הזמנה/השכרה.' : htmlBody,
-      fileContent: pdfBase64 || ''
+      body: `${pdfBase64 ? 'מצורף כרטיס הזמנה/השכרה.' : htmlBody}${guideText}`,
+      fileContent: pdfBase64 || '',
+      // פורמט מורחב: כל הקבצים + יעד + דרייב עם הרשאת הורדה מלאה לנמען
+      attachments: allFiles.map(a => ({
+        fileName: a.fileName,
+        fileContent: a.fileContent,
+        mimeType: a.mimeType || 'application/octet-stream',
+        sizeBytes: a.sizeBytes ?? null,
+        dest: a.dest || sendMode
+      })),
+      sendMode,
+      driveFolderId,
+      driveShareEmail: email,
+      driveAllowDownload: true,
+      grantFullDownload: true
     };
 
     // Determine Script URL
@@ -482,16 +522,19 @@ export async function POST(request, { params }) {
     }
 
     const isSuccess = result.status === 'success';
+    const driveLinks = Array.isArray(result.driveLinks) ? result.driveLinks : (Array.isArray(result.driveFiles) ? result.driveFiles : []);
 
     await prisma.emailLog.create({
       data: {
         to: email,
         cc: null,
         subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
-        body: 'HTML body sent to App Script for PDF conversion',
-        fileName: `הזמנה ${order.orderId}.pdf`,
+        body: `HTML body sent to App Script for PDF conversion${guideText}`,
+        fileName: allFiles.map(a => a.fileName).join(', ') || `הזמנה ${order.orderId}.pdf`,
         status: isSuccess ? 'success' : 'error',
-        errorMessage: isSuccess ? null : (result.message || 'Unknown error'),
+        errorMessage: isSuccess
+          ? (driveLinks.length > 0 ? `Drive: ${driveLinks.map(d => d.url || d.fileName).join(', ')}` : null)
+          : (result.message || 'Unknown error'),
         customerId: order.customerId,
         sentAt: new Date()
       }
@@ -507,7 +550,10 @@ export async function POST(request, { params }) {
           changesJson: JSON.stringify({
             subject: `הזמנה #${order.orderId} - גמ"ח שמלות`,
             to: email,
-            type: printType
+            type: printType,
+            sendMode,
+            files: allFiles.map(a => ({ fileName: a.fileName, sizeBytes: a.sizeBytes ?? null, dest: a.dest })),
+            driveLinks
           }),
           createdAt: new Date()
         }
@@ -518,7 +564,7 @@ export async function POST(request, { params }) {
       return NextResponse.json({ error: 'השליחה נכשלה: ' + (result.message || 'Unknown error') }, { status: 500 });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true, driveLinks, sendMode });
 
   } catch (error) {
     console.error('Failed to send order email:', error);

@@ -77,6 +77,17 @@ export default function ModernDressItemModal({ item, onClose }) {
             {' · '}מיקום: <strong style={{ color: 'var(--text)' }}>{item.location || '—'}</strong>
           </p>
 
+          {item.notInUse && (
+            <div className="callout callout-danger" style={{ marginBottom: '18px' }}>
+              <svg className="icon"><use href="#i-x-circle" /></svg>
+              <div>
+                <strong>הפריט מסומן כ&quot;לא בשימוש&quot;</strong>
+                {item.notInUseSince && <> מתאריך {fmtDate(item.notInUseSince)}</>}
+                {item.notInUseReason ? <div>סיבה: {item.notInUseReason}</div> : <div style={{ color: 'var(--text-3)' }}>לא נרשמה סיבה</div>}
+              </div>
+            </div>
+          )}
+
           <h3 style={{ fontSize: '15px', margin: '0 0 10px' }}>היסטוריית השכרות לפריט</h3>
 
           {loading ? (

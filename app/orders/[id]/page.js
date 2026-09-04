@@ -25,6 +25,7 @@ const ORDER_FIELD_LABELS = {
   isWeekdayEvent: 'אירוע באמצע שבוע',
   customSpacing: 'ריווח מותאם',
   notes: 'הערות',
+  internalNotes: 'הערות פנימיות',
   hasSignedRegulations: 'חתימה על תקנון',
   customerId: 'לקוח'
 };
@@ -107,6 +108,7 @@ const CHANGE_GROUPS = [
   { icon: '#i-pin', label: 'סוג אירוע (רגיל/חו"ל)', fields: ['isAbroad', 'isWeekdayEvent'] },
   { icon: '#i-alert-tri', label: 'ריווח ימים מותאם', fields: ['customSpacing'] },
   { icon: '#i-file', label: 'הערות להזמנה', fields: ['notes'] },
+  { icon: '#i-file', label: 'הערות פנימיות', fields: ['internalNotes'] },
   { icon: '#i-check-circle', label: 'חתימה על תקנון', fields: ['hasSignedRegulations'] },
   { icon: '#i-user', label: 'לקוח', fields: ['customerId'] }
 ];
@@ -595,6 +597,7 @@ export default function OrderDetailsPage({ params }) {
           toDate: currentOrder.toDate,
           customSpacing: currentOrder.customSpacing !== undefined ? currentOrder.customSpacing : null,
           notes: currentOrder.notes,
+          internalNotes: currentOrder.internalNotes,
           status: currentOrder.status,
           hasSignedRegulations: currentOrder.hasSignedRegulations,
           updatedAt: currentOrder.updatedAt,
@@ -771,6 +774,7 @@ export default function OrderDetailsPage({ params }) {
           toDate: order.toDate,
           customSpacing: order.customSpacing !== undefined ? order.customSpacing : null,
           notes: order.notes,
+          internalNotes: order.internalNotes,
           status: order.status,
           hasSignedRegulations: order.hasSignedRegulations,
           updatedAt: order.updatedAt,

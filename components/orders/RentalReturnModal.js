@@ -9,6 +9,8 @@ import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import OrderPrintMenu from './OrderPrintMenu';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
+import { verifyPin } from './modern/mocAuth';
+import { getLateReturnInfo } from '../../lib/lateReturn';
 
 export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const { getLabel } = useLabels();
@@ -28,6 +30,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
   const [rentingItemId, setRentingItemId] = useState(null);
   const [inlineBarcode, setInlineBarcode] = useState({});
+
+  // תופס מקרה שבו העובד/ת סוגר/ת את הכרטיס בזמן שממתינים לאישור PIN של מנהל
+  // (window.customAuthPrompt) לעקיפת חסימת רזרבה - בלי השומר הזה, כשה-PIN
+  // מאומת בסוף, handleRentalScan עדיין ממשיך וכותב לשרת/למצב React על קומפוננטה
+  // שכבר לא קיימת, בלי שום אישור גלוי למי שהיה אמור לראות את זה.
+  const isMountedRef = useRef(true);
+  useEffect(() => () => { isMountedRef.current = false; }, []);
 
   async function loadOrder(id) {
     setLoading(true);
@@ -111,7 +120,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const overallStatus = selectedOrder ? calculateOrderStatus(selectedOrder) : '';
   const overallStatusColor = getStatusColor(overallStatus);
 
-  const handleRentalScan = async (barcodeToScan, itemIdToForce = null) => {
+  const handleRentalScan = async (barcodeToScan, itemIdToForce = null, overrideAuth = null) => {
     setIsBusy(true);
     try {
       const res = await fetch('/api/rentals/scan', {
@@ -120,10 +129,12 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         body: JSON.stringify({
           orderId: selectedOrder.orderId,
           barcode: barcodeToScan,
-          ...(itemIdToForce && { itemIdToForce })
+          ...(itemIdToForce && { itemIdToForce }),
+          ...(overrideAuth && { overridePin: overrideAuth.pin, overrideEmployeeId: overrideAuth.employeeId })
         })
       });
       const data = await res.json();
+      if (!isMountedRef.current) return;
 
       if (res.ok) {
         if (data.duplicateAlterations) {
@@ -139,9 +150,22 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ unreturnedItemId: data.unreturnedItemId })
             });
-            if (putRes.ok) {
+            if (putRes.ok && isMountedRef.current) {
               handleRentalScan(barcodeToScan); // Retry scan
             }
+          }
+        } else if (data.reservedLocation) {
+          // חריגת רזרבה/מחסן (item 1 בדוח הבאגים) - לפעמים שמלה מסומנת רזרבה/מחסן
+          // אך ניתן להוציא אותה בפועל; מנהל יכול לעקוף את החסימה באישור סיסמה.
+          // האימות עצמו (verifyPin, אותו hook משותף שמשמש בכל שאר אתרי אישור-מנהל
+          // באפליקציה) הוא רק כדי להציג הודעת שגיאה מוקדמת ללא-מנהל; השרת מוודא
+          // שוב את הסיסמה בעצמו (רואים /api/rentals/scan) ולא סומך על דגל מהלקוח.
+          const authResult = await verifyPin(
+            `${data.error}\nלעקוף את החסימה ולהשכיר בכל זאת? נדרש אישור מנהל.`,
+            'מנהל'
+          );
+          if (authResult && isMountedRef.current) {
+            await handleRentalScan(barcodeToScan, itemIdToForce, authResult); // Retry with override
           }
         } else {
           alert(data.error);
@@ -151,7 +175,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
       console.error(err);
       alert('שגיאת רשת');
     } finally {
-      setIsBusy(false);
+      if (isMountedRef.current) setIsBusy(false);
     }
   };
 
@@ -185,6 +209,26 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     }
   };
 
+  // איחור בהחזרה (item 3 בדוח הבאגים): שואלים לפני ההחזרה אם לסמן את הפריט כ"הוחזר
+  // לא תקין" במקום החזרה רגילה (הלוגיקה שמזהה איחור משותפת עם app/rentals/page.js -
+  // ר' lib/lateReturn.js), ואם כן מפנים לזרימת "לא תקין" הקיימת (handleMarkReturnBad)
+  // שכבר אוספת הערה. מחזיר true אם הטיפול בפריט הושלם כאן (הקורא לא צריך להמשיך
+  // בזרימת ההחזרה הרגילה).
+  const checkLateReturnPrompt = async (item) => {
+    if (!selectedOrder || !item) return false;
+    const { isLate, daysLate } = getLateReturnInfo(selectedOrder);
+    if (!isLate) return false;
+
+    const wantsBad = await window.customConfirm(
+      `ההחזרה מאוחרת ב-${daysLate} ימים ממועד ההחזרה הצפוי. להחזיר באיחור ולסמן את "${item.description}" כהוחזר במצב לא תקין?`,
+      'החזרה באיחור'
+    );
+    if (!wantsBad) return false;
+
+    await handleMarkReturnBad(item);
+    return true;
+  };
+
   // Single smart scan bar: detects whether the barcode belongs to an item
   // currently with the customer (return) or a still-unassigned item (rental).
   const handleGlobalBarcodeScan = async (e) => {
@@ -195,9 +239,12 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     const cleanBarcode = modalBarcode.replace(/\s+/g, '');
 
     try {
-      const isAwaitingReturn = activeItems.some(i => i.barcode === cleanBarcode && i.isTaken && !i.isReturned);
-      if (isAwaitingReturn) {
-        await handleReturnScan(cleanBarcode);
+      const awaitingReturnItem = activeItems.find(i => i.barcode === cleanBarcode && i.isTaken && !i.isReturned);
+      if (awaitingReturnItem) {
+        const handledAsLate = await checkLateReturnPrompt(awaitingReturnItem);
+        if (!handledAsLate) {
+          await handleReturnScan(cleanBarcode);
+        }
       } else {
         await handleRentalScan(cleanBarcode);
       }
@@ -370,6 +417,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
 
   const handleMarkReturnGood = async (item) => {
     if (item.isReturned) return;
+    if (await checkLateReturnPrompt(item)) return;
     if (!await window.customConfirm(`לסמן את "${item.description}" כהוחזר תקין?`, 'אישור החזרה')) return;
     await handleReturnScan(item.barcode);
   };
@@ -384,6 +432,40 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     if (note === null) return;
     await handleReturnScan(item.barcode);
     await doReportIssue(item.id, 'returned-bad', note);
+    await maybeBlockCustomerAfterBadReturn(note);
+  };
+
+  // אחרי סימון פריט כ"הוחזר לא תקין" - מציע לחסום את הלקוח מהזמנות חדשות (Customer.isBlocked).
+  // משתמש בהערה שכבר נאספה למעלה כ-blockedReason אם קיימת, אחרת מבקש הערה נפרדת לחסימה.
+  const maybeBlockCustomerAfterBadReturn = async (issueNote) => {
+    const customerId = selectedOrder?.customer?.id;
+    if (!customerId) return;
+    if (!await window.customConfirm('האם לחסום את הלקוח מהזמנות חדשות?', 'חסימת לקוח')) return;
+
+    let blockedReason = issueNote;
+    if (!blockedReason) {
+      blockedReason = window.customPrompt
+        ? await window.customPrompt('סיבת החסימה (אופציונלי):', '', 'text')
+        : '';
+      if (blockedReason === null) blockedReason = '';
+    }
+
+    try {
+      const res = await fetch(`/api/customers/${customerId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ isBlocked: true, blockedReason: blockedReason || null })
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        alert((data && data.error) || 'שגיאה בחסימת הלקוח');
+        return;
+      }
+      alert('הלקוח נחסם מהזמנות חדשות.');
+    } catch (err) {
+      console.error(err);
+      alert('שגיאת רשת בחסימת הלקוח');
+    }
   };
 
   const handleHeaderSave = async () => {
@@ -617,7 +699,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                     {pendingCount} פריטים נסרקו וממתינים לאישור השכרה
                   </span>
                   <button data-agy-id="rentalreturnmodal_button_8" type="button" className="btn btn-primary btn-sm" onClick={confirmRental} disabled={isConfirming || isBusy}>
-                    {isConfirming ? 'מאשר...' : `אשר הכל (${pendingCount})`}
+                    {isConfirming ? 'מאשר...' : `אשר את הפריטים שנסרקו (${pendingCount})`}
                   </button>
                 </div>
               )}

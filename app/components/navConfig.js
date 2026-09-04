@@ -36,7 +36,7 @@ export const NAV_GROUPS = [
     key: 'inventory',
     label: 'מלאי',
     items: [
-      { href: '/dashboard/dresses', label: 'קטלוג דגמים', icon: 'i-bag' },
+      { href: '/dashboard/dresses', label: 'קטלוג דגמים', icon: 'i-bag', gate: 'showDressesTab' },
     ],
   },
   {

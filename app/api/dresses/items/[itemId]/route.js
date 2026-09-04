@@ -42,6 +42,7 @@ export async function PUT(request, { params }) {
       inRepair: body.inRepair !== undefined ? body.inRepair : undefined,
       notInUse: body.notInUse !== undefined ? body.notInUse : undefined,
       notInUseSince: body.notInUseSince !== undefined ? (body.notInUseSince ? new Date(body.notInUseSince) : null) : undefined,
+      notInUseReason: body.notInUseReason !== undefined ? (body.notInUseReason || null) : undefined,
     };
     if (body.isDeleted !== undefined) {
       dataToUpdate.isDeleted = body.isDeleted;

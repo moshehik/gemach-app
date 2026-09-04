@@ -27,6 +27,8 @@ model Customer {
   registrationDate String? // תאריך_רישום
   officeNotes      String? // נתוני_משרד
   isDeleted        Boolean   @default(false) // לקוח_מחוק
+  isBlocked        Boolean   @default(false) // חסום מהזמנות חדשות
+  blockedReason    String? // סיבת החסימה
   
   // Bank details for refunds
   bankName         String? // שם בנק
@@ -187,6 +189,7 @@ model DressItem {
   inRepair        Boolean     @default(false) // שמלה_בתיקון
   notInUse        Boolean     @default(false) // לא_בשימוש
   notInUseSince   DateTime? // לא_בשימוש_מתאריך
+  notInUseReason  String? // סיבת אי-שימוש
   entryDateToRepo DateTime? // תאריך_כניסה_למאגר
   isDeleted       Boolean     @default(false) // מחוק
   deletedAt       DateTime? // תאריך_מחיקה
@@ -212,6 +215,7 @@ model Order {
   paymentMethod String? // צורת_תשלום
   status        String? // סטטוס נגזר מהתשלום
   notes         String? // הערות
+  internalNotes String? // הערות פנימיות לצוות בלבד - ר' schema.prisma (SQLite ללא @db.Text)
   isPaid        Boolean   @default(false) // שולם
   isDeleted     Boolean   @default(false) // מחוק - הזמנה מבוטלת
   orderNotes    String? // הערות_להזמנה
@@ -528,6 +532,7 @@ model ErrorReport {
   status             String    @default("OPEN")
   isReadByUser       Boolean   @default(true)
   isReadByProgrammer Boolean   @default(false)
+  isHandled          Boolean   @default(false)
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
