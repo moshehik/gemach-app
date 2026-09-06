@@ -78,6 +78,15 @@ export default function NewOrderPage() {
     notes: '',
     items: [],
     customSpacing: null,
+    // 15 + 13/34 - משלוח, טלפוני וסניף (נשמרים ל-Order, מותנים ב-toggle בהמשך המסך)
+    isDelivery: false,
+    deliveryDirection: 'הלוך-חזור',
+    deliveryAddress: '',
+    deliveryCity: '',
+    deliveryOneDayBefore: false,
+    isPhoneOrder: false,
+    branch: '',
+    pickupBranch: '',
   });
   
   const [newItem, setNewItem] = useState({
@@ -1055,6 +1064,14 @@ export default function NewOrderPage() {
         customSpacing: order.customSpacing,
         totalAmount,
         items: itemsToSave,
+        // 15 + 13/34 - משלוח, טלפוני וסניף
+        isDelivery: !!order.isDelivery,
+        deliveryDirection: order.deliveryDirection || null,
+        deliveryAddress: order.deliveryAddress || null,
+        deliveryCity: order.deliveryCity || null,
+        isPhoneOrder: !!order.isPhoneOrder,
+        branch: order.branch || null,
+        pickupBranch: order.pickupBranch || null,
         paymentsList: finalPaymentsList,
         // Set once a card was charged: the order must be saved under the number that already
         // went out with the charge, not under a freshly allocated one.
@@ -1644,6 +1661,78 @@ export default function NewOrderPage() {
                 </div>
                 )}
               </NocCollapsible>
+
+              {/* 15 + 13/34 - משלוח, טלפוני וסניף (מותנה ב-toggle, כבוי = מוסתר) */}
+              {(settings.phone_order_marker_enabled === 'true' || settings.branches_enabled === 'true' || settings.delivery_show_in_order !== 'false') && (
+              <div className="card card-pad" style={{ marginTop: 12 }}>
+                <h3 style={{ margin: '0 0 10px', fontSize: 14 }}>משלוח / סניף / טלפוני</h3>
+                <div className="form-grid">
+                  {settings.phone_order_marker_enabled === 'true' && (
+                    <div className="field">
+                      <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                        <input type="checkbox" checked={!!order.isPhoneOrder} onChange={e => setOrder(prev => ({ ...prev, isPhoneOrder: e.target.checked }))} />
+                        <span>הזמנה טלפונית (13)</span>
+                      </label>
+                    </div>
+                  )}
+                  {settings.branches_enabled === 'true' && (
+                    <>
+                      <div className="field">
+                        <label>סניף ביצוע (34)</label>
+                        <input type="text" className="input" value={order.branch || ''} onChange={e => setOrder(prev => ({ ...prev, branch: e.target.value }))} placeholder="לדוגמה: נוה יעקב" list="branch-list" />
+                      </div>
+                      <div className="field">
+                        <label>סניף איסוף (34)</label>
+                        <input type="text" className="input" value={order.pickupBranch || ''} onChange={e => setOrder(prev => ({ ...prev, pickupBranch: e.target.value }))} placeholder="לדוגמה: בית שמש" list="branch-list" />
+                      </div>
+                      <datalist id="branch-list">
+                        {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
+                          <option key={b} value={b} />
+                        ))}
+                      </datalist>
+                    </>
+                  )}
+                </div>
+                <div className="form-grid" style={{ marginTop: 8 }}>
+                  <div className="field">
+                    <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                      <input type="checkbox" checked={!!order.isDelivery} onChange={e => setOrder(prev => ({ ...prev, isDelivery: e.target.checked }))} />
+                      <span>הזמנת משלוח (15)</span>
+                    </label>
+                  </div>
+                  {order.isDelivery && (
+                    <>
+                      <div className="field">
+                        <label>כיוון משלוח</label>
+                        <select className="select" value={order.deliveryDirection} onChange={e => setOrder(prev => ({ ...prev, deliveryDirection: e.target.value }))}>
+                          <option value="הלוך">הלוך</option>
+                          <option value="חזור">חזור</option>
+                          <option value="הלוך-חזור">הלוך-חזור</option>
+                        </select>
+                      </div>
+                      <div className="field">
+                        <label>עיר משלוח (לחישוב מחיר)</label>
+                        <input type="text" className="input" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))} placeholder="עיר" />
+                      </div>
+                      {settings.delivery_allow_address_override === 'true' && (
+                        <div className="field">
+                          <label>כתובת משלוח שונה</label>
+                          <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryAddress: e.target.value }))} placeholder="כתובת למשלוח (שונה ממגורים)" />
+                        </div>
+                      )}
+                      {settings.delivery_one_day_before_option === 'true' && (
+                        <div className="field">
+                          <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                            <input type="checkbox" checked={!!order.deliveryOneDayBefore} onChange={e => setOrder(prev => ({ ...prev, deliveryOneDayBefore: e.target.checked }))} />
+                            <span>משלוח יוצא יום לפני האירוע (במקום יומיים) (19)</span>
+                          </label>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+              )}
             </div>
           </div>
         )}

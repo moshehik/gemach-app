@@ -539,6 +539,15 @@ export async function PUT(request, { params }) {
           customSpacing: data.customSpacing !== undefined ? (hideCustomSpacing ? null : (data.customSpacing === null || data.customSpacing === '' ? null : parseInt(data.customSpacing, 10))) : undefined,
           notes: data.notes !== undefined ? data.notes : undefined,
           internalNotes: data.internalNotes !== undefined ? data.internalNotes : undefined,
+          // 15 + 13/34 - משלוח וסניף בעריכה (כולל שינוי מידה/משלוח למושכר חלקי 27)
+          ...(data.isPhoneOrder !== undefined ? { isPhoneOrder: !!data.isPhoneOrder } : {}),
+          ...(data.branch !== undefined ? { branch: data.branch || null } : {}),
+          ...(data.pickupBranch !== undefined ? { pickupBranch: data.pickupBranch || null } : {}),
+          ...(data.isDelivery !== undefined ? { isDelivery: !!data.isDelivery } : {}),
+          ...(data.deliveryDirection !== undefined ? { deliveryDirection: data.deliveryDirection || null } : {}),
+          ...(data.deliveryAddress !== undefined ? { deliveryAddress: data.deliveryAddress || null } : {}),
+          ...(data.deliveryCity !== undefined ? { deliveryCity: data.deliveryCity || null } : {}),
+          ...(data.hokDetails !== undefined ? { hokDetails: typeof data.hokDetails === 'string' ? data.hokDetails : JSON.stringify(data.hokDetails) } : {}),
           status: shellExitStatus !== undefined ? shellExitStatus : (data.status !== undefined ? data.status : undefined),
           hasSignedRegulations: data.hasSignedRegulations !== undefined ? data.hasSignedRegulations : undefined,
         }

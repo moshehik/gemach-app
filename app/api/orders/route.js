@@ -640,6 +640,15 @@ export async function POST(request) {
       customSpacing: effectiveCustomSpacing,
       notes: data.notes || '',
       status: derivedStatus,
+      // 15 + 13/34 - משלוח וסניף (שדות אופציונליים בסכמה, נשמרים רק אם נשלחו)
+      ...(data.isPhoneOrder !== undefined ? { isPhoneOrder: !!data.isPhoneOrder } : {}),
+      ...(data.branch !== undefined ? { branch: data.branch || null } : {}),
+      ...(data.pickupBranch !== undefined ? { pickupBranch: data.pickupBranch || null } : {}),
+      ...(data.isDelivery !== undefined ? { isDelivery: !!data.isDelivery } : {}),
+      ...(data.deliveryDirection !== undefined ? { deliveryDirection: data.deliveryDirection || null } : {}),
+      ...(data.deliveryAddress !== undefined ? { deliveryAddress: data.deliveryAddress || null } : {}),
+      ...(data.deliveryCity !== undefined ? { deliveryCity: data.deliveryCity || null } : {}),
+      ...(data.hokDetails !== undefined ? { hokDetails: typeof data.hokDetails === 'string' ? data.hokDetails : JSON.stringify(data.hokDetails) } : {}),
       items: {
         create: data.items?.map(item => ({
           dressItemId: item.sampleItemId,
@@ -815,6 +824,34 @@ export async function POST(request) {
         customer: true
       }
     });
+
+    // 15 - חיוב משלוח אוטומטי לפי עיר (אם זו הזמנת משלוח ויש טבלת מחירים)
+    try {
+      if (updatedOrder?.isDelivery && updatedOrder?.deliveryCity) {
+        const priceSetting = await getCachedSetting('delivery_price_by_city');
+        let priceMap = {};
+        try { priceMap = JSON.parse(priceSetting?.value || '{}'); } catch {}
+        const cityPrice = priceMap[updatedOrder.deliveryCity];
+        // 19 - אם one_day_before מופעל והלקוח בחר דחיה, אין חיוב נוסף (רק שינוי תאריך) - אחרת חיוב רגיל
+        if (cityPrice && Number(cityPrice) > 0) {
+          const dir = updatedOrder.deliveryDirection || 'הלוך-חזור';
+          const count = dir === 'הלוך-חזור' ? 2 : 1;
+          const total = Number(cityPrice) * count;
+          const exists = (updatedOrder.obligations || []).some(o => !o.isDeleted && String(o.description || '').includes('משלוח'));
+          if (!exists) {
+            await prisma.paymentObligation.create({
+              data: {
+                orderId: updatedOrder.orderId,
+                amount: total,
+                quantity: count,
+                description: `משלוח ${dir} - ${updatedOrder.deliveryCity}`,
+                isManual: false,
+              }
+            });
+          }
+        }
+      }
+    } catch (e) { console.error('delivery charge failed', e); }
 
     // 5 - מייל אוטומטי בעת יצירת הזמנה (אם מופעל בהגדרות) - כולל פרטי לקיחה והחזרה
     try {

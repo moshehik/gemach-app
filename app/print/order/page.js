@@ -31,6 +31,9 @@ export default function PrintOrderPage() {
   const [error, setError] = useState('');
   const [enableAlterations, setEnableAlterations] = useState(true);
   const [printSettings, setPrintSettings] = useState(null);
+  // 15 - הצגת משלוח בהדפסה (תג הלוך/חזור כמו תיקונים), 21 - סימון שמלה חסרה
+  const [showDeliveryInPrint, setShowDeliveryInPrint] = useState(true);
+  const [markMissingInPrint, setMarkMissingInPrint] = useState(true);
   // bust לוגו: מאפשר לרענן את התמונה גם כשה-API מחזיר Cache-Control immutable (אחרי העלאת לוגו חדש)
   const [logoBust] = useState(() => Date.now());
 
@@ -54,6 +57,11 @@ export default function PrintOrderPage() {
         if (altSetting && altSetting.value === 'false') {
           setEnableAlterations(false);
         }
+        // 15 + 21 - הגדרות הדפסה למשלוח וחסרה (כבוי = מוסתר)
+        const delSetting = settingsData.find(s => s.key === 'delivery_show_in_order');
+        if (delSetting && delSetting.value === 'false') setShowDeliveryInPrint(false);
+        const missSetting = settingsData.find(s => s.key === 'print_mark_missing_dresses');
+        if (missSetting && missSetting.value === 'false') setMarkMissingInPrint(false);
 
         // Extract print settings
         const pSettings = {
@@ -526,6 +534,20 @@ export default function PrintOrderPage() {
                     {/* Left side: Order Details */}
                     <div>
                       <strong>{printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #{order.orderId}</strong><br />
+                      {/* 15 - תג משלוח הלוך/חזור בהדפסה (כמו תיקונים), מותנה ב-delivery_show_in_order */}
+                      {showDeliveryInPrint && order.isDelivery && (
+                        <><span style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>
+                          משלוח {order.deliveryDirection || ''}
+                        </span><br /></>
+                      )}
+                      {/* 13/34 - סימון טלפוני וסניף בהדפסה */}
+                      {order.isPhoneOrder && (<><span style={{ color: '#666' }}>(הזמנה טלפונית)</span><br /></>)}
+                      {(order.branch || order.pickupBranch) && (
+                        <>סניף: {order.branch ? `בוצעה ב${order.branch}` : ''}{order.branch && order.pickupBranch ? ' · ' : ''}{order.pickupBranch ? `איסוף ב${order.pickupBranch}` : ''}<br /></>
+                      )}
+                      {order.isDelivery && (order.deliveryAddress || order.deliveryCity) && (
+                        <>כתובת משלוח: {order.deliveryAddress || ''}{order.deliveryAddress && order.deliveryCity ? `, ${order.deliveryCity}` : (order.deliveryCity || '')}<br /></>
+                      )}
                       {(!order.isWeekdayEvent && !order.isAbroad) ? (
                         <>תאריך אירוע: {order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}</>
                       ) : (

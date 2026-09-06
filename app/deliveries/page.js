@@ -35,17 +35,37 @@ export default function DeliveriesPage() {
   const [rows, setRows] = useState([]);
   const [deliveryDaysBefore, setDeliveryDaysBefore] = useState(null);
   const [deliveryDaysAfter, setDeliveryDaysAfter] = useState(null);
+  // 18 - טבלת טווח (שבוע/שבועיים/חודש) + עבר, מותנה ב-delivery_table_range_enabled
+  const [rangeMode, setRangeMode] = useState('day'); // day | week | 2weeks | month
+  const [rangeEnabled, setRangeEnabled] = useState(false);
+  const [rangeRows, setRangeRows] = useState({}); // date -> rows
+
+  useEffect(() => {
+    fetch('/api/settings', { cache: 'no-store' }).then(r => r.json()).then(arr => {
+      const v = Array.isArray(arr) ? arr.find(s => s.key === 'delivery_table_range_enabled')?.value : null;
+      if (v === 'true') setRangeEnabled(true);
+    }).catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/deliveries?date=${selectedDate}`, { cache: 'no-store' })
-      .then(res => res.json())
-      .then(data => {
+    // 18 - אם range מופעל ובחירת טווח, טוען כמה ימים (כולל עבר)
+    const days = rangeEnabled && rangeMode !== 'day'
+      ? (rangeMode === 'week' ? 7 : rangeMode === '2weeks' ? 14 : 30)
+      : 1;
+    const dates = [];
+    for (let i = 0; i < days; i++) dates.push(addDaysToIso(selectedDate, i));
+    Promise.all(dates.map(d => fetch(`/api/deliveries?date=${d}`, { cache: 'no-store' }).then(res => res.json()).then(data => ({ date: d, rows: data.data || [], before: data.deliveryDaysBefore, after: data.deliveryDaysAfter })).catch(() => ({ date: d, rows: [] }))))
+      .then(all => {
         if (cancelled) return;
-        setRows(data.data || []);
-        setDeliveryDaysBefore(data.deliveryDaysBefore ?? null);
-        setDeliveryDaysAfter(data.deliveryDaysAfter ?? null);
+        const map = {};
+        for (const a of all) map[a.date] = a.rows;
+        setRangeRows(map);
+        setRows(map[selectedDate] || []);
+        const first = all[0];
+        setDeliveryDaysBefore(first?.before ?? null);
+        setDeliveryDaysAfter(first?.after ?? null);
       })
       .catch(err => {
         console.error(err);
@@ -55,7 +75,7 @@ export default function DeliveriesPage() {
         if (!cancelled) setLoading(false);
       });
     return () => { cancelled = true; };
-  }, [selectedDate]);
+  }, [selectedDate, rangeMode, rangeEnabled]);
 
   // סינון כיוון + חיפוש חופשי מתבצעים על התוצאה של יום אחד (מצומצמת מטבעה) - בלי צורך
   // בעוד קריאת שרת על כל הקלדה, בדומה לסינוני viewMode/search המקומיים בטאבים אחרים.
@@ -154,8 +174,8 @@ export default function DeliveriesPage() {
         </div>
       </div>
 
-      {/* סינון כיוון משלוח */}
-      <div className="pill-tabs" style={{ marginBottom: '20px' }}>
+      {/* סינון כיוון משלוח + 18 טווח */}
+      <div className="pill-tabs" style={{ marginBottom: '12px' }}>
         <button type="button" onClick={() => setDirectionFilter('all')} className={directionFilter === 'all' ? 'pill-tab active' : 'pill-tab'}>
           <svg className="icon"><use href="#i-list" /></svg> הכל
         </button>
@@ -166,6 +186,33 @@ export default function DeliveriesPage() {
           <svg className="icon"><use href="#i-box" /></svg> משלוח חזור בלבד
         </button>
       </div>
+      {rangeEnabled && (
+        <div className="pill-tabs" style={{ marginBottom: '20px' }}>
+          {[{ v: 'day', l: 'יום אחד' }, { v: 'week', l: 'שבוע' }, { v: '2weeks', l: 'שבועיים' }, { v: 'month', l: 'חודש' }].map(o => (
+            <button key={o.v} type="button" onClick={() => setRangeMode(o.v)} className={rangeMode === o.v ? 'pill-tab active' : 'pill-tab'}>{o.l}</button>
+          ))}
+        </div>
+      )}
+      {/* 18 - תצוגת טווח: טבלה לכל יום (כולל עבר) */}
+      {rangeEnabled && rangeMode !== 'day' && (
+        <div className="card card-pad" style={{ marginBottom: 16 }}>
+          <h3 style={{ margin: '0 0 8px' }}>טבלת משלוחים לטווח ({rangeMode === 'week' ? 'שבוע' : rangeMode === '2weeks' ? 'שבועיים' : 'חודש'})</h3>
+          {Object.keys(rangeRows).sort().map(d => {
+            const dayRows = (rangeRows[d] || []).filter(r => directionFilter === 'all' || r.directions.includes(directionFilter));
+            return (
+              <div key={d} style={{ marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
+                <strong>{d}</strong> - {dayRows.length} משלוחים
+                {dayRows.slice(0, 8).map(r => (
+                  <div key={r.orderId} style={{ fontSize: 12, color: 'var(--text-2)' }}>
+                    #{r.orderId} {r.customerName} ({r.directions.map(x => DIRECTION_META[x]?.label || x).join('+')})
+                  </div>
+                ))}
+                {dayRows.length > 8 && <div className="hint">+{dayRows.length - 8} נוספים (ראה טבלה למטה ליום הנבחר)</div>}
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <div className="table-wrap">
         <div className="table-scroll">
