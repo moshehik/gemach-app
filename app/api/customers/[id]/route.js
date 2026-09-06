@@ -2,6 +2,7 @@ import prisma, { auditAs } from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { checkAuth } from '../../../../lib/auth';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 
 export async function GET(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -79,6 +80,49 @@ export async function PUT(request, { params }) {
 
     const normalizedEmail = normalizeEmail(body.email, body.emailSuffix);
 
+    // 4 - אכיפה בעריכת לקוח קיים (גם ב-API, לא רק ב-UI החדש)
+    try {
+      const allSettings = await getAllCachedSettings();
+      const sMap = new Map(allSettings.map(s => [s.key, s.value]));
+      const errors = [];
+      if (sMap.get('require_customer_email') === 'true') {
+        const rawEmail = String(body.email || (body.emailSuffix && String(body.emailSuffix).includes('@') ? body.emailSuffix : '') || '').trim();
+        if (!rawEmail || !rawEmail.includes('@')) errors.push('מייל חובה');
+      }
+      if (sMap.get('require_full_address') === 'true') {
+        if (!String(body.city || '').trim()) errors.push('עיר חובה');
+        if (!String(body.street || '').trim()) errors.push('רחוב חובה');
+        if (!String(body.houseNum || '').trim()) errors.push('מספר בית חובה');
+      }
+      if (sMap.get('require_marketing_consent') === 'true') {
+        if (!body.marketingConsent) errors.push('חובה לאשר קבלת דיוורים');
+      }
+      if (sMap.get('strict_mandatory_fields') === 'true') {
+        const mandatory = (sMap.get('mandatory_fields') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+        const aliasMap = {
+          firstname: 'firstName', 'שם פרטי': 'firstName', 'שם_פרטי': 'firstName',
+          lastname: 'lastName', 'שם משפחה': 'lastName', 'שם_משפחה': 'lastName',
+          phone1: 'phone1', 'טלפון ראשי (נייד)': 'phone1', 'טלפון_1': 'phone1',
+          email: 'email', 'אימייל': 'email',
+          city: 'city', 'עיר': 'city',
+          street: 'street', 'רחוב': 'street',
+          housenum: 'houseNum', 'מספר בית': 'houseNum', 'מספר_בית': 'houseNum'
+        };
+        for (const m of mandatory) {
+          const field = aliasMap[m.toLowerCase()] || aliasMap[m] || null;
+          if (field && !String(body[field] || '').trim()) {
+            const label = field === 'firstName' ? 'שם פרטי' : field === 'lastName' ? 'שם משפחה' : field === 'phone1' ? 'טלפון' : field;
+            if (!errors.includes(`${label} חובה`)) errors.push(`${label} חובה`);
+          }
+        }
+      }
+      if (errors.length > 0) {
+        return NextResponse.json({ error: `שדות חובה חסרים: ${errors.join(', ')}` }, { status: 400 });
+      }
+    } catch (e) {
+      console.error('mandatory check failed (fail-open)', e);
+    }
+
     const data = {
       firstName: body.firstName,
       lastName: body.lastName,
@@ -92,7 +136,9 @@ export async function PUT(request, { params }) {
       bankName: body.bankName,
       bankBranch: body.bankBranch,
       bankAccount: body.bankAccount,
-      bankAccountName: body.bankAccountName
+      bankAccountName: body.bankAccountName,
+      zeout: body.zeout !== undefined ? (body.zeout || null) : undefined, // 14 - ת״ז
+      marketingConsent: body.marketingConsent !== undefined ? !!body.marketingConsent : undefined // 4
     };
 
     // 2. Compute changes (before the write, so they can be handed to the audit extension)

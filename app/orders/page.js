@@ -205,6 +205,10 @@ export default function OrdersPage() {
   // "טיוטות" tab (real bug report - see calculateOrderStatus in lib/orderStatus.js for the actual
   // status-string swap, and app/api/orders/route.js for the matching "מחוקים" query change).
   const [draftsAsDeleted, setDraftsAsDeleted] = useState(true);
+  const [hideCustomSpacing, setHideCustomSpacing] = useState(false); // 1 - הסתרת ציפוף
+  const [showNotTakenOrders, setShowNotTakenOrders] = useState(true); // 37 - הצג לא-נלקחו
+  const [requireIdForEdit, setRequireIdForEdit] = useState(false); // 14 - ת״ז לעריכה/ביטול
+  const [allowEditPartially, setAllowEditPartially] = useState(true); // 27 - עריכת מושכר חלקי
 
   useEffect(() => {
     let cancelled = false;
@@ -217,6 +221,14 @@ export default function OrdersPage() {
 
         const draftsSetting = data.find(s => s.key === 'draft_orders_show_as_deleted');
         if (draftsSetting) setDraftsAsDeleted(draftsSetting.value === 'true');
+        const hideSpacingSetting = data.find(s => s.key === 'hide_custom_spacing');
+        if (hideSpacingSetting) setHideCustomSpacing(hideSpacingSetting.value === 'true');
+        const notTakenSetting = data.find(s => s.key === 'show_not_taken_orders');
+        if (notTakenSetting) setShowNotTakenOrders(notTakenSetting.value === 'true');
+        const reqIdSetting = data.find(s => s.key === 'require_id_for_edit_cancel');
+        if (reqIdSetting) setRequireIdForEdit(reqIdSetting.value === 'true');
+        const allowPartialSetting = data.find(s => s.key === 'allow_edit_partially_rented');
+        if (allowPartialSetting) setAllowEditPartially(allowPartialSetting.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -230,6 +242,13 @@ export default function OrdersPage() {
       setPage(1);
     }
   }, [draftsAsDeleted, filterStatus]);
+  // 37 - אם לא-נלקחו מוסתר וחזר מצב ישן על not_taken, נופלים לברירת מחדל
+  useEffect(() => {
+    if (!showNotTakenOrders && filterStatus === 'not_taken') {
+      setFilterStatus('soon');
+      setPage(1);
+    }
+  }, [showNotTakenOrders, filterStatus]);
 
   // בניית ה-query דרך prefetchRoutes כדי שה-prefetch מדפים אחרים ייצר
   // את אותו מפתח מטמון בדיוק, תו בתו.
@@ -369,11 +388,27 @@ export default function OrdersPage() {
       alert('לא ניתן למחוק הזמנה לאחר השכרה חלקית/מלאה או לאחר שנלקח והוחזר');
       return;
     }
+    // 27 - חסימת מחיקת מושכר חלקי גם בצד לקוח
+    if (!allowEditPartially && order.items?.some(i => !i.isDeleted && i.isTaken)) {
+      alert('לא ניתן למחוק הזמנה שהושכרה חלקית - חסום בהגדרות (allow_edit_partially_rented).');
+      return;
+    }
 
     if (await window.customConfirm('האם אתה בטוח שברצונך למחוק הזמנה זו?')) {
+      // 14 - בקשת ת״ז לפני ביטול אם מופעל
+      let zeoutForDelete = null;
+      if (requireIdForEdit) {
+        const msg = 'ביטול הזמנה דורש אימות תעודת זהות של הלקוח. נא להזין ת״ז:';
+        if (window.customPrompt) zeoutForDelete = await window.customPrompt(msg, '', 'text');
+        else zeoutForDelete = window.prompt(msg);
+        zeoutForDelete = zeoutForDelete ? String(zeoutForDelete).trim() : null;
+        if (!zeoutForDelete) { alert('ביטול בוטל - לא הוזנה תעודת זהות.'); return; }
+      }
       try {
         const res = await fetch(`/api/orders/${order.orderId}`, {
           method: 'DELETE',
+          headers: { ...(zeoutForDelete ? { 'x-zeout': zeoutForDelete, 'Content-Type': 'application/json' } : {}) },
+          ...(zeoutForDelete ? { body: JSON.stringify({ zeout: zeoutForDelete }) } : {})
         });
         if (res.ok) {
           fetchOrders();
@@ -516,6 +551,13 @@ export default function OrdersPage() {
           <button type="button" onClick={() => { setFilterStatus('drafts'); setPage(1); }} className={filterStatus === 'drafts' ? 'pill-tab active' : 'pill-tab'} title="טיוטות">
             <svg className="icon"><use href="#i-edit" /></svg>
             טיוטות
+          </button>
+        )}
+        {/* 37 - הזמנות שלא נלקחו/חלקית - מוסתר כש-show_not_taken_orders כבוי */}
+        {showNotTakenOrders && (
+          <button type="button" onClick={() => { setFilterStatus('not_taken'); setPage(1); }} className={filterStatus === 'not_taken' ? 'pill-tab active' : 'pill-tab'} title="הזמנות שלא נלקחו או נלקחו חלקית">
+            <svg className="icon"><use href="#i-clock" /></svg>
+            לא-נלקחו
           </button>
         )}
         <button type="button" onClick={() => { setFilterStatus('all'); setPage(1); }} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
@@ -711,7 +753,7 @@ export default function OrdersPage() {
                 const isPending = pendingItem && nowTick && new Date(pendingItem.cartStatusDate).getTime() + holdMinutes * 60000 > nowTick;
 
                 const isUnpaid = order.totalPaid < order.totalAmount && order.totalAmount > 0;
-                const hasCustomSpacing = order.customSpacing !== null && order.customSpacing !== undefined;
+                const hasCustomSpacing = !hideCustomSpacing && order.customSpacing !== null && order.customSpacing !== undefined;
                 // טיוטה מקומית של שינויים שלא נשמרו בכרטיס (ר' app/lib/orderDrafts.js) —
                 // גוון ייחודי + תג, לפני שאר הצבעים: דורש החלטת משתמש בתוך הכרטיס.
                 const unsavedDraft = unsavedDrafts[order.orderId];
@@ -912,8 +954,8 @@ export default function OrdersPage() {
               <span style={{ fontWeight: 500 }}>{hoveredOrder.eventDateHebrew || 'לא צוין'}</span>
             </div>
 
-            {/* ציפוף ימים מיוחד — מוצג רק כשהוגדר ערך מותאם להזמנה (אותו תנאי שצובע את השורה) */}
-            {hoveredOrder.customSpacing !== null && hoveredOrder.customSpacing !== undefined && (
+            {/* ציפוף ימים מיוחד — מוצג רק כשהוגדר ערך מותאם להזמנה (אותו תנאי שצובע את השורה), מוסתר כש-hide_custom_spacing מופעל (בקשה 1) */}
+            {!hideCustomSpacing && hoveredOrder.customSpacing !== null && hoveredOrder.customSpacing !== undefined && (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
                 <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '5px' }}><svg className="icon"><use href="#i-alert-tri" /></svg> ציפוף ימים:</span>
                 <span style={{ fontWeight: 700, color: 'var(--warning)' }}>

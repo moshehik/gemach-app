@@ -276,6 +276,47 @@ export async function PUT(request, { params }) {
 
     const data = await request.json();
 
+    // 14 + 27 - אימות ת״ז וחסימת עריכת מושכר חלקי (עטוף ב-settingsCache, כבוי = התנהגות ישנה)
+    try {
+      const allSettingsForEdit = await getAllCachedSettings();
+      const requireIdVal = allSettingsForEdit.find(s => s.key === 'require_id_for_edit_cancel')?.value === 'true';
+      const allowPartialRaw = allSettingsForEdit.find(s => s.key === 'allow_edit_partially_rented')?.value;
+      const allowPartialVal = allowPartialRaw !== 'false'; // ברירת מחדל מופעל אם חסר
+      // 27 - אם false חסום עריכת הזמנה עם isTaken=true
+      if (!allowPartialVal) {
+        const hasTakenItem = await prisma.orderItem.findFirst({ where: { orderId: parsedOrderId, isDeleted: false, isTaken: true }, select: { id: true } });
+        if (hasTakenItem) {
+          return NextResponse.json({ error: 'לא ניתן לערוך הזמנה שהושכרה חלקית - עריכת מושכר חלקי חסומה בהגדרות (allow_edit_partially_rented).' }, { status: 403 });
+        }
+      }
+      // 14 - אם require_id_for_edit_cancel מופעל, דרוש zeout שתואם ללקוח (גם למושכר חלקי כש-allow true)
+      // אם allowPartial false כבר חסמנו למעלה, אז לא מגיעים לכאן למושכר
+      if (requireIdVal) {
+        const headerZeout = request.headers.get('x-zeout') || request.headers.get('x-customer-zeout') || request.headers.get('zeout');
+        const bodyZeout = data?.zeout || data?.customerZeout || data?.idNumber || data?.zeoutInput || null;
+        const providedZeout = String(headerZeout || bodyZeout || '').trim();
+        if (!providedZeout) {
+          return NextResponse.json({ error: 'דרוש אימות תעודת זהות לעריכת הזמנה (require_id_for_edit_cancel מופעל).' }, { status: 401 });
+        }
+        let customerZeout = null;
+        if (existingOrder.customerId) {
+          try {
+            const cust = await prisma.customer.findUnique({ where: { id: existingOrder.customerId }, select: { zeout: true } });
+            customerZeout = cust?.zeout || null;
+          } catch {}
+        }
+        if (!customerZeout) {
+          return NextResponse.json({ error: 'ללקוח אין ת״ז שמורה במערכת - יש לעדכן כרטיס לקוח לפני עריכה.' }, { status: 400 });
+        }
+        if (String(customerZeout).trim() !== providedZeout) {
+          return NextResponse.json({ error: 'תעודת הזהות אינה תואמת לרשום אצל הלקוח.' }, { status: 403 });
+        }
+      }
+    } catch (e) {
+      // ה-return-ים של 401/403/400 כבר החזירו תשובה ויצאו - לכאן מגיעים רק על שגיאת DB/cache אמיתית (fail-open)
+      console.error('zeout/allow check failed (fail-open)', e);
+    }
+
     // Offline data collision check.
     // data.overwriteConflict נשלח רק אחרי שהמשתמש אישר במפורש בכרטיס ההזמנה שהוא רוצה
     // לדרוס את הגרסה שבשרת — בלי זה הוא נתקע על אותה שגיאה בכל ניסיון שמירה חוזר.
@@ -854,6 +895,53 @@ export async function DELETE(request, { params }) {
 
     if (!order) {
       return NextResponse.json({ error: 'Order not found' }, { status: 404 });
+    }
+
+    // 14 + 27 - אימות ת״ז וחסימת ביטול מושכר חלקי (עטוף ב-settingsCache)
+    try {
+      const allSettingsForDelete = await getAllCachedSettings();
+      const requireIdForDelete = allSettingsForDelete.find(s => s.key === 'require_id_for_edit_cancel')?.value === 'true';
+      const allowPartialForDelete = allSettingsForDelete.find(s => s.key === 'allow_edit_partially_rented')?.value !== 'false';
+      // 27 - אם false חסום גם ביטול של מושכר חלקי
+      if (!allowPartialForDelete) {
+        const hasTakenForDelete = await prisma.orderItem.findFirst({ where: { orderId: parsedOrderId, isDeleted: false, isTaken: true }, select: { id: true } });
+        if (hasTakenForDelete) {
+          return NextResponse.json({ error: 'לא ניתן לבטל הזמנה שהושכרה חלקית - חסום בהגדרות (allow_edit_partially_rented).' }, { status: 403 });
+        }
+      }
+      if (requireIdForDelete) {
+        let providedZeout = request.headers.get('x-zeout') || request.headers.get('x-customer-zeout') || request.headers.get('zeout') || '';
+        if (!providedZeout) {
+          try {
+            const bodyJson = await request.clone().json();
+            providedZeout = bodyJson?.zeout || bodyJson?.customerZeout || bodyJson?.idNumber || '';
+          } catch {}
+        }
+        // גם query param (?zeout=)
+        if (!providedZeout) {
+          try { providedZeout = new URL(request.url).searchParams.get('zeout') || ''; } catch {}
+        }
+        providedZeout = String(providedZeout || '').trim();
+        if (!providedZeout) {
+          return NextResponse.json({ error: 'דרוש אימות תעודת זהות לביטול הזמנה (require_id_for_edit_cancel מופעל).' }, { status: 401 });
+        }
+        let customerZeout = null;
+        if (order.customerId) {
+          try {
+            const cust = await prisma.customer.findUnique({ where: { id: order.customerId }, select: { zeout: true } });
+            customerZeout = cust?.zeout || null;
+          } catch {}
+        }
+        if (!customerZeout) {
+          return NextResponse.json({ error: 'ללקוח אין ת״ז שמורה במערכת - יש לעדכן כרטיס לקוח לפני ביטול.' }, { status: 400 });
+        }
+        if (String(customerZeout).trim() !== providedZeout) {
+          return NextResponse.json({ error: 'תעודת הזהות אינה תואמת לרשום אצל הלקוח.' }, { status: 403 });
+        }
+      }
+    } catch (e) {
+      // ה-return-ים כבר החזירו תשובה - לכאן מגיעים רק על שגיאת DB/cache אמיתית (fail-open)
+      console.error('zeout delete check failed (fail-open)', e);
     }
     
     // Check if order can be deleted

@@ -34,6 +34,29 @@ export async function getAlterationsSetting() {
   }
 }
 
+export async function getCancellationColumnsSetting() {
+  await requireHeadManagement();
+  try {
+    const setting = await getCachedSetting('cancellation_extra_columns');
+    return setting ? setting.value === 'true' : true;
+  } catch (err) {
+    return true;
+  }
+}
+
+// 38 - היוריסטיקה ילדות/נשים לפי מידה/קטגוריה (OrderItem size/category)
+function isChildItem(item) {
+  const size = String(item.sizeText || item.size || '').trim();
+  const cat = String(item.dressItem?.dress?.priceCategory || item.priceCategory || '').toLowerCase();
+  if (cat.includes('ילדה') || cat.includes('ילדות') || cat.includes('ילדים') || cat.includes('child')) return true;
+  if (cat.includes('נשים') || cat.includes('אישה') || cat.includes('women')) return false;
+  // מספרי מידה: עד 36 נחשב ילדות בד״כ, 38+ נשים
+  const num = parseInt(size, 10);
+  if (!isNaN(num)) return num <= 36;
+  if (size.includes('ילדה') || size.includes('ילדות') || size.toLowerCase().includes('child')) return true;
+  return false;
+}
+
 // Helper for date truncation in JS
 function startOfDay(date) {
   const d = new Date(date);
@@ -57,12 +80,36 @@ export async function getDailyStatistics(startDate, endDate) {
     where: { returnDate: { gte: start, lte: end }, isDeleted: false, isReturned: true, order: { status: REAL_ORDER_STATUS_FILTER } }
   });
 
+  // 38 - ביטולים (OrderItem isDeleted=true) לפילוח ילדות/נשים לפי מידה/קטגוריה, מותנה ב-cancellation_extra_columns
+  // אם הכפתור כבוי, לא שולפים ביטולים כלל (חוסך שאילתה יקרה)
+  let cancelledItems = [];
+  let cancellationEnabled = true;
+  try {
+    const cancelSetting = await getCachedSetting('cancellation_extra_columns');
+    cancellationEnabled = cancelSetting ? cancelSetting.value === 'true' : true;
+  } catch {}
+  if (cancellationEnabled) {
+    try {
+      cancelledItems = await prisma.orderItem.findMany({
+        where: {
+          isDeleted: true,
+          // רוב הביטולים יתועדו עם deletedAt, אבל אם חסר נופלים ל-orderDate
+          OR: [
+            { deletedAt: { gte: start, lte: end } },
+            { order: { orderDate: { gte: start, lte: end }, status: REAL_ORDER_STATUS_FILTER } }
+          ]
+        },
+        include: { dressItem: { include: { dress: true } }, order: true }
+      });
+    } catch {}
+  }
+
   // Group by day string
   const grouped = {};
   orders.forEach(o => {
     if (!o.orderDate) return;
     const day = startOfDay(o.orderDate).toISOString().split('T')[0];
-    if (!grouped[day]) grouped[day] = { date: day, newOrders: 0, revenue: 0, itemsRented: 0, itemsReturned: 0 };
+    if (!grouped[day]) grouped[day] = { date: day, newOrders: 0, revenue: 0, itemsRented: 0, itemsReturned: 0, cancellationsChildren: 0, cancellationsWomen: 0 };
     grouped[day].newOrders += 1;
     grouped[day].revenue += o.totalAmount || 0;
     grouped[day].itemsRented += o.items.length;
@@ -71,8 +118,21 @@ export async function getDailyStatistics(startDate, endDate) {
   returnedItems.forEach(i => {
     if (!i.returnDate) return;
     const day = startOfDay(i.returnDate).toISOString().split('T')[0];
-    if (!grouped[day]) grouped[day] = { date: day, newOrders: 0, revenue: 0, itemsRented: 0, itemsReturned: 0 };
+    if (!grouped[day]) grouped[day] = { date: day, newOrders: 0, revenue: 0, itemsRented: 0, itemsReturned: 0, cancellationsChildren: 0, cancellationsWomen: 0 };
     grouped[day].itemsReturned += 1;
+  });
+
+  // פילוח ביטולים ליום הביטול (deletedAt אם יש, אחרת orderDate)
+  cancelledItems.forEach(i => {
+    const d = i.deletedAt || i.order?.orderDate || null;
+    if (!d) return;
+    const day = startOfDay(d).toISOString().split('T')[0];
+    // סנן לטווח בפועל לפי התאריך שבחרנו לקבץ (לא רק ה-OR למעלה שעלול להרחיב)
+    const dd = new Date(d);
+    if (dd < start || dd > end) return;
+    if (!grouped[day]) grouped[day] = { date: day, newOrders: 0, revenue: 0, itemsRented: 0, itemsReturned: 0, cancellationsChildren: 0, cancellationsWomen: 0 };
+    if (isChildItem(i)) grouped[day].cancellationsChildren += i.quantity || 1;
+    else grouped[day].cancellationsWomen += i.quantity || 1;
   });
 
   return Object.values(grouped).sort((a, b) => b.date.localeCompare(a.date));

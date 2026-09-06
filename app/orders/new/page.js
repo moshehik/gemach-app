@@ -104,7 +104,7 @@ export default function NewOrderPage() {
   const [saving, setSaving] = useState(false);
   
   const [newCustomer, setNewCustomer] = useState({
-    firstName: '', lastName: '', phone1: '', phone2: '', email: '', city: '', street: '', houseNum: '', marketingConsent: false
+    firstName: '', lastName: '', phone1: '', phone2: '', email: '', city: '', street: '', houseNum: '', marketingConsent: false, zeout: ''
   });
 
   const [duplicateCustomer, setDuplicateCustomer] = useState(null);
@@ -1534,6 +1534,10 @@ export default function NewOrderPage() {
                       <label htmlFor="cust-house">מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                       <input id="cust-house" className="input" type="text" autoComplete="new-password" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} />
                     </div>
+                  </div>
+                  <div className="field">
+                    <label htmlFor="cust-zeout">תעודת זהות {settings.require_id_for_edit_cancel === 'true' && <span className="hint" style={{ fontWeight: 400 }}>(לעריכה/ביטול עתידי)</span>}</label>
+                    <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} placeholder="ת״ז" />
                   </div>
                   <div className="field" style={{ marginTop: 10 }}>
                     <label className="checkbox-row" style={{ cursor: 'pointer' }}>

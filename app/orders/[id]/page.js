@@ -195,6 +195,8 @@ export default function OrderDetailsPage({ params }) {
   // calculateOrderStatus and app/orders/page.js for the fuller explanation. Same fetch pattern
   // (fetchSharedJson('/api/settings')) as that list page, so both surfaces agree on the toggle.
   const [draftsAsDeleted, setDraftsAsDeleted] = useState(true);
+  const [requireIdForEdit, setRequireIdForEdit] = useState(false); // 14 - ת״ז לעריכה/ביטול
+  const [allowEditPartially, setAllowEditPartially] = useState(true); // 27 - עריכת מושכר חלקי
   useEffect(() => {
     let cancelled = false;
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -202,10 +204,27 @@ export default function OrderDetailsPage({ params }) {
         if (cancelled || !Array.isArray(data)) return;
         const setting = data.find(s => s.key === 'draft_orders_show_as_deleted');
         if (setting) setDraftsAsDeleted(setting.value === 'true');
+        const reqId = data.find(s => s.key === 'require_id_for_edit_cancel');
+        if (reqId) setRequireIdForEdit(reqId.value === 'true');
+        const allowP = data.find(s => s.key === 'allow_edit_partially_rented');
+        if (allowP) setAllowEditPartially(allowP.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
   }, []);
+
+  // 14 - בקשת ת״ז לפני עריכה/ביטול (prompt פשוט, מותנה ב-require_id_for_edit_cancel)
+  const requestZeout = async () => {
+    if (!requireIdForEdit) return null;
+    const msg = 'עריכה/ביטול דורשים אימות תעודת זהות של הלקוח. נא להזין ת״ז:';
+    let zeout = null;
+    if (typeof window !== 'undefined' && window.customPrompt) {
+      zeout = await window.customPrompt(msg, '', 'text');
+    } else if (typeof window !== 'undefined') {
+      zeout = window.prompt(msg);
+    }
+    return zeout ? String(zeout).trim() : null;
+  };
 
   // Fetch Order
   useEffect(() => {
@@ -438,13 +457,34 @@ export default function OrderDetailsPage({ params }) {
   // הכרטיס ממשיך להחזיק updatedAt ישן, ולכן כל ניסיון שמירה נוסף נכשל שוב באותה הודעה.
   // מחזיר null כשהמשתמש בחר לטעון מחדש מהשרת במקום לשמור.
   const putOrder = async (payload) => {
+    // 27 - חסימת עריכת מושכר חלקי בצד לקוח (גם שרת חוסם, אבל נותן חיווי מידי) - נבדק לפני בקשת ת״ז כדי לא לבקש סתם
+    if (!allowEditPartially && items.some(i => !i.isDeleted && i.isTaken)) {
+      if (typeof window !== 'undefined') alert('לא ניתן לערוך הזמנה שהושכרה חלקית - חסום בהגדרות (allow_edit_partially_rented).');
+      return null;
+    }
+    // 14 - אם דרוש ת״ז, בקש לפני שליחה וצרף ל-body+header
+    let zeoutForRequest = null;
+    if (requireIdForEdit) {
+      zeoutForRequest = await requestZeout();
+      if (!zeoutForRequest) {
+        // ביטול ע״י המשתמש - לא שולחים כלום, מחזירים null כמו ב-409 discard
+        if (typeof window !== 'undefined') alert('עריכה בוטלה - לא הוזנה תעודת זהות.');
+        return null;
+      }
+      payload = { ...payload, zeout: zeoutForRequest };
+    }
     const send = (body) => fetch(`/api/orders/${id}`, {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...(zeoutForRequest ? { 'x-zeout': zeoutForRequest } : {}) },
       body: JSON.stringify(body)
     });
 
     const res = await send(payload);
+    if (res.status === 401 || res.status === 403 || res.status === 400) {
+      const errData = await res.clone().json().catch(() => null);
+      if (typeof window !== 'undefined') alert(errData?.error || 'שגיאת אימות תעודת זהות.');
+      return res;
+    }
     if (res.status !== 409) return res;
 
     const conflict = await res.json().catch(() => null);
@@ -931,9 +971,24 @@ export default function OrderDetailsPage({ params }) {
       return;
     }
     if (!(await window.customConfirm('האם אתה בטוח שברצונך למחוק הזמנה זו?'))) return;
+    // 14 - אם דרוש ת״ז, בקש לפני ביטול
+    let zeoutForDelete = null;
+    if (requireIdForEdit) {
+      zeoutForDelete = await requestZeout();
+      if (!zeoutForDelete) { alert('ביטול בוטל - לא הוזנה תעודת זהות.'); return; }
+    }
+    // 27 - חסימת מחיקת מושכר חלקי בצד לקוח
+    if (!allowEditPartially && items.some(i => !i.isDeleted && i.isTaken)) {
+      alert('לא ניתן לבטל הזמנה שהושכרה חלקית - חסום בהגדרות (allow_edit_partially_rented).');
+      return;
+    }
 
     try {
-      const res = await fetch(`/api/orders/${order.orderId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/orders/${order.orderId}`, {
+        method: 'DELETE',
+        headers: { ...(zeoutForDelete ? { 'x-zeout': zeoutForDelete, 'Content-Type': 'application/json' } : {}) },
+        ...(zeoutForDelete ? { body: JSON.stringify({ zeout: zeoutForDelete }) } : {})
+      });
       if (res.ok) {
         router.push('/orders');
       } else {

@@ -10,7 +10,8 @@ import {
   getDressConsumptionStats,
   getMaxConcurrentEmployees,
   getOrderSummaryStats,
-  getAlterationsSetting
+  getAlterationsSetting,
+  getCancellationColumnsSetting
 } from './actions';
 
 export default function StatisticsPage() {
@@ -21,16 +22,19 @@ export default function StatisticsPage() {
   const [data, setData] = useState(null);
   const [summaryData, setSummaryData] = useState(null);
   const [enableAlterations, setEnableAlterations] = useState(true);
+  const [showCancellationColumns, setShowCancellationColumns] = useState(false); // 38 - ביטול ילדות/נשים
 
   useEffect(() => {
     async function loadSummary() {
-      const [orders, maxEmp, altSetting] = await Promise.all([
+      const [orders, maxEmp, altSetting, cancelSetting] = await Promise.all([
         getOrderSummaryStats(),
         getMaxConcurrentEmployees(),
-        getAlterationsSetting()
+        getAlterationsSetting(),
+        getCancellationColumnsSetting()
       ]);
       setSummaryData({ orders, maxEmp });
       setEnableAlterations(altSetting);
+      setShowCancellationColumns(cancelSetting);
     }
     loadSummary();
   }, []);
@@ -135,7 +139,7 @@ export default function StatisticsPage() {
         </div>
       ) : (
         <>
-          {activeTab === 'daily' && <DailyTable data={data} />}
+          {activeTab === 'daily' && <DailyTable data={data} showCancellationColumns={showCancellationColumns} />}
           {activeTab === 'model' && <ModelSizeTable data={data} type="דגם" showAlterations={enableAlterations} />}
           {activeTab === 'size' && <ModelSizeTable data={data} type="מידה" showAlterations={enableAlterations} />}
           {activeTab === 'seamstress' && <SeamstressTable data={data} />}
@@ -202,7 +206,7 @@ function useLocalSort() {
   return [sort, handleSort];
 }
 
-function DailyTable({ data }) {
+function DailyTable({ data, showCancellationColumns }) {
   const [sort, handleSort] = useLocalSort();
   if (!data || data.length === 0) return <EmptyState />;
   const rows = sortRows(data, sort, (r, key) => r[key]);
@@ -217,6 +221,12 @@ function DailyTable({ data }) {
               <th className={sort.key === 'revenue' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('revenue')}>הכנסות (שולמו) <SortIcon sort={sort} colKey="revenue" /></th>
               <th className={sort.key === 'itemsRented' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('itemsRented')}>פריטים הושכרו <SortIcon sort={sort} colKey="itemsRented" /></th>
               <th className={sort.key === 'itemsReturned' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('itemsReturned')}>פריטים הוחזרו <SortIcon sort={sort} colKey="itemsReturned" /></th>
+              {showCancellationColumns && (
+                <>
+                  <th className={sort.key === 'cancellationsChildren' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('cancellationsChildren')}>ביטול ילדות <SortIcon sort={sort} colKey="cancellationsChildren" /></th>
+                  <th className={sort.key === 'cancellationsWomen' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('cancellationsWomen')}>ביטול נשים <SortIcon sort={sort} colKey="cancellationsWomen" /></th>
+                </>
+              )}
             </tr>
           </thead>
           <tbody>
@@ -227,6 +237,12 @@ function DailyTable({ data }) {
                 <td style={{ color: 'var(--success)', fontWeight: 700 }}>₪{(r.revenue ?? 0).toLocaleString()}</td>
                 <td>{r.itemsRented}</td>
                 <td>{r.itemsReturned}</td>
+                {showCancellationColumns && (
+                  <>
+                    <td style={{ color: r.cancellationsChildren ? 'var(--danger)' : 'var(--text-3)' }}>{r.cancellationsChildren ?? 0}</td>
+                    <td style={{ color: r.cancellationsWomen ? 'var(--danger)' : 'var(--text-3)' }}>{r.cancellationsWomen ?? 0}</td>
+                  </>
+                )}
               </tr>
             ))}
           </tbody>

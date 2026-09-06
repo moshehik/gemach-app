@@ -117,8 +117,8 @@ export default function CustomerPage({ params }) {
   }, [id, router]);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    setCustomer(prev => ({ ...prev, [name]: value }));
+    const { name, value, type, checked } = e.target;
+    setCustomer(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
   };
 
   const handleEmailBlur = () => {
@@ -254,6 +254,14 @@ export default function CustomerPage({ params }) {
             <div className="field">
               <label>מספר בית</label>
               <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={handleChange} />
+            </div>
+            <div className="field">
+              <label>תעודת זהות (לעריכה/ביטול)</label>
+              <input type="text" className="input" style={{ direction: 'ltr' }} name="zeout" autoComplete="off" value={customer.zeout || ''} onChange={handleChange} placeholder="ת״ז" />
+            </div>
+            <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
+              <input type="checkbox" id="newMarketingConsent" name="marketingConsent" checked={!!customer.marketingConsent} onChange={handleChange} />
+              <label htmlFor="newMarketingConsent" style={{ margin: 0, fontWeight: 600 }}>מאשר/ת קבלת דיוורים</label>
             </div>
           </div>
 

@@ -83,6 +83,7 @@ export default function BoardPage() {
 
   const [jumpDate, setJumpDate] = useState(null);
   const [enableAlterations, setEnableAlterations] = useState(true);
+  const [hideCustomSpacing, setHideCustomSpacing] = useState(false); // 1 - הסתרת ציפוף ימים (hide_custom_spacing)
 
   // כשהתיקונים כבויים בהגדרות, קטגוריית "יש תיקונים" לא רלוונטית ללוח הזה - כולל למקרה
   // של הזמנות ישנות שיובאו מ-Access עם ערכי תיקון היסטוריים על אף שהתכונה כבויה כעת
@@ -94,6 +95,8 @@ export default function BoardPage() {
         if (altSetting && altSetting.value === 'false') {
           setEnableAlterations(false);
         }
+        const hideSetting = Array.isArray(data) ? data.find(s => s.key === 'hide_custom_spacing') : null;
+        if (hideSetting?.value === 'true') setHideCustomSpacing(true);
       })
       .catch(console.error);
   }, []);
@@ -694,8 +697,8 @@ export default function BoardPage() {
               <span>{hoveredOrder.order.eventDate ? new Date(hoveredOrder.order.eventDate).toLocaleDateString('he-IL') : 'לא צוין'}</span>
             </div>
 
-            {/* ציפוף ימים מיוחד — מוצג רק כשהוגדר ערך מותאם להזמנה */}
-            {hoveredOrder.order.customSpacing !== null && hoveredOrder.order.customSpacing !== undefined && (
+            {/* ציפוף ימים מיוחד — מוצג רק כשהוגדר ערך מותאם להזמנה, ומוסתר כש-hide_custom_spacing מופעל (בקשה 1) */}
+            {!hideCustomSpacing && hoveredOrder.order.customSpacing !== null && hoveredOrder.order.customSpacing !== undefined && (
               <div style={{ display: 'flex', justifyContent: 'space-between', gap: '20px' }}>
                 <span style={{ color: 'var(--text-2)', display: 'flex', alignItems: 'center', gap: '4px' }}>
                   <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-clock" /></svg>

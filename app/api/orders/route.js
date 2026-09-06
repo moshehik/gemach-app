@@ -56,6 +56,16 @@ export async function GET(request) {
       draftsAsDeleted = draftsAsDeletedSetting?.value === 'true';
     }
 
+    // 37 - אם show_not_taken_orders כבוי ומבקשים not_taken, מחזירים ריק (מוסתר)
+    if (filterStatus === 'not_taken') {
+      try {
+        const s = await getCachedSetting('show_not_taken_orders');
+        if (s?.value === 'false') {
+          return NextResponse.json({ data: [], total: 0, page, limit, totalPages: 0 });
+        }
+      } catch {}
+    }
+
     // מיון ברירת המחדל של טאב ההשכרות: היום → מחר → קדימה עד חלון של כמה ימים,
     // ואז ממשיך אחורה בעבר (מהאירוע האחרון שהיה ועד הישן ביותר). אירועים עתידיים
     // שרחוקים מהחלון מוסתרים לגמרי (בכל מצבי הסינון), כי הטאב הזה תפעולי (לקיחה/
@@ -103,6 +113,7 @@ export async function GET(request) {
       searchModelPrefixes = matchingModels.map(m => m.barcodePrefix).filter(p => p !== null && p !== undefined);
     }
 
+    // 37 - not_taken: הזמנות שלא נלקחו/חלקית (יש isTaken=false), מותנה ב-show_not_taken_orders (מוסתר כשכבוי)
     const where = {
       ...(filterStatus === 'deleted'
         // AND-wrapped (not a bare top-level OR) so this doesn't collide with the other
@@ -111,6 +122,7 @@ export async function GET(request) {
         ? (draftsAsDeleted ? { AND: [{ OR: [{ isDeleted: true }, { status: DRAFT_ORDER_STATUS }] }] } : { isDeleted: true })
         : { isDeleted: false }),
       ...(filterStatus === 'drafts' ? { status: DRAFT_ORDER_STATUS } : {}),
+      ...(filterStatus === 'not_taken' ? { items: { some: { isDeleted: false, isTaken: false } } } : {}),
       ...(filterStatus === 'archive' ? { eventDate: { lt: today } } : {}),
       ...(filterStatus === 'soon' ? { OR: [{ eventDate: null }, { eventDate: { gte: today } }] } : {}),
       ...(filterStatus === 'all' && !forRentals && !search && !advOrderId && !advCustomerName && !advCustomerPhone && !advCustomerCity && !advEventDateFrom && !advEventDateTo ? {

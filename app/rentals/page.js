@@ -88,10 +88,13 @@ export default function RentalsPage() {
   // בקשה 16 - אם rentals_sort_recent_first מופעל, כל ההשכרות ממוינות מהאחרונים ביותר (אתמול למעלה) → eventDate desc
   const [sort, setSort] = useState('eventDateSmart');
   const [order, setOrder] = useState('desc');
+  const [hideCustomSpacing, setHideCustomSpacing] = useState(false); // 1 - הסתרת ציפוף
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(arr => {
       const v = Array.isArray(arr) ? arr.find(s => s.key === 'rentals_sort_recent_first')?.value : null;
       if (v === 'true') { setSort('eventDate'); setOrder('desc'); }
+      const hide = Array.isArray(arr) ? arr.find(s => s.key === 'hide_custom_spacing')?.value : null;
+      if (hide === 'true') setHideCustomSpacing(true);
     }).catch(()=>{});
   }, []);
 
@@ -533,7 +536,7 @@ export default function RentalsPage() {
               const totalItems = ord.items?.filter(i => !i.isDeleted).length || 0;
               const rentedItems = ord.items?.filter(i => i.isTaken && !i.isReturned && !i.isDeleted).length || 0;
               const returnedItems = ord.items?.filter(i => i.isReturned && !i.isDeleted).length || 0;
-              const hasCustomSpacing = ord.customSpacing !== null && ord.customSpacing !== undefined;
+              const hasCustomSpacing = !hideCustomSpacing && ord.customSpacing !== null && ord.customSpacing !== undefined;
 
               let rowStyle = {};
               if (hasCustomSpacing) {
