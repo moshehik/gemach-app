@@ -22,14 +22,25 @@ export async function POST(request) {
 
     if (!mosadId) {
       // Check database settings
-      const setting = (await getAllCachedSettings()).find(s => s.key === 'nedarimMosadId' || s.key === 'NEDARIM_MOSAD') || null;
+      const setting = (await getAllCachedSettings()).find(s => s.key === 'nedarimMosadId' || s.key === 'NEDARIM_MOSAD' || s.key === 'nedarim_plus_terminal') || null;
       if (setting && setting.value) {
         mosadId = setting.value;
       } else {
         // Just a fallback to ensure we don't crash, user will need to configure it
-        mosadId = data.mosadId || ''; 
+        mosadId = data.mosadId || '';
       }
     }
+
+    // 2 - קישור נדרים פלוס לרינת לב: אם הלקוח/ההערה מציינים "רינת לב" ויש URL ייעודי - עקיפה ל-endpoint הייעודי
+    // (שלד בטוח: אם אין URL מוגדר - fallback למוסד הכללי, ללא שבירה)
+    let rinatLevOverride = null;
+    try {
+      const rinatSetting = await getCachedSetting('nedarim_rinat_lev_url');
+      const haystack = `${data.clientName || ''} ${data.notes || ''} ${data.email || ''}`;
+      if (rinatSetting?.value && /רינת.?לב/.test(haystack)) {
+        rinatLevOverride = rinatSetting.value;
+      }
+    } catch {}
 
     if (!mosadId) {
        return NextResponse.json({ success: false, error: 'מספר מוסד (MosadId) לא מוגדר במערכת. אנא עדכן את ההגדרות.' }, { status: 400 });
@@ -75,6 +86,8 @@ export async function POST(request) {
       cvv,
       email,
       token,
+      // 2 - endpoint ייעודי לרינת לב אם זוהה (chargeNedarimPlus יתעלם אם לא תומך - fallback רגיל)
+      ...(rinatLevOverride ? { customEndpoint: rinatLevOverride } : {}),
     });
 
     return NextResponse.json(result);

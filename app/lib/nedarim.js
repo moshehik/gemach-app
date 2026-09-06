@@ -36,9 +36,11 @@ export async function chargeNedarimPlus({
   cvv = '',
   email = '',
   token = '',
+  customEndpoint = '',
 }) {
   const endpoint = isKeva ? 'DebitKeva.aspx' : 'DebitCard.aspx';
-  const url = `https://www.matara.pro/nedarimplus/V6/Files/WebServices/${endpoint}`;
+  // 2 - רינת לב: אם הועבר customEndpoint (URL מלא) - משתמשים בו, אחרת endpoint רגיל
+  const url = customEndpoint || `https://www.matara.pro/nedarimplus/V6/Files/WebServices/${endpoint}`;
 
   const bodyParams = new URLSearchParams({
     Mosad: mosadId,

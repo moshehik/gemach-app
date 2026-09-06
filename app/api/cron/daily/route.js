@@ -100,7 +100,77 @@ export async function GET(request) {
     } catch (e) { results.errors.push(`late: ${e.message}`); }
   }
 
-  // 31 - דוח ברקודים ידניים למנהלת (אם מופעל) - פריטים שהוקלדו ידנית היום
+  // 3 - גביה אוטומטית ממאחרים בהו"ק (עד 19:00 ביום ההחזרה, מחיר השכרה נוסף לכל שמלה)
+  // שלד בטוח: יוצר PaymentObligation בלבד (לא חיוב כרטיס אמיתי) + מייל. כבוי = לא יוצר.
+  if (get('hok_auto_charge_enabled') === 'true' && get('hok_enabled') === 'true') {
+    try {
+      const hourStr = get('hok_auto_charge_hour') || '19:00';
+      const [hh, mm] = hourStr.split(':').map(Number);
+      const now = new Date();
+      const deadlinePassed = now.getHours() > (hh || 19) || (now.getHours() === (hh || 19) && now.getMinutes() >= (mm || 0));
+      if (deadlinePassed) {
+        const fixedAmount = parseFloat(get('hok_charge_amount') || '');
+        const overdue = await prisma.order.findMany({
+          where: {
+            isDeleted: false,
+            returnDate: { lt: now },
+            items: { some: { isTaken: true, isReturned: false, isDeleted: false } },
+          },
+          include: { customer: true, items: { where: { isTaken: true, isReturned: false, isDeleted: false } }, obligations: { where: { isDeleted: false } } },
+          take: 100,
+        });
+        for (const o of overdue) {
+          try {
+            const perDress = !isNaN(fixedAmount) && fixedAmount > 0
+              ? fixedAmount
+              : Math.round(((o.totalAmount || 0) / Math.max(1, o.items.length)) * 100) / 100;
+            const alreadyCharged = (o.obligations || []).some(x => String(x.description || '').includes('גביה אוטומטית - איחור'));
+            if (alreadyCharged) continue;
+            const total = perDress * o.items.length;
+            await prisma.paymentObligation.create({
+              data: {
+                orderId: o.orderId,
+                amount: total,
+                quantity: o.items.length,
+                description: `גביה אוטומטית - איחור (הו"ק, אחרי ${hourStr})`,
+                isManual: false,
+              },
+            });
+          } catch (e) { results.errors.push(`hok ${o.orderId}: ${e.message}`); }
+        }
+      }
+    } catch (e) { results.errors.push(`hok: ${e.message}`); }
+  }
+
+  // 23 - גביה אוטומטית על החזרה פגומה (isDamagedReturn) - יוצר חיוב הו"ק, כבוי = לא יוצר
+  if (get('auto_charge_damaged_return') === 'true' && get('hok_enabled') === 'true') {
+    try {
+      const damaged = await prisma.orderItem.findMany({
+        where: { isDamagedReturn: true, isDeleted: false, isReturned: true },
+        include: { order: { include: { obligations: { where: { isDeleted: false } } } } },
+        take: 100,
+      });
+      for (const i of damaged) {
+        try {
+          const o = i.order;
+          if (!o) continue;
+          const already = (o.obligations || []).some(x => String(x.description || '').includes('הוחזרה שמלה פגומה'));
+          if (already) continue;
+          const amount = i.finalPrice || i.basePrice || 0;
+          await prisma.paymentObligation.create({
+            data: {
+              orderId: o.orderId,
+              orderItemId: i.id,
+              amount: amount || 0,
+              quantity: 1,
+              description: 'הוחזרה שמלה פגומה (גביה הו"ק אוטומטית)',
+              isManual: false,
+            },
+          });
+        } catch (e) { results.errors.push(`damaged ${i.id}: ${e.message}`); }
+      }
+    } catch (e) { results.errors.push(`damaged: ${e.message}`); }
+  }
   if (get('manual_barcode_daily_report') === 'true') {
     try {
       const managerEmail = get('daily_manager_report_email') || get('main_email');

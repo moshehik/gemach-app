@@ -1562,6 +1562,30 @@ export default function NewOrderPage() {
                       <span>מאשר/ת קבלת דיוורים ועדכונים {settings.require_marketing_consent === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</span>
                     </label>
                   </div>
+                  {/* 3 - פרטי הוראת קבע בהזמנה (מותנה ב-hok_enabled, כבוי = מוסתר) */}
+                  {settings.hok_enabled === 'true' && (
+                    <div className="card" style={{ marginTop: 10, padding: 12, background: 'var(--surface-alt)' }}>
+                      <h4 style={{ margin: '0 0 8px' }}>פרטי הוראת קבע (3)</h4>
+                      <div className="form-grid">
+                        <div className="field">
+                          <label>בנק</label>
+                          <input type="text" className="input" value={newCustomer.hokBankName || ''} onChange={e => setNewCustomer(prev => ({ ...prev, hokBankName: e.target.value }))} />
+                        </div>
+                        <div className="field">
+                          <label>סניף</label>
+                          <input type="text" className="input" value={newCustomer.hokBankBranch || ''} onChange={e => setNewCustomer(prev => ({ ...prev, hokBankBranch: e.target.value }))} />
+                        </div>
+                        <div className="field">
+                          <label>חשבון</label>
+                          <input type="text" className="input" style={{ direction: 'ltr' }} value={newCustomer.hokBankAccount || ''} onChange={e => setNewCustomer(prev => ({ ...prev, hokBankAccount: e.target.value }))} />
+                        </div>
+                      </div>
+                      <label className="checkbox-row" style={{ cursor: 'pointer', marginTop: 8 }}>
+                        <input type="checkbox" checked={!!newCustomer.hokConsent} onChange={e => setNewCustomer(prev => ({ ...prev, hokConsent: e.target.checked }))} />
+                        <span>מאשר/ת גביה אוטומטית בהו&quot;ק במקרה של איחור/נזק</span>
+                      </label>
+                    </div>
+                  )}
                 </NocCollapsible>
 
                 <button type="button" className="btn btn-primary" style={{ width: '100%', marginTop: '16px' }} onClick={() => handleSaveNewCustomerAndProceed()}>

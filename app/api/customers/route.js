@@ -160,7 +160,12 @@ export async function POST(request) {
         houseNum: body.houseNum !== "" && body.houseNum !== null ? parseInt(body.houseNum, 10) : null,
         notes: body.notes,
         zeout: body.zeout || body.idNumber || null, // 14 - ת״ז לעריכה/ביטול
-        marketingConsent: !!body.marketingConsent // 4 - אישור דיוור
+        marketingConsent: !!body.marketingConsent, // 4 - אישור דיוור
+        // 3 - הו"ק (שדות אופציונליים, נשמרים רק אם נשלחו)
+        ...(body.hokBankName !== undefined ? { hokBankName: body.hokBankName || null } : {}),
+        ...(body.hokBankBranch !== undefined ? { hokBankBranch: body.hokBankBranch || null } : {}),
+        ...(body.hokBankAccount !== undefined ? { hokBankAccount: body.hokBankAccount || null } : {}),
+        ...(body.hokConsent !== undefined ? { hokConsent: !!body.hokConsent } : {}),
       }
     });
     return NextResponse.json(newCustomer);

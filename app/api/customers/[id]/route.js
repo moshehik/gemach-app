@@ -138,7 +138,12 @@ export async function PUT(request, { params }) {
       bankAccount: body.bankAccount,
       bankAccountName: body.bankAccountName,
       zeout: body.zeout !== undefined ? (body.zeout || null) : undefined, // 14 - ת״ז
-      marketingConsent: body.marketingConsent !== undefined ? !!body.marketingConsent : undefined // 4
+      marketingConsent: body.marketingConsent !== undefined ? !!body.marketingConsent : undefined, // 4
+      // 3 - הו"ק בעריכה
+      hokBankName: body.hokBankName !== undefined ? (body.hokBankName || null) : undefined,
+      hokBankBranch: body.hokBankBranch !== undefined ? (body.hokBankBranch || null) : undefined,
+      hokBankAccount: body.hokBankAccount !== undefined ? (body.hokBankAccount || null) : undefined,
+      hokConsent: body.hokConsent !== undefined ? !!body.hokConsent : undefined,
     };
 
     // 2. Compute changes (before the write, so they can be handed to the audit extension)
