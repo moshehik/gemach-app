@@ -19,7 +19,7 @@ export async function GET(request) {
   const settings = await getAllCachedSettings();
   const get = (k) => settings.find(s => s.key === k)?.value;
 
-  const results = { pickupReminders: 0, dailyReport: false, lateEmails: 0, errors: [] };
+  const results = { pickupReminders: 0, dailyReport: false, lateEmails: 0, manualBarcodes: 0, errors: [] };
 
   const today = new Date(); today.setHours(0,0,0,0);
   const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
@@ -100,9 +100,24 @@ export async function GET(request) {
     } catch (e) { results.errors.push(`late: ${e.message}`); }
   }
 
-  // 31 - דוח ברקודים ידניים (אם מופעל)
+  // 31 - דוח ברקודים ידניים למנהלת (אם מופעל) - פריטים שהוקלדו ידנית היום
   if (get('manual_barcode_daily_report') === 'true') {
-    // כרגע אין טבלת ברקודים ידניים - נרשום ל-AuditLog כשמממשים. מדווח כ-0 בינתיים.
+    try {
+      const managerEmail = get('daily_manager_report_email') || get('main_email');
+      const items = await prisma.orderItem.findMany({
+        where: { manualBarcodeEntry: true, createdAt: { gte: today, lte: tomorrowEnd }, isDeleted: false },
+        include: { order: { select: { orderId: true } } },
+        take: 200,
+      });
+      results.manualBarcodes = items.length;
+      if (managerEmail && managerEmail.includes('@') && items.length > 0) {
+        const lines = items.map(i => `#${i.order?.orderId ?? '?'} - ברקוד: ${i.barcode || '?'} - ${i.description || i.sizeText || ''}`).join('\n');
+        const body = `ברקודים שהוקלדו ידנית היום (${getHebrewDateString(today)}): ${items.length}\n\n${lines}`;
+        const html = `<div dir="rtl" style="font-family:Arial"><h2>ברקודים ידניים - ${items.length}</h2><pre style="background:#f5f5f5;padding:12px;border-radius:8px;white-space:pre-wrap">${lines}</pre></div>`;
+        const r = await sendSystemEmail({ to: managerEmail, subject: `ברקודים ידניים ${getHebrewDateString(today)} - ${items.length}`, body, html });
+        if (!r.success) results.errors.push(`manualBarcodes: ${r.message}`);
+      }
+    } catch (e) { results.errors.push(`manualBarcodes: ${e.message}`); }
   }
 
   return NextResponse.json({ success: true, ...results });

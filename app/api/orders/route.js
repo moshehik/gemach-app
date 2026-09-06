@@ -816,29 +816,47 @@ export async function POST(request) {
       }
     });
 
-    // 5 - מייל אוטומטי בעת יצירת הזמנה (אם מופעל בהגדרות)
+    // 5 - מייל אוטומטי בעת יצירת הזמנה (אם מופעל בהגדרות) - כולל פרטי לקיחה והחזרה
     try {
       const autoEmailSetting = await getCachedSetting('auto_email_on_order_create');
-      if (autoEmailSetting?.value === 'true' && updatedOrder?.customer?.email) {
-        const email = updatedOrder.customer.email;
-        if (email && email.includes('@')) {
+      const email = updatedOrder?.customer?.email && String(updatedOrder.customer.email).includes('@')
+        ? String(updatedOrder.customer.email)
+        : null;
+      if (autoEmailSetting?.value === 'true' && email) {
           const hebrewDate = updatedOrder.eventDateHebrew || (updatedOrder.eventDate ? getHebrewDateString(updatedOrder.eventDate) : '');
           const toDateStr = updatedOrder.toDate ? getHebrewDateString(updatedOrder.toDate) : '';
+          const fromDateStr = updatedOrder.fromDate ? getHebrewDateString(updatedOrder.fromDate) : '';
+          // לקיחה/החזרה: fromDate או יומיים לפני האירוע; החזרה: toDate/returnDate או אחרי האירוע
           const gmachName = (await getCachedSetting('gmach_name'))?.value || 'גמ"ח שמלות';
+          const gmachAddress = (await getCachedSetting('gmach_address'))?.value || '';
+          const gmachPhone = (await getCachedSetting('gmach_phone'))?.value || '';
+          const itemsList = (updatedOrder.items || []).map(i => i.description || i.sizeText || `פריט`).join(', ') || 'ללא פירוט';
           // fire-and-forget - לא חוסם את תשובת ה-API
           const { sendSystemEmail } = await import('@/lib/mailer');
-          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה.\nתאריך אירוע: ${hebrewDate}\n${toDateStr ? `עד תאריך: ${toDateStr}\n` : ''}סה"כ לתשלום: ₪${updatedOrder.totalAmount || 0}\n\nנשמח לראותך!`;
-          const html = `<div dir="rtl" style="font-family:Arial"><h2>הזמנה #${updatedOrder.orderId} - ${gmachName}</h2><p>שלום ${updatedOrder.customer.firstName || ''},</p><p>הזמנתך נקלטה בהצלחה.</p><p><strong>תאריך אירוע:</strong> ${hebrewDate}${toDateStr ? `<br/><strong>עד תאריך:</strong> ${toDateStr}` : ''}</p><p><strong>סה"כ לתשלום:</strong> ₪${updatedOrder.totalAmount || 0}</p></div>`;
+          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${fromDateStr ? `מועד לקיחה: ${fromDateStr}\n` : ''}${toDateStr ? `מועד החזרה: ${toDateStr}\n` : ''}פריטים: ${itemsList}\nסה"כ לתשלום: ₪${updatedOrder.totalAmount || 0}\nכתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
+          const html = `<div dir="rtl" style="font-family:Arial;line-height:1.6"><h2>הזמנה #${updatedOrder.orderId} - ${gmachName}</h2><p>שלום ${updatedOrder.customer.firstName || ''},</p><p>הזמנתך נקלטה בהצלחה.</p><p><strong>תאריך אירוע:</strong> ${hebrewDate}${fromDateStr ? `<br/><strong>לקיחה:</strong> ${fromDateStr}` : ''}${toDateStr ? `<br/><strong>החזרה:</strong> ${toDateStr}` : ''}</p><p><strong>פריטים:</strong> ${itemsList}</p><p><strong>סה"כ לתשלום:</strong> ₪${updatedOrder.totalAmount || 0}</p><p>כתובת איסוף: ${gmachAddress}<br/>טלפון: ${gmachPhone}</p></div>`;
           sendSystemEmail({ to: email, subject: `הזמנה #${updatedOrder.orderId} - ${gmachName}`, body, html, customerId: updatedOrder.customerId }).catch(e => console.error('auto_email_on_order_create failed', e));
-        }
       }
     } catch (e) { console.error('auto email check failed', e); }
 
-    // 12 - הוסף מייל אוטומטית לרשימת תפוצה (אם מופעל)
+    // 12 - הוסף מייל אוטומטית לרשימת תפוצה (אם מופעל) - לוג פנימי ב-EmailLog לרשימה, ספק חיצוני בשאלה #12
     try {
       const mlSetting = await getCachedSetting('mailing_list_auto_sync');
-      if (mlSetting?.value === 'true' && updatedOrder?.customer?.email) {
-        // כרגע נשמר רק ב-EmailLog לרשימה פנימית; ספק חיצוני יתממשק דרך cron/ webhook נוסף (שאלה #12)
+      const email = updatedOrder?.customer?.email && String(updatedOrder.customer.email).includes('@')
+        ? String(updatedOrder.customer.email)
+        : null;
+      if (mlSetting?.value === 'true' && email) {
+        try {
+          await prisma.emailLog.create({
+            data: {
+              to: email,
+              subject: 'mailing-list-subscribe',
+              body: `נרשם אוטומטית לרשימת תפוצה מהזמנה #${updatedOrder.orderId} (${new Date().toISOString()})`,
+              status: 'subscribed',
+              customerId: updatedOrder.customerId || null,
+            }
+          });
+        } catch (logErr) { console.error('mailing_list log failed', logErr); }
       }
     } catch {}
 
