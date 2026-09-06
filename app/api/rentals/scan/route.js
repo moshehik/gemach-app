@@ -7,7 +7,7 @@ import { verifySecret } from '@/lib/passwordAuth';
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
-    const { orderId, barcode, itemIdToForce, overridePin, overrideEmployeeId } = await request.json();
+    const { orderId, barcode, itemIdToForce, overridePin, overrideEmployeeId, manualEntry, manualConfirm, manualSignature } = await request.json();
 
     if (!orderId || !barcode) {
       return NextResponse.json({ error: 'חסרים נתונים (מספר הזמנה או ברקוד)' }, { status: 400 });
@@ -37,7 +37,51 @@ export async function POST(request) {
     }
 
     if (!dressItem) {
-      return NextResponse.json({ error: 'ברקוד לא קיים במאגר השמלות' }, { status: 404 });
+      // 26 + 31 - ברקוד לא תקין: רישום לרשימת הנהלה (אם מופעל) + הקלדה ידנית כפולה (אם מופעל)
+      try {
+        const allS = await getAllCachedSettings();
+        const invalidOn = allS.find(s => s.key === 'barcode_invalid_list')?.value === 'true';
+        const manualOn = allS.find(s => s.key === 'manual_barcode_double_entry')?.value === 'true';
+        if (invalidOn && itemIdToForce) {
+          try {
+            await prisma.orderItem.update({
+              where: { id: itemIdToForce },
+              data: { barcodeInvalid: true, barcodeInvalidHandled: false, barcode: barcode || undefined },
+            });
+          } catch {}
+        }
+        if (invalidOn) {
+          try {
+            await prisma.auditLog.create({
+              data: {
+                entityType: 'OrderItem',
+                entityId: String(orderId),
+                action: 'BARCODE_INVALID',
+                changesJson: JSON.stringify({ barcode, orderId, at: new Date().toISOString() }),
+              },
+            });
+          } catch {}
+        }
+        // 31 - אם manualEntry + confirm + חתימה וההגדרה מופעלת - מאפשרים הקלדה ידנית (האימות הכפול נעשה ב-UI)
+        if (manualOn && manualEntry === true && manualConfirm === true && manualSignature) {
+          if (itemIdToForce) {
+            try {
+              const manualItem = await prisma.orderItem.update({
+                where: { id: itemIdToForce },
+                data: {
+                  barcode: barcode || null,
+                  barcodeInvalid: false,
+                  manualBarcodeEntry: true,
+                  manualBarcodeConfirmed: true,
+                },
+                include: { dressItem: { include: { dress: true } } },
+              });
+              return NextResponse.json({ ...manualItem, manualEntry: true });
+            } catch {}
+          }
+        }
+      } catch {}
+      return NextResponse.json({ error: 'ברקוד לא קיים במאגר השמלות', barcodeInvalid: true }, { status: 404 });
     }
 
     if (dressItem.isDeleted || dressItem.notInUse) {
