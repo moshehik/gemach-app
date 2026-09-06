@@ -85,8 +85,15 @@ export default function RentalsPage() {
   // ברירת המחדל 'eventDateSmart' היא מיון מיוחד (לא עמודה אמיתית בטבלה): היום →
   // מחר → עד כשבוע וחצי קדימה, ואז אחורה בעבר. לחיצה על כותרת עמודה (כולל "תאריך
   // אירוע" עצמה) עוברת למיון עמודה רגיל, ר' handleSort.
+  // בקשה 16 - אם rentals_sort_recent_first מופעל, כל ההשכרות ממוינות מהאחרונים ביותר (אתמול למעלה) → eventDate desc
   const [sort, setSort] = useState('eventDateSmart');
   const [order, setOrder] = useState('desc');
+  useEffect(() => {
+    fetch('/api/settings').then(r => r.json()).then(arr => {
+      const v = Array.isArray(arr) ? arr.find(s => s.key === 'rentals_sort_recent_first')?.value : null;
+      if (v === 'true') { setSort('eventDate'); setOrder('desc'); }
+    }).catch(()=>{});
+  }, []);
 
   // עימוד אמיתי (מעבר עמודים) - כמו ב-app/orders/page.js, לא "טען עוד".
   const [page, setPage] = useState(1);

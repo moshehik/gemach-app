@@ -104,7 +104,7 @@ export default function NewOrderPage() {
   const [saving, setSaving] = useState(false);
   
   const [newCustomer, setNewCustomer] = useState({
-    firstName: '', lastName: '', phone1: '', phone2: '', email: '', city: '', street: '', houseNum: ''
+    firstName: '', lastName: '', phone1: '', phone2: '', email: '', city: '', street: '', houseNum: '', marketingConsent: false
   });
 
   const [duplicateCustomer, setDuplicateCustomer] = useState(null);
@@ -394,19 +394,32 @@ export default function NewOrderPage() {
     houseNum: ['housenum', 'מספר בית', 'מספר_בית']
   };
   const CUSTOMER_FIELD_LABELS = {
-    firstName: 'שם פרטי', lastName: 'שם משפחה', phone1: 'טלפון', email: 'אימייל', city: 'עיר', street: 'רחוב', houseNum: 'מספר בית'
+    firstName: 'שם פרטי', lastName: 'שם משפחה', phone1: 'טלפון', email: 'אימייל', city: 'עיר', street: 'רחוב', houseNum: 'מספר בית', marketingConsent: 'אישור דיוור'
   };
 
   // משותף בין טופס "לקוח חדש" (חסימה קשיחה) לבין אישור התאמת לקוח קיים
   // (חסימה רכה עם אפשרות לדלג באישור מפורש) — כדי ששני המסלולים יבדקו בדיוק אותם שדות.
+  // בקשה 4: חובה גם מייל + כתובת מלאה + אישור דיוורים כאשר ההגדרות המתאימות מופעלות.
   const getMissingMandatoryCustomerFields = (customerObj) => {
     const configuredMandatory = (settings.mandatory_fields || '')
       .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
-    return Object.keys(CUSTOMER_FIELD_ALIASES).filter((key) => {
+    const baseMissing = Object.keys(CUSTOMER_FIELD_ALIASES).filter((key) => {
       const alwaysRequired = key === 'firstName' || key === 'lastName' || key === 'phone1';
       const isRequired = alwaysRequired || CUSTOMER_FIELD_ALIASES[key].some(alias => configuredMandatory.includes(alias.toLowerCase()));
       return isRequired && !String(customerObj[key] || '').trim();
     });
+    // 4: אכיפה נוספת לפי מתגי חובה ייעודיים (לא רק mandatory_fields)
+    const extra = [];
+    if (settings.require_customer_email === 'true' && !String(customerObj.email || '').trim()) extra.push('email');
+    if (settings.require_full_address === 'true') {
+      if (!String(customerObj.city || '').trim()) extra.push('city');
+      if (!String(customerObj.street || '').trim()) extra.push('street');
+      if (!String(customerObj.houseNum || '').trim()) extra.push('houseNum');
+    }
+    if (settings.require_marketing_consent === 'true' && !customerObj.marketingConsent) extra.push('marketingConsent');
+    // איחוד ללא כפילויות
+    const all = [...baseMissing, ...extra.filter(k => !baseMissing.includes(k))];
+    return all;
   };
 
   const handleSaveNewCustomerAndProceed = async (skipDuplicateCheck = false) => {
@@ -482,6 +495,11 @@ export default function NewOrderPage() {
         ...missingFields.map(k => CUSTOMER_FIELD_LABELS[k]),
         ...(missingContactMethod ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
       ];
+      // בקשה 4: אכיפה קשיחה - גם לא באישור מנהל. כבוי = ההתנהגות הקודמת (אישור חריגה)
+      if (settings.strict_mandatory_fields === 'true') {
+        alert(`לא ניתן להמשיך - ללקוח חסרים פרטי חובה: ${missingParts.join(', ')}. יש להשלים את הפרטים בכרטיס הלקוח לפני יצירת הזמנה.`);
+        return;
+      }
       const confirmed = await window.customConfirm(
         `ללקוח זה חסרים פרטי חובה: ${missingParts.join(', ')}.\nהאם לאשר חריגה ולהמשיך בכל זאת בלי להשלים את הפרטים?`
       );
@@ -1505,17 +1523,23 @@ export default function NewOrderPage() {
                 <NocCollapsible title="פרטים נוספים">
                   <div className="form-grid">
                     <div className="field">
-                      <label htmlFor="cust-city">עיר מגורים</label>
+                      <label htmlFor="cust-city">עיר מגורים {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                       <input id="cust-city" className="input" type="text" autoComplete="new-password" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} />
                     </div>
                     <div className="field">
-                      <label htmlFor="cust-street">רחוב</label>
+                      <label htmlFor="cust-street">רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                       <input id="cust-street" className="input" type="text" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} />
                     </div>
                     <div className="field">
-                      <label htmlFor="cust-house">מספר בית</label>
+                      <label htmlFor="cust-house">מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                       <input id="cust-house" className="input" type="text" autoComplete="new-password" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} />
                     </div>
+                  </div>
+                  <div className="field" style={{ marginTop: 10 }}>
+                    <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                      <input type="checkbox" checked={!!newCustomer.marketingConsent} onChange={e => setNewCustomer(prev => ({ ...prev, marketingConsent: e.target.checked }))} />
+                      <span>מאשר/ת קבלת דיוורים ועדכונים {settings.require_marketing_consent === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</span>
+                    </label>
                   </div>
                 </NocCollapsible>
 
@@ -1566,8 +1590,8 @@ export default function NewOrderPage() {
               )}
 
               <NocCollapsible
-                title="הערות וריווח ימים"
-                badge={(order.customSpacing !== null && order.customSpacing !== undefined) ? spacingLabel : (order.notes ? 'יש הערה' : null)}
+                title={settings.hide_custom_spacing === 'true' ? 'הערות' : 'הערות וריווח ימים'}
+                badge={settings.hide_custom_spacing === 'true' ? (order.notes ? 'יש הערה' : null) : ((order.customSpacing !== null && order.customSpacing !== undefined) ? spacingLabel : (order.notes ? 'יש הערה' : null))}
               >
                 <div className="field">
                   <label htmlFor="order-notes">הערות כלליות להזמנה</label>
@@ -1582,6 +1606,7 @@ export default function NewOrderPage() {
                   />
                 </div>
 
+                {settings.hide_custom_spacing !== 'true' && (
                 <div className="field" style={{ marginBottom: 0 }}>
                   <label>ריווח ימים בין השכרות</label>
                   <div className="pill-tabs">
@@ -1613,6 +1638,7 @@ export default function NewOrderPage() {
                         : 'ריווח מורחב — פחות זמינות לשאר ההזמנות.'}
                   </p>
                 </div>
+                )}
               </NocCollapsible>
             </div>
           </div>

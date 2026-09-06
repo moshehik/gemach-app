@@ -144,7 +144,16 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   // ציר ימי הרווח (ציפוף) — משמש גם בפאנל העריכה וגם כאינדיקציה במצב קריאה.
   // הטווח נגזר מברירת המחדל של המערכת (inventory_buffer_days) ולא מקובע — כולל תמיד
   // כמה ימים מעבר לברירת המחדל, כדי שיהיה אפשר גם להרחיב את הציפוף ולא רק לצמצם אותו.
-  const hasCustomSpacing = order.customSpacing !== null && order.customSpacing !== undefined;
+  // כש-hide_custom_spacing מופעל (בקשה 1 - לקוח זה), כל הציפוף מוסתר לגמרי.
+  const [hideCustomSpacing, setHideCustomSpacing] = React.useState(false);
+  React.useEffect(() => {
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC }).then(arr => {
+      const list = Array.isArray(arr) ? arr : [];
+      const v = list.find(s => s.key === 'hide_custom_spacing')?.value;
+      if (v === 'true') setHideCustomSpacing(true);
+    }).catch(() => {});
+  }, []);
+  const hasCustomSpacing = !hideCustomSpacing && order.customSpacing !== null && order.customSpacing !== undefined;
   const selectedSpacing = hasCustomSpacing ? order.customSpacing : null;
   const maxAxisDay = Math.max(systemDefaultSpacing + 2, selectedSpacing !== null ? selectedSpacing : 0, 4);
   const axisDays = Array.from({ length: maxAxisDay + 1 }, (_, i) => i);
@@ -332,8 +341,8 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
         )}
       </div>
 
-      {/* ציפוף ימים מיוחד — סעיף נפרד, מוצג בזמן עריכת האירוע וגם כאינדיקציה במצב קריאה */}
-      {(isEditingEvent || hasCustomSpacing) && spacingCardNode}
+      {/* ציפוף ימים מיוחד — סעיף נפרד, מוצג בזמן עריכת האירוע וגם כאינדיקציה במצב קריאה. מוסתר לגמרי כאשר hide_custom_spacing מופעל */}
+      {!hideCustomSpacing && (isEditingEvent || hasCustomSpacing) && spacingCardNode}
 
       {/* תאריך ביצוע ההזמנה */}
       <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>

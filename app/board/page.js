@@ -49,7 +49,9 @@ export default function BoardPage() {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // מתחיל כ-true כדי שהרינדור הראשון בכניסה לאתר יציג "טוען נתונים..."
+  // במקום לוח ריק שנראה כאילו אין הזמנות, עד שה-fetch הראשון מסתיים.
+  const [loading, setLoading] = useState(true);
   const [hoveredOrder, setHoveredOrder] = useState(null);
   const [popoverPos, setPopoverPos] = useState({ top: 0, left: 0 });
 

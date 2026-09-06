@@ -36,6 +36,14 @@ model Customer {
   bankAccount     String? // חשבון
   bankAccountName String? // שם בעל חשבון
 
+  // 38 בקשות - שדות חדשים (אופציונליים, לא שוברים תאימות)
+  zeout            String? // תעודת זהות לאימות עריכה/ביטול (בקשה 14)
+  marketingConsent Boolean @default(false) // אישור קבלת דיוורים (בקשה 4)
+  hokBankName      String? // הוראת קבע - בנק (בקשה 3)
+  hokBankBranch    String? // הוראת קבע - סניף
+  hokBankAccount   String? // הוראת קבע - חשבון
+  hokConsent       Boolean @default(false) // הסכמה להוראת קבע
+
   orders    Order[]
   payments  Payment[]
   refunds   Refund[]
@@ -200,6 +208,8 @@ model DressModel {
   inactiveReason   String? // סיבת לא פעיל
   isDeleted        Boolean     @default(false) // מחוק
   deletedAt        DateTime? // תאריך_מחיקה
+  isSplit          Boolean     @default(false) // דגם מפוצל 2 חלקים (בקשה 28)
+  isPremium        Boolean     @default(false) // שמלת פרימיום (בקשה 35)
   items            DressItem[]
   updatedAt        DateTime    @updatedAt
 
@@ -272,6 +282,16 @@ model Order {
   toDate         DateTime? // עד תאריך
 
   customSpacing Int? // ציפוף ימים מותאם אישית להזמנה זו
+
+  // 38 בקשות - שדות חדשים
+  isPhoneOrder     Boolean @default(false) // הזמנה טלפונית (בקשה 13)
+  branch           String? // סניף ביצוע ההזמנה (בקשה 13,34)
+  pickupBranch     String? // סניף איסוף (בקשה 34)
+  deliveryAddress  String? // כתובת משלוח שונה (בקשה 15)
+  deliveryCity     String? // עיר משלוח לחישוב מחיר (בקשה 15)
+  isDelivery       Boolean @default(false) // האם זו הזמנת משלוח (בקשה 15)
+  deliveryDirection String? // הלוך/חזור/הלוך-חזור (בקשה 15)
+  hokDetails       String? @db.Text // פרטי הוראת קבע בהזמנה (JSON, בקשה 3)
 
   items       OrderItem[]
   payments    Payment[]
@@ -377,6 +397,12 @@ model OrderItem {
   sleeveAlteration  Int?     @default(0) // תיקון_שרוול
   alterationDetails String? // פירוט_תיקון
   alterationDone    Boolean  @default(false) // בוצע_תיקון
+  // 38 בקשות - ברקוד והחזרה (בקשות 23,26,31)
+  isDamagedReturn   Boolean  @default(false) // הוחזרה פגומה - לגביה אוטומטית (23)
+  barcodeInvalid    Boolean  @default(false) // ברקוד לא תקין (26)
+  barcodeInvalidHandled Boolean @default(false) // טופל ע"י הנהלה (26)
+  manualBarcodeEntry Boolean @default(false) // הוקלד ידנית כפול + חתימה (31)
+  manualBarcodeConfirmed Boolean @default(false)
   createdAt         DateTime @default(now()) // תאריך יצירה למיון מהיר
   updatedAt         DateTime @updatedAt
 

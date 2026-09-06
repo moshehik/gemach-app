@@ -248,7 +248,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
               setIsDropdownOpen(true);
             }}
             disabled={isFetchingEmployees}
-            placeholder={isFetchingEmployees ? '-- טוען עובדים... --' : 'הקלד או בחר מהרשימה'}
+            placeholder={isFetchingEmployees ? 'טוען רשימת עובדים...' : 'הקלד או בחר מהרשימה'}
             onFocus={() => setIsDropdownOpen(true)}
             onClick={() => { if (selectedDisplay) setIsDropdownOpen(true); }}
             style={selectedEmployee ? { paddingInlineEnd: '36px' } : undefined}
@@ -289,9 +289,14 @@ export default function LoginScreen({ isModal = false, onClose }) {
           )}
         </div>
 
-        {isDropdownOpen && !isFetchingEmployees && (
+        {isDropdownOpen && (
           <div className="combobox-results">
-            {filteredEmployees.length > 0 ? (
+            {isFetchingEmployees ? (
+              <div className="combobox-option" style={{ cursor: 'default', color: 'var(--text-2)', justifyContent: 'center', gap: '8px' }}>
+                <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
+                טוען רשימת עובדים...
+              </div>
+            ) : filteredEmployees.length > 0 ? (
               filteredEmployees.map(emp => (
                 <div data-element-name="לחיץ_LoginScreen_7"
                   key={emp.id}

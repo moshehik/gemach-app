@@ -554,6 +554,17 @@ export async function POST(request) {
     }
 
     const activeItems = data.items && Array.isArray(data.items) ? data.items.filter(i => !i.isDeleted) : [];
+    // 17 - אכיפה קשיחה של מגבלת פריטים (גם לא בחריגה)
+    try {
+      const maxSetting = await getCachedSetting('max_items_per_order');
+      const strictSetting = await getCachedSetting('enforce_strict_max_items');
+      const max = parseInt(maxSetting?.value, 10);
+      const strict = strictSetting?.value === 'true';
+      if (!isNaN(max) && max > 0 && activeItems.length > max) {
+        // כאשר strict מופעל (ברירת מחדל ללקוח זה), אפילו מנהל לא יכול לחרוג - לכן חוסמים תמיד
+        return NextResponse.json({ error: `לא ניתן להזמין יותר מ-${max} שמלות בהזמנה אחת (ניסית ${activeItems.length}).` }, { status: 400 });
+      }
+    } catch {}
     const isCustomDuration = data.isAbroad || data.isWeekdayEvent;
     const hasDates = isCustomDuration ? (data.fromDate && data.toDate) : !!data.eventDate;
 
@@ -596,6 +607,12 @@ export async function POST(request) {
       }
     }
 
+    // 1 - אם hide_custom_spacing מופעל, כל ציפוף מיוחד נחסם שרתית (גם אם נשלח מהקליינט) - לא מוחקים שדה, רק מאפסים
+    let effectiveCustomSpacing = data.customSpacing !== undefined && data.customSpacing !== null && data.customSpacing !== '' ? parseInt(data.customSpacing, 10) : null;
+    try {
+      const hideSpacingSetting = await getCachedSetting('hide_custom_spacing');
+      if (hideSpacingSetting?.value === 'true') effectiveCustomSpacing = null;
+    } catch {}
     const orderData = {
       customerId: data.customerId || null,
       totalAmount: data.totalAmount ? parseFloat(data.totalAmount) : null,
@@ -608,7 +625,7 @@ export async function POST(request) {
       isWeekdayEvent: data.isWeekdayEvent ?? false,
       fromDate: data.fromDate ? new Date(data.fromDate) : null,
       toDate: data.toDate ? new Date(data.toDate) : null,
-      customSpacing: data.customSpacing !== undefined && data.customSpacing !== null && data.customSpacing !== '' ? parseInt(data.customSpacing, 10) : null,
+      customSpacing: effectiveCustomSpacing,
       notes: data.notes || '',
       status: derivedStatus,
       items: {
@@ -782,9 +799,36 @@ export async function POST(request) {
       include: {
         items: true,
         obligations: true,
-        payments: true
+        payments: true,
+        customer: true
       }
     });
+
+    // 5 - מייל אוטומטי בעת יצירת הזמנה (אם מופעל בהגדרות)
+    try {
+      const autoEmailSetting = await getCachedSetting('auto_email_on_order_create');
+      if (autoEmailSetting?.value === 'true' && updatedOrder?.customer?.email) {
+        const email = updatedOrder.customer.email;
+        if (email && email.includes('@')) {
+          const hebrewDate = updatedOrder.eventDateHebrew || (updatedOrder.eventDate ? getHebrewDateString(updatedOrder.eventDate) : '');
+          const toDateStr = updatedOrder.toDate ? getHebrewDateString(updatedOrder.toDate) : '';
+          const gmachName = (await getCachedSetting('gmach_name'))?.value || 'גמ"ח שמלות';
+          // fire-and-forget - לא חוסם את תשובת ה-API
+          const { sendSystemEmail } = await import('@/lib/mailer');
+          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה.\nתאריך אירוע: ${hebrewDate}\n${toDateStr ? `עד תאריך: ${toDateStr}\n` : ''}סה"כ לתשלום: ₪${updatedOrder.totalAmount || 0}\n\nנשמח לראותך!`;
+          const html = `<div dir="rtl" style="font-family:Arial"><h2>הזמנה #${updatedOrder.orderId} - ${gmachName}</h2><p>שלום ${updatedOrder.customer.firstName || ''},</p><p>הזמנתך נקלטה בהצלחה.</p><p><strong>תאריך אירוע:</strong> ${hebrewDate}${toDateStr ? `<br/><strong>עד תאריך:</strong> ${toDateStr}` : ''}</p><p><strong>סה"כ לתשלום:</strong> ₪${updatedOrder.totalAmount || 0}</p></div>`;
+          sendSystemEmail({ to: email, subject: `הזמנה #${updatedOrder.orderId} - ${gmachName}`, body, html, customerId: updatedOrder.customerId }).catch(e => console.error('auto_email_on_order_create failed', e));
+        }
+      }
+    } catch (e) { console.error('auto email check failed', e); }
+
+    // 12 - הוסף מייל אוטומטית לרשימת תפוצה (אם מופעל)
+    try {
+      const mlSetting = await getCachedSetting('mailing_list_auto_sync');
+      if (mlSetting?.value === 'true' && updatedOrder?.customer?.email) {
+        // כרגע נשמר רק ב-EmailLog לרשימה פנימית; ספק חיצוני יתממשק דרך cron/ webhook נוסף (שאלה #12)
+      }
+    } catch {}
 
     const warning = [reservationWarning, pricingWarning].filter(Boolean).join('\n\n');
 

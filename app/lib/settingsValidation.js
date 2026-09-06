@@ -15,6 +15,8 @@ export const NUMBER_FIELD_LIMITS = {
   REFUND_DAYS_FROM_ORDER: { min: 0, max: 365 },
   full_refund_days: { min: 0, max: 365 },
   CANCELLATION_CREDIT_MINUTES: { min: 0, max: 10080 }, // one week, in minutes
+  hok_charge_amount: { min: 0, max: 10000, allowDecimal: true },
+  delivery_price: { min: 0, max: 1000, allowDecimal: true },
 };
 
 // Returns null when the value is valid (or the key has no numeric limit configured),

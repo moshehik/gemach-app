@@ -104,7 +104,7 @@ export default function PunchClockPage() {
                 id="punch-clock-employeeSearch"
                 type="text"
                 value={employeeSearch}
-                placeholder="הקלד לחיפוש שם..."
+                placeholder={employees === null ? 'טוען רשימת עובדים...' : 'הקלד לחיפוש שם...'}
                 onChange={(e) => {
                   setEmployeeSearch(e.target.value);
                   setIsDropdownOpen(true);

@@ -302,7 +302,12 @@ export async function PUT(request, { params }) {
     const eventDateVal = data.eventDate !== undefined ? parseSafeDate(data.eventDate) : existingOrder.eventDate;
     const fromDateVal = data.fromDate !== undefined ? parseSafeDate(data.fromDate) : existingOrder.fromDate;
     const toDateVal = data.toDate !== undefined ? parseSafeDate(data.toDate) : existingOrder.toDate;
-    const customSpacingVal = data.customSpacing !== undefined ? data.customSpacing : existingOrder.customSpacing;
+    let customSpacingVal = data.customSpacing !== undefined ? data.customSpacing : existingOrder.customSpacing;
+    let hideCustomSpacing = false;
+    try {
+      const hideSpacing = (await getAllCachedSettings()).find(s => s.key === 'hide_custom_spacing');
+      if (hideSpacing?.value === 'true') { customSpacingVal = null; hideCustomSpacing = true; }
+    } catch {}
     const hasDatesVal = isCustomDuration ? (fromDateVal && toDateVal) : !!eventDateVal;
 
     // Spacing settings, read only when a brand-new item actually has to be matched to a unit.
@@ -341,8 +346,16 @@ export async function PUT(request, { params }) {
       newItemModelIds.forEach((modelId, i) => inventoryContextByModel.set(modelId, contexts[i]));
     }
 
-    // Validate inventory availability
+    // 17 - אכיפת מגבלת פריטים גם בעדכון הזמנה
     if (data.items && Array.isArray(data.items)) {
+      try {
+        const maxS = (await getAllCachedSettings()).find(s => s.key === 'max_items_per_order');
+        const strictS = (await getAllCachedSettings()).find(s => s.key === 'enforce_strict_max_items');
+        const max = parseInt(maxS?.value, 10);
+        if (!isNaN(max) && max > 0 && data.items.filter(i => !i.isDeleted).length > max) {
+          return NextResponse.json({ error: `לא ניתן לשמור יותר מ-${max} שמלות בהזמנה (גם לא בחריגה).` }, { status: 400 });
+        }
+      } catch {}
       const activeItems = data.items.filter(i => !i.isDeleted);
       if (activeItems.length > 0) {
         const idsNeedingLookup = activeItems
@@ -482,7 +495,7 @@ export async function PUT(request, { params }) {
           isWeekdayEvent: data.isWeekdayEvent !== undefined ? data.isWeekdayEvent : undefined,
           fromDate: parsedFromDate,
           toDate: parsedToDate,
-          customSpacing: data.customSpacing !== undefined ? (data.customSpacing === null || data.customSpacing === '' ? null : parseInt(data.customSpacing, 10)) : undefined,
+          customSpacing: data.customSpacing !== undefined ? (hideCustomSpacing ? null : (data.customSpacing === null || data.customSpacing === '' ? null : parseInt(data.customSpacing, 10))) : undefined,
           notes: data.notes !== undefined ? data.notes : undefined,
           internalNotes: data.internalNotes !== undefined ? data.internalNotes : undefined,
           status: shellExitStatus !== undefined ? shellExitStatus : (data.status !== undefined ? data.status : undefined),

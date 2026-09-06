@@ -3,7 +3,7 @@
 // Shared between app/api/settings/route.js (masks on GET, encrypts on POST) and
 // app/admin/settings/SettingsClient.js (renders as a password field) so the two
 // never drift out of sync.
-export const SECRET_SETTING_KEYS = ['nedarim_plus_token', 'neon_api_key'];
+export const SECRET_SETTING_KEYS = ['nedarim_plus_token', 'neon_api_key', 'yemot_api_token'];
 export const SECRET_MASK = '••••••••';
 
 // Where each secret is issued/managed - shown as a link under its input on the
@@ -18,5 +18,10 @@ export const SECRET_SETTING_LINKS = {
     url: 'https://neon.com/faqs/find-or-generate-neon-api-keys',
     label: 'איך מוצאים/מנפיקים מפתח API בנאון',
     prefix: 'משמש את כרטיס "צריכת מסד הנתונים" למעלה. איך מנפיקים מפתח חדש:',
+  },
+  yemot_api_token: {
+    url: 'https://www.ymot.co.il/',
+    label: 'ymot.co.il - פורטל הניהול',
+    prefix: 'טוקן ימות המשיח - נמצא בפורטל הניהול:',
   },
 };

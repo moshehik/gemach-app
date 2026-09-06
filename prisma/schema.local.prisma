@@ -14,27 +14,27 @@ datasource db {
 model Customer {
   id               String    @id @default(uuid())
   legacyId         Int?      @unique
-  firstName        String? // שם_פרטי
-  lastName         String? // שם_משפחה
-  phone1           String? // טלפון_1
-  phone2           String? // טלפון_2
-  city             String? // עיר
-  street           String? // רחוב
-  houseNum         Int? // בית
-  email            String? // מייל
-  emailSuffix      String? // סיומת_מייל
-  notes            String? // הערות
-  registrationDate String? // תאריך_רישום
-  officeNotes      String? // נתוני_משרד
-  isDeleted        Boolean   @default(false) // לקוח_מחוק
-  isBlocked        Boolean   @default(false) // חסום מהזמנות חדשות
-  blockedReason    String? // סיבת החסימה
+  firstName        String? // ׳©׳_׳₪׳¨׳˜׳™
+  lastName         String? // ׳©׳_׳׳©׳₪׳—׳”
+  phone1           String? // ׳˜׳׳₪׳•׳_1
+  phone2           String? // ׳˜׳׳₪׳•׳_2
+  city             String? // ׳¢׳™׳¨
+  street           String? // ׳¨׳—׳•׳‘
+  houseNum         Int? // ׳‘׳™׳×
+  email            String? // ׳׳™׳™׳
+  emailSuffix      String? // ׳¡׳™׳•׳׳×_׳׳™׳™׳
+  notes            String? // ׳”׳¢׳¨׳•׳×
+  registrationDate String? // ׳×׳׳¨׳™׳_׳¨׳™׳©׳•׳
+  officeNotes      String? // ׳ ׳×׳•׳ ׳™_׳׳©׳¨׳“
+  isDeleted        Boolean   @default(false) // ׳׳§׳•׳—_׳׳—׳•׳§
+  isBlocked        Boolean   @default(false) // ׳—׳¡׳•׳ ׳׳”׳–׳׳ ׳•׳× ׳—׳“׳©׳•׳×
+  blockedReason    String? // ׳¡׳™׳‘׳× ׳”׳—׳¡׳™׳׳”
   
   // Bank details for refunds
-  bankName         String? // שם בנק
-  bankBranch       String? // סניף
-  bankAccount      String? // חשבון
-  bankAccountName  String? // שם בעל חשבון
+  bankName         String? // ׳©׳ ׳‘׳ ׳§
+  bankBranch       String? // ׳¡׳ ׳™׳£
+  bankAccount      String? // ׳—׳©׳‘׳•׳
+  bankAccountName  String? // ׳©׳ ׳‘׳¢׳ ׳—׳©׳‘׳•׳
 
   orders           Order[]
   payments         Payment[]
@@ -65,30 +65,30 @@ model AuditLog {
 model Employee {
   id             String         @id @default(uuid())
   legacyId       Int?           @unique
-  firstName      String? // שם_פרטי
-  lastName       String? // שם_משפחה
-  phone1         String? // טלפון_1
-  phone2         String? // טלפון_2
-  city           String? // עיר
-  street         String? // רחוב
-  houseNum       String? // בית
-  email          String? // מייל
-  joinDate       DateTime? // תאריך_כניסה_לארגון
-  fullName       String? // שם_מלא
-  notes          String? // הערות
-  emailSuffix    String? // סיומת_מייל
-  roleId         Int? // מס_מחלקה
-  password       String? // סיסמא
-  pinHash        String? // ר' schema.prisma - קוד קצר למכשירים מהימנים
-  mustResetPassword Boolean     @default(false) // ר' schema.prisma - איפוס סיסמה כפוי
-  isActive       Boolean        @default(true) // לא_פעיל
-  hourlyWage     Float? // שכר_שעה
-  paymentMethod  String? // אופן_תשלום
-  travelExpenses Boolean?       @default(false) // נסיעות
-  themeColor     String?        @default("standard") // פלטת גוונים
-  profileImage   String? // קובץ פלוס תמונה
-  receiveEmailAlerts Boolean    @default(false) // קבלת התראות למייל
-  showAi         Boolean        @default(false) // הרשאת AI
+  firstName      String? // ׳©׳_׳₪׳¨׳˜׳™
+  lastName       String? // ׳©׳_׳׳©׳₪׳—׳”
+  phone1         String? // ׳˜׳׳₪׳•׳_1
+  phone2         String? // ׳˜׳׳₪׳•׳_2
+  city           String? // ׳¢׳™׳¨
+  street         String? // ׳¨׳—׳•׳‘
+  houseNum       String? // ׳‘׳™׳×
+  email          String? // ׳׳™׳™׳
+  joinDate       DateTime? // ׳×׳׳¨׳™׳_׳›׳ ׳™׳¡׳”_׳׳׳¨׳’׳•׳
+  fullName       String? // ׳©׳_׳׳׳
+  notes          String? // ׳”׳¢׳¨׳•׳×
+  emailSuffix    String? // ׳¡׳™׳•׳׳×_׳׳™׳™׳
+  roleId         Int? // ׳׳¡_׳׳—׳׳§׳”
+  password       String? // ׳¡׳™׳¡׳׳
+  pinHash        String? // ׳¨' schema.prisma - ׳§׳•׳“ ׳§׳¦׳¨ ׳׳׳›׳©׳™׳¨׳™׳ ׳׳”׳™׳׳ ׳™׳
+  mustResetPassword Boolean     @default(false) // ׳¨' schema.prisma - ׳׳™׳₪׳•׳¡ ׳¡׳™׳¡׳׳” ׳›׳₪׳•׳™
+  isActive       Boolean        @default(true) // ׳׳_׳₪׳¢׳™׳
+  hourlyWage     Float? // ׳©׳›׳¨_׳©׳¢׳”
+  paymentMethod  String? // ׳׳•׳₪׳_׳×׳©׳׳•׳
+  travelExpenses Boolean?       @default(false) // ׳ ׳¡׳™׳¢׳•׳×
+  themeColor     String?        @default("standard") // ׳₪׳׳˜׳× ׳’׳•׳•׳ ׳™׳
+  profileImage   String? // ׳§׳•׳‘׳¥ ׳₪׳׳•׳¡ ׳×׳׳•׳ ׳”
+  receiveEmailAlerts Boolean    @default(false) // ׳§׳‘׳׳× ׳”׳×׳¨׳׳•׳× ׳׳׳™׳™׳
+  showAi         Boolean        @default(false) // ׳”׳¨׳©׳׳× AI
   pageVisits     PageVisitLog[]
 
   shifts Shift[]
@@ -110,17 +110,17 @@ model Employee {
 model Notification {
   id         String            @id @default(uuid())
   legacyId   Int?              @unique
-  senderId   String? // מזהה השולח
+  senderId   String? // ׳׳–׳”׳” ׳”׳©׳•׳׳—
   sender     Employee?         @relation("SentNotifications", fields: [senderId], references: [id])
-  receiverId String? // מזהה המקבל. אם null, ההודעה נשלחת לכולם
+  receiverId String? // ׳׳–׳”׳” ׳”׳׳§׳‘׳. ׳׳ null, ׳”׳”׳•׳“׳¢׳” ׳ ׳©׳׳—׳× ׳׳›׳•׳׳
   receiver   Employee?         @relation("ReceivedNotifications", fields: [receiverId], references: [id])
-  title      String? // כותרת ההודעה
-  content    String // תוכן ההודעה
-  createdAt  DateTime          @default(now()) // תאריך יצירה
-  isRead     Boolean           @default(false) // להודעות אישיות - האם נקרא
-  readBy     String             @default("[]") // להודעות אישיות - האם נקרא
-  isArchived Boolean           @default(false) // להודעות אישיות - האם בארכיון
-  archivedBy String             @default("[]") // להודעות כלליות - עובדים שהעבירו לארכיון
+  title      String? // ׳›׳•׳×׳¨׳× ׳”׳”׳•׳“׳¢׳”
+  content    String // ׳×׳•׳›׳ ׳”׳”׳•׳“׳¢׳”
+  createdAt  DateTime          @default(now()) // ׳×׳׳¨׳™׳ ׳™׳¦׳™׳¨׳”
+  isRead     Boolean           @default(false) // ׳׳”׳•׳“׳¢׳•׳× ׳׳™׳©׳™׳•׳× - ׳”׳׳ ׳ ׳§׳¨׳
+  readBy     String             @default("[]") // ׳׳”׳•׳“׳¢׳•׳× ׳׳™׳©׳™׳•׳× - ׳”׳׳ ׳ ׳§׳¨׳
+  isArchived Boolean           @default(false) // ׳׳”׳•׳“׳¢׳•׳× ׳׳™׳©׳™׳•׳× - ׳”׳׳ ׳‘׳׳¨׳›׳™׳•׳
+  archivedBy String             @default("[]") // ׳׳”׳•׳“׳¢׳•׳× ׳›׳׳׳™׳•׳× - ׳¢׳•׳‘׳“׳™׳ ׳©׳”׳¢׳‘׳™׳¨׳• ׳׳׳¨׳›׳™׳•׳
   tags       NotificationTag[]
   updatedAt  DateTime          @updatedAt
 
@@ -131,20 +131,20 @@ model Notification {
 model Shift {
   id         String    @id @default(uuid())
   legacyId   Int?      @unique
-  employeeId String // קוד_עובד
+  employeeId String // ׳§׳•׳“_׳¢׳•׳‘׳“
   employee   Employee  @relation(fields: [employeeId], references: [id])
-  entryTime  DateTime? // שעת_כניסה
-  exitTime   DateTime? // שעת_יציאה
-  hebrewDate String? // תאריך_עברי
+  entryTime  DateTime? // ׳©׳¢׳×_׳›׳ ׳™׳¡׳”
+  exitTime   DateTime? // ׳©׳¢׳×_׳™׳¦׳™׳׳”
+  hebrewDate String? // ׳×׳׳¨׳™׳_׳¢׳‘׳¨׳™
 
-  date                   DateTime? // תאריך המשמרת (ללא שעה) - Computed or mapped
-  totalMinutes           Int? // סה"כ דקות מחושב
-  hourlyWageSnapshot     Float? // שכר שעה רלוונטי לאותה משמרת
-  travelExpensesSnapshot Float? // נסיעות לאותה משמרת
-  totalCalculated        Float? // סה"כ לתשלום מחושב עבור המשמרת
-  paymentMethod          String? // אופן תשלום רצוי או בוצע
-  notes                  String? // תקלות / הערות
-  isDeleted              Boolean   @default(false) // מחיקה רכה
+  date                   DateTime? // ׳×׳׳¨׳™׳ ׳”׳׳©׳׳¨׳× (׳׳׳ ׳©׳¢׳”) - Computed or mapped
+  totalMinutes           Int? // ׳¡׳”"׳› ׳“׳§׳•׳× ׳׳—׳•׳©׳‘
+  hourlyWageSnapshot     Float? // ׳©׳›׳¨ ׳©׳¢׳” ׳¨׳׳•׳•׳ ׳˜׳™ ׳׳׳•׳×׳” ׳׳©׳׳¨׳×
+  travelExpensesSnapshot Float? // ׳ ׳¡׳™׳¢׳•׳× ׳׳׳•׳×׳” ׳׳©׳׳¨׳×
+  totalCalculated        Float? // ׳¡׳”"׳› ׳׳×׳©׳׳•׳ ׳׳—׳•׳©׳‘ ׳¢׳‘׳•׳¨ ׳”׳׳©׳׳¨׳×
+  paymentMethod          String? // ׳׳•׳₪׳ ׳×׳©׳׳•׳ ׳¨׳¦׳•׳™ ׳׳• ׳‘׳•׳¦׳¢
+  notes                  String? // ׳×׳§׳׳•׳× / ׳”׳¢׳¨׳•׳×
+  isDeleted              Boolean   @default(false) // ׳׳—׳™׳§׳” ׳¨׳›׳”
   updatedAt              DateTime  @updatedAt
 
   @@index([employeeId])
@@ -155,17 +155,17 @@ model Shift {
 model DressModel {
   id               String      @id @default(uuid())
   legacyId         Int?        @unique
-  name             String?     @unique // שם_שמלה
-  barcodePrefix    Int? // בר_קוד_קידומת
-  priceCategory    String? // קטגורית_מחיר
-  notes            String? // הערות
-  inInspection     Boolean     @default(false) // הצג_בבדיקה
-  imageUrl         String? // נתיב לתמונה
-  entryDateToRepo  DateTime? // תאריך_כניסה_למאגר
-  exitDateFromRepo DateTime? // תאריך_יציאה_מהמאגר
-  inactiveReason   String? // סיבת לא פעיל
-  isDeleted        Boolean     @default(false) // מחוק
-  deletedAt        DateTime? // תאריך_מחיקה
+  name             String?     @unique // ׳©׳_׳©׳׳׳”
+  barcodePrefix    Int? // ׳‘׳¨_׳§׳•׳“_׳§׳™׳“׳•׳׳×
+  priceCategory    String? // ׳§׳˜׳’׳•׳¨׳™׳×_׳׳—׳™׳¨
+  notes            String? // ׳”׳¢׳¨׳•׳×
+  inInspection     Boolean     @default(false) // ׳”׳¦׳’_׳‘׳‘׳“׳™׳§׳”
+  imageUrl         String? // ׳ ׳×׳™׳‘ ׳׳×׳׳•׳ ׳”
+  entryDateToRepo  DateTime? // ׳×׳׳¨׳™׳_׳›׳ ׳™׳¡׳”_׳׳׳׳’׳¨
+  exitDateFromRepo DateTime? // ׳×׳׳¨׳™׳_׳™׳¦׳™׳׳”_׳׳”׳׳׳’׳¨
+  inactiveReason   String? // ׳¡׳™׳‘׳× ׳׳ ׳₪׳¢׳™׳
+  isDeleted        Boolean     @default(false) // ׳׳—׳•׳§
+  deletedAt        DateTime? // ׳×׳׳¨׳™׳_׳׳—׳™׳§׳”
   items            DressItem[]
   updatedAt        DateTime    @updatedAt
 
@@ -176,23 +176,23 @@ model DressModel {
 model DressItem {
   id              String      @id @default(uuid())
   legacyId        Int?        @unique
-  barcodePrefix   Int? // בר_קוד_קידומת
-  dressModelId    String? // קשר לדגם
+  barcodePrefix   Int? // ׳‘׳¨_׳§׳•׳“_׳§׳™׳“׳•׳׳×
+  dressModelId    String? // ׳§׳©׳¨ ׳׳“׳’׳
   dress           DressModel? @relation(fields: [dressModelId], references: [id], onUpdate: Cascade)
-  dressName       String? // שם_שמלה (Legacy, pre-migration)
-  sizeText        String? // מידה_טקסט
-  serialNumber    Int? // מספר_סידורי
-  dressBarcode    String? // בר_קוד_שמלה
-  location        String? // מיקום
-  locationNum     Int? // מיקום_מס
-  quantity        Int?        @default(1) // כמות
-  inRepair        Boolean     @default(false) // שמלה_בתיקון
-  notInUse        Boolean     @default(false) // לא_בשימוש
-  notInUseSince   DateTime? // לא_בשימוש_מתאריך
-  notInUseReason  String? // סיבת אי-שימוש
-  entryDateToRepo DateTime? // תאריך_כניסה_למאגר
-  isDeleted       Boolean     @default(false) // מחוק
-  deletedAt       DateTime? // תאריך_מחיקה
+  dressName       String? // ׳©׳_׳©׳׳׳” (Legacy, pre-migration)
+  sizeText        String? // ׳׳™׳“׳”_׳˜׳§׳¡׳˜
+  serialNumber    Int? // ׳׳¡׳₪׳¨_׳¡׳™׳“׳•׳¨׳™
+  dressBarcode    String? // ׳‘׳¨_׳§׳•׳“_׳©׳׳׳”
+  location        String? // ׳׳™׳§׳•׳
+  locationNum     Int? // ׳׳™׳§׳•׳_׳׳¡
+  quantity        Int?        @default(1) // ׳›׳׳•׳×
+  inRepair        Boolean     @default(false) // ׳©׳׳׳”_׳‘׳×׳™׳§׳•׳
+  notInUse        Boolean     @default(false) // ׳׳_׳‘׳©׳™׳׳•׳©
+  notInUseSince   DateTime? // ׳׳_׳‘׳©׳™׳׳•׳©_׳׳×׳׳¨׳™׳
+  notInUseReason  String? // ׳¡׳™׳‘׳× ׳׳™-׳©׳™׳׳•׳©
+  entryDateToRepo DateTime? // ׳×׳׳¨׳™׳_׳›׳ ׳™׳¡׳”_׳׳׳׳’׳¨
+  isDeleted       Boolean     @default(false) // ׳׳—׳•׳§
+  deletedAt       DateTime? // ׳×׳׳¨׳™׳_׳׳—׳™׳§׳”
   orderItems      OrderItem[]
   updatedAt       DateTime    @updatedAt
 
@@ -207,37 +207,37 @@ model DressItem {
 model Order {
   id            String    @id @default(uuid())
   legacyId      Int?      @unique
-  orderId       Int       @unique // קוד_הזמנה
+  orderId       Int       @unique // ׳§׳•׳“_׳”׳–׳׳ ׳”
   customerId    String? // Extracted manually if possible
   customer      Customer? @relation(fields: [customerId], references: [id])
-  totalAmount   Float? // סכום
-  paymentDate   DateTime? // תאריך_תשלום
-  paymentMethod String? // צורת_תשלום
-  status        String? // סטטוס נגזר מהתשלום
-  notes         String? // הערות
-  internalNotes String? // הערות פנימיות לצוות בלבד - ר' schema.prisma (SQLite ללא @db.Text)
-  isPaid        Boolean   @default(false) // שולם
-  isDeleted     Boolean   @default(false) // מחוק - הזמנה מבוטלת
-  orderNotes    String? // הערות_להזמנה
-  hasSignedRegulations Boolean @default(false) // חתמו על התקנון
+  totalAmount   Float? // ׳¡׳›׳•׳
+  paymentDate   DateTime? // ׳×׳׳¨׳™׳_׳×׳©׳׳•׳
+  paymentMethod String? // ׳¦׳•׳¨׳×_׳×׳©׳׳•׳
+  status        String? // ׳¡׳˜׳˜׳•׳¡ ׳ ׳’׳–׳¨ ׳׳”׳×׳©׳׳•׳
+  notes         String? // ׳”׳¢׳¨׳•׳×
+  internalNotes String? // ׳”׳¢׳¨׳•׳× ׳₪׳ ׳™׳׳™׳•׳× ׳׳¦׳•׳•׳× ׳‘׳׳‘׳“ - ׳¨' schema.prisma (SQLite ׳׳׳ @db.Text)
+  isPaid        Boolean   @default(false) // ׳©׳•׳׳
+  isDeleted     Boolean   @default(false) // ׳׳—׳•׳§ - ׳”׳–׳׳ ׳” ׳׳‘׳•׳˜׳׳×
+  orderNotes    String? // ׳”׳¢׳¨׳•׳×_׳׳”׳–׳׳ ׳”
+  hasSignedRegulations Boolean @default(false) // ׳—׳×׳׳• ׳¢׳ ׳”׳×׳§׳ ׳•׳
 
   // New fields from Access
-  eventDate       DateTime? // תאריך אירוע לועזי
-  eventDateHebrew String? // תאריך אירוע עברי
-  returnDate      DateTime? // עד תאריך (תאריך החזרה)
-  orderDate       DateTime? // תאריך הזמנה
+  eventDate       DateTime? // ׳×׳׳¨׳™׳ ׳׳™׳¨׳•׳¢ ׳׳•׳¢׳–׳™
+  eventDateHebrew String? // ׳×׳׳¨׳™׳ ׳׳™׳¨׳•׳¢ ׳¢׳‘׳¨׳™
+  returnDate      DateTime? // ׳¢׳“ ׳×׳׳¨׳™׳ (׳×׳׳¨׳™׳ ׳”׳—׳–׳¨׳”)
+  orderDate       DateTime? // ׳×׳׳¨׳™׳ ׳”׳–׳׳ ׳”
 
-  employeeId String? // קוד_עובד
+  employeeId String? // ׳§׳•׳“_׳¢׳•׳‘׳“
   employee   Employee? @relation(fields: [employeeId], references: [id])
-  deletedAt  DateTime? // תאריך_מחיקה
+  deletedAt  DateTime? // ׳×׳׳¨׳™׳_׳׳—׳™׳§׳”
 
   // Custom occupancy fields (abroad/long term)
-  isAbroad Boolean   @default(false) // אירוע חו"ל
-  isWeekdayEvent Boolean @default(false) // אירוע חול
-  fromDate DateTime? // מתאריך
-  toDate   DateTime? // עד תאריך
+  isAbroad Boolean   @default(false) // ׳׳™׳¨׳•׳¢ ׳—׳•"׳
+  isWeekdayEvent Boolean @default(false) // ׳׳™׳¨׳•׳¢ ׳—׳•׳
+  fromDate DateTime? // ׳׳×׳׳¨׳™׳
+  toDate   DateTime? // ׳¢׳“ ׳×׳׳¨׳™׳
   
-  customSpacing Int? // ציפוף ימים מותאם אישית להזמנה זו
+  customSpacing Int? // ׳¦׳™׳₪׳•׳£ ׳™׳׳™׳ ׳׳•׳×׳׳ ׳׳™׳©׳™׳× ׳׳”׳–׳׳ ׳” ׳–׳•
 
   items       OrderItem[]
   payments    Payment[]
@@ -260,12 +260,12 @@ model Payment {
   customer      Customer? @relation(fields: [customerId], references: [id])
   orderId       Int?
   order         Order?    @relation(fields: [orderId], references: [orderId])
-  amount        Float // סכום התשלום
-  paymentDate   DateTime  @default(now()) // תאריך תשלום
-  paymentMethod String? // אמצעי תשלום
-  notes         String? // הערות
-  isDeleted     Boolean   @default(false) // נמחק
-  isRefund      Boolean   @default(false) // האם זה תשלום הפכי (זיכוי)
+  amount        Float // ׳¡׳›׳•׳ ׳”׳×׳©׳׳•׳
+  paymentDate   DateTime  @default(now()) // ׳×׳׳¨׳™׳ ׳×׳©׳׳•׳
+  paymentMethod String? // ׳׳׳¦׳¢׳™ ׳×׳©׳׳•׳
+  notes         String? // ׳”׳¢׳¨׳•׳×
+  isDeleted     Boolean   @default(false) // ׳ ׳׳—׳§
+  isRefund      Boolean   @default(false) // ׳”׳׳ ׳–׳” ׳×׳©׳׳•׳ ׳”׳₪׳›׳™ (׳–׳™׳›׳•׳™)
   updatedAt     DateTime  @updatedAt
   
   refunds       Refund[]
@@ -281,16 +281,16 @@ model PaymentObligation {
   legacyId    Int?     @unique
   orderId     Int
   order       Order    @relation(fields: [orderId], references: [orderId], onDelete: Cascade)
-  productId   String? // קוד_מוצר מהמחירון
-  amount      Float // סכום לחיוב (מחיר * כמות)
+  productId   String? // ׳§׳•׳“_׳׳•׳¦׳¨ ׳׳”׳׳—׳™׳¨׳•׳
+  amount      Float // ׳¡׳›׳•׳ ׳׳—׳™׳•׳‘ (׳׳—׳™׳¨ * ׳›׳׳•׳×)
   quantity    Int      @default(1)
-  description String? // תיאור
+  description String? // ׳×׳™׳׳•׳¨
   createdAt   DateTime @default(now())
-  isDeleted   Boolean  @default(false) // נמחק
-  isRefund    Boolean  @default(false) // זיכוי
-  isManual    Boolean  @default(true) // האם הוזן ידנית
+  isDeleted   Boolean  @default(false) // ׳ ׳׳—׳§
+  isRefund    Boolean  @default(false) // ׳–׳™׳›׳•׳™
+  isManual    Boolean  @default(true) // ׳”׳׳ ׳”׳•׳–׳ ׳™׳“׳ ׳™׳×
 
-  orderItemId String? // קוד_פריט
+  orderItemId String? // ׳§׳•׳“_׳₪׳¨׳™׳˜
   orderItem   OrderItem? @relation(fields: [orderItemId], references: [id])
   updatedAt   DateTime   @updatedAt
 
@@ -303,45 +303,45 @@ model PaymentObligation {
 model OrderItem {
   id          String              @id @default(uuid())
   legacyId    Int?                @unique
-  orderId     Int? // קוד_הזמנה (relates to Order.orderId)
+  orderId     Int? // ׳§׳•׳“_׳”׳–׳׳ ׳” (relates to Order.orderId)
   order       Order?              @relation(fields: [orderId], references: [orderId])
-  dressItemId String? // קישור לשמלה
+  dressItemId String? // ׳§׳™׳©׳•׳¨ ׳׳©׳׳׳”
   obligations PaymentObligation[]
   dressItem   DressItem?          @relation(fields: [dressItemId], references: [id])
-  price       Float? // מחיר (final price used historically)
-  quantity    Int?                @default(1) // כמות - תמיד 1
-  description String? // תיאור
+  price       Float? // ׳׳—׳™׳¨ (final price used historically)
+  quantity    Int?                @default(1) // ׳›׳׳•׳× - ׳×׳׳™׳“ 1
+  description String? // ׳×׳™׳׳•׳¨
 
   // New fields from Access
-  sizeText   String? // מידה_טקסט - the size selected
-  repairs    String? // פירוט תיקונים
-  basePrice  Float? // מחיר בסיס (לפני תיקונים)
-  finalPrice Float? // מחיר סופי
+  sizeText   String? // ׳׳™׳“׳”_׳˜׳§׳¡׳˜ - the size selected
+  repairs    String? // ׳₪׳™׳¨׳•׳˜ ׳×׳™׳§׳•׳ ׳™׳
+  basePrice  Float? // ׳׳—׳™׳¨ ׳‘׳¡׳™׳¡ (׳׳₪׳ ׳™ ׳×׳™׳§׳•׳ ׳™׳)
+  finalPrice Float? // ׳׳—׳™׳¨ ׳¡׳•׳₪׳™
 
-  // Rental/Return lifecycle fields (מיגרציה מאקסס)
-  barcode       String? // ברקוד - the scanned barcode assigned at rental
-  barcodePrefix Int? // בר_קוד_קידומת - prefix portion of barcode
-  size          String? // מידה - numeric size from barcode
-  isTaken       Boolean   @default(false) // נלקח - was the item physically taken
-  isReturned    Boolean   @default(false) // הוחזר - was the item returned
-  returnedOk    Boolean   @default(false) // חזר_תקין - returned in good condition
-  takenDate     DateTime? // תאריך_לקיחה
-  returnDate    DateTime? // תאריך_החזרה
-  orderDate     DateTime? // תאריך_הזמנה
-  isDeleted     Boolean   @default(false) // מחוק - soft delete
-  deletedAt     DateTime? // תאריך_מחיקה
+  // Rental/Return lifecycle fields (׳׳™׳’׳¨׳¦׳™׳” ׳׳׳§׳¡׳¡)
+  barcode       String? // ׳‘׳¨׳§׳•׳“ - the scanned barcode assigned at rental
+  barcodePrefix Int? // ׳‘׳¨_׳§׳•׳“_׳§׳™׳“׳•׳׳× - prefix portion of barcode
+  size          String? // ׳׳™׳“׳” - numeric size from barcode
+  isTaken       Boolean   @default(false) // ׳ ׳׳§׳— - was the item physically taken
+  isReturned    Boolean   @default(false) // ׳”׳•׳—׳–׳¨ - was the item returned
+  returnedOk    Boolean   @default(false) // ׳—׳–׳¨_׳×׳§׳™׳ - returned in good condition
+  takenDate     DateTime? // ׳×׳׳¨׳™׳_׳׳§׳™׳—׳”
+  returnDate    DateTime? // ׳×׳׳¨׳™׳_׳”׳—׳–׳¨׳”
+  orderDate     DateTime? // ׳×׳׳¨׳™׳_׳”׳–׳׳ ׳”
+  isDeleted     Boolean   @default(false) // ׳׳—׳•׳§ - soft delete
+  deletedAt     DateTime? // ׳×׳׳¨׳™׳_׳׳—׳™׳§׳”
   
   cartStatus    String    @default("pending") // "pending" or "confirmed"
-  cartStatusDate DateTime @default(now()) // תאריך תחילת סטטוס
+  cartStatusDate DateTime @default(now()) // ׳×׳׳¨׳™׳ ׳×׳—׳™׳׳× ׳¡׳˜׳˜׳•׳¡
 
 
-  // Alteration tracking (תיקונים)
-  neckAlteration    Int?     @default(0) // תיקון_צוואר
-  lengthAlteration  String? // תיקון_אורך
-  sleeveAlteration  Int?     @default(0) // תיקון_שרוול
-  alterationDetails String? // פירוט_תיקון
-  alterationDone    Boolean  @default(false) // בוצע_תיקון
-  createdAt         DateTime @default(now()) // תאריך יצירה למיון מהיר
+  // Alteration tracking (׳×׳™׳§׳•׳ ׳™׳)
+  neckAlteration    Int?     @default(0) // ׳×׳™׳§׳•׳_׳¦׳•׳•׳׳¨
+  lengthAlteration  String? // ׳×׳™׳§׳•׳_׳׳•׳¨׳
+  sleeveAlteration  Int?     @default(0) // ׳×׳™׳§׳•׳_׳©׳¨׳•׳•׳
+  alterationDetails String? // ׳₪׳™׳¨׳•׳˜_׳×׳™׳§׳•׳
+  alterationDone    Boolean  @default(false) // ׳‘׳•׳¦׳¢_׳×׳™׳§׳•׳
+  createdAt         DateTime @default(now()) // ׳×׳׳¨׳™׳ ׳™׳¦׳™׳¨׳” ׳׳׳™׳•׳ ׳׳”׳™׳¨
   updatedAt         DateTime @updatedAt
 
   @@index([orderId])
@@ -357,40 +357,40 @@ model OrderItem {
 model PriceList {
   id          String    @id @default(uuid())
   legacyId    Int?      @unique
-  description String? // תיאור
-  fromSize    Int? // ממידה
-  toSize      Int? // עד_מידה
-  price       Float? // מחיר
-  startDate   DateTime? // תאריך_התחלת_מחיר
-  endDate     DateTime? // תאריך_סיום_מחיר
-  category    String? // קטגוריה (links to DressModel.priceCategory)
-  deposit     Float? // החזר
+  description String? // ׳×׳™׳׳•׳¨
+  fromSize    Int? // ׳׳׳™׳“׳”
+  toSize      Int? // ׳¢׳“_׳׳™׳“׳”
+  price       Float? // ׳׳—׳™׳¨
+  startDate   DateTime? // ׳×׳׳¨׳™׳_׳”׳×׳—׳׳×_׳׳—׳™׳¨
+  endDate     DateTime? // ׳×׳׳¨׳™׳_׳¡׳™׳•׳_׳׳—׳™׳¨
+  category    String? // ׳§׳˜׳’׳•׳¨׳™׳” (links to DressModel.priceCategory)
+  deposit     Float? // ׳”׳—׳–׳¨
   updatedAt   DateTime  @updatedAt
 }
 
 model SystemSetting {
   id        String   @id @default(uuid())
   legacyId  Int?     @unique
-  key       String   @unique // מפתח הגדרה
-  value     String? // ערך
-  name      String? // שם תצוגה
-  category  String? // קטגוריה
-  notes     String? // הערות
-  type      String   @default("text") // סוג הפקד בממשק
+  key       String   @unique // ׳׳₪׳×׳— ׳”׳’׳“׳¨׳”
+  value     String? // ׳¢׳¨׳
+  name      String? // ׳©׳ ׳×׳¦׳•׳’׳”
+  category  String? // ׳§׳˜׳’׳•׳¨׳™׳”
+  notes     String? // ׳”׳¢׳¨׳•׳×
+  type      String   @default("text") // ׳¡׳•׳’ ׳”׳₪׳§׳“ ׳‘׳׳׳©׳§
   updatedAt DateTime @updatedAt
 }
 
 model PriceRule {
   id          String    @id @default(uuid())
   legacyId    Int?      @unique
-  description String? // תיאור
-  minSize     Int? // ממידה
-  maxSize     Int? // עד_מידה
-  price       Float? // מחיר
-  startDate   DateTime? // תאריך_התחלת_מחיר
-  endDate     DateTime? // תאריך_סיום_מחיר
-  category    String? // קטגוריה
-  refund      Float? // החזר
+  description String? // ׳×׳™׳׳•׳¨
+  minSize     Int? // ׳׳׳™׳“׳”
+  maxSize     Int? // ׳¢׳“_׳׳™׳“׳”
+  price       Float? // ׳׳—׳™׳¨
+  startDate   DateTime? // ׳×׳׳¨׳™׳_׳”׳×׳—׳׳×_׳׳—׳™׳¨
+  endDate     DateTime? // ׳×׳׳¨׳™׳_׳¡׳™׳•׳_׳׳—׳™׳¨
+  category    String? // ׳§׳˜׳’׳•׳¨׳™׳”
+  refund      Float? // ׳”׳—׳–׳¨
   updatedAt   DateTime  @updatedAt
 }
 
@@ -400,13 +400,13 @@ model PageVisitLog {
   pageUrl      String // The path visited
   employeeId   String? // Nullable, relates to Employee if logged in
   employee     Employee? @relation(fields: [employeeId], references: [id], onDelete: SetNull)
-  employeeName String? // Name of the employee or "אורח"
+  employeeName String? // Name of the employee or "׳׳•׳¨׳—"
   timestamp    DateTime  @default(now()) // Exact time of visit
   loadingError String? // Details of any error that occurred
   isGuest      Boolean   @default(false)
-  requestQuery String? // השאילתה/פרמטרים שנשלחו ל-API
-  responseSize Int? // כמות המידע שהוחזר בבתים (Bytes)
-  executionTime Int? // משך ביצוע השאילתה במאיות שנייה
+  requestQuery String? // ׳”׳©׳׳™׳׳×׳”/׳₪׳¨׳׳˜׳¨׳™׳ ׳©׳ ׳©׳׳—׳• ׳-API
+  responseSize Int? // ׳›׳׳•׳× ׳”׳׳™׳“׳¢ ׳©׳”׳•׳—׳–׳¨ ׳‘׳‘׳×׳™׳ (Bytes)
+  executionTime Int? // ׳׳©׳ ׳‘׳™׳¦׳•׳¢ ׳”׳©׳׳™׳׳×׳” ׳‘׳׳׳™׳•׳× ׳©׳ ׳™׳™׳”
   updatedAt    DateTime  @updatedAt
 
   @@index([employeeId])
@@ -451,8 +451,8 @@ model NotificationTag {
   legacyId       Int?         @unique
   notificationId String
   notification   Notification @relation(fields: [notificationId], references: [id], onDelete: Cascade)
-  employeeId     String // העובד שהוסיף את התגית
-  tag            String // שם התגית
+  employeeId     String // ׳”׳¢׳•׳‘׳“ ׳©׳”׳•׳¡׳™׳£ ׳׳× ׳”׳×׳’׳™׳×
+  tag            String // ׳©׳ ׳”׳×׳’׳™׳×
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
@@ -464,8 +464,8 @@ model NotificationTag {
 model Department {
   id       String @id @default(uuid())
   legacyId Int?   @unique
-  roleId   Int    @unique // מס_מחלקה
-  name     String // שם_מחלקה
+  roleId   Int    @unique // ׳׳¡_׳׳—׳׳§׳”
+  name     String // ׳©׳_׳׳—׳׳§׳”
   
   employees Employee[]
 }
@@ -474,7 +474,7 @@ model AIChatSession {
   id           String    @id @default(uuid())
   employeeId   String?
   employee     Employee? @relation(fields: [employeeId], references: [id])
-  context      String    @default("כללי") // e.g. "Home", "Customers", "Employees", "Manager"
+  context      String    @default("׳›׳׳׳™") // e.g. "Home", "Customers", "Employees", "Manager"
   messagesJson String     // Store full chat as JSON
   startedAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
@@ -490,20 +490,20 @@ model Refund {
   orderId         Int?
   order           Order?    @relation(fields: [orderId], references: [orderId])
   amount          Float
-  reason          String?   // הערות: על מה
-  bankName        String?   // שם בנק
-  bankBranch      String?   // סניף
-  bankAccount     String?   // חשבון
-  bankAccountName String?   // שם בעל חשבון
-  paymentDetails  String?   // פרטי תשלומים ו4 ספרות אחרונות
-  email           String?   // מייל
+  reason          String?   // ׳”׳¢׳¨׳•׳×: ׳¢׳ ׳׳”
+  bankName        String?   // ׳©׳ ׳‘׳ ׳§
+  bankBranch      String?   // ׳¡׳ ׳™׳£
+  bankAccount     String?   // ׳—׳©׳‘׳•׳
+  bankAccountName String?   // ׳©׳ ׳‘׳¢׳ ׳—׳©׳‘׳•׳
+  paymentDetails  String?   // ׳₪׳¨׳˜׳™ ׳×׳©׳׳•׳׳™׳ ׳•4 ׳¡׳₪׳¨׳•׳× ׳׳—׳¨׳•׳ ׳•׳×
+  email           String?   // ׳׳™׳™׳
   
-  isExecuted      Boolean   @default(false) // בוצע החזר
-  executionDate   DateTime? // תאריך ביצוע
-  executedBy      String?   // קוד עובד שביצע
-  isAutoGenerated Boolean   @default(false) // ר' schema.prisma - נוצר אוטומטית ממעקב יתרת זכות
+  isExecuted      Boolean   @default(false) // ׳‘׳•׳¦׳¢ ׳”׳—׳–׳¨
+  executionDate   DateTime? // ׳×׳׳¨׳™׳ ׳‘׳™׳¦׳•׳¢
+  executedBy      String?   // ׳§׳•׳“ ׳¢׳•׳‘׳“ ׳©׳‘׳™׳¦׳¢
+  isAutoGenerated Boolean   @default(false) // ׳¨' schema.prisma - ׳ ׳•׳¦׳¨ ׳׳•׳˜׳•׳׳˜׳™׳× ׳׳׳¢׳§׳‘ ׳™׳×׳¨׳× ׳–׳›׳•׳×
   
-  paymentId       String?   // מזהה התשלום ההפכי שנוצר
+  paymentId       String?   // ׳׳–׳”׳” ׳”׳×׳©׳׳•׳ ׳”׳”׳₪׳›׳™ ׳©׳ ׳•׳¦׳¨
   payment         Payment?  @relation(fields: [paymentId], references: [id])
   
   isDeleted       Boolean   @default(false)
@@ -549,3 +549,7 @@ model ErrorReportReply {
   text          String
   createdAt     DateTime    @default(now())
 }
+
+
+
+
