@@ -14,7 +14,7 @@ import { addHistory } from '../../../../lib/historyManager';
 import { cacheNamespace, getSettingsCached } from '@/app/lib/pageCache';
 
 // השדות של הדגם שנשמרים בכפתור השמירה (הפריטים נשמרים בנפרד, מיידית)
-const MODEL_FIELDS = ['name', 'barcodePrefix', 'priceCategory', 'notes', 'inInspection', 'imageUrl', 'entryDateToRepo', 'exitDateFromRepo', 'inactiveReason'];
+const MODEL_FIELDS = ['name', 'barcodePrefix', 'priceCategory', 'notes', 'inInspection', 'imageUrl', 'entryDateToRepo', 'exitDateFromRepo', 'inactiveReason', 'isSplit', 'isPremium'];
 
 const emptyDress = {
   name: '',

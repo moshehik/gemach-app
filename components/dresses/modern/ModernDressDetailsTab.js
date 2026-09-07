@@ -162,6 +162,20 @@ export default function ModernDressDetailsTab({
                 {(categories || []).map((cat, idx) => <option key={idx} value={cat}>{cat}</option>)}
               </select>
             </div>
+            {/* 28 + 35/36 - דגם מפוצל 2 חלקים / פרימיום (מותנה ב-toggle בהמשך) */}
+            <div className="field" id="dress-split-premium" style={{ gridColumn: '1 / -1' }}>
+              <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: 8 }}>
+                <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                  <input type="checkbox" checked={!!dress.isSplit} onChange={(e) => onChange({ isSplit: e.target.checked })} />
+                  <span>דגם מפוצל 2 חלקים (חולצה+חצאית = 2 ברקודים) (28)</span>
+                </label>
+                <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                  <input type="checkbox" checked={!!dress.isPremium} onChange={(e) => onChange({ isPremium: e.target.checked })} />
+                  <span>שמלת פרימיום (מחיר אחר) (35/36)</span>
+                </label>
+              </div>
+              <p className="hint" style={{ marginTop: 4 }}>מפוצל: בהזמנה נרשם כסט אחד אבל בהוצאה/החזרה דורש 2 ברקודים. פרימיום: מחיר לפי קטגוריית פרימיום כשה-toggle מופעל.</p>
+            </div>
 
             <div className="field">
               <label htmlFor="dress-detail-entrydate">תאריך כניסה למאגר</label>
