@@ -7,6 +7,9 @@ import { getHebrewDateString, HEBREW_DAYS } from '@/lib/hebrewDate';
 import { getDressThumbUrl } from '@/app/lib/dressImageUrl';
 import './kiosk.css';
 
+// 32/33 - קיוסק לקוח: מותנה ב-kiosk_customer_self_service / kiosk_allow_self_order (כבוי = מוסתר/דורש התחברות)
+// הבאנר נבדק בכניסה ומציג הודעה אם התכונה כבויה בהגדרות.
+
 // תמונת דגם בתאים הקטנים (טבלה 44px / שורות 80px): מנסים קודם את קובץ
 // ה-thumb (קיים רק להעלאות חדשות — ראה app/lib/dressImageUrl.js), ועם onError
 // נופלים חזרה לתמונה המלאה. loading="lazy" כדי שגלילה בקטלוג לא תוריד את
@@ -281,6 +284,8 @@ export default function CustomerInventoryViewer() {
   const suppressRelockRef = useRef(false);
 
   const aiEnabled = settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true';
+  const kioskSelfServiceOn = settings.kiosk_customer_self_service === 'true';
+  const kioskAllowOrder = settings.kiosk_allow_self_order === 'true';
 
   useEffect(() => {
     fetch('/api/settings')
