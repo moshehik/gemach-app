@@ -648,6 +648,7 @@ export async function POST(request) {
       ...(data.deliveryDirection !== undefined ? { deliveryDirection: data.deliveryDirection || null } : {}),
       ...(data.deliveryAddress !== undefined ? { deliveryAddress: data.deliveryAddress || null } : {}),
       ...(data.deliveryCity !== undefined ? { deliveryCity: data.deliveryCity || null } : {}),
+      ...(data.deliveryOneDayBefore !== undefined ? { deliveryOneDayBefore: !!data.deliveryOneDayBefore } : {}),
       ...(data.hokDetails !== undefined ? { hokDetails: typeof data.hokDetails === 'string' ? data.hokDetails : JSON.stringify(data.hokDetails) } : {}),
       items: {
         create: data.items?.map(item => ({

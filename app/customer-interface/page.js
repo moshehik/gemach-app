@@ -271,6 +271,14 @@ export default function CustomerInventoryViewer() {
   const [ordersModalOrders, setOrdersModalOrders] = useState([]);
   const [settings, setSettings] = useState({ hide_dress_images: 'false' });
 
+  // 32 - טופס רישום עצמי ללקוח (מוצג רק כש-kiosk_customer_self_service דלוק, ראה
+  // kioskSelfServiceOn למטה). קורא ל-POST /api/customers הקיים - אותו endpoint
+  // שמשמש את "לקוח חדש" בהזמנה (app/orders/new/page.js), עם אותה ולידציה בדיוק.
+  const [regForm, setRegForm] = useState({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '', marketingConsent: false });
+  const [regSubmitting, setRegSubmitting] = useState(false);
+  const [regError, setRegError] = useState('');
+  const [regSuccess, setRegSuccess] = useState(null); // legacyId אחרי הצלחה
+
   // Sidebar filters (stage 2)
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [priceCategories, setPriceCategories] = useState([]);
@@ -494,6 +502,75 @@ export default function CustomerInventoryViewer() {
       setUnlockError('שגיאת תקשורת');
     } finally {
       setUnlockLoading(false);
+    }
+  };
+
+  // 32 - אותם שדות/כינויים/ולידציה בדיוק כמו getMissingMandatoryCustomerFields
+  // ב-app/orders/new/page.js: שם פרטי/משפחה/טלפון תמיד חובה; מייל/כתובת מלאה/
+  // אישור דיוור רק כשההגדרה המתאימה (require_customer_email / require_full_address /
+  // require_marketing_consent) דלוקה. שדה חופשי mandatory_fields נבדק גם הוא, לאותה
+  // אחידות עם טופס ההזמנה - גם אם strict_mandatory_fields כבוי (השרת הוא שאוכף strict).
+  const CUSTOMER_FIELD_ALIASES = {
+    firstName: ['firstname', 'שם פרטי', 'שם_פרטי'],
+    lastName: ['lastname', 'שם משפחה', 'שם_משפחה'],
+    phone1: ['phone1', 'טלפון ראשי (נייד)', 'טלפון_1'],
+    email: ['email', 'אימייל'],
+    city: ['city', 'עיר'],
+    street: ['street', 'רחוב'],
+    houseNum: ['housenum', 'מספר בית', 'מספר_בית']
+  };
+  const CUSTOMER_FIELD_LABELS = {
+    firstName: 'שם פרטי', lastName: 'שם משפחה', phone1: 'טלפון', email: 'אימייל', city: 'עיר', street: 'רחוב', houseNum: 'מספר בית', marketingConsent: 'אישור דיוור'
+  };
+  const getMissingRegFields = (customerObj) => {
+    const configuredMandatory = (settings.mandatory_fields || '')
+      .split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+    const baseMissing = Object.keys(CUSTOMER_FIELD_ALIASES).filter((key) => {
+      const alwaysRequired = key === 'firstName' || key === 'lastName' || key === 'phone1';
+      const isRequired = alwaysRequired || CUSTOMER_FIELD_ALIASES[key].some(alias => configuredMandatory.includes(alias.toLowerCase()));
+      return isRequired && !String(customerObj[key] || '').trim();
+    });
+    const extra = [];
+    if (settings.require_customer_email === 'true' && !String(customerObj.email || '').trim()) extra.push('email');
+    if (settings.require_full_address === 'true') {
+      if (!String(customerObj.city || '').trim()) extra.push('city');
+      if (!String(customerObj.street || '').trim()) extra.push('street');
+      if (!String(customerObj.houseNum || '').trim()) extra.push('houseNum');
+    }
+    if (settings.require_marketing_consent === 'true' && !customerObj.marketingConsent) extra.push('marketingConsent');
+    return [...baseMissing, ...extra.filter(k => !baseMissing.includes(k))];
+  };
+
+  const handleRegisterSubmit = async (e) => {
+    e.preventDefault();
+    setRegError('');
+    const missing = getMissingRegFields(regForm);
+    if (missing.length > 0) {
+      setRegError(`שדות חובה חסרים: ${missing.map(k => CUSTOMER_FIELD_LABELS[k] || k).join(', ')}`);
+      return;
+    }
+    setRegSubmitting(true);
+    try {
+      const res = await fetch('/api/customers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(regForm)
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setRegSuccess(data);
+      } else if (res.status === 401) {
+        // require_login דלוק ואין עובד מחובר במסך הזה כרגע - אותה מגבלה שכבר
+        // חלה על כל שאר קריאות ה-API בעמדה הזו (מלאי/עובדים/קטגוריות).
+        setRegError('הרישום דורש עובד מחובר במערכת. נא לפנות לצוות הגמ"ח.');
+      } else {
+        setRegError(data.error || 'שגיאה ברישום, נא לפנות לצוות הגמ"ח');
+      }
+    } catch (err) {
+      console.error(err);
+      setRegError('שגיאת תקשורת - נא לפנות לצוות הגמ"ח');
+    } finally {
+      setRegSubmitting(false);
     }
   };
 
@@ -1011,6 +1088,119 @@ export default function CustomerInventoryViewer() {
                 </button>
               </div>
             </div>
+
+            {/* 32 - רישום עצמי: מוצג רק כשההגדרה "עמדת לקוח - רישום עצמי" דלוקה.
+                קורא ל-POST /api/customers הקיים, עם אותה ולידציה כמו טופס "לקוח חדש"
+                בהזמנה. read-only view (חיפוש/זמינות) נשאר כפי שהיה - הקטלוג בשלב 2. */}
+            {kioskSelfServiceOn && (
+              <div data-agy-id="kiosk_self_registration_card" className="ka-card ka-card-pad">
+                <div className="ka-date-title">
+                  <svg className="icon"><use href="#i-user" /></svg>
+                  רישום פרטים אישיים
+                </div>
+                <p style={{ color: 'var(--ink-soft)', fontSize: '13px', margin: '4px 0 16px' }}>
+                  מלאו את הפרטים הבאים כדי להירשם כלקוח/ה חדש/ה בגמ"ח. אפשר להמשיך גם לחפש דגם למטה בלי להירשם.
+                </p>
+
+                {regSuccess ? (
+                  <div style={{ textAlign: 'center', padding: '14px 0' }}>
+                    <svg className="icon" style={{ width: '38px', height: '38px', color: 'var(--sage)', margin: '0 auto 10px' }}><use href="#i-check-circle" /></svg>
+                    <p style={{ fontWeight: 800, marginBottom: '6px' }}>נרשמתם בהצלחה!</p>
+                    <p style={{ color: 'var(--ink-soft)', fontSize: '13px' }}>
+                      {regSuccess.legacyId ? `מספר לקוח: ${regSuccess.legacyId}. ` : ''}אפשר להמשיך ולחפש דגם בשלב הבא.
+                    </p>
+                    <button type="button" className="ka-btn ka-btn-ghost" style={{ marginTop: '14px' }}
+                      onClick={() => {
+                        setRegSuccess(null);
+                        setRegForm({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '', marketingConsent: false });
+                      }}>
+                      רישום לקוח נוסף
+                    </button>
+                  </div>
+                ) : (
+                  <form onSubmit={handleRegisterSubmit}>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                      <div className="ka-field">
+                        <label>שם פרטי *</label>
+                        <input data-agy-id="reg_firstName_input" type="text" value={regForm.firstName}
+                          onChange={e => setRegForm(p => ({ ...p, firstName: e.target.value }))} />
+                      </div>
+                      <div className="ka-field">
+                        <label>שם משפחה *</label>
+                        <input data-agy-id="reg_lastName_input" type="text" value={regForm.lastName}
+                          onChange={e => setRegForm(p => ({ ...p, lastName: e.target.value }))} />
+                      </div>
+                    </div>
+
+                    <div className="ka-field">
+                      <label>טלפון *</label>
+                      <input data-agy-id="reg_phone1_input" type="tel" dir="ltr" placeholder="נייד או קווי" value={regForm.phone1}
+                        onChange={e => setRegForm(p => ({ ...p, phone1: e.target.value }))} />
+                    </div>
+
+                    <div className="ka-field">
+                      <label>אימייל {settings.require_customer_email === 'true' && '*'}</label>
+                      <input data-agy-id="reg_email_input" type="email" dir="ltr" value={regForm.email}
+                        onChange={e => setRegForm(p => ({ ...p, email: e.target.value }))} />
+                    </div>
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
+                      <div className="ka-field">
+                        <label>עיר {settings.require_full_address === 'true' && '*'}</label>
+                        <input data-agy-id="reg_city_input" type="text" value={regForm.city}
+                          onChange={e => setRegForm(p => ({ ...p, city: e.target.value }))} />
+                      </div>
+                      <div className="ka-field">
+                        <label>רחוב {settings.require_full_address === 'true' && '*'}</label>
+                        <input data-agy-id="reg_street_input" type="text" value={regForm.street}
+                          onChange={e => setRegForm(p => ({ ...p, street: e.target.value }))} />
+                      </div>
+                      <div className="ka-field">
+                        <label>מספר בית {settings.require_full_address === 'true' && '*'}</label>
+                        <input data-agy-id="reg_houseNum_input" type="text" value={regForm.houseNum}
+                          onChange={e => setRegForm(p => ({ ...p, houseNum: e.target.value }))} />
+                      </div>
+                    </div>
+
+                    <label style={{ display: 'flex', alignItems: 'center', gap: '9px', fontSize: '13.5px', fontWeight: 600, margin: '6px 0 4px', cursor: 'pointer' }}>
+                      <input data-agy-id="reg_marketing_consent_input" type="checkbox"
+                        style={{ width: '17px', height: '17px', accentColor: 'var(--terracotta)' }}
+                        checked={regForm.marketingConsent}
+                        onChange={e => setRegForm(p => ({ ...p, marketingConsent: e.target.checked }))} />
+                      מאשר/ת קבלת דיוור ועדכונים {settings.require_marketing_consent === 'true' && '*'}
+                    </label>
+
+                    {regError && <div className="ka-error">{regError}</div>}
+
+                    <div className="ka-cta-row" style={{ marginTop: '14px' }}>
+                      <button data-agy-id="reg_submit_btn" type="submit" className="ka-btn-cta" disabled={regSubmitting}>
+                        {regSubmitting ? 'שולח...' : 'סיום רישום'}
+                        <svg className="icon"><use href="#i-check-circle" /></svg>
+                      </button>
+                    </div>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {/* 33 - הזמנה עצמית: עדיין stub מכוון - תלוי בהחלטות עסקיות שטרם נענו
+                (אישור אוטומטי מול טיוטה לאישור צוות, תשלום מראש) - ראה KIOSK.md/CLAUDE.md.
+                לא לחבר יצירת הזמנה אמיתית כאן בלי מענה לשאלות האלה. */}
+            {kioskSelfServiceOn && (
+              <div data-agy-id="kiosk_self_order_stub_card" className="ka-card ka-card-pad" style={{ textAlign: 'center' }}>
+                <div className="ka-date-title" style={{ justifyContent: 'center' }}>
+                  <svg className="icon"><use href="#i-bag" /></svg>
+                  הזמנה עצמאית
+                </div>
+                <p style={{ color: 'var(--ink-soft)', fontSize: '13px', margin: '8px 0 14px' }}>
+                  בקרוב תוכלו להזמין שמלה ישירות מכאן, ללא צורך בהמתנה לצוות.
+                </p>
+                <button data-agy-id="self_order_stub_btn" type="button" className="ka-btn ka-btn-ghost" disabled
+                  title="הזמנה עצמאית תיפתח בקרוב">
+                  הזמנה עצמאית תיפתח בקרוב
+                </button>
+              </div>
+            )}
           </div>
         </section>
       )}

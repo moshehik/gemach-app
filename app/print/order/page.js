@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Shirt, Scissors, Ruler, Check } from 'lucide-react';
 import { getHebrewDateString, getHebrewWeekdayLabel } from '../../../lib/hebrewDate';
@@ -26,7 +26,9 @@ const STANDARD_RETURN_HOUR = '13:00';
 
 export default function PrintOrderPage() {
   const searchParams = useSearchParams();
-  const [order, setOrder] = useState(null);
+  // תמיכה בהדפסה מרוכזת (בקשה 20): orderId יכול להיות רשימה מופרדת בפסיקים
+  // (?orderId=101,102,103) - נשאר אותו parameter כדי לא לשבור קריאות קיימות למספר בודד.
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [enableAlterations, setEnableAlterations] = useState(true);
@@ -34,34 +36,42 @@ export default function PrintOrderPage() {
   // 15 - הצגת משלוח בהדפסה (תג הלוך/חזור כמו תיקונים), 21 - סימון שמלה חסרה
   const [showDeliveryInPrint, setShowDeliveryInPrint] = useState(true);
   const [markMissingInPrint, setMarkMissingInPrint] = useState(true);
+  // 20 - מיון דפי הכנה: משלוחים בנפרד מרגילות (רק כשמדפיסים כמה הזמנות יחד)
+  const [sortDeliveriesFirst, setSortDeliveriesFirst] = useState(true);
+  // 21 - מפה orderItemId -> { familyName, returnOrderId } לפריטים שסומנו "חסרה"
+  const [missingMap, setMissingMap] = useState({});
   // bust לוגו: מאפשר לרענן את התמונה גם כשה-API מחזיר Cache-Control immutable (אחרי העלאת לוגו חדש)
   const [logoBust] = useState(() => Date.now());
 
-  const orderId = searchParams.get('orderId');
+  const orderIdParam = searchParams.get('orderId') || '';
+  const orderIdList = orderIdParam.split(',').map(s => s.trim()).filter(Boolean);
   const printType = searchParams.get('type') || 'order';
 
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [res, settingsRes] = await Promise.all([
-        fetch(`/api/orders/${orderId}`),
+      const [orderResults, settingsRes] = await Promise.all([
+        Promise.all(orderIdList.map(id => fetch(`/api/orders/${id}`))),
         fetch('/api/settings', { cache: 'no-store' })
       ]);
-      if (!res.ok) throw new Error('Failed to fetch order data');
-      const data = await res.json();
-      setOrder(data);
+      if (orderResults.some(r => !r.ok)) throw new Error('Failed to fetch order data');
+      const ordersData = await Promise.all(orderResults.map(r => r.json()));
+      setOrders(ordersData);
 
+      let markMissing = true;
       if (settingsRes.ok) {
         const settingsData = await settingsRes.json();
         const altSetting = settingsData.find(s => s.key === 'enable_alterations');
         if (altSetting && altSetting.value === 'false') {
           setEnableAlterations(false);
         }
-        // 15 + 21 - הגדרות הדפסה למשלוח וחסרה (כבוי = מוסתר)
+        // 15 + 20 + 21 - הגדרות הדפסה למשלוח, מיון וסימון חסרה (כבוי = מוסתר/לא פעיל)
         const delSetting = settingsData.find(s => s.key === 'delivery_show_in_order');
         if (delSetting && delSetting.value === 'false') setShowDeliveryInPrint(false);
+        const sortSetting = settingsData.find(s => s.key === 'print_sort_deliveries_first');
+        if (sortSetting && sortSetting.value === 'false') setSortDeliveriesFirst(false);
         const missSetting = settingsData.find(s => s.key === 'print_mark_missing_dresses');
-        if (missSetting && missSetting.value === 'false') setMarkMissingInPrint(false);
+        if (missSetting && missSetting.value === 'false') { setMarkMissingInPrint(false); markMissing = false; }
 
         // Extract print settings
         const pSettings = {
@@ -77,6 +87,20 @@ export default function PrintOrderPage() {
         };
         setPrintSettings(pSettings);
       }
+
+      // 21 - בדיקת "שמלה חסרה" לכל הזמנה שנטענה, במקביל - רק כשההגדרה מופעלת
+      if (markMissing) {
+        const missingResults = await Promise.all(
+          ordersData
+            .filter(Boolean)
+            .map(o => fetch(`/api/print/missing-dresses?orderId=${o.orderId}`).then(r => (r.ok ? r.json() : null)).catch(() => null))
+        );
+        const merged = {};
+        for (const res of missingResults) {
+          if (res?.missing) Object.assign(merged, res.missing);
+        }
+        setMissingMap(merged);
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -85,21 +109,21 @@ export default function PrintOrderPage() {
   };
 
   useEffect(() => {
-    if (orderId) {
+    if (orderIdList.length > 0) {
       fetchData();
     } else {
       setError('לא סופק מספר הזמנה');
       setLoading(false);
     }
-  }, [orderId]);
+  }, [orderIdParam]);
 
   useEffect(() => {
     // Auto trigger print when loaded
-    if (!loading && !error && order) {
+    if (!loading && !error && orders.length > 0) {
       fetch('/api/log-visit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pageUrl: `[הדפסת כרטיס השכרה] הזמנה #${order.orderId}` })
+        body: JSON.stringify({ pageUrl: `[הדפסת כרטיס השכרה] הזמנה #${orders.map(o => o.orderId).join(', #')}` })
       }).catch(console.error);
 
       const timer = setTimeout(() => {
@@ -107,20 +131,28 @@ export default function PrintOrderPage() {
       }, 1000);
       return () => clearTimeout(timer);
     }
-  }, [loading, error, order]);
+  }, [loading, error, orders]);
 
-  const totalObligations = order?.obligations?.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0) || 0;
-  const totalPayments = order?.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0;
-  const balance = Math.max(0, totalObligations - totalPayments);
-  const activeItems = order?.items ? order.items.filter(i => !i.isDeleted) : [];
-  const activePayments = order?.payments ? order.payments.filter(p => !p.isDeleted) : [];
-
-  const returnByDate = order
-    ? (order.toDate || order.returnDate
-      ? new Date(order.toDate || order.returnDate)
-      : (order.eventDate ? addDaysSkippingWeekends(order.eventDate, 1) : null))
-    : null;
   const colCount = enableAlterations ? 5 : 4;
+
+  // 20 (print_sort_deliveries_first) - כשמדפיסים כמה הזמנות יחד, מקבצים לשתי חטיבות
+  // נפרדות: הזמנות משלוח והזמנות רגילות (איסוף עצמי), כל אחת בעמוד/עמודים נפרדים.
+  // כשיש רק הזמנה אחת, או כשההגדרה כבויה, או כשכל ההזמנות מאותו סוג - אין צורך בפיצול
+  // ולכן אין מפריד קבוצה (orders.length===1 ממשיך להיות מרונדר בדיוק כמו קודם, ללא עטיפה נוספת).
+  const orderGroups = (() => {
+    if (orders.length <= 1 || !sortDeliveriesFirst) {
+      return [{ label: null, list: orders }];
+    }
+    const deliveryOrders = orders.filter(o => o.isDelivery);
+    const regularOrders = orders.filter(o => !o.isDelivery);
+    if (deliveryOrders.length === 0 || regularOrders.length === 0) {
+      return [{ label: null, list: orders }];
+    }
+    return [
+      { label: 'הזמנות משלוח', list: deliveryOrders },
+      { label: 'הזמנות איסוף עצמי', list: regularOrders }
+    ];
+  })();
 
   const renderRepairChips = (item) => {
     const neck = item.neckAlteration === 1 || item.neckAlteration === true;
@@ -171,6 +203,248 @@ export default function PrintOrderPage() {
       // keep raw notes on parse failure
     }
     return notes;
+  };
+
+  // מרנדר את דף ההכנה/השכרה של הזמנה אחת. חולץ לפונקציה כדי לתמוך גם בהדפסה מרוכזת
+  // של כמה הזמנות יחד (בקשה 20) - כשיש הזמנה אחת בלבד (המקרה הרגיל, כל הקריאות הקיימות
+  // באפליקציה) הפלט זהה ל-1:1 למבנה המקורי, ללא שום עטיפה נוספת.
+  const renderOrderSection = (ord) => {
+    const totalObligations = ord?.obligations?.filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0) || 0;
+    const totalPayments = ord?.payments?.filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0) || 0;
+    const balance = Math.max(0, totalObligations - totalPayments);
+    const activeItems = ord?.items ? ord.items.filter(i => !i.isDeleted) : [];
+    const activePayments = ord?.payments ? ord.payments.filter(p => !p.isDeleted) : [];
+    const returnByDate = ord
+      ? (ord.toDate || ord.returnDate
+        ? new Date(ord.toDate || ord.returnDate)
+        : (ord.eventDate ? addDaysSkippingWeekends(ord.eventDate, 1) : null))
+      : null;
+
+    return (
+      // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table
+      // column headers are placed in a <thead> and repeat on every printed page when the
+      // item list overflows to page 2+, and a spacer <tfoot> keeps the last row of each page
+      // clear of the page edge. Mirrors the pagination trick used by print/alterations.
+      <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: 0 }}>
+        <thead style={{ display: 'table-header-group', border: 'none' }}>
+          <tr>
+            <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
+              <div className="bsd">בס&quot;ד</div>
+              {printType === 'rental' && returnByDate && (
+                <div className="return-details-box">
+                  <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
+                  {printSettings?.beltNotice && (
+                    <div className="belt-notice-line">{printSettings.beltNotice}</div>
+                  )}
+                </div>
+              )}
+              <div className="print-header">
+                <div className="print-header-content">
+                  {/* הלוגו מוגש מ-/api/logo (הגדרת BRAND_LOGO); כשאין לוגו מוגדר הנתיב
+                       מחזיר 404 - onError מסתיר את התמונה והכותרת נשארת טקסטואלית בלבד.
+                       ?v=logoBust מבטל cache דפדפן אחרי העלאת לוגו חדש (Cache-Control immutable). */}
+                  <img
+                    src={`/api/logo?v=${logoBust}`}
+                    alt=""
+                    style={{ height: '64px', objectFit: 'contain', marginBottom: '10px' }}
+                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                  />
+                  <h1>{printSettings?.gmachName || 'גמ"ח שמלות'}</h1>
+                  <div className="company-details">
+                    {[
+                      printSettings?.gmachAddress,
+                      printSettings?.gmachPhone && `טלפון: ${printSettings.gmachPhone}`,
+                      printSettings?.gmachEmail && `דוא"ל: ${printSettings.gmachEmail}`
+                    ].filter(Boolean).join(' | ')}
+                  </div>
+                </div>
+              </div>
+
+              <div className="order-details-card">
+                {/* Right side: Customer - כולל הערות ההזמנה בשורת פרטי הלקוח (בקשת יא אלול) */}
+                <div>
+                  <strong>לכבוד: {ord.customer?.firstName} {ord.customer?.lastName}</strong><br />
+                  טלפון: <span dir="ltr">{ord.customer?.phone1 || ord.customer?.phone || '-'}</span><br />
+                  כתובת: {ord.customer?.city ? `${ord.customer.city}${ord.customer?.address ? `, ${ord.customer.address}` : ''}` : '-'}<br />
+                  {ord.notes && (
+                    <>הערות להזמנה: {ord.notes}<br /></>
+                  )}
+                </div>
+                {/* Left side: Order Details */}
+                <div>
+                  <strong>{printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #{ord.orderId}</strong><br />
+                  {/* 15 - תג משלוח הלוך/חזור בהדפסה (כמו תיקונים), מותנה ב-delivery_show_in_order */}
+                  {showDeliveryInPrint && ord.isDelivery && (
+                    <><span style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>
+                      משלוח {ord.deliveryDirection || ''}
+                    </span><br /></>
+                  )}
+                  {/* 13/34 - סימון טלפוני וסניף בהדפסה */}
+                  {ord.isPhoneOrder && (<><span style={{ color: '#666' }}>(הזמנה טלפונית)</span><br /></>)}
+                  {(ord.branch || ord.pickupBranch) && (
+                    <>סניף: {ord.branch ? `בוצעה ב${ord.branch}` : ''}{ord.branch && ord.pickupBranch ? ' · ' : ''}{ord.pickupBranch ? `איסוף ב${ord.pickupBranch}` : ''}<br /></>
+                  )}
+                  {ord.isDelivery && (ord.deliveryAddress || ord.deliveryCity) && (
+                    <>כתובת משלוח: {ord.deliveryAddress || ''}{ord.deliveryAddress && ord.deliveryCity ? `, ${ord.deliveryCity}` : (ord.deliveryCity || '')}<br /></>
+                  )}
+                  {(!ord.isWeekdayEvent && !ord.isAbroad) ? (
+                    <>תאריך אירוע: {ord.eventDateHebrew || (ord.eventDate ? getHebrewDateString(ord.eventDate) : 'לא צוין')}</>
+                  ) : (
+                    <>סוג אירוע: אירוע חו&quot;ל</>
+                  )}
+                  {ord.notes && (
+                    <><br />הערות: {ord.notes}</>
+                  )}
+                </div>
+              </div>
+
+              {printType === 'rental' && printSettings && (
+                <div style={{ marginBottom: '20px' }}>
+                  {printSettings.box1 && (
+                    <div className="rental-notes-box">
+                      {printSettings.box1}
+                    </div>
+                  )}
+                  {printSettings.box2 && (
+                    <div className="rental-notes-box rental-notes-box-bg">
+                      {printSettings.box2}
+                    </div>
+                  )}
+                </div>
+              )}
+            </td>
+          </tr>
+          <tr>
+            <th>דגם / תיאור</th>
+            <th>מידה</th>
+            <th>ברקוד</th>
+            {enableAlterations && <th>תיקונים</th>}
+            <th>סטטוס</th>
+          </tr>
+        </thead>
+        <tfoot>
+          <tr>
+            <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
+              <div style={{ height: '30px' }}></div>
+            </td>
+          </tr>
+        </tfoot>
+        <tbody>
+          {activeItems.length === 0 ? (
+            <tr>
+              <td colSpan={colCount} style={{ textAlign: 'center', padding: '30px', color: '#999' }}>אין פריטים פעילים בהזמנה זו</td>
+            </tr>
+          ) : (
+            activeItems.map((item) => {
+              let statusStr = 'טרם נלקח';
+              if (item.isReturned) statusStr = 'הוחזר';
+              else if (item.isTaken) statusStr = 'אצל הלקוח';
+
+              // 21 (print_mark_missing_dresses) - פריט שטרם נלקח, שסומן ע"י /api/print/missing-dresses
+              // כ"חסר" (אין יחידה פנויה כרגע, ויש יחידה שאמורה לחזור מחר מהזמנה אחרת)
+              const missingInfo = markMissingInPrint && !item.isTaken ? missingMap[item.id] : null;
+
+              return (
+                <Fragment key={item.id}>
+                  <tr>
+                    <td style={{ fontWeight: '600', color: '#333' }}>{stripCodeLabel(item.description || item.dressItem?.dress?.name || item.dressItem?.dressName) || '-'}</td>
+                    <td>{item.sizeText || item.dressItem?.sizeText || '-'}</td>
+                    <td style={{ fontWeight: '600', color: '#666' }}>{(item.isTaken && (item.barcode || item.dressItem?.dressBarcode)) || '-'}</td>
+                    {enableAlterations && (
+                      <td>{renderRepairChips(item)}</td>
+                    )}
+                    <td>{statusStr}</td>
+                  </tr>
+                  {missingInfo && (
+                    <tr className="missing-dress-row">
+                      <td colSpan={colCount}>
+                        <strong>שמלה חסרה:</strong> שמלה זו אמורה לחזור מחר ממשפחת {missingInfo.familyName}
+                      </td>
+                    </tr>
+                  )}
+                </Fragment>
+              );
+            })
+          )}
+        </tbody>
+        <tbody>
+          <tr className="print-flow-row">
+            <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
+              <div className="summary-section">
+                <table className="summary-table">
+                  <tbody>
+                    <tr>
+                      <td>סה&quot;כ לחיוב:</td>
+                      <td>₪{totalObligations}</td>
+                    </tr>
+                    <tr>
+                      <td>סה&quot;כ שולם:</td>
+                      <td>₪{totalPayments}</td>
+                    </tr>
+                    <tr className="total">
+                      <td>יתרה לתשלום:</td>
+                      <td>₪{balance}</td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+
+              {activePayments.length > 0 && (
+                <div className="payments-section">
+                  <h4 className="payments-title">תשלומים שהתקבלו</h4>
+                  <table className="print-table" style={{ marginBottom: '30px' }}>
+                    <thead>
+                      <tr>
+                        <th>תאריך (עברי)</th>
+                        <th>אופן תשלום</th>
+                        <th>סכום</th>
+                        <th>הערות</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {activePayments.map((p, idx) => {
+                        const hebrewPaymentDate = p.paymentDate ? getHebrewDateString(p.paymentDate) : getHebrewDateString(new Date());
+                        return (
+                          <tr key={idx}>
+                            <td>{hebrewPaymentDate}</td>
+                            <td>{p.paymentMethod || '-'}</td>
+                            <td style={{ fontWeight: 'bold' }}>₪{p.amount}</td>
+                            <td>{formatPaymentNotes(p.notes)}</td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {printType === 'rental' && (
+                <div className="terms">
+                  אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
+                </div>
+              )}
+
+              {printType === 'rental' && printSettings?.footer && (
+                <div style={{ textAlign: 'center', marginTop: '15px', marginBottom: '15px' }}>
+                  <h3 className="rental-footer-title">{printSettings.footer}</h3>
+                  <div className="rental-footer-sign">
+                    <span>על החתום:</span>
+                    <span style={{ display: 'inline-block', width: '200px', borderBottom: '1px dashed #999', margin: '0 10px' }}></span>
+                  </div>
+                  <div className="rental-footer-note">
+                    יש להחזיר טופס זה חתום בעת החזרת השמלות
+                  </div>
+                </div>
+              )}
+
+              <div className="print-footer">
+                הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(new Date())}
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    );
   };
 
   return (
@@ -251,9 +525,15 @@ export default function PrintOrderPage() {
           .rental-notes-box,
           .summary-section,
           .terms,
-          .print-footer {
+          .print-footer,
+          .missing-dress-row {
             break-inside: avoid;
             page-break-inside: avoid;
+          }
+          /* 20 - כל חטיבה (משלוח/רגיל) בהדפסה מרוכזת מתחילה בעמוד חדש */
+          .prep-group-divider {
+            break-after: avoid-page;
+            page-break-after: avoid;
           }
           /* payments-section is intentionally NOT break-inside:avoid - it can grow
              past a page with many payments, and forcing the whole block to stay
@@ -478,6 +758,28 @@ export default function PrintOrderPage() {
           border-top: 1px solid #eee;
           padding-top: 12px;
         }
+        /* 21 - שורת אזהרה "שמלה חסרה" מתחת לפריט המושפע */
+        .missing-dress-row td {
+          background-color: #fdecea !important;
+          color: #a83232;
+          font-weight: 600;
+          font-size: 13px;
+          padding: 8px 14px;
+          border-bottom: 1px solid #eee;
+        }
+        /* 20 - כותרת חטיבה (משלוח/רגיל) בהדפסה מרוכזת של כמה הזמנות */
+        .prep-group-divider {
+          font-family: 'Frank Ruhl Libre', 'David Libre', serif;
+          font-size: 22px;
+          font-weight: 700;
+          color: #262626;
+          text-align: center;
+          background: #f4f4f4;
+          border: 1px solid #e5e5e5;
+          border-radius: 4px;
+          padding: 12px;
+          margin: 0 0 24px 0;
+        }
       `}</style>
 
       <div
@@ -491,217 +793,24 @@ export default function PrintOrderPage() {
           <div style={{ textAlign: 'center', padding: '50px', color: '#6c757d', fontSize: '18px' }}>טוען נתונים להדפסה...</div>
         ) : error ? (
           <div style={{ textAlign: 'center', padding: '50px', color: '#dc3545', fontSize: '18px' }}>{error}</div>
-        ) : order ? (
-          // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table
-          // column headers are placed in a <thead> and repeat on every printed page when the
-          // item list overflows to page 2+, and a spacer <tfoot> keeps the last row of each page
-          // clear of the page edge. Mirrors the pagination trick used by print/alterations.
-          <table className="print-table" style={{ width: '100%', borderCollapse: 'collapse', border: 'none', marginBottom: 0 }}>
-            <thead style={{ display: 'table-header-group', border: 'none' }}>
-              <tr>
-                <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
-                  <div className="bsd">בס&quot;ד</div>
-                  {printType === 'rental' && returnByDate && (
-                    <div className="return-details-box">
-                      <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
-                      {printSettings?.beltNotice && (
-                        <div className="belt-notice-line">{printSettings.beltNotice}</div>
-                      )}
-                    </div>
-                  )}
-                  <div className="print-header">
-                    <div className="print-header-content">
-                      {/* הלוגו מוגש מ-/api/logo (הגדרת BRAND_LOGO); כשאין לוגו מוגדר הנתיב
-                           מחזיר 404 - onError מסתיר את התמונה והכותרת נשארת טקסטואלית בלבד.
-                           ?v=logoBust מבטל cache דפדפן אחרי העלאת לוגו חדש (Cache-Control immutable). */}
-                      <img
-                        src={`/api/logo?v=${logoBust}`}
-                        alt=""
-                        style={{ height: '64px', objectFit: 'contain', marginBottom: '10px' }}
-                        onError={(e) => { e.currentTarget.style.display = 'none'; }}
-                      />
-                      <h1>{printSettings?.gmachName || 'גמ"ח שמלות'}</h1>
-                      <div className="company-details">
-                        {[
-                          printSettings?.gmachAddress,
-                          printSettings?.gmachPhone && `טלפון: ${printSettings.gmachPhone}`,
-                          printSettings?.gmachEmail && `דוא"ל: ${printSettings.gmachEmail}`
-                        ].filter(Boolean).join(' | ')}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="order-details-card">
-                    {/* Right side: Customer - כולל הערות ההזמנה בשורת פרטי הלקוח (בקשת יא אלול) */}
-                    <div>
-                      <strong>לכבוד: {order.customer?.firstName} {order.customer?.lastName}</strong><br />
-                      טלפון: <span dir="ltr">{order.customer?.phone1 || order.customer?.phone || '-'}</span><br />
-                      כתובת: {order.customer?.city ? `${order.customer.city}${order.customer?.address ? `, ${order.customer.address}` : ''}` : '-'}<br />
-                      {order.notes && (
-                        <>הערות להזמנה: {order.notes}<br /></>
-                      )}
-                    </div>
-                    {/* Left side: Order Details */}
-                    <div>
-                      <strong>{printType === 'rental' ? 'דוח השכרה' : 'הזמנה'} #{order.orderId}</strong><br />
-                      {/* 15 - תג משלוח הלוך/חזור בהדפסה (כמו תיקונים), מותנה ב-delivery_show_in_order */}
-                      {showDeliveryInPrint && order.isDelivery && (
-                        <><span style={{ background: '#fff3cd', border: '1px solid #ffc107', borderRadius: 6, padding: '2px 8px', fontWeight: 700 }}>
-                          משלוח {order.deliveryDirection || ''}
-                        </span><br /></>
-                      )}
-                      {/* 13/34 - סימון טלפוני וסניף בהדפסה */}
-                      {order.isPhoneOrder && (<><span style={{ color: '#666' }}>(הזמנה טלפונית)</span><br /></>)}
-                      {(order.branch || order.pickupBranch) && (
-                        <>סניף: {order.branch ? `בוצעה ב${order.branch}` : ''}{order.branch && order.pickupBranch ? ' · ' : ''}{order.pickupBranch ? `איסוף ב${order.pickupBranch}` : ''}<br /></>
-                      )}
-                      {order.isDelivery && (order.deliveryAddress || order.deliveryCity) && (
-                        <>כתובת משלוח: {order.deliveryAddress || ''}{order.deliveryAddress && order.deliveryCity ? `, ${order.deliveryCity}` : (order.deliveryCity || '')}<br /></>
-                      )}
-                      {(!order.isWeekdayEvent && !order.isAbroad) ? (
-                        <>תאריך אירוע: {order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'לא צוין')}</>
-                      ) : (
-                        <>סוג אירוע: אירוע חו&quot;ל</>
-                      )}
-                      {order.notes && (
-                        <><br />הערות: {order.notes}</>
-                      )}
-                    </div>
-                  </div>
-
-                  {printType === 'rental' && printSettings && (
-                    <div style={{ marginBottom: '20px' }}>
-                      {printSettings.box1 && (
-                        <div className="rental-notes-box">
-                          {printSettings.box1}
-                        </div>
-                      )}
-                      {printSettings.box2 && (
-                        <div className="rental-notes-box rental-notes-box-bg">
-                          {printSettings.box2}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </td>
-              </tr>
-              <tr>
-                <th>דגם / תיאור</th>
-                <th>מידה</th>
-                <th>ברקוד</th>
-                {enableAlterations && <th>תיקונים</th>}
-                <th>סטטוס</th>
-              </tr>
-            </thead>
-            <tfoot>
-              <tr>
-                <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
-                  <div style={{ height: '30px' }}></div>
-                </td>
-              </tr>
-            </tfoot>
-            <tbody>
-              {activeItems.length === 0 ? (
-                <tr>
-                  <td colSpan={colCount} style={{ textAlign: 'center', padding: '30px', color: '#999' }}>אין פריטים פעילים בהזמנה זו</td>
-                </tr>
-              ) : (
-                activeItems.map((item) => {
-                  let statusStr = 'טרם נלקח';
-                  if (item.isReturned) statusStr = 'הוחזר';
-                  else if (item.isTaken) statusStr = 'אצל הלקוח';
-
-                  return (
-                    <tr key={item.id}>
-                      <td style={{ fontWeight: '600', color: '#333' }}>{stripCodeLabel(item.description || item.dressItem?.dress?.name || item.dressItem?.dressName) || '-'}</td>
-                      <td>{item.sizeText || item.dressItem?.sizeText || '-'}</td>
-                      <td style={{ fontWeight: '600', color: '#666' }}>{(item.isTaken && (item.barcode || item.dressItem?.dressBarcode)) || '-'}</td>
-                      {enableAlterations && (
-                        <td>{renderRepairChips(item)}</td>
-                      )}
-                      <td>{statusStr}</td>
-                    </tr>
-                  );
-                })
+        ) : orders.length === 1 ? (
+          // המקרה הרגיל (כל קריאה קיימת לדף הזה): הזמנה בודדת, בדיוק כמו לפני התוספת של בקשה 20.
+          renderOrderSection(orders[0])
+        ) : orders.length > 1 ? (
+          // הדפסה מרוכזת של כמה הזמנות (בקשה 20) - כל הזמנה בעמוד/עמודים נפרדים
+          // (page-break-before בין הזמנות), ומחולק לחטיבות משלוח/רגיל כשorderGroups מפוצל.
+          orderGroups.map((group, gi) => (
+            <div key={group.label || `group-${gi}`} style={gi > 0 ? { pageBreakBefore: 'always', breakBefore: 'page' } : undefined}>
+              {group.label && (
+                <div className="prep-group-divider">{group.label}</div>
               )}
-            </tbody>
-            <tbody>
-              <tr className="print-flow-row">
-                <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
-                  <div className="summary-section">
-                    <table className="summary-table">
-                      <tbody>
-                        <tr>
-                          <td>סה&quot;כ לחיוב:</td>
-                          <td>₪{totalObligations}</td>
-                        </tr>
-                        <tr>
-                          <td>סה&quot;כ שולם:</td>
-                          <td>₪{totalPayments}</td>
-                        </tr>
-                        <tr className="total">
-                          <td>יתרה לתשלום:</td>
-                          <td>₪{balance}</td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {activePayments.length > 0 && (
-                    <div className="payments-section">
-                      <h4 className="payments-title">תשלומים שהתקבלו</h4>
-                      <table className="print-table" style={{ marginBottom: '30px' }}>
-                        <thead>
-                          <tr>
-                            <th>תאריך (עברי)</th>
-                            <th>אופן תשלום</th>
-                            <th>סכום</th>
-                            <th>הערות</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {activePayments.map((p, idx) => {
-                            const hebrewPaymentDate = p.paymentDate ? getHebrewDateString(p.paymentDate) : getHebrewDateString(new Date());
-                            return (
-                              <tr key={idx}>
-                                <td>{hebrewPaymentDate}</td>
-                                <td>{p.paymentMethod || '-'}</td>
-                                <td style={{ fontWeight: 'bold' }}>₪{p.amount}</td>
-                                <td>{formatPaymentNotes(p.notes)}</td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
-
-                  {printType === 'rental' && (
-                    <div className="terms">
-                      אין לבצע כביסה עצמאית בשום אופן. איחור בהחזרת הפריטים יגרור קנס לכל יום איחור כפי שנקבע בתקנון. במקרה של נזק בלתי הפיך, הלקוח יישא במלוא עלות התיקון או רכישה מחדש של הפריט.
-                    </div>
-                  )}
-
-                  {printType === 'rental' && printSettings?.footer && (
-                    <div style={{ textAlign: 'center', marginTop: '15px', marginBottom: '15px' }}>
-                      <h3 className="rental-footer-title">{printSettings.footer}</h3>
-                      <div className="rental-footer-sign">
-                        <span>על החתום:</span>
-                        <span style={{ display: 'inline-block', width: '200px', borderBottom: '1px dashed #999', margin: '0 10px' }}></span>
-                      </div>
-                      <div className="rental-footer-note">
-                        יש להחזיר טופס זה חתום בעת החזרת השמלות
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="print-footer">
-                    הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(new Date())}
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+              {group.list.map((ord, oi) => (
+                <div key={ord.orderId} style={(gi > 0 || oi > 0) ? { pageBreakBefore: oi === 0 ? 'auto' : 'always', breakBefore: oi === 0 ? 'auto' : 'page' } : undefined}>
+                  {renderOrderSection(ord)}
+                </div>
+              ))}
+            </div>
+          ))
         ) : null}
       </div>
     </>

@@ -62,6 +62,10 @@ export async function GET(request) {
     const daysAfter = isNaN(parsedAfter) ? 1 : parsedAfter;
 
     const outboundRange = dayRange(addDays(requestedDate, daysBefore));
+    // 19 - הזמנה עם deliveryOneDayBefore (פר-הזמנה) יוצאת יום לפני האירוע במקום
+    // delivery_days_before הרגיל - טווח נוסף כדי לתפוס גם הזמנות כאלה בשאילתה,
+    // הסינון הסופי לפי דגל ההזמנה עצמו קורה בלולאה למטה.
+    const outboundOneDayBeforeRange = daysBefore !== 1 ? dayRange(addDays(requestedDate, 1)) : null;
     const returnRange = dayRange(addDays(requestedDate, -daysAfter));
 
     const orders = await prisma.order.findMany({
@@ -69,6 +73,7 @@ export async function GET(request) {
         isDeleted: false,
         OR: [
           { eventDate: { gte: outboundRange.start, lte: outboundRange.end } },
+          ...(outboundOneDayBeforeRange ? [{ eventDate: { gte: outboundOneDayBeforeRange.start, lte: outboundOneDayBeforeRange.end } }] : []),
           { eventDate: { gte: returnRange.start, lte: returnRange.end } }
         ]
       },
@@ -89,8 +94,9 @@ export async function GET(request) {
       if (!order.eventDate) continue;
 
       const eventTime = new Date(order.eventDate).getTime();
+      const effectiveOutboundRange = order.deliveryOneDayBefore ? (outboundOneDayBeforeRange || outboundRange) : outboundRange;
       const directions = [];
-      if (eventTime >= outboundRange.start.getTime() && eventTime <= outboundRange.end.getTime()) directions.push('out');
+      if (eventTime >= effectiveOutboundRange.start.getTime() && eventTime <= effectiveOutboundRange.end.getTime()) directions.push('out');
       if (eventTime >= returnRange.start.getTime() && eventTime <= returnRange.end.getTime()) directions.push('return');
       if (directions.length === 0) continue;
 

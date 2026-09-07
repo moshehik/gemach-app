@@ -31,6 +31,15 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const [rentingItemId, setRentingItemId] = useState(null);
   const [inlineBarcode, setInlineBarcode] = useState({});
 
+  // 31 - הקלדה ידנית כפולה כשהברקוד לא נסרק/לא קיים במאגר: מוצג לצד תיבת הסריקה
+  // הפרטנית של פריט (יש itemIdToForce ידוע), כי /api/rentals/scan דורש itemIdToForce
+  // כדי לשייך הקלדה ידנית לפריט - בסריקה הגלובלית (הזיהוי לפי קידומת+מידה מהברקוד
+  // עצמו) אין דרך לדעת לאיזה פריט להצמיד הקלדה ידנית שנכשלה.
+  const [manualEntryItemId, setManualEntryItemId] = useState(null);
+  const [manualBarcode1, setManualBarcode1] = useState('');
+  const [manualBarcode2, setManualBarcode2] = useState('');
+  const [manualSigned, setManualSigned] = useState(false);
+
   // תופס מקרה שבו העובד/ת סוגר/ת את הכרטיס בזמן שממתינים לאישור PIN של מנהל
   // (window.customAuthPrompt) לעקיפת חסימת רזרבה - בלי השומר הזה, כשה-PIN
   // מאומת בסוף, handleRentalScan עדיין ממשיך וכותב לשרת/למצב React על קומפוננטה
@@ -120,7 +129,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const overallStatus = selectedOrder ? calculateOrderStatus(selectedOrder) : '';
   const overallStatusColor = getStatusColor(overallStatus);
 
-  const handleRentalScan = async (barcodeToScan, itemIdToForce = null, overrideAuth = null) => {
+  const handleRentalScan = async (barcodeToScan, itemIdToForce = null, overrideAuth = null, manualParams = null) => {
     setIsBusy(true);
     try {
       const res = await fetch('/api/rentals/scan', {
@@ -130,7 +139,8 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
           orderId: selectedOrder.orderId,
           barcode: barcodeToScan,
           ...(itemIdToForce && { itemIdToForce }),
-          ...(overrideAuth && { overridePin: overrideAuth.pin, overrideEmployeeId: overrideAuth.employeeId })
+          ...(overrideAuth && { overridePin: overrideAuth.pin, overrideEmployeeId: overrideAuth.employeeId }),
+          ...(manualParams || {})
         })
       });
       const data = await res.json();
@@ -140,7 +150,13 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         if (data.duplicateAlterations) {
           setDuplicates(data.options);
         } else {
-          patchItem(data.id, { barcode: data.barcode, isTaken: data.isTaken });
+          patchItem(data.id, { barcode: data.barcode, isTaken: data.isTaken, manualBarcodeEntry: data.manualBarcodeEntry });
+          if (data.manualEntry) {
+            setManualEntryItemId(null);
+            setManualBarcode1('');
+            setManualBarcode2('');
+            setManualSigned(false);
+          }
         }
       } else {
         if (data.unreturned) {
@@ -167,6 +183,14 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
           if (authResult && isMountedRef.current) {
             await handleRentalScan(barcodeToScan, itemIdToForce, authResult); // Retry with override
           }
+        } else if (data.barcodeInvalid && itemIdToForce && !manualParams) {
+          // 31 - הברקוד לא נמצא במאגר: פותחים אוטומטית את טופס ההקלדה הידנית הכפולה
+          // לפריט הזה (יודעים לאיזה פריט לשייך כי הגענו מתיבת הסריקה הפרטנית).
+          setManualEntryItemId(itemIdToForce);
+          setManualBarcode1(barcodeToScan);
+          setManualBarcode2('');
+          setManualSigned(false);
+          alert(data.error);
         } else {
           alert(data.error);
         }
@@ -177,6 +201,35 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
     } finally {
       if (isMountedRef.current) setIsBusy(false);
     }
+  };
+
+  // 31 - שולח את ההקלדה הידנית הכפולה של הברקוד ל-/api/rentals/scan עם
+  // manualEntry/manualConfirm/manualSignature (השרת דורש itemIdToForce כדי לשייך
+  // הקלדה ידנית לפריט ספציפי - האימות הכפול עצמו נעשה כאן, בצד הלקוח).
+  const confirmManualEntry = async (item) => {
+    if (isBusy) return;
+    const b1 = manualBarcode1.replace(/\s+/g, '').trim();
+    const b2 = manualBarcode2.replace(/\s+/g, '').trim();
+    if (!b1 || !b2) {
+      alert('יש להקליד את מספר הברקוד פעמיים');
+      return;
+    }
+    if (b1 !== b2) {
+      alert('הברקודים שהוקלדו אינם תואמים - יש להקליד שוב את שני השדות');
+      return;
+    }
+    if (!manualSigned) {
+      alert('יש לאשר בסימון התיבה שהשמלה אכן ברשותך לפני השמירה');
+      return;
+    }
+    await handleRentalScan(b1, item.id, null, { manualEntry: true, manualConfirm: true, manualSignature: true });
+  };
+
+  const cancelManualEntry = () => {
+    setManualEntryItemId(null);
+    setManualBarcode1('');
+    setManualBarcode2('');
+    setManualSigned(false);
   };
 
   const selectDuplicate = async (itemId) => {
@@ -261,7 +314,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
       alert('חובה להזין ברקוד');
       return;
     }
-    await handleRentalScan(barcode);
+    await handleRentalScan(barcode, item.id);
     setInlineBarcode(prev => ({ ...prev, [item.id]: '' }));
   };
 
@@ -732,7 +785,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                                 {item.description}
                                 <div className="cell-muted" style={{ fontWeight: 400, fontSize: '11.5px', marginTop: '2px' }}>
                                   {getLabel('item_size', 'מידה')}: {item.sizeText || '-'}
-                                  {item.barcode && <> · {getLabel('item_barcode', 'ברקוד')}: {item.barcode}</>}
+                                  {item.barcode && <> · {getLabel('item_barcode', 'ברקוד')}: {item.barcode}{item.manualBarcodeEntry && ' (הוזן ידנית)'}</>}
                                   {item.isTaken && <> · לקיחה: {item.takenDate ? getHebrewDateString(item.takenDate) : 'לא ידוע'}</>}
                                   {item.isReturned && <> · הוחזר: {item.returnDate ? getHebrewDateString(item.returnDate) : 'לא ידוע'}</>}
                                 </div>
@@ -756,21 +809,76 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                                 <div className="row-actions" style={{ flexWrap: 'wrap' }}>
                                   {!item.barcode && !item.isTaken && (
                                     isRenting ? (
-                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                        <input data-agy-id="rentalreturnmodal_input_14"
-                                          type="text"
-                                          className="input"
-                                          autoFocus
-                                          placeholder="סרוק ברקוד"
-                                          style={{ width: '140px', direction: 'ltr' }}
-                                          value={inlineBarcode[item.id] || ''}
-                                          onChange={(e) => setInlineBarcode(prev => ({ ...prev, [item.id]: e.target.value.replace(/\s+/g, '') }))}
-                                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmInlineRent(item); } }}
-                                        />
-                                        <button data-agy-id="rentalreturnmodal_button_15" type="button" className="btn btn-primary btn-sm" disabled={isBusy} onClick={() => confirmInlineRent(item)}>אשר</button>
-                                        <button data-agy-id="rentalreturnmodal_button_16" type="button" className="btn btn-ghost btn-icon-only btn-sm" disabled={isBusy} onClick={() => setRentingItemId(null)}>
-                                          <svg className="icon"><use href="#i-x" /></svg>
-                                        </button>
+                                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'flex-start' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <input data-agy-id="rentalreturnmodal_input_14"
+                                            type="text"
+                                            className="input"
+                                            autoFocus
+                                            placeholder="סרוק ברקוד"
+                                            style={{ width: '140px', direction: 'ltr' }}
+                                            value={inlineBarcode[item.id] || ''}
+                                            onChange={(e) => setInlineBarcode(prev => ({ ...prev, [item.id]: e.target.value.replace(/\s+/g, '') }))}
+                                            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmInlineRent(item); } }}
+                                          />
+                                          <button data-agy-id="rentalreturnmodal_button_15" type="button" className="btn btn-primary btn-sm" disabled={isBusy} onClick={() => confirmInlineRent(item)}>אשר</button>
+                                          <button data-agy-id="rentalreturnmodal_button_16" type="button" className="btn btn-ghost btn-icon-only btn-sm" disabled={isBusy} onClick={() => { setRentingItemId(null); if (manualEntryItemId === item.id) cancelManualEntry(); }}>
+                                            <svg className="icon"><use href="#i-x" /></svg>
+                                          </button>
+                                        </div>
+
+                                        {manualEntryItemId === item.id ? (
+                                          <div className="callout callout-warning" style={{ flexDirection: 'column', alignItems: 'stretch', gap: '8px', padding: '10px 12px', width: '260px' }}>
+                                            <strong style={{ fontSize: '12.5px' }}>הברקוד לא נקרא - הקלדה ידנית</strong>
+                                            <input data-agy-id="rentalreturnmodal_input_manual_1"
+                                              type="text"
+                                              className="input"
+                                              placeholder="הקלד את מספר הברקוד"
+                                              style={{ direction: 'ltr' }}
+                                              value={manualBarcode1}
+                                              onChange={(e) => setManualBarcode1(e.target.value.replace(/\s+/g, ''))}
+                                              disabled={isBusy}
+                                            />
+                                            <input data-agy-id="rentalreturnmodal_input_manual_2"
+                                              type="text"
+                                              className="input"
+                                              placeholder="הקלד שוב לאימות"
+                                              style={{ direction: 'ltr' }}
+                                              value={manualBarcode2}
+                                              onChange={(e) => setManualBarcode2(e.target.value.replace(/\s+/g, ''))}
+                                              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); confirmManualEntry(item); } }}
+                                              disabled={isBusy}
+                                            />
+                                            <label style={{ display: 'flex', alignItems: 'flex-start', gap: '6px', fontSize: '12px', cursor: 'pointer' }}>
+                                              <input data-agy-id="rentalreturnmodal_checkbox_manual_signature"
+                                                type="checkbox"
+                                                checked={manualSigned}
+                                                onChange={(e) => setManualSigned(e.target.checked)}
+                                                disabled={isBusy}
+                                                style={{ marginTop: '2px' }}
+                                              />
+                                              <span>אני מאשרת שהשמלה אכן בידי עכשיו</span>
+                                            </label>
+                                            <div style={{ display: 'flex', gap: '6px' }}>
+                                              <button data-agy-id="rentalreturnmodal_button_manual_confirm" type="button" className="btn btn-primary btn-sm" disabled={isBusy} onClick={() => confirmManualEntry(item)}>
+                                                אשר הקלדה ידנית
+                                              </button>
+                                              <button data-agy-id="rentalreturnmodal_button_manual_cancel" type="button" className="btn btn-ghost btn-sm" disabled={isBusy} onClick={cancelManualEntry}>
+                                                ביטול
+                                              </button>
+                                            </div>
+                                          </div>
+                                        ) : (
+                                          <button data-agy-id="rentalreturnmodal_button_manual_open"
+                                            type="button"
+                                            className="btn btn-ghost btn-sm"
+                                            style={{ fontSize: '11.5px' }}
+                                            disabled={isBusy}
+                                            onClick={() => { setManualEntryItemId(item.id); setManualBarcode1(''); setManualBarcode2(''); setManualSigned(false); }}
+                                          >
+                                            הברקוד לא עובד? הקלדה ידנית
+                                          </button>
+                                        )}
                                       </div>
                                     ) : (
                                       <button data-agy-id="rentalreturnmodal_button_17" type="button" className="btn btn-primary btn-sm" onClick={() => setRentingItemId(item.id)}>

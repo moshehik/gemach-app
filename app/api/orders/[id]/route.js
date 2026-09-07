@@ -67,7 +67,9 @@ const RECALC_SETTING_KEYS = [
   'REFUND_PERCENTAGE',
   'REFUND_REPAIRS',
   'ENABLE_SET_DISCOUNTS',
-  'CANCELLATION_CREDIT_MINUTES'
+  'CANCELLATION_CREDIT_MINUTES',
+  'premium_pricing_enabled',
+  'premium_categories'
 ];
 
 export async function GET(request, { params }) {
@@ -547,6 +549,7 @@ export async function PUT(request, { params }) {
           ...(data.deliveryDirection !== undefined ? { deliveryDirection: data.deliveryDirection || null } : {}),
           ...(data.deliveryAddress !== undefined ? { deliveryAddress: data.deliveryAddress || null } : {}),
           ...(data.deliveryCity !== undefined ? { deliveryCity: data.deliveryCity || null } : {}),
+          ...(data.deliveryOneDayBefore !== undefined ? { deliveryOneDayBefore: !!data.deliveryOneDayBefore } : {}),
           ...(data.hokDetails !== undefined ? { hokDetails: typeof data.hokDetails === 'string' ? data.hokDetails : JSON.stringify(data.hokDetails) } : {}),
           status: shellExitStatus !== undefined ? shellExitStatus : (data.status !== undefined ? data.status : undefined),
           hasSignedRegulations: data.hasSignedRegulations !== undefined ? data.hasSignedRegulations : undefined,

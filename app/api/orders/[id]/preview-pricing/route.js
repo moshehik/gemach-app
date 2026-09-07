@@ -14,7 +14,9 @@ const SETTING_KEYS = [
   'REFUND_PERCENTAGE',
   'REFUND_REPAIRS',
   'ENABLE_SET_DISCOUNTS',
-  'CANCELLATION_CREDIT_MINUTES'
+  'CANCELLATION_CREDIT_MINUTES',
+  'premium_pricing_enabled',
+  'premium_categories'
 ];
 
 /**

@@ -96,9 +96,12 @@ export default function BulkEmailPage() {
       </div>
       {logs.length > 0 && (
         <div className="card card-pad" style={{ marginTop: 16 }}>
-          <h3>מעקב שליחה ({logs.length})</h3>
+          <h3>מעקב שליחה ואישורים ({logs.length})</h3>
+          <p className="hint" style={{ marginTop: -4, marginBottom: 8 }}>
+            כל מייל נשלח עם קישור &quot;אישור קבלת ההודעה&quot; אישי. העמודה &quot;אישור&quot; מציגה מי לחץ עליו ומתי.
+          </p>
           <table className="data">
-            <thead><tr><th>נמען</th><th>נושא</th><th>סטטוס</th><th>נשלח</th></tr></thead>
+            <thead><tr><th>נמען</th><th>נושא</th><th>סטטוס שליחה</th><th>נשלח</th><th>אישור</th></tr></thead>
             <tbody>
               {logs.map(l => (
                 <tr key={l.id}>
@@ -106,6 +109,15 @@ export default function BulkEmailPage() {
                   <td>{l.subject}</td>
                   <td><span className={`badge ${l.status === 'success' ? 'badge-success' : 'badge-danger'}`}>{l.status}</span></td>
                   <td>{l.sentAt ? new Date(l.sentAt).toLocaleString('he-IL') : ''}</td>
+                  <td>
+                    {l.acknowledgedAt ? (
+                      <span className="badge badge-success" title={new Date(l.acknowledgedAt).toLocaleString('he-IL')}>
+                        אישר · {new Date(l.acknowledgedAt).toLocaleString('he-IL')}
+                      </span>
+                    ) : (
+                      <span className="badge badge-warning">טרם אישר</span>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>

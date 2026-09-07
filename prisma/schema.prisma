@@ -122,6 +122,7 @@ model Employee {
 
   sentNotifications     Notification[]     @relation("SentNotifications")
   receivedNotifications Notification[]     @relation("ReceivedNotifications")
+  handledNotifications  Notification[]     @relation("HandledNotifications")
   Order                 Order[]
   AIChatSession         AIChatSession[]
   errorReports          ErrorReport[]      @relation("EmployeeToErrorReport")
@@ -166,8 +167,21 @@ model Notification {
   tags       NotificationTag[]
   updatedAt  DateTime          @updatedAt
 
+  // #24/#25 — סיווג הודעה: null/undefined = הודעה כללית (כמו קודם),
+  // 'shift_handover' = הודעות בין משמרות (מוצג רק אם shift_handover_notes מופעל),
+  // 'management' = הודעות להנהלה (מוצג רק אם management_messages מופעל).
+  // הודעות מסווגות תמיד receiverId=null (שידור לכולם) — "אשר קריאה"/ארכיון פר-משתמש
+  // ממשיכים להשתמש ב-readBy/archivedBy הקיימים, אין צורך בשדות נוספים לזה.
+  category String? // 'shift_handover' | 'management' | null
+
+  // #25 בלבד — סימון "טופל" ע"י הנהלה (checkAuth('מנהל')). לא רלוונטי ל-shift_handover.
+  handledAt   DateTime?
+  handledById String?
+  handledBy   Employee? @relation("HandledNotifications", fields: [handledById], references: [id])
+
   @@index([receiverId])
   @@index([senderId])
+  @@index([category])
 }
 
 model Shift {
@@ -291,6 +305,7 @@ model Order {
   deliveryCity     String? // עיר משלוח לחישוב מחיר (בקשה 15)
   isDelivery       Boolean @default(false) // האם זו הזמנת משלוח (בקשה 15)
   deliveryDirection String? // הלוך/חזור/הלוך-חזור (בקשה 15)
+  deliveryOneDayBefore Boolean @default(false) // משלוח יוצא יום לפני האירוע במקום יומיים, פר-הזמנה (בקשה 19)
   hokDetails       String? @db.Text // פרטי הוראת קבע בהזמנה (JSON, בקשה 3)
 
   items       OrderItem[]
@@ -491,6 +506,11 @@ model EmailLog {
   employeeId   String?
   sentAt       DateTime @default(now())
   updatedAt    DateTime @updatedAt
+  // תכונה 22 - שליחת מייל לפי תאריך אירוע: קישור אישור קריאה ייחודי (טוקן אקראי,
+  // לא ניתן לניחוש) שמוטמע במייל; confirmToken null עבור כל שאר סוגי המיילים
+  // הקיימים. acknowledgedAt מתמלא ב-GET /api/bulk-email/confirm כשהלקוח לוחץ.
+  confirmToken   String?   @unique
+  acknowledgedAt DateTime?
 
   @@index([customerId])
   @@index([employeeId])

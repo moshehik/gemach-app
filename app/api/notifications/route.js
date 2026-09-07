@@ -5,6 +5,9 @@ import { cookies } from 'next/headers';
 import { parseIdList } from '../../../lib/notificationLists';
 import { renderGenericEmailHtml } from '../../../lib/emailTemplates';
 
+// #24/#25 — קטגוריות הודעה מותרות. כל ערך אחר (כולל undefined) = הודעה כללית.
+const ALLOWED_CATEGORIES = ['shift_handover', 'management'];
+
 export async function GET(request) {
   try {
     const cookieStore = await cookies();
@@ -31,12 +34,15 @@ export async function GET(request) {
         sender: {
           select: { firstName: true, lastName: true }
         },
+        handledBy: {
+          select: { firstName: true, lastName: true }
+        },
         tags: {
           where: { employeeId: employeeId }
         }
       },
       orderBy: { createdAt: 'desc' },
-      take: 100 // Limit to 100 recent notifications
+      take: 150 // Limit to 150 recent notifications — bumped from 100 to leave room for #24/#25 categorized notes alongside general messages
     });
 
     // Map to add an isRead and isArchived computed property for global messages
@@ -94,14 +100,25 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { receiverId, title, content, sendEmail } = body;
+    const { receiverId, title, content, sendEmail, category } = body;
 
     if (!content) {
       return NextResponse.json({ success: false, error: 'Content is required' }, { status: 400 });
     }
 
+    // #24/#25 — הודעות מסווגות (בין משמרות / להנהלה) הן תמיד שידור לכולם,
+    // ומותנות בהגדרת המערכת המתאימה כדי שלא ניתן יהיה לעקוף כיבוי מהצד השרת.
+    const parsedCategory = ALLOWED_CATEGORIES.includes(category) ? category : null;
+    if (parsedCategory) {
+      const settingKey = parsedCategory === 'shift_handover' ? 'shift_handover_notes' : 'management_messages';
+      const setting = await getCachedSetting(settingKey);
+      if (!(setting && setting.value === 'true')) {
+        return NextResponse.json({ success: false, error: 'התכונה כבויה בהגדרות המערכת' }, { status: 403 });
+      }
+    }
+
     // Validate if receiverId is provided, else it's a global message
-    const parsedReceiver = receiverId === 'all' || receiverId === null ? null : receiverId;
+    const parsedReceiver = parsedCategory ? null : (receiverId === 'all' || receiverId === null ? null : receiverId);
 
     const notification = await prisma.notification.create({
       data: {
@@ -109,6 +126,7 @@ export async function POST(request) {
         receiverId: parsedReceiver,
         title: title || 'הודעה חדשה',
         content,
+        category: parsedCategory,
       }
     });
 

@@ -87,6 +87,12 @@ export default function NewOrderPage() {
     isPhoneOrder: false,
     branch: '',
     pickupBranch: '',
+    // 3 - פרטי הוראת קבע להזמנה זו כשנבחר לקוח קיים (בניגוד ל-newCustomer.hok* למטה,
+    // שמשמש רק בזרימת יצירת לקוח חדש ונשמר על גבי Customer) - נשמר על Order.hokDetails (JSON).
+    hokBankName: '',
+    hokBankBranch: '',
+    hokBankAccount: '',
+    hokConsent: false,
   });
   
   const [newItem, setNewItem] = useState({
@@ -1051,6 +1057,29 @@ export default function NewOrderPage() {
         };
       });
 
+      // 3 - פרטי הוראת קבע שנאספו על המסך הזה: או מ-order.hok* (נבחר לקוח קיים, ר'
+      // renderHokFieldsForExistingCustomer) או מ-newCustomer.hok* (נבחר "לקוח חדש" - נשמרים גם
+      // על Customer דרך handleSaveNewCustomerAndProceed, אבל עד כה מעולם לא הגיעו לתוך ההזמנה
+      // עצמה, והשאירו את Order.hokDetails מת לגמרי). undefined משמעו "לא לגעת בשדה" בשרת.
+      let hokDetailsPayload;
+      if (settings.hok_enabled === 'true') {
+        if (order.hokBankName || order.hokBankBranch || order.hokBankAccount || order.hokConsent) {
+          hokDetailsPayload = JSON.stringify({
+            bankName: order.hokBankName || '',
+            bankBranch: order.hokBankBranch || '',
+            bankAccount: order.hokBankAccount || '',
+            consent: !!order.hokConsent
+          });
+        } else if (newCustomer.hokBankName || newCustomer.hokBankBranch || newCustomer.hokBankAccount || newCustomer.hokConsent) {
+          hokDetailsPayload = JSON.stringify({
+            bankName: newCustomer.hokBankName || '',
+            bankBranch: newCustomer.hokBankBranch || '',
+            bankAccount: newCustomer.hokBankAccount || '',
+            consent: !!newCustomer.hokConsent
+          });
+        }
+      }
+
       const payload = {
         customerId: order.customerId,
         eventDate: order.eventDate,
@@ -1072,6 +1101,10 @@ export default function NewOrderPage() {
         isPhoneOrder: !!order.isPhoneOrder,
         branch: order.branch || null,
         pickupBranch: order.pickupBranch || null,
+        // 19 - משלוח יוצא יום לפני האירוע במקום יומיים, פר-הזמנה (ר' checkbox למטה ליד
+        // delivery_one_day_before_option) - נצרך ב-GET /api/deliveries לחישוב תאריך היציאה בפועל.
+        deliveryOneDayBefore: !!order.deliveryOneDayBefore,
+        ...(hokDetailsPayload !== undefined ? { hokDetails: hokDetailsPayload } : {}),
         paymentsList: finalPaymentsList,
         // Set once a card was charged: the order must be saved under the number that already
         // went out with the charge, not under a freshly allocated one.
@@ -1281,6 +1314,37 @@ export default function NewOrderPage() {
 
   const busy = saving || isProcessingCredit;
 
+  // 3 - פרטי הוראת קבע כשנבחר לקוח קיים (טלפון/חיפוש-שם) - אותם שדות/תוויות בדיוק
+  // כמו ב"פרטים נוספים" של לקוח חדש (ר' newCustomer.hok* למטה), רק ששומרים אותם על
+  // order.hok* ומשגרים אותם כ-Order.hokDetails (JSON) בשמירה - ר' handleSaveNewCustomerAndProceed
+  // מול payload ב-executeSaveOrderForList.
+  const renderHokFieldsForExistingCustomer = () => {
+    if (settings.hok_enabled !== 'true') return null;
+    return (
+      <div className="card" style={{ marginTop: 10, padding: 12, background: 'var(--surface-alt)' }}>
+        <h4 style={{ margin: '0 0 8px' }}>פרטי הוראת קבע (3)</h4>
+        <div className="form-grid">
+          <div className="field">
+            <label>בנק</label>
+            <input type="text" className="input" value={order.hokBankName || ''} onChange={e => setOrder(prev => ({ ...prev, hokBankName: e.target.value }))} />
+          </div>
+          <div className="field">
+            <label>סניף</label>
+            <input type="text" className="input" value={order.hokBankBranch || ''} onChange={e => setOrder(prev => ({ ...prev, hokBankBranch: e.target.value }))} />
+          </div>
+          <div className="field">
+            <label>חשבון</label>
+            <input type="text" className="input" style={{ direction: 'ltr' }} value={order.hokBankAccount || ''} onChange={e => setOrder(prev => ({ ...prev, hokBankAccount: e.target.value }))} />
+          </div>
+        </div>
+        <label className="checkbox-row" style={{ cursor: 'pointer', marginTop: 8 }}>
+          <input type="checkbox" checked={!!order.hokConsent} onChange={e => setOrder(prev => ({ ...prev, hokConsent: e.target.checked }))} />
+          <span>מאשר/ת גביה אוטומטית בהו&quot;ק במקרה של איחור/נזק</span>
+        </label>
+      </div>
+    );
+  };
+
   return (
     <>
       <NewOrderShell
@@ -1435,6 +1499,7 @@ export default function NewOrderPage() {
                     </a>
                   </p>
                 )}
+                {renderHokFieldsForExistingCustomer()}
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <button type="button" className="btn btn-primary" style={{ flex: 1, minWidth: '160px' }} onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)}>
                     <svg className="icon"><use href="#i-check" /></svg> כן, זה הלקוח
@@ -1491,6 +1556,7 @@ export default function NewOrderPage() {
                     )}
                   </div>
                 )}
+                {order.selectedCustomer && renderHokFieldsForExistingCustomer()}
               </div>
             )}
 
@@ -1687,7 +1753,7 @@ export default function NewOrderPage() {
               </NocCollapsible>
 
               {/* 15 + 13/34 - משלוח, טלפוני וסניף (מותנה ב-toggle, כבוי = מוסתר) */}
-              {(settings.phone_order_marker_enabled === 'true' || settings.branches_enabled === 'true' || settings.delivery_show_in_order !== 'false') && (
+              {(settings.phone_order_marker_enabled === 'true' || settings.track_branch_on_order === 'true' || settings.branches_enabled === 'true' || settings.delivery_show_in_order !== 'false') && (
               <div className="card card-pad" style={{ marginTop: 12 }}>
                 <h3 style={{ margin: '0 0 10px', fontSize: 14 }}>משלוח / סניף / טלפוני</h3>
                 <div className="form-grid">
@@ -1699,22 +1765,26 @@ export default function NewOrderPage() {
                       </label>
                     </div>
                   )}
+                  {/* 13 - זיהוי סניף ביצוע: מותנה ב-track_branch_on_order (לא ב-branches_enabled -
+                      זה שער ה"התייחסות לסניפים" המורחבת של בקשה 34 בלבד, ר' סניף איסוף למטה) */}
+                  {settings.track_branch_on_order === 'true' && (
+                    <div className="field">
+                      <label>סניף ביצוע (13)</label>
+                      <input type="text" className="input" value={order.branch || ''} onChange={e => setOrder(prev => ({ ...prev, branch: e.target.value }))} placeholder="לדוגמה: נוה יעקב" list="branch-list" />
+                    </div>
+                  )}
                   {settings.branches_enabled === 'true' && (
-                    <>
-                      <div className="field">
-                        <label>סניף ביצוע (34)</label>
-                        <input type="text" className="input" value={order.branch || ''} onChange={e => setOrder(prev => ({ ...prev, branch: e.target.value }))} placeholder="לדוגמה: נוה יעקב" list="branch-list" />
-                      </div>
-                      <div className="field">
-                        <label>סניף איסוף (34)</label>
-                        <input type="text" className="input" value={order.pickupBranch || ''} onChange={e => setOrder(prev => ({ ...prev, pickupBranch: e.target.value }))} placeholder="לדוגמה: בית שמש" list="branch-list" />
-                      </div>
-                      <datalist id="branch-list">
-                        {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
-                          <option key={b} value={b} />
-                        ))}
-                      </datalist>
-                    </>
+                    <div className="field">
+                      <label>סניף איסוף (34)</label>
+                      <input type="text" className="input" value={order.pickupBranch || ''} onChange={e => setOrder(prev => ({ ...prev, pickupBranch: e.target.value }))} placeholder="לדוגמה: בית שמש" list="branch-list" />
+                    </div>
+                  )}
+                  {(settings.track_branch_on_order === 'true' || settings.branches_enabled === 'true') && (
+                    <datalist id="branch-list">
+                      {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
+                        <option key={b} value={b} />
+                      ))}
+                    </datalist>
                   )}
                 </div>
                 <div className="form-grid" style={{ marginTop: 8 }}>

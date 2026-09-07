@@ -3,8 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import { cacheNamespace, fetchJson } from '@/app/lib/pageCache';
 
-// 24/25 - הודעות משמרת/הנהלה (toggle בהגדרות -> הודעות)
-const MESSAGES_HELP_NOTE = '24 בין משמרת למשמרת / 25 להנהלה - בחר תגית או נמען הנהלה. כבוי = מוסתר בהגדרות → הודעות.';
+// #24/#25 — הודעות "בין משמרות" ו"להנהלה" ממומשות כאן כשני טאבים ייעודיים,
+// כשתיהן שידור-לכולם על גבי Notification.category ('shift_handover' / 'management').
+// כל טאב מוצג רק כשה-SystemSetting המתאים מופעל (shift_handover_notes /
+// management_messages, קטגוריה "הודעות" בהגדרות המערכת) — נאכף גם בשרת
+// ב-POST /api/notifications וב-POST /api/notifications/handle.
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js. כניסה חוזרת לדף מציגה את
 // הנתונים הקודמים מיידית, וה-fetch של הדף הופך לרענון שקט ברקע.
@@ -12,7 +15,7 @@ const messagesCache = cacheNamespace('messages');
 const MESSAGES_CACHE_KEY = 'all';
 
 export default function MessagesPage() {
-  const [activeTab, setActiveTab] = useState('incoming'); // 'incoming', 'outgoing', 'archived', 'compose'
+  const [activeTab, setActiveTab] = useState('incoming'); // 'incoming', 'outgoing', 'archived', 'compose', 'shift', 'management'
   const [incoming, setIncoming] = useState([]);
   const [outgoing, setOutgoing] = useState([]);
   const [archived, setArchived] = useState([]);
@@ -21,6 +24,17 @@ export default function MessagesPage() {
   const [isSavingSettings, setIsSavingSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  // #24/#25 — הודעות בין משמרות / להנהלה. כל אחת שידור-לכולם (receiverId=null),
+  // מסוננות ע"י category מתוך אותה רשימת "notifications" גולמית מהשרת.
+  const [shiftHandoverNotes, setShiftHandoverNotes] = useState([]);
+  const [managementNotes, setManagementNotes] = useState([]);
+  const [shiftHandoverEnabled, setShiftHandoverEnabled] = useState(false);
+  const [managementMessagesEnabled, setManagementMessagesEnabled] = useState(false);
+  const [shiftNoteText, setShiftNoteText] = useState('');
+  const [managementNoteText, setManagementNoteText] = useState('');
+  const [isSendingShiftNote, setIsSendingShiftNote] = useState(false);
+  const [isSendingManagementNote, setIsSendingManagementNote] = useState(false);
 
   // Compose state
   const [receiverId, setReceiverId] = useState('all');
@@ -37,25 +51,40 @@ export default function MessagesPage() {
 
   // מפרק תשובת שרת (או עותק שמור במטמון) לתוך ה-state — אותה לוגיקה בדיוק
   // שהייתה אינליין בתוך fetchData לפני חיבור הדף למטמון המשותף.
-  const applyData = (notifData, empData, meData) => {
+  const applyData = (notifData, empData, meData, settingsData) => {
     if (meData && meData.success && meData.employee) {
       setCurrentUser(meData.employee);
+    }
+
+    if (Array.isArray(settingsData)) {
+      setShiftHandoverEnabled(settingsData.find(s => s.key === 'shift_handover_notes')?.value === 'true');
+      setManagementMessagesEnabled(settingsData.find(s => s.key === 'management_messages')?.value === 'true');
     }
 
     if (notifData && notifData.success) {
       const inc = notifData.notifications || [];
       const out = notifData.outgoing || [];
 
+      // #24/#25 — הודעות מסווגות הן שידור-לכולם, כך שהן תמיד מגיעות דרך "inc"
+      // (receiverId=null) גם כשהמשתמש הנוכחי הוא השולח שלהן. מסננים אותן החוצה
+      // מהזרם הכללי (נכנסות/יוצאות/ארכיון) כדי שלא ייכנסו לשם בכפילות, ומרכזים
+      // כל אחת ברשימה הייעודית שלה, החדש ביותר קודם (כבר ממוין כך מהשרת).
+      const generalInc = inc.filter(n => n.category !== 'shift_handover' && n.category !== 'management');
+      const generalOut = out.filter(n => n.category !== 'shift_handover' && n.category !== 'management');
+
+      setShiftHandoverNotes(inc.filter(n => n.category === 'shift_handover'));
+      setManagementNotes(inc.filter(n => n.category === 'management'));
+
       const allArchived = [];
       const filteredInc = [];
       const filteredOut = [];
 
-      inc.forEach(n => {
+      generalInc.forEach(n => {
         if (n.isArchived) allArchived.push({ ...n, direction: 'incoming' });
         else filteredInc.push(n);
       });
 
-      out.forEach(n => {
+      generalOut.forEach(n => {
         if (n.isArchived) allArchived.push({ ...n, direction: 'outgoing' });
         else filteredOut.push(n);
       });
@@ -78,21 +107,22 @@ export default function MessagesPage() {
     // הופך לרענון שקט (בלי מסך טעינה). אחרת מתנהגים כמו קודם.
     const cached = messagesCache.get(MESSAGES_CACHE_KEY);
     if (cached) {
-      applyData(cached.notifData, cached.empData, cached.meData);
+      applyData(cached.notifData, cached.empData, cached.meData, cached.settingsData);
       setLoading(false);
     } else {
       setLoading(true);
     }
     try {
       // fetchJson מאחד בקשות GET מקבילות לאותו URL (ראה pageCache.js)
-      const [notifData, empData, meData] = await Promise.all([
+      const [notifData, empData, meData, settingsData] = await Promise.all([
         fetchJson('/api/notifications', { cache: 'no-store' }),
         fetchJson('/api/employees', { cache: 'no-store' }),
-        fetchJson('/api/me', { cache: 'no-store' })
+        fetchJson('/api/me', { cache: 'no-store' }),
+        fetchJson('/api/settings', { cache: 'no-store' })
       ]);
 
-      messagesCache.set(MESSAGES_CACHE_KEY, { notifData, empData, meData });
-      applyData(notifData, empData, meData);
+      messagesCache.set(MESSAGES_CACHE_KEY, { notifData, empData, meData, settingsData });
+      applyData(notifData, empData, meData, settingsData);
     } catch (err) {
       setError('שגיאה בטעינת נתונים');
     } finally {
@@ -112,13 +142,86 @@ export default function MessagesPage() {
         body: JSON.stringify({ notificationId: id })
       });
       if (res.ok) {
-        setIncoming(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+        const markRead = n => n.id === id ? { ...n, isRead: true } : n;
+        setIncoming(prev => prev.map(markRead));
+        setShiftHandoverNotes(prev => prev.map(markRead));
+        setManagementNotes(prev => prev.map(markRead));
         // העדכון בוצע רק ב-state המקומי — מפנים את העותק במטמון כדי שכניסה
         // חוזרת לדף לא תציג לרגע את המצב הישן (לא-נקרא)
         messagesCache.delete(MESSAGES_CACHE_KEY);
       }
     } catch (err) {
       console.error(err);
+    }
+  };
+
+  // #24 — שליחת הודעת "בין משמרות" חדשה (שידור לכולם, category='shift_handover')
+  const handleSendShiftNote = async () => {
+    if (!shiftNoteText.trim()) return;
+    setIsSendingShiftNote(true);
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiverId: 'all', title: 'הודעת משמרת', content: shiftNoteText, category: 'shift_handover' })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setShiftNoteText('');
+        messagesCache.delete(MESSAGES_CACHE_KEY);
+        fetchData();
+      } else {
+        setError(data.error || 'שגיאה בשליחת ההודעה');
+      }
+    } catch (err) {
+      setError('שגיאת תקשורת');
+    } finally {
+      setIsSendingShiftNote(false);
+    }
+  };
+
+  // #25 — שליחת הודעת "להנהלה" חדשה (שידור לכולם, category='management')
+  const handleSendManagementNote = async () => {
+    if (!managementNoteText.trim()) return;
+    setIsSendingManagementNote(true);
+    try {
+      const res = await fetch('/api/notifications', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ receiverId: 'all', title: 'הודעה להנהלה', content: managementNoteText, category: 'management' })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setManagementNoteText('');
+        messagesCache.delete(MESSAGES_CACHE_KEY);
+        fetchData();
+      } else {
+        setError(data.error || 'שגיאה בשליחת ההודעה');
+      }
+    } catch (err) {
+      setError('שגיאת תקשורת');
+    } finally {
+      setIsSendingManagementNote(false);
+    }
+  };
+
+  // #25 — סימון/ביטול "טופל" ע"י הנהלה בלבד (השרת אוכף checkAuth('מנהל') שוב)
+  const handleToggleHandled = async (id, handled) => {
+    try {
+      const res = await fetch('/api/notifications/handle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notificationId: id, handled })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setManagementNotes(prev => prev.map(n => n.id === id ? { ...n, handledAt: data.notification.handledAt, handledBy: data.notification.handledBy } : n));
+        messagesCache.delete(MESSAGES_CACHE_KEY);
+      } else {
+        setError(data.error || 'שגיאה בעדכון סטטוס טיפול');
+      }
+    } catch (err) {
+      setError('שגיאת תקשורת');
     }
   };
 
@@ -242,6 +345,78 @@ export default function MessagesPage() {
   // ומשאיר את קו התחתית וצבע הפעיל להיקבע ע"י מחלקת ה-tab עצמה.
   const tabResetStyle = { background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' };
   const paneTitleStyle = { fontSize: '17px', marginBottom: '14px' };
+
+  // #25 — הרשאת "מנהל" לסימון הודעות הנהלה כטופל: roleId 1 (מנהל) / 0 (הנהלה
+  // ראשית) / 2 (מתכנת) — תואם ROLE_LEVELS['מנהל'] כפי שמוגדר ב-lib/auth.js.
+  const isManagerRole = currentUser && [0, 1, 2].includes(currentUser.roleId);
+
+  const formatNoteAuthor = (notif) => notif.sender ? `${notif.sender.firstName || ''} ${notif.sender.lastName || ''}`.trim() : 'מערכת הגמ"ח';
+
+  const renderShiftNoteCard = (notif) => (
+    <div key={notif.id} className="card card-pad" style={!notif.isRead ? { background: 'var(--primary-tint)', borderColor: 'var(--primary)' } : undefined}>
+      <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+        <div className="avatar">{formatNoteAuthor(notif).charAt(0) || 'מ'}</div>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+            <h3 style={{ fontSize: '14.5px', margin: 0 }}>{formatNoteAuthor(notif)}</h3>
+            <span className="hint" style={{ color: 'var(--text-3)' }}>{new Date(notif.createdAt).toLocaleString('he-IL')}</span>
+            <div style={{ marginInlineStart: 'auto' }}>
+              {notif.isRead ? (
+                <span className="badge badge-success">
+                  <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-check" /></svg>
+                  אושרה קריאה
+                </span>
+              ) : (
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => markAsRead(notif.id)}>
+                  <svg className="icon"><use href="#i-check" /></svg>
+                  אשר קריאה
+                </button>
+              )}
+            </div>
+          </div>
+          <p style={{ margin: '10px 0 0', color: 'var(--text)', fontSize: '13.5px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{notif.content}</p>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderManagementNoteCard = (notif) => {
+    const isHandled = !!notif.handledAt;
+    return (
+      <div key={notif.id} className="card card-pad" style={isHandled ? undefined : { background: 'var(--warning-tint)', borderColor: 'var(--warning)' }}>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+          <div className="avatar">{formatNoteAuthor(notif).charAt(0) || 'מ'}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: '14.5px', margin: 0 }}>{formatNoteAuthor(notif)}</h3>
+              <span className="hint" style={{ color: 'var(--text-3)' }}>{new Date(notif.createdAt).toLocaleString('he-IL')}</span>
+              <div style={{ display: 'flex', gap: '6px', marginInlineStart: 'auto', flexWrap: 'wrap', alignItems: 'center' }}>
+                {isHandled ? (
+                  <span className="badge badge-success" title={notif.handledBy ? `טופל ע"י ${notif.handledBy.firstName || ''} ${notif.handledBy.lastName || ''}`.trim() : undefined}>
+                    <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-check-circle" /></svg>
+                    טופל
+                  </span>
+                ) : (
+                  <span className="badge badge-warning">ממתין לטיפול</span>
+                )}
+                {isManagerRole && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleToggleHandled(notif.id, !isHandled)}
+                    title={isHandled ? 'בטל סימון טופל' : 'סמן כטופל'}
+                  >
+                    {isHandled ? 'בטל טופל' : 'סמן כטופל'}
+                  </button>
+                )}
+              </div>
+            </div>
+            <p style={{ margin: '10px 0 0', color: 'var(--text)', fontSize: '13.5px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{notif.content}</p>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   const renderTags = (notif) => {
     const tags = notif.personalTags || [];
@@ -389,6 +564,20 @@ export default function MessagesPage() {
           ארכיון
           {archived.length > 0 && <span className="badge badge-neutral" style={{ marginInlineStart: '4px' }}>{archived.length}</span>}
         </button>
+        {shiftHandoverEnabled && (
+          <button type="button" className={activeTab === 'shift' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('shift')} title="הודעות בין משמרות">
+            <svg className="icon"><use href="#i-refresh" /></svg>
+            בין משמרות
+            {shiftHandoverNotes.filter(n => !n.isRead).length > 0 && <span className="badge badge-danger" style={{ marginInlineStart: '4px' }}>{shiftHandoverNotes.filter(n => !n.isRead).length}</span>}
+          </button>
+        )}
+        {managementMessagesEnabled && (
+          <button type="button" className={activeTab === 'management' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('management')} title="הודעות להנהלה">
+            <svg className="icon"><use href="#i-alert-circle" /></svg>
+            להנהלה
+            {managementNotes.filter(n => !n.handledAt).length > 0 && <span className="badge badge-warning" style={{ marginInlineStart: '4px' }}>{managementNotes.filter(n => !n.handledAt).length}</span>}
+          </button>
+        )}
         <button type="button" className={activeTab === 'settings' ? 'tab active' : 'tab'} style={tabResetStyle} onClick={() => setActiveTab('settings')} title="הגדרות התראות">
           <svg className="icon"><use href="#i-settings" /></svg>
           הגדרות
@@ -448,6 +637,78 @@ export default function MessagesPage() {
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {visibleOutgoing.map(notif => renderMessageCard(notif, 'outgoing'))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* #24 — SHIFT HANDOVER TAB: הודעות בין משמרות, שידור לכולם, "אשר קריאה" פר-עובד */}
+      {activeTab === 'shift' && shiftHandoverEnabled && (
+        <div>
+          <h2 style={paneTitleStyle}>הודעות בין משמרות</h2>
+          <div className="card card-pad" style={{ maxWidth: '560px', marginBottom: '20px' }}>
+            <div className="field">
+              <label htmlFor="shift-note-content">הודעה חדשה למשמרת הבאה:</label>
+              <textarea
+                id="shift-note-content"
+                className="textarea"
+                value={shiftNoteText}
+                onChange={e => setShiftNoteText(e.target.value)}
+                placeholder="לדוגמה: 3 שמלות בייבוש, אין להשכיר מידה 40 עד שיתייבשו..."
+                style={{ minHeight: '90px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-primary" onClick={handleSendShiftNote} disabled={isSendingShiftNote || !shiftNoteText.trim()}>
+                {isSendingShiftNote ? 'שולח...' : (<><svg className="icon"><use href="#i-plus" /></svg>הוסף הודעה</>)}
+              </button>
+            </div>
+          </div>
+
+          {shiftHandoverNotes.length === 0 ? (
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-refresh" /></svg>
+              <p>אין הודעות בין משמרות כרגע</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {shiftHandoverNotes.map(renderShiftNoteCard)}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* #25 — MANAGEMENT TAB: הודעות להנהלה, שידור לכולם, "סמן כטופל" למנהלים בלבד */}
+      {activeTab === 'management' && managementMessagesEnabled && (
+        <div>
+          <h2 style={paneTitleStyle}>הודעות להנהלה</h2>
+          <div className="card card-pad" style={{ maxWidth: '560px', marginBottom: '20px' }}>
+            <div className="field">
+              <label htmlFor="management-note-content">הודעה/שאלה חדשה להנהלה:</label>
+              <textarea
+                id="management-note-content"
+                className="textarea"
+                value={managementNoteText}
+                onChange={e => setManagementNoteText(e.target.value)}
+                placeholder="לדוגמה: לקוחה X התלוננה על Y / שאלת מדיניות..."
+                style={{ minHeight: '90px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button type="button" className="btn btn-primary" onClick={handleSendManagementNote} disabled={isSendingManagementNote || !managementNoteText.trim()}>
+                {isSendingManagementNote ? 'שולח...' : (<><svg className="icon"><use href="#i-plus" /></svg>שלח להנהלה</>)}
+              </button>
+            </div>
+          </div>
+
+          {managementNotes.length === 0 ? (
+            <div className="empty-state">
+              <svg className="icon"><use href="#i-alert-circle" /></svg>
+              <p>אין הודעות להנהלה כרגע</p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {managementNotes.map(renderManagementNoteCard)}
             </div>
           )}
         </div>
