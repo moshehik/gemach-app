@@ -20,8 +20,8 @@ const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, 
 // addDaysSkippingWeekends - same helper components/orders/RentalReturnModal.js uses
 // for the late-return check, so both stay in sync with one implementation).
 
-// שעת ההחזרה המוצגת אינה נשלפת מהמערכת - אין הגדרת SystemSetting לשעת החזרה
-// סטנדרטית - ומוצגת כברירת מחדל קבועה לפי הדוגמה שנמסרה לדוח הבאגים.
+// שעת ההחזרה נשלפת מהגדרת standard_return_hour (הגדרות מערכת > הדפסה);
+// זהו רק ה-fallback לשעה שמוצגת אם השורה עוד לא נוצרה ב-DB.
 const STANDARD_RETURN_HOUR = '13:00';
 
 export default function PrintOrderPage() {
@@ -71,7 +71,9 @@ export default function PrintOrderPage() {
           gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ״ח שמלות',
           gmachAddress: settingsData.find(s => s.key === 'gmach_address')?.value || '',
           gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
-          gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || ''
+          gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || '',
+          returnHour: settingsData.find(s => s.key === 'standard_return_hour')?.value || STANDARD_RETURN_HOUR,
+          beltNotice: settingsData.find(s => s.key === 'rental_belt_notice')?.value || ''
         };
         setPrintSettings(pSettings);
       }
@@ -432,6 +434,11 @@ export default function PrintOrderPage() {
         .return-details-box strong {
           color: #111;
         }
+        .belt-notice-line {
+          margin-top: 6px;
+          font-size: 13px;
+          color: #444;
+        }
         .rental-notes-box {
           border: 1px solid #e5e5e5;
           padding: 15px;
@@ -496,7 +503,10 @@ export default function PrintOrderPage() {
                   <div className="bsd">בס&quot;ד</div>
                   {printType === 'rental' && returnByDate && (
                     <div className="return-details-box">
-                      <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {STANDARD_RETURN_HOUR}
+                      <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
+                      {printSettings?.beltNotice && (
+                        <div className="belt-notice-line">{printSettings.beltNotice}</div>
+                      )}
                     </div>
                   )}
                   <div className="print-header">
@@ -680,7 +690,7 @@ export default function PrintOrderPage() {
                         <span style={{ display: 'inline-block', width: '200px', borderBottom: '1px dashed #999', margin: '0 10px' }}></span>
                       </div>
                       <div className="rental-footer-note">
-                        נא להחזיר טופס זה חתום בעת החזרת השמלות
+                        יש להחזיר טופס זה חתום בעת החזרת השמלות
                       </div>
                     </div>
                   )}

@@ -543,8 +543,20 @@ async function processEmployees() {
 
   console.log(`  Access rows: ${rows.length} | will create: ${toCreate} | will update: ${toUpdate}`);
   console.log(`  NOTE: password is set on create only, never overwritten for existing employees.`);
+  console.log(`  NOTE: roleId is set on create only, never overwritten for existing employees (see below).`);
 
   const baseCols = ['firstName', 'lastName', 'phone1', 'phone2', 'city', 'street', 'houseNum', 'email', 'joinDate', 'fullName', 'notes', 'emailSuffix', 'roleId', 'isActive', 'hourlyWage', 'paymentMethod', 'travelExpenses', 'updatedAt'];
+  // roleId (0=הנהלה ראשית, 1=מנהל, 2=מתכנת) is an app-only concept promoted
+  // manually in /employees - it has no real equivalent in Access's מס_מחלקה
+  // (department number), which we only borrow as a starting value for BRAND
+  // NEW employees. Bug found 2026-09-07 (chased from error-report thread
+  // d64d3027/3a5d9f8b/b4de5aff): re-running this import on an EXISTING
+  // employee silently overwrote roleId back from Access on every run,
+  // wiping out any head-management promotion made in the app - reproduced
+  // live on Employee a1ddec72 (רחלי שפרינצלס), whose roleId flipped from 0
+  // back to null between two checks minutes apart with no in-app edit in
+  // between. Excluded from updateColumns below, same treatment as password.
+  const updateColsExisting = baseCols.filter(c => c !== 'roleId');
 
   const createResult = await bulkUpsert({
     label: 'Employee (new)', table: 'Employee', conflictCol: 'legacyId',
@@ -555,7 +567,7 @@ async function processEmployees() {
   const updateResult = await bulkUpsert({
     label: 'Employee (existing)', table: 'Employee', conflictCol: 'legacyId',
     columns: ['id', 'legacyId', ...baseCols],
-    updateColumns: baseCols, // password intentionally excluded
+    updateColumns: updateColsExisting, // password AND roleId intentionally excluded
     rows: updateRows,
   });
 

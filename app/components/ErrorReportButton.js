@@ -15,6 +15,10 @@ export default function ErrorReportButton() {
   const [isProgrammer, setIsProgrammer] = useState(false);
   const [isManager, setIsManager] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  // error_report_handled_at_bottom (הגדרות > תצוגה) - פניות שסומנו "טופל" יורדות
+  // לתחתית רשימת הפתוחות, כדי שפניות חדשות/לא-מטופלות יבלטו למעלה. ברירת מחדל
+  // true כשהשורה עוד לא נוצרה ב-DB.
+  const [handledAtBottom, setHandledAtBottom] = useState(true);
 
   const [selectedReport, setSelectedReport] = useState(null);
   const [replyText, setReplyText] = useState('');
@@ -208,6 +212,16 @@ export default function ErrorReportButton() {
     }
   }
 
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => {
+        const s = Array.isArray(data) ? data.find(x => x.key === 'error_report_handled_at_bottom') : null;
+        if (s) setHandledAtBottom(s.value !== 'false');
+      })
+      .catch(() => {});
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!isManager && !isProgrammer) {
@@ -379,7 +393,12 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
   };
 
   const unreadCount = reports.filter(r => r.status !== 'ARCHIVED' && ((isProgrammer && !r.isReadByProgrammer) || (!isProgrammer && !r.isReadByUser))).length;
-  const openReports = reports.filter(r => r.status !== 'ARCHIVED');
+  const openReportsRaw = reports.filter(r => r.status !== 'ARCHIVED');
+  // מיון יציב (Array.prototype.sort הוא stable) - רק דוחף "טופל" לסוף, לא משנה
+  // סדר בתוך כל קבוצה.
+  const openReports = handledAtBottom
+    ? [...openReportsRaw].sort((a, b) => (a.isHandled === b.isHandled ? 0 : a.isHandled ? 1 : -1))
+    : openReportsRaw;
   const archivedReports = reports.filter(r => r.status === 'ARCHIVED');
 
   // חיפוש בפניות - כמו במייל, מחפש בטקסט, בשם המדווח, בכותרת ובתגובות

@@ -1159,7 +1159,7 @@ export default function CustomerInventoryViewer() {
                     </thead>
                     <tbody>
                       {displayDresses.map(model => {
-                        const { sizesArray, totalAvailable, totalUnits } = getModelSizeInfo(model);
+                        const { sizesArray, totalAvailable } = getModelSizeInfo(model);
                         const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
                         return (
                           <tr key={model.id} onClick={() => handleModelDoubleClick(model)} style={{ cursor: isLocked ? 'default' : 'pointer' }}>
@@ -1171,7 +1171,7 @@ export default function CustomerInventoryViewer() {
                             <td>
                               {model.priceCategory ? <span className="ka-badge ka-badge-neutral">{model.priceCategory}</span> : '—'}
                             </td>
-                            <td style={{ fontWeight: 800, color: totalAvailable > 0 ? 'var(--sage)' : 'var(--brick)' }}>{totalAvailable}/{totalUnits}</td>
+                            <td style={{ fontWeight: 800, color: totalAvailable > 0 ? 'var(--sage)' : 'var(--brick)' }}>{totalAvailable}</td>
                             <td>
                               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px' }}>
                                 {visibleSizesArr.length === 0 ? (
@@ -1180,9 +1180,9 @@ export default function CustomerInventoryViewer() {
                                   <span key={sName}
                                     className={`ka-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
                                     onClick={(e) => { e.stopPropagation(); handleModelDoubleClick(model, sName); }}
-                                    title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
+                                    title={`מידה ${sName}: ${sData.available} פנויות`}
                                     style={{ cursor: isLocked ? 'default' : 'pointer' }}>
-                                    {sName} <span style={{ opacity: 0.45 }}>· {sData.available}/{sData.total}</span>
+                                    {sName} <span style={{ opacity: 0.45 }}>· {sData.available}</span>
                                   </span>
                                 ))}
                               </div>
@@ -1196,7 +1196,7 @@ export default function CustomerInventoryViewer() {
               ) : viewMode === 'rows' ? (
                 <div className="ka-results-list" style={{ zoom: zoomLevel }}>
                   {displayDresses.map(model => {
-                    const { sizesArray, totalAvailable, totalUnits } = getModelSizeInfo(model);
+                    const { sizesArray, totalAvailable } = getModelSizeInfo(model);
                     const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
 
                     return (
@@ -1214,7 +1214,7 @@ export default function CustomerInventoryViewer() {
 
                         <div className={`ka-avail-line ${totalAvailable > 0 ? 'ok' : 'bad'}`}>
                           <svg className="icon"><use href={totalAvailable > 0 ? '#i-check-circle' : '#i-alert-tri'} /></svg>
-                          {totalAvailable > 0 ? `${totalAvailable} יחידות פנויות מתוך ${totalUnits}` : 'אין יחידות פנויות לתאריך זה'}
+                          {totalAvailable > 0 ? `${totalAvailable} יחידות פנויות` : 'אין יחידות פנויות לתאריך זה'}
                         </div>
 
                         <div className="ka-size-row">
@@ -1225,14 +1225,14 @@ export default function CustomerInventoryViewer() {
                               <span
                                 key={sName}
                                 className={`ka-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
-                                title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
+                                title={`מידה ${sName}: ${sData.available} פנויות`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleModelDoubleClick(model, sName);
                                 }}
                                 style={{ cursor: isLocked ? 'default' : 'pointer' }}
                               >
-                                {sName} <span style={{ opacity: 0.45 }}>· {sData.available}/{sData.total}</span>
+                                {sName} <span style={{ opacity: 0.45 }}>· {sData.available}</span>
                               </span>
                             ))
                           )}
@@ -1244,7 +1244,7 @@ export default function CustomerInventoryViewer() {
               ) : (
                 <div className="ka-results-grid" style={{ zoom: zoomLevel }}>
                   {displayDresses.map(model => {
-                    const { sizesArray, totalAvailable, totalUnits } = getModelSizeInfo(model);
+                    const { sizesArray, totalAvailable } = getModelSizeInfo(model);
                     const visibleSizesArr = showZeroSizes ? sizesArray : sizesArray.filter(([, d]) => d.available > 0);
 
                     return (
@@ -1261,7 +1261,7 @@ export default function CustomerInventoryViewer() {
 
                         <div className={`ka-avail-line ${totalAvailable > 0 ? 'ok' : 'bad'}`}>
                           <svg className="icon"><use href={totalAvailable > 0 ? '#i-check-circle' : '#i-alert-tri'} /></svg>
-                          {totalAvailable > 0 ? `${totalAvailable} יחידות פנויות מתוך ${totalUnits}` : 'אין יחידות פנויות לתאריך זה'}
+                          {totalAvailable > 0 ? `${totalAvailable} יחידות פנויות` : 'אין יחידות פנויות לתאריך זה'}
                         </div>
 
                         <div className="ka-size-row">
@@ -1272,14 +1272,14 @@ export default function CustomerInventoryViewer() {
                               <span
                                 key={sName}
                                 className={`ka-size-pill ${sData.available > 0 ? 'avail' : 'out'}`}
-                                title={`מידה ${sName}: ${sData.available} פנויות מתוך ${sData.total}`}
+                                title={`מידה ${sName}: ${sData.available} פנויות`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleModelDoubleClick(model, sName);
                                 }}
                                 style={{ cursor: isLocked ? 'default' : 'pointer' }}
                               >
-                                {sName} <span style={{ opacity: 0.45 }}>· {sData.available}/{sData.total}</span>
+                                {sName} <span style={{ opacity: 0.45 }}>· {sData.available}</span>
                               </span>
                             ))
                           )}

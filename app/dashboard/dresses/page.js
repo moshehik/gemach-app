@@ -22,6 +22,10 @@ export default function DressesManagement() {
     name: '', size: '', serialNumber: '', rentalsCountMin: '', notInUse: false, inRepair: false, itemDeleted: false
   });
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  // הוספה/מחיקה של דגם היא פעולת ניהול המוגבלת להנהלה ראשית/מתכנת בשרת
+  // (ר' app/api/dresses/route.js POST, app/api/dresses/[id]/route.js DELETE) —
+  // הכפתורים כאן מוסתרים בהתאם כדי לא להציע פעולה שתידחה.
+  const [isHeadManagement, setIsHeadManagement] = useState(false);
 
   // Server-side pagination states
   const [page, setPage] = useState(1);
@@ -99,6 +103,10 @@ export default function DressesManagement() {
 
   useEffect(() => {
     fetchSettings();
+    fetch('/api/me').then(r => r.json()).then(data => {
+      const roleId = data?.employee?.roleId;
+      setIsHeadManagement(roleId === 0 || roleId === 2);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -243,13 +251,15 @@ export default function DressesManagement() {
           >
             <svg className="icon"><use href="#i-list" /></svg>
           </button>
-          <button
-            onClick={() => router.push('/dashboard/dresses/new')}
-            className="btn btn-primary"
-          >
-            <svg className="icon"><use href="#i-plus" /></svg>
-            דגם חדש
-          </button>
+          {isHeadManagement && (
+            <button
+              onClick={() => router.push('/dashboard/dresses/new')}
+              className="btn btn-primary"
+            >
+              <svg className="icon"><use href="#i-plus" /></svg>
+              דגם חדש
+            </button>
+          )}
         </div>
       </div>
 
@@ -428,15 +438,15 @@ export default function DressesManagement() {
                         <div className="row-actions">
                           <Link href={`/dashboard/dresses/${dress.id}`} className="btn btn-primary btn-sm">כרטיס שמלה</Link>
                           {dress.isDeleted ? (
-                            <button onClick={() => handleRestoreModel(dress)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר">
+                            isHeadManagement && <button onClick={() => handleRestoreModel(dress)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר">
                               <svg className="icon"><use href="#i-refresh" /></svg>
                             </button>
                           ) : isInactive ? (
-                            <button onClick={() => handleReturnToActivity(dress)} className="btn btn-secondary btn-sm" style={{ color: 'var(--warning)' }} title="החזר לפעילות">
+                            isHeadManagement && <button onClick={() => handleReturnToActivity(dress)} className="btn btn-secondary btn-sm" style={{ color: 'var(--warning)' }} title="החזר לפעילות">
                               החזר לפעילות
                             </button>
                           ) : (
-                            <button onClick={() => handleDeleteModel(dress.id)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="מחק">
+                            isHeadManagement && <button onClick={() => handleDeleteModel(dress.id)} className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--danger)' }} title="מחק">
                               <svg className="icon"><use href="#i-trash" /></svg>
                             </button>
                           )}

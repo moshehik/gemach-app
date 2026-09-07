@@ -19,6 +19,19 @@ export default function MyProfilePage() {
   const [newPasswordInput, setNewPasswordInput] = useState('');
   const [showOldPassword, setShowOldPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  // show_employee_profile_image (הגדרות > תצוגה) - לפי בקשת ההנהלה (דיווח c764bef4)
+  // הוסרה תמונת הפרופיל לגמרי; ברירת מחדל true כשהשורה עוד לא נוצרה ב-DB.
+  const [showProfileImage, setShowProfileImage] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => {
+        const s = Array.isArray(data) ? data.find(x => x.key === 'show_employee_profile_image') : null;
+        if (s) setShowProfileImage(s.value !== 'false');
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     fetch('/api/me/profile')
@@ -256,6 +269,7 @@ export default function MyProfilePage() {
             )}
           </div>
 
+          {showProfileImage && (
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <label htmlFor="profile-avatarInput">תמונת פרופיל (העלאת קובץ)</label>
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
@@ -278,6 +292,7 @@ export default function MyProfilePage() {
               )}
             </div>
           </div>
+          )}
 
           <div className="field" style={{ gridColumn: '1 / -1' }}>
             <div className="checkbox-row">

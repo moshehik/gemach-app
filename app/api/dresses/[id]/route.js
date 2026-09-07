@@ -38,7 +38,9 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  // עריכת דגם — פעולת ניהול, מוגבלת להנהלה ראשית/מתכנת גם כשהקטלוג פתוח לצפייה
+  // לכולם (ר' restrict_dress_catalog_to_head_management).
+  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'הרשאה זו שמורה להנהלה ראשית בלבד' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
@@ -111,7 +113,9 @@ export async function PUT(request, { params }) {
 }
 
 export async function DELETE(request, { params }) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  // מחיקת דגם — פעולת ניהול, מוגבלת להנהלה ראשית/מתכנת גם כשהקטלוג פתוח לצפייה
+  // לכולם (ר' restrict_dress_catalog_to_head_management).
+  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'הרשאה זו שמורה להנהלה ראשית בלבד' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;

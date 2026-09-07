@@ -213,7 +213,7 @@ export default function AppShell({
             {isProgrammer && <MessageHistoryButton />}
             {!hideErrorReporting && <ErrorReportButton />}
             {authToken && !hideInternalMessaging && <NotificationBell employeeId={authToken} />}
-            <UserMenu />
+            <UserMenu hideInternalMessaging={hideInternalMessaging} />
           </div>
         </div>
 

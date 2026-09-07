@@ -152,7 +152,15 @@ const HEBREW_NAMES = {
   print_rental_box1: 'הערות השכרה - תיבה 1 (עליונה)',
   print_rental_box2: 'הערות השכרה - תיבה 2 (אמצעית)',
   print_rental_footer: 'הערות השכרה - טקסט תחתון ותקנון',
-  home_welcome_title: 'כותרת ברוכים הבאים בדף הבית'
+  home_welcome_title: 'כותרת ברוכים הבאים בדף הבית',
+
+  // פרוטוקול תיקון דיווחי שגיאות (docs/fix-protocol-error-reports.md) - הגדרות עם שחזור
+  restrict_dress_catalog_to_head_management: 'הגבלת קטלוג דגמים להנהלה ראשית',
+  restrict_refunds_to_head_management: 'הגבלת זיכויים וחובות להנהלה ראשית',
+  show_employee_profile_image: 'הצגת תמונת פרופיל בכרטיס עובד',
+  error_report_handled_at_bottom: 'פניות מטופלות בתחתית הרשימה',
+  standard_return_hour: 'שעת החזרה סטנדרטית בדוח השכרה',
+  rental_belt_notice: 'שורת הערת חגורות בדוח השכרה'
 };
 
 const HEBREW_NOTES = {
@@ -193,6 +201,13 @@ const HEBREW_NOTES = {
   hide_gregorian_calendar: 'הסתרת תאריכים לועזיים והתמקדות בלוח העברי.',
   hide_internal_messaging: 'הסתרה או הפעלה של פעמון ההתראות והודעות בין עובדים.',
   hide_error_reporting: 'הסתרה או הפעלה של אפשרות דיווח שגיאות מהמערכת (כפתור גלגל הצלה).',
+
+  restrict_dress_catalog_to_head_management: 'כשמופעל, קטלוג הדגמים נגיש לצפייה רק להנהלה ראשית/מתכנת. יצירה/עריכה/מחיקה של דגם מוגבלות להנהלה ראשית תמיד, גם כשההגדרה כבויה.',
+  restrict_refunds_to_head_management: 'כשמופעל, עמוד זיכויים וחובות נגיש רק להנהלה ראשית/מתכנת ולא למנהל סניף רגיל.',
+  show_employee_profile_image: 'הצגת אזור העלאת/תצוגת תמונת פרופיל בכרטיס העובד (הפרופיל האישי וכרטיס העובד המנהלי). כבוי = האזור מוסתר לגמרי.',
+  error_report_handled_at_bottom: 'פניות שסומנו "טופל" ברשימת הפניות הפתוחות יורדות לתחתית הרשימה, כדי שפניות חדשות יבלטו למעלה.',
+  standard_return_hour: 'שעת ההחזרה המוצגת בשורת "פרטי החזרה" בדוח ההשכרה המודפס (פורמט HH:MM).',
+  rental_belt_notice: 'שורה נוספת שתופיע מתחת ל"פרטי החזרה" בדוח ההשכרה המודפס (למשל הערה על החזרת חגורות). ריק = לא מוצגת.',
 
   items_name_plural: 'הכיתוב שיופיע בכל הטבלאות (למשל: שמלות / חליפות / פריטים).',
   items_name_singular: 'הכיתוב ביחיד (למשל: שמלה / חליפה / פריט).',
@@ -913,7 +928,10 @@ export default function SettingsClient() {
               'shift_handover_notes', 'management_messages', 'barcode_invalid_list', 'allow_edit_partially_rented',
               'split_dress_enabled', 'notify_on_new_message_at_login', 'laundress_return_check_on_exit', 'manual_barcode_double_entry',
               'manual_barcode_daily_report', 'kiosk_customer_self_service', 'kiosk_allow_self_order', 'branches_enabled',
-              'premium_pricing_enabled', 'show_not_taken_orders', 'cancellation_extra_columns'
+              'premium_pricing_enabled', 'show_not_taken_orders', 'cancellation_extra_columns',
+              // פרוטוקול תיקון דיווחי שגיאות - הגדרות עם שחזור
+              'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management',
+              'show_employee_profile_image', 'error_report_handled_at_bottom'
             ].includes(setting.key);
             const isBoolean = setting.type === 'boolean' || setting.type === 'checkbox' || rawValue === 'true' || rawValue === 'false' || isBooleanKey;
             const isNumberKey = [

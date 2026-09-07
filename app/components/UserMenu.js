@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import LoginScreen from './LoginScreen';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
 
-export default function UserMenu() {
+export default function UserMenu({ hideInternalMessaging = false }) {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [activeShift, setActiveShift] = useState(null);
@@ -166,15 +166,17 @@ export default function UserMenu() {
             <svg className="icon"><use href="#i-clock" /></svg>
             שעון נוכחות
           </button>
-          <button
-            type="button"
-            className="user-menu-item"
-            disabled={actionLoading}
-            onClick={() => { setDropdownOpen(false); router.push('/messages'); }}
-          >
-            <svg className="icon"><use href="#i-message" /></svg>
-            הודעות
-          </button>
+          {!hideInternalMessaging && (
+            <button
+              type="button"
+              className="user-menu-item"
+              disabled={actionLoading}
+              onClick={() => { setDropdownOpen(false); router.push('/messages'); }}
+            >
+              <svg className="icon"><use href="#i-message" /></svg>
+              הודעות
+            </button>
+          )}
           <button
             type="button"
             className="user-menu-item"

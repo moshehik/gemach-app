@@ -250,7 +250,9 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  // יצירת דגם חדש בקטלוג — פעולת ניהול, מוגבלת להנהלה ראשית/מתכנת גם כשהקטלוג
+  // עצמו פתוח לצפייה לכולם (ר' restrict_dress_catalog_to_head_management).
+  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'הרשאה זו שמורה להנהלה ראשית בלבד' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
     

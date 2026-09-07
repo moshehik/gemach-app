@@ -31,6 +31,19 @@ export default function EmployeePage({ params }) {
   // רשימת המחלקות האמיתית (טבלת Department) עבור בורר המחלקה - null = עדיין נטען
   const [departments, setDepartments] = useState(null);
   const [deptLoadFailed, setDeptLoadFailed] = useState(false);
+  // show_employee_profile_image (הגדרות > תצוגה) - לפי בקשת ההנהלה (דיווח c764bef4)
+  // הוסרה תמונת הפרופיל לגמרי; ברירת מחדל true כשהשורה עוד לא נוצרה ב-DB.
+  const [showProfileImage, setShowProfileImage] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then(r => r.json())
+      .then(data => {
+        const s = Array.isArray(data) ? data.find(x => x.key === 'show_employee_profile_image') : null;
+        if (s) setShowProfileImage(s.value !== 'false');
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -513,8 +526,10 @@ export default function EmployeePage({ params }) {
                 העדפות עיצוב פר-עובד (JSON, /api/me/design-prefs); כל עובד
                 בוחר לעצמו בעמוד "עיצוב ותצוגה". */}
 
-            {/* הוסתר לפי בקשת הנהלה (c764bef4) - תמונת פרופיל הפכה למשחק; הוסתר כדי למנוע שימוש לא רציני. ניתן להחזיר אם תרצו. */}
-            {false && (
+            {/* show_employee_profile_image (הגדרות > תצוגה) - לפי בקשת ההנהלה (דיווח
+                c764bef4) תמונת הפרופיל הוסרה לגמרי כי הפכה למשחק; ניתן להחזיר
+                מהגדרות מערכת בלי צורך בעריכת קוד. */}
+            {showProfileImage && (
             <div className="field" style={{ gridColumn: '1 / -1' }}>
               <label htmlFor="employee-detail-profileImage">תמונת פרופיל / מסמך (העלאת קובץ)</label>
               <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
