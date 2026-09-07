@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { cacheNamespace, fetchJson } from '@/app/lib/pageCache';
 
+// 24/25 - הודעות משמרת/הנהלה (toggle בהגדרות -> הודעות)
+const MESSAGES_HELP_NOTE = '24 בין משמרת למשמרת / 25 להנהלה - בחר תגית או נמען הנהלה. כבוי = מוסתר בהגדרות → הודעות.';
+
 // מטמון SWR משותף — ראה app/lib/pageCache.js. כניסה חוזרת לדף מציגה את
 // הנתונים הקודמים מיידית, וה-fetch של הדף הופך לרענון שקט ברקע.
 const messagesCache = cacheNamespace('messages');

@@ -88,6 +88,23 @@ export default function LoginScreen({ isModal = false, onClose }) {
   };
 
   const finishLogin = () => {
+    // 29 - התראה בכניסה על הודעה שלא טופלה (אם מופעל)
+    try {
+      fetch('/api/settings', { cache: 'no-store' }).then(r => r.json()).then(arr => {
+        const on = Array.isArray(arr) ? arr.find(s => s.key === 'notify_on_new_message_at_login')?.value === 'true' : false;
+        if (on) {
+          fetch('/api/notifications', { cache: 'no-store' }).then(nr => nr.json()).then(nd => {
+            const list = nd.notifications || [];
+            const unread = list.filter(x => !x.isRead && !x.isArchived);
+            if (unread.length > 0 && typeof window !== 'undefined') {
+              const msg = `יש ${unread.length} הודעה/ות חדשה/ות שלא טופלו`;
+              if (window.customAlert) window.customAlert(msg);
+              else alert(msg);
+            }
+          }).catch(() => {});
+        }
+      }).catch(() => {});
+    } catch {}
     // רענון מלא ולא router.refresh: ה-navbar מיוצר בשרת לפי תפקיד המשתמש,
     // ו-UserMenu מציג את /api/me מהמטמון המשותף בזיכרון — שניהם מתעדכנים
     // לעובד שנכנס רק בטעינת עמוד נקייה. אם העמוד הנוכחי אסור לתפקיד החדש,

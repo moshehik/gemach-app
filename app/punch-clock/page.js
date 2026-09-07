@@ -44,6 +44,26 @@ export default function PunchClockPage() {
       return;
     }
 
+    // 30 - כובסת ביציאה: אם מופעל, לפני יציאה מציג רשימת לא-החזירו לאישור
+    if (action === 'OUT') {
+      try {
+        const settingsRes = await fetch('/api/settings', { cache: 'no-store' });
+        const arr = await settingsRes.json();
+        const on = Array.isArray(arr) ? arr.find(s => s.key === 'laundress_return_check_on_exit')?.value === 'true' : false;
+        if (on) {
+          const overdue = await fetch('/api/orders?filterStatus=archive&limit=50', { cache: 'no-store' }).then(r => r.json()).then(d => {
+            const list = d.data || [];
+            return list.filter(o => o.items?.some(i => !i.isDeleted && i.isTaken && !i.isReturned));
+          }).catch(() => []);
+          if (overdue.length > 0) {
+            const names = overdue.slice(0, 5).map(o => `${o.customerName || '?'}`).join(', ');
+            const ok = await (window.customConfirm ? window.customConfirm(`יש ${overdue.length} משפחות שלא החזירו (לדוגמה: ${names}). האם לוודא שהן אכן לא החזירו?`) : Promise.resolve(window.confirm(`יש ${overdue.length} שלא החזירו`)));
+            if (!ok) { setStatusMessage('יציאה בוטלה - בדוק החזרות'); return; }
+          }
+        }
+      } catch {}
+    }
+
     setIsLoading(true);
     setStatusMessage('');
 
