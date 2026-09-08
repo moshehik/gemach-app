@@ -228,6 +228,14 @@ export default function ModernOrderCard({
                 <span style={{ direction: 'ltr' }}>{customer.phone1}</span>
               </span>
             )}
+            {customer?.email && (
+              // כתובת מייל בכרטיס סיכום ההזמנה - כדי שיהיה ברור מיד אם יש ללקוח
+              // מייל מעודכן, בלי לפתוח את טאב "פרטי לקוח" (דיווח 26362585).
+              <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <svg className="icon" style={{ width: '13px', height: '13px', color: 'var(--text-3)' }}><use href="#i-mail" /></svg>
+                <span style={{ direction: 'ltr' }}>{customer.email}</span>
+              </span>
+            )}
             <span style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
               <svg className="icon" style={{ width: '13px', height: '13px', color: 'var(--text-3)' }}><use href="#i-calendar" /></svg>
               {eventDateLabel}
