@@ -62,14 +62,20 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
-      # workaround לבאג ידוע ב-claude-code-action@v1: ה-installer הפנימי שלו מדפיס
-      # "✔ successfully installed" אבל בפועל לא מניח את הבינארי כי ~/.local/bin עוד
-      # לא קיימת על ה-runner (anthropics/claude-code-action issues #1254, #1242,
-      # #1091) - קרה בפועל כאן ב-8.9.2026. ניסיון קודם עם `npm install -g` לא עזר
-      # (ואף עלול להתנגש עם אותה תיקיה - אותו issue #1254) - הפתרון הישיר: ליצור
-      # את התיקייה מראש כדי שה-installer הפנימי יצליח לכתוב אליה בפועל.
-      - name: Ensure ~/.local/bin exists (workaround for claude-code-action installer bug)
-        run: mkdir -p ~/.local/bin
+      # workaround לבאג חוזר ב-claude-code-action@v1 (גם ב-v2.1.265, לא רק בגרסאות
+      # ישנות שדווחו ב-issues #1254/#1242/#1091): ה-installer הפנימי שלו מדפיס
+      # "✔ successfully installed" + "Location: ~/.local/bin/claude" אבל באותה נשימה
+      # גם "claude command at /home/runner/.local/bin/claude missing or broken" -
+      # ואז ה-SDK נכשל בפועל. mkdir מראש לא עזר (בדוק בפועל 8.9.2026) - הפתרון: להתקין
+      # בעצמנו עם ה-installer הרשמי, לוודא בבדיקה מפורשת שהבינארי עובד (לא לסמוך על
+      # ההודעה של ה-installer), ולהעביר את הנתיב ל-action דרך path_to_claude_code_executable
+      # כדי שהוא ידלג לגמרי על ההתקנה הפנימית השבורה שלו.
+      - name: Install Claude Code CLI ourselves (workaround for claude-code-action installer bug)
+        run: |
+          curl -fsSL https://claude.ai/install.sh | bash
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+          test -x "$HOME/.local/bin/claude"
+          "$HOME/.local/bin/claude" --version
 
       # בדיקה זולה - קוראת את הדגל ישירות מול כל DB, בלי להפעיל את Claude בכלל אם
       # שני הגמחים כבויים. exit code של agent-loop-status.js הוא 0=enabled/1=disabled,
@@ -98,6 +104,7 @@ jobs:
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          path_to_claude_code_executable: /home/runner/.local/bin/claude
           prompt: |
             REPO: ${{ github.repository }}
 
