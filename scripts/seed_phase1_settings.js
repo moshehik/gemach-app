@@ -3,6 +3,23 @@ import prisma from '../app/lib/prisma.js';
 // Phase 1 - 38 בקשות: מוסיף SystemSetting לכל בקשה עם toggle, בלי למחוק פיצ'רים קיימים
 // כל הגדרה מקבלת קטגוריה ברורה כדי שה-HTML המפורט (app/admin/settings/help) יוכל להפנות בדיוק
 // לכל לשונית בהגדרות הניהול.
+//
+// זהירות: הבקשות עצמן (כולל ה-"force" בתחתית הקובץ) נכתבו במקור עבור גמח נווה יעקב
+// (ר' scratch/write_new_gemach_settings.js), אבל הסקריפט הזה מתחבר דרך app/lib/prisma.js
+// (ברירת המחדל: PROD_DATABASE_URL/DATABASE_URL של הגמח הרגיל) - בלי בדיקת host כמו שיש
+// ל-scratch/write_new_gemach_settings.js. ריצה בטעות מול הסביבה הרגילה כבר "דלפה" ערכים
+// ספציפיים לנווה יעקב (enable_alterations/max_items_per_order/hide_custom_spacing) לתוך
+// ה-PROD של הגמח הרגיל - ר' תיעוד ותיקון בזיכרון org1-org2-settings-cross-contamination-fixed.
+const EXPECTED_MAIN_GEMACH_HOST = 'ep-orange-waterfall-avthvs1g';
+const targetUrl = process.env.PROD_DATABASE_URL || process.env.DATABASE_URL || '';
+const targetHost = (targetUrl.match(/@([^/]+)\//) || [])[1] || '';
+if (!targetHost.startsWith(EXPECTED_MAIN_GEMACH_HOST)) {
+  throw new Error(
+    `SAFETY ABORT: seed_phase1_settings.js is meant for the MAIN gemach's PROD DB only ` +
+    `(expected host starting with "${EXPECTED_MAIN_GEMACH_HOST}", got "${targetHost}"). ` +
+    `For Neve Yaakov, use scratch/write_new_gemach_settings.js against scratch/new_gemach_db.env instead.`
+  );
+}
 
 const newSettings = [
   // 1 - ציפוף ימים מיוחדים - הסתרה

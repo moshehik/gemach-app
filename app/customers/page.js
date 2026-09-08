@@ -52,6 +52,8 @@ export default function CustomersPage() {
   const [showStatistics, setShowStatistics] = useState(false);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiQueryUsed, setAiQueryUsed] = useState('');
+  const [aiPromptUsed, setAiPromptUsed] = useState('');
+  const [aiWhereClause, setAiWhereClause] = useState(null);
   const [isAiModeActive, setIsAiModeActive] = useState(false);
 
   // מצב תצוגת סרגל החיפוש (חיפוש רגיל / חכם AI) — מחליף את המצב הפנימי שהיה
@@ -110,6 +112,13 @@ export default function CustomersPage() {
   }, []);
 
   useEffect(() => {
+    // במצב חיפוש AI התוצאות מגיעות מ-handleAiSearch ולא מ-fetchCustomers הרגיל;
+    // בלי ה-guard הזה, שינוי totalPages/page שנעשה על ידי handleAiSearch (כדי להציג
+    // עימוד לתוצאות ה-AI) היה מפעיל מחדש את ה-effect הזה ומחליף את תוצאות ה-AI
+    // ברשימת הלקוחות הרגילה (הבאג: "כתבתי אביגיל ולא הציג לי כלום" - בפועל ה-AI
+    // כן מצא תוצאות, אך הן נדרסו כמעט מיידית).
+    if (isAiModeActive) return;
+
     fetchCustomers(false, page);
 
     // Background Prefetching for the next page
@@ -119,7 +128,7 @@ export default function CustomersPage() {
       }
     }, 1500);
     return () => clearTimeout(timer);
-  }, [fetchCustomers, page, totalPages]);
+  }, [fetchCustomers, page, totalPages, isAiModeActive]);
 
   const handleSearch = (e) => {
     if (e) e.preventDefault();
@@ -128,21 +137,24 @@ export default function CustomersPage() {
     setIsAiModeActive(false);
   };
 
-  const handleAiSearch = async (query) => {
+  const handleAiSearch = async (query, targetPage = 1, reuseWhereClause = null) => {
     setAiLoading(true);
     try {
       const res = await fetch('/api/ai/smart-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: query, pageContext: 'customers' })
+        body: JSON.stringify({ prompt: query, pageContext: 'customers', page: targetPage, whereClause: reuseWhereClause })
       });
       const result = await res.json();
       if (res.ok) {
         setCustomers(result.data || []);
-        setTotalCount(result.data?.length || 0);
-        setTotalPages(1);
+        setTotalCount(result.total ?? (result.data?.length || 0));
+        setTotalPages(result.totalPages || 1);
+        setPage(result.page || targetPage);
         setIsAiModeActive(true);
         setAiQueryUsed(result.query || '');
+        setAiPromptUsed(query);
+        setAiWhereClause(result.whereClause || null);
       } else {
         alert(result.error || 'שגיאה בחיפוש החכם');
       }
@@ -154,13 +166,21 @@ export default function CustomersPage() {
     }
   };
 
+  // מעבר עמוד בזמן שתוצאות AI מוצגות - משתמש שוב באותו whereClause שכבר נוצר
+  // (בלי לפנות שוב ל-Gemini), רק עם OFFSET אחר בשרת.
+  const handleAiPageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    handleAiSearch(aiPromptUsed, newPage, aiWhereClause);
+  };
+
   const handleClearSearch = () => {
     setSearchInput('');
     setSearch('');
     setPage(1);
     if (isAiModeActive) {
       setIsAiModeActive(false);
-      fetchCustomers();
+      setAiWhereClause(null);
+      setAiPromptUsed('');
     }
   };
 
@@ -367,8 +387,8 @@ export default function CustomersPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                 <button
                   className="btn btn-secondary btn-sm"
-                  disabled={page <= 1 || isAiModeActive}
-                  onClick={() => setPage(p => p - 1)}
+                  disabled={page <= 1 || aiLoading}
+                  onClick={() => isAiModeActive ? handleAiPageChange(page - 1) : setPage(p => p - 1)}
                   title="עמוד קודם"
                 >
                   <svg className="icon"><use href="#i-chevron-end" /></svg>הקודם
@@ -384,17 +404,19 @@ export default function CustomersPage() {
                     value={page}
                     onChange={(e) => {
                       const v = parseInt(e.target.value);
-                      if (v >= 1 && v <= totalPages) setPage(v);
+                      if (v >= 1 && v <= totalPages) {
+                        if (isAiModeActive) handleAiPageChange(v); else setPage(v);
+                      }
                     }}
                     style={{ width: '52px', padding: '4px 6px', textAlign: 'center', display: 'inline-block' }}
-                    disabled={isAiModeActive}
+                    disabled={aiLoading}
                   />
                   מתוך {totalPages}
                 </span>
                 <button
                   className="btn btn-secondary btn-sm"
-                  disabled={page >= totalPages || isAiModeActive}
-                  onClick={() => setPage(p => p + 1)}
+                  disabled={page >= totalPages || aiLoading}
+                  onClick={() => isAiModeActive ? handleAiPageChange(page + 1) : setPage(p => p + 1)}
                   title="עמוד הבא"
                 >
                   הבא<svg className="icon"><use href="#i-chevron-start" /></svg>

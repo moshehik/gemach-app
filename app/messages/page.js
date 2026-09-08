@@ -205,7 +205,8 @@ export default function MessagesPage() {
     }
   };
 
-  // #25 — סימון/ביטול "טופל" ע"י הנהלה בלבד (השרת אוכף checkAuth('מנהל') שוב)
+  // #24/#25 — סימון/ביטול "טופל": הודעות הנהלה מוגבלות לתפקיד מנהל (השרת אוכף
+  // checkAuth('מנהל') שוב), הודעות בין משמרות פתוחות לכל עובד מחובר.
   const handleToggleHandled = async (id, handled) => {
     try {
       const res = await fetch('/api/notifications/handle', {
@@ -215,7 +216,9 @@ export default function MessagesPage() {
       });
       const data = await res.json();
       if (res.ok && data.success) {
-        setManagementNotes(prev => prev.map(n => n.id === id ? { ...n, handledAt: data.notification.handledAt, handledBy: data.notification.handledBy } : n));
+        const updateList = (list) => list.map(n => n.id === id ? { ...n, handledAt: data.notification.handledAt, handledBy: data.notification.handledBy } : n);
+        setManagementNotes(updateList);
+        setShiftHandoverNotes(updateList);
         messagesCache.delete(MESSAGES_CACHE_KEY);
       } else {
         setError(data.error || 'שגיאה בעדכון סטטוס טיפול');
@@ -347,38 +350,58 @@ export default function MessagesPage() {
   const paneTitleStyle = { fontSize: '17px', marginBottom: '14px' };
 
   // #25 — הרשאת "מנהל" לסימון הודעות הנהלה כטופל: roleId 1 (מנהל) / 0 (הנהלה
-  // ראשית) / 2 (מתכנת) — תואם ROLE_LEVELS['מנהל'] כפי שמוגדר ב-lib/auth.js.
+  // ראשית) / 2 (מתכנת). תואם את הבדיקה המקומית ב-app/api/notifications/handle/route.js
+  // (MANAGEMENT_ROLE_IDS) — לא ROLE_LEVELS['מנהל'] המשותף ב-lib/auth.js, שם [1,2] בלבד.
   const isManagerRole = currentUser && [0, 1, 2].includes(currentUser.roleId);
 
   const formatNoteAuthor = (notif) => notif.sender ? `${notif.sender.firstName || ''} ${notif.sender.lastName || ''}`.trim() : 'מערכת הגמ"ח';
 
-  const renderShiftNoteCard = (notif) => (
-    <div key={notif.id} className="card card-pad" style={!notif.isRead ? { background: 'var(--primary-tint)', borderColor: 'var(--primary)' } : undefined}>
-      <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
-        <div className="avatar">{formatNoteAuthor(notif).charAt(0) || 'מ'}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-            <h3 style={{ fontSize: '14.5px', margin: 0 }}>{formatNoteAuthor(notif)}</h3>
-            <span className="hint" style={{ color: 'var(--text-3)' }}>{new Date(notif.createdAt).toLocaleString('he-IL')}</span>
-            <div style={{ marginInlineStart: 'auto' }}>
-              {notif.isRead ? (
-                <span className="badge badge-success">
-                  <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-check" /></svg>
-                  אושרה קריאה
-                </span>
-              ) : (
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => markAsRead(notif.id)}>
-                  <svg className="icon"><use href="#i-check" /></svg>
-                  אשר קריאה
+  const renderShiftNoteCard = (notif) => {
+    const isHandled = !!notif.handledAt;
+    return (
+      <div key={notif.id} className="card card-pad" style={!notif.isRead ? { background: 'var(--primary-tint)', borderColor: 'var(--primary)' } : undefined}>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-start' }}>
+          <div className="avatar">{formatNoteAuthor(notif).charAt(0) || 'מ'}</div>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+              <h3 style={{ fontSize: '14.5px', margin: 0 }}>{formatNoteAuthor(notif)}</h3>
+              <span className="hint" style={{ color: 'var(--text-3)' }}>{new Date(notif.createdAt).toLocaleString('he-IL')}</span>
+              <div style={{ display: 'flex', gap: '6px', marginInlineStart: 'auto', flexWrap: 'wrap', alignItems: 'center' }}>
+                {notif.isRead ? (
+                  <span className="badge badge-success">
+                    <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-check" /></svg>
+                    אושרה קריאה
+                  </span>
+                ) : (
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => markAsRead(notif.id)}>
+                    <svg className="icon"><use href="#i-check" /></svg>
+                    אשר קריאה
+                  </button>
+                )}
+                {isHandled ? (
+                  <span className="badge badge-success" title={notif.handledBy ? `טופל ע"י ${notif.handledBy.firstName || ''} ${notif.handledBy.lastName || ''}`.trim() : undefined}>
+                    <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-check-circle" /></svg>
+                    טופל
+                  </span>
+                ) : (
+                  <span className="badge badge-warning">ממתין לטיפול</span>
+                )}
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleToggleHandled(notif.id, !isHandled)}
+                  title={isHandled ? 'בטל סימון טופל' : 'סמן כטופל'}
+                >
+                  {isHandled ? 'בטל טופל' : 'סמן כטופל'}
                 </button>
-              )}
+              </div>
             </div>
+            <p style={{ margin: '10px 0 0', color: 'var(--text)', fontSize: '13.5px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{notif.content}</p>
           </div>
-          <p style={{ margin: '10px 0 0', color: 'var(--text)', fontSize: '13.5px', lineHeight: '1.6', whiteSpace: 'pre-wrap' }}>{notif.content}</p>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderManagementNoteCard = (notif) => {
     const isHandled = !!notif.handledAt;

@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma';
 import { checkAuth } from '../../../lib/auth';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { getAllCachedSettings } from '@/lib/settingsCache';
+import { validateCustomerFieldFormats } from '@/lib/customerValidation';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -131,13 +132,16 @@ export async function POST(request) {
           }
         }
       }
+      // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים) - לא קשור ל"האם חובה"
+      errors.push(...validateCustomerFieldFormats(body));
+
       if (errors.length > 0) {
-        return NextResponse.json({ error: `שדות חובה חסרים: ${errors.join(', ')}` }, { status: 400 });
+        return NextResponse.json({ error: `${errors.join(', ')}` }, { status: 400 });
       }
     } catch (e) {
       console.error('mandatory check failed (fail-open)', e);
     }
-    
+
     // Auto-generate a short legacyId for new customers so it displays nicely
     const maxCustomer = await prisma.customer.findFirst({
       where: { legacyId: { not: null } },

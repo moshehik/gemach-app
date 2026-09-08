@@ -22,8 +22,11 @@ const TABLE_MAP = {
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   
+  const PAGE_SIZE = 50;
+
   try {
-    const { prompt, pageContext } = await req.json();
+    const { prompt, pageContext, page: rawPage, whereClause: reuseWhereClause } = await req.json();
+    const page = Math.max(1, parseInt(rawPage, 10) || 1);
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -51,63 +54,86 @@ Example output for "משפחת כהן או לוי מירושלים":
 SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%ירושלים%'
 `;
 
-    const todayGregorian = new Date().toISOString().split('T')[0];
-    const todayHebrew = new HDate().renderGematriya();
-    const dateContext = `\nCRITICAL DATE CONTEXT: Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. You MUST use this as the anchor to calculate any relative dates or Hebrew dates provided by the user.
-Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearContext()}.`;
-
-    let aiResponse = await generateContent(`${systemPrompt}\n${dateContext}\n\nUser request: ${prompt}`);
-    
-    console.log('AI Smart Search Raw Response:', aiResponse);
-    
-    const parseWhereClause = (response) => {
-       let clause = response.trim();
-       
-       const sqlMatch = clause.match(/```(?:sql)?([\s\S]*?)```/);
-       if (sqlMatch) clause = sqlMatch[1].trim();
-       
-       if (clause.startsWith('SQL:')) clause = clause.replace(/^SQL:\s*/i, '').trim();
-       clause = clause.replace(/^WHERE /i, '');
-       return clause.trim() || '1=1'; // Fallback to 1=1 if empty
-    };
-
-    let whereClause = parseWhereClause(aiResponse);
-    whereClause = processHebrewDateMacro(whereClause);
-    console.log('AI Smart Search Cleaned Where Clause:', whereClause);
-
-    const buildQuery = (clause) => {
+    const buildQuery = (clause, offset) => {
        let finalCondition = `"isDeleted" = false AND (${clause})`;
        if (pageContext === 'dresses' || pageContext === 'rentals') {
          finalCondition = clause;
        }
-       return `SELECT * FROM "${tableName}" WHERE ${finalCondition} LIMIT 100;`;
+       return `SELECT * FROM "${tableName}" WHERE ${finalCondition} LIMIT ${PAGE_SIZE} OFFSET ${offset};`;
+    };
+    const buildCountQuery = (clause) => {
+       let finalCondition = `"isDeleted" = false AND (${clause})`;
+       if (pageContext === 'dresses' || pageContext === 'rentals') {
+         finalCondition = clause;
+       }
+       return `SELECT COUNT(*)::int AS count FROM "${tableName}" WHERE ${finalCondition};`;
     };
 
-    let query = buildQuery(whereClause);
+    let whereClause;
+    let query;
     let data = [];
     let querySuccess = false;
 
-    try {
-      data = await prisma.$queryRawUnsafe(query);
-      querySuccess = true;
-    } catch (dbError) {
-      console.error('Smart search DB error attempt 1:', dbError.message);
-      
-      // SELF HEALING RETRY
-      const retryPrompt = `${systemPrompt}\n\nUser request: ${prompt}\n\nYou generated this condition: ${whereClause}\nBut it failed with this PostgreSQL error: ${dbError.message}\n\nPlease output ONLY a corrected PostgreSQL condition starting with "SQL: " to fix this issue.`;
-      
-      let retryResponse = await generateContent(retryPrompt);
-      console.log('AI Smart Search Retry Response:', retryResponse);
-      
-      whereClause = parseWhereClause(retryResponse);
-      whereClause = processHebrewDateMacro(whereClause);
-      query = buildQuery(whereClause);
-      
+    // מעבר עמוד בתוצאות AI קיימות (item 2 - היה LIMIT 100 קבוע בלי דרך לראות עוד) -
+    // לא פונים שוב ל-Gemini, רק מריצים שוב את אותו whereClause עם OFFSET אחר.
+    if (reuseWhereClause && page > 1) {
+      whereClause = reuseWhereClause;
+      query = buildQuery(whereClause, (page - 1) * PAGE_SIZE);
       try {
-         data = await prisma.$queryRawUnsafe(query);
-         querySuccess = true;
-      } catch (retryError) {
-         console.error('Smart search DB error attempt 2:', retryError.message);
+        data = await prisma.$queryRawUnsafe(query);
+        querySuccess = true;
+      } catch (dbError) {
+        console.error('Smart search DB error (page reuse):', dbError.message);
+      }
+    } else {
+      const todayGregorian = new Date().toISOString().split('T')[0];
+      const todayHebrew = new HDate().renderGematriya();
+      const dateContext = `\nCRITICAL DATE CONTEXT: Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. You MUST use this as the anchor to calculate any relative dates or Hebrew dates provided by the user.
+Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearContext()}.`;
+
+      let aiResponse = await generateContent(`${systemPrompt}\n${dateContext}\n\nUser request: ${prompt}`);
+
+      console.log('AI Smart Search Raw Response:', aiResponse);
+
+      const parseWhereClause = (response) => {
+         let clause = response.trim();
+
+         const sqlMatch = clause.match(/```(?:sql)?([\s\S]*?)```/);
+         if (sqlMatch) clause = sqlMatch[1].trim();
+
+         if (clause.startsWith('SQL:')) clause = clause.replace(/^SQL:\s*/i, '').trim();
+         clause = clause.replace(/^WHERE /i, '');
+         return clause.trim() || '1=1'; // Fallback to 1=1 if empty
+      };
+
+      whereClause = parseWhereClause(aiResponse);
+      whereClause = processHebrewDateMacro(whereClause);
+      console.log('AI Smart Search Cleaned Where Clause:', whereClause);
+
+      query = buildQuery(whereClause, 0);
+
+      try {
+        data = await prisma.$queryRawUnsafe(query);
+        querySuccess = true;
+      } catch (dbError) {
+        console.error('Smart search DB error attempt 1:', dbError.message);
+
+        // SELF HEALING RETRY
+        const retryPrompt = `${systemPrompt}\n\nUser request: ${prompt}\n\nYou generated this condition: ${whereClause}\nBut it failed with this PostgreSQL error: ${dbError.message}\n\nPlease output ONLY a corrected PostgreSQL condition starting with "SQL: " to fix this issue.`;
+
+        let retryResponse = await generateContent(retryPrompt);
+        console.log('AI Smart Search Retry Response:', retryResponse);
+
+        whereClause = parseWhereClause(retryResponse);
+        whereClause = processHebrewDateMacro(whereClause);
+        query = buildQuery(whereClause, 0);
+
+        try {
+           data = await prisma.$queryRawUnsafe(query);
+           querySuccess = true;
+        } catch (retryError) {
+           console.error('Smart search DB error attempt 2:', retryError.message);
+        }
       }
     }
 
@@ -201,8 +227,23 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
       }
     }
 
-    return NextResponse.json({ data, query });
-    
+    let total = data.length;
+    try {
+      const countRows = await prisma.$queryRawUnsafe(buildCountQuery(whereClause));
+      total = Number(countRows?.[0]?.count ?? total);
+    } catch (countError) {
+      console.error('Smart search count query failed (falling back to page length):', countError.message);
+    }
+
+    return NextResponse.json({
+      data,
+      query,
+      whereClause,
+      total,
+      page,
+      totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE))
+    });
+
   } catch (error) {
     console.error('AI Smart Search Route Error:', error);
     return NextResponse.json({ error: 'Failed to perform smart search' }, { status: 500 });

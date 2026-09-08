@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { checkAuth } from '../../../../lib/auth';
 import { getAllCachedSettings } from '@/lib/settingsCache';
+import { validateCustomerFieldFormats } from '@/lib/customerValidation';
 
 export async function GET(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -116,8 +117,11 @@ export async function PUT(request, { params }) {
           }
         }
       }
+      // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים) - לא קשור ל"האם חובה"
+      errors.push(...validateCustomerFieldFormats(body));
+
       if (errors.length > 0) {
-        return NextResponse.json({ error: `שדות חובה חסרים: ${errors.join(', ')}` }, { status: 400 });
+        return NextResponse.json({ error: `${errors.join(', ')}` }, { status: 400 });
       }
     } catch (e) {
       console.error('mandatory check failed (fail-open)', e);

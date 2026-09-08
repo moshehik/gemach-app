@@ -13,6 +13,7 @@ import ModernCustomerHistoryTab from '../../../components/customers/modern/Moder
 import { addHistory } from '@/lib/historyManager';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
+import { validateCustomerFieldFormats } from '@/lib/customerValidation';
 
 export default function CustomerPage({ params }) {
   const router = useRouter();
@@ -31,12 +32,23 @@ export default function CustomerPage({ params }) {
   // ביטול חסימת לקוח (Customer.isBlocked) מוגבל להנהלה ראשית - נאכף גם בשרת
   // (PATCH /api/customers/[id]), הדגל הזה רק שולט אם הכפתור מוצג בכלל.
   const [isHeadManagement, setIsHeadManagement] = useState(false);
+  // 3/6/7 - חובת מייל/כתובת מלאה נשלטת ע"י ההגדרות require_customer_email/require_full_address
+  // (אותו דגם שכבר קיים ב-app/orders/new/page.js עבור הוספת לקוח מהירה בתוך הזמנה).
+  const [settings, setSettings] = useState({});
 
   useEffect(() => {
     fetchSharedJson('/api/me', { ttl: TTL.STATIC })
       .then(data => {
         if (data && data.success && data.employee) {
           setIsHeadManagement(data.employee.roleId === 0 || data.employee.roleId === 2);
+        }
+      })
+      .catch(() => {});
+
+    fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
+      .then(data => {
+        if (Array.isArray(data)) {
+          setSettings(data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {}));
         }
       })
       .catch(() => {});
@@ -138,6 +150,28 @@ export default function CustomerPage({ params }) {
       return;
     }
 
+    // 3/6 - אכיפה קדמית של שדות חובה לפי הגדרות (השרת אוכף גם הוא כגיבוי - ר' API)
+    const missing = [];
+    if (settings.require_customer_email === 'true' && !String(customer.email || '').trim()) {
+      missing.push('דוא"ל');
+    }
+    if (settings.require_full_address === 'true') {
+      if (!String(customer.city || '').trim()) missing.push('עיר');
+      if (!String(customer.street || '').trim()) missing.push('רחוב');
+      if (!String(customer.houseNum || '').trim()) missing.push('מספר בית');
+    }
+    if (missing.length > 0) {
+      alert(`שדות חובה חסרים: ${missing.join(', ')}`);
+      return;
+    }
+
+    // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים)
+    const formatErrors = validateCustomerFieldFormats(customer);
+    if (formatErrors.length > 0) {
+      alert(formatErrors.join('\n'));
+      return;
+    }
+
     setSaving(true);
 
     const url = id === 'new' ? '/api/customers' : `/api/customers/${id}`;
@@ -161,7 +195,9 @@ export default function CustomerPage({ params }) {
           alert(data.message);
           return;
         }
-        throw new Error(data.message || 'שגיאה בשמירת נתונים');
+        // שדות חובה/ולידציית תבנית (400) מגיעים תחת data.error, לא data.message -
+        // בלעדי זה המשתמש רואה "שגיאה בשמירת נתונים" גנרי במקום הסיבה האמיתית.
+        throw new Error(data.error || data.message || 'שגיאה בשמירת נתונים');
       }
 
       if (id === 'new' && data.id) {
@@ -237,23 +273,23 @@ export default function CustomerPage({ params }) {
               <label>דוא&quot;ל <span style={{ color: 'var(--danger)' }}>*</span></label>
               <div className="input-icon-wrap">
                 <svg className="icon"><use href="#i-mail" /></svg>
-                <input type="email" className="input" name="email" autoComplete="off" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} />
+                <input type="email" className="input" name="email" autoComplete="off" value={customer.email || ''} onChange={handleChange} onBlur={handleEmailBlur} required={settings.require_customer_email === 'true'} />
               </div>
             </div>
             <p className="hint" style={{ gridColumn: '1 / -1', margin: '-6px 0 0', color: 'var(--text-2)' }}>
               כל הזמנה מחייבת 2 אמצעי תקשורת — יש למלא לפחות אחד מבין טלפון נוסף / אימייל.
             </p>
             <div className="field">
-              <label>עיר</label>
-              <input type="text" className="input" name="city" autoComplete="off" value={customer.city || ''} onChange={handleChange} />
+              <label>עיר {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+              <input type="text" className="input" name="city" autoComplete="off" value={customer.city || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
             </div>
             <div className="field">
-              <label>רחוב</label>
-              <input type="text" className="input" name="street" autoComplete="off" value={customer.street || ''} onChange={handleChange} />
+              <label>רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+              <input type="text" className="input" name="street" autoComplete="off" value={customer.street || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
             </div>
             <div className="field">
-              <label>מספר בית</label>
-              <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={handleChange} />
+              <label>מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+              <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
             </div>
             <div className="field">
               <label>תעודת זהות (לעריכה/ביטול)</label>
@@ -305,6 +341,7 @@ export default function CustomerPage({ params }) {
               cancelSignal={cancelTick}
               isHeadManagement={isHeadManagement}
               onUnblock={handleUnblockCustomer}
+              settings={settings}
             />
           ),
           orders: (

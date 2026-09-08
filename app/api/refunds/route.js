@@ -11,11 +11,24 @@ export async function GET(request) {
     const orderId = searchParams.get('orderId');
     const pageParam = searchParams.get('page');
     const limit = parseInt(searchParams.get('limit')) || 100;
+    // סינון טווח תאריכים + סטטוס לצורך ייצוא מסודר להנה"ח (ולא רק "מה שכבר נטען
+    // בדפדפן") - fromDate/toDate מסננים לפי createdAt (תאריך בקשת הזיכוי).
+    const fromDate = searchParams.get('fromDate');
+    const toDate = searchParams.get('toDate');
+    const status = searchParams.get('status'); // 'executed' | 'pending' | undefined=all
+    const exportAll = searchParams.get('export') === 'true';
 
     let whereClause = { isDeleted: false };
 
     if (customerId) whereClause.customerId = customerId;
     if (orderId) whereClause.orderId = parseInt(orderId);
+    if (fromDate || toDate) {
+      whereClause.createdAt = {};
+      if (fromDate) whereClause.createdAt.gte = new Date(fromDate);
+      if (toDate) whereClause.createdAt.lte = new Date(toDate);
+    }
+    if (status === 'executed') whereClause.isExecuted = true;
+    else if (status === 'pending') whereClause.isExecuted = false;
 
     const includeClause = {
       customer: {
@@ -32,6 +45,18 @@ export async function GET(request) {
         }
       }
     };
+
+    // ייצוא מלא (export=true): כל השורות התואמות את הסינון, ללא הגבלת limit/page -
+    // משמש את כפתור הייצוא בעמוד /refunds כדי לייצא את כל הטווח המבוקש להנה"ח,
+    // ולא רק את מה שכבר נטען/עומד בעמוד הנוכחית בדפדפן.
+    if (exportAll) {
+      const refunds = await prisma.refund.findMany({
+        where: whereClause,
+        include: includeClause,
+        orderBy: { createdAt: 'desc' }
+      });
+      return NextResponse.json({ data: refunds, total: refunds.length });
+    }
 
     // Paginated mode: opt-in via `page` so existing callers that fetch by
     // customerId/orderId (small result sets) keep getting a plain array back.

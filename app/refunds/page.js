@@ -214,6 +214,13 @@ export default function RefundsPage() {
   const [refundsHasMore, setRefundsHasMore] = useState(false);
   const [loadingMoreRefunds, setLoadingMoreRefunds] = useState(false);
 
+  // ייצוא מלא (לא רק מה שנטען בדפדפן) לפי טווח תאריכים+סטטוס, להעברה מסודרת להנה"ח
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportFromDate, setExportFromDate] = useState('');
+  const [exportToDate, setExportToDate] = useState('');
+  const [exportStatus, setExportStatus] = useState('all'); // 'all' | 'executed' | 'pending'
+  const [isExporting, setIsExporting] = useState(false);
+
   const [activeTab, setActiveTab] = useState('refunds'); // 'refunds' | 'debts' | 'approved'
 
   // טאב "חובות פתוחים" - כל ההזמנות עם יתרת חוב, ללא קשר לסטטוס ההזמנה.
@@ -523,11 +530,11 @@ export default function RefundsPage() {
     }
   };
 
-  const exportToCSV = () => {
+  const buildRefundsCSV = (rows) => {
     const headers = ['תאריך בקשה', 'לקוח', 'טלפון', 'מייל', 'מספר הזמנה', 'סכום לזיכוי', 'סיבה', 'בנק', 'סניף', 'חשבון', 'שם בעל החשבון', 'פרטי אשראי מקורי', 'סטטוס', 'תאריך ביצוע'];
-    const csvData = [
+    return [
       headers.join(','),
-      ...filteredRefunds.map(r => {
+      ...rows.map(r => {
         const customerName = r.customer ? `${r.customer.firstName || ''} ${r.customer.lastName || ''}`.trim() : '';
         const phone = r.customer?.phone1 || '';
         const email = r.email || r.customer?.email || '';
@@ -553,13 +560,35 @@ export default function RefundsPage() {
         ].join(',');
       })
     ].join('\n');
+  };
 
+  const downloadCSV = (csvData) => {
     const blob = new Blob(['﻿' + csvData], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
     link.download = `refunds_export_${new Date().toISOString().split('T')[0]}.csv`;
     link.click();
+  };
+
+  // ייצוא מלא לפי טווח תאריכים+סטטוס שנבחרו במודל - שולף מהשרת את כל השורות
+  // התואמות (export=true, ללא הגבלת limit/page), ולא רק את מה שכבר נטען בדפדפן.
+  const runFullExport = async () => {
+    setIsExporting(true);
+    try {
+      const params = new URLSearchParams({ export: 'true' });
+      if (exportFromDate) params.set('fromDate', exportFromDate);
+      if (exportToDate) params.set('toDate', exportToDate);
+      if (exportStatus !== 'all') params.set('status', exportStatus);
+      const res = await fetch(`/api/refunds?${params.toString()}`);
+      const json = await res.json();
+      downloadCSV(buildRefundsCSV(json.data || []));
+      setShowExportModal(false);
+    } catch (err) {
+      alert('שגיאה בייצוא: ' + err.message);
+    } finally {
+      setIsExporting(false);
+    }
   };
 
   const filteredRefunds = refunds.filter(r => {
@@ -585,7 +614,7 @@ export default function RefundsPage() {
         </div>
         <div className="page-actions">
           {activeTab === 'refunds' && (
-            <button type="button" className="btn btn-secondary btn-icon-only" title="ייצוא זיכויים לאקסל" onClick={exportToCSV}>
+            <button type="button" className="btn btn-secondary btn-icon-only" title="ייצוא זיכויים לאקסל (טווח תאריכים מלא)" onClick={() => setShowExportModal(true)}>
               <svg className="icon"><use href="#i-download" /></svg>
             </button>
           )}
@@ -837,6 +866,59 @@ export default function RefundsPage() {
                   <>
                     <svg className="icon"><use href="#i-shield" /></svg>
                     אשר תשלום
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* מודל ייצוא זיכויים - טווח תאריכים + סטטוס, שולף מהשרת את כל הטווח (לא רק מה שנטען בדפדפן) */}
+      {showExportModal && (
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget && !isExporting) setShowExportModal(false); }}
+        >
+          <div className="modal confirm-modal">
+            <div className="modal-icon-circle" style={{ background: 'var(--primary-tint)', color: 'var(--primary-solid)' }}>
+              <svg className="icon"><use href="#i-download" /></svg>
+            </div>
+            <h3>ייצוא זיכויים להנה"ח</h3>
+            <p style={{ fontSize: '11.5px' }}>
+              הייצוא מביא את כל הזיכויים התואמים ישירות מהשרת (לא רק את מה שכבר נטען בעמוד). ניתן להשאיר את שדות התאריך ריקים כדי לייצא את כל הטווח.
+            </p>
+            <div className="form-grid">
+              <div className="field">
+                <label>מתאריך</label>
+                <input type="date" className="input" value={exportFromDate} onChange={(e) => setExportFromDate(e.target.value)} />
+              </div>
+              <div className="field">
+                <label>עד תאריך</label>
+                <input type="date" className="input" value={exportToDate} onChange={(e) => setExportToDate(e.target.value)} />
+              </div>
+              <div className="field">
+                <label>סטטוס</label>
+                <select className="select" value={exportStatus} onChange={(e) => setExportStatus(e.target.value)}>
+                  <option value="all">הכל</option>
+                  <option value="executed">בוצע בלבד</option>
+                  <option value="pending">ממתין בלבד</option>
+                </select>
+              </div>
+            </div>
+            <div className="confirm-actions">
+              <button type="button" className="btn btn-secondary" disabled={isExporting} onClick={() => setShowExportModal(false)}>ביטול</button>
+              <button type="button" className="btn btn-primary" disabled={isExporting} onClick={runFullExport}>
+                {isExporting ? (
+                  <>
+                    <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} />
+                    מייצא...
+                  </>
+                ) : (
+                  <>
+                    <svg className="icon"><use href="#i-download" /></svg>
+                    ייצא לאקסל
                   </>
                 )}
               </button>

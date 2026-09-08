@@ -297,6 +297,8 @@ model Order {
 
   customSpacing Int? // ציפוף ימים מותאם אישית להזמנה זו
 
+  extraDay String? // 'before' | 'after' | null — יום השכרה נוסף לפני/אחרי התקופה (רק אירוע חו"ל/חול), +50% מסך ההזמנה, מחושב אוטומטית ב-pricingEngine
+
   // 38 בקשות - שדות חדשים
   isPhoneOrder     Boolean @default(false) // הזמנה טלפונית (בקשה 13)
   branch           String? // סניף ביצוע ההזמנה (בקשה 13,34)

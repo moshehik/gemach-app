@@ -103,6 +103,7 @@ const HEBREW_NAMES = {
   premium_categories: 'קטגוריות פרימיום',
   show_not_taken_orders: 'הצג לא-נלקחו (קטגוריה)',
   cancellation_extra_columns: 'עמודות ביטול נוספות',
+  enable_rental_extension: 'הפעל יום השכרה נוסף',
 
   mandatory_fields: 'שדות חובה במילוי פרטי הזמנה',
   draft_orders_show_as_deleted: 'הצג הזמנות טיוטה כמחוקות',
@@ -235,6 +236,7 @@ const HEBREW_NOTES = {
   print_rental_footer: 'טקסט תקנון וחתימה בתחתית כרטיס השכרה מודפס.',
   home_welcome_title: 'הכותרת הראשית שמופיעה בראש דף הבית של המערכת.',
   hide_custom_spacing: 'כאשר מופעל, אפשרות ציפוף ימים מיוחד מוסתרת בכל התהליך (יצירה/עריכה/תפוסה). ברירת מחדל מופעל ללקוח זה.',
+  enable_rental_extension: 'מאפשר להוסיף להזמנת חו"ל/חול יום השכרה נוסף (לפני הלקיחה או אחרי ההחזרה), בתוספת 50% מסך ההזמנה המחושבת אוטומטית.',
   nedarim_rinat_lev_url: 'URL סליקה ייעודי עבור רינת לב (בריק - משתמש בקוד מוסד הכללי).',
   hok_enabled: 'מאפשר הזנת פרטי הוראת קבע בכל הזמנה.',
   hok_auto_charge_enabled: 'אם הלקוח לא החזיר עד שעת היעד - חיוב אוטומטי (מחיר השכרה נוסף לכל שמלה).',
@@ -928,7 +930,7 @@ export default function SettingsClient() {
               'shift_handover_notes', 'management_messages', 'barcode_invalid_list', 'allow_edit_partially_rented',
               'split_dress_enabled', 'notify_on_new_message_at_login', 'laundress_return_check_on_exit', 'manual_barcode_double_entry',
               'manual_barcode_daily_report', 'kiosk_customer_self_service', 'kiosk_allow_self_order', 'branches_enabled',
-              'premium_pricing_enabled', 'show_not_taken_orders', 'cancellation_extra_columns',
+              'premium_pricing_enabled', 'show_not_taken_orders', 'cancellation_extra_columns', 'enable_rental_extension',
               // פרוטוקול תיקון דיווחי שגיאות - הגדרות עם שחזור
               'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management',
               'show_employee_profile_image', 'error_report_handled_at_bottom'

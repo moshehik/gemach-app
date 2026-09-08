@@ -41,7 +41,7 @@ const renderCustomerNotes = (notes) => {
   });
 };
 
-export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal, cancelSignal, isHeadManagement, onUnblock }) {
+export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal, cancelSignal, isHeadManagement, onUnblock, settings = {} }) {
   const [isEditing, setIsEditing] = useState(false);
   const isFirstCancelSignal = useRef(true);
 
@@ -139,11 +139,11 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
                 </div>
               </div>
               <div className="field">
-                <label>דוא&quot;ל</label>
+                <label>דוא&quot;ל {settings.require_customer_email === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                 <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
                   <div className="input-icon-wrap" style={{ flex: 1 }}>
                     <svg className="icon"><use href="#i-mail" /></svg>
-                    <input type="email" className="input" style={{ direction: 'ltr' }} name="email" autoComplete="off" value={customer.email || ''} onChange={onChange} onBlur={onEmailBlur} />
+                    <input type="email" className="input" style={{ direction: 'ltr' }} name="email" autoComplete="off" value={customer.email || ''} onChange={onChange} onBlur={onEmailBlur} required={settings.require_customer_email === 'true'} />
                   </div>
                   {customer.email && (
                     <>
@@ -168,16 +168,16 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
                 )}
               </div>
               <div className="field">
-                <label>עיר</label>
-                <input type="text" className="input" name="city" autoComplete="off" value={customer.city || ''} onChange={onChange} />
+                <label>עיר {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                <input type="text" className="input" name="city" autoComplete="off" value={customer.city || ''} onChange={onChange} required={settings.require_full_address === 'true'} />
               </div>
               <div className="field">
-                <label>רחוב</label>
-                <input type="text" className="input" name="street" autoComplete="off" value={customer.street || ''} onChange={onChange} />
+                <label>רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                <input type="text" className="input" name="street" autoComplete="off" value={customer.street || ''} onChange={onChange} required={settings.require_full_address === 'true'} />
               </div>
               <div className="field">
-                <label>מספר בית</label>
-                <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={onChange} />
+                <label>מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={onChange} required={settings.require_full_address === 'true'} />
               </div>
               <div className="field">
                 <label>תעודת זהות (לעריכה/ביטול) <span className="hint" style={{ fontWeight: 400 }}>- לבקשה 14</span></label>

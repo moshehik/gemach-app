@@ -551,6 +551,7 @@ export async function PUT(request, { params }) {
           ...(data.deliveryCity !== undefined ? { deliveryCity: data.deliveryCity || null } : {}),
           ...(data.deliveryOneDayBefore !== undefined ? { deliveryOneDayBefore: !!data.deliveryOneDayBefore } : {}),
           ...(data.hokDetails !== undefined ? { hokDetails: typeof data.hokDetails === 'string' ? data.hokDetails : JSON.stringify(data.hokDetails) } : {}),
+          ...(data.extraDay !== undefined ? { extraDay: (data.extraDay === 'before' || data.extraDay === 'after') ? data.extraDay : null } : {}),
           status: shellExitStatus !== undefined ? shellExitStatus : (data.status !== undefined ? data.status : undefined),
           hasSignedRegulations: data.hasSignedRegulations !== undefined ? data.hasSignedRegulations : undefined,
         }

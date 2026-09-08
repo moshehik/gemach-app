@@ -23,6 +23,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const [newCustomer, setNewCustomer] = useState({ firstName: '', lastName: '', phone1: '', email: '', city: '', street: '', houseNum: '' });
   const [isEditingOrderDate, setIsEditingOrderDate] = useState(false);
   const [systemDefaultSpacing, setSystemDefaultSpacing] = useState(3);
+  const [enableRentalExtension, setEnableRentalExtension] = useState(false);
 
   React.useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -30,6 +31,8 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
         const arr = Array.isArray(data) ? data : Object.entries(data || {}).map(([key, value]) => ({ key, value }));
         const setting = arr.find(s => s.key === 'inventory_buffer_days');
         if (setting && !isNaN(parseInt(setting.value, 10))) setSystemDefaultSpacing(parseInt(setting.value, 10));
+        const extSetting = arr.find(s => s.key === 'enable_rental_extension');
+        setEnableRentalExtension(!!extSetting && extSetting.value === 'true');
       })
       .catch(() => {});
   }, []);
@@ -49,6 +52,27 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   };
 
   const isAbroad = !!(order.isAbroad || order.isWeekdayEvent);
+
+  // יום השכרה נוסף (feature request #?, נווה יעקב) — הוספת יום לפני הלקיחה או אחרי
+  // ההחזרה, בתוספת 50% מסך ההזמנה (מחושב אוטומטית ב-pricingEngine לפי order.extraDay).
+  // מוגבל להזמנות עם טווח תאריכים מפורש (isAbroad/isWeekdayEvent) — להזמנה רגילה אין
+  // toDate/fromDate אמיתיים לזוז (התקופה נגזרת מ-eventDate + חוצץ המלאי).
+  const shiftDateStr = (dateStr, deltaDays) => {
+    if (!dateStr) return dateStr;
+    const d = new Date(dateStr);
+    d.setDate(d.getDate() + deltaDays);
+    return d.toISOString();
+  };
+  const setExtraDay = (newValue) => {
+    const current = order.extraDay || null;
+    if (current === newValue) return;
+    let { fromDate, toDate, returnDate } = order;
+    if (current === 'before') fromDate = shiftDateStr(fromDate, 1);
+    if (current === 'after') { toDate = shiftDateStr(toDate, -1); returnDate = shiftDateStr(returnDate, -1); }
+    if (newValue === 'before') fromDate = shiftDateStr(fromDate, -1);
+    if (newValue === 'after') { toDate = shiftDateStr(toDate, 1); returnDate = shiftDateStr(returnDate, 1); }
+    changeDates({ fromDate, toDate, returnDate, extraDay: newValue });
+  };
 
   const applyCustomSpacing = async (spacing) => {
     const prevSpacing = (order.customSpacing !== null && order.customSpacing !== undefined) ? order.customSpacing : systemDefaultSpacing;
@@ -243,7 +267,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
               <div className="hint" style={{ color: 'var(--text-3)' }}>
                 {isAbroad
                   ? (order.fromDate
-                    ? <>לקיחה: <strong style={{ color: 'var(--text)' }}>{fmtFullDate(order.fromDate)}</strong> · החזרה: <strong style={{ color: 'var(--text)' }}>{fmtFullDate(order.toDate || order.returnDate) || '?'}</strong></>
+                    ? <>לקיחה: <strong style={{ color: 'var(--text)' }}>{fmtFullDate(order.fromDate)}</strong> · החזרה: <strong style={{ color: 'var(--text)' }}>{fmtFullDate(order.toDate || order.returnDate) || '?'}</strong>{order.extraDay ? <> · <span className="badge badge-warning">יום נוסף {order.extraDay === 'before' ? 'לפני' : 'אחרי'}</span></> : null}</>
                     : 'טרם נבחרו תאריכים')
                   : (order.eventDate
                     ? <strong style={{ color: 'var(--text)' }}>{`${new Date(order.eventDate).toLocaleDateString('he-IL')} (${order.eventDateHebrew || getHebrewDateString(order.eventDate)})`}</strong>
@@ -313,6 +337,23 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                     changeDates({ fromDate: newFrom, toDate: newTo, returnDate: newTo, eventDate: newFrom });
                   }}
                 />
+              </div>
+            )}
+
+            {isAbroad && enableRentalExtension && (
+              <div className="field">
+                <label>יום השכרה נוסף (תוספת 50% מסך ההזמנה)</label>
+                <div className="pill-tabs">
+                  <button type="button" className={`pill-tab${!order.extraDay ? ' active' : ''}`} onClick={() => setExtraDay(null)}>
+                    ללא
+                  </button>
+                  <button type="button" className={`pill-tab${order.extraDay === 'before' ? ' active' : ''}`} onClick={() => setExtraDay('before')}>
+                    יום נוסף לפני
+                  </button>
+                  <button type="button" className={`pill-tab${order.extraDay === 'after' ? ' active' : ''}`} onClick={() => setExtraDay('after')}>
+                    יום נוסף אחרי
+                  </button>
+                </div>
               </div>
             )}
 

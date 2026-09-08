@@ -239,6 +239,8 @@ model Order {
   
   customSpacing Int? // ׳¦׳™׳₪׳•׳£ ׳™׳׳™׳ ׳׳•׳×׳׳ ׳׳™׳©׳™׳× ׳׳”׳–׳׳ ׳” ׳–׳•
 
+  extraDay String? // 'before' | 'after' | null
+
   items       OrderItem[]
   payments    Payment[]
   refunds     Refund[]
