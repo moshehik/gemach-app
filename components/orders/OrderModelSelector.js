@@ -97,6 +97,36 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
     setIsOpen(false);
   };
 
+  // 3 - הקלדה + Enter בלי לחיצה על הרשימה הנפתחת: אם יש התאמה מדויקת (שם או קוד/ברקוד,
+  // לא רגיש לרישיות/רווחים) - בוחרים אותה ישירות. אם אין - הודעת שגיאה במקום לבחור בשקט
+  // דגם קרוב/שגוי או להשאיר את השדה במצב לא-ברור.
+  const resolveTypedValue = async () => {
+    const typed = query.trim();
+    if (!typed) return;
+    if (value?.name && typed.toLowerCase() === value.name.trim().toLowerCase()) return; // כבר נבחר, אין מה לפתור
+
+    const findExact = (list) => (list || []).find(m =>
+      (m.name && m.name.trim().toLowerCase() === typed.toLowerCase()) ||
+      (m.barcodePrefix && String(m.barcodePrefix).trim().toLowerCase() === typed.toLowerCase())
+    );
+
+    let match = findExact(models);
+    if (!match) {
+      try {
+        const data = await fetchSharedJson(`/api/inventory/models?q=${encodeURIComponent(typed)}`, { ttl: TTL.REFERENCE });
+        match = findExact(data.models);
+      } catch (err) {
+        console.error('Failed to resolve typed model', err);
+      }
+    }
+
+    if (match) {
+      handleSelect(match);
+    } else {
+      alert(`לא נמצא דגם עם השם/קוד "${typed}". יש לבחור דגם מהרשימה הנפתחת.`);
+    }
+  };
+
   const handleClear = (e) => {
     if (e) {
       e.preventDefault();
@@ -164,6 +194,12 @@ export default function OrderModelSelector({ value, onChange, placeholder = 'ב�
             setIsOpen(true);
           }}
           onFocus={() => setIsOpen(true)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault();
+              resolveTypedValue();
+            }
+          }}
           placeholder={placeholder}
           style={{ height: '42px', paddingInlineEnd: hasSelection ? '38px' : undefined }}
         />

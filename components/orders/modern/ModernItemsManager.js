@@ -328,14 +328,42 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
       return;
     }
 
+    const isEditing = !!item.id && !item.isNew;
+
+    // require_manager_code_for_item_changes - הוספת פריט חדש (לא עריכת פריט קיים) דורשת
+    // גם אישור מנהל אמיתי, בנוסף לאימות ת״ז שכבר קורה בשמירת ההזמנה (require_id_for_edit_cancel,
+    // page.js). הוספת פריט נשמרת מיד כאן (POST) ולא מחכה לשמירת ההזמנה הכללית, ולכן האישור
+    // נדרש ומאומת נקודתית ברגע הזה - לא נשמר ב-state כדי שלא ידלוף לטיוטת ההזמנה המקומית
+    // (localStorage, ר' app/lib/orderDrafts.js).
+    let managerAuth = null;
+    if (!isEditing && settings.require_manager_code_for_item_changes === 'true') {
+      const authResult = await window.customAuthPrompt('הוספת פריט חדש להזמנה קיימת דורשת גם אישור מנהל (בנוסף לאימות ת״ז בשמירה). אנא בחר מנהל והזן סיסמה:', 'מנהל');
+      if (!authResult || !authResult.pin) return;
+      try {
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          alert(data.error || 'סיסמה שגויה או שאין מספיק הרשאות.');
+          return;
+        }
+        managerAuth = { managerEmployeeId: authResult.employeeId, managerPin: authResult.pin };
+      } catch (err) {
+        alert('שגיאה באימות קוד מנהל.');
+        return;
+      }
+    }
+
     setSavingItemIndex(index);
     try {
-      const isEditing = !!item.id && !item.isNew;
       const url = isEditing ? `/api/orders/${orderId}/items/${item.id}` : `/api/orders/${orderId}/items`;
       const method = isEditing ? 'PUT' : 'POST';
       // forceFullEdit מועבר רק כשחלון ה-15 הדקות כבר נסגר ונפתח מחדש באישור מנהל (ר' handleReopenFullEdit) -
       // השרת בודק את זה מול חלון העריכה בפועל, לא רק מסתמך על ה-state המקומי כאן.
-      const body = forceEditableIds.has(item.id) ? { ...item, forceFullEdit: true } : item;
+      const body = { ...item, ...(forceEditableIds.has(item.id) ? { forceFullEdit: true } : {}), ...(managerAuth || {}) };
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },

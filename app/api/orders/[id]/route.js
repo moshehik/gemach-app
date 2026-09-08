@@ -55,11 +55,12 @@ async function fetchOrderItemsWithDress(orderId) {
     return item;
   });
 }
-import { recalculateOrderObligations, computeOrderObligations } from '../../../../lib/pricingEngine';
+import { recalculateOrderObligations, computeOrderObligations, applyDeliveryCharge } from '../../../../lib/pricingEngine';
 import { getHebrewDateString } from '../../../../lib/hebrewDate';
 import { validateOrderItemsAvailability, loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS, deriveConfirmedOrderStatus } from '../../../../lib/orderReservation';
+import { verifyManagerPin } from '../../../../lib/managerAuth';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',
@@ -278,6 +279,16 @@ export async function PUT(request, { params }) {
 
     const data = await request.json();
 
+    // אישור "הלקוח חתם על התקנון" הוא לא באמת עריכה/ביטול של תוכן ההזמנה (פריטים,
+    // תאריכים, סכומים) - זו רק הצהרה של הצוות שנייר פיזי נחתם, ולכן לא אמור לעבור את
+    // אותן הגנות (ת״ז מול הלקוח, חסימת עריכת מושכר חלקי) שנועדו למנוע שינוי תוכן ההזמנה
+    // בלי אימות זהות. בלי החריג הזה, כל לחיצה על "חתם על תקנון" (הבאדג' בכרטיס ההזמנה,
+    // ר' OrderPrintMenu.js / ModernPaymentsManager.js) נכשלת תמיד כש-require_id_for_edit_cancel
+    // מופעל, כי אף אחד מהמסכים ששולחים את ה-PUT הקטן הזה לא אוסף ת״ז.
+    const SIGNATURE_ONLY_KEYS = new Set(['hasSignedRegulations', 'updatedAt', 'overwriteConflict']);
+    const isSignatureOnlyUpdate = data.hasSignedRegulations !== undefined
+      && Object.keys(data).every(k => SIGNATURE_ONLY_KEYS.has(k));
+
     // 14 + 27 - אימות ת״ז וחסימת עריכת מושכר חלקי (עטוף ב-settingsCache, כבוי = התנהגות ישנה)
     try {
       const allSettingsForEdit = await getAllCachedSettings();
@@ -285,7 +296,7 @@ export async function PUT(request, { params }) {
       const allowPartialRaw = allSettingsForEdit.find(s => s.key === 'allow_edit_partially_rented')?.value;
       const allowPartialVal = allowPartialRaw !== 'false'; // ברירת מחדל מופעל אם חסר
       // 27 - אם false חסום עריכת הזמנה עם isTaken=true
-      if (!allowPartialVal) {
+      if (!allowPartialVal && !isSignatureOnlyUpdate) {
         const hasTakenItem = await prisma.orderItem.findFirst({ where: { orderId: parsedOrderId, isDeleted: false, isTaken: true }, select: { id: true } });
         if (hasTakenItem) {
           return NextResponse.json({ error: 'לא ניתן לערוך הזמנה שהושכרה חלקית - עריכת מושכר חלקי חסומה בהגדרות (allow_edit_partially_rented).' }, { status: 403 });
@@ -293,7 +304,7 @@ export async function PUT(request, { params }) {
       }
       // 14 - אם require_id_for_edit_cancel מופעל, דרוש zeout שתואם ללקוח (גם למושכר חלקי כש-allow true)
       // אם allowPartial false כבר חסמנו למעלה, אז לא מגיעים לכאן למושכר
-      if (requireIdVal) {
+      if (requireIdVal && !isSignatureOnlyUpdate) {
         const headerZeout = request.headers.get('x-zeout') || request.headers.get('x-customer-zeout') || request.headers.get('zeout');
         const bodyZeout = data?.zeout || data?.customerZeout || data?.idNumber || data?.zeoutInput || null;
         const providedZeout = String(headerZeout || bodyZeout || '').trim();
@@ -312,6 +323,28 @@ export async function PUT(request, { params }) {
         }
         if (String(customerZeout).trim() !== providedZeout) {
           return NextResponse.json({ error: 'תעודת הזהות אינה תואמת לרשום אצל הלקוח.' }, { status: 403 });
+        }
+      }
+
+      // require_manager_code_for_item_changes - ביטול/הוספת פריט בהזמנה קיימת (data.items)
+      // דורשים גם אישור מנהל אמיתי, בנוסף לת״ז למעלה (תוספת, לא תחליף). נבדק כאן ולא רק
+      // בלקוח, כדי שקריאת API ישירה לא תעקוף את הדרישה. מכסה גם את נתיב ה-isNew הישן
+      // בשמירת ההזמנה הכללית הזו - נתיב ההוספה הראשי בפועל הוא POST /api/orders/[id]/items
+      // (ר' הבדיקה המקבילה שם), שבו הוספת פריט נשמרת מיד ולא מחכה לשמירת ההזמנה הזו.
+      const requireManagerCodeVal = allSettingsForEdit.find(s => s.key === 'require_manager_code_for_item_changes')?.value === 'true';
+      if (requireManagerCodeVal && Array.isArray(data.items) && data.items.length > 0) {
+        const existingIds = data.items.filter(it => it.id).map(it => it.id);
+        const currentFlags = existingIds.length > 0
+          ? await prisma.orderItem.findMany({ where: { id: { in: existingIds } }, select: { id: true, isDeleted: true } })
+          : [];
+        const currentDeletedById = new Map(currentFlags.map(f => [f.id, f.isDeleted]));
+        const hasNewCancel = data.items.some(it => it.id && it.isDeleted === true && currentDeletedById.get(it.id) === false);
+        const hasNewAdd = data.items.some(it => it.isNew && it.dressModelId && it.sizeText);
+        if (hasNewCancel || hasNewAdd) {
+          const managerOk = await verifyManagerPin(data.managerEmployeeId, data.managerPin);
+          if (!managerOk) {
+            return NextResponse.json({ error: 'דרוש אישור מנהל (קוד/סיסמה) בתוקף לביטול או הוספת פריט בהזמנה קיימת.' }, { status: 403 });
+          }
         }
       }
     } catch (e) {
@@ -765,6 +798,13 @@ export async function PUT(request, { params }) {
 
     // Recalculate obligations asynchronously after updating order details
     await recalculateOrderObligations(parsedOrderId);
+
+    // 15 - חיוב משלוח אוטומטי לפי עיר, גם כשמשלוח מתווסף/משתנה בעריכת הזמנה קיימת ולא
+    // רק ביצירה - לוגיקה משותפת עם POST /api/orders, ר' lib/pricingEngine.js. חייב לרוץ
+    // אחרי recalculateOrderObligations: ה-diff שם מוחק כל התחייבות לא-ידנית שאינה חלק
+    // מ-computeOrderObligations (שלא מכיר משלוחים בכלל), כולל התחייבות משלוח שכבר קיימת -
+    // כך שהקריאה כאן גם יוצרת אותה כשחסרה וגם משחזרת אותה בכל שמירה אחרי שנמחקה.
+    await applyDeliveryCharge(parsedOrderId);
 
     // Fetch the fully updated order to return to the client.
     // These queries are independent of each other - fetch them concurrently.

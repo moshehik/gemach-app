@@ -95,6 +95,13 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   const [swipeInput, setSwipeInput] = useState('');
   const [showAddChargeModal, setShowAddChargeModal] = useState(false);
   const [showRefundModal, setShowRefundModal] = useState(false);
+  // "תשלום נוסף" (למשל מזומן) על הזמנה קיימת שכבר יש לה היסטוריית תשלומים - מאחורי הגדרת
+  // allow_additional_payment_on_order (כבוי כברירת מחדל, מופעל רק בנווה יעקב). לא כרוך
+  // בחישוב חיוב/חוב חדש - רק רישום Payment נוסף על היתרה הקיימת, דרך אותו POST /api/payments
+  // ששמור כבר עובד עבור חיוב אשראי מיידי למעלה.
+  const [showAdditionalPaymentModal, setShowAdditionalPaymentModal] = useState(false);
+  const [additionalPaymentData, setAdditionalPaymentData] = useState({ amount: '', paymentMethod: 'מזומן', notes: '' });
+  const [additionalPaymentError, setAdditionalPaymentError] = useState('');
   const [refundData, setRefundData] = useState({
     amount: '', reason: '', bankName: '', bankBranch: '', bankAccount: '', bankAccountName: '', paymentDetails: '', email: ''
   });
@@ -221,6 +228,46 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       }
     } catch (err) {
       alert(err.message || 'שגיאה ביצירת הזיכוי');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleOpenAdditionalPaymentModal = () => {
+    setAdditionalPaymentData({ amount: '', paymentMethod: additionalPaymentMethodOptions[0] || 'מזומן', notes: '' });
+    setAdditionalPaymentError('');
+    setShowAdditionalPaymentModal(true);
+  };
+
+  /** רישום תשלום נוסף (למשל מזומן) על הזמנה קיימת - לא קשור לחישוב חיוב/חוב מחדש, רק
+   * Payment חדש דרך אותו נתיב POST /api/payments שכבר משמש לשמירת חיוב אשראי מיידי
+   * למעלה בקובץ. נשמר ישירות בשרת (לא רק ב-state המקומי) כי כסף אמיתי כבר עבר ידיים -
+   * אותו טיעון כמו handleProcessCreditCard. */
+  const submitAdditionalPayment = async () => {
+    const amount = parseFloat(additionalPaymentData.amount);
+    if (!amount || amount <= 0) {
+      setAdditionalPaymentError('יש להזין סכום חיובי לתשלום');
+      return;
+    }
+    setIsProcessing(true);
+    setAdditionalPaymentError('');
+    try {
+      const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          orderId,
+          amount,
+          paymentMethod: additionalPaymentData.paymentMethod || 'מזומן',
+          notes: additionalPaymentData.notes || ''
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'שגיאה בשמירת התשלום');
+      onPaymentsChange([...payments, data]);
+      setShowAdditionalPaymentModal(false);
+    } catch (err) {
+      setAdditionalPaymentError(err.message || 'שגיאה בשמירת התשלום');
     } finally {
       setIsProcessing(false);
     }
@@ -574,6 +621,17 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
   const hasActiveObligationWithDescription = (description) => obligations.some(o => !o.isDeleted && o.description === description);
 
+  // אופציות "אופן תשלום" לתשלום נוסף ידני - מבוסס על אותה הגדרת ALLOWED_PAYMENT_METHODS
+  // כמו אשף ההזמנה החדשה (ר' computePaymentMethodOptions ב-app/orders/new/page.js), בלי
+  // אשראי - לתשלום בכרטיס יש כבר את הכפתור הייעודי (נדרים פלוס) למעלה בטאב הזה.
+  const additionalPaymentMethodOptions = (() => {
+    const raw = settings.ALLOWED_PAYMENT_METHODS
+      ? settings.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean)
+      : ['מזומן', 'העברה בנקאית', "צ'ק"];
+    const withoutCredit = raw.filter(opt => !opt.includes('אשראי'));
+    return withoutCredit.length > 0 ? withoutCredit : ['מזומן'];
+  })();
+
   const addDeliveryObligation = (description) => {
     if (hasActiveObligationWithDescription(description)) return;
     const added = {
@@ -770,6 +828,11 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
           {settings.nedarim_plus_enabled !== 'false' && (
             <button type="button" className="btn btn-primary btn-sm" onClick={handleOpenCreditModal} title="תשלום בכרטיס אשראי (נדרים פלוס)">
               <svg className="icon"><use href="#i-card" /></svg>תשלום בכרטיס אשראי (נדרים פלוס)
+            </button>
+          )}
+          {settings.allow_additional_payment_on_order === 'true' && (
+            <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenAdditionalPaymentModal} title="רישום תשלום נוסף (למשל מזומן) בנוסף לתשלומים הקיימים בהזמנה">
+              <svg className="icon"><use href="#i-coin" /></svg>תשלום נוסף
             </button>
           )}
           <button type="button" className="btn btn-secondary btn-sm" onClick={handleOpenRefundModal} title="בקשת זיכוי ללקוח">
@@ -1194,6 +1257,59 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               <button type="button" className="btn btn-secondary" onClick={() => setShowRefundModal(false)}>ביטול</button>
               <button type="button" className="btn btn-primary" disabled={isProcessing} onClick={submitRefund}>
                 {isProcessing ? <><span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> מעבד...</> : 'צור בקשת זיכוי'}
+              </button>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
+
+      {/* ===== מודל תשלום נוסף (מזומן/אחר) - מאחורי allow_additional_payment_on_order ===== */}
+      {mounted && showAdditionalPaymentModal && createPortal(
+        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget && !isProcessing) setShowAdditionalPaymentModal(false); }}>
+          <div className="modal" style={{ margin: 0 }}>
+            <div className="modal-head">
+              <strong>תשלום נוסף</strong>
+              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowAdditionalPaymentModal(false)} disabled={isProcessing}>
+                <svg className="icon"><use href="#i-x" /></svg>
+              </button>
+            </div>
+            <div className="modal-body">
+              <div className="field">
+                <label>אופן תשלום</label>
+                <select
+                  className="input"
+                  value={additionalPaymentData.paymentMethod}
+                  onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, paymentMethod: e.target.value })}
+                >
+                  {additionalPaymentMethodOptions.map(opt => (
+                    <option key={opt} value={opt}>{opt}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="field">
+                <label>סכום (₪)</label>
+                <input type="number" className="input" placeholder="0" value={additionalPaymentData.amount}
+                  onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, amount: e.target.value })}
+                  style={{ fontWeight: 700 }} />
+              </div>
+              <div className="field" style={{ marginBottom: additionalPaymentError ? '14px' : 0 }}>
+                <label>הערות</label>
+                <input type="text" className="input" value={additionalPaymentData.notes}
+                  onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, notes: e.target.value })}
+                  placeholder="הערות לתשלום" />
+              </div>
+              {additionalPaymentError && (
+                <div className="callout callout-danger">
+                  <svg className="icon"><use href="#i-alert-tri" /></svg>
+                  <span>{additionalPaymentError}</span>
+                </div>
+              )}
+            </div>
+            <div className="modal-foot">
+              <button type="button" className="btn btn-secondary" disabled={isProcessing} onClick={() => setShowAdditionalPaymentModal(false)}>ביטול</button>
+              <button type="button" className="btn btn-primary" disabled={isProcessing || !additionalPaymentData.amount} onClick={submitAdditionalPayment}>
+                {isProcessing ? <><span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> שומר...</> : 'שמור תשלום'}
               </button>
             </div>
           </div>

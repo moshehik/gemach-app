@@ -59,6 +59,14 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'פעולה זו מוגבלת להנהלה ראשית בלבד' }, { status: 403 });
     }
 
+    // מנהל סניף ומעלה - משמש את PAYMENT_APPROVAL_LEVEL (יציאה מהזמנה באישור מנהל).
+    // "ומעלה" כולל גם הנהלה ראשית (roleId 0), לא רק מנהל סניף/מתכנת (roleId 1/2) -
+    // איחוד ROLE_LEVELS['מנהל'] ו-HEAD_MANAGEMENT_ROLES ב-lib/auth.js.
+    const isBranchManagerOrAbove = [0, 1, 2].includes(employee.roleId);
+    if (requiredLevel === 'מנהל סניף ומעלה' && !isBranchManagerOrAbove) {
+      return NextResponse.json({ success: false, error: 'פעולה זו מוגבלת למנהל סניף ומעלה בלבד' }, { status: 403 });
+    }
+
     return NextResponse.json({ success: true, employeeId: employee.id, employeeName: employee.firstName + ' ' + employee.lastName });
   } catch (error) {
     console.error('Error verifying PIN:', error);

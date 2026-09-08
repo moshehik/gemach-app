@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 
 export default function AIFloatingWidget({ hideAIFeatures = false }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const [messages, setMessages] = useState([]);
@@ -21,6 +22,14 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
   const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
 
+  // ניווט באותה כרטיסייה (SPA, ללא רענון מלא) בלחיצה רגילה - שומר על ctrl/cmd/shift/
+  // middle-click כדי שמשתמש שרוצה בכוונה לפתוח בכרטיסייה חדשה עדיין יוכל (כמו Next Link).
+  const navigateInApp = (e, href) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    router.push(href);
+  };
+
   const parseMessageToLinks = (text) => {
     if (!text) return null;
     const parts = text.split(/(הזמנה\s*\d+|לקוח\s*[\w-]+)/g);
@@ -31,7 +40,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
           <a
             key={i}
             href={`/orders/${match[1]}`}
-            target="_blank"
+            onClick={(e) => navigateInApp(e, `/orders/${match[1]}`)}
             className="chip"
             style={{ background: 'var(--primary-solid)', color: 'var(--text-on-primary)', border: 'none', fontWeight: 'bold', margin: '0 4px' }}
           >
@@ -45,7 +54,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
           <a
             key={i}
             href={`/customers/${match[1]}`}
-            target="_blank"
+            onClick={(e) => navigateInApp(e, `/customers/${match[1]}`)}
             className="chip"
             style={{ background: 'var(--primary-solid)', color: 'var(--text-on-primary)', border: 'none', fontWeight: 'bold', margin: '0 4px' }}
           >

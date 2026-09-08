@@ -4,6 +4,7 @@ import { checkAuth } from '../../../lib/auth';
 import { normalizeEmail } from '@/lib/emailUtils';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { validateCustomerFieldFormats } from '@/lib/customerValidation';
+import { buildMultiWordNameCondition } from '@/lib/searchUtils';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -23,28 +24,43 @@ export async function GET(request) {
     const advCity = searchParams.get('city') || '';
     const advEmail = searchParams.get('email') || '';
 
-    const where = {
-      isDeleted: false,
-      ...(search ? {
+    // בונים כל תנאי כאיבר נפרד במערך ה-AND במקום לפזר אותם כמפתחות נפרדים על
+    // אובייקט אחד (כפי שהיה קודם) - שני מפתחות "OR" (חיפוש בסיסי + advPhone)
+    // באותו אובייקט מתנגשים ב-JS: הספרייד המאוחר יותר דורס בשקט את הקודם, כך
+    // שאם advPhone נשאר ממולא מחיפוש מתקדם קודם (ה-state לא מתאפס אוטומטית
+    // ב-app/customers/page.js) כל חיפוש טקסט רגיל אחריו החליף את עצמו בסינון
+    // לפי הטלפון הישן בלבד - זה בדיוק הבאג מאחורי "החיפוש לא עובד לפי שם"/
+    // "תוצאות לפי עיר לא נכונות": מה שהוקלד בפועל נדרס ולא השפיע על השאילתה.
+    const multiWordNameCond = search ? buildMultiWordNameCondition(search, 'firstName', 'lastName') : null;
+    const conditions = [{ isDeleted: false }];
+    if (search) {
+      conditions.push({
         OR: [
           { firstName: { contains: search } },
           { lastName: { contains: search } },
           { phone1: { contains: search } },
           { email: { contains: search } },
-          { city: { contains: search } }
+          { city: { contains: search } },
+          // חיפוש שם מלא ("רחל כהן") - קודם כל מילה נבדקה רק כמכלול מול שדה
+          // בודד, כך ששם פרטי+משפחה יחד מעולם לא התאים לאף שדה. ר' lib/searchUtils.js.
+          ...(multiWordNameCond ? [multiWordNameCond] : [])
         ]
-      } : {}),
-      ...(advFirstName ? { firstName: { contains: advFirstName } } : {}),
-      ...(advLastName ? { lastName: { contains: advLastName } } : {}),
-      ...(advPhone ? {
+      });
+    }
+    if (advFirstName) conditions.push({ firstName: { contains: advFirstName } });
+    if (advLastName) conditions.push({ lastName: { contains: advLastName } });
+    if (advPhone) {
+      conditions.push({
         OR: [
           { phone1: { contains: advPhone } },
           { phone2: { contains: advPhone } }
         ]
-      } : {}),
-      ...(advCity ? { city: { contains: advCity } } : {}),
-      ...(advEmail ? { email: { contains: advEmail } } : {})
-    };
+      });
+    }
+    if (advCity) conditions.push({ city: { contains: advCity } });
+    if (advEmail) conditions.push({ email: { contains: advEmail } });
+
+    const where = { AND: conditions };
 
     const [customers, totalCount] = await Promise.all([
       prisma.customer.findMany({
@@ -67,7 +83,13 @@ export async function GET(request) {
           email: true,
           emailSuffix: true,
           isBlocked: true,
-          blockedReason: true
+          blockedReason: true,
+          // חסרו כאן - לקוח שנמצא דרך חיפוש (למשל לפי טלפון בהוספת הזמנה) הגיע בלי
+          // ת"ז/אישור דיוור בפועל, אז בדיקת "שדות חובה חסרים" בצד הלקוח (ר'
+          // getMissingMandatoryCustomerFields ב-app/orders/new/page.js) הייתה מסמנת
+          // אותם כחסרים גם כשהם מולאים אצל הלקוח בפועל.
+          zeout: true,
+          marketingConsent: true
         }
       }),
       prisma.customer.count({ where })
@@ -112,6 +134,15 @@ export async function POST(request) {
       if (sMap.get('require_marketing_consent') === 'true') {
         if (!body.marketingConsent) errors.push('חובה לאשר קבלת דיוורים');
       }
+      // require_customer_id_number - הגדרה ייעודית לגמח נווה יעקב בלבד (מופעלת רק
+      // ב-DB שלהם), נפרדת בכוונה מ-mandatory_fields (שמשמש את מסך "מילוי פרטי הזמנה"
+      // ולא את טופס יצירת הלקוח עצמו - ר' getMissingMandatoryCustomerFields ב-
+      // app/orders/new/page.js). ברירת מחדל 'false'/שורה חסרה = ת"ז נשארת אופציונלית
+      // (התנהגות קודמת, כמו הגמח הראשי).
+      if (sMap.get('require_customer_id_number') === 'true') {
+        const zeoutVal = String(body.zeout || body.idNumber || '').trim();
+        if (!zeoutVal) errors.push('תעודת זהות חובה');
+      }
       // אם mandatory_fields מכיל שדות נוספים ו-strict מופעל, אוכפים גם אותם
       if (sMap.get('strict_mandatory_fields') === 'true') {
         const mandatory = (sMap.get('mandatory_fields') || '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
@@ -134,6 +165,21 @@ export async function POST(request) {
       }
       // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים) - לא קשור ל"האם חובה"
       errors.push(...validateCustomerFieldFormats(body));
+
+      // 5 - חסימת כפילות ת"ז בין לקוחות: המערכת אפשרה עד כה לשמור 2 לקוחות עם אותה
+      // תעודת זהות. ת"ז אמורה להיות ייחודית ללקוח (בניגוד לטלפון, שיכול להיות משותף
+      // במשפחה) - בודקים רק מול לקוחות פעילים (isDeleted: false).
+      const zeoutToCheck = String(body.zeout || body.idNumber || '').trim();
+      if (zeoutToCheck) {
+        const zeoutOwner = await prisma.customer.findFirst({
+          where: { zeout: zeoutToCheck, isDeleted: false },
+          select: { firstName: true, lastName: true }
+        });
+        if (zeoutOwner) {
+          const ownerName = [zeoutOwner.firstName, zeoutOwner.lastName].filter(Boolean).join(' ');
+          errors.push(`מספר תעודת זהות זה כבר קיים במערכת אצל לקוח אחר${ownerName ? ` (${ownerName})` : ''}`);
+        }
+      }
 
       if (errors.length > 0) {
         return NextResponse.json({ error: `${errors.join(', ')}` }, { status: 400 });

@@ -33,11 +33,12 @@ export async function GET(request) {
     dateLimitEnd.setDate(dateLimitEnd.getDate() + 60);
 
     // 1. Fetch system settings
-    const settingsRaw = (await getAllCachedSettings()).filter(s => ['inventory_buffer_days', 'inventory_skip_weekends', 'inventory_include_warehouse', 'inventory_hold_minutes'].includes(s.key));
+    const settingsRaw = (await getAllCachedSettings()).filter(s => ['inventory_buffer_days', 'inventory_skip_weekends', 'inventory_include_warehouse', 'allow_renting_reserve_items', 'inventory_hold_minutes'].includes(s.key));
 
     let bufferDays = 3;
     let skipWeekends = true;
     let includeWarehouse = false;
+    let allowRentingReserve = false;
 
     const bufferSetting = settingsRaw.find(s => s.key === 'inventory_buffer_days');
     if (bufferSetting) bufferDays = parseInt(bufferSetting.value, 10);
@@ -48,6 +49,10 @@ export async function GET(request) {
     const warehouseSetting = settingsRaw.find(s => s.key === 'inventory_include_warehouse');
     if (warehouseSetting) includeWarehouse = warehouseSetting.value === 'true';
 
+    // See lib/inventory.js for why this is a separate toggle from inventory_include_warehouse.
+    const reserveSetting = settingsRaw.find(s => s.key === 'allow_renting_reserve_items');
+    if (reserveSetting) allowRentingReserve = reserveSetting.value === 'true';
+
     // חייב להיות זהה בדיוק לכלל השחרור של החזקה זמנית ב-getAvailableInventory (lib/inventory.js) —
     // אחרת המטמון בצד הלקוח "רואה" שמלה כפנויה/תפוסה אחרת מהבדיקה האמיתית בזמן ההוספה בשרת,
     // וההוספה נכשלת עם "אין במלאי" אחרי שהלקוח כבר הראה שהמידה זמינה.
@@ -56,24 +61,21 @@ export async function GET(request) {
     const cutoffDate = new Date(Date.now() - holdMinutes * 60 * 1000);
 
     // 2. Fetch total active stock (all dress items)
+    const excludeLocationTerms = [
+      ...(includeWarehouse ? [] : ['מחסן', 'warehouse']),
+      ...(allowRentingReserve ? [] : ['רזרבה', 'reserve'])
+    ];
     const stockItems = await prisma.dressItem.findMany({
       where: {
         notInUse: false,
         isDeleted: false,
         inRepair: false,
-        ...(includeWarehouse ? {} : {
+        ...(excludeLocationTerms.length > 0 ? {
           OR: [
             { location: null },
-            {
-              AND: [
-                { location: { not: { contains: 'מחסן' } } },
-                { location: { not: { contains: 'רזרבה' } } },
-                { location: { not: { contains: 'warehouse' } } },
-                { location: { not: { contains: 'reserve' } } }
-              ]
-            }
+            { AND: excludeLocationTerms.map(term => ({ location: { not: { contains: term } } })) }
           ]
-        })
+        } : {})
       },
       select: {
         id: true,

@@ -197,6 +197,10 @@ export default function OrderDetailsPage({ params }) {
   const [draftsAsDeleted, setDraftsAsDeleted] = useState(true);
   const [requireIdForEdit, setRequireIdForEdit] = useState(false); // 14 - ת״ז לעריכה/ביטול
   const [allowEditPartially, setAllowEditPartially] = useState(true); // 27 - עריכת מושכר חלקי
+  // require_manager_code_for_item_changes - ביטול פריט קיים דורש גם אישור מנהל, בנוסף
+  // לת״ז (לא במקומו). ברירת מחדל כבויה = ההתנהגות הקודמת (ת״ז בלבד). הוספת פריט חדש
+  // נבדקת בנפרד ב-ModernItemsManager.js (POST מיידי, לא דרך שמירת ההזמנה הכללית כאן).
+  const [requireManagerCodeForItems, setRequireManagerCodeForItems] = useState(false);
   useEffect(() => {
     let cancelled = false;
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -208,6 +212,8 @@ export default function OrderDetailsPage({ params }) {
         if (reqId) setRequireIdForEdit(reqId.value === 'true');
         const allowP = data.find(s => s.key === 'allow_edit_partially_rented');
         if (allowP) setAllowEditPartially(allowP.value === 'true');
+        const reqManagerCode = data.find(s => s.key === 'require_manager_code_for_item_changes');
+        if (reqManagerCode) setRequireManagerCodeForItems(reqManagerCode.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -617,6 +623,43 @@ export default function OrderDetailsPage({ params }) {
       }
     }
 
+    // require_manager_code_for_item_changes - ביטול פריט קיים (isDeleted הופך ל-true) דורש
+    // גם אישור מנהל אמיתי, בנוסף לת״ז (requestZeout, נשאל בתוך putOrder). ביטול פריט לא
+    // נשמר מיד בלחיצת המחיקה בטאב הפריטים - הוא ממתין לשמירת ההזמנה הכללית כאן, בדיוק כמו
+    // אישור החוב למעלה. הוספת פריט חדש נבדקת בנפרד ומיידית ב-ModernItemsManager.js.
+    let managerAuthForItemChange = null;
+    const cancelledItemNow = requireManagerCodeForItems && (savedSnapshotRef.current?.items || []).some(before => {
+      if (!before.id || before.isDeleted) return false;
+      const after = items.find(i => i.id === before.id);
+      return after && after.isDeleted;
+    });
+    if (cancelledItemNow) {
+      const authResult = await window.customAuthPrompt('ביטול פריט מהזמנה קיימת דורש גם אישור מנהל (בנוסף לאימות ת״ז). אנא בחר מנהל והזן סיסמה:', 'מנהל');
+      if (!authResult || !authResult.pin) {
+        setSaving(false);
+        setSaveMessage('השמירה בוטלה: ביטול פריט דורש אישור מנהל.');
+        return;
+      }
+      try {
+        const res = await fetch('/api/auth/verify-pin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+        });
+        const data = await res.json();
+        if (!data.success) {
+          setSaving(false);
+          alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
+          return;
+        }
+        managerAuthForItemChange = { employeeId: authResult.employeeId, pin: authResult.pin };
+      } catch (err) {
+        setSaving(false);
+        alert('שגיאה באימות קוד מנהל.');
+        return;
+      }
+    }
+
     // items כאן הוא צילום מצב מרגע לחיצת השמירה — בדיוק מה שנשלח לשרת.
     // שורה חדשה בלי דגם/מידה מדולגת בשרת, ולכן היא נשארת פתוחה גם אחרי השמירה.
     const submittedLocalIds = items
@@ -641,6 +684,8 @@ export default function OrderDetailsPage({ params }) {
           status: currentOrder.status,
           hasSignedRegulations: currentOrder.hasSignedRegulations,
           updatedAt: currentOrder.updatedAt,
+          managerEmployeeId: managerAuthForItemChange?.employeeId,
+          managerPin: managerAuthForItemChange?.pin,
           items: items,
           obligations: obligations,
           payments: payments,
@@ -1023,15 +1068,30 @@ export default function OrderDetailsPage({ params }) {
     }
   };
 
-  // שינוי סטטוס חתימה על תקנון מכפתור הטופ-בר בעיצוב המודרני (עם אישור)
+  // שינוי סטטוס חתימה על תקנון מכפתור הטופ-בר בעיצוב המודרני (עם אישור) - PUT קטן
+  // משלו (בדיוק כמו OrderPrintMenu.js/confirmSigned) ולא דרך handleSave המלא: אישור
+  // שהלקוח חתם על נייר הוא לא עריכת תוכן ההזמנה, ואין סיבה שהוא יגרור בדיקות שלא
+  // קשורות (בקשת ת״ז, אישור חוב, אישור מנהל לביטול פריט...) שחלות על שמירת ההזמנה הכללית.
   const handleToggleSignature = async () => {
     const nowYes = !order.hasSignedRegulations;
     const msg = nowYes ? 'האם הלקוח חתם על תקנון ההשכרה?' : 'האם לסמן שהלקוח לא חתם על התקנון?';
     const confirmed = window.customConfirm ? await window.customConfirm(msg) : window.confirm(msg);
     if (!confirmed) return;
-    const updatedOrder = { ...order, hasSignedRegulations: nowYes };
-    setOrder(updatedOrder);
-    handleSave(updatedOrder);
+    try {
+      const res = await fetch(`/api/orders/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ hasSignedRegulations: nowYes })
+      });
+      if (res.ok) {
+        handlePrintMenuOrderUpdate({ hasSignedRegulations: nowYes });
+      } else {
+        alert('שגיאה בשמירת אישור החתימה');
+      }
+    } catch (e) {
+      console.error(e);
+      alert('שגיאת תקשורת בשמירת אישור החתימה');
+    }
   };
 
   // סריקה מהירה מהסיידבר — עוברים לטאב הפריטים ומבצעים שם השכרה/החזרה
@@ -1194,6 +1254,7 @@ export default function OrderDetailsPage({ params }) {
                   setHasUnsavedChanges(true);
                 }}
                 onSaveRequest={handleSave}
+                onToggleSignature={handleToggleSignature}
                 onQuickEmail={() => handleSendEmail('order')}
               />
             ),

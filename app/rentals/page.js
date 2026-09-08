@@ -400,8 +400,8 @@ export default function RentalsPage() {
         <button type="button" onClick={() => setViewMode('all')} className={viewMode === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
           <svg className="icon"><use href="#i-list" /></svg> הכל
         </button>
-        <button type="button" onClick={() => setViewMode('rented')} className={viewMode === 'rented' ? 'pill-tab active' : 'pill-tab'} title="הושכר">
-          <svg className="icon"><use href="#i-bag" /></svg> הושכר
+        <button type="button" onClick={() => setViewMode('rented')} className={viewMode === 'rented' ? 'pill-tab active' : 'pill-tab'} title="כל ההזמנות עם פריט שנמצא כרגע בחוץ (כולל הושכר חלקי)">
+          <svg className="icon"><use href="#i-bag" /></svg> מושכר עכשיו
         </button>
         <button type="button" onClick={() => setViewMode('rented_partial')} className={viewMode === 'rented_partial' ? 'pill-tab active' : 'pill-tab'} title="הושכר חלקי">
           <svg className="icon"><use href="#i-clock" /></svg> הושכר חלקי

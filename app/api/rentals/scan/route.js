@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
-import prisma from '../../../lib/prisma';
+import prisma, { auditAs } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { verifySecret } from '@/lib/passwordAuth';
 
@@ -16,7 +16,7 @@ export async function POST(request) {
     // 1+2. Validate order and find the DressItem by barcode — three independent lookups,
     // fetched in parallel (this is the hot path of every barcode scan). The validation
     // checks below run in the exact same order as before, so error precedence is unchanged.
-    const [order, dressItem, warehouseSetting] = await Promise.all([
+    const [order, dressItem, warehouseSetting, reserveSetting] = await Promise.all([
       prisma.order.findUnique({
         where: { orderId: parseInt(orderId) },
         include: { items: true }
@@ -25,7 +25,8 @@ export async function POST(request) {
         where: { dressBarcode: barcode },
         include: { dress: true }
       }),
-      getCachedSetting('inventory_include_warehouse')
+      getCachedSetting('inventory_include_warehouse'),
+      getCachedSetting('allow_renting_reserve_items')
     ]);
 
     if (!order) {
@@ -44,22 +45,14 @@ export async function POST(request) {
         const manualOn = allS.find(s => s.key === 'manual_barcode_double_entry')?.value === 'true';
         if (invalidOn && itemIdToForce) {
           try {
-            await prisma.orderItem.update({
-              where: { id: itemIdToForce },
-              data: { barcodeInvalid: true, barcodeInvalidHandled: false, barcode: barcode || undefined },
-            });
-          } catch {}
-        }
-        if (invalidOn) {
-          try {
-            await prisma.auditLog.create({
-              data: {
-                entityType: 'OrderItem',
-                entityId: String(orderId),
-                action: 'BARCODE_INVALID',
-                changesJson: JSON.stringify({ barcode, orderId, at: new Date().toISOString() }),
+            await prisma.orderItem.update(auditAs(
+              'BARCODE_INVALID',
+              {
+                where: { id: itemIdToForce },
+                data: { barcodeInvalid: true, barcodeInvalidHandled: false, barcode: barcode || undefined },
               },
-            });
+              { barcode: { from: null, to: barcode || null } }
+            ));
           } catch {}
         }
         // 31 - אם manualEntry + confirm + חתימה וההגדרה מופעלת - מאפשרים הקלדה ידנית (האימות הכפול נעשה ב-UI)
@@ -93,6 +86,11 @@ export async function POST(request) {
     }
 
     const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
+    // allow_renting_reserve_items (SystemSetting, default missing/false = old behavior - still
+    // blocked, same as inventory_include_warehouse for מחסן). Kept as its own toggle rather than
+    // folded into inventory_include_warehouse - see lib/inventory.js for the reasoning. When on,
+    // רזרבה items skip this block entirely (no manager PIN needed each time); מחסן items still do.
+    const allowRentingReserve = reserveSetting && reserveSetting.value === 'true';
 
     // חסימת רזרבה/מחסן ניתנת לעקיפה באישור מנהל - יש מצבים בפועל שבהם שמלה
     // שמסומנת רזרבה/מחסן כן ניתנת להוצאה, וזו החלטה תפעולית של מנהל. האימות
@@ -100,13 +98,11 @@ export async function POST(request) {
     // הסיסמה שהמנהל הקליד (overridePin/overrideEmployeeId) ואנו מוודאים אותה
     // מול ה-DB בדיוק כמו /api/auth/verify-pin, כדי שעובד רגיל לא יוכל לשלוח
     // בקשה ישירה עם overrideReserved=true ולעקוף את החסימה בלי אישור מנהל אמיתי.
-    if (!includeWarehouse && dressItem.location) {
+    if (dressItem.location) {
       const locLower = dressItem.location.toLowerCase();
       const isReserved = (
-        locLower.includes('מחסן') ||
-        locLower.includes('רזרבה') ||
-        locLower.includes('warehouse') ||
-        locLower.includes('reserve')
+        (!includeWarehouse && (locLower.includes('מחסן') || locLower.includes('warehouse'))) ||
+        (!allowRentingReserve && (locLower.includes('רזרבה') || locLower.includes('reserve')))
       );
       if (isReserved) {
         let overrideVerified = false;

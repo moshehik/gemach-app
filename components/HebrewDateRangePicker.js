@@ -62,6 +62,9 @@ export default function HebrewDateRangePicker({
   const [tempStart, setTempStart] = useState('');
   const [tempEnd, setTempEnd] = useState('');
   const [hoverIso, setHoverIso] = useState('');
+  // האם המשתמש כבר התחיל בחירה חדשה בפתיחה הנוכחית של הלוח - ר' handleSelectDay למטה
+  // (תיקון באג 6: טווח של יום אחד).
+  const [selectionStarted, setSelectionStarted] = useState(false);
 
   const containerRef = useRef(null);
 
@@ -78,6 +81,7 @@ export default function HebrewDateRangePicker({
       setTempStart((startDate || '').split('T')[0]);
       setTempEnd((endDate || '').split('T')[0]);
       setHoverIso('');
+      setSelectionStarted(false);
     } catch (e) {
       console.error(e);
     }
@@ -97,6 +101,18 @@ export default function HebrewDateRangePicker({
   };
 
   const handleSelectDay = (isoStr) => {
+    // באג 6: tempStart/tempEnd מאותחלים מהטווח שכבר הופעל (startDate/endDate) כשהלוח נפתח -
+    // כולל ברירת המחדל של מסך ההזמנות (eventDateFrom = לפני 3 חודשים, eventDateTo = ריק, ר'
+    // defaultOrdersAdvFilters). בלי השומר הזה, הקליק הראשון על יום שרוצים לבחור כטווח-יום-בודד
+    // מתפרש כ"סיום" לטווח הישן (tempStart הישן טרם נוקה כי tempEnd היה ריק), ומייצר בטעות טווח
+    // ענק [3 חודשים אחורה .. היום שנבחר] במקום יום אחד - מה שנתפס כאילו "אי אפשר" לבחור יום בודד.
+    // הקליק הראשון בכל פתיחה תמיד מתחיל בחירה חדשה ונקייה, בלי קשר למה שהיה טעון קודם.
+    if (!selectionStarted) {
+      setSelectionStarted(true);
+      setTempStart(isoStr);
+      setTempEnd('');
+      return;
+    }
     if (!tempStart || (tempStart && tempEnd)) {
       setTempStart(isoStr);
       setTempEnd('');

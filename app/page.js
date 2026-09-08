@@ -96,6 +96,14 @@ export default function HomeDashboard() {
   const [aiInputMode, setAiInputMode] = useState(false);
   const [aiInputText, setAiInputText] = useState('');
 
+  // ניווט באותה כרטיסייה (SPA, ללא רענון מלא) בלחיצה רגילה - שומר על ctrl/cmd/shift/
+  // middle-click כדי שמשתמש שרוצה בכוונה לפתוח בכרטיסייה חדשה עדיין יוכל (כמו Next Link).
+  const navigateInApp = (e, href) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    e.preventDefault();
+    router.push(href);
+  };
+
   const parseMessageToLinks = (text) => {
     if (!text) return null;
     const parts = text.split(/(הזמנה\s*\d+|לקוח\s*[\w-]+)/g);
@@ -106,7 +114,7 @@ export default function HomeDashboard() {
           <a
             key={i}
             href={`/orders/${match[1]}`}
-            target="_blank"
+            onClick={(e) => navigateInApp(e, `/orders/${match[1]}`)}
             className="chip"
             style={{ background: 'var(--primary-solid)', color: 'var(--text-on-primary)', border: 'none', fontWeight: 'bold', margin: '0 4px' }}
           >
@@ -120,7 +128,7 @@ export default function HomeDashboard() {
           <a
             key={i}
             href={`/customers/${match[1]}`}
-            target="_blank"
+            onClick={(e) => navigateInApp(e, `/customers/${match[1]}`)}
             className="chip"
             style={{ background: 'var(--primary-solid)', color: 'var(--text-on-primary)', border: 'none', fontWeight: 'bold', margin: '0 4px' }}
           >
@@ -143,7 +151,56 @@ export default function HomeDashboard() {
     }
   };
 
+  // מופרד מ-handleGlobalSearch כדי שגם ה-useEffect שקורא ?q=... מ-URL (הגעה מ"הצג
+  // את כל התוצאות" בסרגל העליון) יוכל להריץ חיפוש מיידית עם ערך מפורש, בלי לחכות
+  // ל-state של searchInput להתעדכן קודם.
+  const performGlobalSearch = async (queryText) => {
+    if (!queryText || !queryText.trim()) return;
+
+    setLoadingSearch(true);
+    setAiMessages([]);
+    localStorage.removeItem('dashboardAiMessages');
+
+    try {
+      const res = await fetch(`/api/global-search?q=${encodeURIComponent(queryText)}`);
+      const data = await res.json();
+      setSearchResults(data);
+      sessionStorage.setItem('dashboardSearchInput', queryText);
+      sessionStorage.setItem('dashboardSearchResults', JSON.stringify(data));
+
+      const newRecentSearches = [queryText, ...recentSearches.filter(s => s !== queryText)].slice(0, 5);
+      setRecentSearches(newRecentSearches);
+      localStorage.setItem('dashboardRecentSearches', JSON.stringify(newRecentSearches));
+
+      setShowMoreCustomers(false);
+      setShowMoreOrders(false);
+      setShowMoreRentals(false);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingSearch(false);
+    }
+  };
+
+  const handleGlobalSearch = (e) => {
+    if (e) e.preventDefault();
+    performGlobalSearch(searchInput);
+  };
+
   useEffect(() => {
+    // "הצג את כל התוצאות" מסרגל החיפוש העליון (TopbarSearch) מנווט לכאן עם ?q=...
+    // כדי להציג את אותו חיפוש בעמוד מלא במקום בחלונית הקטנה שמוגבלת ל-15 תוצאות
+    // (ר' item 7 בדיווח). אם יש q ב-URL הוא גובר על מה ששמור מסשן קודם.
+    const params = new URLSearchParams(window.location.search);
+    const qParam = params.get('q');
+    if (qParam && qParam.trim()) {
+      setSearchInput(qParam);
+      performGlobalSearch(qParam);
+      // מנקים מה-URL כדי שרענון/ניווט חזרה לא יריצו את החיפוש שוב מאליו
+      window.history.replaceState(null, '', window.location.pathname);
+      return;
+    }
+
     // Load from local storage
     const savedSearchInput = sessionStorage.getItem('dashboardSearchInput');
     const savedSearchResults = sessionStorage.getItem('dashboardSearchResults');
@@ -168,37 +225,6 @@ export default function HomeDashboard() {
   useEffect(() => {
     scrollToBottom();
   }, [aiMessages]);
-
-
-
-  const handleGlobalSearch = async (e) => {
-    if (e) e.preventDefault();
-    if (!searchInput.trim()) return;
-
-    setLoadingSearch(true);
-    setAiMessages([]);
-    localStorage.removeItem('dashboardAiMessages');
-
-    try {
-      const res = await fetch(`/api/global-search?q=${encodeURIComponent(searchInput)}`);
-      const data = await res.json();
-      setSearchResults(data);
-      sessionStorage.setItem('dashboardSearchInput', searchInput);
-      sessionStorage.setItem('dashboardSearchResults', JSON.stringify(data));
-
-      const newRecentSearches = [searchInput, ...recentSearches.filter(s => s !== searchInput)].slice(0, 5);
-      setRecentSearches(newRecentSearches);
-      localStorage.setItem('dashboardRecentSearches', JSON.stringify(newRecentSearches));
-
-      setShowMoreCustomers(false);
-      setShowMoreOrders(false);
-      setShowMoreRentals(false);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingSearch(false);
-    }
-  };
 
   const handleAiSearch = async (query, isReply = false) => {
     if (!query.trim()) return;
@@ -444,7 +470,7 @@ export default function HomeDashboard() {
                               {msg.data.some(r => r._actionUrl) && (
                                 <td>
                                   {row._actionUrl && row._actionLabel ? (
-                                    <Link href={row._actionUrl} target="_blank" className="btn btn-secondary btn-sm">
+                                    <Link href={row._actionUrl} className="btn btn-secondary btn-sm">
                                       {row._actionLabel}
                                     </Link>
                                   ) : null}

@@ -361,6 +361,20 @@ export default function OrdersPage() {
     }
   };
 
+  // תיקון באג (דיווח 3): לחיצה על "הכל" הייתה מחליפה רק את filterStatus, בלי לנקות חיפוש
+  // טקסטואלי/סינון מתקדם/מצב AI שנשארו פעילים - כך שאם סינון קודם החזיר 0 תוצאות, "הכל"
+  // המשיך להציג רשימה ריקה (אותם הפרמטרים עדיין נשלחים לשרת) ורק רענון מלא של העמוד, שמאפס
+  // את כל ה-state בחזרה לברירת המחדל, החזיר את הרשימה. "הכל" צריך לנקות את כל הסינונים בפועל,
+  // לא רק לעבור ללשונית - זו בדיוק ההתנהגות שרענון עמוד מספק במקרה.
+  const handleShowAll = () => {
+    setSearchInput('');
+    setSearch('');
+    setAdvFilters(defaultOrdersAdvFilters());
+    setIsAiModeActive(false);
+    setFilterStatus('all');
+    setPage(1);
+  };
+
   const handleSort = (column) => {
     if (sort === column) {
       setOrder(order === 'asc' ? 'desc' : 'asc');
@@ -560,7 +574,7 @@ export default function OrdersPage() {
             לא-נלקחו
           </button>
         )}
-        <button type="button" onClick={() => { setFilterStatus('all'); setPage(1); }} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
+        <button type="button" onClick={handleShowAll} className={filterStatus === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
           <svg className="icon"><use href="#i-list" /></svg>
           הכל
         </button>

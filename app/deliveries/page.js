@@ -5,6 +5,7 @@ import Link from 'next/link';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
 import ExportButtons from '../../components/ExportButtons';
 import useDebounce from '@/hooks/useDebounce';
+import { getHebrewDateString } from '@/lib/hebrewDate';
 
 const todayIso = () => {
   const d = new Date();
@@ -16,6 +17,21 @@ const addDaysToIso = (iso, days) => {
   const date = new Date(y, m - 1, d);
   date.setDate(date.getDate() + days);
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+};
+
+// 'YYYY-MM-DD' -> local Date (same construction as addDaysToIso, avoids the
+// UTC-parse shift of `new Date(iso)`), for formatting the range-table day headers.
+const isoToLocalDate = (iso) => {
+  const [y, m, d] = iso.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+// עקבי עם הפורמט שכבר קיים ב-board/page.js למודל "הזמנות ליום X (תאריך עברי)" -
+// כותרת יום בטבלת טווח היא תאריך לוח-שנה תפעולי (לא תאריך אירוע של הזמנה ספציפית),
+// ולכן מוצג לועזי+עברי יחד, כמו שם, ולא רק eventDateHebrew כמו בעמודת הטבלה הרגילה.
+const formatRangeDayHeader = (iso) => {
+  const date = isoToLocalDate(iso);
+  return `${date.toLocaleDateString('he-IL')} (${getHebrewDateString(date)})`;
 };
 
 // תוויות/צבעים/אייקונים לכל כיוון משלוח - עקבי עם שפת ה-badge/dot-badge של design-system.css.
@@ -88,7 +104,9 @@ export default function DeliveriesPage() {
         return (
           String(r.orderId).includes(term) ||
           (r.customerName || '').toLowerCase().includes(term) ||
-          (r.customerPhone || '').includes(term)
+          (r.customerPhone || '').includes(term) ||
+          (r.customerPhone2 || '').includes(term) ||
+          (r.address || '').toLowerCase().includes(term)
         );
       });
   }, [rows, directionFilter, debouncedSearch]);
@@ -120,7 +138,9 @@ export default function DeliveriesPage() {
             columns={[
               { key: 'orderId', label: 'קוד הזמנה' },
               { key: 'customerName', label: 'לקוח' },
-              { key: 'customerPhone', label: 'טלפון' },
+              { key: 'customerPhone', label: 'טלפון 1' },
+              { key: 'customerPhone2', label: 'טלפון 2' },
+              { key: 'address', label: 'כתובת' },
               { key: 'eventDateHebrew', label: 'תאריך אירוע' },
               { key: 'dressModelsLabel', label: 'דגמים' },
               { key: 'directionsLabel', label: 'כיוון משלוח' },
@@ -201,7 +221,7 @@ export default function DeliveriesPage() {
             const dayRows = (rangeRows[d] || []).filter(r => directionFilter === 'all' || r.directions.includes(directionFilter));
             return (
               <div key={d} style={{ marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-                <strong>{d}</strong> - {dayRows.length} משלוחים
+                <strong>{formatRangeDayHeader(d)}</strong> - {dayRows.length} משלוחים
                 {dayRows.slice(0, 8).map(r => (
                   <div key={r.orderId} style={{ fontSize: 12, color: 'var(--text-2)' }}>
                     #{r.orderId} {r.customerName} ({r.directions.map(x => DIRECTION_META[x]?.label || x).join('+')})
@@ -221,6 +241,7 @@ export default function DeliveriesPage() {
               <tr>
                 <th>לקוח</th>
                 <th>הזמנה</th>
+                <th>כתובת</th>
                 <th>דגמים</th>
                 <th>תאריך אירוע</th>
                 <th>כיוון משלוח</th>
@@ -230,11 +251,11 @@ export default function DeliveriesPage() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan="6"><div className="loading-inline"><span className="spinner" />טוען נתונים...</div></td>
+                  <td colSpan="7"><div className="loading-inline"><span className="spinner" />טוען נתונים...</div></td>
                 </tr>
               ) : filteredRows.length === 0 ? (
                 <tr>
-                  <td colSpan="6">
+                  <td colSpan="7">
                     <div className="empty-state">
                       <svg className="icon"><use href="#i-box" /></svg>
                       <h4>אין משלוחים ליום זה</h4>
@@ -247,10 +268,12 @@ export default function DeliveriesPage() {
                   <td>
                     <div className="cell-primary">{row.customerName}</div>
                     {row.customerPhone && <div className="cell-muted" dir="ltr" style={{ textAlign: 'start' }}>{row.customerPhone}</div>}
+                    {row.customerPhone2 && <div className="cell-muted" dir="ltr" style={{ textAlign: 'start' }}>{row.customerPhone2}</div>}
                   </td>
                   <td className="cell-primary">
                     <Link href={`/orders/${row.orderId}`}>#{row.orderId}</Link>
                   </td>
+                  <td>{row.address || <span className="cell-muted">-</span>}</td>
                   <td>{row.dressModelNames.length > 0 ? row.dressModelNames.join(', ') : <span className="cell-muted">-</span>}</td>
                   <td><strong>{row.eventDateHebrew || '-'}</strong></td>
                   <td>

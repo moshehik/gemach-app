@@ -4,6 +4,7 @@ import { getAllCachedSettings } from '@/lib/settingsCache';
 import { recalculateOrderObligations } from '../../../../../lib/pricingEngine';
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../../lib/inventoryHold';
+import { verifyManagerPin } from '../../../../../lib/managerAuth';
 
 // See the sibling [itemId] route: only caller-fixable rules should surface as 400, so a
 // genuine server fault is not mistaken for a bad request.
@@ -32,6 +33,20 @@ export async function POST(request, { params }) {
 
     if (!itemData.dressModelId || !itemData.sizeText) {
       return NextResponse.json({ error: 'יש לבחור דגם ומידה' }, { status: 400 });
+    }
+
+    // require_manager_code_for_item_changes - הוספת פריט להזמנה קיימת דורשת גם אישור
+    // מנהל אמיתי, בנוסף לאימות ת״ז שכבר קורה בשמירת ההזמנה (require_id_for_edit_cancel).
+    // הלקוח כבר מציג את חלון האימות (window.customAuthPrompt) לפני הקריאה הזו - ר'
+    // handleConfirmItem ב-ModernItemsManager.js - אבל בלי בדיקה כאן, קריאת API ישירה
+    // (בלי דרך המסך) הייתה עוקפת את זה לגמרי. ברירת מחדל כבויה = ההתנהגות הקודמת.
+    const settingsForManagerCheck = await getAllCachedSettings();
+    const requireManagerCode = settingsForManagerCheck.find(s => s.key === 'require_manager_code_for_item_changes')?.value === 'true';
+    if (requireManagerCode) {
+      const managerOk = await verifyManagerPin(itemData.managerEmployeeId, itemData.managerPin);
+      if (!managerOk) {
+        return NextResponse.json({ error: 'דרוש אישור מנהל (קוד/סיסמה) בתוקף להוספת פריט להזמנה קיימת.' }, { status: 403 });
+      }
     }
 
     // הקריאות (הגדרות + חישוב הזמינות) רצות מחוץ לטרנזקציה: מול DB מרוחק הן מספיקות

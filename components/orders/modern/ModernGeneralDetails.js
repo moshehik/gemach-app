@@ -16,7 +16,7 @@ import { fetchSharedJson, TTL } from '../../../lib/apiCache';
  * ציפוף באישור מנהל, עריכת תאריך הזמנה למתכנת בלבד) בתוספת: מייל מהיר באישור מנהל
  * והחלפת לקוח מהכרטיס.
  */
-export default function ModernGeneralDetails({ order, onOrderChange, onSaveRequest, onQuickEmail }) {
+export default function ModernGeneralDetails({ order, onOrderChange, onSaveRequest, onToggleSignature, onQuickEmail }) {
   const [isEditingEvent, setIsEditingEvent] = useState(!order?.eventDate && !order?.fromDate);
   const [showCustomerModal, setShowCustomerModal] = useState(false);
   const [customerMode, setCustomerMode] = useState('existing');
@@ -109,11 +109,11 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
     onQuickEmail();
   };
 
+  // PUT קטן משלו דרך onToggleSignature (ר' handleToggleSignature ב-app/orders/[id]/page.js) -
+  // לא דרך onSaveRequest/handleSave המלא, כדי לא לגרור בדיקות שלא קשורות (ת״ז, אישור חוב...)
+  // על אישור שהלקוח חתם על נייר.
   const toggleSignature = () => {
-    const newValue = !order.hasSignedRegulations;
-    const newOrder = { ...order, hasSignedRegulations: newValue };
-    onOrderChange(newOrder);
-    if (onSaveRequest) onSaveRequest(newOrder);
+    if (onToggleSignature) onToggleSignature();
   };
 
   const selectCustomer = (c) => {
