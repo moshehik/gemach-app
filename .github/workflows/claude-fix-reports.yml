@@ -43,6 +43,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
+      id-token: write # claude-code-action מבקש OIDC token תמיד (גם עם claude_code_oauth_token) - בלי זה: "Could not fetch an OIDC token"
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
