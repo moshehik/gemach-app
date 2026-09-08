@@ -446,7 +446,12 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
   const openReports = handledAtBottom
     ? [...openReportsRaw].sort((a, b) => (a.isHandled === b.isHandled ? 0 : a.isHandled ? 1 : -1))
     : openReportsRaw;
-  const archivedReports = reports.filter(r => r.status === 'ARCHIVED');
+  // מיון לפי createdAt קבוע, לא לפי סדר ה-API (updatedAt desc) - אחרת עצם פתיחת/קריאת
+  // פנייה בארכיון (מסמנת isReadByProgrammer, מרעננת updatedAt) מזיזה אותה לראש הרשימה
+  // בפעם הבאה שהיא נטענת מחדש, וכל הרשימה "קופצת" מתחת למיקום הגלילה השמור.
+  const archivedReports = reports
+    .filter(r => r.status === 'ARCHIVED')
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
   // חיפוש בפניות - כמו במייל, מחפש בטקסט, בשם המדווח, בכותרת ובתגובות
   const filterBySearch = (list) => {
