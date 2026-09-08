@@ -872,6 +872,33 @@ export async function POST(request) {
       }
     });
 
+    // orderData.items/payments above are nested writes (`items: { create: [...] }`,
+    // `payments: { create: [...] }`) inside the single order.create/tx.order.update call.
+    // A nested write never reaches the audit extension as its own OrderItem/Payment
+    // operation - it only sees the outer Order call - so a brand-new order's dresses and
+    // first payment were invisible in their own history tab; only the order itself got a
+    // CREATE row. Record them explicitly now that we have the created rows with real ids.
+    const nestedCreateAuditRows = [
+      ...(updatedOrder.items || []).map(item => ({
+        entityType: 'OrderItem',
+        entityId: String(item.id),
+        action: 'CREATE',
+        changesJson: JSON.stringify(item),
+        employeeId: loggedInEmployeeId
+      })),
+      ...(updatedOrder.payments || []).map(payment => ({
+        entityType: 'Payment',
+        entityId: String(payment.id),
+        action: 'CREATE',
+        changesJson: JSON.stringify(payment),
+        employeeId: loggedInEmployeeId
+      }))
+    ];
+    if (nestedCreateAuditRows.length > 0) {
+      // eslint-disable-next-line no-restricted-syntax -- כתיבה מקוננת (items/payments create בתוך order.create/update) לא עוברת דרך תוסף היומן, ר' ההסבר למעלה
+      await prisma.auditLog.createMany({ data: nestedCreateAuditRows });
+    }
+
     // 15 - חיוב משלוח אוטומטי לפי עיר (אם זו הזמנת משלוח ויש טבלת מחירים) - לוגיקה משותפת
     // עם עדכון הזמנה קיימת (PUT /api/orders/[id]), ר' lib/pricingEngine.js
     await applyDeliveryCharge(order.orderId);

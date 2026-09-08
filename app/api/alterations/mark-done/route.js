@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import prisma from '@/app/lib/prisma';
+import prisma, { getActingEmployeeId } from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 
 export async function POST(request) {
@@ -25,27 +25,51 @@ export async function POST(request) {
       const endOfDay = new Date(targetDate);
       endOfDay.setHours(23, 59, 59, 999);
 
-      const updated = await prisma.orderItem.updateMany({
-        where: {
+      const where = {
+        isDeleted: false,
+        alterationDone: false,
+        order: {
           isDeleted: false,
-          alterationDone: false,
-          order: {
-            isDeleted: false,
-            eventDate: {
-              gte: startOfDay,
-              lte: endOfDay
-            }
-          },
-          OR: [
-            { neckAlteration: { gt: 0 } },
-            { lengthAlteration: { not: null, not: "" } },
-            { sleeveAlteration: { gt: 0 } }
-          ]
+          eventDate: {
+            gte: startOfDay,
+            lte: endOfDay
+          }
         },
-        data: {
-          alterationDone: true
-        }
+        OR: [
+          { neckAlteration: { gt: 0 } },
+          { lengthAlteration: { not: null, not: "" } },
+          { sleeveAlteration: { gt: 0 } }
+        ]
+      };
+
+      // updateMany has no per-row result for the audit extension to log against, so the
+      // affected items are collected first and each gets its own history line - otherwise a
+      // whole day's worth of alterations could be marked done with no trace of who did it or
+      // which items were included.
+      const itemsToMark = await prisma.orderItem.findMany({ where, select: { id: true, orderId: true } });
+
+      if (itemsToMark.length === 0) {
+        return NextResponse.json({ success: true, count: 0 });
+      }
+
+      const markedBy = await getActingEmployeeId();
+      const updated = await prisma.orderItem.updateMany({ where, data: { alterationDone: true } });
+
+      // eslint-disable-next-line no-restricted-syntax -- updateMany אינו מייצר שורות יומן, ר' ההסבר למעלה
+      await prisma.auditLog.createMany({
+        data: itemsToMark.map(item => ({
+          entityType: 'OrderItem',
+          entityId: String(item.id),
+          action: 'ALTERATION_DONE',
+          changesJson: JSON.stringify({
+            alterationDone: { from: false, to: true },
+            orderId: item.orderId,
+            note: `סומן כהושלם במסך "השלמת תיקונים לפי תאריך" עבור אירועי ${date}`
+          }),
+          employeeId: markedBy
+        }))
       });
+
       return NextResponse.json({ success: true, count: updated.count });
     }
 
