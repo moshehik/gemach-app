@@ -302,8 +302,8 @@ export async function syncOfflineChangesIfAny({ log = console.log } = {}) {
     // offline-collected data is real gemach data and must always land in the real database,
     // regardless of whatever the prod/test admin toggle happens to be set to right now.
     const summary = await runOfflineSync({ localClient, cloudClient: globalForPrisma.prismaProd, log });
-    if (summary.totalSynced > 0 || summary.totalFailed > 0) {
-      log(`[offline-sync] reconciliation complete: ${summary.totalSynced} row(s) synced to Postgres, ${summary.totalFailed} failed (see logs above).`);
+    if (summary.totalSynced > 0 || summary.totalSkipped > 0 || summary.totalFailed > 0) {
+      log(`[offline-sync] reconciliation complete: ${summary.totalSynced} row(s) synced to Postgres, ${summary.totalSkipped} skipped (cloud newer), ${summary.totalFailed} failed (see logs above).`);
     }
     return summary;
   } catch (e) {

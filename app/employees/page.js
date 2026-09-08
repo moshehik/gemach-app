@@ -420,6 +420,7 @@ export default function EmployeesPage() {
                         <th className={empSort.key === 'department' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('department')}>תפקיד <SortIcon sort={empSort} colKey="department" /></th>
                         <th className={empSort.key === 'phone1' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('phone1')}>טלפון <SortIcon sort={empSort} colKey="phone1" /></th>
                         <th className={empSort.key === 'isActive' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('isActive')}>סטטוס <SortIcon sort={empSort} colKey="isActive" /></th>
+                        <th className={empSort.key === 'needsPasswordReset' ? 'sortable sort-active' : 'sortable'} onClick={() => handleEmpSort('needsPasswordReset')}>סיסמה <SortIcon sort={empSort} colKey="needsPasswordReset" /></th>
                       </tr>
                     </thead>
                     <tbody>
@@ -434,11 +435,19 @@ export default function EmployeesPage() {
                               {employee.isActive ? 'פעיל' : 'לא פעיל'}
                             </span>
                           </td>
+                          <td>
+                            {employee.needsPasswordReset && (
+                              <span className="badge badge-warning" title="הסיסמה ישנה/לא מוצפנת - יש לאפס או לקבוע סיסמה חדשה בכרטיס העובד">
+                                <svg className="icon"><use href="#i-alert-tri" /></svg>
+                                יש לעדכן
+                              </span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                       {filteredEmployees.length === 0 && (
                         <tr>
-                          <td colSpan="5" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>לא נמצאו עובדים התואמים את החיפוש.</td>
+                          <td colSpan="6" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-3)' }}>לא נמצאו עובדים התואמים את החיפוש.</td>
                         </tr>
                       )}
                     </tbody>

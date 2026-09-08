@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { hashSecret, last4Of } from '../../../lib/passwordAuth';
+import { checkAuth } from '../../../lib/auth';
 
 // GET is intentionally left public (no checkAuth gate): the login screen itself
 // (app/components/LoginScreen.js) fetches this list to populate the employee
@@ -22,9 +23,17 @@ export async function GET(request) {
       ]
     });
 
+    // needsPasswordReset only goes out to logged-in requests (the admin list at
+    // /employees) - it's a boolean, not the hash itself, but there's no reason
+    // for the anonymous login-screen picker to see it.
+    const isLoggedIn = all && !!(await checkAuth());
+
     // Never send hashes (password/pinHash) to the client - there's no legitimate reason
     // for the browser to hold them, hashed or not.
-    const safeEmployees = employees.map(({ password, pinHash, ...emp }) => emp);
+    const safeEmployees = employees.map(({ password, pinHash, ...emp }) => ({
+      ...emp,
+      ...(isLoggedIn ? { needsPasswordReset: !!password && !password.startsWith('$2') } : {})
+    }));
 
     return NextResponse.json(safeEmployees);
   } catch (error) {
