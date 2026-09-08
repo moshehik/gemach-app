@@ -4,6 +4,10 @@ import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 
+// כותרת קבועה לזיהוי שרשור "יומן הסוכן האוטומטי" (ר' scripts/agent-log-report.js -
+// חייבת להישאר זהה בשני המקומות, אין שדה ייעודי בסכימה בכוונה כדי לא לדרוש migration).
+const AGENT_LOG_TITLE = '🤖 יומן הסוכן האוטומטי (נא לא למחוק)';
+
 export default function ErrorReportButton() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('list'); // 'list' or 'archive' or 'new' or 'thread'
@@ -443,9 +447,15 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
   const openReportsRaw = reports.filter(r => r.status !== 'ARCHIVED');
   // מיון יציב (Array.prototype.sort הוא stable) - רק דוחף "טופל" לסוף, לא משנה
   // סדר בתוך כל קבוצה.
-  const openReports = handledAtBottom
+  const sortedOpenReports = handledAtBottom
     ? [...openReportsRaw].sort((a, b) => (a.isHandled === b.isHandled ? 0 : a.isHandled ? 1 : -1))
     : openReportsRaw;
+  // "יומן הסוכן האוטומטי" תמיד ראשון ברשימה (מנותק ממיון "טופל"/זמן עדכון) - זה
+  // שרשור-על קבוע, לא דיווח-תקלה, וקל לפספס אותו בין דיווחים אחרים.
+  const openReports = [
+    ...sortedOpenReports.filter(r => r.title === AGENT_LOG_TITLE),
+    ...sortedOpenReports.filter(r => r.title !== AGENT_LOG_TITLE),
+  ];
   // מיון לפי createdAt קבוע, לא לפי סדר ה-API (updatedAt desc) - אחרת עצם פתיחת/קריאת
   // פנייה בארכיון (מסמנת isReadByProgrammer, מרעננת updatedAt) מזיזה אותה לראש הרשימה
   // בפעם הבאה שהיא נטענת מחדש, וכל הרשימה "קופצת" מתחת למיקום הגלילה השמור.
@@ -576,6 +586,12 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   </div>
                 </div>
 
+                {selectedReport.title === AGENT_LOG_TITLE && (
+                  <div style={{ padding: '10px 22px', background: 'var(--primary-tint)', fontWeight: 700, fontSize: 13.5, borderBottom: '1px solid var(--border)' }}>
+                    {selectedReport.title}
+                  </div>
+                )}
+
                 <div style={{ flex: 1, overflowY: 'auto', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div className="card card-pad" style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: 'var(--text-3)', fontSize: 12.5 }}>
@@ -655,23 +671,27 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   </div>
                 ) : (
                   displayList.map(report => {
+                    const isAgentLog = report.title === AGENT_LOG_TITLE;
                     const isUnread = (isProgrammer && !report.isReadByProgrammer) || (!isProgrammer && !report.isReadByUser);
                     // "טופל" נצבע רק אם אין התראת "לא נקרא" פעילה - הודעה חדשה
-                    // תמיד גוברת חזותית על סימון טופל ישן, כדי שלא תפספס.
-                    const rowBackground = isUnread
+                    // תמיד גוברת חזותית על סימון טופל ישן, כדי שלא תפספס. יומן הסוכן
+                    // מקבל צבע קבוע משלו כדי לבלוט כשרשור-על, בנפרד מדיווחי-תקלה רגילים.
+                    const rowBackground = isAgentLog
                       ? 'var(--primary-tint)'
-                      : (report.isHandled ? 'var(--success-tint)' : 'var(--surface)');
+                      : isUnread
+                        ? 'var(--primary-tint)'
+                        : (report.isHandled ? 'var(--success-tint)' : 'var(--surface)');
                     return (
                       <div
                         key={report.id}
                         className="list-card"
                         onClick={() => openThread(report)}
-                        style={{ cursor: 'pointer', flexDirection: 'column', alignItems: 'stretch', background: rowBackground }}
+                        style={{ cursor: 'pointer', flexDirection: 'column', alignItems: 'stretch', background: rowBackground, border: isAgentLog ? '1px solid var(--primary-tint-2)' : undefined }}
                       >
                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 6 }}>
                           <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             {isUnread && <span className="dot-badge" />}
-                            {report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'משתמש'}
+                            {isAgentLog ? report.title : (report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'משתמש')}
                             {!isUnread && report.isHandled && (
                               <span
                                 className="badge badge-success"

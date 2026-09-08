@@ -215,6 +215,28 @@ ${hiddenData}
       }
     }
 
+    // הפעלה מיידית של סוכן /fix-reports (GitHub Actions) במקום לחכות ל-cron הבא
+    // (עד 5 דק') - ר' .github/workflows/claude-fix-reports.yml, טריגר repository_dispatch.
+    // דורש GH_DISPATCH_TOKEN + GH_DISPATCH_REPO כ-env ב-Vercel (שני הפרויקטים/הגמחים,
+    // אותו ריפו משותף) - בלי זה פשוט לא שולח כלום, ה-cron הרגיל עדיין מכסה.
+    try {
+      const ghToken = process.env.GH_DISPATCH_TOKEN;
+      const ghRepo = process.env.GH_DISPATCH_REPO;
+      if (ghToken && ghRepo) {
+        fetch(`https://api.github.com/repos/${ghRepo}/dispatches`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${ghToken}`,
+            Accept: 'application/vnd.github+json',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ event_type: 'new-error-report', client_payload: { reportId: newReport.id } }),
+        }).catch(() => {});
+      }
+    } catch (e) {
+      console.error('Failed to trigger instant fix-reports run', e);
+    }
+
     // Save locally for Antigravity AI to read instantly
     try {
         const fs = require('fs');

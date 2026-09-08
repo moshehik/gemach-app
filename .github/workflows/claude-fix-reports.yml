@@ -1,0 +1,107 @@
+# "סוכן תיקון אוטומטי" - מפעיל את Claude Code לבדוק דיווחי תקלות פתוחים (ErrorReportButton)
+# בשני הגמחים (הראשי + נווה יעקב, כל אחד עם DB נפרד) ולתקן אותם, לפי הפרוטוקול ב-
+# .claude/commands/fix-reports.md. בניגוד לצ'אט/issue-based agent-chat ב-print-center,
+# כאן אין GitHub Issue בכלל - הטריגר הוא cron (כל 5 דק') + repository_dispatch מיידי
+# (ר' app/api/error-report/route.js - נורה ברגע שנוצר דיווח חדש, בלי לחכות ל-cron
+# הבא). לפני שמפעילים את Claude בכלל, שלב זול בודק ב-DB את הדגל שהאייקון ב-
+# app/components/ErrorReportButton.js קובע (PATCH /api/agent/fix-loop) - **לכל גמח
+# בנפרד** - ומריץ את Claude רק אם לפחות אחד מהם דלוק (הפרומפט אומר לו איזה בדיוק,
+# כך שהוא לא נוגע בגמח שכבוי). "שינה" אוטומטית אחרי 20 דק' בלי דיווחים חדשים
+# ממומשת בתוך fix-reports.md עצמו (מכבה את הדגל בפועל), לא כאן.
+#
+# דורש (מוסיף משה עצמו, לא בקוד - ארבעה דברים נפרדים, כולם הכרחיים):
+# 1. secret בשם CLAUDE_CODE_OAUTH_TOKEN ב-Settings -> Secrets and variables -> Actions
+#    של הריפו הזה - טוקן שנוצר מהמנוי הרגיל (Pro/Max) דרך `claude setup-token`.
+# 2. secret בשם DATABASE_URL - connection string של ה-PROD Postgres של הגמח הראשי
+#    (נפרד מ-Vercel; ה-runner כאן לא רואה משתני סביבה של Vercel).
+# 3. secret נוסף בשם DATABASE_URL_ORG2 - אותו דבר עבור גמח "נווה יעקב" (DB נפרד
+#    לגמרי, אותה סכימה). בלי זה הסוכן פשוט לא בודק את נווה יעקב.
+# 4. אפליקציית GitHub נפרדת בשם "Claude Code" מותקנת על הריפו - github.com/apps/claude
+#    (בלי זה: "Claude Code is not installed on this repository").
+#
+# להפעלה מיידית (במקום לחכות ל-cron): ב-Vercel, בשני הפרויקטים (שני הגמחים), env vars
+# GH_DISPATCH_TOKEN (GitHub PAT עם הרשאת repo/contents+actions על הריפו הזה) ו-
+# GH_DISPATCH_REPO (למשל "moshe/gemach-app") - ר' app/api/error-report/route.js.
+# בלי זה: ה-cron כל 5 דק' עדיין מכסה הכל, פשוט בלי תגובה מיידית.
+#
+# הגבול: Claude תמיד עובד על ענף+PR, אף פעם לא push ישיר ל-main (ר' .claude/commands/
+# fix-reports.md) - ומתועד גם ב-print-center (23.8.2026) ש-claude-code-action חסום
+# מבנית מלדחוף ישירות ל-branch שהוא לא ה-checkout המקורי. מיזוג ל-main (ומכאן דיפלוי
+# אוטומטי ב-Vercel, לשני הגמחים) נשאר תמיד ביד משה.
+name: Claude Fix Reports (סוכן תיקון אוטומטי)
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch: {} # מאפשר הרצה ידנית מיידית מתוך Actions ב-GitHub, לבדיקה
+  repository_dispatch:
+    types: [new-error-report] # נורה מ-app/api/error-report/route.js בעת יצירת דיווח חדש
+
+jobs:
+  fix-reports:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      # בדיקה זולה - קוראת את הדגל ישירות מול כל DB, בלי להפעיל את Claude בכלל אם
+      # שני הגמחים כבויים. exit code של agent-loop-status.js הוא 0=enabled/1=disabled,
+      # אבל לא רוצים שזה יכשיל את ה-step עצמו - לכן `|| true` על כל השמה.
+      - name: Check agent loop flags (both orgs)
+        id: check
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_ORG2: ${{ secrets.DATABASE_URL_ORG2 }}
+        run: |
+          ORG1=$(node scripts/agent-loop-status.js --org=1) || true
+          ORG2="false"
+          if [ -n "$DATABASE_URL_ORG2" ]; then
+            ORG2=$(node scripts/agent-loop-status.js --org=2) || true
+          fi
+          echo "org1=$ORG1" >> "$GITHUB_OUTPUT"
+          echo "org2=$ORG2" >> "$GITHUB_OUTPUT"
+          if [ "$ORG1" = "true" ] || [ "$ORG2" = "true" ]; then
+            echo "any_enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "any_enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Claude Code (fix-reports)
+        if: steps.check.outputs.any_enabled == 'true'
+        uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            REPO: ${{ github.repository }}
+
+            גמח 1 (ראשי) דלוק: ${{ steps.check.outputs.org1 }}
+            גמח 2 (נווה יעקב) דלוק: ${{ steps.check.outputs.org2 }}
+
+            הפעילו את הפקודה /fix-reports בדיוק כפי שהיא מתועדת ב-
+            .claude/commands/fix-reports.md - קראו את הקובץ הזה ועקבו אחריו במדויק.
+            טפלו רק בגמח/ים שמסומנים כדלוקים למעלה - דלגו לגמרי על גמח כבוי.
+            זו הרצה חד-פעמית (מגיעה מ-cron/repository_dispatch חיצוניים) - אל תנסו
+            לתזמן הרצה נוספת בעצמכם.
+          claude_args: |
+            --model sonnet
+            --allowedTools "Bash(node:*)"
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_ORG2: ${{ secrets.DATABASE_URL_ORG2 }}
