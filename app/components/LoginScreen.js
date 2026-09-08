@@ -269,6 +269,11 @@ export default function LoginScreen({ isModal = false, onClose }) {
             onFocus={() => setIsDropdownOpen(true)}
             onClick={() => { if (selectedDisplay) setIsDropdownOpen(true); }}
             style={selectedEmployee ? { paddingInlineEnd: '36px' } : undefined}
+            // autoComplete="new-password" (לא "off", שכרום מתעלם ממנו בפועל בשדות
+            // מהסוג הזה) - בלי זה, מעל תיבת הבחירה המותאמת-אישית של הרכיב (עם
+            // רשימת העובדים המלאה) הדפדפן הציג גם dropdown native משלו עם ערכים
+            // שהוקלדו בעבר באותו שדה - שתי רשימות זו על גבי זו (דיווח 2a4a2af4).
+            autoComplete="new-password"
           />
           {selectedEmployee && !isFetchingEmployees && (
             <button

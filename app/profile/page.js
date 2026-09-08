@@ -165,17 +165,17 @@ export default function MyProfilePage() {
 
           <div className="field">
             <label htmlFor="profile-firstName">שם פרטי</label>
-            <input data-element-name="שדה_profile_1" className="input" type="text" id="profile-firstName" name="firstName" value={profile.firstName || ''} onChange={handleChange} />
+            <input data-element-name="שדה_profile_1" className="input" type="text" id="profile-firstName" name="firstName" value={profile.firstName || ''} onChange={handleChange} autoComplete="new-password" />
           </div>
 
           <div className="field">
             <label htmlFor="profile-lastName">שם משפחה</label>
-            <input data-element-name="שדה_profile_2" className="input" type="text" id="profile-lastName" name="lastName" value={profile.lastName || ''} onChange={handleChange} />
+            <input data-element-name="שדה_profile_2" className="input" type="text" id="profile-lastName" name="lastName" value={profile.lastName || ''} onChange={handleChange} autoComplete="new-password" />
           </div>
 
           <div className="field">
             <label htmlFor="profile-fullName">שם מלא</label>
-            <input data-element-name="שדה_profile_3" className="input" type="text" id="profile-fullName" name="fullName" value={profile.fullName || ''} onChange={handleChange} />
+            <input data-element-name="שדה_profile_3" className="input" type="text" id="profile-fullName" name="fullName" value={profile.fullName || ''} onChange={handleChange} autoComplete="new-password" />
           </div>
 
           <div className="field">
@@ -190,7 +190,7 @@ export default function MyProfilePage() {
             <label htmlFor="profile-phone1">טלפון 1</label>
             <div className="input-icon-wrap">
               <svg className="icon"><use href="#i-phone" /></svg>
-              <input data-element-name="שדה_profile_5" className="input" type="text" id="profile-phone1" name="phone1" value={profile.phone1 || ''} onChange={handleChange} />
+              <input data-element-name="שדה_profile_5" className="input" type="text" id="profile-phone1" name="phone1" value={profile.phone1 || ''} onChange={handleChange} autoComplete="new-password" />
             </div>
           </div>
 
@@ -198,7 +198,7 @@ export default function MyProfilePage() {
             <label htmlFor="profile-phone2">טלפון 2</label>
             <div className="input-icon-wrap">
               <svg className="icon"><use href="#i-phone" /></svg>
-              <input data-element-name="שדה_profile_6" className="input" type="text" id="profile-phone2" name="phone2" value={profile.phone2 || ''} onChange={handleChange} />
+              <input data-element-name="שדה_profile_6" className="input" type="text" id="profile-phone2" name="phone2" value={profile.phone2 || ''} onChange={handleChange} autoComplete="new-password" />
             </div>
           </div>
 
@@ -206,23 +206,23 @@ export default function MyProfilePage() {
             <label htmlFor="profile-email">מייל</label>
             <div className="input-icon-wrap">
               <svg className="icon"><use href="#i-mail" /></svg>
-              <input data-element-name="שדה_profile_7" className="input" type="email" id="profile-email" name="email" value={profile.email || ''} onChange={handleChange} />
+              <input data-element-name="שדה_profile_7" className="input" type="email" id="profile-email" name="email" value={profile.email || ''} onChange={handleChange} autoComplete="new-password" />
             </div>
           </div>
 
           <div className="field">
             <label htmlFor="profile-city">עיר</label>
-            <input data-element-name="שדה_profile_8" className="input" type="text" id="profile-city" name="city" value={profile.city || ''} onChange={handleChange} />
+            <input data-element-name="שדה_profile_8" className="input" type="text" id="profile-city" name="city" value={profile.city || ''} onChange={handleChange} autoComplete="new-password" />
           </div>
 
           <div className="field">
             <label htmlFor="profile-street">רחוב</label>
-            <input data-element-name="שדה_profile_9" className="input" type="text" id="profile-street" name="street" value={profile.street || ''} onChange={handleChange} />
+            <input data-element-name="שדה_profile_9" className="input" type="text" id="profile-street" name="street" value={profile.street || ''} onChange={handleChange} autoComplete="new-password" />
           </div>
 
           <div className="field">
             <label htmlFor="profile-houseNum">מספר בית</label>
-            <input data-element-name="שדה_profile_10" className="input" type="text" id="profile-houseNum" name="houseNum" value={profile.houseNum || ''} onChange={handleChange} />
+            <input data-element-name="שדה_profile_10" className="input" type="text" id="profile-houseNum" name="houseNum" value={profile.houseNum || ''} onChange={handleChange} autoComplete="new-password" />
           </div>
 
           {/* בורר "פלטת גוונים" הישן הוסר — הוא מעולם לא השפיע על התצוגה.

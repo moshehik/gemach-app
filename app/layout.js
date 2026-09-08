@@ -60,7 +60,7 @@ export default async function RootLayout({ children }) {
   // lib/auth.js; legacy sessions without that cookie use the DB path below,
   // exactly as before).
   const settingsPromise = getAllCachedSettings().then(all =>
-    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries'].includes(s.key))
+    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management'].includes(s.key))
   ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];

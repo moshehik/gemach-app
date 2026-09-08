@@ -416,10 +416,12 @@ export default function CustomerInventoryViewer() {
     fetch(`/api/dresses${dateQuery}`)
       .then(res => res.json())
       .then(data => {
-        if (Array.isArray(data)) {
-          setDresses(data);
-        } else if (data && Array.isArray(data.data)) {
-          setDresses(data.data);
+        // עמדת הלקוחות היא ציבורית - דגמים "לא פעילים" (exitDateFromRepo ממולא,
+        // כלומר הוצאו מהמאגר) לא אמורים להופיע כלל, בלי קשר לזמינות פריטים בפועל
+        // (מלאי אפס מדגם פעיל עדיין כן מוצג - דיווח c11ef570).
+        const list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : null);
+        if (list) {
+          setDresses(list.filter(d => !d.exitDateFromRepo));
         }
         setLoading(false);
       })
