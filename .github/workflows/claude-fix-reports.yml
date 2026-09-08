@@ -62,6 +62,13 @@ jobs:
       - name: Generate Prisma Client
         run: npx prisma generate
 
+      # workaround לבאג ידוע ב-claude-code-action@v1: ה-installer הפנימי שלו (install.sh)
+      # לפעמים "מצליח" בלוג אבל לא מניח בפועל את הבינארי (anthropics/claude-code-action
+      # issues #1254, #1242, #1091) - קרה בפועל כאן ב-8.9.2026. מתקינים ידנית מראש כדי
+      # שהאקשן ימצא claude כבר קיים ב-PATH ולא יסתמך על ה-installer השבור שלו.
+      - name: Pre-install Claude Code CLI (workaround for claude-code-action installer bug)
+        run: npm install -g @anthropic-ai/claude-code
+
       # בדיקה זולה - קוראת את הדגל ישירות מול כל DB, בלי להפעיל את Claude בכלל אם
       # שני הגמחים כבויים. exit code של agent-loop-status.js הוא 0=enabled/1=disabled,
       # אבל לא רוצים שזה יכשיל את ה-step עצמו - לכן `|| true` על כל השמה.
