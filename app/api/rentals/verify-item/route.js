@@ -77,17 +77,20 @@ export async function POST(request) {
         }, { status: 400 });
       }
 
-      // Check warehouse setting
-      const warehouseSetting = await getCachedSetting('inventory_include_warehouse');
+      // Check warehouse/reserve settings
+      const [warehouseSetting, reserveSetting] = await Promise.all([
+        getCachedSetting('inventory_include_warehouse'),
+        getCachedSetting('allow_renting_reserve_items')
+      ]);
       const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
+      // See lib/inventory.js for why this is a separate toggle from inventory_include_warehouse.
+      const allowRentingReserve = reserveSetting && reserveSetting.value === 'true';
 
-      if (!includeWarehouse && dressItem.location) {
+      if (dressItem.location) {
         const locLower = dressItem.location.toLowerCase();
         if (
-          locLower.includes('מחסן') ||
-          locLower.includes('רזרבה') ||
-          locLower.includes('warehouse') ||
-          locLower.includes('reserve')
+          (!includeWarehouse && (locLower.includes('מחסן') || locLower.includes('warehouse'))) ||
+          (!allowRentingReserve && (locLower.includes('רזרבה') || locLower.includes('reserve')))
         ) {
           return NextResponse.json({
             valid: false,

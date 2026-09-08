@@ -120,6 +120,20 @@ export async function PUT(request, { params }) {
       // 7 - ולידציית תבנית (טלפון/מייל/ת"ז/כפילות טלפונים) - לא קשור ל"האם חובה"
       errors.push(...validateCustomerFieldFormats(body));
 
+      // 5 - חסימת כפילות ת"ז בין לקוחות (ר' אותה בדיקה ב-POST /api/customers) - כאן
+      // מוציאים את הלקוח הנוכחי עצמו (NOT: { id }) כדי לא לחסום שמירה בלי שינוי בת"ז.
+      const zeoutToCheck = String(body.zeout || body.idNumber || '').trim();
+      if (zeoutToCheck) {
+        const zeoutOwner = await prisma.customer.findFirst({
+          where: { zeout: zeoutToCheck, isDeleted: false, NOT: { id } },
+          select: { firstName: true, lastName: true }
+        });
+        if (zeoutOwner) {
+          const ownerName = [zeoutOwner.firstName, zeoutOwner.lastName].filter(Boolean).join(' ');
+          errors.push(`מספר תעודת זהות זה כבר קיים במערכת אצל לקוח אחר${ownerName ? ` (${ownerName})` : ''}`);
+        }
+      }
+
       if (errors.length > 0) {
         return NextResponse.json({ error: `${errors.join(', ')}` }, { status: 400 });
       }

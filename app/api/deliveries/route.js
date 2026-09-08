@@ -78,7 +78,7 @@ export async function GET(request) {
         ]
       },
       include: {
-        customer: { select: { firstName: true, lastName: true, phone1: true } },
+        customer: { select: { firstName: true, lastName: true, phone1: true, phone2: true, city: true, street: true, houseNum: true } },
         items: { where: { isDeleted: false }, select: { description: true } },
         obligations: { where: { isDeleted: false }, select: { description: true } }
       },
@@ -102,10 +102,19 @@ export async function GET(request) {
 
       const dressModelNames = [...new Set(order.items.map(i => i.description).filter(Boolean))];
 
+      // כתובת המשלוח בפועל: כתובת שונה שהוזנה בהזמנה (בקשה 15, delivery_allow_address_override)
+      // גוברת על כתובת המגורים הרגילה של הלקוח - עיר המשלוח (deliveryCity, לחישוב מחיר) גוברת
+      // באותו אופן על עיר הלקוח. אותו היגיון צירוף "רחוב, עיר" כמו ב-print/order/page.js.
+      const street = order.deliveryAddress || [order.customer?.street, order.customer?.houseNum].filter(Boolean).join(' ');
+      const city = order.deliveryCity || order.customer?.city || '';
+      const address = street && city ? `${street}, ${city}` : (street || city || '');
+
       data.push({
         orderId: order.orderId,
         customerName: `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`.trim() || 'לא ידוע',
         customerPhone: order.customer?.phone1 || '',
+        customerPhone2: order.customer?.phone2 || '',
+        address,
         eventDate: order.eventDate,
         eventDateHebrew: order.eventDateHebrew || getHebrewDateString(order.eventDate) || null,
         dressModelNames,

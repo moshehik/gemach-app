@@ -56,18 +56,34 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
     setIsEditing(false);
   }, [cancelSignal]);
 
-  const handleToggleEdit = (e) => {
+  // onSubmit (= handleSave מ-app/customers/[id]/page.js) מחזיר עכשיו true/false לפי
+  // הצלחת השמירה בפועל (ולידציה/שגיאת שרת מחזירות false) - כדי ששני הנתיבים כאן
+  // (טופס + כפתור ה-V) יידעו לסגור את מצב העריכה רק כשבאמת נשמר, ולא בשקט מתחת
+  // להודעת שגיאה שהמשתמש עוד לא הספיק לקרוא.
+  const attemptSave = async (e) => {
+    if (!onSubmit) {
+      setIsEditing(false);
+      return;
+    }
+    const success = await onSubmit(e);
+    if (success) setIsEditing(false);
+  };
+
+  // כפתור ה-V בכותרת הכרטיס נראה כמו "שמירה" (משוב לקוח: מבלבל מול כפתור "שמירת
+  // שינויים" הראשי למעלה) - עכשיו הוא אכן שומר, באותו נתיב ולידציה בדיוק כמו הכפתור
+  // הראשי (onSubmit), במקום לסגור בשקט את הטופס בלי לשמור כלום.
+  const handleToggleEdit = async (e) => {
     if (e) e.preventDefault();
-    setIsEditing(!isEditing);
+    if (!isEditing) {
+      setIsEditing(true);
+      return;
+    }
+    await attemptSave(e);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (onSubmit) {
-      // Assuming onSubmit handles the actual save promise and state
-      await onSubmit(e);
-    }
-    setIsEditing(false); // Close edit mode after saving
+    await attemptSave(e);
   };
 
   const customerName = [customer.firstName, customer.lastName].filter(Boolean).join(' ') || 'לקוח ללא שם';

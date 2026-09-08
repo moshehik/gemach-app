@@ -32,7 +32,13 @@ export const getCustomerFullName = (c) => {
 const computePaymentMethodOptions = (settingsObj) => {
   const raw = settingsObj.ALLOWED_PAYMENT_METHODS
     ? settingsObj.ALLOWED_PAYMENT_METHODS.split(',').map(s => s.trim()).filter(Boolean)
-    : ['אשראי (דרך נדרים פלוס)', 'יציאה באישור מנהל'];
+    // "מזומן" (cash) היה חסר כליל מברירת המחדל הזו - כשאין שורת ALLOWED_PAYMENT_METHODS
+    // ב-SystemSetting (למשל התקנה חדשה/ארגון נוסף) התפריט הציג רק "אשראי" ו"יציאה באישור
+    // מנהל", בלי שום דרך לרשום תשלום במזומן. ראה דיווח לקוח: "בשדה אופן התשלום הוא מציג
+    // יציאה באישור מנהל, זה צריך להיות מתוך רשימת בחירה אשראי או מזומן". תוקן כאן רק את
+    // ברירת המחדל בקוד - אם קיימת שורה ב-DB (כמו בייצור הנוכחי) היא זו שקובעת בפועל, ראו
+    // /admin/settings → תשלומים → "אפשרויות תשלום מורשות".
+    : ['אשראי (דרך נדרים פלוס)', 'מזומן', 'יציאה באישור מנהל'];
   if (settingsObj.nedarim_plus_enabled !== 'false') return raw;
   const withoutCredit = raw.filter(opt => !(opt.includes('אשראי') && !opt.includes('חיצונית')));
   return withoutCredit.length > 0 ? withoutCredit : ['יציאה באישור מנהל'];
@@ -442,6 +448,15 @@ export default function NewOrderPage() {
 
     if (missingFields.length > 0) {
        alert(`יש למלא: ${missingFields.map(k => CUSTOMER_FIELD_LABELS[k]).join(', ')}`);
+       return;
+    }
+
+    // require_customer_id_number - חובה רק ביצירת לקוח חדש כאן (לא חלק מ-
+    // getMissingMandatoryCustomerFields, כי אותה פונקציה משמשת גם את
+    // handleUseExistingCustomer לבדיקת לקוח קיים שנבחר - אין לאכוף רטרואקטיבית ת"ז
+    // חסרה על לקוחות ותיקים. הגדרה ייעודית לגמח נווה יעקב בלבד).
+    if (settings.require_customer_id_number === 'true' && !String(newCustomer.zeout || '').trim()) {
+       alert('יש למלא: תעודת זהות');
        return;
     }
 
@@ -952,56 +967,61 @@ export default function NewOrderPage() {
     const pAmount = parseFloat(payment.amount) || 0;
     const totalPaidSoFar = paymentsList.reduce((acc, p) => acc + parseFloat(p.amount || 0), 0);
     const totalWithCurrent = totalPaidSoFar + pAmount;
+    const isManagerExitPayment = payment.method === 'יציאה באישור מנהל';
+    const isCreditCardPayment = payment.method.includes('אשראי') && !payment.method.includes('חיצונית');
 
-    if (payment.method !== 'יציאה באישור מנהל') {
+    if (!isManagerExitPayment) {
       if (totalWithCurrent < totalAmount) {
         alert('לא ניתן לסיים הזמנה לפני תשלום מלא. אנא הוסף את התשלום החסר, או בחר "יציאה באישור מנהל". כדי לפצל, השתמש בכפתור "פצל / הוסף תשלום זה".');
         return;
       }
     }
 
-    if (pAmount > 0) {
-      if (payment.method.includes('אשראי') && !payment.method.includes('חיצונית') && !creditProcessedConfirmation) {
-        setCreditCardData({
-          cardNumber: '',
-          tokef: '',
-          installments: 1,
-          notes: '',
-          amount: payment.amount
-        });
-        setCreditError('');
-        setShowCreditModal(true);
-        return; 
-      } else if (!(payment.method.includes('אשראי') && !payment.method.includes('חיצונית'))) {
-        const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
-        if (level === 'מנהל' || level === 'עובד') {
-          const authResult = await window.customAuthPrompt(`פעולה זו דורשת הרשאת ${level}. אנא בחר משתמש והזן סיסמה:`, level);
-          if (!authResult || !authResult.pin) {
-            alert('אישור תשלום בוטל.');
+    if (pAmount > 0 && isCreditCardPayment && !creditProcessedConfirmation) {
+      setCreditCardData({
+        cardNumber: '',
+        tokef: '',
+        installments: 1,
+        notes: '',
+        amount: payment.amount
+      });
+      setCreditError('');
+      setShowCreditModal(true);
+      return;
+    }
+
+    // בדיקת רמת אישור מנהל: חלה גם על תשלום רגיל (לא אשראי) עם סכום, וגם על "יציאה
+    // באישור מנהל" - כולל המקרה הטבעי שבו הסכום נשאר 0 (יציאה בלי גביית תשלום כלל).
+    // לפני התיקון הבדיקה הותנתה כולה ב-pAmount > 0, כך שיציאה בלי תשלום דילגה עליה בשקט.
+    if (isManagerExitPayment || (pAmount > 0 && !isCreditCardPayment)) {
+      const level = settings.PAYMENT_APPROVAL_LEVEL || 'כולם';
+      if (level === 'מנהל' || level === 'עובד' || level === 'מנהל סניף ומעלה') {
+        const authResult = await window.customAuthPrompt(`פעולה זו דורשת הרשאת ${level}. אנא בחר משתמש והזן סיסמה:`, level);
+        if (!authResult || !authResult.pin) {
+          alert('אישור תשלום בוטל.');
+          return;
+        }
+
+        try {
+          const res = await fetch('/api/auth/verify-pin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: level })
+          });
+          const data = await res.json();
+          if (!data.success) {
+            alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
             return;
           }
-          
-          try {
-            const res = await fetch('/api/auth/verify-pin', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: level })
-            });
-            const data = await res.json();
-            if (!data.success) {
-              alert(data.error || 'סיסמה שגויה או חסרת הרשאה.');
-              return;
-            }
-          } catch (err) {
-            alert('שגיאה באימות קוד מנהל.');
-            return;
-          }
+        } catch (err) {
+          alert('שגיאה באימות קוד מנהל.');
+          return;
         }
       }
     }
 
     let finalPayments = [...paymentsList];
-    if (payment.method === 'יציאה באישור מנהל') {
+    if (isManagerExitPayment) {
       finalPayments.push({ ...payment, amount: 0, notes: `יציאה באישור מנהל (סכום מבוקש: ₪${payment.amount}) | ${payment.notes}` });
     } else if (pAmount > 0) {
       finalPayments.push({ ...payment, amount: pAmount });
@@ -1151,6 +1171,12 @@ export default function NewOrderPage() {
       // The order is saved even when the pricing engine failed afterwards - show what went
       // wrong but still open it, so nobody saves a second copy thinking the first was lost.
       if (data.warning) alert(data.warning);
+      // 4 - הדפסה אוטומטית עם סיום יצירת הזמנה, מותנה ב-auto_print_on_order_create
+      // (כבוי כברירת מחדל = ההתנהגות הקודמת, לפי כלל ההגדרות עם שחזור). אותו נתיב הדפסה
+      // בדיוק כמו כפתור "הדפסה ומייל" -> "הזמנה" (OrderPrintMenu.js openPrint('order')).
+      if (settings.auto_print_on_order_create === 'true' && data.orderId) {
+        window.open(`/print/order?orderId=${data.orderId}&type=order`, '_blank');
+      }
       router.push(`/orders/${data.orderId}`);
     } catch (error) {
       console.error(error);
@@ -1562,6 +1588,17 @@ export default function NewOrderPage() {
 
             {searchMode === 'new' && (
               <div className="card card-pad">
+                {/* 1 - לא נמצא לקוח לפי הטלפון שהוזן (או שנבחר "לקוח אחר") - לפני שממלאים
+                    כרטיס לקוח חדש מלא, להציע במפורש לנסות חיפוש לפי שם/עיר, כדי שטעות הקלדה
+                    בטלפון לא תדחוף ליצירת כרטיס כפול ללקוח שכבר קיים במערכת. */}
+                {phoneSearchInput.trim() && (
+                  <p className="hint" style={{ margin: '0 0 14px', padding: '10px 12px', background: 'var(--surface-alt)', borderRadius: 8, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <svg className="icon" style={{ width: 14, height: 14, flexShrink: 0 }}><use href="#i-alert-circle" /></svg>
+                    <span>לא נמצא לקוח עם הטלפון שהוזן. יתכן שהמספר במערכת שונה מעט - כדאי לנסות</span>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => setSearchMode('name')}>חיפוש לפי שם</button>
+                    <span>לפני יצירת כרטיס חדש.</span>
+                  </p>
+                )}
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-firstName">שם פרטי <span style={{ color: 'var(--danger)' }}>*</span></label>
@@ -1603,7 +1640,15 @@ export default function NewOrderPage() {
                   </div>
                 </div>
 
-                <NocCollapsible title="פרטים נוספים">
+                {/* 4 - עיר/רחוב/מספר בית ואישור דיוור יכולים להיות שדות חובה בפועל
+                    (require_full_address / require_marketing_consent) - כשהם כאלה, פותחים
+                    את "פרטים נוספים" אוטומטית כדי שלא יישארו מוסתרים מתחת למגירה סגורה
+                    (משוב לקוח: "עיר רחוב ת״ז ואישור קבלת דיוורים הם שדות חובה, אז למה הם
+                    בחלונית מוסתרת"). */}
+                <NocCollapsible
+                  title="פרטים נוספים"
+                  openWhen={settings.require_full_address === 'true' || settings.require_marketing_consent === 'true' || settings.require_customer_id_number === 'true'}
+                >
                   <div className="form-grid">
                     <div className="field">
                       <label htmlFor="cust-city">עיר מגורים {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
@@ -1619,8 +1664,13 @@ export default function NewOrderPage() {
                     </div>
                   </div>
                   <div className="field">
-                    <label htmlFor="cust-zeout">תעודת זהות {settings.require_id_for_edit_cancel === 'true' && <span className="hint" style={{ fontWeight: 400 }}>(לעריכה/ביטול עתידי)</span>}</label>
-                    <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} placeholder="ת״ז" />
+                    <label htmlFor="cust-zeout">
+                      תעודת זהות{' '}
+                      {settings.require_customer_id_number === 'true'
+                        ? <span style={{ color: 'var(--danger)' }}>*</span>
+                        : (settings.require_id_for_edit_cancel === 'true' && <span className="hint" style={{ fontWeight: 400 }}>(לעריכה/ביטול עתידי)</span>)}
+                    </label>
+                    <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
                   </div>
                   <div className="field" style={{ marginTop: 10 }}>
                     <label className="checkbox-row" style={{ cursor: 'pointer' }}>
@@ -1760,31 +1810,46 @@ export default function NewOrderPage() {
                   {settings.phone_order_marker_enabled === 'true' && (
                     <div className="field">
                       <label className="checkbox-row" style={{ cursor: 'pointer' }}>
-                        <input type="checkbox" checked={!!order.isPhoneOrder} onChange={e => setOrder(prev => ({ ...prev, isPhoneOrder: e.target.checked }))} />
+                        {/* 6 - הזמנה טלפונית וסניף ביצוע לא יכולים להיות מסומנים יחד - סימון
+                            "טלפונית" מנקה סניף שנבחר (ור' onChange של ה-select למטה, שמנקה בכיוון ההפוך) */}
+                        <input type="checkbox" checked={!!order.isPhoneOrder} onChange={e => setOrder(prev => ({ ...prev, isPhoneOrder: e.target.checked, branch: e.target.checked ? '' : prev.branch }))} />
                         <span>הזמנה טלפונית (13)</span>
                       </label>
                     </div>
                   )}
                   {/* 13 - זיהוי סניף ביצוע: מותנה ב-track_branch_on_order (לא ב-branches_enabled -
-                      זה שער ה"התייחסות לסניפים" המורחבת של בקשה 34 בלבד, ר' סניף איסוף למטה) */}
+                      זה שער ה"התייחסות לסניפים" המורחבת של בקשה 34 בלבד, ר' סניף איסוף למטה).
+                      2 - select סגור מתוך הגדרת branch_list בלבד (לא עוד input חופשי + datalist -
+                      אפשר היה להקליד כל טקסט, לא רק את הסניפים שבהגדרה). */}
                   {settings.track_branch_on_order === 'true' && (
                     <div className="field">
                       <label>סניף ביצוע (13)</label>
-                      <input type="text" className="input" value={order.branch || ''} onChange={e => setOrder(prev => ({ ...prev, branch: e.target.value }))} placeholder="לדוגמה: נוה יעקב" list="branch-list" />
+                      <select
+                        className="input"
+                        value={order.branch || ''}
+                        onChange={e => setOrder(prev => ({ ...prev, branch: e.target.value, isPhoneOrder: e.target.value ? false : prev.isPhoneOrder }))}
+                      >
+                        <option value="">בחר סניף...</option>
+                        {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
                     </div>
                   )}
                   {settings.branches_enabled === 'true' && (
                     <div className="field">
                       <label>סניף איסוף (34)</label>
-                      <input type="text" className="input" value={order.pickupBranch || ''} onChange={e => setOrder(prev => ({ ...prev, pickupBranch: e.target.value }))} placeholder="לדוגמה: בית שמש" list="branch-list" />
+                      <select
+                        className="input"
+                        value={order.pickupBranch || ''}
+                        onChange={e => setOrder(prev => ({ ...prev, pickupBranch: e.target.value }))}
+                      >
+                        <option value="">בחר סניף...</option>
+                        {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
+                          <option key={b} value={b}>{b}</option>
+                        ))}
+                      </select>
                     </div>
-                  )}
-                  {(settings.track_branch_on_order === 'true' || settings.branches_enabled === 'true') && (
-                    <datalist id="branch-list">
-                      {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
-                        <option key={b} value={b} />
-                      ))}
-                    </datalist>
                   )}
                 </div>
                 <div className="form-grid" style={{ marginTop: 8 }}>

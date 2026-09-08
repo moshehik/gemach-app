@@ -137,6 +137,8 @@ export function PopupProvider({ children }) {
           employees = employees.filter(e => e.roleId === 1 || e.roleId === 2);
         } else if (requiredLevel === 'מתכנת') {
           employees = employees.filter(e => e.roleId === 2);
+        } else if (requiredLevel === 'מנהל סניף ומעלה') {
+          employees = employees.filter(e => e.roleId === 0 || e.roleId === 1 || e.roleId === 2);
         }
         const currentUser = (meData && meData.success) ? meData.employee : null;
 

@@ -51,9 +51,17 @@ export default function TopbarSearch() {
     return () => window.removeEventListener('agy_history_updated', loadHistory);
   }, []);
 
+  // מקסימום תוצאות בחלונית הנפתחת עצמה (עדיין תלוי-גובה, לא מסך מלא) - הועלה
+  // מ-7 קבוע ל-15, וכשיש יותר מכך (או תמיד, כדי לתת גישה לתצוגה המלאה) מוצג
+  // קישור "הצג את כל התוצאות" שמוביל למסך הבית עם כל התוצאות בעמוד מלא (ר' item 7
+  // בדיווח: "פותח חלונית ולא מציג את התוצאות על כל המסך, וגם מציג מקסימום 7 תוצאות").
+  const TOPBAR_PANEL_RESULT_CAP = 15;
+  const [totalResultCount, setTotalResultCount] = useState(0);
+
   useEffect(() => {
     if (debouncedQuery.trim().length < 2) {
       setSearchResults([]);
+      setTotalResultCount(0);
       return;
     }
     setIsSearching(true);
@@ -61,12 +69,19 @@ export default function TopbarSearch() {
       .then((res) => res.json())
       .then((data) => {
         if (data && (data.customers || data.orders)) {
-          setSearchResults([...(data.orders || []), ...(data.customers || [])].slice(0, 7));
+          const combined = [...(data.orders || []), ...(data.customers || [])];
+          setTotalResultCount(combined.length);
+          setSearchResults(combined.slice(0, TOPBAR_PANEL_RESULT_CAP));
         }
       })
       .catch(() => {})
       .finally(() => setIsSearching(false));
   }, [debouncedQuery]);
+
+  const handleViewAllResults = () => {
+    setOpen(false);
+    router.push('/?q=' + encodeURIComponent(query.trim()));
+  };
 
   const handleResultClick = (item) => {
     setOpen(false);
@@ -172,6 +187,16 @@ export default function TopbarSearch() {
                   </div>
                 );
               })
+            )}
+            {!isSearching && totalResultCount > 0 && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                style={{ width: '100%', marginTop: '10px' }}
+                onClick={handleViewAllResults}
+              >
+                הצג את כל התוצאות ({totalResultCount}) במסך מלא
+              </button>
             )}
           </div>
         )}

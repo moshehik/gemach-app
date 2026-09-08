@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import prisma from '@/app/lib/prisma';
-import { recalculateOrderObligations } from '../../../lib/pricingEngine';
+import { recalculateOrderObligations, applyDeliveryCharge } from '../../../lib/pricingEngine';
 import { checkAuth } from '../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
@@ -9,6 +9,7 @@ import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { validateOrderItemsAvailability } from '../../../lib/inventory';
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
 import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders, deriveConfirmedOrderStatus, DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
+import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,6 +41,8 @@ export async function GET(request) {
     const activeOnly = searchParams.get('activeOnly') === 'true';
     const returnedOnly = searchParams.get('returnedOnly') === 'true';
     const pendingOnly = searchParams.get('pendingOnly') === 'true';
+    const partiallyRentedOnly = searchParams.get('partiallyRentedOnly') === 'true';
+    const partiallyReturnedOnly = searchParams.get('partiallyReturnedOnly') === 'true';
 
     const excludeArchiveAndPast = searchParams.get('excludeArchiveAndPast') === 'true';
     const archiveAndPastOnly = searchParams.get('archiveAndPastOnly') === 'true';
@@ -114,76 +117,118 @@ export async function GET(request) {
     }
 
     // 37 - not_taken: הזמנות שלא נלקחו/חלקית (יש isTaken=false), מותנה ב-show_not_taken_orders (מוסתר כשכבוי)
-    const where = {
-      ...(filterStatus === 'deleted'
-        // AND-wrapped (not a bare top-level OR) so this doesn't collide with the other
-        // top-level `OR` keys this object can also gain further down (search/date-range
-        // filters) - a later spread with the same key name would silently replace this one.
-        ? (draftsAsDeleted ? { AND: [{ OR: [{ isDeleted: true }, { status: DRAFT_ORDER_STATUS }] }] } : { isDeleted: true })
-        : { isDeleted: false }),
-      ...(filterStatus === 'drafts' ? { status: DRAFT_ORDER_STATUS } : {}),
-      ...(filterStatus === 'not_taken' ? { items: { some: { isDeleted: false, isTaken: false } } } : {}),
-      ...(filterStatus === 'archive' ? { eventDate: { lt: today } } : {}),
-      ...(filterStatus === 'soon' ? { OR: [{ eventDate: null }, { eventDate: { gte: today } }] } : {}),
-      ...(filterStatus === 'all' && !forRentals && !search && !advOrderId && !advCustomerName && !advCustomerPhone && !advCustomerCity && !advEventDateFrom && !advEventDateTo ? {
+    //
+    // בנוי כמערך AND (כל תנאי הוא איבר נפרד) ולא כפיזור מפתחות על אובייקט אחד כפי שהיה
+    // קודם - הפיזור הקודם ייצר כמה מקומות עם אותו שם מפתח ("OR" בכמה תנאים, "customer" גם
+    // ב-advCustomerPhone וגם ב-advCustomerCity), ו-JS דורס בשקט מפתח חוזר בספרייד: התנאי
+    // שהוגדר אחרון "ניצח" והתנאי הקודם פשוט נעלם מהשאילתה בלי שגיאה. זה בדיוק מסביר את
+    // דיווח הלקוחה "החיפוש בהזמנות לא עובד" - חיפוש טקסט יחד עם טאב/סינון אחר שגם הוא
+    // תרם מפתח "OR" (למשל טאב "בקרוב"/"לא שולם") היה מוחק בשקט את אחד מהתנאים.
+    const conditions = [];
+    if (filterStatus === 'deleted') {
+      conditions.push(draftsAsDeleted ? { OR: [{ isDeleted: true }, { status: DRAFT_ORDER_STATUS }] } : { isDeleted: true });
+    } else {
+      conditions.push({ isDeleted: false });
+    }
+    if (filterStatus === 'drafts') conditions.push({ status: DRAFT_ORDER_STATUS });
+    if (filterStatus === 'not_taken') conditions.push({ items: { some: { isDeleted: false, isTaken: false } } });
+    if (filterStatus === 'archive') conditions.push({ eventDate: { lt: today } });
+    if (filterStatus === 'soon') conditions.push({ OR: [{ eventDate: null }, { eventDate: { gte: today } }] });
+    if (filterStatus === 'all' && !forRentals && !search && !advOrderId && !advCustomerName && !advCustomerPhone && !advCustomerCity && !advEventDateFrom && !advEventDateTo) {
+      conditions.push({
         OR: [
           { eventDate: { gte: threeMonthsAgo } },
           { eventDate: null }
         ]
-      } : {}),
-      ...(excludeArchiveAndPast ? {
+      });
+    }
+    if (excludeArchiveAndPast) {
+      conditions.push({
         OR: [
           { eventDate: null },
           { eventDate: { gte: today } }
         ]
-      } : {}),
-      ...(isUnpaidQuery ? {
+      });
+    }
+    if (isUnpaidQuery) {
+      conditions.push({
         OR: [
           { eventDate: null },
           { eventDate: { gte: threeMonthsAgo } }
         ]
-      } : {}),
-      ...(archiveAndPastOnly ? {
-        eventDate: { lt: today }
-      } : {}),
-      ...(isSmartRentalsSort ? {
+      });
+    }
+    if (archiveAndPastOnly) conditions.push({ eventDate: { lt: today } });
+    // partiallyRentedOnly/partiallyReturnedOnly (טאבי "הושכר חלקי"/"הוחזר חלקי" ב-/rentals) -
+    // "חלקי" הוא יחס בין פריטים שונים באותה הזמנה (some+some, לא רק "יש פריט שמתאים"), אז
+    // אי אפשר לבטא את זה בתוך קבוצת ה-OR היחידה של itemStatuses למטה - כל תנאי כאן הוא
+    // exists נפרד, בדיוק כמו calculateOrderStatus ב-lib/orderStatus.js.
+    if (partiallyRentedOnly) {
+      // "הושכר חלקי": יש פריט שנלקח, יש פריט שעוד לא נלקח, ואף פריט לא הוחזר (אחרת זה כבר "הוחזר חלקי").
+      conditions.push({ items: { some: { isDeleted: false, isTaken: true } } });
+      conditions.push({ items: { some: { isDeleted: false, isTaken: false } } });
+      conditions.push({ items: { none: { isDeleted: false, isReturned: true } } });
+    }
+    if (partiallyReturnedOnly) {
+      // "הוחזר חלקי": יש פריט שהוחזר ויש פריט שעדיין לא.
+      conditions.push({ items: { some: { isDeleted: false, isReturned: true } } });
+      conditions.push({ items: { some: { isDeleted: false, isReturned: false } } });
+    }
+    if (isSmartRentalsSort) {
+      conditions.push({
         OR: [
           { eventDate: null },
           { eventDate: { lte: smartSortCutoff } }
         ]
-      } : {}),
-      ...(search ? {
+      });
+    }
+    if (search) {
+      // חיפוש שם מלא ("רחל כהן") - קודם, שם פרטי ושם משפחה נבדקו בנפרד מול המחרוזת
+      // השלמה, כך שאף אחד מהם לא הכיל אותה כשהיא כללה גם שם פרטי וגם משפחה יחד.
+      const multiWordNameCond = buildMultiWordRelationNameCondition(search, 'customer', 'firstName', 'lastName');
+      conditions.push({
         OR: [
           { orderId: isNaN(parseInt(search)) ? undefined : parseInt(search) },
           { customer: { firstName: { contains: search } } },
           { customer: { lastName: { contains: search } } },
           { items: { some: { isDeleted: false, dressItem: { dress: { name: { contains: search } } } } } },
-          ...(searchModelPrefixes.length > 0 ? [{ items: { some: { isDeleted: false, barcodePrefix: { in: searchModelPrefixes } } } }] : [])
+          ...(searchModelPrefixes.length > 0 ? [{ items: { some: { isDeleted: false, barcodePrefix: { in: searchModelPrefixes } } } }] : []),
+          ...(multiWordNameCond ? [multiWordNameCond] : [])
         ]
-      } : {}),
-      ...(advOrderId ? { orderId: parseInt(advOrderId) } : {}),
-      ...(advCustomerName ? {
+      });
+    }
+    if (advOrderId) conditions.push({ orderId: parseInt(advOrderId) });
+    if (advCustomerName) {
+      const multiWordAdvNameCond = buildMultiWordRelationNameCondition(advCustomerName, 'customer', 'firstName', 'lastName');
+      conditions.push({
         OR: [
           { customer: { firstName: { contains: advCustomerName } } },
-          { customer: { lastName: { contains: advCustomerName } } }
+          { customer: { lastName: { contains: advCustomerName } } },
+          ...(multiWordAdvNameCond ? [multiWordAdvNameCond] : [])
         ]
-      } : {}),
-      ...(advCustomerPhone ? {
+      });
+    }
+    if (advCustomerPhone) {
+      conditions.push({
         customer: {
           OR: [
             { phone1: { contains: advCustomerPhone } },
             { phone2: { contains: advCustomerPhone } }
           ]
         }
-      } : {}),
-      ...(advCustomerCity ? { customer: { city: { contains: advCustomerCity } } } : {}),
-      ...(advEventDateFrom || advEventDateTo ? {
+      });
+    }
+    if (advCustomerCity) conditions.push({ customer: { city: { contains: advCustomerCity } } });
+    if (advEventDateFrom || advEventDateTo) {
+      conditions.push({
         eventDate: {
           ...(advEventDateFrom ? { gte: new Date(advEventDateFrom) } : {}),
           ...(advEventDateTo ? { lte: new Date(advEventDateTo) } : {})
         }
-      } : {}),
-      ...(itemStatuses.length > 0 || advItemDetails || advModelName || advModelBarcodePrefix ? {
+      });
+    }
+    if (itemStatuses.length > 0 || advItemDetails || advModelName || advModelBarcodePrefix) {
+      conditions.push({
         items: {
           some: {
             AND: [
@@ -209,8 +254,9 @@ export async function GET(request) {
             ]
           }
         }
-      } : {})
-    };
+      });
+    }
+    const where = { AND: conditions };
 
     let finalTotalCount = 0;
     let finalOrderIds = [];
@@ -826,33 +872,9 @@ export async function POST(request) {
       }
     });
 
-    // 15 - חיוב משלוח אוטומטי לפי עיר (אם זו הזמנת משלוח ויש טבלת מחירים)
-    try {
-      if (updatedOrder?.isDelivery && updatedOrder?.deliveryCity) {
-        const priceSetting = await getCachedSetting('delivery_price_by_city');
-        let priceMap = {};
-        try { priceMap = JSON.parse(priceSetting?.value || '{}'); } catch {}
-        const cityPrice = priceMap[updatedOrder.deliveryCity];
-        // 19 - אם one_day_before מופעל והלקוח בחר דחיה, אין חיוב נוסף (רק שינוי תאריך) - אחרת חיוב רגיל
-        if (cityPrice && Number(cityPrice) > 0) {
-          const dir = updatedOrder.deliveryDirection || 'הלוך-חזור';
-          const count = dir === 'הלוך-חזור' ? 2 : 1;
-          const total = Number(cityPrice) * count;
-          const exists = (updatedOrder.obligations || []).some(o => !o.isDeleted && String(o.description || '').includes('משלוח'));
-          if (!exists) {
-            await prisma.paymentObligation.create({
-              data: {
-                orderId: updatedOrder.orderId,
-                amount: total,
-                quantity: count,
-                description: `משלוח ${dir} - ${updatedOrder.deliveryCity}`,
-                isManual: false,
-              }
-            });
-          }
-        }
-      }
-    } catch (e) { console.error('delivery charge failed', e); }
+    // 15 - חיוב משלוח אוטומטי לפי עיר (אם זו הזמנת משלוח ויש טבלת מחירים) - לוגיקה משותפת
+    // עם עדכון הזמנה קיימת (PUT /api/orders/[id]), ר' lib/pricingEngine.js
+    await applyDeliveryCharge(order.orderId);
 
     // 5 - מייל אוטומטי בעת יצירת הזמנה (אם מופעל בהגדרות) - כולל פרטי לקיחה והחזרה
     try {

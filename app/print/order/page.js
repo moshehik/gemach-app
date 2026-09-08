@@ -200,7 +200,16 @@ export default function PrintOrderPage() {
         notes = approvalStr;
       }
     } catch (e) {
-      // keep raw notes on parse failure
+      // JSON.parse can fail on a malformed נדרים rawResponse (e.g. an unescaped
+      // " inside ClientName) - fall back to regex-extracting just the safe fields
+      // instead of dumping the raw blob, which buries the important approval number
+      // in a wall of text and leaks LastNum (the card's last 4 digits) and other PII
+      const approvalMatch = notes.match(/"(?:Confirmation|TransactionId|אישור)"\s*:\s*"?([^",}]+)"?/);
+      const tashMatch = notes.match(/"(?:Tashloumim|תשלומים)"\s*:\s*"?(\d+)"?/);
+      const userNoteMatch = notes.match(/"הערות משתמש"\s*:\s*"([^"]*)"/);
+      notes = approvalMatch ? `אישור: ${approvalMatch[1].trim()}` : 'סליקת אשראי';
+      if (tashMatch && tashMatch[1]) notes += ` | תשלומים: ${tashMatch[1]}`;
+      if (userNoteMatch && userNoteMatch[1]) notes += ` | ${userNoteMatch[1]}`;
     }
     return notes;
   };
@@ -297,6 +306,16 @@ export default function PrintOrderPage() {
                   )}
                 </div>
               </div>
+
+              {/* 5 - הערות ההזמנה כבר הודפסו (שורות "הערות להזמנה"/"הערות" למעלה), אבל
+                  בטקסט רגיל בתוך שורת פרטים צפופה - קל לפספס. תיבה נפרדת ובולטת עם תווית
+                  מודגשת, כדי שהצוות שמסתמך על ההערות בפועל (למשל בקבלת הפריטים בהחזרה)
+                  לא יצטרך לחפש אותן בין שאר הפרטים. תוספת ויזואלית בלבד - לא הוסר דבר. */}
+              {ord.notes && (
+                <div className="order-notes-box">
+                  <strong>הערות להזמנה: </strong>{ord.notes}
+                </div>
+              )}
 
               {printType === 'rental' && printSettings && (
                 <div style={{ marginBottom: '20px' }}>
@@ -729,6 +748,15 @@ export default function PrintOrderPage() {
         }
         .rental-notes-box-bg {
           background-color: #fbfbfb;
+        }
+        .order-notes-box {
+          border: 1px solid #ffc107;
+          background-color: #fff8e1;
+          border-radius: 4px;
+          padding: 10px 14px;
+          margin: 0 0 15px 0;
+          font-size: 15px;
+          color: #333;
         }
         .rental-footer-title {
           font-size: 16px;

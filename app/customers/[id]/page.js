@@ -160,6 +160,12 @@ export default function CustomerPage({ params }) {
       if (!String(customer.street || '').trim()) missing.push('רחוב');
       if (!String(customer.houseNum || '').trim()) missing.push('מספר בית');
     }
+    // require_customer_id_number - רק ביצירת לקוח חדש (לא באכיפה רטרואקטיבית על
+    // עריכת לקוחות קיימים, חלקם ללא ת"ז מהיבוא מ-Access). הגדרה ייעודית לגמח נווה
+    // יעקב בלבד - ר' ההערה המקבילה ב-app/api/customers/route.js.
+    if (id === 'new' && settings.require_customer_id_number === 'true' && !String(customer.zeout || '').trim()) {
+      missing.push('תעודת זהות');
+    }
     if (missing.length > 0) {
       alert(`שדות חובה חסרים: ${missing.join(', ')}`);
       return;
@@ -206,6 +212,11 @@ export default function CustomerPage({ params }) {
         setOriginalCustomer(data);
         alert('הפרטים נשמרו בהצלחה!');
       }
+      // ModernCustomerDetailsTab (כפתור ה-V + טופס העריכה) סוגר את מצב העריכה רק אם
+      // זה מחזיר true - ר' ההערה שם. שאר הבליטות (בדיקת שדות חובה, פורמט, 409, קטע
+      // ה-catch) כבר "return;"/מסתיימות בלי return מפורש, כלומר מחזירות undefined
+      // (falsy) כברירת מחדל.
+      return true;
     } catch (e) {
       alert(e.message || 'שגיאה בשמירת נתונים');
     } finally {
@@ -292,8 +303,8 @@ export default function CustomerPage({ params }) {
               <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
             </div>
             <div className="field">
-              <label>תעודת זהות (לעריכה/ביטול)</label>
-              <input type="text" className="input" style={{ direction: 'ltr' }} name="zeout" autoComplete="off" value={customer.zeout || ''} onChange={handleChange} placeholder="ת״ז" />
+              <label>תעודת זהות (לעריכה/ביטול) {settings.require_customer_id_number === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+              <input type="text" className="input" style={{ direction: 'ltr' }} name="zeout" autoComplete="off" value={customer.zeout || ''} onChange={handleChange} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
             </div>
             <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
               <input type="checkbox" id="newMarketingConsent" name="marketingConsent" checked={!!customer.marketingConsent} onChange={handleChange} />

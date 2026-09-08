@@ -24,6 +24,11 @@ export default function ErrorReportButton() {
   const [replyText, setReplyText] = useState('');
   const [isReplying, setIsReplying] = useState(false);
 
+  // סוכן תיקון אוטומטי - אייקון למתכנת בלבד, מפעיל/מכבה את ה-workflow ב-GitHub
+  // Actions שבודק דיווחים פתוחים כל 5 דק' ומתקן קוד (ר' .github/workflows/claude-fix-reports.yml).
+  const [agentLoopEnabled, setAgentLoopEnabled] = useState(false);
+  const [agentLoopBusy, setAgentLoopBusy] = useState(false);
+
   // שימור מיקום הגלילה ברשימת הפניות/ארכיון: כשפותחים פנייה (thread) וחוזרים
   // חזרה, הרשימה נטענת/מוצגת מחדש ובלי זה הגלילה הייתה קופצת לראש בכל פעם.
   const listScrollRef = useRef(null);
@@ -108,6 +113,10 @@ export default function ErrorReportButton() {
       fetchReports();
     }
   }, [isOpen, activeTab]);
+
+  useEffect(() => {
+    if (isProgrammer) fetchAgentLoopStatus();
+  }, [isProgrammer]);
 
   // משחזר את מיקום הגלילה שנשמר לכל טאב (רשימה/ארכיון) בכל פעם שחוזרים אליו -
   // למשל אחרי סגירת פנייה בודדת (thread) וחזרה לרשימה.
@@ -367,6 +376,44 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
     setTimeout(() => setToast(null), 4000);
   };
 
+  async function fetchAgentLoopStatus() {
+    try {
+      const res = await fetch('/api/agent/fix-loop');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.success) setAgentLoopEnabled(!!data.enabled);
+    } catch (err) {
+      console.error('Error fetching agent loop status:', err);
+    }
+  }
+
+  const toggleAgentLoop = async () => {
+    if (agentLoopBusy) return;
+    setAgentLoopBusy(true);
+    const next = !agentLoopEnabled;
+    try {
+      const res = await fetch('/api/agent/fix-loop', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled: next }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setAgentLoopEnabled(data.enabled);
+        showToast(data.enabled
+          ? 'הסוכן האוטומטי הופעל - יבדוק דיווחים פתוחים כל כמה דקות'
+          : 'הסוכן האוטומטי כובה');
+      } else {
+        showToast(data.error || 'שגיאה בעדכון מצב הסוכן', 'error');
+      }
+    } catch (err) {
+      console.error('Error toggling agent loop:', err);
+      showToast('שגיאת תקשורת', 'error');
+    } finally {
+      setAgentLoopBusy(false);
+    }
+  };
+
   const openThread = async (report) => {
     setSelectedReport(report);
     setActiveTab('thread');
@@ -433,6 +480,19 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
             <div className="modal-head">
               <strong><svg className="icon"><use href="#i-info" /></svg> מערכת תמיכה ושגיאות</strong>
               <div style={{ display: 'flex', gap: 6 }}>
+                {isProgrammer && (
+                  <button
+                    type="button"
+                    className={`btn btn-icon-only btn-sm ${agentLoopEnabled ? 'btn-primary' : 'btn-secondary'}`}
+                    title={agentLoopEnabled
+                      ? 'סוכן תיקון אוטומטי פעיל - בודק דיווחים פתוחים כל כמה דקות ופותח PR לתיקונים. לחצו לכיבוי.'
+                      : 'הפעלת סוכן תיקון אוטומטי - יבדוק דיווחים פתוחים כל כמה דקות, יתקן קוד ויפתח PR לאישור.'}
+                    disabled={agentLoopBusy}
+                    onClick={toggleAgentLoop}
+                  >
+                    <svg className="icon"><use href="#i-activity" /></svg>
+                  </button>
+                )}
                 {activeTab === 'list' && (
                   <button type="button" className="btn btn-secondary btn-icon-only btn-sm" title="רענן" onClick={fetchReports}>
                     <svg className="icon"><use href="#i-refresh" /></svg>

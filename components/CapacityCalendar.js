@@ -87,13 +87,15 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
     days.push(hd);
   }
 
-  const isDayOccupied = (hd) => {
+  // מחזיר גם את הכמות התפוסה ביום וגם אילו הזמנות תופסות אותו - כדי שתא תפוס בלוח יוכל
+  // להציג (ולא רק לספור) את ההזמנות המשויכות, כמו תצוגת הרשימה של אותו חיפוש (בקשה 2 בדוח הבאגים).
+  const getDayOccupancy = (hd) => {
     const greg = hd.greg();
     // Reset time for fair comparison
     greg.setHours(0,0,0,0);
 
-    // Calculate total quantity for this day
     let total = 0;
+    const orders = [];
     occupiedOrders.forEach(order => {
       const start = new Date(order.eventDate);
       start.setHours(0,0,0,0);
@@ -102,9 +104,10 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
 
       if (greg >= start && greg <= end) {
         total += order.quantity;
+        orders.push(order);
       }
     });
-    return total;
+    return { total, orders };
   };
 
   const isDayInRange = (hd) => {
@@ -134,7 +137,7 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
           if (!hd) return <div key={`empty-${i}`} />;
 
           const inRange = isDayInRange(hd);
-          const occQty = isDayOccupied(hd);
+          const { total: occQty, orders: dayOrders } = getDayOccupancy(hd);
           const gregDay = hd.greg().getDate();
           const hebrewDay = HEBREW_DAYS[hd.getDate()];
 
@@ -148,12 +151,26 @@ function HebrewMonth({ month, occupiedOrders, fromDate, toDate }) {
             }).map(e => e.render('he'));
           } catch (e) {}
 
+          // רשימת ההזמנות התופסות את היום (שם לקוח + מספר הזמנה) לתוך התיאור המרחף -
+          // כדי שאפשר יהיה לדעת מיהן בלי לעבור לתצוגת רשימה (בקשה 2 בדוח הבאגים).
+          const ordersTitle = dayOrders.length > 0
+            ? dayOrders.map(o => `${o.customerName || 'לא ידוע'} (#${o.orderId})`).join('\n')
+            : '';
+          const titleParts = [holidays.join(', '), ordersTitle].filter(Boolean);
+          // תא עם הזמנה בודדת ניתן ללחיצה כדי לפתוח אותה ישירות; עם כמה הזמנות
+          // חופפות אין קישור חד-משמעי לפתוח, ורק התיאור המרחף מציג את הרשימה.
+          const singleOrder = dayOrders.length === 1 ? dayOrders[0] : null;
+
           return (
             <div
               key={i}
               className={`datepicker-day${!inRange ? ' muted' : ''}`}
-              style={occQty > 0 ? { background: 'var(--danger-tint)' } : undefined}
-              title={holidays.length > 0 ? holidays.join(', ') : undefined}
+              style={{
+                ...(occQty > 0 ? { background: 'var(--danger-tint)' } : {}),
+                ...(singleOrder ? { cursor: 'pointer' } : {})
+              }}
+              title={titleParts.length > 0 ? titleParts.join('\n') : undefined}
+              onClick={singleOrder ? () => window.open(`/orders/${singleOrder.orderId}`, '_blank', 'noopener,noreferrer') : undefined}
             >
               <span>{hebrewDay}</span>
               <span className="g-num">{gregDay}{holidays.length > 0 ? ` · ${holidays.join(', ')}` : ''}</span>

@@ -45,6 +45,7 @@ const HEBREW_NAMES = {
   item_locations: 'מיקומי פריטים במלאי',
   barcodePrefixLength: 'אורך קידומת ברקוד',
   inventory_include_warehouse: 'ספירת מלאי מחסן',
+  allow_renting_reserve_items: 'אפשר השכרת שמלות ברזרבה',
   main_email: 'כתובת אימייל ראשית',
   // --- 38 בקשות: תוספות ---
   hide_custom_spacing: 'הסתר ציפוף ימים מיוחד',
@@ -57,6 +58,7 @@ const HEBREW_NAMES = {
   require_customer_email: 'חייב מייל לקוח',
   require_full_address: 'חייב כתובת מלאה',
   require_marketing_consent: 'חייב אישור דיוור',
+  require_customer_id_number: 'חייב ת"ז ביצירת לקוח',
   auto_email_on_order_create: 'מייל אוטומטי בעת יצירת הזמנה',
   pickup_reminder_enabled: 'תזכורת מייל יום לפני איסוף',
   pickup_reminder_hour: 'שעת תזכורת איסוף',
@@ -74,7 +76,9 @@ const HEBREW_NAMES = {
   mailing_list_provider: 'ספק רשימת תפוצה',
   phone_order_marker_enabled: 'סמן הזמנה טלפונית',
   track_branch_on_order: 'זהה סניף ביצוע',
+  auto_print_on_order_create: 'הדפסה אוטומטית ביצירת הזמנה',
   require_id_for_edit_cancel: 'דרוש ת״ז לעריכה/ביטול',
+  require_manager_code_for_item_changes: 'דרוש קוד מנהל לביטול/הוספת פריט',
   delivery_price_by_city: 'מחיר משלוח לפי עיר (JSON)',
   delivery_allow_address_override: 'אפשר כתובת משלוח שונה',
   delivery_show_in_order: 'הצג משלוח בהזמנה',
@@ -134,6 +138,7 @@ const HEBREW_NAMES = {
 
   refund_per_item: 'חישוב החזר לפי פריט בנפרד',
   registration_fee: 'גביית דמי רישום מראש',
+  allow_additional_payment_on_order: 'אפשר תשלום נוסף בהזמנה קיימת',
   nedarim_plus_enabled: 'סליקת אשראי בנדרים פלוס',
   nedarim_plus_terminal: 'קוד מוסד נדרים פלוס',
   NEDARIM_MOSAD: 'קוד מוסד נדרים פלוס',
@@ -145,6 +150,7 @@ const HEBREW_NAMES = {
   REFUND_REPAIRS: 'החזר על עלויות תיקונים',
   CANCELLATION_CREDIT_MINUTES: 'דקות לניצול זיכוי דמי ביטול על פריט חלופי',
   ALLOWED_PAYMENT_METHODS: 'אפשרויות תשלום מורשות',
+  PAYMENT_APPROVAL_LEVEL: 'רמת אישור ליציאה מהזמנה בלי תשלום מלא',
 
   calendar_filtering: 'סינון ואירועים עבריים ביומן',
   inventory_skip_weekends: 'דלג על סוף שבוע בחישוב מלאי',
@@ -177,6 +183,7 @@ const HEBREW_NOTES = {
   item_locations: 'רשימת מיקומים פיזיים בגמ"ח (לדוגמה: מדף א, קומה 2, מחסן אחורי) מופרדים בפסיקים.',
   barcodePrefixLength: 'מספר הספרות הראשונות בברקוד המגדירות את קידומת זיהוי סוג הפריט.',
   inventory_include_warehouse: 'הצג וספור במלאי גם פריטים הנמצאים במחסן או ברזרבה.',
+  allow_renting_reserve_items: 'כשמופעל, פריטים שמסומנים "רזרבה" נחשבים זמינים להשכרה כמו כל פריט אחר - הן בחישובי הזמינות, הן בבחירת פריט להזמנה, והן בסריקת ברקוד (לא נדרש עוד אישור מנהל לכל השכרה). ברירת המחדל כבויה (התנהגות קיימת - פריטי רזרבה חסומים). נפרד בכוונה מ"ספירת מלאי מחסן" - רזרבה ומחסן הם שני מצבים שונים.',
   main_email: 'כתובת האימייל הראשית של הגמ"ח ליצירת קשר והודעות.',
 
   mandatory_fields: 'סמן בתיבת הבחירה (צ\'קבוקס) את השדות מתוך פרטי לקוח שיהיו חובה בעת מילוי הזמנה.',
@@ -215,6 +222,7 @@ const HEBREW_NOTES = {
 
   refund_per_item: 'חישוב החזר דמי ביטול בנפרד עבור כל פריט בהזמנה.',
   registration_fee: 'האם לגבות דמי רישום מראש בעת פתיחת הזמנה.',
+  allow_additional_payment_on_order: 'הצגת כפתור "תשלום נוסף" בטאב תשלומים של הזמנה קיימת, לרישום תשלום (למשל מזומן) נוסף על ההיסטוריה הקיימת - לא כרוך בחיוב/חוב חדש.',
   nedarim_plus_enabled: 'הפעלת אפשרות סליקת אשראי דרך מערכת נדרים פלוס.',
   nedarim_plus_terminal: 'קוד המוסד המזהה במערכת נדרים פלוס עבור חיוב אשראי.',
   NEDARIM_MOSAD: 'קוד המוסד המזהה במערכת נדרים פלוס עבור חיוב אשראי.',
@@ -226,6 +234,7 @@ const HEBREW_NOTES = {
   REFUND_REPAIRS: 'כולל עלויות תיקונים בחישוב ההחזר הכספי בביטול.',
   CANCELLATION_CREDIT_MINUTES: 'מספר הדקות לאחר ביטול פריט שבהן דמי הביטול ניתנים לניצול כזיכוי על פריט אחר שנוסף לאותה הזמנה. אם ההזמנה עדיין נערכת ונשמרת רק אחרי שהזמן הזה חלף, הזיכוי עדיין תקף - כי הזמן נספר החל משמירת הביטול בפועל.',
   ALLOWED_PAYMENT_METHODS: 'רשימת אמצעי תשלום מורשים (מופרדים בפסיק, למשל: מזומן,אשראי,העברה).',
+  PAYMENT_APPROVAL_LEVEL: 'קובע איזו הרשאה נדרשת (הזנת קוד עובד וסיסמה) לפני סיום הזמנה עם "יציאה באישור מנהל" - כולל המקרה שסכום התשלום נשאר 0 (יציאה בלי גביית תשלום כלל) - וכן לפני כל תשלום שאינו אשראי שאינו מכסה את מלוא סכום ההזמנה. "כולם" = ללא הגבלה (ברירת המחדל, ההתנהגות הקודמת). "עובד" = כל עובד פעיל מזהה את עצמו בסיסמה. "מנהל" = מנהל סניף או מתכנת בלבד (roleId 1/2). "מנהל סניף ומעלה" = מנהל סניף, הנהלה ראשית או מתכנת (roleId 0/1/2).',
 
   calendar_filtering: 'סינון תצוגת יומן לפי חודשים ומועדים עבריים.',
   inventory_skip_weekends: 'האם לדלג על ימי שישי-שבת בחישוב ימי מרווח ביטחון.',
@@ -246,6 +255,7 @@ const HEBREW_NOTES = {
   require_customer_email: 'חובה להזין מייל תקין לכל לקוח/הזמנה.',
   require_full_address: 'חובה עיר+רחוב+מספר בית.',
   require_marketing_consent: 'חובה לסמן "מאשר/ת קבלת דיוורים".',
+  require_customer_id_number: 'חובה להזין תעודת זהות בעת יצירת לקוח חדש (טופס "לקוח חדש" ב-app/customers, וגם הוספת לקוח מהירה בתוך הזמנה). לא משפיע על עריכת לקוח קיים.',
   auto_email_on_order_create: 'מייל עם פרטי הזמנה + איסוף/החזרה נשלח אוטומטית ביצירה.',
   pickup_reminder_enabled: 'תזכורת אוטומטית יום לפני איסוף עם שעה וכתובת.',
   pickup_reminder_hour: 'שעת שליחת תזכורת האיסוף.',
@@ -263,7 +273,9 @@ const HEBREW_NOTES = {
   mailing_list_provider: 'ספק דיוור (רב מסר/Smoove/Mailchimp - ריק=פנימי).',
   phone_order_marker_enabled: 'סימון הזמנה שהוזנה טלפונית + זיהוי סניף.',
   track_branch_on_order: 'שומר באיזה סניף בוצעה ההזמנה.',
+  auto_print_on_order_create: 'כשמסיימים ליצור הזמנה חדשה (כפתור "סיום ויצירת ההזמנה"), פותח אוטומטית חלון הדפסת הזמנה. כבוי = ההתנהגות הקודמת (בלי הדפסה אוטומטית).',
   require_id_for_edit_cancel: 'עריכה/ביטול רק לאחר אימות תעודת זהות.',
+  require_manager_code_for_item_changes: 'כשמופעל, ביטול או הוספה של פריט (שמלה) בהזמנה קיימת דורשים גם אימות קוד/סיסמת מנהל אמיתי (בנוסף לאימות ת״ז - לא במקומו). כבוי = ההתנהגות הקודמת: אימות ת״ז בלבד, ללא הרשאת מנהל.',
   delivery_price_by_city: 'JSON מחירים לפי עיר. דוגמה {"ירושלים":60}.',
   delivery_allow_address_override: 'מאפשר כתובת משלוח שונה מכתובת מגורים.',
   delivery_show_in_order: 'מציג תג משלוח הלוך/חזור בהזמנה.',
@@ -917,14 +929,14 @@ export default function SettingsClient() {
               'useFileNamesForImages', 'hide_ai_features', 'enable_ai_specific_employees',
               'hide_dress_images', 'hide_gregorian_calendar', 'hide_internal_messaging',
               'hide_error_reporting', 'refund_per_item', 'registration_fee', 'nedarim_plus_enabled', 'ENABLE_SET_DISCOUNTS',
-              'REFUND_REPAIRS', 'inventory_include_warehouse', 'inventory_skip_weekends',
+              'REFUND_REPAIRS', 'inventory_include_warehouse', 'allow_renting_reserve_items', 'inventory_skip_weekends',
               'calendar_filtering',
               // 38 בקשות - בוליאנים חדשים
               'hide_custom_spacing', 'hok_enabled', 'hok_auto_charge_enabled', 'strict_mandatory_fields',
-              'require_customer_email', 'require_full_address', 'require_marketing_consent', 'auto_email_on_order_create',
+              'require_customer_email', 'require_full_address', 'require_marketing_consent', 'require_customer_id_number', 'auto_email_on_order_create',
               'pickup_reminder_enabled', 'daily_manager_report_enabled', 'late_return_email_enabled', 'yemot_enabled',
               'yemot_queue_view_enabled', 'yemot_import_customer_enabled', 'mailing_list_auto_sync', 'phone_order_marker_enabled',
-              'track_branch_on_order', 'require_id_for_edit_cancel', 'delivery_allow_address_override', 'delivery_show_in_order',
+              'track_branch_on_order', 'require_id_for_edit_cancel', 'require_manager_code_for_item_changes', 'delivery_allow_address_override', 'delivery_show_in_order',
               'rentals_sort_recent_first', 'enforce_strict_max_items', 'delivery_table_range_enabled', 'delivery_one_day_before_option',
               'print_sort_deliveries_first', 'print_mark_missing_dresses', 'bulk_email_by_event_date', 'auto_charge_damaged_return',
               'shift_handover_notes', 'management_messages', 'barcode_invalid_list', 'allow_edit_partially_rented',
@@ -933,7 +945,8 @@ export default function SettingsClient() {
               'premium_pricing_enabled', 'show_not_taken_orders', 'cancellation_extra_columns', 'enable_rental_extension',
               // פרוטוקול תיקון דיווחי שגיאות - הגדרות עם שחזור
               'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management',
-              'show_employee_profile_image', 'error_report_handled_at_bottom'
+              'show_employee_profile_image', 'error_report_handled_at_bottom', 'auto_print_on_order_create',
+              'allow_additional_payment_on_order'
             ].includes(setting.key);
             const isBoolean = setting.type === 'boolean' || setting.type === 'checkbox' || rawValue === 'true' || rawValue === 'false' || isBooleanKey;
             const isNumberKey = [
@@ -982,7 +995,7 @@ export default function SettingsClient() {
             };
 
             const isMandatoryFieldsSetting = setting.key === 'mandatory_fields';
-            const isSelectSetting = setting.type === 'select' || setting.key === 'email_routing_strategy';
+            const isSelectSetting = setting.type === 'select' || setting.key === 'email_routing_strategy' || setting.key === 'PAYMENT_APPROVAL_LEVEL';
             const isSecretSetting = SECRET_SETTING_KEYS.includes(setting.key);
 
             const isDepartmentSetting =
@@ -1032,6 +1045,18 @@ export default function SettingsClient() {
                       elementName="שדה_SettingsClient_21"
                       onChange={(val) => handleChange(setting.key, val)}
                     />
+                  ) : isSelectSetting && setting.key === 'PAYMENT_APPROVAL_LEVEL' ? (
+                    <select
+                      className="select"
+                      style={{ width: '100%' }}
+                      value={rawValue || 'כולם'}
+                      onChange={(e) => handleChange(setting.key, e.target.value)}
+                    >
+                      <option value="כולם">כולם (ללא הגבלה - ברירת מחדל)</option>
+                      <option value="עובד">עובד (זיהוי עצמי בסיסמה)</option>
+                      <option value="מנהל">מנהל סניף / מתכנת</option>
+                      <option value="מנהל סניף ומעלה">מנהל סניף ומעלה (כולל הנהלה ראשית)</option>
+                    </select>
                   ) : isSelectSetting ? (
                     <select
                       className="select"

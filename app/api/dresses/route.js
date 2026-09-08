@@ -12,8 +12,14 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const eventDateStr = searchParams.get('eventDate');
-    const warehouseSetting = await getCachedSetting('inventory_include_warehouse');
+    const [warehouseSetting, reserveSetting] = await Promise.all([
+      getCachedSetting('inventory_include_warehouse'),
+      getCachedSetting('allow_renting_reserve_items')
+    ]);
     const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
+    // allow_renting_reserve_items (SystemSetting, default false = old behavior) - see
+    // lib/inventory.js for why this is a separate toggle from inventory_include_warehouse.
+    const allowRentingReserve = reserveSetting && reserveSetting.value === 'true';
     const pageParam = searchParams.get('page');
     const limitParam = searchParams.get('limit');
     
@@ -156,8 +162,10 @@ export async function GET(request) {
       const adjustedItems = model.items.map(item => {
         const size = item.sizeText || item.size || 'כללי';
         let availableQtyForThisItem = 1;
-        const isWarehouse = item.location && (item.location.includes('מחסן') || item.location.includes('warehouse') || item.location.includes('רזרבה') || item.location.includes('reserve'));
-        const isUnusable = item.inRepair || item.notInUse || item.isDeleted || (!includeWarehouse && isWarehouse);
+        const isWarehouseLoc = item.location && (item.location.includes('מחסן') || item.location.includes('warehouse'));
+        const isReserveLoc = item.location && (item.location.includes('רזרבה') || item.location.includes('reserve'));
+        const isUnusable = item.inRepair || item.notInUse || item.isDeleted
+          || (!includeWarehouse && isWarehouseLoc) || (!allowRentingReserve && isReserveLoc);
 
         if (bulkAvailable) {
           if (isUnusable) {
@@ -224,7 +232,9 @@ export async function GET(request) {
           inRepair: i.inRepair,
           notInUse: i.notInUse,
           isDeleted: i.isDeleted,
-          isUnusable: i.inRepair || i.notInUse || i.isDeleted || (!includeWarehouse && (i.location && (i.location.includes('מחסן') || i.location.includes('warehouse') || i.location.includes('רזרבה') || i.location.includes('reserve')))),
+          isUnusable: i.inRepair || i.notInUse || i.isDeleted
+            || (!includeWarehouse && i.location && (i.location.includes('מחסן') || i.location.includes('warehouse')))
+            || (!allowRentingReserve && i.location && (i.location.includes('רזרבה') || i.location.includes('reserve'))),
           rentalsCount: i.rentalsCount
         }))
       };
