@@ -27,6 +27,9 @@ export default function EmployeePage({ params }) {
   const [showChangePassword, setShowChangePassword] = useState(false);
   const [oldPasswordInput, setOldPasswordInput] = useState('');
   const [newPasswordInput, setNewPasswordInput] = useState('');
+  const [showSetPassword, setShowSetPassword] = useState(false);
+  const [setPasswordInput, setSetPasswordInput] = useState('');
+  const [setPasswordAuth, setSetPasswordAuth] = useState(null);
 
   // רשימת המחלקות האמיתית (טבלת Department) עבור בורר המחלקה - null = עדיין נטען
   const [departments, setDepartments] = useState(null);
@@ -444,8 +447,16 @@ export default function EmployeePage({ params }) {
                     }} className="btn btn-secondary" style={{ whiteSpace: 'nowrap' }}>
                       <svg className="icon"><use href="#i-refresh" /></svg>אפס ושלח למייל
                     </button>
+                    <button data-element-name="כפתור_page_23b" type="button" onClick={async () => {
+                      const authResult = await window.customAuthPrompt("הזן קוד מנהל לקביעת סיסמה ישירות לעובד:", "מנהל");
+                      if (!authResult) return;
+                      setSetPasswordAuth(authResult);
+                      setShowSetPassword(true);
+                    }} className="btn btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+                      <svg className="icon"><use href="#i-lock" /></svg>קבע סיסמה ידנית
+                    </button>
                   </div>
-                  <span className="hint">מטעמי אבטחה לא ניתן לצפות בסיסמה קיימת - ניתן לשנות אותה (בידיעת הסיסמה הנוכחית) או לאפס ולשלוח סיסמה זמנית לעובד במייל.</span>
+                  <span className="hint">מטעמי אבטחה לא ניתן לצפות בסיסמה קיימת - ניתן לשנות אותה (בידיעת הסיסמה הנוכחית), לאפס ולשלוח סיסמה זמנית לעובד במייל, או שמנהל יקבע סיסמה חדשה ישירות (לעובד בלי מייל שמור, או בלי גישה אליו כרגע).</span>
 
                   {showChangePassword && (
                     <div className="card card-pad" style={{ marginTop: '12px', maxWidth: '460px' }}>
@@ -489,6 +500,45 @@ export default function EmployeePage({ params }) {
                             window.alert('שגיאה בשינוי הסיסמה');
                           }
                         }} className="btn btn-primary">אשר שינוי</button>
+                      </div>
+                    </div>
+                  )}
+
+                  {showSetPassword && (
+                    <div className="card card-pad" style={{ marginTop: '12px', maxWidth: '460px' }}>
+                      <div className="field">
+                        <label htmlFor="employee-detail-setPassword">סיסמה חדשה לעובד</label>
+                        <div className="password-field">
+                          <svg className="icon lead-icon"><use href="#i-lock" /></svg>
+                          <input data-element-name="שדה_page_26b" className="input" type="password" id="employee-detail-setPassword" value={setPasswordInput} onChange={e => setSetPasswordInput(e.target.value)} />
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button data-element-name="כפתור_page_27b" type="button" onClick={() => { setShowSetPassword(false); setSetPasswordInput(''); setSetPasswordAuth(null); }} className="btn btn-secondary">ביטול</button>
+                        <button data-element-name="כפתור_page_28b" type="button" onClick={async () => {
+                          if (!setPasswordInput || setPasswordInput.length < 4) {
+                            window.alert('הסיסמה חייבת להכיל לפחות 4 תווים');
+                            return;
+                          }
+                          try {
+                            const res = await fetch(`/api/employees/${id}/set-password`, {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ authPin: setPasswordAuth?.pin, authEmployeeId: setPasswordAuth?.employeeId, newPassword: setPasswordInput })
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              setShowSetPassword(false);
+                              setSetPasswordInput('');
+                              setSetPasswordAuth(null);
+                              window.alert(data.message || 'הסיסמה נקבעה בהצלחה');
+                            } else {
+                              window.alert(data.message || 'קביעת הסיסמה נכשלה');
+                            }
+                          } catch (e) {
+                            window.alert('שגיאה בקביעת הסיסמה');
+                          }
+                        }} className="btn btn-primary">אשר קביעה</button>
                       </div>
                     </div>
                   )}
