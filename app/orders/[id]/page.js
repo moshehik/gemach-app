@@ -795,7 +795,11 @@ export default function OrderDetailsPage({ params }) {
       if (destinationHref) {
         router.push(destinationHref);
       } else {
-        router.back();
+        // כפתור "חזור" מוצהר כ"חזרה לרשימת ההזמנות" (ר' title ב-ModernOrderCard) - יעד
+        // קבוע, לא היסטוריית דפדפן. router.back() היה שקט לגמרי (בלי שום ניווט) כשהכרטיס
+        // נפתח בלי היסטוריית ניווט קודמת בטאב (קישור ישיר/רענון) - שני דיווחי משתמש
+        // "כפתור חזור לא מגיב" (2026-09-09).
+        router.push('/orders');
       }
       return;
     }
@@ -809,7 +813,7 @@ export default function OrderDetailsPage({ params }) {
         if (destinationHref) {
           router.push(destinationHref);
         } else {
-          router.back();
+          router.push('/orders');
         }
         return;
       }
@@ -910,7 +914,7 @@ export default function OrderDetailsPage({ params }) {
       if (destinationHref) {
         router.push(destinationHref);
       } else {
-        router.back();
+        router.push('/orders');
       }
     } catch (err) {
       setSaving(false);

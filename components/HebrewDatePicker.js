@@ -86,7 +86,7 @@ export default function HebrewDatePicker({
 
   // Format string for trigger
   const displayString = React.useMemo(() => {
-    if (!actualValue) return isCompactMode ? 'בחר חודש ושנה...' : 'בחר תאריך...';
+    if (!actualValue) return isCompactMode ? 'בחר חודש ושנה...' : 'תאריך...';
 
     if (isCompactMode) {
       const mStr = getHebrewMonthYear(actualValue);
@@ -109,7 +109,7 @@ export default function HebrewDatePicker({
       }
     } catch (e) {}
 
-    return dStr || 'בחר תאריך...';
+    return dStr || 'תאריך...';
   }, [actualValue, isCompactMode]);
 
   // Apply function for Compact Mode (Month/Year)
