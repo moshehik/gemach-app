@@ -2457,3 +2457,34 @@ table.data thead tr th {
   }
 }
 
+/* Temporary-preview-deployment label — see app/components/PreviewModeBanner.js.
+   Same fixed/centered/pill layout as .backup-mode-banner above, but a calmer
+   warning color and no blink: this isn't an active-incident alarm, just a
+   permanent label on every page of a Vercel Preview build. */
+.preview-mode-banner {
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: var(--radius-full, 999px);
+  background: var(--warning, #b8860b);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+  pointer-events: none;
+  max-width: calc(100vw - 24px);
+  text-align: center;
+}
+
+@media print {
+  .preview-mode-banner {
+    display: none !important;
+  }
+}
+

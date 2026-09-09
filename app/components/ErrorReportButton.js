@@ -620,6 +620,18 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                           <span>{getHebrewDateString(reply.createdAt)} {new Date(reply.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                         </div>
                         <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{reply.text}</p>
+                        {reply.previewUrl && (
+                          <a
+                            href={reply.previewUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-primary"
+                            style={{ marginTop: 8, display: 'inline-flex', alignItems: 'center', gap: 6 }}
+                          >
+                            <svg className="icon"><use href="#i-link" /></svg>
+                            בדיקה בגרסה זמנית
+                          </a>
+                        )}
                       </div>
                     );
                   })}

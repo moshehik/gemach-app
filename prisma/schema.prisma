@@ -631,5 +631,6 @@ model ErrorReportReply {
   employee      Employee?   @relation("EmployeeToErrorReportReply", fields: [employeeId], references: [id])
   isProgrammer  Boolean     @default(false)
   text          String      @db.Text
+  previewUrl    String? // temporary Vercel preview link for this fix (see scripts/get-preview-deployment-url.js) - shown as a button in the UI, never a raw URL in `text`
   createdAt     DateTime    @default(now())
 }

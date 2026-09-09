@@ -19,6 +19,7 @@ import LoginScreen from './components/LoginScreen';
 import PageTracker from './components/PageTracker';
 import AIFloatingWidget from './components/AIFloatingWidget';
 import DevEnvBanner from './components/DevEnvBanner';
+import PreviewModeBanner from './components/PreviewModeBanner';
 import { Suspense } from 'react';
 import { PopupProvider } from './components/PopupProvider';
 import { LabelsProvider } from './components/LabelsContext';
@@ -548,6 +549,7 @@ function cpCssText(vars) {
         <UniqueNamesProvider data-element-name="רכיב_layout_1">
           <ClipboardDebugger data-element-name="רכיב_layout_2" />
           <DevEnvBanner data-element-name="רכיב_layout_3" />
+          <PreviewModeBanner />
         {process.env.IS_OFFLINE_MODE === 'true' && <OfflineIndicator data-element-name="רכיב_layout_4" />}
         <Suspense data-element-name="רכיב_layout_5" fallback={null}>
           <PageTracker data-element-name="רכיב_layout_6" />

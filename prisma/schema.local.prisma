@@ -549,6 +549,7 @@ model ErrorReportReply {
   employee      Employee?   @relation("EmployeeToErrorReportReply", fields: [employeeId], references: [id])
   isProgrammer  Boolean     @default(false)
   text          String
+  previewUrl    String?
   createdAt     DateTime    @default(now())
 }
 

@@ -248,7 +248,12 @@ const prismaProxy = new Proxy({}, {
     ensureWebDbModeFresh();
     const devTest = process.env.NODE_ENV === 'development' && globalForPrisma.activeDbMode === 'test';
     const webTest = globalForPrisma.webDbModeState.mode === 'test';
-    const isTest = (devTest || webTest) && globalForPrisma.prismaTest;
+    // Every Vercel Preview deployment (PR branches, including ones opened by the
+    // automatic fix-report agent) must never touch the real prod DB, regardless of
+    // .active-db/web_backup_mode - VERCEL_ENV is set by Vercel itself, no config
+    // needed, and applies identically no matter which branch/PR the preview is for.
+    const isVercelPreview = process.env.VERCEL_ENV === 'preview';
+    const isTest = (devTest || webTest || isVercelPreview) && globalForPrisma.prismaTest;
     const activeClient = isTest ? globalForPrisma.prismaTest : globalForPrisma.prismaProd;
 
     // Interactive transactions stash their `tx` client in AsyncLocalStorage for the duration

@@ -44,6 +44,7 @@ jobs:
       contents: write
       pull-requests: write
       id-token: write # claude-code-action מבקש OIDC token תמיד (גם עם claude_code_oauth_token) - בלי זה: "Could not fetch an OIDC token"
+      deployments: read # scripts/get-preview-deployment-url.js קורא את ה-Deployments API כדי למצוא קישור Preview של Vercel לענף - ציון permissions כלל מאפס כל scope שלא מפורש, אז זה חובה גם אם ברירת המחדל של GITHUB_TOKEN כוללת קריאה
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
@@ -122,3 +123,6 @@ jobs:
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DATABASE_URL_ORG2: ${{ secrets.DATABASE_URL_ORG2 }}
+          # scripts/get-preview-deployment-url.js בלבד (ר' fix-reports.md) - הטוקן
+          # האוטומטי של ה-workflow, לא secret נפרד; מוגבל ל-deployments:read למעלה.
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -6,11 +6,13 @@
  * שרשור "יומן הסוכן" הקבוע (ר' scripts/agent-log-report.js) - זה עדיין ErrorReport רגיל.
  *
  * Usage:
- *   node scripts/error-report-reply.js <reportId> "<טקסט>" [--status=ARCHIVED] [--org=2]
+ *   node scripts/error-report-reply.js <reportId> "<טקסט>" [--status=ARCHIVED] [--org=2] [--preview-url=<url>]
  *
  * status אופציונלי: OPEN|ARCHIVED. הוסיפו --status=ARCHIVED רק כשהתיקון אומת בפועל -
  * אחרת השאירו את הדיווח פתוח כדי שמשה יסגור בעצמו אחרי שהוא מאשר (ר' fix-reports.md).
  * --org=2 כותב לדיווח בגמח "נווה יעקב" (ברירת מחדל: 1, הגמח הראשי) - ר' scripts/lib/db-env.js.
+ * --preview-url=<url> - קישור Preview Deployment זמני (ר' scripts/get-preview-deployment-url.js),
+ * מוצג בלקוח כפתור מעוצב ולא כטקסט/URL גולמי בתוך text - ר' fix-reports.md לכללי מתי מותר לצרף.
  */
 
 'use strict';
@@ -21,16 +23,22 @@ const { parseOrgArg, resolveDbUrl } = require('./lib/db-env');
 async function main() {
   const { org, rest } = parseOrgArg(process.argv.slice(2));
   const statusArg = rest.find((a) => a.startsWith('--status='));
+  const previewUrlArg = rest.find((a) => a.startsWith('--preview-url='));
   const positional = rest.filter((a) => !a.startsWith('--'));
   const [reportId, text] = positional;
   const status = statusArg ? statusArg.slice('--status='.length) : null;
+  const previewUrl = previewUrlArg ? previewUrlArg.slice('--preview-url='.length) : null;
 
   if (!reportId || !text) {
-    console.error('Usage: node scripts/error-report-reply.js <reportId> "<text>" [--status=ARCHIVED] [--org=2]');
+    console.error('Usage: node scripts/error-report-reply.js <reportId> "<text>" [--status=ARCHIVED] [--org=2] [--preview-url=<url>]');
     process.exit(1);
   }
   if (status && !['OPEN', 'ARCHIVED'].includes(status)) {
     console.error('--status must be OPEN or ARCHIVED');
+    process.exit(1);
+  }
+  if (previewUrl && !/^https:\/\//.test(previewUrl)) {
+    console.error('--preview-url must be an https:// URL');
     process.exit(1);
   }
 
@@ -43,7 +51,7 @@ async function main() {
     }
 
     const reply = await prisma.errorReportReply.create({
-      data: { errorReportId: reportId, isProgrammer: true, text },
+      data: { errorReportId: reportId, isProgrammer: true, text, previewUrl: previewUrl || null },
     });
 
     const updateData = { isReadByUser: false, isReadByProgrammer: true, updatedAt: new Date() };
