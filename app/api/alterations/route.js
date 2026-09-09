@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Prisma } from '@prisma/client';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '../../../lib/auth';
+import { getIsraelDayRange } from '@/lib/hebrewDate';
 
 
 export async function GET(request) {
@@ -45,15 +46,19 @@ export async function GET(request) {
         conditions.push(Prisma.sql`o."orderId" IN (${Prisma.join(orderIds)})`);
       }
     } else if (startDate || endDate) {
+      // startDate/endDate are "YYYY-MM-DD" strings picked in Israel-local terms.
+      // Bounds are computed against the Israel/Jerusalem calendar day (not via
+      // setHours(), which uses the SERVER's local timezone and can silently shift
+      // the window by a day) - see getIsraelDayRange in lib/hebrewDate.js, and keep
+      // this in sync with app/api/alterations/mark-done/route.js which uses the
+      // same helper for the same screen's "mark all done for date" action.
       if (startDate) {
         // In legacy, it searched events > (date - 1), which means from the start of the date.
-        conditions.push(Prisma.sql`o."eventDate" >= ${new Date(startDate)}`);
+        conditions.push(Prisma.sql`o."eventDate" >= ${getIsraelDayRange(startDate).start}`);
       }
       if (endDate) {
         // Until the end of the date
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        conditions.push(Prisma.sql`o."eventDate" <= ${end}`);
+        conditions.push(Prisma.sql`o."eventDate" <= ${getIsraelDayRange(endDate).end}`);
       }
     }
 
