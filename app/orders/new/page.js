@@ -1515,16 +1515,25 @@ export default function NewOrderPage() {
                     </p>
                   </div>
                 </div>
-                {!foundCustomerFromPhone.phone2 && !foundCustomerFromPhone.email && (
-                  <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
-                    חסר אמצעי תקשורת נוסף (טלפון 2 או אימייל) — כל הזמנה מחייבת 2 אמצעים.
-                    {' '}
-                    <a href={`/customers/${foundCustomerFromPhone.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
-                      עריכת פרטי לקוח
-                    </a>
-                  </p>
-                )}
+                {(() => {
+                  const missing = getMissingMandatoryCustomerFields(foundCustomerFromPhone);
+                  const missingContact = !foundCustomerFromPhone.phone2 && !foundCustomerFromPhone.email;
+                  if (missing.length === 0 && !missingContact) return null;
+                  const parts = [
+                    ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
+                    ...(missingContact ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
+                  ];
+                  return (
+                    <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                      <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
+                      חסר ללקוח: {parts.join(', ')}.
+                      {' '}
+                      <a href={`/customers/${foundCustomerFromPhone.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
+                        עריכת פרטי לקוח
+                      </a>
+                    </p>
+                  );
+                })()}
                 {renderHokFieldsForExistingCustomer()}
                 <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
                   <button type="button" className="btn btn-primary" style={{ flex: 1, minWidth: '160px' }} onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)}>
@@ -1572,14 +1581,23 @@ export default function NewOrderPage() {
                         {[order.selectedCustomer.phone2, order.selectedCustomer.email].filter(Boolean).join(' · ')}
                       </p>
                     )}
-                    {!order.selectedCustomer.phone2 && !order.selectedCustomer.email && (
-                      <p className="hint" style={{ color: 'var(--warning)', textAlign: 'end', margin: '4px 0 0' }}>
-                        חסר אמצעי תקשורת נוסף —{' '}
-                        <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
-                          עריכת פרטי לקוח
-                        </a>
-                      </p>
-                    )}
+                    {(() => {
+                      const missing = getMissingMandatoryCustomerFields(order.selectedCustomer);
+                      const missingContact = !order.selectedCustomer.phone2 && !order.selectedCustomer.email;
+                      if (missing.length === 0 && !missingContact) return null;
+                      const parts = [
+                        ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
+                        ...(missingContact ? ['אמצעי תקשורת נוסף'] : [])
+                      ];
+                      return (
+                        <p className="hint" style={{ color: 'var(--warning)', textAlign: 'end', margin: '4px 0 0' }}>
+                          חסר ללקוח: {parts.join(', ')} —{' '}
+                          <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
+                            עריכת פרטי לקוח
+                          </a>
+                        </p>
+                      );
+                    })()}
                   </div>
                 )}
                 {order.selectedCustomer && renderHokFieldsForExistingCustomer()}
