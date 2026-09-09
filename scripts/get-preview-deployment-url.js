@@ -54,9 +54,17 @@ async function githubApi(path, token) {
 }
 
 async function findPreviewUrls({ repo, branch, token }) {
+  // GitHub's Deployments API "ref" filter only matches the exact value stored on the
+  // deployment - and Vercel's GitHub App creates each deployment with ref = the commit
+  // SHA it deployed, not the branch name. Filtering by branch name directly always
+  // returned zero results (silent TIMEOUT, every single time) - resolve the branch to
+  // its current head SHA first and filter by that instead.
+  const headCommit = await githubApi(`/repos/${repo}/commits/${encodeURIComponent(branch)}`, token);
+  const sha = headCommit.sha;
+
   // Most-recent-first; take one deployment per distinct Vercel project (dedup by
   // the "environment"/payload label GitHub shows, which differs per Vercel project).
-  const deployments = await githubApi(`/repos/${repo}/deployments?ref=${encodeURIComponent(branch)}&per_page=20`, token);
+  const deployments = await githubApi(`/repos/${repo}/deployments?ref=${encodeURIComponent(sha)}&per_page=20`, token);
   const seenEnvironments = new Set();
   const results = [];
 
