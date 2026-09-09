@@ -5,9 +5,10 @@
  * כבר יוצרת deployment+status על כל push, וה-GITHUB_TOKEN הרגיל של ה-workflow מספיק
  * כדי לקרוא אותם - ר' .github/workflows/claude-fix-reports.yml, "deployments: read").
  *
- * למה סקריפט node ולא curl/gh ישירות מתוך הפרומפט: קלוד ב-workflow הזה מוגבל ל-
- * --allowedTools "Bash(node:*)" בלבד (ר' claude-fix-reports.yml) - זה שומר על אותה
- * מגבלת כלים בלי להרחיב אותה.
+ * למה סקריפט node ולא curl/gh ישירות מתוך הפרומפט: כשנכתב, קלוד ב-workflow הזה היה
+ * מוגבל ל- --allowedTools "Bash(node:*)" בלבד. ה-allowedTools הורחב מאז (ר'
+ * claude-fix-reports.yml) כדי לאפשר גם git/gh/Edit/Write לתיקון קוד+PR בפועל, אבל
+ * הסקריפט הזה נשאר כמות שהוא - node+fetch עדיין פשוט יותר מ-gh api לצורך הזה בדיוק.
  *
  * מכיוון ששני הגמחים (הראשי + נווה יעקב) הם שני פרויקטי Vercel נפרדים המחוברים
  * לאותו ריפו, אותו push לענף אחד מייצר בד"כ שני deployments נפרדים (אחד לכל
