@@ -25,8 +25,12 @@ export const NAV_GROUPS = [
     key: 'orders',
     label: 'הזמנות',
     items: [
+      // מעל "רשימת הזמנות" בכוונה (2026-09-09, בקשת משתמשת) - במקום שיהיה נגיש רק
+      // כקישור מהיר במרכז דף הבית, זמין תמיד מהסיידבר.
+      { href: '/orders/new', label: 'הזמנה חדשה', icon: 'i-plus' },
       { href: '/orders', label: 'רשימת הזמנות', icon: 'i-file' },
-      { href: '/rentals', label: 'השכרות והחזרות', icon: 'i-truck' },
+      { href: '/rentals#rented', label: 'השכרות', icon: 'i-truck' },
+      { href: '/rentals#returned', label: 'החזרות', icon: 'i-check' },
       { href: '/deliveries', label: 'משלוחים', icon: 'i-box', gate: 'showDeliveries' },
       { href: '/refunds', label: 'זיכויים וחובות', icon: 'i-wallet', gate: 'showRefundsTab' },
       { href: '/alterations', label: 'תיקונים', icon: 'i-scissors', gate: 'enableAlterations' },
@@ -41,11 +45,13 @@ export const NAV_GROUPS = [
   },
   {
     key: 'people',
-    label: 'אנשים',
+    // בלי label גלוי (2026-09-09, בקשת משתמשת) - עדיין קבוצה נפרדת בסיידבר, רק בלי
+    // כותרת "אנשים" מעל הפריטים.
+    label: '',
     items: [
       { href: '/customers', label: 'לקוחות', icon: 'i-users' },
       { href: '/employees', label: 'עובדים ונוכחות', icon: 'i-user-check', gate: 'showEmployeesTab' },
-      { href: '/board', label: 'לוח חודשי', icon: 'i-calendar' },
+      { href: '/board', label: 'לוח חודשי', icon: 'i-calendar', gate: 'showBoardTab' },
       { href: '/customer-interface', label: 'עמדת לקוח', icon: 'i-eye' },
     ],
   },

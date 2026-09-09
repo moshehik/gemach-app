@@ -25,15 +25,14 @@ const QUICK_LINK_VISIBILITY = {
 // דפים שהוצאו מהתפריט הצדדי (2026-08-08, צומצם ל-11 הפריטים שהיו בתפריט
 // הראשי הישן) אבל אינם קשורי-ניהול — קיצורי דרך אליהם כאן במקום זאת, בטקסט/
 // אייקון החדשים כמו ב-navConfig.js. תתי-הדפים של אזור הניהול עברו ל-/admin.
+// "הפרופיל שלי" ו"עיצוב ותצוגה" הוסרו מכאן (2026-09-09, בקשת משתמשת) - שני אלה
+// כבר נגישים תמיד דרך תפריט המשתמש למעלה (UserMenu.js), אז הכרטיס כאן היה כפול.
 const QUICK_LINKS = [
   { href: '/dashboard', label: 'לוח בקרה', icon: 'i-grid' },
-  { href: '/orders/new', label: 'הזמנה חדשה', icon: 'i-plus' },
   { href: '/dashboard/pricelist', label: 'מחירון', icon: 'i-coin' },
   { href: '/employees/report', label: 'דוח נוכחות', icon: 'i-activity' },
   { href: '/messages', label: 'הודעות', icon: 'i-message' },
-  { href: '/profile', label: 'הפרופיל שלי', icon: 'i-user' },
   { href: '/punch-clock', label: 'שעון נוכחות', icon: 'i-clock' },
-  { href: '/display-settings', label: 'עיצוב ותצוגה', icon: 'i-settings' },
 ];
 
 export default function HomeDashboard() {

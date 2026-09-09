@@ -184,12 +184,15 @@ export default async function RootLayout({ children }) {
   const showDressesTab = isAuthenticated
     ? (restrictDressCatalogToHeadManagement ? isHeadManagement : true)
     : !requireLogin;
+  // "לוח חודשי" הוסתר לעובד רגיל (לא מנהל) - בקשת משתמשת 2026-09-09.
+  const showBoardTab = isAuthenticated ? isManager : !requireLogin;
 
   const navGroups = buildNavGroups({
     showAdminTab,
     showEmployeesTab,
     showRefundsTab,
     showDressesTab,
+    showBoardTab,
     enableAlterations,
     showMessages: !hideInternalMessaging,
     showDeliveries,

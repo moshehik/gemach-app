@@ -36,7 +36,7 @@ export default function BrandLogo() {
   if (hasError) {
     return (
       <div className="navbar-brand" title={versionText} style={{ display: 'flex', alignItems: 'center', height: '38px', paddingRight: '1rem' }}>
-        <div>גמ"ח נסיכה</div>
+        <div>גמ"ח שמלות</div>
       </div>
     );
   }

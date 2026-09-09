@@ -54,7 +54,13 @@ export default function RentalsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 350);
-  const [viewMode, setViewMode] = useState('all'); // 'all', 'rented', 'rented_partial', 'returned', 'returned_partial'
+  // 'all', 'rented', 'rented_partial', 'returned', 'returned_partial' - ברירת המחדל
+  // 'all', חוץ מכניסה מקישורי הסיידבר הנפרדים "השכרות"/"החזרות" (navConfig.js, #rented/#returned).
+  const [viewMode, setViewMode] = useState(() => {
+    if (typeof window === 'undefined') return 'all';
+    const h = window.location.hash.replace('#', '');
+    return (h === 'rented' || h === 'returned') ? h : 'all';
+  });
 
   const [advFilters, setAdvFilters] = useState(defaultRentalsAdvFilters());
   const [showAdvSearch, setShowAdvSearch] = useState(false);

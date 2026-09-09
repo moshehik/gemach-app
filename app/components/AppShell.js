@@ -123,7 +123,7 @@ export default function AppShell({
         </div>
         {navGroups.map((group) => (
           <div className="nav-group" key={group.key}>
-            <div className="nav-group-label">{group.label}</div>
+            {group.label && <div className="nav-group-label">{group.label}</div>}
             {group.items.map((item) => (
               <Link
                 key={item.href}
