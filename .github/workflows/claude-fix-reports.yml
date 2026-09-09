@@ -106,6 +106,11 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           path_to_claude_code_executable: /home/runner/.local/bin/claude
+          # allowedTools חייב לכלול Edit/Write/git/gh בפועל, לא רק node - fix-reports.md
+          # (שלב "לפני שמתקנים קוד") מצפה מהסוכן לתקן קבצים, לפתוח ענף+PR עם gh. בלי
+          # זה כל הרצה שבאמת מוצאת דיווח שדורש תיקון קוד נתקעת ומדווחת שאין לה הרשאת
+          # כתיבה, גם כשה-workflow permissions (contents/pull-requests: write) תקינים -
+          # אלה הרשאות ה-GITHUB_TOKEN, לא הרשאות הכלים שה-agent מותר לו להשתמש בהם.
           prompt: |
             REPO: ${{ github.repository }}
 
@@ -119,7 +124,7 @@ jobs:
             לתזמן הרצה נוספת בעצמכם.
           claude_args: |
             --model sonnet
-            --allowedTools "Bash(node:*)"
+            --allowedTools "Bash(node:*),Bash(git:*),Bash(gh:*),Edit,Write"
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           DATABASE_URL_ORG2: ${{ secrets.DATABASE_URL_ORG2 }}
