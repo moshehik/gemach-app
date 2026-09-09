@@ -247,6 +247,13 @@ export default function PrintOrderPage() {
                   )}
                 </div>
               )}
+              {/* יום/שעת קבלת השמלות מראש (מתי בדיוק לפני האירוע, ובאיזה טווח שעות) לא
+                  מומש - אין כרגע כלל עסקי קיים בקוד לחשב את זה (בניגוד ל"פרטי החזרה"
+                  למעלה, שיש לו standard_return_hour קיים) וניחוש שגוי כאן עלול לגרום
+                  ללקוח להגיע ביום/שעה לא נכונים. ראו תגובה לדיווח 4d4456ce. */}
+              <div className="return-details-box">
+                יש להצטייד בפרטי אשראי לפקדון בעת קבלת השמלות.
+              </div>
               <div className="print-header">
                 <div className="print-header-content">
                   {/* הלוגו מוגש מ-/api/logo (הגדרת BRAND_LOGO); כשאין לוגו מוגדר הנתיב
