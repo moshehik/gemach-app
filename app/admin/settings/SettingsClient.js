@@ -790,7 +790,10 @@ export default function SettingsClient() {
     );
   }
 
-  const activeSettings = settings.filter(s => s.category === activeTab);
+  // NEDARIM_MOSAD ו-nedarim_plus_terminal נשמרים בכוונה כשני מפתחות מסונכרנים תמיד
+  // לאותו ערך (לתמיכה בקוד ישן שמחפש את השם הישן) - מציגים רק אחד מהם כדי שלא
+  // ייראו כשני שדות כפולים באותו מסך.
+  const activeSettings = settings.filter(s => s.category === activeTab && s.key !== 'NEDARIM_MOSAD');
   const hasChanges = Object.keys(modified).length > 0;
   const hasValidationErrors = Object.entries(modified).some(
     ([key, value]) => validateNumericSetting(key, value) !== null
