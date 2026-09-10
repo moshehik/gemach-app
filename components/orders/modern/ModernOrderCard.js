@@ -11,11 +11,13 @@ import OrderPrintMenu from '../OrderPrintMenu';
 const getStatusBadgeClass = (status) => {
   switch (status) {
     case 'הוחזר':
-    case 'הוחזר חלקי':
       return 'badge-success';
+    case 'הוחזר חלקי':
+      return 'badge-warning';
     case 'הושכר':
-    case 'הושכר חלקי':
       return 'badge-info';
+    case 'הושכר חלקי':
+      return 'badge-accent';
     case 'בקרוב':
       return 'badge-warning';
     case 'עבר':
