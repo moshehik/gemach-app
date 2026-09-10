@@ -405,26 +405,35 @@ export default function PrintOrderPage() {
         <tbody>
           <tr className="print-flow-row">
             <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
-              <div className="summary-section">
-                <table className="summary-table">
-                  <tbody>
-                    <tr>
-                      <td>סה&quot;כ לחיוב:</td>
-                      <td>₪{totalObligations}</td>
-                    </tr>
-                    <tr>
-                      <td>סה&quot;כ שולם:</td>
-                      <td>₪{totalPayments}</td>
-                    </tr>
-                    <tr className="total">
-                      <td>יתרה לתשלום:</td>
-                      <td>₪{balance}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+              {orderIdList.length > 1 ? (
+                // הדפסה מרוכזת (בקשת רבקה לוי, 2026-09-10): בלי פירוט חיוב/יתרה מלא -
+                // רק שורת סכום קטנה, כדי שכל הזמנה תישאר בדף בודד.
+                <div className="summary-section" style={{ fontSize: '11px' }}>שולם: ₪{totalPayments}</div>
+              ) : (
+                <div className="summary-section">
+                  <table className="summary-table">
+                    <tbody>
+                      <tr>
+                        <td>סה&quot;כ לחיוב:</td>
+                        <td>₪{totalObligations}</td>
+                      </tr>
+                      <tr>
+                        <td>סה&quot;כ שולם:</td>
+                        <td>₪{totalPayments}</td>
+                      </tr>
+                      <tr className="total">
+                        <td>יתרה לתשלום:</td>
+                        <td>₪{balance}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
 
-              {activePayments.length > 0 && (
+              {/* בהדפסה מרוכזת (כמה הזמנות יחד, "אשף הדפסה") רבקה לוי ביקשה שכל הזמנה
+                  תישאר בדף בודד ובלי פירוט תשלומים - רק סכום קטן (כבר מוצג למעלה בטבלת
+                  הסיכום). בהדפסת הזמנה בודדת (הכרטיס הרגיל) נשאר הפירוט המלא כמו קודם. */}
+              {activePayments.length > 0 && orderIdList.length === 1 && (
                 <div className="payments-section">
                   <h4 className="payments-title">תשלומים שהתקבלו</h4>
                   <table className="print-table" style={{ marginBottom: '30px' }}>
@@ -580,6 +589,30 @@ export default function PrintOrderPage() {
           .section-title {
             break-after: avoid-page;
             page-break-after: avoid;
+          }
+          /* הדפסה מרוכזת (בקשת רבקה לוי, 2026-09-10): לפי נהלי הגמ"ח כמות הפריטים
+             בהזמנה בד"כ קטנה, אז צמצום הריווחים כאן אמור לרוב לספיק כדי שכל הזמנה
+             תיכנס לעמוד בודד - זו לא אכיפה קשיחה (לא חותכים תוכן), רק פינוי מקום. */
+          .batch-print {
+            padding: 15px 20px !important;
+          }
+          .batch-print .print-header {
+            padding-bottom: 10px !important;
+            margin-bottom: 12px !important;
+          }
+          .batch-print .print-header-content h1 {
+            font-size: 20px !important;
+            margin-bottom: 4px !important;
+          }
+          .batch-print .print-header-content img {
+            height: 40px !important;
+            margin-bottom: 4px !important;
+          }
+          .batch-print .order-details-card {
+            margin-bottom: 12px !important;
+          }
+          .batch-print .summary-section {
+            margin-top: 8px !important;
           }
         }
         .bsd {
@@ -831,7 +864,7 @@ export default function PrintOrderPage() {
         // Signals to app/api/pdf/route.js's Puppeteer render (page.goto() + waitForSelector)
         // that data has finished loading and the DOM reflects its final state.
         data-print-ready={loading ? undefined : 'true'}
-        className="print-container"
+        className={`print-container${orderIdList.length > 1 ? ' batch-print' : ''}`}
       >
         {loading ? (
           <div style={{ textAlign: 'center', padding: '50px', color: '#6c757d', fontSize: '18px' }}>טוען נתונים להדפסה...</div>

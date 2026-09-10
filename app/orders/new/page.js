@@ -983,7 +983,7 @@ export default function NewOrderPage() {
 
     if (!isManagerExitPayment) {
       if (totalWithCurrent < totalAmount) {
-        alert('לא ניתן לסיים הזמנה לפני תשלום מלא. אנא הוסף את התשלום החסר, או בחר "יציאה באישור מנהל". כדי לפצל, השתמש בכפתור "פצל / הוסף תשלום זה".');
+        alert('לא ניתן לסיים הזמנה לפני תשלום מלא. אנא הוסף את התשלום החסר, או בחר "יציאה באישור מנהל". כדי לפצל, השתמש בכפתור "אישור תשלום / פיצול".');
         return;
       }
     }
@@ -2271,7 +2271,7 @@ export default function NewOrderPage() {
 
                   <div style={{ display: 'flex', gap: '10px', marginTop: '16px', flexWrap: 'wrap' }}>
                     <button type="submit" className="btn btn-secondary" style={{ flex: 1, minWidth: '150px' }} disabled={busy}>
-                      <svg className="icon"><use href="#i-plus" /></svg> פצל / הוסף תשלום
+                      <svg className="icon"><use href="#i-plus" /></svg> אישור תשלום / פיצול
                     </button>
                     {settings.nedarim_plus_enabled !== 'false' && (
                       <button
