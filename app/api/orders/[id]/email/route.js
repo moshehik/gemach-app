@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import prisma from '../../../../lib/prisma';
-import { getHebrewDateString, getHebrewWeekdayLabel } from '../../../../../lib/hebrewDate';
+import { getHebrewDateString, getHebrewWeekdayLabel, subtractSkippingWeekendsAndChag } from '../../../../../lib/hebrewDate';
 import { calculateOrderStatus } from '../../../../../lib/orderStatus';
 import { renderGenericEmailHtml, renderAttachmentsGuideTable, renderAttachmentsGuideText } from '../../../../../lib/emailTemplates';
 import { normalizeAttachments } from '@/lib/mailer';
@@ -14,7 +14,16 @@ const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, 
 // (no dedicated return-deadline field/SystemSetting exists for the standard flow); this is a
 // server-only route so it imports the same lib/inventory.js helper directly, no bundle-size
 // concern the client-side print page has (which uses the lib/clientInventory.js copy instead).
+// שעת ההחזרה נשלפת מהגדרת standard_return_hour (אותה הגדרה שמזינה את app/print/order/page.js) -
+// זהו רק ה-fallback לשעה שמוצגת אם השורה עוד לא נוצרה ב-DB.
 const STANDARD_RETURN_HOUR = '13:00';
+
+// יום/שעת קבלת השמלות מראש (דיווח 11cd3ecf, 2026-09-10): אותו חישוב בדיוק כמו
+// app/print/order/page.js - 2 ימי-עסקים לפני האירוע (מדלג שישי/שבת/חג, ר'
+// subtractSkippingWeekendsAndChag ב-lib/hebrewDate.js), בטווח שעות קבוע שנשלף
+// מהגדרת standard_pickup_hours (הגדרות מערכת > הדפסה); זהו רק ה-fallback אם השורה
+// עוד לא נוצרה ב-DB.
+const STANDARD_PICKUP_HOURS = '20:00-21:30';
 
 // Minimal inline SVGs (lucide-react's shirt/scissors/ruler/check paths) - the emailed
 // report is a raw HTML string, not JSX, so icon components can't be imported here.
@@ -88,7 +97,9 @@ export async function POST(request, { params }) {
       gmachName: settingsData.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות',
       gmachAddress: settingsData.find(s => s.key === 'gmach_address')?.value || '',
       gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
-      gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || ''
+      gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || '',
+      returnHour: settingsData.find(s => s.key === 'standard_return_hour')?.value || STANDARD_RETURN_HOUR,
+      pickupHours: settingsData.find(s => s.key === 'standard_pickup_hours')?.value || STANDARD_PICKUP_HOURS
     };
 
     // סטטוס ההשכרה מגיע כעת מ-lib/orderStatus.js (מקור האמת היחיד לסטטוס הזמנה) במקום
@@ -116,7 +127,8 @@ export async function POST(request, { params }) {
     const totalObligations = order.obligations.reduce((sum, o) => sum + o.amount, 0);
     const totalPayments = order.payments.reduce((sum, p) => sum + p.amount, 0);
 
-    const colCount = enableAlterations ? 5 : 4;
+    // 6/5 (היה 5/4) - עמודת "מספר דגם" נוספה בין מידה לברקוד (דיווח 11cd3ecf).
+    const colCount = enableAlterations ? 6 : 5;
 
     // פריטים ללא תיאור וללא פריט פיזי מקושר (בעיקר מהמיגרציה מאקסס) נושאים רק
     // barcodePrefix - GET /api/orders/[id] מתרגם עבורם קידומת->שם דגם לפני שדף
@@ -178,12 +190,17 @@ export async function POST(request, { params }) {
           }
           const modelName = stripCodeLabel(finalDescription) || '-';
           const sizeText = item.sizeText || item.dressItem?.sizeText || '-';
+          // מספר דגם (קטגוריה נפרדת ליד המידה, דיווח 11cd3ecf) - barcodePrefix הקריא
+          // של הדגם (כלל תצוגת ID, ר' AGENTS.md), לא ה-UUID הפנימי. מוצג תמיד (לא
+          // מותנה isTaken כמו עמודת "ברקוד" למטה, שהיא הברקוד של הפריט הפיזי הספציפי).
+          const modelNumber = (itemPrefix !== null && itemPrefix !== undefined) ? itemPrefix : '-';
           const barcode = (item.isTaken && (item.barcode || item.dressItem?.dressBarcode)) || '-';
 
           return `
             <tr>
               <td style="font-weight: 600; color: #333;">${modelName}</td>
               <td>${sizeText}</td>
+              <td style="font-weight: 600; color: #666;">${modelNumber}</td>
               <td style="font-weight: 600; color: #666;">${barcode}</td>
               ${alts}
               <td>${statusStr}</td>
@@ -260,6 +277,9 @@ export async function POST(request, { params }) {
     const returnByDate = order.toDate || order.returnDate
       ? new Date(order.toDate || order.returnDate)
       : (order.eventDate ? addDaysSkippingWeekends(order.eventDate, 1) : null);
+    // מועד איסוף השמלות (דיווח 11cd3ecf) - אותו חישוב בדיוק כמו app/print/order/page.js:
+    // 2 ימי-עסקים לפני האירוע, מדלג שישי/שבת/חג.
+    const pickupDate = order.eventDate ? subtractSkippingWeekendsAndChag(order.eventDate, 2) : null;
 
     // Visual design mirrors app/print/order/page.js exactly (same "style_19" mockup the owner
     // picked) so the emailed report and the in-app printed report look identical. Colors are
@@ -322,7 +342,8 @@ export async function POST(request, { params }) {
       <body>
         <div class="invoice-box">
           <div class="bsd">בס"ד</div>
-          ${printType === 'rental' && returnByDate ? `<div class="return-details-box"><strong>פרטי החזרה:</strong> ${getHebrewWeekdayLabel(returnByDate)} ${getHebrewDateString(returnByDate)} עד השעה ${STANDARD_RETURN_HOUR}</div>` : ''}
+          ${pickupDate ? `<div class="return-details-box"><strong>קבלת השמלות:</strong> ביום ${getHebrewWeekdayLabel(pickupDate)} ${getHebrewDateString(pickupDate)} בשעה ${printSettings.pickupHours} בדיוק.</div>` : ''}
+          ${returnByDate ? `<div class="return-details-box"><strong>פרטי החזרה:</strong> ${getHebrewWeekdayLabel(returnByDate)} ${getHebrewDateString(returnByDate)} עד השעה ${printSettings.returnHour}</div>` : ''}
           <div class="print-header">
             <h1>${printSettings.gmachName}</h1>
             <div class="company-details">${[
@@ -355,6 +376,7 @@ export async function POST(request, { params }) {
               <tr>
                 <th>דגם / תיאור</th>
                 <th>מידה</th>
+                <th>מספר דגם</th>
                 <th>ברקוד</th>
                 ${enableAlterations ? '<th>תיקונים</th>' : ''}
                 <th>סטטוס</th>
