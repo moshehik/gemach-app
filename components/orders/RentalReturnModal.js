@@ -18,6 +18,9 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [enableAlterations, setEnableAlterations] = useState(true);
+  // allow_shift_lead_reserve_rental - ר' app/api/rentals/scan/route.js: כשדלוק, חסימת
+  // רזרבה (לא מחסן) ניתנת לעקיפה בסיסמת כל עובד/ת פעיל/ה, לא רק מנהל/מתכנת.
+  const [allowShiftLeadReserve, setAllowShiftLeadReserve] = useState(false);
 
   const [modalBarcode, setModalBarcode] = useState('');
   const modalBarcodeRef = useRef(null);
@@ -110,6 +113,8 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         if (altSetting && altSetting.value === 'false') {
           setEnableAlterations(false);
         }
+        const shiftLeadSetting = Array.isArray(data) ? data.find(s => s.key === 'allow_shift_lead_reserve_rental') : null;
+        setAllowShiftLeadReserve(!!(shiftLeadSetting && shiftLeadSetting.value === 'true'));
       })
       .catch(console.error);
   }, []);
@@ -176,9 +181,15 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
           // האימות עצמו (verifyPin, אותו hook משותף שמשמש בכל שאר אתרי אישור-מנהל
           // באפליקציה) הוא רק כדי להציג הודעת שגיאה מוקדמת ללא-מנהל; השרת מוודא
           // שוב את הסיסמה בעצמו (רואים /api/rentals/scan) ולא סומך על דגל מהלקוח.
+          //
+          // 2026-09-10: כשזו חסימת-רזרבה טהורה (לא מחסן) וההגדרה allow_shift_lead_reserve_rental
+          // דלוקה - מבקשים אישור בסיסמת כל עובד/ת פעיל/ה ('עובד', לא נופל תחת אף סינון תפקיד
+          // ב-showAuthPrompt/verify-pin), לא רק מנהל/מתכנת. מחסן תמיד נשאר ברמת 'מנהל'.
+          const useShiftLeadLevel = data.reserveOnly && allowShiftLeadReserve;
+          const requiredLevel = useShiftLeadLevel ? 'עובד' : 'מנהל';
           const authResult = await verifyPin(
-            `${data.error}\nלעקוף את החסימה ולהשכיר בכל זאת? נדרש אישור מנהל.`,
-            'מנהל'
+            `${data.error}\nלעקוף את החסימה ולהשכיר בכל זאת? נדרש אישור ${useShiftLeadLevel ? 'עובד/ת פעיל/ה' : 'מנהל'}.`,
+            requiredLevel
           );
           if (authResult && isMountedRef.current) {
             await handleRentalScan(barcodeToScan, itemIdToForce, authResult); // Retry with override
