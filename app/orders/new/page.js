@@ -113,6 +113,7 @@ export default function NewOrderPage() {
   });
   
   const [availableSizes, setAvailableSizes] = useState([]);
+  const [customerLocations, setCustomerLocations] = useState({ cities: [], streets: [] });
   const [loadingSizes, setLoadingSizes] = useState(false);
   const [capacityModalItem, setCapacityModalItem] = useState(null);
   const [pendingSpacingChange, setPendingSpacingChange] = useState(null);
@@ -373,6 +374,12 @@ export default function NewOrderPage() {
           setSettings(data || {});
         }
       })
+      .catch(err => console.error(err));
+  }, []);
+
+  useEffect(() => {
+    fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
+      .then(data => setCustomerLocations({ cities: data?.cities || [], streets: data?.streets || [] }))
       .catch(err => console.error(err));
   }, []);
 
@@ -1433,7 +1440,6 @@ export default function NewOrderPage() {
         {step === 1 && (
           <div style={{ maxWidth: '520px', margin: '0 auto' }}>
             <h2>מי הלקוח?</h2>
-            <p className="page-desc" style={{ margin: '-4px 0 18px' }}>חיפוש לפי טלפון, בחירה מהרשימה, או יצירת כרטיס לקוח חדש.</p>
 
             <div className="tabs">
               <button
@@ -1614,9 +1620,6 @@ export default function NewOrderPage() {
                   <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} placeholder="נייד או קווי" />
                 </div>
 
-                <p className="hint" style={{ margin: '0 0 6px', color: 'var(--text-2)' }}>
-                  כל הזמנה מחייבת 2 אמצעי תקשורת — יש למלא לפחות אחד מהשניים:
-                </p>
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-phone2">טלפון נוסף <span style={{ color: 'var(--danger)' }}>*</span></label>
@@ -1652,11 +1655,17 @@ export default function NewOrderPage() {
                   <div className="form-grid">
                     <div className="field">
                       <label htmlFor="cust-city">עיר מגורים {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-city" className="input" type="text" autoComplete="new-password" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} />
+                      <input id="cust-city" className="input" type="text" list="cust-city-list" autoComplete="new-password" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} />
+                      <datalist id="cust-city-list">
+                        {customerLocations.cities.map(c => <option key={c} value={c} />)}
+                      </datalist>
                     </div>
                     <div className="field">
                       <label htmlFor="cust-street">רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-street" className="input" type="text" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} />
+                      <input id="cust-street" className="input" type="text" list="cust-street-list" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} />
+                      <datalist id="cust-street-list">
+                        {customerLocations.streets.map(s => <option key={s} value={s} />)}
+                      </datalist>
                     </div>
                     <div className="field">
                       <label htmlFor="cust-house">מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
@@ -1813,7 +1822,7 @@ export default function NewOrderPage() {
                         {/* 6 - הזמנה טלפונית וסניף ביצוע לא יכולים להיות מסומנים יחד - סימון
                             "טלפונית" מנקה סניף שנבחר (ור' onChange של ה-select למטה, שמנקה בכיוון ההפוך) */}
                         <input type="checkbox" checked={!!order.isPhoneOrder} onChange={e => setOrder(prev => ({ ...prev, isPhoneOrder: e.target.checked, branch: e.target.checked ? '' : prev.branch }))} />
-                        <span>הזמנה טלפונית (13)</span>
+                        <span>הזמנה טלפונית</span>
                       </label>
                     </div>
                   )}
@@ -1823,7 +1832,7 @@ export default function NewOrderPage() {
                       אפשר היה להקליד כל טקסט, לא רק את הסניפים שבהגדרה). */}
                   {settings.track_branch_on_order === 'true' && (
                     <div className="field">
-                      <label>סניף ביצוע (13)</label>
+                      <label>סניף ביצוע</label>
                       <select
                         className="input"
                         value={order.branch || ''}
@@ -1838,7 +1847,7 @@ export default function NewOrderPage() {
                   )}
                   {settings.branches_enabled === 'true' && (
                     <div className="field">
-                      <label>סניף איסוף (34)</label>
+                      <label>סניף איסוף</label>
                       <select
                         className="input"
                         value={order.pickupBranch || ''}
@@ -1856,7 +1865,7 @@ export default function NewOrderPage() {
                   <div className="field">
                     <label className="checkbox-row" style={{ cursor: 'pointer' }}>
                       <input type="checkbox" checked={!!order.isDelivery} onChange={e => setOrder(prev => ({ ...prev, isDelivery: e.target.checked }))} />
-                      <span>הזמנת משלוח (15)</span>
+                      <span>הזמנת משלוח</span>
                     </label>
                   </div>
                   {order.isDelivery && (
@@ -1883,7 +1892,7 @@ export default function NewOrderPage() {
                         <div className="field">
                           <label className="checkbox-row" style={{ cursor: 'pointer' }}>
                             <input type="checkbox" checked={!!order.deliveryOneDayBefore} onChange={e => setOrder(prev => ({ ...prev, deliveryOneDayBefore: e.target.checked }))} />
-                            <span>משלוח יוצא יום לפני האירוע (במקום יומיים) (19)</span>
+                            <span>משלוח יוצא יום לפני האירוע (במקום יומיים)</span>
                           </label>
                         </div>
                       )}
@@ -2095,7 +2104,7 @@ export default function NewOrderPage() {
                         <div key={idx} className="list-card">
                           <div style={{ flex: 1, minWidth: 0 }}>
                             <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{item.dressName || 'דגם לא ידוע'}</div>
-                            <div className="hint" style={{ color: 'var(--text-3)' }}>מידה {item.sizeText}{settings.enable_alterations !== 'false' ? ` · ${describeAlterations(item)}` : ''}</div>
+                            <div className="hint" style={{ color: 'var(--text-3)' }}>{item.sizeText}{settings.enable_alterations !== 'false' ? ` · ${describeAlterations(item)}` : ''}</div>
                           </div>
                           <strong style={{ fontVariantNumeric: 'tabular-nums' }}>
                             ₪{(calculatedData.items[idx] ? calculatedData.items[idx].calculatedPrice : item.finalPrice) || 0}
@@ -2144,10 +2153,6 @@ export default function NewOrderPage() {
                 <strong>{selectedCustomerName} <span className="hint" style={{ color: 'var(--text-3)', fontWeight: 600 }}>{order.selectedCustomer?.phone1 || ''}</span></strong>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
-                <span className="hint" style={{ color: 'var(--text-3)' }}>סוג אירוע</span>
-                <strong>{order.isAbroad ? 'אירוע חו"ל / תפוסה ארוכה' : 'אירוע רגיל'}</strong>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
                 <span className="hint" style={{ color: 'var(--text-3)' }}>תאריכים</span>
                 <strong>
                   {order.isAbroad
@@ -2181,7 +2186,7 @@ export default function NewOrderPage() {
                   return (
                     <div key={idx} className="list-card">
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{item.dressName} · מידה {item.sizeText}</div>
+                        <div style={{ fontWeight: 700, fontSize: '13.5px' }}>{item.dressName} · {item.sizeText}</div>
                         {settings.enable_alterations !== 'false' && (
                           <div className="hint" style={{ color: 'var(--text-3)' }}>
                             תיקונים: {describeAlterations(item)}

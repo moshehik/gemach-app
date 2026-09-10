@@ -49,8 +49,6 @@ export default function DeliveriesPage() {
   const debouncedSearch = useDebounce(search, 300);
   const [loading, setLoading] = useState(true);
   const [rows, setRows] = useState([]);
-  const [deliveryDaysBefore, setDeliveryDaysBefore] = useState(null);
-  const [deliveryDaysAfter, setDeliveryDaysAfter] = useState(null);
   // 18 - טבלת טווח (שבוע/שבועיים/חודש) + עבר, מותנה ב-delivery_table_range_enabled
   const [rangeMode, setRangeMode] = useState('day'); // day | week | 2weeks | month
   const [rangeEnabled, setRangeEnabled] = useState(false);
@@ -72,16 +70,13 @@ export default function DeliveriesPage() {
       : 1;
     const dates = [];
     for (let i = 0; i < days; i++) dates.push(addDaysToIso(selectedDate, i));
-    Promise.all(dates.map(d => fetch(`/api/deliveries?date=${d}`, { cache: 'no-store' }).then(res => res.json()).then(data => ({ date: d, rows: data.data || [], before: data.deliveryDaysBefore, after: data.deliveryDaysAfter })).catch(() => ({ date: d, rows: [] }))))
+    Promise.all(dates.map(d => fetch(`/api/deliveries?date=${d}`, { cache: 'no-store' }).then(res => res.json()).then(data => ({ date: d, rows: data.data || [] })).catch(() => ({ date: d, rows: [] }))))
       .then(all => {
         if (cancelled) return;
         const map = {};
         for (const a of all) map[a.date] = a.rows;
         setRangeRows(map);
         setRows(map[selectedDate] || []);
-        const first = all[0];
-        setDeliveryDaysBefore(first?.before ?? null);
-        setDeliveryDaysAfter(first?.after ?? null);
       })
       .catch(err => {
         console.error(err);
@@ -193,15 +188,6 @@ export default function DeliveriesPage() {
           />
         </div>
       </div>
-
-      {(deliveryDaysBefore !== null || deliveryDaysAfter !== null) && (
-        <div className="callout callout-info" style={{ marginBottom: '16px' }}>
-          <svg className="icon"><use href="#i-info" /></svg>
-          <span>
-            משלוח הלוך יוצא {deliveryDaysBefore} {deliveryDaysBefore === 1 ? 'יום' : 'ימים'} לפני תאריך האירוע, ומשלוח חזור נאסף {deliveryDaysAfter} {deliveryDaysAfter === 1 ? 'יום' : 'ימים'} אחריו (ניתן לשנות בהגדרות מערכת, קטגוריית &quot;משלוחים&quot;).
-          </span>
-        </div>
-      )}
 
       {/* ניווט תאריך: קודם/היום/הבא + בורר תאריך עברי מלא */}
       <div className="toolbar">

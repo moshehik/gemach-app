@@ -161,7 +161,10 @@ export default function AppShell({
           {/* RTL: "back" (previous) points right like the pagination convention elsewhere
               in this design system, "forward" (next) points left — not the LTR-mirrored
               assumption of back=left/forward=right. */}
-          <button type="button" className="icon-btn" title="אחורה" onClick={() => router.back()}>
+          {/* router.back() is silently a no-op when the tab has no earlier history entry
+              (deep link, new tab, refresh) - user report "כפתור אחורה לא מגיב" (2026-09-09).
+              Falling back to the dashboard keeps the button always doing something visible. */}
+          <button type="button" className="icon-btn" title="אחורה" onClick={() => { if (typeof window !== 'undefined' && window.history.length > 1) router.back(); else router.push('/'); }}>
             <svg className="icon"><use href="#i-chevron-end" /></svg>
           </button>
           <button type="button" className="icon-btn" title="קדימה" onClick={() => router.forward()}>
