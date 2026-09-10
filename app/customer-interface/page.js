@@ -38,9 +38,12 @@ function KioskThumbImg({ model }) {
 function ModelAvatar({ model, size, showImage }) {
   const name = (model.name || '').trim();
   const parts = name.split(/\s+/).filter(Boolean);
+  // הרבה דגמים (בעיקר מיובאים מאקסס) נקראים רק לפי הקוד המספרי שלהם (למשל "316"),
+  // בלי שם תיאורי אמיתי - עבורם 2 תווים ראשונים חותכים ספרה וגורמים לבלבול (306
+  // מוצג "30"), אז מילה בודדת שהיא מספר מלא מוצגת עד 3 ספרות במקום 2.
   const initials = parts.length >= 2
     ? `${parts[0][0]}${parts[1][0]}`
-    : (name.slice(0, 2) || '?');
+    : (/^\d+$/.test(parts[0] || '') ? parts[0].slice(0, 3) : name.slice(0, 2)) || '?';
   return (
     <div className={`ka-avatar ${size}`} title={name}>
       {showImage && model.imageUrl ? <KioskThumbImg model={model} /> : <span>{initials}</span>}

@@ -71,6 +71,10 @@ export async function GET(request) {
     const orders = await prisma.order.findMany({
       where: {
         isDeleted: false,
+        // בלי הסינון הזה כל הזמנה שתאריך האירוע שלה נופל בחלון היה מופיע כאן, גם
+        // הזמנות שלא ביקשו משלוח בכלל (רק כי מקרית התאריך שלהן חופף) - ר' דיווח
+        // תקלה 226bda09, 2026-09-10.
+        isDelivery: true,
         OR: [
           { eventDate: { gte: outboundRange.start, lte: outboundRange.end } },
           ...(outboundOneDayBeforeRange ? [{ eventDate: { gte: outboundOneDayBeforeRange.start, lte: outboundOneDayBeforeRange.end } }] : []),
