@@ -19,12 +19,17 @@ function parseDateOnly(dateStr) {
   return d;
 }
 
-// מחזיר את רשימת מספרי ההזמנות (orderId) שהאירוע שלהן דורש הכנת הדפסה בתאריך/טווח
-// המבוקש, לפי הכלל "3 ימי עסקים לפני האירוע" (getPrintPrepDate) - ר' דיווחים
-// c5032b47 (/orders, "הכנות להיום") ו-ed6c69bc (/board, אותה בקשה מזווית הלוח
-// החודשי). נקרא מ-app/components/PrintWizardModal.js, שמעביר את התוצאה הלאה
-// ל-/print/order?orderId=... (שכבר תומך בהדפסה מרוכזת של כמה הזמנות, כולל מיון
-// משלוחים קודם ותג משלוח הלוך/חזור על כל עמוד - ר' app/print/order/page.js).
+// מחזיר את רשימת מספרי ההזמנות (orderId) המתאימות לתאריך/טווח המבוקש.
+// שני מצבים (query param mode, ר' דיווח df17fb16):
+// - mode=prep (ברירת מחדל, "הכנות להיום") - האירוע דורש הכנת הדפסה בתאריך/טווח
+//   המבוקש, לפי הכלל "3 ימי עסקים לפני האירוע" (getPrintPrepDate).
+// - mode=event ("תאריך אחר"/"טווח תאריכים") - תאריך האירוע עצמו נופל בתאריך/טווח
+//   המבוקש, בלי שום חישוב הכנה - "תאריך אחר" אמור להדפיס את כל האירועים של אותו
+//   תאריך, לא רק את מי שההכנה שלו יוצאת לתאריך הזה.
+// ר' גם דיווחים c5032b47 (/orders, "הכנות להיום") ו-ed6c69bc (/board, אותה בקשה
+// מזווית הלוח החודשי). נקרא מ-app/components/PrintWizardModal.js, שמעביר את
+// התוצאה הלאה ל-/print/order?orderId=... (שכבר תומך בהדפסה מרוכזת של כמה הזמנות,
+// כולל מיון משלוחים קודם ותג משלוח הלוך/חזור על כל עמוד - ר' app/print/order/page.js).
 export async function GET(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   try {
@@ -32,6 +37,7 @@ export async function GET(request) {
     const dateParam = searchParams.get('date');
     const fromParam = searchParams.get('from');
     const toParam = searchParams.get('to');
+    const mode = searchParams.get('mode') === 'event' ? 'event' : 'prep';
 
     const fromStr = dateParam || fromParam;
     const toStr = dateParam || toParam;
@@ -45,27 +51,43 @@ export async function GET(request) {
       return NextResponse.json({ error: 'תאריך לא תקין' }, { status: 400 });
     }
 
-    const eventWindowStart = new Date(targetFrom);
-    const eventWindowEnd = new Date(targetTo);
-    eventWindowEnd.setDate(eventWindowEnd.getDate() + LOOKAHEAD_DAYS);
-    eventWindowEnd.setHours(23, 59, 59, 999);
+    let orderIds;
+    if (mode === 'event') {
+      const eventWindowEnd = new Date(targetTo);
+      eventWindowEnd.setHours(23, 59, 59, 999);
 
-    const candidates = await prisma.order.findMany({
-      where: {
-        isDeleted: false,
-        eventDate: { gte: eventWindowStart, lte: eventWindowEnd }
-      },
-      select: { orderId: true, eventDate: true },
-      orderBy: { eventDate: 'asc' }
-    });
+      const orders = await prisma.order.findMany({
+        where: {
+          isDeleted: false,
+          eventDate: { gte: targetFrom, lte: eventWindowEnd }
+        },
+        select: { orderId: true },
+        orderBy: { eventDate: 'asc' }
+      });
+      orderIds = orders.map(o => o.orderId);
+    } else {
+      const eventWindowStart = new Date(targetFrom);
+      const eventWindowEnd = new Date(targetTo);
+      eventWindowEnd.setDate(eventWindowEnd.getDate() + LOOKAHEAD_DAYS);
+      eventWindowEnd.setHours(23, 59, 59, 999);
 
-    const matches = candidates.filter(o => {
-      if (!o.eventDate) return false;
-      const prepDate = getPrintPrepDate(o.eventDate);
-      return prepDate.getTime() >= targetFrom.getTime() && prepDate.getTime() <= targetTo.getTime();
-    });
+      const candidates = await prisma.order.findMany({
+        where: {
+          isDeleted: false,
+          eventDate: { gte: eventWindowStart, lte: eventWindowEnd }
+        },
+        select: { orderId: true, eventDate: true },
+        orderBy: { eventDate: 'asc' }
+      });
 
-    const orderIds = matches.map(o => o.orderId);
+      const matches = candidates.filter(o => {
+        if (!o.eventDate) return false;
+        const prepDate = getPrintPrepDate(o.eventDate);
+        return prepDate.getTime() >= targetFrom.getTime() && prepDate.getTime() <= targetTo.getTime();
+      });
+      orderIds = matches.map(o => o.orderId);
+    }
+
     return NextResponse.json({ orderIds, count: orderIds.length });
   } catch (err) {
     console.error('GET /api/orders/print-prep error:', err);
