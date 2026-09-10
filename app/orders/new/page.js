@@ -103,11 +103,8 @@ export default function NewOrderPage() {
   
   const [newItem, setNewItem] = useState({
     dressModelId: '',
-    sizeText: '',
-    sampleItemId: '',
+    selectedSizes: [],
     quantity: 1,
-    basePrice: 0,
-    finalPrice: 0,
     repairs: '',
     dressName: ''
   });
@@ -646,7 +643,7 @@ export default function NewOrderPage() {
             const { preserveSize, ...rest } = prev;
             return rest;
           }
-          return { ...prev, sizeText: '', sampleItemId: '', basePrice: 0, finalPrice: 0 };
+          return { ...prev, selectedSizes: [] };
         });
       } catch (err) {
         console.error('Error calculating local availability:', err);
@@ -657,20 +654,6 @@ export default function NewOrderPage() {
       setAvailableSizes([]);
     }
   }, [order.eventDate, order.fromDate, order.toDate, order.isAbroad, order.customSpacing, newItem.dressModelId, inventoryCache, order.items]);
-
-  useEffect(() => {
-    if (newItem.dressModelId && newItem.sizeText) {
-      fetch(`/api/orders/pricing?dressModelId=${newItem.dressModelId}&sizeText=${newItem.sizeText}&eventDate=${order.eventDate || ''}`)
-        .then(res => res.json())
-        .then(data => {
-          setNewItem(prev => ({
-            ...prev,
-            basePrice: data.basePrice,
-            finalPrice: data.basePrice
-          }));
-        });
-    }
-  }, [newItem.sizeText, newItem.dressModelId, order.eventDate]);
 
   const handleOrderChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -753,24 +736,28 @@ export default function NewOrderPage() {
 
   const handleNewItemChange = (e) => {
     const { name, value } = e.target;
-    if (name === 'sizeText') {
-      const selectedSize = availableSizes.find(s => s.sizeText === value);
-      setNewItem(prev => ({
-        ...prev,
-        sizeText: value,
-        sampleItemId: selectedSize ? selectedSize.sampleItemId : ''
-      }));
-    } else {
-      setNewItem(prev => ({
-        ...prev,
-        [name]: value
-      }));
-    }
+    setNewItem(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  const addItemToOrder = () => {
-    if (!newItem.sampleItemId || !newItem.sizeText) {
-      alert('יש לבחור דגם ומידה לפני ההוספה');
+  // דיווחים 2fdff71a/f63ed2a2 (נווה יעקב): לפני כן אפשר היה לבחור מידה אחת בלבד לפני
+  // "הוספת פריט" - כדי להוסיף עוד מידה מאותו דגם צריך היה לבחור מחדש את הדגם מההתחלה.
+  // עכשיו בוחרים דגם פעם אחת, מסמנים כמה מידות (טוגל), ולוחצים הוספה פעם אחת - ר'
+  // addItemToOrder למטה שמוסיף שורת סל נפרדת לכל מידה מסומנת.
+  const toggleSizeSelection = (sizeText) => {
+    setNewItem(prev => ({
+      ...prev,
+      selectedSizes: prev.selectedSizes.includes(sizeText)
+        ? prev.selectedSizes.filter(s => s !== sizeText)
+        : [...prev.selectedSizes, sizeText]
+    }));
+  };
+
+  const addItemToOrder = async () => {
+    if (newItem.selectedSizes.length === 0) {
+      alert('יש לבחור דגם ומידה אחת לפחות לפני ההוספה');
       return;
     }
 
@@ -782,43 +769,71 @@ export default function NewOrderPage() {
       return;
     }
 
-    const selectedSizeInfo = availableSizes.find(s => s.sizeText === newItem.sizeText);
-    if (!selectedSizeInfo || selectedSizeInfo.availableQuantity <= 0) {
-      alert('המידה שנבחרה אזלה מהמלאי לתאריך זה.');
+    // בדיקת זמינות אחרונה ברגע הלחיצה (לא רק ברגע הסימון) - המלאי המקומי (availableSizes)
+    // כבר מתעדכן live בכל שינוי ל-order.items, אבל בין הסימון ללחיצה על "הוספה" יכול לעבור זמן.
+    const unavailable = [];
+    const validSizes = [];
+    for (const sizeText of newItem.selectedSizes) {
+      const info = availableSizes.find(s => s.sizeText === sizeText);
+      if (!info || info.availableQuantity <= 0) {
+        unavailable.push(sizeText);
+      } else {
+        validSizes.push({ sizeText, sampleItemId: info.sampleItemId });
+      }
+    }
+    if (validSizes.length === 0) {
+      alert('כל המידות שנבחרו אזלו מהמלאי לתאריך זה.');
       return;
     }
 
     const maxItems = parseInt(settings.max_items_per_order);
-    if (!isNaN(maxItems) && maxItems > 0 && order.items.length >= maxItems) {
-      alert(`הגבלת מערכת: לא ניתן להוסיף יותר מ-${maxItems} פריטים להזמנה.`);
+    if (!isNaN(maxItems) && maxItems > 0 && order.items.length + validSizes.length > maxItems) {
+      alert(`הגבלת מערכת: לא ניתן להוסיף יותר מ-${maxItems} פריטים להזמנה (בחרת ${validSizes.length} מידות, יש כבר ${order.items.length} בסל).`);
       return;
     }
-    
+
+    // מחיר מובא בנפרד לכל מידה (calculatePrice מקבל dressModelId+sizeText+eventDate, כלומר
+    // המחיר יכול להיות שונה בין מידות של אותו דגם) - אותה קריאת API שהייתה קיימת קודם
+    // לתצוגה-מקדימה, רק עכשיו מבוצעת פעם אחת לכל מידה נבחרת ברגע ההוספה עצמה.
+    const prices = await Promise.all(validSizes.map(({ sizeText }) =>
+      fetch(`/api/orders/pricing?dressModelId=${newItem.dressModelId}&sizeText=${sizeText}&eventDate=${order.eventDate || ''}`)
+        .then(res => res.json())
+        .catch(() => ({ basePrice: 0 }))
+    ));
+
+    const itemsToAdd = validSizes.map(({ sizeText, sampleItemId }, idx) => ({
+      dressModelId: newItem.dressModelId,
+      dressName: newItem.dressName,
+      sizeText,
+      sampleItemId,
+      quantity: 1,
+      basePrice: prices[idx]?.basePrice || 0,
+      finalPrice: prices[idx]?.basePrice || 0,
+      repairs: newItem.repairs,
+      neckAlteration: newItem.neckAlteration,
+      sleeveAlteration: newItem.sleeveAlteration,
+      lengthAlteration: newItem.lengthAlteration
+    }));
+
     setOrder(prev => ({
       ...prev,
-      items: [...prev.items, { ...newItem }]
+      items: [...prev.items, ...itemsToAdd]
     }));
-    
-    setAvailableSizes(prev => prev.map(s => {
-      if (s.sizeText === newItem.sizeText) {
-        return { ...s, availableQuantity: Math.max(0, s.availableQuantity - 1) };
-      }
-      return s;
-    }));
-    
-    setNewItem({
-      dressModelId: '',
-      sizeText: '',
-      sampleItemId: '',
-      quantity: 1,
-      basePrice: 0,
-      finalPrice: 0,
+
+    // דגם ושם הדגם נשארים כמו שהם - כך שאפשר לסמן עוד מידות מאותו דגם בלי לבחור אותו
+    // מחדש; רק בבחירת דגם אחר (OrderModelSelector.onChange) הם מתאפסים.
+    setNewItem(prev => ({
+      ...prev,
+      selectedSizes: [],
       repairs: '',
-      dressName: '',
       neckAlteration: false,
       sleeveAlteration: false,
       lengthAlteration: ''
-    });
+    }));
+
+    if (unavailable.length > 0) {
+      alert(`שימו לב: המידות הבאות אזלו מהמלאי ולא נוספו: ${unavailable.join(', ')}`);
+    }
   };
 
   const removeItem = (index) => {
@@ -844,11 +859,8 @@ export default function NewOrderPage() {
     const itemToEdit = order.items[index];
     setNewItem({
       dressModelId: itemToEdit.dressModelId || '',
-      sizeText: itemToEdit.sizeText || '',
-      sampleItemId: itemToEdit.sampleItemId || '',
+      selectedSizes: itemToEdit.sizeText ? [itemToEdit.sizeText] : [],
       quantity: itemToEdit.quantity || 1,
-      basePrice: itemToEdit.basePrice || 0,
-      finalPrice: itemToEdit.finalPrice || 0,
       repairs: itemToEdit.repairs || '',
       dressName: itemToEdit.dressName || '',
       neckAlteration: itemToEdit.neckAlteration || false,
@@ -1952,10 +1964,7 @@ export default function NewOrderPage() {
                           ...prev,
                           dressModelId: '',
                           dressName: '',
-                          sizeText: '',
-                          sampleItemId: '',
-                          basePrice: 0,
-                          finalPrice: 0
+                          selectedSizes: []
                         }));
                         return;
                       }
@@ -1963,10 +1972,7 @@ export default function NewOrderPage() {
                         ...prev,
                         dressModelId: model.id,
                         dressName: model.name,
-                        sizeText: '',
-                        sampleItemId: '',
-                        basePrice: 0,
-                        finalPrice: 0
+                        selectedSizes: []
                       }));
                     }}
                     placeholder="חפש דגם פריט..."
@@ -1975,7 +1981,7 @@ export default function NewOrderPage() {
 
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <div style={{ fontSize: '12.5px', fontWeight: 700, color: 'var(--text-2)' }}>
-                    מידה <span style={{ color: 'var(--danger)' }}>*</span>
+                    מידה (אפשר לסמן כמה יחד) <span style={{ color: 'var(--danger)' }}>*</span>
                     {loadingSizes && <span style={{ fontWeight: 400 }}> (בודק זמינות...)</span>}
                   </div>
                   <button
@@ -2001,7 +2007,7 @@ export default function NewOrderPage() {
                       const customAvail = s.withCustomSpacing?.availableQuantity;
                       const selectedAvail = s.withCustomSpacing ? customAvail : normalAvail;
                       const isAvailable = selectedAvail > 0;
-                      const isSelected = newItem.sizeText === s.sizeText;
+                      const isSelected = newItem.selectedSizes.includes(s.sizeText);
                       const tooltipText = s.withCustomSpacing
                         ? `רגיל: ${normalAvail} | ציפוף: ${customAvail}${s.withCustomSpacing.gain > 0 ? ` (+${s.withCustomSpacing.gain})` : ''}`
                         : `זמין: ${normalAvail}`;
@@ -2015,7 +2021,7 @@ export default function NewOrderPage() {
                           aria-pressed={isSelected}
                           title={tooltipText}
                           style={!isAvailable ? { opacity: 0.45, textDecoration: 'line-through' } : undefined}
-                          onClick={() => handleNewItemChange({ target: { name: 'sizeText', value: s.sizeText } })}
+                          onClick={() => toggleSizeSelection(s.sizeText)}
                         >
                           {s.sizeText}{' '}
                           <span style={{ opacity: 0.75, fontWeight: 600 }}>
@@ -2094,9 +2100,10 @@ export default function NewOrderPage() {
                   className="btn btn-primary"
                   style={{ width: '100%', marginTop: '16px' }}
                   onClick={addItemToOrder}
-                  disabled={!newItem.sampleItemId || !newItem.sizeText}
+                  disabled={newItem.selectedSizes.length === 0}
                 >
-                  <svg className="icon"><use href="#i-plus" /></svg> הוסף לסל
+                  <svg className="icon"><use href="#i-plus" /></svg>{' '}
+                  {newItem.selectedSizes.length > 1 ? `הוסף ${newItem.selectedSizes.length} פריטים לסל` : 'הוסף לסל'}
                 </button>
               </div>
 
