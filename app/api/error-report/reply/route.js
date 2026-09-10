@@ -19,7 +19,7 @@ export async function POST(request) {
     const isProgrammer = employee.roleId === 2;
 
     const body = await request.json();
-    const { reportId, text } = body;
+    const { reportId, text, isQuestion } = body;
 
     if (!reportId || !text) {
       return NextResponse.json({ success: false, error: 'חסרים נתונים לשמירה' }, { status: 400 });
@@ -40,7 +40,8 @@ export async function POST(request) {
         errorReportId: reportId,
         employeeId: employee.id,
         isProgrammer,
-        text
+        text,
+        isQuestion: !!isQuestion
       },
       include: {
         employee: { select: { firstName: true, lastName: true } }

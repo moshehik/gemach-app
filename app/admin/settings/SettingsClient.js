@@ -169,7 +169,11 @@ const HEBREW_NAMES = {
   show_employee_profile_image: 'הצגת תמונת פרופיל בכרטיס עובד',
   error_report_handled_at_bottom: 'פניות מטופלות בתחתית הרשימה',
   standard_return_hour: 'שעת החזרה סטנדרטית בדוח השכרה',
-  rental_belt_notice: 'שורת הערת חגורות בדוח השכרה'
+  rental_belt_notice: 'שורת הערת חגורות בדוח השכרה',
+
+  // עדכון PR-ים ממתינים לאישור (docs/fix-protocol-error-reports.md, lib/agentDigest.js)
+  agent_digest_email_enabled: 'מייל עדכון על ענפי תיקון ממתינים לאישור',
+  agent_digest_email_hours: 'שעות שליחת עדכון ענפי תיקון'
 };
 
 const HEBREW_NOTES = {
@@ -308,6 +312,8 @@ const HEBREW_NOTES = {
   show_not_taken_orders: 'הזמנות שלא נלקחו/חלקית → קטגוריה נפרדת.',
   hide_taken_orders_from_orders_list: 'כאשר מופעל, הזמנה שכל הפריטים בה כבר נלקחו (גם אם חלקם/כולם כבר הוחזרו) לא תופיע יותר בטאבי "בקרוב"/"הכל" ב-/orders - היא שייכת מעכשיו לטאבי ההשכרות/החזרות ב-/rentals. הזמנה "הושכר חלקי" (יש גם פריט שטרם נלקח) נשארת ב-/orders. ברירת מחדל כבוי - מציג הכל, כמו היום.',
   cancellation_extra_columns: 'עמודות ביטול ילדות/נשים בדוח.',
+  agent_digest_email_enabled: 'שולח מייל עם רשימת ה-PR-ים (ענפי תיקון) שהסוכן האוטומטי פתח ועדיין לא מוזגו - משני הגמחים יחד, כי מדובר בריפו קוד משותף. פועל רק בשעות המוגדרות למטה, ולא בשבתות/חגים. הגדרה זו קיימת בכוונה רק בגמח הראשי - אין להפעיל את אותה הגדרה גם בנווה יעקב, זה ישלח מייל כפול.',
+  agent_digest_email_hours: 'אילו מתוך 2 שעות השליחה הקבועות (17:00 ו-00:00) פעילות כרגע - רשימה מופרדת בפסיק, למשל "17:00,00:00" או רק "17:00". השעה בפועל עשויה לזוז עד חצי שעה בין קיץ לחורף (מגבלת cron קבוע). הוספת שעה שלישית דורשת שינוי קוד (cron חדש), לא רק כאן.',
 };
 
 const CUSTOMER_FIELDS = [
@@ -953,7 +959,8 @@ export default function SettingsClient() {
               // פרוטוקול תיקון דיווחי שגיאות - הגדרות עם שחזור
               'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management',
               'show_employee_profile_image', 'error_report_handled_at_bottom', 'auto_print_on_order_create',
-              'allow_additional_payment_on_order', 'hide_taken_orders_from_orders_list'
+              'allow_additional_payment_on_order', 'hide_taken_orders_from_orders_list',
+              'agent_digest_email_enabled'
             ].includes(setting.key);
             const isBoolean = setting.type === 'boolean' || setting.type === 'checkbox' || rawValue === 'true' || rawValue === 'false' || isBooleanKey;
             const isNumberKey = [

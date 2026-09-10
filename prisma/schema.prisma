@@ -631,6 +631,7 @@ model ErrorReportReply {
   employee      Employee?   @relation("EmployeeToErrorReportReply", fields: [employeeId], references: [id])
   isProgrammer  Boolean     @default(false)
   text          String      @db.Text
+  isQuestion    Boolean     @default(false) // true = this reply is an open question expecting a response from the other side, not just a status update/log - drives the "awaiting reply" thread tint in ErrorReportButton.js and the --question flag in scripts/error-report-reply.js
   previewUrl    String? // temporary Vercel preview link for this fix (see scripts/get-preview-deployment-url.js) - shown as a button in the UI, never a raw URL in `text`
   createdAt     DateTime    @default(now())
 }

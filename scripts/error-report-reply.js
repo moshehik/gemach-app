@@ -6,13 +6,19 @@
  * שרשור "יומן הסוכן" הקבוע (ר' scripts/agent-log-report.js) - זה עדיין ErrorReport רגיל.
  *
  * Usage:
- *   node scripts/error-report-reply.js <reportId> "<טקסט>" [--status=ARCHIVED] [--org=2] [--preview-url=<url>]
+ *   node scripts/error-report-reply.js <reportId> "<טקסט>" [--status=ARCHIVED] [--org=2] [--preview-url=<url>] [--question]
  *
  * status אופציונלי: OPEN|ARCHIVED. הוסיפו --status=ARCHIVED רק כשהתיקון אומת בפועל -
  * אחרת השאירו את הדיווח פתוח כדי שמשה יסגור בעצמו אחרי שהוא מאשר (ר' fix-reports.md).
  * --org=2 כותב לדיווח בגמח "נווה יעקב" (ברירת מחדל: 1, הגמח הראשי) - ר' scripts/lib/db-env.js.
  * --preview-url=<url> - קישור Preview Deployment זמני (ר' scripts/get-preview-deployment-url.js),
  * מוצג בלקוח כפתור מעוצב ולא כטקסט/URL גולמי בתוך text - ר' fix-reports.md לכללי מתי מותר לצרף.
+ * --question - סמנו את התגובה הזו כ"שאלה פתוחה" (isQuestion=true), רק כשהתגובה בפועל
+ * מחכה לתשובה מהמדווח/ת כדי להמשיך (למשל: "איזה ערך אתם רוצים?"). בלי הדגל הזה התגובה
+ * נחשבת "תגובה סתם" (עדכון סטטוס/סיכום/"ראיתי, בודק") - גם אם היא מנוסחת כמשפט שאלה
+ * רטורי. הדגל הזה קובע את הגוון החזותי "ממתין לתשובה" ברשימת הדיווחים ב-UI (ר'
+ * ErrorReportButton.js), ואת ההבחנה בפרוטוקול (fix-protocol-error-reports.md סעיף 2) -
+ * לא לנחש לפי ניסוח, לסמן במפורש.
  */
 
 'use strict';
@@ -24,13 +30,14 @@ async function main() {
   const { org, rest } = parseOrgArg(process.argv.slice(2));
   const statusArg = rest.find((a) => a.startsWith('--status='));
   const previewUrlArg = rest.find((a) => a.startsWith('--preview-url='));
+  const isQuestion = rest.includes('--question');
   const positional = rest.filter((a) => !a.startsWith('--'));
   const [reportId, text] = positional;
   const status = statusArg ? statusArg.slice('--status='.length) : null;
   const previewUrl = previewUrlArg ? previewUrlArg.slice('--preview-url='.length) : null;
 
   if (!reportId || !text) {
-    console.error('Usage: node scripts/error-report-reply.js <reportId> "<text>" [--status=ARCHIVED] [--org=2] [--preview-url=<url>]');
+    console.error('Usage: node scripts/error-report-reply.js <reportId> "<text>" [--status=ARCHIVED] [--org=2] [--preview-url=<url>] [--question]');
     process.exit(1);
   }
   if (status && !['OPEN', 'ARCHIVED'].includes(status)) {
@@ -51,14 +58,14 @@ async function main() {
     }
 
     const reply = await prisma.errorReportReply.create({
-      data: { errorReportId: reportId, isProgrammer: true, text, previewUrl: previewUrl || null },
+      data: { errorReportId: reportId, isProgrammer: true, text, previewUrl: previewUrl || null, isQuestion },
     });
 
     const updateData = { isReadByUser: false, isReadByProgrammer: true, updatedAt: new Date() };
     if (status) updateData.status = status;
     await prisma.errorReport.update({ where: { id: reportId }, data: updateData });
 
-    console.log(`OK: reply ${reply.id} posted to report ${reportId}${status ? ` (status -> ${status})` : ''}`);
+    console.log(`OK: reply ${reply.id} posted to report ${reportId}${status ? ` (status -> ${status})` : ''}${isQuestion ? ' [question - awaiting reporter]' : ''}`);
   } finally {
     await prisma.$disconnect();
   }
