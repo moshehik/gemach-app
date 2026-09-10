@@ -2408,7 +2408,9 @@ table.data thead tr th {
 
   .navbar,
   .global-sidebar,
-  .print-hide {
+  .print-hide,
+  .modal-backdrop,
+  .toast-stack {
     display: none !important;
   }
 
