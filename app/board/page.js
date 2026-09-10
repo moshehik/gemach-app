@@ -265,6 +265,17 @@ export default function BoardPage() {
     }
   };
 
+  // בקשת המשך של ed6c69bc: הדפסה ישירה של פרוט ההזמנות ליום ספציפי בלוח, ליד
+  // אייקון התצוגה המורחבת של אותו יום - במקום רק דרך אשף ההדפסה בראש העמוד.
+  // אותו נתיב /print/order (עמוד נפרד לכל הזמנה) שכבר משמש את "פירוט הזמנות
+  // להכנה" באשף - כאן משתמשים ישירות ברשימת ההזמנות של התא (dayOrders), בלי
+  // צורך לפנות שוב ל-API לפי תאריך.
+  const printDayOrders = (dayOrders) => {
+    if (!dayOrders || dayOrders.length === 0) return;
+    const ids = dayOrders.map(o => o.orderId).join(',');
+    window.open(`/print/order?orderId=${ids}&type=order`, '_blank');
+  };
+
   const getOrderCategory = (order) => {
     const isEmpty = !order.items || order.items.length === 0;
     const hasRepairs = order.items && order.items.some(i => i.neckAlteration || i.lengthAlteration || i.sleeveAlteration || i.alterationDetails);
@@ -520,6 +531,19 @@ export default function BoardPage() {
                           }}
                         >
                           <svg className="icon"><use href="#i-expand" /></svg>
+                        </button>
+                      )}
+                      {dayOrders.length > 0 && (
+                        <button
+                          type="button"
+                          className="btn btn-ghost btn-icon-only btn-sm"
+                          title="הדפסת פרוט ההזמנות ליום זה"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            printDayOrders(dayOrders);
+                          }}
+                        >
+                          <svg className="icon"><use href="#i-printer" /></svg>
                         </button>
                       )}
                     </div>
@@ -946,9 +970,14 @@ export default function BoardPage() {
                 <svg className="icon"><use href="#i-calendar" /></svg>
                 הזמנות ליום {selectedDayOrders.date.toLocaleDateString('he-IL')} ({selectedDayOrders.hebrewDate})
               </strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגור" onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="הדפסת פרוט ההזמנות ליום זה" onClick={() => printDayOrders(selectedDayOrders.orders)}>
+                  <svg className="icon"><use href="#i-printer" /></svg>
+                </button>
+                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגור" onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }}>
+                  <svg className="icon"><use href="#i-x" /></svg>
+                </button>
+              </div>
             </div>
 
             <div className="modal-body" style={{ overflowY: 'auto' }}>
