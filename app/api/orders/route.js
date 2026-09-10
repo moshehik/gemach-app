@@ -256,6 +256,20 @@ export async function GET(request) {
         }
       });
     }
+    // דיווח e6c14620 (נווה יעקב) - הפרדת שלבי חיי הזמנה: ברגע שכל הפריטים הפעילים בהזמנה
+    // כבר נלקחו (isTaken), מקומה עבר ל-/rentals ולא ל-/orders יותר - גם אחרי שהוחזרו
+    // (שלב ה"החזרות" עצמו מטופל בתוך /rentals, ר' viewMode שם, לא בחזרה ל-/orders). הזמנה
+    // "הושכר חלקי" (יש גם פריט שטרם נלקח) נשארת ב-/orders עד שגם הפריט האחרון ייצא, כי
+    // עדיין יש בה עבודת הכנה/הוצאה שממתינה. חל רק על שני הטאבים ה"רגילים" של /orders
+    // (בקרוב/הכל) - לא על ארכיון/מחוקים/לא-שולם/טיוטות/לא-נלקחו, שהם טאבים ייעודיים עם
+    // משמעות אחרת ולא חלק מהתלונה. מותנה בהגדרה (ברירת מחדל כבוי = ההתנהגות הקיימת,
+    // מוצג הכל כמו היום) כדי לא לשנות התנהגות קיימת בגמח הראשי או לפני הפעלה מפורשת בנווה יעקב.
+    if (!forRentals && (filterStatus === 'soon' || filterStatus === 'all')) {
+      const hideTakenOrdersSetting = await getCachedSetting('hide_taken_orders_from_orders_list');
+      if (hideTakenOrdersSetting?.value === 'true') {
+        conditions.push({ items: { some: { isDeleted: false, isTaken: false } } });
+      }
+    }
     const where = { AND: conditions };
 
     let finalTotalCount = 0;

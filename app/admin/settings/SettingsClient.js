@@ -107,6 +107,7 @@ const HEBREW_NAMES = {
   premium_pricing_enabled: 'הפעל מחירון פרימיום',
   premium_categories: 'קטגוריות פרימיום',
   show_not_taken_orders: 'הצג לא-נלקחו (קטגוריה)',
+  hide_taken_orders_from_orders_list: 'הסתר הזמנות שנלקחו מרשימת ההזמנות',
   cancellation_extra_columns: 'עמודות ביטול נוספות',
   enable_rental_extension: 'הפעל יום השכרה נוסף',
 
@@ -305,6 +306,7 @@ const HEBREW_NOTES = {
   premium_pricing_enabled: 'הפעלת קטגוריית מחיר פרימיום.',
   premium_categories: 'קטגוריות פרימיום (מופרד בפסיק).',
   show_not_taken_orders: 'הזמנות שלא נלקחו/חלקית → קטגוריה נפרדת.',
+  hide_taken_orders_from_orders_list: 'כאשר מופעל, הזמנה שכל הפריטים בה כבר נלקחו (גם אם חלקם/כולם כבר הוחזרו) לא תופיע יותר בטאבי "בקרוב"/"הכל" ב-/orders - היא שייכת מעכשיו לטאבי ההשכרות/החזרות ב-/rentals. הזמנה "הושכר חלקי" (יש גם פריט שטרם נלקח) נשארת ב-/orders. ברירת מחדל כבוי - מציג הכל, כמו היום.',
   cancellation_extra_columns: 'עמודות ביטול ילדות/נשים בדוח.',
 };
 
@@ -948,7 +950,7 @@ export default function SettingsClient() {
               // פרוטוקול תיקון דיווחי שגיאות - הגדרות עם שחזור
               'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management',
               'show_employee_profile_image', 'error_report_handled_at_bottom', 'auto_print_on_order_create',
-              'allow_additional_payment_on_order'
+              'allow_additional_payment_on_order', 'hide_taken_orders_from_orders_list'
             ].includes(setting.key);
             const isBoolean = setting.type === 'boolean' || setting.type === 'checkbox' || rawValue === 'true' || rawValue === 'false' || isBooleanKey;
             const isNumberKey = [
