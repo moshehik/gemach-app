@@ -56,6 +56,7 @@ async function main() {
         isProgrammer: rep.isProgrammer,
         author: rep.employee ? `${rep.employee.firstName || ''} ${rep.employee.lastName || ''}`.trim() : (rep.isProgrammer ? 'תמיכה' : 'משתמש'),
         text: rep.text,
+        isQuestion: rep.isQuestion,
         createdAt: rep.createdAt,
       })),
     }));

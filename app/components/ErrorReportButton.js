@@ -26,6 +26,7 @@ export default function ErrorReportButton() {
 
   const [selectedReport, setSelectedReport] = useState(null);
   const [replyText, setReplyText] = useState('');
+  const [replyIsQuestion, setReplyIsQuestion] = useState(false);
   const [isReplying, setIsReplying] = useState(false);
 
   // סוכן תיקון אוטומטי - אייקון למתכנת בלבד, מפעיל/מכבה את ה-workflow ב-GitHub
@@ -291,11 +292,12 @@ export default function ErrorReportButton() {
       const res = await fetch('/api/error-report/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reportId: selectedReport.id, text: replyText }),
+        body: JSON.stringify({ reportId: selectedReport.id, text: replyText, isQuestion: replyIsQuestion }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setReplyText('');
+        setReplyIsQuestion(false);
         setSelectedReport(prev => ({ ...prev, replies: [...prev.replies, data.reply] }));
         fetchReports();
       } else {
@@ -441,6 +443,16 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
         });
       } catch {}
     }
+  };
+
+  // "ממתין לתשובה" - התגובה האחרונה בשרשור מסומנת isQuestion (ר' --question ב-
+  // scripts/error-report-reply.js): מישהו שאל שאלה פתוחה והצד השני עדיין לא ענה.
+  // נגזר מהתגובה האחרונה של כל דיווח בנפרד - לא גלובלי - כך ששרשורים מקבילים לא
+  // "מדביקים" סטטוס זה לזה.
+  const isAwaitingReply = (report) => {
+    const replies = report.replies || [];
+    if (replies.length === 0) return false;
+    return !!replies[replies.length - 1].isQuestion;
   };
 
   const unreadCount = reports.filter(r => r.status !== 'ARCHIVED' && ((isProgrammer && !r.isReadByProgrammer) || (!isProgrammer && !r.isReadByUser))).length;
@@ -592,6 +604,13 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   </div>
                 )}
 
+                {isAwaitingReply(selectedReport) && (
+                  <div style={{ padding: '8px 22px', background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontWeight: 600, fontSize: 12.5, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <svg className="icon" style={{ width: 14, height: 14 }}><use href="#i-clock" /></svg>
+                    ממתין לתשובה - נשאלה שאלה פתוחה ועדיין אין תגובה חדשה
+                  </div>
+                )}
+
                 <div style={{ flex: 1, overflowY: 'auto', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div className="card card-pad" style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: 'var(--text-3)', fontSize: 12.5 }}>
@@ -618,6 +637,15 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                           <svg className="icon"><use href="#i-user" /></svg>
                           <strong>{reply.isProgrammer ? 'מתכנת מערכת' : (reply.employee ? reply.employee.firstName + ' ' + reply.employee.lastName : 'משתמש')}</strong>
                           <span>{getHebrewDateString(reply.createdAt)} {new Date(reply.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
+                          {reply.isQuestion && (
+                            <span
+                              className="badge"
+                              style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))' }}
+                            >
+                              <svg className="icon" style={{ width: 11, height: 11 }}><use href="#i-clock" /></svg>
+                              שאלה פתוחה
+                            </span>
+                          )}
                         </div>
                         <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{reply.text}</p>
                         {reply.previewUrl && (
@@ -637,26 +665,36 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   })}
                 </div>
 
-                <form onSubmit={handleReply} style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 10 }}>
-                  <button
-                    type="button"
-                    className="btn btn-secondary btn-icon-only"
-                    title="סמן אלמנט בעמוד וצרף לתגובה"
-                    onClick={() => startPicking('reply')}
-                  >
-                    <svg className="icon"><use href="#i-pin" /></svg>
-                  </button>
-                  <input
-                    type="text"
-                    className="input"
-                    value={replyText}
-                    onChange={e => setReplyText(e.target.value)}
-                    placeholder="הקלד תגובה..."
-                    required
-                  />
-                  <button type="submit" className="btn btn-primary btn-icon-only" disabled={isReplying}>
-                    <svg className="icon"><use href="#i-arrow-end" /></svg>
-                  </button>
+                <form onSubmit={handleReply} style={{ padding: '10px 16px 16px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, color: 'var(--text-3)', cursor: 'pointer', userSelect: 'none' }}>
+                    <input
+                      type="checkbox"
+                      checked={replyIsQuestion}
+                      onChange={e => setReplyIsQuestion(e.target.checked)}
+                    />
+                    זו שאלה פתוחה - ממתינה לתשובה (לא רק עדכון/סיכום)
+                  </label>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-icon-only"
+                      title="סמן אלמנט בעמוד וצרף לתגובה"
+                      onClick={() => startPicking('reply')}
+                    >
+                      <svg className="icon"><use href="#i-pin" /></svg>
+                    </button>
+                    <input
+                      type="text"
+                      className="input"
+                      value={replyText}
+                      onChange={e => setReplyText(e.target.value)}
+                      placeholder="הקלד תגובה..."
+                      required
+                    />
+                    <button type="submit" className="btn btn-primary btn-icon-only" disabled={isReplying}>
+                      <svg className="icon"><use href="#i-arrow-end" /></svg>
+                    </button>
+                  </div>
                 </form>
               </div>
             )}
@@ -685,14 +723,19 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   displayList.map(report => {
                     const isAgentLog = report.title === AGENT_LOG_TITLE;
                     const isUnread = (isProgrammer && !report.isReadByProgrammer) || (!isProgrammer && !report.isReadByUser);
-                    // "טופל" נצבע רק אם אין התראת "לא נקרא" פעילה - הודעה חדשה
-                    // תמיד גוברת חזותית על סימון טופל ישן, כדי שלא תפספס. יומן הסוכן
-                    // מקבל צבע קבוע משלו כדי לבלוט כשרשור-על, בנפרד מדיווחי-תקלה רגילים.
+                    const awaitingReply = isAwaitingReply(report);
+                    // "טופל"/"ממתין לתשובה" נצבעים רק אם אין התראת "לא נקרא" פעילה - הודעה
+                    // חדשה תמיד גוברת חזותית. "ממתין לתשובה" (שאלה פתוחה אחרונה בשרשור, ר'
+                    // isAwaitingReply) גובר על "טופל" - שרשור לא יכול להיות באמת "טופל" כשיש
+                    // בו שאלה פתוחה שעוד לא נענתה. יומן הסוכן מקבל צבע קבוע משלו, בנפרד
+                    // מדיווחי-תקלה רגילים.
                     const rowBackground = isAgentLog
                       ? 'var(--primary-tint)'
                       : isUnread
                         ? 'var(--primary-tint)'
-                        : (report.isHandled ? 'var(--success-tint)' : 'var(--surface)');
+                        : awaitingReply
+                          ? 'var(--warning-tint)'
+                          : (report.isHandled ? 'var(--success-tint)' : 'var(--surface)');
                     return (
                       <div
                         key={report.id}
@@ -704,7 +747,17 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                           <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             {isUnread && <span className="dot-badge" />}
                             {isAgentLog ? report.title : (report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'משתמש')}
-                            {!isUnread && report.isHandled && (
+                            {!isUnread && awaitingReply && (
+                              <span
+                                className="badge"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))' }}
+                                title={`ממתין לתשובה מ${isProgrammer ? 'המדווח/ת' : 'התמיכה'} - נשאלה שאלה פתוחה`}
+                              >
+                                <svg className="icon" style={{ width: 11, height: 11 }}><use href="#i-clock" /></svg>
+                                ממתין לתשובה
+                              </span>
+                            )}
+                            {!isUnread && !awaitingReply && report.isHandled && (
                               <span
                                 className="badge badge-success"
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}

@@ -9,6 +9,14 @@
     {
       "path": "/api/cron/daily",
       "schedule": "30 5 * * *"
+    },
+    {
+      "path": "/api/cron/agent-digest?slot=evening",
+      "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/cron/agent-digest?slot=midnight",
+      "schedule": "30 21 * * *"
     }
   ]
 }

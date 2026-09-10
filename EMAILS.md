@@ -18,6 +18,7 @@ that deployment is ever replaced, all of these need updating (or route them all 
 | "מייל הזמנה" / "מייל השכרה" (`OrderPrintMenu`) | `app/api/orders/[id]/email/route.js` | `הזמנה #<id> - גמ"ח שמלות` | `` הזמנה <orderId>.pdf `` |
 | Bug report submitted | `app/api/error-report/route.js` | `דיווח תקלה ממערכת הגמח - לטיפול AI` | `דוח שגיאה.txt` |
 | Internal message with "שלח גם במייל" (per-recipient `receiveEmailAlerts`) | `app/api/notifications/route.js` | message title | `הודעה.txt` |
+| Agent PR-approval digest (twice-daily cron, gated by `agent_digest_email_enabled`) | `app/api/cron/agent-digest/route.js` (via `lib/agentDigest.js`, `lib/mailer.js`) | `<N> שינויים ממתינים לאישור מיזוג - מערכת הגמ"ח` | `הודעה.txt` |
 
 All attachment filenames are dummy placeholders (base64 `fileName`/`fileContent` the script's
 API requires) except the order/rental PDF, which is the real attached document.
