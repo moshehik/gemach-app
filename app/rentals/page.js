@@ -54,13 +54,33 @@ export default function RentalsPage() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const debouncedSearch = useDebounce(search, 350);
-  // 'all', 'rented', 'rented_partial', 'returned', 'returned_partial' - ברירת המחדל
-  // 'all', חוץ מכניסה מקישורי הסיידבר הנפרדים "השכרות"/"החזרות" (navConfig.js, #rented/#returned).
+  // 'rented', 'rented_partial', 'returned', 'returned_partial' - שתי לשוניות ראשיות
+  // ("השכרות"/"החזרות", דיווח e6c14620 + בקשה משלימה בצ'אט) + תת-סינון "חלקי בלבד" בכל אחת.
+  // ברירת המחדל 'rented' (לא "הכל" מעורב) - כדי שהצוות לא יגלול בין השכרות פעילות להחזרות
+  // מעורבבות יחד, ר' גם navConfig.js (#rented/#returned) שכבר קפץ ישירות ללשונית המתאימה.
+  // 'all' עדיין ערך פנימי תקף (לא מוצג יותר בכפתורי הלשוניות) - נשאר לשימוש הפנימי היחיד
+  // שלו: קישור עומק לפי מספר הזמנה (ר' ה-useEffect עם orderIdParam למטה), שם רוצים למצוא
+  // את ההזמנה בלי קשר לאיזו לשונית היא שייכת אליה.
   const [viewMode, setViewMode] = useState(() => {
-    if (typeof window === 'undefined') return 'all';
+    if (typeof window === 'undefined') return 'rented';
     const h = window.location.hash.replace('#', '');
-    return (h === 'rented' || h === 'returned') ? h : 'all';
+    return (h === 'rented' || h === 'returned') ? h : 'rented';
   });
+
+  // הלשונית הראשית הנוכחית (לצורך הדגשת כפתור הלשונית) - 'rented_partial' שייך
+  // ללשונית "השכרות" (הוא תת-סינון שלה), 'returned_partial' ל"החזרות".
+  const activeTabGroup = (viewMode === 'returned' || viewMode === 'returned_partial') ? 'returns' : 'rentals';
+
+  // מעבר בין הלשוניות הראשיות + עדכון ה-hash בכתובת בהתאם (אותו hash שקישורי הסיידבר
+  // #rented/#returned כבר משתמשים בו) - כדי ששני מנגנוני הניווט (סיידבר + לשונית בעמוד)
+  // יישארו עקביים, בלי להוסיף רשומת היסטוריה חדשה לכל החלפת לשונית.
+  const switchTabGroup = (group) => {
+    const target = group === 'returns' ? 'returned' : 'rented';
+    setViewMode(target);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(null, '', `#${target}`);
+    }
+  };
 
   const [advFilters, setAdvFilters] = useState(defaultRentalsAdvFilters());
   const [showAdvSearch, setShowAdvSearch] = useState(false);
@@ -401,23 +421,39 @@ export default function RentalsPage() {
         )}
       </div>
 
-      {/* סינון סטטוס: הכפתור הפעיל קובע אילו הזמנות מוצגות בטבלה (viewMode) */}
+      {/* שתי לשוניות ראשיות נפרדות - "השכרות" (פריטים שנמצאים כרגע בחוץ) מול "החזרות"
+         (פריטים שהוחזרו כבר) - דיווח e6c14620 + הבקשה המשלימה: לא לערבב את שתי זרימות
+         העבודה השונות (מעקב אחרי פריט שיצא, מול טיפול בבעיה שמתגלה בהחזרה) באותה תצוגה. */}
+      <div className="tabs" style={{ marginBottom: '4px' }}>
+        <button type="button" className={`tab${activeTabGroup === 'rentals' ? ' active' : ''}`} onClick={() => switchTabGroup('rentals')}>
+          <svg className="icon"><use href="#i-truck" /></svg> השכרות
+        </button>
+        <button type="button" className={`tab${activeTabGroup === 'returns' ? ' active' : ''}`} onClick={() => switchTabGroup('returns')}>
+          <svg className="icon"><use href="#i-check" /></svg> החזרות
+        </button>
+      </div>
+
+      {/* תת-סינון בתוך הלשונית הפעילה - "הכל" (כולל חלקי) מול "חלקי בלבד" */}
       <div className="pill-tabs" style={{ marginBottom: '20px' }}>
-        <button type="button" onClick={() => setViewMode('all')} className={viewMode === 'all' ? 'pill-tab active' : 'pill-tab'} title="הצג הכל">
-          <svg className="icon"><use href="#i-list" /></svg> הכל
-        </button>
-        <button type="button" onClick={() => setViewMode('rented')} className={viewMode === 'rented' ? 'pill-tab active' : 'pill-tab'} title="כל ההזמנות עם פריט שנמצא כרגע בחוץ (כולל הושכר חלקי)">
-          <svg className="icon"><use href="#i-bag" /></svg> מושכר עכשיו
-        </button>
-        <button type="button" onClick={() => setViewMode('rented_partial')} className={viewMode === 'rented_partial' ? 'pill-tab active' : 'pill-tab'} title="הושכר חלקי">
-          <svg className="icon"><use href="#i-clock" /></svg> הושכר חלקי
-        </button>
-        <button type="button" onClick={() => setViewMode('returned')} className={viewMode === 'returned' ? 'pill-tab active' : 'pill-tab'} title="הוחזר">
-          <svg className="icon"><use href="#i-check" /></svg> הוחזר
-        </button>
-        <button type="button" onClick={() => setViewMode('returned_partial')} className={viewMode === 'returned_partial' ? 'pill-tab active' : 'pill-tab'} title="הוחזר חלקי">
-          <svg className="icon"><use href="#i-refresh" /></svg> הוחזר חלקי
-        </button>
+        {activeTabGroup === 'rentals' ? (
+          <>
+            <button type="button" onClick={() => setViewMode('rented')} className={viewMode === 'rented' ? 'pill-tab active' : 'pill-tab'} title="כל ההזמנות עם פריט שנמצא כרגע בחוץ (כולל הושכר חלקי)">
+              <svg className="icon"><use href="#i-bag" /></svg> הכל
+            </button>
+            <button type="button" onClick={() => setViewMode('rented_partial')} className={viewMode === 'rented_partial' ? 'pill-tab active' : 'pill-tab'} title="רק הזמנות עם חלק מהפריטים בחוץ וחלק שטרם נלקח">
+              <svg className="icon"><use href="#i-clock" /></svg> הושכר חלקי בלבד
+            </button>
+          </>
+        ) : (
+          <>
+            <button type="button" onClick={() => setViewMode('returned')} className={viewMode === 'returned' ? 'pill-tab active' : 'pill-tab'} title="כל ההזמנות עם פריט שהוחזר (כולל הוחזר חלקי)">
+              <svg className="icon"><use href="#i-check" /></svg> הכל
+            </button>
+            <button type="button" onClick={() => setViewMode('returned_partial')} className={viewMode === 'returned_partial' ? 'pill-tab active' : 'pill-tab'} title="רק הזמנות עם חלק מהפריטים שהוחזרו וחלק שעדיין לא">
+              <svg className="icon"><use href="#i-refresh" /></svg> הוחזר חלקי בלבד
+            </button>
+          </>
+        )}
       </div>
 
       {showAdvSearch && typeof document !== 'undefined' && createPortal(
