@@ -64,6 +64,25 @@ export default function UserMenu({ hideInternalMessaging = false }) {
   }, [menuRef]);
 
   const handleLogout = async () => {
+    // דיווח משתמשת (749aaf87, 2026-09-09): תזכורת על משפחות באיחור גם ביציאה, לא רק
+    // בכניסה/כל שעה (ר' OverdueRemindersWatcher.js) - דיאלוג חוסם (window.customConfirm,
+    // לא alert/toast) כדי שבאמת תספיק לראות אותו לפני שהעמוד מתרענן; best-effort - אם
+    // השרת/הרשת לא זמינים כרגע, לא חוסמים את ההתנתקות עצמה.
+    try {
+      const overdueRes = await fetch('/api/orders/overdue', { cache: 'no-store' });
+      if (overdueRes.ok) {
+        const overdueData = await overdueRes.json();
+        if (Array.isArray(overdueData.orders) && overdueData.orders.length > 0) {
+          const proceed = await window.customConfirm(
+            `יש ${overdueData.orders.length} משפחות שעדיין לא החזירו שמלות ומועד ההחזרה שלהן עבר. לצאת בכל זאת?`
+          );
+          if (!proceed) return;
+        }
+      }
+    } catch (e) {
+      // ignore - לא קשור להצלחת ההתנתקות עצמה
+    }
+
     setActionLoading(true);
     try {
       await fetch('/api/logout', { method: 'POST' });

@@ -10,6 +10,7 @@ import NotificationBell from './NotificationBell';
 import ThemeToggle from './ThemeToggle';
 import ErrorReportButton from './ErrorReportButton';
 import MessageHistoryButton from './MessageHistoryButton';
+import OverdueRemindersWatcher from './OverdueRemindersWatcher';
 
 // Personal pinned-shortcuts prefs: a single shared, browser-wide localStorage key
 // (not per-employee/cookie-scoped like /display-settings) — this is a convenience
@@ -117,6 +118,7 @@ export default function AppShell({
 
   return (
     <div className="app-shell">
+      <OverdueRemindersWatcher authToken={authToken} />
       <aside className={`sidebar${mobileOpen ? ' open' : ''}`}>
         <div className="brand">
           <BrandLogo />
