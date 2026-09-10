@@ -175,7 +175,7 @@ export default function ModernDressItemsTab({
     setRowError('');
     setEditingId(item.id);
     setDraft({
-      location: item.location || '',
+      location: item.location || (locations && locations[0]) || '',
       inRepair: !!item.inRepair,
       notInUse: !!item.notInUse,
       notInUseReason: item.notInUseReason || ''
@@ -537,7 +537,6 @@ export default function ModernDressItemsTab({
                               onKeyDown={e => { if (e.key === 'Enter') saveEdit(item); if (e.key === 'Escape') cancelEdit(); }}
                               autoFocus
                             >
-                              <option value="">--</option>
                               {(locations || []).map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
                             </select>
                           ) : (
