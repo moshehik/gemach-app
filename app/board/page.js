@@ -351,10 +351,10 @@ export default function BoardPage() {
         }}
       >
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '6px' }}>
-          <strong style={{ fontSize: '12.5px', color: isOrderLate ? 'var(--danger)' : undefined }}>
+          <strong style={{ fontSize: '12.5px', color: isOrderLate ? 'var(--danger)' : undefined, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {order.customerName || `${order.customer?.firstName || ''} ${order.customer?.lastName || ''}`}
           </strong>
-          <span style={{ fontSize: '11px', color: isOrderLate ? 'var(--danger)' : 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: isOrderLate ? 700 : undefined }}>
+          <span style={{ fontSize: '11px', color: isOrderLate ? 'var(--danger)' : 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '3px', fontWeight: isOrderLate ? 700 : undefined, flexShrink: 0 }}>
             {isOrderLate && <svg className="icon" style={{ width: '12px', height: '12px' }}><use href="#i-alert-circle" /></svg>}
             #{order.orderId}
           </span>
@@ -422,16 +422,16 @@ export default function BoardPage() {
 
     return (
       <>
-        <div className="card card-pad" style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', textAlign: 'center', fontWeight: 700, fontSize: '12.5px', color: 'var(--text-2)', marginBottom: '8px' }}>
+        <div className="card card-pad" style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', textAlign: 'center', fontWeight: 700, fontSize: '12.5px', color: 'var(--text-2)', marginBottom: '8px' }}>
           {["ראשון","שני","שלישי","רביעי","חמישי","שישי","שבת"].map(d => (
             <div key={d}>{d}</div>
           ))}
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7,1fr)', gap: '8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0,1fr))', gap: '8px' }}>
           {weeks.map((week, i) => (
             week.map((day, j) => {
-              if (!day) return <div key={`empty-${i}-${j}`} className="card" style={{ minHeight: '130px', background: 'var(--surface-alt)', borderStyle: 'dashed' }}></div>;
+              if (!day) return <div key={`empty-${i}-${j}`} className="card" style={{ minHeight: '130px', minWidth: 0, background: 'var(--surface-alt)', borderStyle: 'dashed' }}></div>;
 
               const cellHDate = new HDate(day, hMonth, hYear);
               const cellGreg = cellHDate.greg();
@@ -487,7 +487,7 @@ export default function BoardPage() {
                 }).map(e => e.render('he'));
               } catch (e) {}
 
-              let cellStyle = { minHeight: '130px', display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' };
+              let cellStyle = { minHeight: '130px', minWidth: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '6px', position: 'relative' };
               if (isToday) cellStyle = { ...cellStyle, borderColor: 'var(--primary-solid)', borderWidth: '2px', boxShadow: '0 0 0 1px var(--primary-solid)' };
               if (isLate) cellStyle = { ...cellStyle, borderColor: 'var(--danger)', borderWidth: '2px', boxShadow: '0 0 0 1px var(--danger)' };
               if (isHighlighted) cellStyle = { ...cellStyle, borderColor: 'var(--primary-solid)', borderWidth: '2px', boxShadow: '0 0 0 3px var(--primary-tint-2)' };
