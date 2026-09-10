@@ -9,6 +9,7 @@ import { getHebrewMonthYear } from '@/lib/hebrewDate';
 import HebrewDatePicker from '../../components/HebrewDatePicker';
 import StatisticsModal from '../components/StatisticsModal';
 import RentalReturnModal from '../../components/orders/RentalReturnModal';
+import PrintWizardModal from '../components/PrintWizardModal';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildBoardMonthParams } from '@/app/lib/prefetchRoutes';
 import { fetchSharedJson, TTL } from '@/lib/apiCache';
@@ -80,6 +81,10 @@ export default function BoardPage() {
   const [globalSearchResults, setGlobalSearchResults] = useState(null);
   const [showGlobalSearchModal, setShowGlobalSearchModal] = useState(false);
   const [globalSearchLoading, setGlobalSearchLoading] = useState(false);
+  // הדפסת הזמנות להכנה (בקשה ed6c69bc - המשך לבקשה c5032b47 שדווחה מ-/orders) -
+  // אותו PrintWizardModal המשותף, עם defaultReportType שפותח ישר על "פירוט הזמנות
+  // להכנה" (ר' app/components/PrintWizardModal.js).
+  const [showPrintWizard, setShowPrintWizard] = useState(false);
 
   const [jumpDate, setJumpDate] = useState(null);
   const [enableAlterations, setEnableAlterations] = useState(true);
@@ -564,6 +569,9 @@ export default function BoardPage() {
           <button type="button" className="btn btn-secondary btn-icon-only" onClick={() => changeMonth(1)} title="חודש הבא">
             <svg className="icon"><use href="#i-chevron-start" /></svg>
           </button>
+          <button type="button" className="btn btn-secondary btn-icon-only" title="הדפסת הזמנות להכנה" onClick={() => setShowPrintWizard(true)}>
+            <svg className="icon"><use href="#i-printer" /></svg>
+          </button>
         </div>
       </div>
 
@@ -988,6 +996,13 @@ export default function BoardPage() {
           orderId={selectedRentalOrderId}
           onClose={() => setSelectedRentalOrderId(null)}
           onUpdate={fetchOrdersForMonth}
+        />
+      )}
+
+      {showPrintWizard && (
+        <PrintWizardModal
+          onClose={() => setShowPrintWizard(false)}
+          defaultReportType="order_prep_by_date"
         />
       )}
 
