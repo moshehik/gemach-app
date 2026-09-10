@@ -46,6 +46,7 @@ const HEBREW_NAMES = {
   barcodePrefixLength: 'אורך קידומת ברקוד',
   inventory_include_warehouse: 'ספירת מלאי מחסן',
   allow_renting_reserve_items: 'אפשר השכרת שמלות ברזרבה',
+  allow_shift_lead_reserve_rental: 'אפשר לאחראית משמרת לאשר השכרת רזרבה',
   main_email: 'כתובת אימייל ראשית',
   // --- 38 בקשות: תוספות ---
   hide_custom_spacing: 'הסתר ציפוף ימים מיוחד',
@@ -184,6 +185,7 @@ const HEBREW_NOTES = {
   barcodePrefixLength: 'מספר הספרות הראשונות בברקוד המגדירות את קידומת זיהוי סוג הפריט.',
   inventory_include_warehouse: 'הצג וספור במלאי גם פריטים הנמצאים במחסן או ברזרבה.',
   allow_renting_reserve_items: 'כשמופעל, פריטים שמסומנים "רזרבה" נחשבים זמינים להשכרה כמו כל פריט אחר - הן בחישובי הזמינות, הן בבחירת פריט להזמנה, והן בסריקת ברקוד (לא נדרש עוד אישור מנהל לכל השכרה). ברירת המחדל כבויה (התנהגות קיימת - פריטי רזרבה חסומים). נפרד בכוונה מ"ספירת מלאי מחסן" - רזרבה ומחסן הם שני מצבים שונים.',
+  allow_shift_lead_reserve_rental: 'שאלה נפרדת מ"אפשר השכרת שמלות ברזרבה" למעלה - זו קובעת האם פריט רזרבה ניתן להשכרה בכלל, וזו קובעת מי מורשה לאשר את החריגה כשהוא עדיין חסום. כשמופעל, סריקת ברקוד של פריט "רזרבה" חסום (לא מחסן) ניתנת לאישור בסיסמה של כל עובד/ת פעיל/ה, לא רק מנהל/מתכנת - "אחראית משמרת" שאינה מנהלת תוכל לאשר בעצמה. פריטי "מחסן" תמיד נשארים חסומים לאישור מנהל/מתכנת בלבד, ללא תלות בהגדרה הזו. בכל השכרת רזרבה שאושרה כך נשלחת התראה פנימית לכל המנהלים עם פרטי הברקוד. ברירת המחדל כבויה (התנהגות קיימת - רק מנהל/מתכנת יכולים לאשר).',
   main_email: 'כתובת האימייל הראשית של הגמ"ח ליצירת קשר והודעות.',
 
   mandatory_fields: 'סמן בתיבת הבחירה (צ\'קבוקס) את השדות מתוך פרטי לקוח שיהיו חובה בעת מילוי הזמנה.',
@@ -929,7 +931,7 @@ export default function SettingsClient() {
               'useFileNamesForImages', 'hide_ai_features', 'enable_ai_specific_employees',
               'hide_dress_images', 'hide_gregorian_calendar', 'hide_internal_messaging',
               'hide_error_reporting', 'refund_per_item', 'registration_fee', 'nedarim_plus_enabled', 'ENABLE_SET_DISCOUNTS',
-              'REFUND_REPAIRS', 'inventory_include_warehouse', 'allow_renting_reserve_items', 'inventory_skip_weekends',
+              'REFUND_REPAIRS', 'inventory_include_warehouse', 'allow_renting_reserve_items', 'allow_shift_lead_reserve_rental', 'inventory_skip_weekends',
               'calendar_filtering',
               // 38 בקשות - בוליאנים חדשים
               'hide_custom_spacing', 'hok_enabled', 'hok_auto_charge_enabled', 'strict_mandatory_fields',

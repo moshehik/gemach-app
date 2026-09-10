@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
-import prisma, { auditAs } from '../../../lib/prisma';
+import prisma, { auditAs, getActingEmployeeId } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { verifySecret } from '@/lib/passwordAuth';
+import { notifyManagers } from '@/lib/notifyManagers';
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -16,7 +17,7 @@ export async function POST(request) {
     // 1+2. Validate order and find the DressItem by barcode — three independent lookups,
     // fetched in parallel (this is the hot path of every barcode scan). The validation
     // checks below run in the exact same order as before, so error precedence is unchanged.
-    const [order, dressItem, warehouseSetting, reserveSetting] = await Promise.all([
+    const [order, dressItem, warehouseSetting, reserveSetting, shiftLeadReserveSetting] = await Promise.all([
       prisma.order.findUnique({
         where: { orderId: parseInt(orderId) },
         include: { items: true }
@@ -26,7 +27,8 @@ export async function POST(request) {
         include: { dress: true }
       }),
       getCachedSetting('inventory_include_warehouse'),
-      getCachedSetting('allow_renting_reserve_items')
+      getCachedSetting('allow_renting_reserve_items'),
+      getCachedSetting('allow_shift_lead_reserve_rental')
     ]);
 
     if (!order) {
@@ -69,6 +71,22 @@ export async function POST(request) {
                 },
                 include: { dressItem: { include: { dress: true } } },
               });
+              // בקשה 2026-09-10 (בעל הגמ"ח): התראה פנימית לכל המנהלים על כל ברקוד שהוקלד
+              // ידנית (לא נסרק) - תוספת טהורה בלי הגדרה, שום דבר שהיה חסום לא נפתח כאן.
+              try {
+                const actingId = await getActingEmployeeId();
+                const actingEmployee = actingId
+                  ? await prisma.employee.findUnique({ where: { id: actingId }, select: { firstName: true, lastName: true } })
+                  : null;
+                const actingName = actingEmployee ? `${actingEmployee.firstName || ''} ${actingEmployee.lastName || ''}`.trim() || 'עובד/ת לא ידוע/ה' : 'עובד/ת לא ידוע/ה';
+                const dressLabel = manualItem.dressItem?.dress?.name || (manualItem.dressItem?.dress?.barcodePrefix ? `דגם ${manualItem.dressItem.dress.barcodePrefix}` : null);
+                await notifyManagers({
+                  title: 'הוקלד ברקוד ידנית בהשכרה',
+                  content: `${actingName} הקליד/ה ידנית את הברקוד ${barcode}${dressLabel ? ` (${dressLabel})` : ''} בהזמנה #${order.orderId} (הסריקה הרגילה לא זיהתה את הברקוד).`
+                });
+              } catch (notifyErr) {
+                console.error('Failed to notify managers of manual barcode entry:', notifyErr);
+              }
               return NextResponse.json({ ...manualItem, manualEntry: true });
             } catch {}
           }
@@ -91,6 +109,13 @@ export async function POST(request) {
     // folded into inventory_include_warehouse - see lib/inventory.js for the reasoning. When on,
     // רזרבה items skip this block entirely (no manager PIN needed each time); מחסן items still do.
     const allowRentingReserve = reserveSetting && reserveSetting.value === 'true';
+    // allow_shift_lead_reserve_rental (SystemSetting, default missing/false = old behavior -
+    // reserve override still requires a manager/מתכנת's own password, same as before). This is a
+    // separate, narrower question from allow_renting_reserve_items above: that one controls
+    // WHETHER a reserve item can be rented at all; this one controls WHO may approve it when it's
+    // still blocked (ר' docs/fix-protocol-error-reports.md section 7-8). Deliberately does NOT
+    // extend to מחסן - only a pure-רזרבה block may be approved this way.
+    const allowShiftLeadReserve = shiftLeadReserveSetting && shiftLeadReserveSetting.value === 'true';
 
     // חסימת רזרבה/מחסן ניתנת לעקיפה באישור מנהל - יש מצבים בפועל שבהם שמלה
     // שמסומנת רזרבה/מחסן כן ניתנת להוצאה, וזו החלטה תפעולית של מנהל. האימות
@@ -100,10 +125,12 @@ export async function POST(request) {
     // בקשה ישירה עם overrideReserved=true ולעקוף את החסימה בלי אישור מנהל אמיתי.
     if (dressItem.location) {
       const locLower = dressItem.location.toLowerCase();
-      const isReserved = (
-        (!includeWarehouse && (locLower.includes('מחסן') || locLower.includes('warehouse'))) ||
-        (!allowRentingReserve && (locLower.includes('רזרבה') || locLower.includes('reserve')))
-      );
+      const isWarehouseBlocked = !includeWarehouse && (locLower.includes('מחסן') || locLower.includes('warehouse'));
+      const isReserveBlocked = !allowRentingReserve && (locLower.includes('רזרבה') || locLower.includes('reserve'));
+      const isReserved = isWarehouseBlocked || isReserveBlocked;
+      // אחראית משמרת מורשית לאשר רק חסימת-רזרבה טהורה (לא מחסן) וכשההגדרה דלוקה -
+      // מחסן תמיד נשאר ברמת מנהל/מתכנת בלבד, ללא תלות בהגדרה הזו.
+      const reserveShiftLeadAllowed = isReserveBlocked && !isWarehouseBlocked && allowShiftLeadReserve;
       if (isReserved) {
         let overrideVerified = false;
         if (overridePin) {
@@ -111,7 +138,8 @@ export async function POST(request) {
             where: { isActive: true, ...(overrideEmployeeId ? { id: overrideEmployeeId } : {}) }
           });
           for (const candidate of candidates) {
-            if ((candidate.roleId === 1 || candidate.roleId === 2) && await verifySecret(overridePin, candidate.password)) {
+            const roleOk = reserveShiftLeadAllowed || candidate.roleId === 1 || candidate.roleId === 2;
+            if (roleOk && await verifySecret(overridePin, candidate.password)) {
               overrideVerified = true;
               break;
             }
@@ -120,8 +148,28 @@ export async function POST(request) {
         if (!overrideVerified) {
           return NextResponse.json({
             error: `הפריט עם ברקוד ${barcode} נמצא ב"${dressItem.location}" (רזרבה/מחסן) ולא ניתן להשכרה`,
-            reservedLocation: true
+            reservedLocation: true,
+            reserveOnly: isReserveBlocked && !isWarehouseBlocked
           }, { status: 400 });
+        }
+        // בקשה 2026-09-10 (בעל הגמ"ח): כשההשכרה הושלמה בפועל דרך המסלול המקל (אחראית
+        // משמרת, לא רק מנהל) - שולחים התראה פנימית לכל המנהלים עם פרטי הברקוד, כדי
+        // שתהיה להם נראות על מה שיוצא מהרזרבה גם כשלא הם עצמם אישרו את זה.
+        if (reserveShiftLeadAllowed) {
+          try {
+            const actingId = await getActingEmployeeId();
+            const actingEmployee = actingId
+              ? await prisma.employee.findUnique({ where: { id: actingId }, select: { firstName: true, lastName: true } })
+              : null;
+            const actingName = actingEmployee ? `${actingEmployee.firstName || ''} ${actingEmployee.lastName || ''}`.trim() || 'עובד/ת לא ידוע/ה' : 'עובד/ת לא ידוע/ה';
+            const dressLabel = dressItem.dress?.name || (dressItem.dress?.barcodePrefix ? `דגם ${dressItem.dress.barcodePrefix}` : null);
+            await notifyManagers({
+              title: 'הושכר פריט רזרבה (אישור אחראית משמרת)',
+              content: `${actingName} השכיר/ה מהרזרבה את הברקוד ${barcode}${dressLabel ? ` (${dressLabel})` : ''} (מיקום "${dressItem.location}") בהזמנה #${order.orderId}.`
+            });
+          } catch (notifyErr) {
+            console.error('Failed to notify managers of shift-lead reserve rental:', notifyErr);
+          }
         }
       }
     }
