@@ -251,6 +251,7 @@ body.hide-gregorian-calendar .ka-cal-day .g{display:none}
 .ka-filter-panel{
   background:var(--card); border:1px solid var(--line); border-radius:var(--radius-lg); padding:20px;
   position:sticky; top:20px; display:flex; flex-direction:column; gap:20px; box-shadow:var(--shadow-sm);
+  max-height:calc(100vh - 40px); overflow-y:auto;
 }
 .ka-filter-group h4{display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--terracotta-deep); margin-bottom:10px}
 .ka-filter-group h4 .icon{width:15px; height:15px}
