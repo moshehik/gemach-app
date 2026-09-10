@@ -3,7 +3,7 @@
 import { useState, useEffect, Fragment } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Shirt, Scissors, Ruler, Check } from 'lucide-react';
-import { getHebrewDateString, getHebrewWeekdayLabel } from '../../../lib/hebrewDate';
+import { getHebrewDateString, getHebrewWeekdayLabel, subtractSkippingWeekendsAndChag } from '../../../lib/hebrewDate';
 import { addDaysSkippingWeekends } from '../../../lib/clientInventory';
 
 // "אבן חרוזים (קוד: 440)" -> "אבן חרוזים (440)" - item.description bakes the
@@ -23,6 +23,12 @@ const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, 
 // שעת ההחזרה נשלפת מהגדרת standard_return_hour (הגדרות מערכת > הדפסה);
 // זהו רק ה-fallback לשעה שמוצגת אם השורה עוד לא נוצרה ב-DB.
 const STANDARD_RETURN_HOUR = '13:00';
+
+// יום/שעת קבלת השמלות מראש (בקשה בדיווח 4d4456ce, 2026-09-09): 2 ימי-עסקים לפני
+// האירוע (מדלג שישי/שבת/חג - subtractSkippingWeekendsAndChag ב-lib/hebrewDate.js),
+// בטווח שעות קבוע שנשלף מהגדרת standard_pickup_hours (הגדרות מערכת > הדפסה); זהו
+// רק ה-fallback אם השורה עוד לא נוצרה ב-DB.
+const STANDARD_PICKUP_HOURS = '20:00-21:30';
 
 export default function PrintOrderPage() {
   const searchParams = useSearchParams();
@@ -83,6 +89,7 @@ export default function PrintOrderPage() {
           gmachPhone: settingsData.find(s => s.key === 'gmach_phone')?.value || '',
           gmachEmail: settingsData.find(s => s.key === 'main_email')?.value || '',
           returnHour: settingsData.find(s => s.key === 'standard_return_hour')?.value || STANDARD_RETURN_HOUR,
+          pickupHours: settingsData.find(s => s.key === 'standard_pickup_hours')?.value || STANDARD_PICKUP_HOURS,
           beltNotice: settingsData.find(s => s.key === 'rental_belt_notice')?.value || ''
         };
         setPrintSettings(pSettings);
@@ -228,6 +235,7 @@ export default function PrintOrderPage() {
         ? new Date(ord.toDate || ord.returnDate)
         : (ord.eventDate ? addDaysSkippingWeekends(ord.eventDate, 1) : null))
       : null;
+    const pickupDate = ord?.eventDate ? subtractSkippingWeekendsAndChag(ord.eventDate, 2) : null;
 
     return (
       // A single outer <table> (instead of stacked <div>s) so the letterhead + item-table
@@ -247,6 +255,14 @@ export default function PrintOrderPage() {
                   )}
                 </div>
               )}
+              {pickupDate && (
+                <div className="return-details-box">
+                  <strong>קבלת השמלות:</strong> ביום {getHebrewWeekdayLabel(pickupDate)} {getHebrewDateString(pickupDate)} בשעה {printSettings?.pickupHours || STANDARD_PICKUP_HOURS} בדיוק.
+                </div>
+              )}
+              <div className="return-details-box">
+                יש להצטייד בפרטי אשראי לפקדון בעת קבלת השמלות.
+              </div>
               <div className="print-header">
                 <div className="print-header-content">
                   {/* הלוגו מוגש מ-/api/logo (הגדרת BRAND_LOGO); כשאין לוגו מוגדר הנתיב

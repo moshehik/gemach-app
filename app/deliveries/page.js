@@ -113,6 +113,49 @@ export default function DeliveriesPage() {
 
   const visibleDirections = (row) => directionFilter === 'all' ? row.directions : row.directions.filter(d => d === directionFilter);
 
+  // שורת טבלה משותפת לטבלה הראשית (יום נבחר) ולטבלאות לכל יום בתצוגת טווח (18) -
+  // כדי שתצוגת הטווח תציג טבלה אמיתית לכל יום (כל העמודות), לא רק רשימת טקסט
+  // מצומצמת (עד 8 שורות, בלי כתובת/דגמים/חיוב) כמו קודם.
+  const renderDeliveryRow = (row) => (
+    <tr key={row.orderId}>
+      <td>
+        <div className="cell-primary">{row.customerName}</div>
+        {row.customerPhone && <div className="cell-muted" dir="ltr" style={{ textAlign: 'start' }}>{row.customerPhone}</div>}
+        {row.customerPhone2 && <div className="cell-muted" dir="ltr" style={{ textAlign: 'start' }}>{row.customerPhone2}</div>}
+      </td>
+      <td className="cell-primary">
+        <Link href={`/orders/${row.orderId}`}>#{row.orderId}</Link>
+      </td>
+      <td>{row.address || <span className="cell-muted">-</span>}</td>
+      <td>{row.dressModelNames.length > 0 ? row.dressModelNames.join(', ') : <span className="cell-muted">-</span>}</td>
+      <td><strong>{row.eventDateHebrew || '-'}</strong></td>
+      <td>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {visibleDirections(row).map(d => (
+            <span key={d} className={`badge ${DIRECTION_META[d].badgeClass}`}>
+              <svg className="icon"><use href="#i-box" /></svg>
+              {DIRECTION_META[d].label}
+            </span>
+          ))}
+        </div>
+      </td>
+      <td>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+          {visibleDirections(row).map(d => (
+            row.chargeExists[d] ? (
+              <span key={d} className="badge badge-success">
+                <svg className="icon"><use href="#i-check" /></svg>
+                נוצר חיוב
+              </span>
+            ) : (
+              <span key={d} className="hint" style={{ color: 'var(--text-3)' }}>טרם נוצר חיוב</span>
+            )
+          ))}
+        </div>
+      </td>
+    </tr>
+  );
+
   const goPrevDay = () => setSelectedDate(d => addDaysToIso(d, -1));
   const goNextDay = () => setSelectedDate(d => addDaysToIso(d, 1));
   const goToday = () => setSelectedDate(todayIso());
@@ -213,21 +256,36 @@ export default function DeliveriesPage() {
           ))}
         </div>
       )}
-      {/* 18 - תצוגת טווח: טבלה לכל יום (כולל עבר) */}
+      {/* 18 - תצוגת טווח: טבלה מלאה (כל העמודות) לכל יום בטווח, כולל עבר */}
       {rangeEnabled && rangeMode !== 'day' && (
-        <div className="card card-pad" style={{ marginBottom: 16 }}>
+        <div style={{ marginBottom: 16 }}>
           <h3 style={{ margin: '0 0 8px' }}>טבלת משלוחים לטווח ({rangeMode === 'week' ? 'שבוע' : rangeMode === '2weeks' ? 'שבועיים' : 'חודש'})</h3>
           {Object.keys(rangeRows).sort().map(d => {
             const dayRows = (rangeRows[d] || []).filter(r => directionFilter === 'all' || r.directions.includes(directionFilter));
+            if (dayRows.length === 0) return null;
             return (
-              <div key={d} style={{ marginBottom: 10, borderBottom: '1px solid var(--border)', paddingBottom: 8 }}>
-                <strong>{formatRangeDayHeader(d)}</strong> - {dayRows.length} משלוחים
-                {dayRows.slice(0, 8).map(r => (
-                  <div key={r.orderId} style={{ fontSize: 12, color: 'var(--text-2)' }}>
-                    #{r.orderId} {r.customerName} ({r.directions.map(x => DIRECTION_META[x]?.label || x).join('+')})
+              <div key={d} className="card card-pad" style={{ marginBottom: 12 }}>
+                <strong style={{ display: 'block', marginBottom: 8 }}>{formatRangeDayHeader(d)} - {dayRows.length} משלוחים</strong>
+                <div className="table-wrap">
+                  <div className="table-scroll">
+                    <table className="data">
+                      <thead>
+                        <tr>
+                          <th>לקוח</th>
+                          <th>הזמנה</th>
+                          <th>כתובת</th>
+                          <th>דגמים</th>
+                          <th>תאריך אירוע</th>
+                          <th>כיוון משלוח</th>
+                          <th>חיוב משלוח</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dayRows.map(renderDeliveryRow)}
+                      </tbody>
+                    </table>
                   </div>
-                ))}
-                {dayRows.length > 8 && <div className="hint">+{dayRows.length - 8} נוספים (ראה טבלה למטה ליום הנבחר)</div>}
+                </div>
               </div>
             );
           })}
@@ -263,45 +321,7 @@ export default function DeliveriesPage() {
                     </div>
                   </td>
                 </tr>
-              ) : filteredRows.map(row => (
-                <tr key={row.orderId}>
-                  <td>
-                    <div className="cell-primary">{row.customerName}</div>
-                    {row.customerPhone && <div className="cell-muted" dir="ltr" style={{ textAlign: 'start' }}>{row.customerPhone}</div>}
-                    {row.customerPhone2 && <div className="cell-muted" dir="ltr" style={{ textAlign: 'start' }}>{row.customerPhone2}</div>}
-                  </td>
-                  <td className="cell-primary">
-                    <Link href={`/orders/${row.orderId}`}>#{row.orderId}</Link>
-                  </td>
-                  <td>{row.address || <span className="cell-muted">-</span>}</td>
-                  <td>{row.dressModelNames.length > 0 ? row.dressModelNames.join(', ') : <span className="cell-muted">-</span>}</td>
-                  <td><strong>{row.eventDateHebrew || '-'}</strong></td>
-                  <td>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {visibleDirections(row).map(d => (
-                        <span key={d} className={`badge ${DIRECTION_META[d].badgeClass}`}>
-                          <svg className="icon"><use href="#i-box" /></svg>
-                          {DIRECTION_META[d].label}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                      {visibleDirections(row).map(d => (
-                        row.chargeExists[d] ? (
-                          <span key={d} className="badge badge-success">
-                            <svg className="icon"><use href="#i-check" /></svg>
-                            נוצר חיוב
-                          </span>
-                        ) : (
-                          <span key={d} className="hint" style={{ color: 'var(--text-3)' }}>טרם נוצר חיוב</span>
-                        )
-                      ))}
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              ) : filteredRows.map(renderDeliveryRow)}
             </tbody>
           </table>
         </div>
