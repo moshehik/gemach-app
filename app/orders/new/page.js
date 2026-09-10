@@ -533,8 +533,12 @@ export default function NewOrderPage() {
         ...(missingContactMethod ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
       ];
       // בקשה 4: אכיפה קשיחה - גם לא באישור מנהל. כבוי = ההתנהגות הקודמת (אישור חריגה)
+      // תוקן: קודם זו הייתה נקודת-מבוי-סתום (הודעה בלבד, בלי שום דרך להמשיך) - עכשיו
+      // הכרטיס/החלונית שממנה נלחץ הכפתור הזה תמיד מציגים קישור "עריכת פרטי לקוח"
+      // (נפתח בכרטיסייה נפרדת) וכפתור ביטול/"לקוח אחר" לחזרה, ר' הכרטיס שמוצג לצד
+      // חיפוש טלפון וחלונית "לקוח קיים במערכת" למטה.
       if (settings.strict_mandatory_fields === 'true') {
-        alert(`לא ניתן להמשיך - ללקוח חסרים פרטי חובה: ${missingParts.join(', ')}. יש להשלים את הפרטים בכרטיס הלקוח לפני יצירת הזמנה.`);
+        alert(`לא ניתן להמשיך - ללקוח חסרים פרטי חובה: ${missingParts.join(', ')}. אפשר ללחוץ על "עריכת פרטי לקוח" להשלמת הפרטים ואז לחזור ולנסות שוב, או לבטל ולבחור לקוח אחר.`);
         return;
       }
       const confirmed = await window.customConfirm(
@@ -2431,7 +2435,11 @@ export default function NewOrderPage() {
       )}
 
       {duplicateCustomer && (
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div
+          className="modal-backdrop"
+          style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onClick={(e) => { if (e.target === e.currentTarget) setDuplicateCustomer(null); }}
+        >
           <div className="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="dup-title">
             <div className="modal-icon-circle" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
               <svg className="icon"><use href="#i-alert-tri" /></svg>
@@ -2451,7 +2459,30 @@ export default function NewOrderPage() {
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>טלפון</span><span dir="ltr">{duplicateCustomer.phone1}{duplicateCustomer.phone2 ? ` | ${duplicateCustomer.phone2}` : ''}</span></div>
               <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>עיר</span><span>{duplicateCustomer.city || 'לא צוינה'}</span></div>
             </div>
-            <div className="confirm-actions">
+            {(() => {
+              // אותו דפוס בדיוק כמו בכרטיס "לקוח נמצא לפי טלפון" למעלה - קישור עריכת
+              // לקוח לצד רשימת השדות החסרים, כדי שלא תהיה כאן נקודת מבוי סתום כשהאכיפה
+              // הקשיחה (strict_mandatory_fields) חוסמת את "השתמש בלקוח הקיים" למטה.
+              const missing = getMissingMandatoryCustomerFields(duplicateCustomer);
+              const missingContact = !String(duplicateCustomer.phone2 || '').trim() && !String(duplicateCustomer.email || '').trim();
+              if (missing.length === 0 && !missingContact) return null;
+              const parts = [
+                ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
+                ...(missingContact ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
+              ];
+              return (
+                <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', textAlign: 'start' }}>
+                  <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
+                  חסר ללקוח: {parts.join(', ')}.
+                  {' '}
+                  <a href={`/customers/${duplicateCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
+                    עריכת פרטי לקוח
+                  </a>
+                </p>
+              );
+            })()}
+            <div className="confirm-actions" style={{ flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setDuplicateCustomer(null)}>ביטול</button>
               <button type="button" className="btn btn-danger-ghost" onClick={() => handleSaveNewCustomerAndProceed(true)}>צור לקוח חדש בכל זאת</button>
               <button type="button" className="btn btn-primary" onClick={() => handleUseExistingCustomer(duplicateCustomer)}>השתמש בלקוח הקיים</button>
             </div>
