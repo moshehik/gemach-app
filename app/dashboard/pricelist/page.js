@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { createPortal } from 'react-dom';
 
 export default function PricelistManagement() {
   const [pricelists, setPricelists] = useState([]);
@@ -12,10 +11,6 @@ export default function PricelistManagement() {
   const [addingCategory, setAddingCategory] = useState(null);
 
   const [isLocked, setIsLocked] = useState(true);
-  const [showLockModal, setShowLockModal] = useState(false);
-  const [unlockCode, setUnlockCode] = useState('');
-  const [showUnlockCode, setShowUnlockCode] = useState(false);
-  const [employees, setEmployees] = useState([]);
 
   const fetchPricelists = async () => {
     setLoading(true);
@@ -31,37 +26,33 @@ export default function PricelistManagement() {
     setLoading(false);
   };
 
-  const fetchEmployees = async () => {
-    try {
-      const res = await fetch('/api/employees');
-      if (res.ok) {
-        const data = await res.json();
-        setEmployees(data);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   useEffect(() => {
     fetchPricelists();
-    fetchEmployees();
   }, []);
 
-  const handleLockSubmit = () => {
-    const employee = employees.find(emp => String(emp.id) === unlockCode);
-    if (employee && (employee.roleId === 1 || employee.roleId === 2)) {
-      setIsLocked(!isLocked);
-      setShowLockModal(false);
-      setUnlockCode('');
-    } else {
-      alert('קוד שגוי או שאין לך הרשאות מתאימות (נדרש סיווג מנהל/מתכנת).');
+  // כמו בכל מסך אחר שדורש אישור מנהל (app/orders/[id]/page.js וכו') - אימות בפועל מול
+  // ה-DB דרך /api/auth/verify-pin, לא רק בדיקה מול הרשימה שכבר בדפדפן (שהייתה משווה את
+  // הקוד שהוקלד ל-UUID הפנימי של העובד, שאף עובד לא מקליד בפועל כ"קוד עובד" שלו - ולכן
+  // אף אחד לא הצליח לפתוח את הנעילה).
+  const handleLockToggle = async () => {
+    const authResult = await window.customAuthPrompt('נדרש אישור מנהל/מתכנת כדי לשנות את נעילת המחיקה.', 'מנהל');
+    if (!authResult || !authResult.pin) return;
+    try {
+      const res = await fetch('/api/auth/verify-pin', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pin: authResult.pin, employeeId: authResult.employeeId, requiredLevel: 'מנהל' })
+      });
+      const data = await res.json();
+      if (!data.success) {
+        alert(data.error || 'סיסמה שגויה או שאין הרשאות מתאימות (נדרש סיווג מנהל/מתכנת).');
+        return;
+      }
+      setIsLocked(prev => !prev);
+    } catch (e) {
+      console.error(e);
+      alert('שגיאה באימות קוד עובד/מנהל.');
     }
-  };
-
-  const closeLockModal = () => {
-    setShowLockModal(false);
-    setUnlockCode('');
   };
 
   const handleEditClick = (item) => {
@@ -228,7 +219,7 @@ export default function PricelistManagement() {
             type="button"
             className={isLocked ? 'btn btn-danger-ghost' : 'btn btn-secondary'}
             style={isLocked ? undefined : { background: 'var(--success-tint)', color: 'var(--success)' }}
-            onClick={() => setShowLockModal(true)}
+            onClick={handleLockToggle}
             title={isLocked ? 'נעול - לחץ כדי לפתוח' : 'פתוח - לחץ כדי לנעול'}
           >
             <svg className="icon"><use href={isLocked ? '#i-lock' : '#i-check-circle'} /></svg>
@@ -240,52 +231,6 @@ export default function PricelistManagement() {
           </button>
         </div>
       </div>
-
-      {showLockModal && typeof document !== 'undefined' && createPortal(
-        <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={closeLockModal}>
-          <div className="modal" style={{ maxWidth: '360px', margin: 0 }} onClick={e => e.stopPropagation()}>
-            <div className="modal-head">
-              <strong>
-                <svg className="icon"><use href={isLocked ? '#i-lock' : '#i-check-circle'} /></svg>
-                {isLocked ? 'פתיחת נעילת מחיקה' : 'נעילת מחיקה'}
-              </strong>
-              <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגירה" onClick={closeLockModal}>
-                <svg className="icon"><use href="#i-x" /></svg>
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="hint" style={{ color: 'var(--text-3)', marginBottom: '12px' }}>יש להזין קוד עובד (מנהל/מתכנת)</div>
-              <div className="field">
-                <label htmlFor="pricelist-unlockCode">קוד עובד</label>
-                <div className="password-field">
-                  <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                  <input
-                    id="pricelist-unlockCode"
-                    className="input"
-                    type={showUnlockCode ? 'text' : 'password'}
-                    value={unlockCode}
-                    onChange={e => setUnlockCode(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') handleLockSubmit(); }}
-                    placeholder="קוד עובד"
-                    autoFocus
-                  />
-                  <button type="button" className="toggle-visibility" title="הצג קוד" onClick={() => setShowUnlockCode(v => !v)}>
-                    <svg className="icon"><use href="#i-eye" /></svg>
-                  </button>
-                </div>
-              </div>
-            </div>
-            <div className="modal-foot">
-              <button type="button" className="btn btn-secondary" onClick={closeLockModal}>ביטול</button>
-              <button type="button" className="btn btn-primary" onClick={handleLockSubmit}>
-                <svg className="icon"><use href="#i-check" /></svg>
-                אישור
-              </button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {loading ? (
         <div className="table-wrap">
