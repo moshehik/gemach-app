@@ -8,10 +8,16 @@ export const dynamic = 'force-dynamic';
 // ?slot=midnight (מטרה 00:00 IL). כל ה-checks (הגדרה כבויה/שעה לא פעילה/שבת-חג/אין
 // PR-ים פתוחים) נמצאים בתוך runAgentDigest, לא כאן - ה-route רק מעביר את ה-slot הלאה.
 export async function GET(request) {
-  const secret = request.headers.get('x-cron-secret') || new URL(request.url).searchParams.get('secret');
+  // אותו תיקון כמו api/cron/daily (דיווח d22ef2ca): התנאי הזה היה תמיד "ריק" -
+  // גם כשהוגדר CRON_SECRET, קריאה עם סוד שגוי/חסר לא נחסמה בפועל. עכשיו נאכף,
+  // וגם נבדק מול כותרת Authorization: Bearer הסטנדרטית של Vercel Cron (לא רק
+  // x-cron-secret/?secret) - אם CRON_SECRET לא מוגדר בכלל, נשאר פתוח כמו קודם.
+  const authHeader = request.headers.get('authorization') || '';
+  const bearerSecret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const secret = request.headers.get('x-cron-secret') || bearerSecret || new URL(request.url).searchParams.get('secret');
   const expected = process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET;
   if (expected && secret !== expected) {
-    // אותו דפוס "פתוח" כמו api/cron/daily - לא חוסם קריאות פנימיות בינתיים
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const slot = new URL(request.url).searchParams.get('slot') || '';
