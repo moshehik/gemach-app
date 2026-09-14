@@ -146,13 +146,14 @@ export function buildRentalsListParams({
     forRentals: 'true'
   });
 
-  // סינון לפי מצב תצוגה פעיל רק כשאין חיפוש/סינון מתקדם — כמו בדף עצמו.
-  if (!search && !hasAdvFilters) {
-    if (viewMode === 'rented') queryParams.append('activeOnly', 'true');
-    else if (viewMode === 'rented_partial') queryParams.append('partiallyRentedOnly', 'true');
-    else if (viewMode === 'returned') queryParams.append('returnedOnly', 'true');
-    else if (viewMode === 'returned_partial') queryParams.append('partiallyReturnedOnly', 'true');
-  }
+  // סינון לפי מצב תצוגה פעיל (הלשונית) - גם כשיש חיפוש/סינון מתקדם פעיל, כדי
+  // שהחיפוש/הסינון המתקדם יצטרפו ללשונית הפעילה ולא יעקפו אותה (דיווח org2 60cb1a48:
+  // "הסינון המתקדם... צריך להיות בנוסף לסינון לפי הלשוניות"). כל התנאים ב-/api/orders
+  // הם AND עצמאיים אז אין בעיה טכנית לשלב אותם עם search/advFilters יחד.
+  if (viewMode === 'rented') queryParams.append('activeOnly', 'true');
+  else if (viewMode === 'rented_partial') queryParams.append('partiallyRentedOnly', 'true');
+  else if (viewMode === 'returned') queryParams.append('returnedOnly', 'true');
+  else if (viewMode === 'returned_partial') queryParams.append('partiallyReturnedOnly', 'true');
 
   Object.entries(advFilters).forEach(([k, v]) => {
     if (v) queryParams.append(k, v);

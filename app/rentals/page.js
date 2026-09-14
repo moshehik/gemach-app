@@ -36,6 +36,21 @@ const buildRentalsAiPrompt = (f) => {
 // כדי שה-prefetch מדפים אחרים ייצר את אותו מפתח בדיוק.
 const rentalsCache = cacheNamespace('rentals');
 
+// חיפוש AI (/api/ai/smart-search) לא מכיר "מצב תצוגה" (לשונית) בכלל ומחזיר תוצאות מכל
+// הסטטוסים - הפילטר הזה משכפל בצד הלקוח בדיוק את אותם תנאים שהחיפוש/הסינון-המתקדם
+// הרגילים שולחים לשרת (activeOnly/partiallyRentedOnly/returnedOnly/partiallyReturnedOnly
+// ב-app/api/orders/route.js), כדי שתוצאות AI גם יישארו בתוך הלשונית הפעילה.
+const matchesRentalsViewMode = (order, viewMode) => {
+  const status = calculateOrderStatus(order);
+  switch (viewMode) {
+    case 'rented': return status === 'הושכר' || status === 'הושכר חלקי' || status === 'הוחזר חלקי';
+    case 'rented_partial': return status === 'הושכר חלקי';
+    case 'returned': return status === 'הוחזר' || status === 'הוחזר חלקי';
+    case 'returned_partial': return status === 'הוחזר חלקי';
+    default: return true;
+  }
+};
+
 // צבעי נקודת-הסטטוס בטבלה — עקבי עם הצבעים של כפתורי הסינון (.pill-tabs) מעל הטבלה.
 const STATUS_DOT_COLORS = {
   'הושכר': 'var(--warning)',
@@ -223,8 +238,12 @@ export default function RentalsPage() {
       });
       const result = await res.json();
       if (res.ok) {
-        setOrders(result.data || []);
-        setTotalCount(result.data?.length || 0);
+        // חיפוש AI פונה לנקודת קצה נפרדת שלא מכירה את "מצב התצוגה" (הלשונית הפעילה) -
+        // בלי הסינון הזה תוצאות AI היו עוקפות את הלשונית לגמרי (דיווח org2 60cb1a48),
+        // בניגוד לחיפוש/סינון-מתקדם הרגילים שכבר משלבים אותה מול /api/orders.
+        const aiData = (result.data || []).filter(o => matchesRentalsViewMode(o, viewMode));
+        setOrders(aiData);
+        setTotalCount(aiData.length);
         setTotalPages(1);
         setPage(1);
         setIsAiModeActive(true);
