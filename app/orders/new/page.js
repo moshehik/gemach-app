@@ -1008,6 +1008,21 @@ export default function NewOrderPage() {
     if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
 
+    // אם עיר המגורים של הלקוח אינה ברשימת הערים שיש להן מחיר משלוח מוגדר
+    // (delivery_price_by_city), לא ניתן להניח שהמשלוח יגיע אליה כרגיל - יש לחייב
+    // הזנה מפורשת של עיר המשלוח בפועל. ר' דיווחים org2 136f8d4b/5133e518.
+    if (order.isDelivery) {
+      let deliveryPriceCities = [];
+      try {
+        deliveryPriceCities = Object.keys(JSON.parse(settings.delivery_price_by_city || '{}'));
+      } catch { /* JSON לא תקין בהגדרה - מתייחסים כאילו אין רשימה כלל */ }
+      const customerCity = String(order.selectedCustomer?.city || '').trim();
+      const customerCityKnown = customerCity && deliveryPriceCities.includes(customerCity);
+      if (!customerCityKnown && !String(order.deliveryCity || '').trim()) {
+        return alert('עיר המגורים של הלקוח אינה ברשימת ערי המשלוח המוגדרות - יש להזין עיר משלוח באופן מפורש.');
+      }
+    }
+
     // חוסם שמירת הזמנה לתאריך שעבר בלי אישור מנהל, כדי למנוע הזמנות שנשמרות בטעות
     // לתאריך שכבר חלף. נבדק לפני חיוב אשראי/תשלום כדי לא לגבות כסף על הזמנה שתיחסם.
     const relevantDate = (order.isAbroad || order.isWeekdayEvent) ? order.fromDate : order.eventDate;
