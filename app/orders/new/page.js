@@ -1007,6 +1007,12 @@ export default function NewOrderPage() {
     }
     if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
+    // כשעיר המשלוח שונה מעיר המגורים של הלקוח (למשל שולחים לסבתא בעיר אחרת), כתובת
+    // המשלוח חייבת להיות מוזנת - אחרת המשלוח ייצא לכתובת המגורים בעיר הלא-נכונה.
+    if (order.isDelivery && settings.delivery_allow_address_override === 'true' && order.deliveryCity && order.selectedCustomer?.city
+      && order.deliveryCity !== order.selectedCustomer.city && !String(order.deliveryAddress || '').trim()) {
+      return alert('עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת משלוח (שדה "כתובת משלוח שונה").');
+    }
 
     // חוסם שמירת הזמנה לתאריך שעבר בלי אישור מנהל, כדי למנוע הזמנות שנשמרות בטעות
     // לתאריך שכבר חלף. נבדק לפני חיוב אשראי/תשלום כדי לא לגבות כסף על הזמנה שתיחסם.
@@ -1248,6 +1254,15 @@ export default function NewOrderPage() {
   };
 
   const selectedCustomerName = getCustomerFullName(order.selectedCustomer);
+
+  // רשימת "ערים שאנחנו מספקים אליהן משלוח" - נשלפת מהמפתחות של delivery_price_by_city
+  // (אותו JSON שכבר קובע את מחיר המשלוח לפי עיר, ב-lib/pricingEngine.js). אם ההגדרה
+  // ריקה/לא תקינה (כמו כברירת מחדל בכל גמח חדש) נופלים חזרה לשדה טקסט חופשי כמו קודם,
+  // כדי לא לחסום את הזנת עיר המשלוח לפני שההגדרה מולאה.
+  let deliveryCityOptions = [];
+  try {
+    deliveryCityOptions = Object.keys(JSON.parse(settings.delivery_price_by_city || '{}'));
+  } catch {}
 
   // ===== מצב תצוגה של המסך החדש (הודעות, אישור יציאה) =====
   const [flash, setFlash] = useState(null);
@@ -1943,11 +1958,24 @@ export default function NewOrderPage() {
                       </div>
                       <div className="field">
                         <label>עיר משלוח (לחישוב מחיר)</label>
-                        <input type="text" className="input" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))} placeholder="עיר" />
+                        {deliveryCityOptions.length > 0 ? (
+                          <select className="select" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))}>
+                            <option value="">בחר עיר...</option>
+                            {deliveryCityOptions.map(c => (
+                              <option key={c} value={c}>{c}</option>
+                            ))}
+                            {/* ערך קיים שאינו ברשימה (למשל הוזן לפני שהוגדרה הרשימה) - נשאר בררת ולא נמחק בשקט */}
+                            {order.deliveryCity && !deliveryCityOptions.includes(order.deliveryCity) && (
+                              <option value={order.deliveryCity}>{order.deliveryCity}</option>
+                            )}
+                          </select>
+                        ) : (
+                          <input type="text" className="input" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))} placeholder="עיר" />
+                        )}
                       </div>
                       {settings.delivery_allow_address_override === 'true' && (
                         <div className="field">
-                          <label>כתובת משלוח שונה</label>
+                          <label>כתובת משלוח שונה{order.deliveryCity && order.selectedCustomer?.city && order.deliveryCity !== order.selectedCustomer.city ? ' *' : ''}</label>
                           <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryAddress: e.target.value }))} placeholder="כתובת למשלוח (שונה ממגורים)" />
                         </div>
                       )}

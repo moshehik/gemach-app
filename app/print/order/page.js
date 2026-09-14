@@ -247,7 +247,7 @@ export default function PrintOrderPage() {
           <tr>
             <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
               <div className="bsd">בס&quot;ד</div>
-              {printType === 'rental' && returnByDate && (
+              {returnByDate && (
                 <div className="return-details-box">
                   <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
                   {printSettings?.beltNotice && (

@@ -370,6 +370,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
               onChange={(e) => setPinValue(e.target.value.slice(0, 4))}
               placeholder="••••"
               style={{ letterSpacing: '0.6em', textAlign: 'center' }}
+              autoComplete="new-password"
             />
           ) : (
             <input data-element-name="שדה_LoginScreen_8"
@@ -379,6 +380,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="הזן את הקוד שלך"
+              autoComplete="new-password"
             />
           )}
         </div>
@@ -512,14 +514,14 @@ export default function LoginScreen({ isModal = false, onClose }) {
               <label htmlFor="login-newpass1">סיסמה חדשה</label>
               <div className="password-field">
                 <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                <input id="login-newpass1" className="input" type="password" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} />
+                <input id="login-newpass1" className="input" type="password" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} autoComplete="new-password" />
               </div>
             </div>
             <div className="field">
               <label htmlFor="login-newpass2">אימות סיסמה חדשה</label>
               <div className="password-field">
                 <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                <input id="login-newpass2" className="input" type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} />
+                <input id="login-newpass2" className="input" type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} autoComplete="new-password" />
               </div>
             </div>
             <button type="submit" className="btn btn-primary btn-lg" disabled={resetSaving} style={{ width: '100%', marginTop: '6px' }}>
