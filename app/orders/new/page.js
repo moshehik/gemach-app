@@ -1034,6 +1034,12 @@ export default function NewOrderPage() {
     }
     if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
+    // כשעיר המשלוח שונה מעיר המגורים של הלקוח (למשל שולחים לסבתא בעיר אחרת), כתובת
+    // המשלוח חייבת להיות מוזנת - אחרת המשלוח ייצא לכתובת המגורים בעיר הלא-נכונה.
+    if (order.isDelivery && settings.delivery_allow_address_override === 'true' && order.deliveryCity && order.selectedCustomer?.city
+      && order.deliveryCity !== order.selectedCustomer.city && !String(order.deliveryAddress || '').trim()) {
+      return alert('עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת משלוח (שדה "כתובת משלוח שונה").');
+    }
 
     // אם עיר המשלוח שהוזנה שונה מעיר המגורים של הלקוח, כתובת המשלוח (השונה מכתובת
     // המגורים) היא שדה חובה - אחרת אין למשלוח לאן להגיע. ר' דיווח org2 f82e76c1.
@@ -1299,6 +1305,15 @@ export default function NewOrderPage() {
   };
 
   const selectedCustomerName = getCustomerFullName(order.selectedCustomer);
+
+  // רשימת "ערים שאנחנו מספקים אליהן משלוח" - נשלפת מהמפתחות של delivery_price_by_city
+  // (אותו JSON שכבר קובע את מחיר המשלוח לפי עיר, ב-lib/pricingEngine.js). אם ההגדרה
+  // ריקה/לא תקינה (כמו כברירת מחדל בכל גמח חדש) נופלים חזרה לשדה טקסט חופשי כמו קודם,
+  // כדי לא לחסום את הזנת עיר המשלוח לפני שההגדרה מולאה.
+  let deliveryCityOptions = [];
+  try {
+    deliveryCityOptions = Object.keys(JSON.parse(settings.delivery_price_by_city || '{}'));
+  } catch {}
 
   // ===== מצב תצוגה של המסך החדש (הודעות, אישור יציאה) =====
   const [flash, setFlash] = useState(null);

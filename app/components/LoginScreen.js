@@ -518,14 +518,14 @@ export default function LoginScreen({ isModal = false, onClose }) {
               <label htmlFor="login-newpass1">סיסמה חדשה</label>
               <div className="password-field">
                 <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                <input id="login-newpass1" className="input" type="password" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} />
+                <input id="login-newpass1" className="input" type="password" value={newPass1} onChange={(e) => setNewPass1(e.target.value)} autoComplete="new-password" />
               </div>
             </div>
             <div className="field">
               <label htmlFor="login-newpass2">אימות סיסמה חדשה</label>
               <div className="password-field">
                 <svg className="icon lead-icon"><use href="#i-lock" /></svg>
-                <input id="login-newpass2" className="input" type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} />
+                <input id="login-newpass2" className="input" type="password" value={newPass2} onChange={(e) => setNewPass2(e.target.value)} autoComplete="new-password" />
               </div>
             </div>
             <button type="submit" className="btn btn-primary btn-lg" disabled={resetSaving} style={{ width: '100%', marginTop: '6px' }}>
