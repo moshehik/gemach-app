@@ -69,7 +69,7 @@ export default function NewOrderPage() {
   const [searchMode, setSearchMode] = useState('phone'); // 'phone' | 'name' | 'new'
   const [phoneSearchInput, setPhoneSearchInput] = useState('');
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
-  const [foundCustomerFromPhone, setFoundCustomerFromPhone] = useState(null);
+  const [foundCustomersFromPhone, setFoundCustomersFromPhone] = useState([]);
   
   const [order, setOrder] = useState({
     customerId: '',
@@ -126,7 +126,7 @@ export default function NewOrderPage() {
     firstName: '', lastName: '', phone1: '', phone2: '', email: '', city: '', street: '', houseNum: '', marketingConsent: false, zeout: ''
   });
 
-  const [duplicateCustomer, setDuplicateCustomer] = useState(null);
+  const [duplicateCustomers, setDuplicateCustomers] = useState([]);
 
   const [paymentsList, setPaymentsList] = useState([]);
 
@@ -405,13 +405,13 @@ export default function NewOrderPage() {
     
     setIsCheckingPhone(true);
     try {
-      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=1`);
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=20`);
       const data = await res.json();
       if (data.data && data.data.length > 0) {
-        setFoundCustomerFromPhone(data.data[0]);
+        setFoundCustomersFromPhone(data.data);
       } else {
         setNewCustomer(prev => ({ ...prev, phone1: phoneSearchInput.trim() }));
-        setFoundCustomerFromPhone(null);
+        setFoundCustomersFromPhone([]);
         setSearchMode('new');
       }
     } catch (e) {
@@ -486,10 +486,10 @@ export default function NewOrderPage() {
 
     if (skipDuplicateCheck !== true) {
       try {
-        const res = await fetch(`/api/customers?phone=${encodeURIComponent(newCustomer.phone1)}&limit=1`);
+        const res = await fetch(`/api/customers?phone=${encodeURIComponent(newCustomer.phone1)}&limit=20`);
         const data = await res.json();
         if (data.data && data.data.length > 0) {
-          setDuplicateCustomer(data.data[0]);
+          setDuplicateCustomers(data.data);
           return;
         }
       } catch (e) {
@@ -507,7 +507,7 @@ export default function NewOrderPage() {
       if (res.ok) {
          setOrder(prev => ({ ...prev, customerId: data.id, selectedCustomer: data }));
          setStep(2);
-         setDuplicateCustomer(null);
+         setDuplicateCustomers([]);
       } else {
          const errorMsg = data.error || 'שגיאה בשמירת לקוח';
          alert(`שגיאה בשמירת לקוח: ${errorMsg}`);
@@ -561,7 +561,7 @@ export default function NewOrderPage() {
 
     setOrder(prev => ({ ...prev, customerId: existingCustomer.id, selectedCustomer: existingCustomer }));
     setStep(2);
-    setDuplicateCustomer(null);
+    setDuplicateCustomers([]);
   };
 
   const proceedToStep2 = async () => {
@@ -1306,6 +1306,9 @@ export default function NewOrderPage() {
 
   const activeItems = (order.items || []).filter(i => !i.isDeleted);
   const datesFilled = (order.isAbroad || order.isWeekdayEvent) ? (order.fromDate && order.toDate) : order.eventDate;
+  // f82e76c1 - כתובת משלוח הופכת לשדה חובה כשעיר המשלוח שונה מעיר הלקוח (כלומר לא מסתפקים
+  // בכתובת המגורים הרגילה שלו) - כדי שלא יישלח משלוח בלי כתובת מדויקת ליעד אחר.
+  const deliveryAddressRequired = !!(order.isDelivery && order.deliveryCity && order.selectedCustomer?.city && order.deliveryCity !== order.selectedCustomer.city);
   const totalPaid = paymentsList.reduce((acc, p) => acc + (parseFloat(p.amount) || 0), 0);
   const remaining = Math.max(0, totalAmount - totalPaid);
   const repairsTotal = (calculatedData.items || []).reduce((acc, i) => acc + (parseFloat(i.repairsCost) || 0), 0);
@@ -1495,7 +1498,7 @@ export default function NewOrderPage() {
               </button>
             )}
             {step === 2 && (
-              <button type="button" className="btn btn-primary" onClick={() => setStep(3)} disabled={!datesFilled}>
+              <button type="button" className="btn btn-primary" onClick={() => setStep(3)} disabled={!datesFilled || (deliveryAddressRequired && !order.deliveryAddress.trim())}>
                 המשך לבחירת פריטים <svg className="icon"><use href="#i-chevron-start" /></svg>
               </button>
             )}
@@ -1549,7 +1552,7 @@ export default function NewOrderPage() {
               </button>
             </div>
 
-            {searchMode === 'phone' && !foundCustomerFromPhone && (
+            {searchMode === 'phone' && foundCustomersFromPhone.length === 0 && (
               <div className="card card-pad">
                 <div className="field">
                   <label htmlFor="cust-phone">מספר טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
@@ -1580,61 +1583,74 @@ export default function NewOrderPage() {
               </div>
             )}
 
-            {searchMode === 'phone' && foundCustomerFromPhone && (
+            {searchMode === 'phone' && foundCustomersFromPhone.length > 0 && (
               <div className="card card-pad">
-                <div className="card-title-row" style={{ marginBottom: '14px' }}>
-                  <div className="avatar">
-                    {`${(foundCustomerFromPhone.firstName || '')[0] || ''}${(foundCustomerFromPhone.lastName || '')[0] || ''}`}
+                {foundCustomersFromPhone.length > 1 && (
+                  <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
+                    נמצאו {foundCustomersFromPhone.length} לקוחות עם מספר טלפון זה - יש לבחור את הלקוח הנכון.
+                  </p>
+                )}
+                {foundCustomersFromPhone.map((foundCustomer, idx) => (
+                  <div key={foundCustomer.id} style={idx > 0 ? { marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' } : undefined}>
+                    <div className="card-title-row" style={{ marginBottom: '14px' }}>
+                      <div className="avatar">
+                        {`${(foundCustomer.firstName || '')[0] || ''}${(foundCustomer.lastName || '')[0] || ''}`}
+                      </div>
+                      <div>
+                        <strong style={{ fontSize: '15px' }}>
+                          {getCustomerFullName(foundCustomer)}
+                          {foundCustomer.isBlocked && (
+                            <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
+                          )}
+                        </strong>
+                        <p className="hint" style={{ color: 'var(--text-3)', margin: '2px 0 0' }}>
+                          {foundCustomer.phone1}
+                          {foundCustomer.phone2 ? ` · ${foundCustomer.phone2}` : ''}
+                          {foundCustomer.email ? ` · ${foundCustomer.email}` : ''}
+                          {foundCustomer.city ? ` · ${foundCustomer.city}` : ''}
+                          {foundCustomer.street ? `, ${foundCustomer.street} ${foundCustomer.houseNum || ''}` : ''}
+                        </p>
+                      </div>
+                    </div>
+                    {(() => {
+                      const missing = getMissingMandatoryCustomerFields(foundCustomer);
+                      const missingContact = !foundCustomer.phone2 && !foundCustomer.email;
+                      if (missing.length === 0 && !missingContact) return null;
+                      const parts = [
+                        ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
+                        ...(missingContact ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
+                      ];
+                      return (
+                        <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                          <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
+                          חסר ללקוח: {parts.join(', ')}.
+                          {' '}
+                          <a href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
+                            עריכת פרטי לקוח
+                          </a>
+                        </p>
+                      );
+                    })()}
+                    {foundCustomersFromPhone.length === 1 && renderHokFieldsForExistingCustomer()}
+                    <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                      <button type="button" className="btn btn-primary" style={{ flex: 1, minWidth: '160px' }} onClick={() => handleUseExistingCustomer(foundCustomer)}>
+                        <svg className="icon"><use href="#i-check" /></svg> כן, זה הלקוח
+                      </button>
+                    </div>
                   </div>
-                  <div>
-                    <strong style={{ fontSize: '15px' }}>
-                      {getCustomerFullName(foundCustomerFromPhone)}
-                      {foundCustomerFromPhone.isBlocked && (
-                        <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
-                      )}
-                    </strong>
-                    <p className="hint" style={{ color: 'var(--text-3)', margin: '2px 0 0' }}>
-                      {foundCustomerFromPhone.phone1}
-                      {foundCustomerFromPhone.phone2 ? ` · ${foundCustomerFromPhone.phone2}` : ''}
-                      {foundCustomerFromPhone.email ? ` · ${foundCustomerFromPhone.email}` : ''}
-                      {foundCustomerFromPhone.city ? ` · ${foundCustomerFromPhone.city}` : ''}
-                      {foundCustomerFromPhone.street ? `, ${foundCustomerFromPhone.street} ${foundCustomerFromPhone.houseNum || ''}` : ''}
-                    </p>
-                  </div>
-                </div>
-                {(() => {
-                  const missing = getMissingMandatoryCustomerFields(foundCustomerFromPhone);
-                  const missingContact = !foundCustomerFromPhone.phone2 && !foundCustomerFromPhone.email;
-                  if (missing.length === 0 && !missingContact) return null;
-                  const parts = [
-                    ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
-                    ...(missingContact ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
-                  ];
-                  return (
-                    <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                      <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
-                      חסר ללקוח: {parts.join(', ')}.
-                      {' '}
-                      <a href={`/customers/${foundCustomerFromPhone.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
-                        עריכת פרטי לקוח
-                      </a>
-                    </p>
-                  );
-                })()}
-                {renderHokFieldsForExistingCustomer()}
-                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                  <button type="button" className="btn btn-primary" style={{ flex: 1, minWidth: '160px' }} onClick={() => handleUseExistingCustomer(foundCustomerFromPhone)}>
-                    <svg className="icon"><use href="#i-check" /></svg> כן, זה הלקוח
-                  </button>
+                ))}
+                <div style={{ marginTop: '14px', paddingTop: '14px', borderTop: '1px solid var(--border)' }}>
                   <button
                     type="button"
                     className="btn btn-secondary"
+                    style={{ width: '100%' }}
                     onClick={() => {
                       setNewCustomer(prev => ({ ...prev, phone1: phoneSearchInput.trim() }));
-                      setFoundCustomerFromPhone(null);
+                      setFoundCustomersFromPhone([]);
                       setSearchMode('new');
                     }}
-                  >לקוח אחר</button>
+                  >אף אחד מאלה - לקוח חדש</button>
                 </div>
               </div>
             )}
@@ -1984,10 +2000,15 @@ export default function NewOrderPage() {
                           {deliveryCityOptions.map(c => <option key={c} value={c} />)}
                         </datalist>
                       </div>
-                      {settings.delivery_allow_address_override === 'true' && (
+                      {(settings.delivery_allow_address_override === 'true' || deliveryAddressRequired) && (
                         <div className="field">
-                          <label>כתובת משלוח שונה</label>
+                          <label>כתובת משלוח שונה{deliveryAddressRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
                           <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryAddress: e.target.value }))} placeholder="כתובת למשלוח (שונה ממגורים)" />
+                          {deliveryAddressRequired && !order.deliveryAddress.trim() && (
+                            <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
+                              עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת למשלוח.
+                            </p>
+                          )}
                         </div>
                       )}
                       {settings.delivery_one_day_before_option === 'true' && (
@@ -2509,57 +2530,65 @@ export default function NewOrderPage() {
         </div>
       )}
 
-      {duplicateCustomer && (
+      {duplicateCustomers.length > 0 && (
         <div
           className="modal-backdrop"
           style={{ position: 'fixed', inset: 0, zIndex: 1500, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-          onClick={(e) => { if (e.target === e.currentTarget) setDuplicateCustomer(null); }}
+          onClick={(e) => { if (e.target === e.currentTarget) setDuplicateCustomers([]); }}
         >
           <div className="modal confirm-modal" role="dialog" aria-modal="true" aria-labelledby="dup-title">
             <div className="modal-icon-circle" style={{ background: 'var(--danger-tint)', color: 'var(--danger)' }}>
               <svg className="icon"><use href="#i-alert-tri" /></svg>
             </div>
-            <h3 id="dup-title">לקוח קיים במערכת</h3>
-            <p>הלקוח שהוזן זוהה במערכת לפי מספר הטלפון. אפשר להשתמש בכרטיס הקיים, או ליצור כרטיס נוסף.</p>
-            <div className="card card-pad" style={{ textAlign: 'start', marginBottom: '20px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
-                <span className="hint" style={{ color: 'var(--text-3)' }}>שם</span>
-                <strong>
-                  {getCustomerFullName(duplicateCustomer)}
-                  {duplicateCustomer.isBlocked && (
-                    <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
-                  )}
-                </strong>
+            <h3 id="dup-title">{duplicateCustomers.length > 1 ? 'כמה לקוחות עם מספר טלפון זה' : 'לקוח קיים במערכת'}</h3>
+            <p>
+              {duplicateCustomers.length > 1
+                ? 'נמצאו כמה לקוחות עם מספר הטלפון שהוזן. אפשר להשתמש באחד מהכרטיסים הקיימים, או ליצור כרטיס נוסף.'
+                : 'הלקוח שהוזן זוהה במערכת לפי מספר הטלפון. אפשר להשתמש בכרטיס הקיים, או ליצור כרטיס נוסף.'}
+            </p>
+            {duplicateCustomers.map((duplicateCustomer, idx) => (
+              <div key={duplicateCustomer.id} className="card card-pad" style={{ textAlign: 'start', marginBottom: idx === duplicateCustomers.length - 1 ? '20px' : '10px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}>
+                  <span className="hint" style={{ color: 'var(--text-3)' }}>שם</span>
+                  <strong>
+                    {getCustomerFullName(duplicateCustomer)}
+                    {duplicateCustomer.isBlocked && (
+                      <span className="badge badge-danger" style={{ marginInlineStart: '8px', fontSize: '11px' }}>לקוח חסום</span>
+                    )}
+                  </strong>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>טלפון</span><span dir="ltr">{duplicateCustomer.phone1}{duplicateCustomer.phone2 ? ` | ${duplicateCustomer.phone2}` : ''}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>עיר</span><span>{duplicateCustomer.city || 'לא צוינה'}</span></div>
+                {(() => {
+                  // אותו דפוס בדיוק כמו בכרטיס "לקוח נמצא לפי טלפון" למעלה - קישור עריכת
+                  // לקוח לצד רשימת השדות החסרים, כדי שלא תהיה כאן נקודת מבוי סתום כשהאכיפה
+                  // הקשיחה (strict_mandatory_fields) חוסמת את "השתמש בלקוח הקיים" למטה.
+                  const missing = getMissingMandatoryCustomerFields(duplicateCustomer);
+                  const missingContact = !String(duplicateCustomer.phone2 || '').trim() && !String(duplicateCustomer.email || '').trim();
+                  if (missing.length === 0 && !missingContact) return null;
+                  const parts = [
+                    ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
+                    ...(missingContact ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
+                  ];
+                  return (
+                    <p className="hint" style={{ color: 'var(--warning)', margin: '8px 0 0', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', textAlign: 'start' }}>
+                      <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
+                      חסר ללקוח: {parts.join(', ')}.
+                      {' '}
+                      <a href={`/customers/${duplicateCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
+                        עריכת פרטי לקוח
+                      </a>
+                    </p>
+                  );
+                })()}
+                <div className="confirm-actions" style={{ flexWrap: 'wrap', marginTop: '10px' }}>
+                  <button type="button" className="btn btn-primary" onClick={() => handleUseExistingCustomer(duplicateCustomer)}>השתמש בלקוח הזה</button>
+                </div>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>טלפון</span><span dir="ltr">{duplicateCustomer.phone1}{duplicateCustomer.phone2 ? ` | ${duplicateCustomer.phone2}` : ''}</span></div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '6px 2px' }}><span className="hint" style={{ color: 'var(--text-3)' }}>עיר</span><span>{duplicateCustomer.city || 'לא צוינה'}</span></div>
-            </div>
-            {(() => {
-              // אותו דפוס בדיוק כמו בכרטיס "לקוח נמצא לפי טלפון" למעלה - קישור עריכת
-              // לקוח לצד רשימת השדות החסרים, כדי שלא תהיה כאן נקודת מבוי סתום כשהאכיפה
-              // הקשיחה (strict_mandatory_fields) חוסמת את "השתמש בלקוח הקיים" למטה.
-              const missing = getMissingMandatoryCustomerFields(duplicateCustomer);
-              const missingContact = !String(duplicateCustomer.phone2 || '').trim() && !String(duplicateCustomer.email || '').trim();
-              if (missing.length === 0 && !missingContact) return null;
-              const parts = [
-                ...missing.map(k => CUSTOMER_FIELD_LABELS[k]),
-                ...(missingContact ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
-              ];
-              return (
-                <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 16px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap', textAlign: 'start' }}>
-                  <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
-                  חסר ללקוח: {parts.join(', ')}.
-                  {' '}
-                  <a href={`/customers/${duplicateCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
-                    עריכת פרטי לקוח
-                  </a>
-                </p>
-              );
-            })()}
+            ))}
             <div className="confirm-actions" style={{ flexWrap: 'wrap' }}>
-              <button type="button" className="btn btn-secondary" onClick={() => setDuplicateCustomer(null)}>ביטול</button>
+              <button type="button" className="btn btn-secondary" onClick={() => setDuplicateCustomers([])}>ביטול</button>
               <button type="button" className="btn btn-danger-ghost" onClick={() => handleSaveNewCustomerAndProceed(true)}>צור לקוח חדש בכל זאת</button>
-              <button type="button" className="btn btn-primary" onClick={() => handleUseExistingCustomer(duplicateCustomer)}>השתמש בלקוח הקיים</button>
             </div>
           </div>
         </div>

@@ -887,7 +887,11 @@ export async function POST(request) {
     const updatedOrder = await prisma.order.findUnique({
       where: { orderId: order.orderId },
       include: {
-        items: true,
+        items: {
+          include: {
+            dressItem: { include: { dress: true } }
+          }
+        },
         obligations: true,
         payments: true,
         customer: true
