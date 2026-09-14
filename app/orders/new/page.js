@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import HebrewDatePicker from '../../../components/HebrewDatePicker';
 import HebrewDateRangePicker from '../../../components/HebrewDateRangePicker';
@@ -140,6 +140,21 @@ export default function NewOrderPage() {
   });
 
   const [settings, setSettings] = useState({});
+
+  // ערי המשלוח לבחירה בשדה "עיר משלוח" - מתוך מפתחות ה-JSON של delivery_price_by_city
+  // (הערים שבאמת מוגדר להן מחיר משלוח), ולא מתוך כל ערי הלקוחות הכלליות - ר' דיווח
+  // org2 9090b43a. נופל חזרה לרשימת ערי הלקוחות אם ההגדרה עוד לא הוגדרת/ריקה, כדי
+  // שהשדה לא יישאר בלי הצעות כלל לפני שממלאים את טבלת המחירים.
+  const deliveryCityOptions = useMemo(() => {
+    try {
+      const priceMap = JSON.parse(settings.delivery_price_by_city || '{}');
+      const cities = Object.keys(priceMap);
+      if (cities.length) return cities;
+    } catch {
+      // JSON לא תקין בהגדרה - נופל לרשימת ערי הלקוחות
+    }
+    return customerLocations.cities;
+  }, [settings.delivery_price_by_city, customerLocations.cities]);
 
   const [showCreditModal, setShowCreditModal] = useState(false);
   const [showQuickSwipeModal, setShowQuickSwipeModal] = useState(false);
@@ -1007,6 +1022,15 @@ export default function NewOrderPage() {
     }
     if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
+
+    // אם עיר המשלוח שהוזנה שונה מעיר המגורים של הלקוח, כתובת המשלוח (השונה מכתובת
+    // המגורים) היא שדה חובה - אחרת אין למשלוח לאן להגיע. ר' דיווח org2 f82e76c1.
+    if (order.isDelivery && settings.delivery_allow_address_override === 'true'
+      && order.deliveryCity && order.selectedCustomer?.city
+      && order.deliveryCity.trim() !== order.selectedCustomer.city.trim()
+      && !String(order.deliveryAddress || '').trim()) {
+      return alert('עיר המשלוח שונה מעיר המגורים של הלקוח - יש להזין כתובת משלוח מלאה.');
+    }
 
     // חוסם שמירת הזמנה לתאריך שעבר בלי אישור מנהל, כדי למנוע הזמנות שנשמרות בטעות
     // לתאריך שכבר חלף. נבדק לפני חיוב אשראי/תשלום כדי לא לגבות כסף על הזמנה שתיחסם.
@@ -1945,7 +1969,7 @@ export default function NewOrderPage() {
                         <label htmlFor="delivery-city">עיר משלוח (לחישוב מחיר)</label>
                         <input id="delivery-city" type="text" className="input" list="delivery-city-list" autoComplete="new-password" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))} placeholder="עיר" />
                         <datalist id="delivery-city-list">
-                          {customerLocations.cities.map(c => <option key={c} value={c} />)}
+                          {deliveryCityOptions.map(c => <option key={c} value={c} />)}
                         </datalist>
                       </div>
                       {settings.delivery_allow_address_override === 'true' && (
