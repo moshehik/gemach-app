@@ -70,7 +70,10 @@ export default function NewOrderPage() {
   const [phoneSearchInput, setPhoneSearchInput] = useState('');
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
   const [foundCustomerFromPhone, setFoundCustomerFromPhone] = useState(null);
-  
+  // כמה לקוחות שונים עם אותו מספר טלפון (ר' דיווח 7641d8ef) - מוצג כרשימת בחירה
+  // במקום להניח תמיד לקוח יחיד כמו קודם.
+  const [phoneMatches, setPhoneMatches] = useState([]);
+
   const [order, setOrder] = useState({
     customerId: '',
     selectedCustomer: null,
@@ -393,12 +396,17 @@ export default function NewOrderPage() {
     
     setIsCheckingPhone(true);
     try {
-      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=1`);
+      const res = await fetch(`/api/customers?search=${encodeURIComponent(phoneSearchInput.trim())}&limit=20`);
       const data = await res.json();
-      if (data.data && data.data.length > 0) {
+      if (data.data && data.data.length > 1) {
+        setPhoneMatches(data.data);
+        setFoundCustomerFromPhone(null);
+      } else if (data.data && data.data.length > 0) {
+        setPhoneMatches([]);
         setFoundCustomerFromPhone(data.data[0]);
       } else {
         setNewCustomer(prev => ({ ...prev, phone1: phoneSearchInput.trim() }));
+        setPhoneMatches([]);
         setFoundCustomerFromPhone(null);
         setSearchMode('new');
       }
@@ -1491,7 +1499,7 @@ export default function NewOrderPage() {
                 type="button"
                 className={searchMode === 'phone' ? 'tab active' : 'tab'}
                 style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
-                onClick={() => { setSearchMode('phone'); setFoundCustomerFromPhone(null); }}
+                onClick={() => { setSearchMode('phone'); setFoundCustomerFromPhone(null); setPhoneMatches([]); }}
               >
                 <svg className="icon"><use href="#i-phone" /></svg> לפי טלפון
               </button>
@@ -1513,7 +1521,7 @@ export default function NewOrderPage() {
               </button>
             </div>
 
-            {searchMode === 'phone' && !foundCustomerFromPhone && (
+            {searchMode === 'phone' && !foundCustomerFromPhone && phoneMatches.length === 0 && (
               <div className="card card-pad">
                 <div className="field">
                   <label htmlFor="cust-phone">מספר טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
@@ -1541,6 +1549,38 @@ export default function NewOrderPage() {
                 <p className="field hint" style={{ margin: '14px 0 0', textAlign: 'center' }}>
                   מספר שלא קיים במערכת יפתח כרטיס לקוח חדש עם המספר שהוזן.
                 </p>
+              </div>
+            )}
+
+            {searchMode === 'phone' && phoneMatches.length > 0 && !foundCustomerFromPhone && (
+              <div className="card card-pad">
+                <p className="field hint" style={{ margin: '0 0 12px' }}>
+                  נמצאו {phoneMatches.length} לקוחות עם המספר הזה - יש לבחור את הלקוח הנכון:
+                </p>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {phoneMatches.map(c => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className="btn btn-secondary"
+                      style={{ width: '100%', justifyContent: 'flex-start', textAlign: 'start' }}
+                      onClick={() => { setPhoneMatches([]); setFoundCustomerFromPhone(c); }}
+                    >
+                      <strong>{getCustomerFullName(c)}</strong>
+                      <span className="hint" style={{ marginInlineStart: '8px', color: 'var(--text-3)' }}>
+                        {[c.phone1, c.phone2, c.city].filter(Boolean).join(' · ')}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  style={{ width: '100%', marginTop: '10px' }}
+                  onClick={() => setPhoneMatches([])}
+                >
+                  אף אחד מאלו - חיפוש אחר
+                </button>
               </div>
             )}
 

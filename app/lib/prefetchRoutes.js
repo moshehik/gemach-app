@@ -146,8 +146,11 @@ export function buildRentalsListParams({
     forRentals: 'true'
   });
 
-  // סינון לפי מצב תצוגה פעיל רק כשאין חיפוש/סינון מתקדם — כמו בדף עצמו.
-  if (!search && !hasAdvFilters) {
+  // סינון לפי טאב (מושכר עכשיו/הוחזר וכו') חל תמיד יחד עם סינון מתקדם - הם שני תנאי
+  // AND נפרדים בשרת (ר' app/api/orders/route.js), לא סינונים חלופיים - סינון מתקדם לא
+  // אמור לבטל את הטאב שנבחר (ר' דיווח org2 60cb1a48). חיפוש טקסט חופשי כן ממשיך לבטל
+  // את הטאב כמו קודם - זו התנהגות נפרדת שלא דווחה כבעיה.
+  if (!search) {
     if (viewMode === 'rented') queryParams.append('activeOnly', 'true');
     else if (viewMode === 'rented_partial') queryParams.append('partiallyRentedOnly', 'true');
     else if (viewMode === 'returned') queryParams.append('returnedOnly', 'true');
