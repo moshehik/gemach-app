@@ -70,7 +70,7 @@ export default function NewOrderPage() {
   const [phoneSearchInput, setPhoneSearchInput] = useState('');
   const [isCheckingPhone, setIsCheckingPhone] = useState(false);
   const [foundCustomersFromPhone, setFoundCustomersFromPhone] = useState([]);
-  
+
   const [order, setOrder] = useState({
     customerId: '',
     selectedCustomer: null,
@@ -1560,7 +1560,7 @@ export default function NewOrderPage() {
                 type="button"
                 className={searchMode === 'phone' ? 'tab active' : 'tab'}
                 style={{ background: 'none', borderTop: 'none', borderInlineStart: 'none', borderInlineEnd: 'none', font: 'inherit', cursor: 'pointer' }}
-                onClick={() => { setSearchMode('phone'); setFoundCustomerFromPhone(null); }}
+                onClick={() => { setSearchMode('phone'); setFoundCustomerFromPhone(null); setPhoneMatches([]); }}
               >
                 <svg className="icon"><use href="#i-phone" /></svg> לפי טלפון
               </button>
