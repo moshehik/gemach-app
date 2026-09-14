@@ -1942,8 +1942,11 @@ export default function NewOrderPage() {
                         </select>
                       </div>
                       <div className="field">
-                        <label>עיר משלוח (לחישוב מחיר)</label>
-                        <input type="text" className="input" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))} placeholder="עיר" />
+                        <label htmlFor="delivery-city">עיר משלוח (לחישוב מחיר)</label>
+                        <input id="delivery-city" type="text" className="input" list="delivery-city-list" autoComplete="new-password" value={order.deliveryCity || ''} onChange={e => setOrder(prev => ({ ...prev, deliveryCity: e.target.value }))} placeholder="עיר" />
+                        <datalist id="delivery-city-list">
+                          {customerLocations.cities.map(c => <option key={c} value={c} />)}
+                        </datalist>
                       </div>
                       {settings.delivery_allow_address_override === 'true' && (
                         <div className="field">
