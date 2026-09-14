@@ -17,7 +17,10 @@ const buildMessage = (orders) => {
 // AppShell (רק כשמחוברים - authToken), כך שההתקנה הראשונה שלו אחרי ריענון מלא
 // (LoginScreen תמיד עושה window.location.href/reload בהצלחה - ר' LoginScreen.js)
 // כבר מספקת את "בכניסה" בלי הוק נפרד, ואז setInterval שעתי ממשיך מזה כל עוד
-// הטאב פתוח. window.alert מיורט על ידי PopupProvider לדיאלוג המותאם של המערכת.
+// הטאב פתוח. משתמשים ב-window.customConfirm (דיאלוג חוסם, לא נעלם לבד) ולא
+// ב-alert הרגיל - בדיוק כמו ב-UserMenu.js:handleLogout לאותה הודעה עצמה -
+// כי alert מיורט ל-toast שנעלם אוטומטית אחרי 4 שניות (PopupProvider.showAlert),
+// קצר מדי לרשימה של עשרות משפחות (דיווח 2bda255f, 2026-09-14).
 export default function OverdueRemindersWatcher({ authToken }) {
   const shownOnceRef = useRef(false);
 
@@ -32,7 +35,7 @@ export default function OverdueRemindersWatcher({ authToken }) {
         const data = await res.json();
         if (cancelled) return;
         if (Array.isArray(data.orders) && data.orders.length > 0) {
-          alert(buildMessage(data.orders));
+          await window.customConfirm(buildMessage(data.orders), 'הזמנות באיחור');
         }
       } catch (e) {
         // best-effort בלבד - לא חוסם כלום אם השרת/הרשת לא זמינים כרגע.
