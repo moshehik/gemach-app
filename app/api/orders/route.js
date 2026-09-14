@@ -5,8 +5,8 @@ import { recalculateOrderObligations, applyDeliveryCharge } from '../../../lib/p
 import { checkAuth } from '../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
-import { getHebrewDateString } from '../../../lib/hebrewDate';
-import { validateOrderItemsAvailability } from '../../../lib/inventory';
+import { getHebrewDateString, getHebrewWeekdayLabel, subtractSkippingWeekendsAndChag } from '../../../lib/hebrewDate';
+import { validateOrderItemsAvailability, addDaysSkippingWeekends } from '../../../lib/inventory';
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
 import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders, deriveConfirmedOrderStatus, DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
@@ -923,7 +923,12 @@ export async function POST(request) {
     // עם עדכון הזמנה קיימת (PUT /api/orders/[id]), ר' lib/pricingEngine.js
     await applyDeliveryCharge(order.orderId);
 
-    // 5 - מייל אוטומטי בעת יצירת הזמנה (אם מופעל בהגדרות) - כולל פרטי לקיחה והחזרה
+    // 5 - מייל אוטומטי בעת יצירת הזמנה (אם מופעל בהגדרות) - כולל פרטי לקיחה והחזרה.
+    // דיווח 70554835 (2026-09-14, org2): המייל הזה היה נתיב-שליחה נפרד ומצומצם משמעותית
+    // מהמייל הידני "מייל הזמנה" (app/api/orders/[id]/email/route.js) - חסרו לו דגם/מידה
+    // אמיתיים לכל פריט, שעות (רק תאריך עברי), ופירוט סכום לתשלום (רק totalAmount גולמי
+    // בלי חיוב/שולם/יתרה). תוקן כאן לכלול את אותו מידע, בלי לשכפל את כל תבנית ה-HTML
+    // המלאה של המייל הידני (זה מייל טקסט/HTML פשוט, לא PDF מצורף).
     try {
       const autoEmailSetting = await getCachedSetting('auto_email_on_order_create');
       const email = updatedOrder?.customer?.email && String(updatedOrder.customer.email).includes('@')
@@ -931,17 +936,43 @@ export async function POST(request) {
         : null;
       if (autoEmailSetting?.value === 'true' && email) {
           const hebrewDate = updatedOrder.eventDateHebrew || (updatedOrder.eventDate ? getHebrewDateString(updatedOrder.eventDate) : '');
-          const toDateStr = updatedOrder.toDate ? getHebrewDateString(updatedOrder.toDate) : '';
-          const fromDateStr = updatedOrder.fromDate ? getHebrewDateString(updatedOrder.fromDate) : '';
-          // לקיחה/החזרה: fromDate או יומיים לפני האירוע; החזרה: toDate/returnDate או אחרי האירוע
           const gmachName = (await getCachedSetting('gmach_name'))?.value || 'גמ"ח שמלות';
           const gmachAddress = (await getCachedSetting('gmach_address'))?.value || '';
           const gmachPhone = (await getCachedSetting('gmach_phone'))?.value || '';
-          const itemsList = (updatedOrder.items || []).map(i => i.description || i.sizeText || `פריט`).join(', ') || 'ללא פירוט';
+          const pickupHours = (await getCachedSetting('standard_pickup_hours'))?.value || '20:00-21:30';
+          const returnHour = (await getCachedSetting('standard_return_hour'))?.value || '13:00';
+
+          // מועד לקיחה/החזרה - אותו חישוב בדיוק כמו app/api/orders/[id]/email/route.js
+          // ו-app/print/order/page.js: לקיחה = יומיים-עסקים לפני האירוע (מדלג שישי/שבת/חג),
+          // החזרה = toDate/returnDate או יום אחרי האירוע (מדלג סופ"ש).
+          const pickupDate = updatedOrder.eventDate ? subtractSkippingWeekendsAndChag(updatedOrder.eventDate, 2) : null;
+          const returnByDate = updatedOrder.toDate || updatedOrder.returnDate
+            ? new Date(updatedOrder.toDate || updatedOrder.returnDate)
+            : (updatedOrder.eventDate ? addDaysSkippingWeekends(updatedOrder.eventDate, 1) : null);
+          const pickupLine = pickupDate ? `ביום ${getHebrewWeekdayLabel(pickupDate)} ${getHebrewDateString(pickupDate)} בשעה ${pickupHours}` : '';
+          const returnLine = returnByDate ? `${getHebrewWeekdayLabel(returnByDate)} ${getHebrewDateString(returnByDate)} עד השעה ${returnHour}` : '';
+
+          // דגם ומידה אמיתיים לכל פריט (לא רק description/sizeText הגולמיים שנשמרו
+          // בזמן ההזמנה) - שאילתה נפרדת עם dressItem->dress, לא נוגעת ב-updatedOrder.items
+          // שכבר שימש למעלה את יומן הביקורת בצורתו הפשוטה.
+          const itemsWithDress = await prisma.orderItem.findMany({
+            where: { orderId: updatedOrder.orderId, isDeleted: false },
+            include: { dressItem: { include: { dress: true } } }
+          });
+          const itemsList = itemsWithDress.map(i => {
+            const modelName = i.dressItem?.dress?.name || i.description || 'פריט';
+            const sizeText = i.sizeText || i.dressItem?.sizeText;
+            return sizeText ? `${modelName} (מידה: ${sizeText})` : modelName;
+          }).join(', ') || 'ללא פירוט';
+
+          const totalObligations = (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + o.amount, 0);
+          const totalPayments = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + p.amount, 0);
+          const balance = Math.max(0, totalObligations - totalPayments);
+
           // fire-and-forget - לא חוסם את תשובת ה-API
           const { sendSystemEmail } = await import('@/lib/mailer');
-          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${fromDateStr ? `מועד לקיחה: ${fromDateStr}\n` : ''}${toDateStr ? `מועד החזרה: ${toDateStr}\n` : ''}פריטים: ${itemsList}\nסה"כ לתשלום: ₪${updatedOrder.totalAmount || 0}\nכתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
-          const html = `<div dir="rtl" style="font-family:Arial;line-height:1.6"><h2>הזמנה #${updatedOrder.orderId} - ${gmachName}</h2><p>שלום ${updatedOrder.customer.firstName || ''},</p><p>הזמנתך נקלטה בהצלחה.</p><p><strong>תאריך אירוע:</strong> ${hebrewDate}${fromDateStr ? `<br/><strong>לקיחה:</strong> ${fromDateStr}` : ''}${toDateStr ? `<br/><strong>החזרה:</strong> ${toDateStr}` : ''}</p><p><strong>פריטים:</strong> ${itemsList}</p><p><strong>סה"כ לתשלום:</strong> ₪${updatedOrder.totalAmount || 0}</p><p>כתובת איסוף: ${gmachAddress}<br/>טלפון: ${gmachPhone}</p></div>`;
+          const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${pickupLine ? `קבלת השמלות: ${pickupLine}\n` : ''}${returnLine ? `החזרת השמלות: ${returnLine}\n` : ''}פריטים: ${itemsList}\nסה"כ לחיוב: ₪${totalObligations}\nסה"כ שולם: ₪${totalPayments}\nיתרה לתשלום: ₪${balance}\nכתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
+          const html = `<div dir="rtl" style="font-family:Arial;line-height:1.6"><h2>הזמנה #${updatedOrder.orderId} - ${gmachName}</h2><p>שלום ${updatedOrder.customer.firstName || ''},</p><p>הזמנתך נקלטה בהצלחה.</p><p><strong>תאריך אירוע:</strong> ${hebrewDate}${pickupLine ? `<br/><strong>קבלת השמלות:</strong> ${pickupLine}` : ''}${returnLine ? `<br/><strong>החזרת השמלות:</strong> ${returnLine}` : ''}</p><p><strong>פריטים:</strong> ${itemsList}</p><p><strong>סה"כ לחיוב:</strong> ₪${totalObligations}<br/><strong>סה"כ שולם:</strong> ₪${totalPayments}<br/><strong>יתרה לתשלום:</strong> ₪${balance}</p><p>כתובת איסוף: ${gmachAddress}<br/>טלפון: ${gmachPhone}</p></div>`;
           sendSystemEmail({ to: email, subject: `הזמנה #${updatedOrder.orderId} - ${gmachName}`, body, html, customerId: updatedOrder.customerId }).catch(e => console.error('auto_email_on_order_create failed', e));
       }
     } catch (e) { console.error('auto email check failed', e); }
