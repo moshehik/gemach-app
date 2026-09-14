@@ -13,6 +13,7 @@ import useDebounce from '@/hooks/useDebounce';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildRentalsListParams, defaultRentalsAdvFilters } from '@/app/lib/prefetchRoutes';
 import { getLateReturnInfo } from '@/lib/lateReturn';
+import RentedPastEventWidget from '@/app/components/RentedPastEventWidget';
 
 // שמור על 50 רשומות בטעינה - עקבי עם app/orders/page.js ו-app/refunds/page.js.
 const PAGE_SIZE = 50;
@@ -347,6 +348,8 @@ export default function RentalsPage() {
           />
         </div>
       </div>
+
+      {activeTabGroup === 'rentals' && <RentedPastEventWidget />}
 
       {/* סרגל חיפוש: חיפוש חופשי (הזמנה/לקוח/דגם) + מעבר לחיפוש חכם (AI) + שאלות סטטיסטיקה, במסגרת אחת */}
       <div className="toolbar">
