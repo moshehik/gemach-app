@@ -107,6 +107,21 @@ The repo lives under `C:\Users\moshe\Desktop\גמח שמלות חדש\` — insi
 ## ErrorReportReply "open question" flag (2026-09-10)
 `ErrorReportReply.isQuestion` (boolean, default `false`) marks a reply as an open question that genuinely blocks progress until the other side answers, as opposed to a plain status/log reply ("ראיתי, בודק" / "תוקן"). Set explicitly — never inferred from wording. `app/components/ErrorReportButton.js` uses the *last* reply's `isQuestion` to tint a thread's list row `var(--warning-tint)` and show a "ממתין לתשובה" badge/banner; the reply form has a matching checkbox. The automated fix-reports agent sets it via `scripts/error-report-reply.js --question` (see that script's header and `.claude/commands/fix-reports.md` step "התהליך, לכל דיווח פתוח בנפרד"). The column was added to **both** gemachs' DBs (`prisma db push` for the main one, `scratch/add_is_question_column_org2.js` for Neve Yaakov's separate DB — `prisma db push` only ever writes to whichever single DB `DATABASE_URL` points at). Full history: `docs/fix-protocol-error-reports.md` section 9.
 
+## Pending branch audit 2026-09-14 - unauthenticated endpoints still live
+`fix/security-and-data-integrity-audit` (unmerged, no PR, 1 commit `f7f1757..HEAD`)
+fixes real, currently-live auth gaps: `app/api/orders/[id]/route.js` (GET/PUT/DELETE)
+and `POST /api/employees` (including setting `roleId`) have **zero** `checkAuth`/
+`checkPageAccess` calls on `main` today - verified directly, not just trusted from
+the branch's commit message. The branch also adds `lib/sqlGuard.js` (blocks non-
+SELECT/multi-statement SQL before Gemini-generated queries reach
+`$queryRawUnsafe` in `app/api/ai/*`). It's based 185 commits behind current `main`
+and merging it hits 9 real content conflicts (not just noise) - needs careful
+file-by-file resolution, not a blind merge. Two other stale branches found in the
+same audit (`fix/data-explorer-override-collision`, `fix/neve-yaakov-round3-2026-09-08`)
+are **superseded/obsolete** - their content is either already on `main` via a
+different commit or fully replaced by the redesign-v2 CSS-vars work; do not merge
+either. Full writeup: `docs/fix-protocol-error-reports.md` section 11.
+
 ## Agent PR-approval digest email (2026-09-10)
 A twice-daily email (target ~17:00 and ~00:00 Israel time) lists open GitHub PRs the automated fix-reports agent opened (branch prefix `fix-reports/`) that are still waiting for a manual merge — combined across both gemachs in one email, since it's one shared repo and PRs aren't split per org. Logic lives in [lib/agentDigest.js](lib/agentDigest.js); the Vercel Cron endpoint is `app/api/cron/agent-digest/route.js`, wired from **two** `vercel.json` cron entries (`?slot=evening` at `30 14 * * *` UTC, `?slot=midnight` at `30 21 * * *` UTC). Because Vercel Cron schedules are fixed UTC and don't shift for Israel's DST, those two UTC anchors are a deliberate summer/winter midpoint — actual send time can drift up to ~30 minutes either side of the configured hour depending on the season; this is a known, accepted trade-off, not a bug.
 - Reuses the existing `GH_DISPATCH_TOKEN`/`GH_DISPATCH_REPO` Vercel env vars (already used by `app/api/error-report/route.js` for `repository_dispatch`) to list PRs via the GitHub REST API — no new secret. Not yet live-verified end-to-end (no valid token available locally when this was built; verify the first real send after deploy).
