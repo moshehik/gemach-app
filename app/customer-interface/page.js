@@ -33,10 +33,19 @@ function KioskThumbImg({ model }) {
   );
 }
 
+// כמה דגמים חדשים נשמרו עם השם הזמני "ללא שם" (עובד שהזין אותו כדי לעקוף אימות
+// שדה-חובה בטרם החליט על שם אמיתי) - זה לא שם תיאורי, אז ללקוח עדיף להציג את
+// מספר הדגם (כמו שכבר קורה לדגמים בלי שם תיאורי בכלל) מאשר את המחרוזת המילולית.
+function getModelDisplayName(model) {
+  const rawName = (model.name || '').trim();
+  if (rawName && !/^ללא שם\b/.test(rawName)) return rawName;
+  return model.barcodePrefix ? String(model.barcodePrefix) : rawName;
+}
+
 // עיגול פרופיל לדגם: תמונה אם קיימת (ומותרת), אחרת אותיות הדגם —
 // אות ראשונה משתי המילים הראשונות, או שתי האותיות הראשונות בשם של מילה אחת.
 function ModelAvatar({ model, size, showImage }) {
-  const name = (model.name || '').trim();
+  const name = getModelDisplayName(model);
   const parts = name.split(/\s+/).filter(Boolean);
   // הרבה דגמים (בעיקר מיובאים מאקסס) נקראים רק לפי הקוד המספרי שלהם (למשל "316"),
   // בלי שם תיאורי אמיתי - עבורם 2 תווים ראשונים חותכים ספרה וגורמים לבלבול (306
@@ -1361,7 +1370,7 @@ export default function CustomerInventoryViewer() {
                             <td style={{ width: '58px' }}>
                               <ModelAvatar model={model} size="sm" showImage={settings.hide_dress_images !== 'true'} />
                             </td>
-                            <td className="ka-cell-primary">{model.name}</td>
+                            <td className="ka-cell-primary">{getModelDisplayName(model)}</td>
                             <td className="ka-cell-muted">{model.barcodePrefix ? `#${model.barcodePrefix}` : '—'}</td>
                             <td>
                               {model.priceCategory ? <span className="ka-badge ka-badge-neutral">{model.priceCategory}</span> : '—'}
@@ -1400,7 +1409,7 @@ export default function CustomerInventoryViewer() {
                         <ModelAvatar model={model} size="md" showImage={settings.hide_dress_images !== 'true'} />
                         <div className="ka-rmeta">
                           <h3>
-                            {model.name}
+                            {getModelDisplayName(model)}
                             {model.barcodePrefix && <span className="ka-badge ka-badge-neutral">#{model.barcodePrefix}</span>}
                             {model.priceCategory && model.priceCategory !== 'כללי' && <span className="ka-badge ka-badge-primary">{model.priceCategory}</span>}
                           </h3>
@@ -1449,7 +1458,7 @@ export default function CustomerInventoryViewer() {
                         <ModelAvatar model={model} size="lg" showImage={settings.hide_dress_images !== 'true'} />
 
                         <h3>
-                          {model.name}
+                          {getModelDisplayName(model)}
                           {model.priceCategory && model.priceCategory !== 'כללי' && <span className="ka-badge ka-badge-primary">{model.priceCategory}</span>}
                         </h3>
                         <div className="ka-dress-code">{model.barcodePrefix ? `#${model.barcodePrefix}` : '—'}{model.priceCategory ? ` · ${model.priceCategory}` : ''}</div>
