@@ -1306,15 +1306,6 @@ export default function NewOrderPage() {
 
   const selectedCustomerName = getCustomerFullName(order.selectedCustomer);
 
-  // רשימת "ערים שאנחנו מספקים אליהן משלוח" - נשלפת מהמפתחות של delivery_price_by_city
-  // (אותו JSON שכבר קובע את מחיר המשלוח לפי עיר, ב-lib/pricingEngine.js). אם ההגדרה
-  // ריקה/לא תקינה (כמו כברירת מחדל בכל גמח חדש) נופלים חזרה לשדה טקסט חופשי כמו קודם,
-  // כדי לא לחסום את הזנת עיר המשלוח לפני שההגדרה מולאה.
-  let deliveryCityOptions = [];
-  try {
-    deliveryCityOptions = Object.keys(JSON.parse(settings.delivery_price_by_city || '{}'));
-  } catch {}
-
   // ===== מצב תצוגה של המסך החדש (הודעות, אישור יציאה) =====
   const [flash, setFlash] = useState(null);
   const [showExitConfirm, setShowExitConfirm] = useState(false);
