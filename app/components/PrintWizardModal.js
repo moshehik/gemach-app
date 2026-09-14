@@ -78,13 +78,15 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
         alert('יש לבחור תאריך.');
         return;
       }
-      query = `date=${startDate}`;
+      // mode=event: מדפיס את כל ההזמנות שהאירוע שלהן חל בתאריך הזה עצמו -
+      // לא הזמנות שההכנה שלהן יוצאת לתאריך הזה (ר' דיווח df17fb16).
+      query = `date=${startDate}&mode=event`;
     } else if (dateMode === 'custom') {
       if (!startDate || !endDate) {
         alert('יש להזין תאריך התחלה וסיום.');
         return;
       }
-      query = `from=${startDate}&to=${endDate}`;
+      query = `from=${startDate}&to=${endDate}&mode=event`;
     } else {
       // 'prep_today' - תואם את הפורמט (en-CA = YYYY-MM-DD) שכבר משמש לקיבוץ הזמנות
       // לפי תאריך ב-app/board/page.js.
@@ -229,7 +231,7 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
 
           {reportType === 'order_prep_by_date' ? (
             <div className="field" style={{ background: 'var(--surface-alt)', borderRadius: 'var(--radius-md)', padding: '14px', border: '1px solid var(--border)' }}>
-              <label>תאריך ההכנה</label>
+              <label>{dateMode === 'prep_today' ? 'תאריך ההכנה' : 'תאריך האירוע'}</label>
               <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', marginBottom: '12px' }}>
                 {PREP_DATE_MODE_OPTIONS.map(opt => (
                   <div className="checkbox-row" key={opt.value}>
@@ -254,22 +256,32 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
                 </div>
               )}
               {dateMode === 'single' && (
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label>תאריך</label>
-                  <HebrewDatePicker value={startDate} onChange={setStartDate} />
-                </div>
-              )}
-              {dateMode === 'custom' && (
-                <div className="form-grid">
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>מתאריך</label>
+                <>
+                  <div className="field" style={{ marginBottom: '12px' }}>
+                    <label>תאריך</label>
                     <HebrewDatePicker value={startDate} onChange={setStartDate} />
                   </div>
-                  <div className="field" style={{ marginBottom: 0 }}>
-                    <label>עד תאריך</label>
-                    <HebrewDatePicker value={endDate} onChange={setEndDate} />
+                  <div className="hint">
+                    יודפסו כל ההזמנות שהאירוע שלהן חל בתאריך שנבחר (ללא קשר למועד ההכנה שלהן).
                   </div>
-                </div>
+                </>
+              )}
+              {dateMode === 'custom' && (
+                <>
+                  <div className="form-grid">
+                    <div className="field" style={{ marginBottom: 0 }}>
+                      <label>מתאריך</label>
+                      <HebrewDatePicker value={startDate} onChange={setStartDate} />
+                    </div>
+                    <div className="field" style={{ marginBottom: 0 }}>
+                      <label>עד תאריך</label>
+                      <HebrewDatePicker value={endDate} onChange={setEndDate} />
+                    </div>
+                  </div>
+                  <div className="hint">
+                    יודפסו כל ההזמנות שהאירוע שלהן חל בטווח שנבחר (ללא קשר למועד ההכנה שלהן).
+                  </div>
+                </>
               )}
             </div>
           ) : (
