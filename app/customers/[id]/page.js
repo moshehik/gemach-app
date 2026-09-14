@@ -35,6 +35,8 @@ export default function CustomerPage({ params }) {
   // 3/6/7 - חובת מייל/כתובת מלאה נשלטת ע"י ההגדרות require_customer_email/require_full_address
   // (אותו דגם שכבר קיים ב-app/orders/new/page.js עבור הוספת לקוח מהירה בתוך הזמנה).
   const [settings, setSettings] = useState({});
+  // הצעות עיר/רחוב מתוך לקוחות קיימים - אותו דגם שכבר קיים ב-app/orders/new/page.js
+  const [customerLocations, setCustomerLocations] = useState({ cities: [], streets: [] });
 
   useEffect(() => {
     fetchSharedJson('/api/me', { ttl: TTL.STATIC })
@@ -51,6 +53,10 @@ export default function CustomerPage({ params }) {
           setSettings(data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {}));
         }
       })
+      .catch(() => {});
+
+    fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
+      .then(data => setCustomerLocations({ cities: data?.cities || [], streets: data?.streets || [] }))
       .catch(() => {});
   }, []);
 
@@ -292,11 +298,17 @@ export default function CustomerPage({ params }) {
             </p>
             <div className="field">
               <label>עיר {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-              <input type="text" className="input" name="city" autoComplete="off" value={customer.city || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
+              <input type="text" className="input" name="city" list="customer-city-list" autoComplete="off" value={customer.city || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
+              <datalist id="customer-city-list">
+                {customerLocations.cities.map(c => <option key={c} value={c} />)}
+              </datalist>
             </div>
             <div className="field">
               <label>רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-              <input type="text" className="input" name="street" autoComplete="off" value={customer.street || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
+              <input type="text" className="input" name="street" list="customer-street-list" autoComplete="off" value={customer.street || ''} onChange={handleChange} required={settings.require_full_address === 'true'} />
+              <datalist id="customer-street-list">
+                {customerLocations.streets.map(s => <option key={s} value={s} />)}
+              </datalist>
             </div>
             <div className="field">
               <label>מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
@@ -353,6 +365,7 @@ export default function CustomerPage({ params }) {
               isHeadManagement={isHeadManagement}
               onUnblock={handleUnblockCustomer}
               settings={settings}
+              customerLocations={customerLocations}
             />
           ),
           orders: (
