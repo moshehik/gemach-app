@@ -488,8 +488,13 @@ export default function PrintOrderPage() {
 
               {/* בקשה c5032b47 (2026-09-10): בנוסף לתיבת ההערות למעלה (ליד פרטי הלקוח,
                   מבקשת יא אלול), חזרה על ההערות כאן בתחתית העמוד - כדי שהצוות שמכין/מחזיר
-                  את השמלות ורגיל להסתכל בתחתית הדף לא יפספס אותן. */}
-              {ord.notes && (
+                  את השמלות ורגיל להסתכל בתחתית הדף לא יפספס אותן.
+                  בהדפסה מרוכזת (orderIdList.length > 1) הערות ההזמנה כבר מוצגות פעמיים
+                  למעלה (בשורת פרטי הלקוח ובתיבת order-notes-box הראשונה) - החזרה
+                  השלישית כאן מיותרת שם וגוזלת בדיוק את השורות שדוחפות הזמנה עם הערות
+                  + משלוח לעמוד שני (337e5938/075858d6, 2026-09-14). בהדפסת הזמנה בודדת
+                  (orderIdList.length === 1) לא נגעתי - נשאר כמו קודם. */}
+              {ord.notes && orderIdList.length === 1 && (
                 <div className="order-notes-box">
                   <strong>הערות להזמנה: </strong>{ord.notes}
                 </div>
@@ -633,6 +638,32 @@ export default function PrintOrderPage() {
           }
           .batch-print .summary-section {
             margin-top: 8px !important;
+            margin-bottom: 8px !important;
+          }
+          /* 337e5938/075858d6 (2026-09-14): הזמנה עם גם הערות וגם משלוח עדיין זלגה
+             לעמוד שני - מעבר להסרת כפילות ההערות למעלה, דוחסים גם את שאר האלמנטים
+             שנפוצים בהזמנת משלוח (תיבת הערות, print-table, כותרת return-details-box,
+             footer) שלא נדחסו קודם. */
+          .batch-print .print-table th,
+          .batch-print .print-table td {
+            padding: 6px 10px !important;
+          }
+          .batch-print .print-table {
+            margin-bottom: 10px !important;
+          }
+          .batch-print .order-notes-box {
+            padding: 6px 10px !important;
+            margin: 0 0 8px 0 !important;
+            font-size: 13px !important;
+          }
+          .batch-print .return-details-box {
+            padding: 6px 10px !important;
+            margin-bottom: 8px !important;
+            font-size: 13px !important;
+          }
+          .batch-print .print-footer {
+            margin-top: 12px !important;
+            padding-top: 6px !important;
           }
         }
         .bsd {
