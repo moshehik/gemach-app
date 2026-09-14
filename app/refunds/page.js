@@ -467,9 +467,9 @@ export default function RefundsPage() {
         body: JSON.stringify({ isExecuted: true })
       });
 
-      if (!res.ok) throw new Error('Failed to execute refund');
-
       const updatedRefund = await res.json();
+      if (!res.ok) throw new Error(updatedRefund?.error || 'Failed to execute refund');
+
       setRefunds(prev => prev.map(r => r.id === id ? { ...r, ...updatedRefund } : r));
       alert('הזיכוי סומן כבוצע בהצלחה והתעדכן בכרטיס ההזמנה.');
     } catch (err) {

@@ -376,7 +376,9 @@ export async function GET(request) {
               firstName: true,
               lastName: true,
               phone1: true,
-              phone2: true
+              phone2: true,
+              email: true,
+              city: true
             }
           },
           items: {
@@ -580,7 +582,11 @@ export async function GET(request) {
           };
         }),
         customerName: order.customer ? `${order.customer.firstName || ''} ${order.customer.lastName || ''}`.trim() : 'לא ידוע',
-        customerPhone: order.customer ? (order.customer.phone1 || order.customer.phone2 || '') : ''
+        customerPhone: order.customer ? (order.customer.phone1 || order.customer.phone2 || '') : '',
+        // מוסיפים לצורך ייצוא אקסל של הזמנות מסוננות לפי תאריך - דיווח לקוח (הגמח הראשי):
+        // "צריך דוח של מיילים של לקוחות מיום מסוים... צריך פילוח ופרטי לקוחות"
+        customerEmail: order.customer?.email || '',
+        customerCity: order.customer?.city || ''
       };
     });
 

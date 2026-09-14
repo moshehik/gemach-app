@@ -116,7 +116,14 @@ export async function POST(request) {
     if (!customerId || !amount) {
       return NextResponse.json({ error: 'חובה להזין לקוח וסכום זיכוי' }, { status: 400 });
     }
-    
+
+    // דיווח לקוח (הגמח הראשי): "בזיכוי צריך להיות מוגדר שדה חובה בבנק ובסניף הוא נותן
+    // לסגור ולבצע בלי" - הטופס תמיד מציג את שדות הבנק (אין בחירת אופן זיכוי חלופי כמו
+    // מזומן), אז בנק וסניף נדרשים בכל בקשת זיכוי.
+    if (!bankName?.trim() || !bankBranch?.trim()) {
+      return NextResponse.json({ error: 'חובה להזין בנק וסניף לזיכוי' }, { status: 400 });
+    }
+
     const newRefund = await prisma.refund.create({
       data: {
         customerId,

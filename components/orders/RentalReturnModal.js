@@ -702,6 +702,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
                   triggerClassName="btn btn-ghost btn-icon-only btn-sm"
                   triggerTitle="הדפסה ומייל"
                   preConfirm={handlePrintPreConfirm}
+                  skipRegulationsCheck
                 />
                 <button data-agy-id="rentalreturnmodal_button_1" type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={attemptCloseCard} title="סגור חלון" aria-label="סגור חלון">
                   <svg className="icon"><use href="#i-x" /></svg>
