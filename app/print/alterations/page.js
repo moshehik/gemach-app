@@ -230,9 +230,13 @@ export default function PrintAlterationsPage() {
           background-color: #fafafa !important;
         }
 
-        /* Hide global layout elements on screen */
+        /* Hide global layout elements on screen. See app/print/order/page.js for why
+           .topbar was added - the old selectors below predate app/components/AppShell.js's
+           .app-shell/.topbar structure and no longer hide the topbar (menu buttons + profile
+           icon) on its own. */
         nav.navbar,
         .global-sidebar-container,
+        .topbar,
         .ai-floating-widget,
         [class*="sidebar"],
         [id*="sidebar"] {
@@ -263,6 +267,7 @@ export default function PrintAlterationsPage() {
             print-color-adjust: exact;
           }
           nav.navbar,
+          .topbar,
           .dev-env-container,
           .offline-indicator,
           .ai-floating-widget {

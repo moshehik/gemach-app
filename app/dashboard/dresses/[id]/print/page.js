@@ -90,9 +90,13 @@ export default function PrintDressCard() {
             overflow: visible !important;
             color: black !important;
           }
-          /* Hide layout wrappers */
-          nav.navbar, 
-          .dev-env-container, 
+          /* Hide layout wrappers. See app/print/order/page.js for why .sidebar/.topbar
+             were added - the old nav.navbar selector predates AppShell's current
+             .app-shell/.sidebar/.topbar structure and no longer matches it on its own. */
+          nav.navbar,
+          .sidebar,
+          .topbar,
+          .dev-env-container,
           .offline-indicator,
           .ai-floating-widget,
           .popup-overlay,

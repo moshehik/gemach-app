@@ -472,6 +472,15 @@ export default function PrintOrderPage() {
                 </div>
               )}
 
+              {/* בקשה c5032b47 (2026-09-10): בנוסף לתיבת ההערות למעלה (ליד פרטי הלקוח,
+                  מבקשת יא אלול), חזרה על ההערות כאן בתחתית העמוד - כדי שהצוות שמכין/מחזיר
+                  את השמלות ורגיל להסתכל בתחתית הדף לא יפספס אותן. */}
+              {ord.notes && (
+                <div className="order-notes-box">
+                  <strong>הערות להזמנה: </strong>{ord.notes}
+                </div>
+              )}
+
               <div className="print-footer">
                 הופק על ידי מערכת גמ&quot;ח שמלות בתאריך: {getHebrewDateString(new Date())}
               </div>
@@ -491,9 +500,15 @@ export default function PrintOrderPage() {
           background-color: #fafafa !important;
         }
 
-        /* Hide global layout elements on screen */
+        /* Hide global layout elements on screen. app/components/AppShell.js renders the
+           current layout as .app-shell > .sidebar + .main > .topbar - the old
+           nav.navbar/.global-sidebar-container selectors below predate that shell and no
+           longer match anything, which let .topbar (menu buttons + UserMenu profile icon)
+           leak into printed output (report c5032b47, 2026-09-10). Kept the stale selectors
+           too in case another layout variant still uses them. */
         nav.navbar,
         .global-sidebar-container,
+        .topbar,
         .ai-floating-widget,
         [class*="sidebar"],
         [id*="sidebar"] {
