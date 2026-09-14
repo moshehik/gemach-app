@@ -36,9 +36,11 @@ function KioskThumbImg({ model }) {
 // כמה דגמים חדשים נשמרו עם השם הזמני "ללא שם" (עובד שהזין אותו כדי לעקוף אימות
 // שדה-חובה בטרם החליט על שם אמיתי) - זה לא שם תיאורי, אז ללקוח עדיף להציג את
 // מספר הדגם (כמו שכבר קורה לדגמים בלי שם תיאורי בכלל) מאשר את המחרוזת המילולית.
+// שימי לב: \b ב-JS לא עובד על אותיות עברית (\w הוא ASCII בלבד) אז בדיקת regex עם \b
+// אף פעם לא תואמת כאן - ר' דיווח dd108f1f/13ca5dae, הבדיקה הקודמת לא זיהתה כלום.
 function getModelDisplayName(model) {
   const rawName = (model.name || '').trim();
-  if (rawName && !/^ללא שם\b/.test(rawName)) return rawName;
+  if (rawName && !rawName.startsWith('ללא שם')) return rawName;
   return model.barcodePrefix ? String(model.barcodePrefix) : rawName;
 }
 
@@ -756,7 +758,7 @@ export default function CustomerInventoryViewer() {
 
       tableRows += `
         <tr>
-          <td style="font-weight:bold;">${model.name || ''}</td>
+          <td style="font-weight:bold;">${getModelDisplayName(model)}</td>
           <td>${model.barcodePrefix || model.id || ''}</td>
           <td style="font-weight:bold;">${totalAvailable} מתוך ${totalItems}</td>
           <td>${sizesHtml || 'אין מלאי'}</td>
@@ -1551,7 +1553,7 @@ export default function CustomerInventoryViewer() {
             <div className="ka-modal-head">
               <span className="ka-modal-head-title">
                 <svg className="icon"><use href="#i-bag" /></svg>
-                הזמנות - {ordersModalModel?.name} {ordersModalSize ? `(מידה ${ordersModalSize})` : ''}
+                הזמנות - {ordersModalModel ? getModelDisplayName(ordersModalModel) : ''} {ordersModalSize ? `(מידה ${ordersModalSize})` : ''}
               </span>
               <button data-agy-id="close_orders_modal_btn" type="button" className="ka-icon-btn" style={{ width: '32px', height: '32px' }} title="סגירה" onClick={() => setShowOrdersModal(false)}>
                 <svg className="icon" style={{ width: '15px', height: '15px' }}><use href="#i-x" /></svg>

@@ -920,7 +920,7 @@ export default function OrdersPage() {
       {showPrintWizard && (
         <PrintWizardModal
           onClose={() => setShowPrintWizard(false)}
-          defaultReportType="orders_all"
+          defaultReportType="order_prep_by_date"
           getCurrentOrderIds={getCurrentFilteredOrderIds}
         />
       )}
