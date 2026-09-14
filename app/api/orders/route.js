@@ -178,7 +178,12 @@ export async function GET(request) {
       conditions.push({
         OR: [
           { eventDate: null },
-          { eventDate: { lte: smartSortCutoff } }
+          { eventDate: { lte: smartSortCutoff } },
+          // דיווח נווה יעקב (חדוה ברבי) - פריט שכבר נלקח בפועל (למשל איסוף מוקדם
+          // ללקוח מרוחק) הוא השכרה פעילה שצריכה מעקב עד החזרה, גם אם תאריך
+          // האירוע רחוק בהרבה מחלון ה-10 הימים - החלון נועד להסתיר הזמנות
+          // עתידיות שעוד לא נלקחו, לא להסתיר פריטים שכבר יצאו בפועל.
+          { items: { some: { isDeleted: false, isTaken: true, isReturned: false } } }
         ]
       });
     }
