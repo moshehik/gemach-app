@@ -3,17 +3,25 @@ import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { sendSystemEmail } from '@/lib/mailer';
 import { getHebrewDateString } from '@/lib/hebrewDate';
+import { getLateReturnInfo } from '@/lib/lateReturn';
 
 export const dynamic = 'force-dynamic';
 
 // Cron יומי: מופעל ע"י Vercel Cron (vercel.json) או ידנית GET /api/cron/daily
 // מכבד את כל מתגי האוטומציה - לא שולח אם ההגדרה כבויה.
 export async function GET(request) {
-  const secret = request.headers.get('x-cron-secret') || new URL(request.url).searchParams.get('secret');
+  // Vercel Cron שולח את הסוד בכותרת הסטנדרטית Authorization: Bearer - לא רק
+  // x-cron-secret/?secret. דיווח d22ef2ca (נווה יעקב): התנאי הזה תמיד היה "ריק" -
+  // גם כשהוגדר CRON_SECRET, קריאה עם סוד שגוי/חסר פשוט המשיכה לרוץ כרגיל בלי
+  // לחסום כלום, כך שכל קריאה חוזרת ל-URL הזה (לא רק ה-cron היומי המתוזמן) הפעילה
+  // שליחת מיילים בפועל, בכל שעה. עכשיו נאכף בפועל אם CRON_SECRET/VERCEL_CRON_SECRET
+  // מוגדר; אם לא מוגדר בכלל - נשאר פתוח לקריאות פנימיות כמו קודם, בלי שינוי התנהגות.
+  const authHeader = request.headers.get('authorization') || '';
+  const bearerSecret = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : null;
+  const secret = request.headers.get('x-cron-secret') || bearerSecret || new URL(request.url).searchParams.get('secret');
   const expected = process.env.CRON_SECRET || process.env.VERCEL_CRON_SECRET;
-  // אם מוגדר CRON_SECRET - חובה להתאים, אחרת פתוח לקריאות פנימיות (כמו שאר /api/cron בפרויקט)
   if (expected && secret !== expected) {
-    // אך עדיין מאפשר קריאה ממנהל מחובר (checkAuth) - לקיצור דרך בינתיים נפתח
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const settings = await getAllCachedSettings();
@@ -75,25 +83,39 @@ export async function GET(request) {
     } catch (e) { results.errors.push(`dailyReport: ${e.message}`); }
   }
 
-  // 9 - מייל למאחרים
+  // 9 - מייל למאחרים - דיווח d22ef2ca (נווה יעקב): "יותר מדי מיילי איחור, לא בזמן
+  // המתאים". שתי בעיות נמצאו:
+  // 1. "איחור" כאן הוגדר בעבר כ-eventDate<today בלבד (למעשה מהיום שאחרי האירוע) -
+  //    בעוד שבכל שאר המערכת (lib/lateReturn.js, גם ב-RentalReturnModal וגם ב-
+  //    app/rentals/page.js) "איחור" מוגדר כ-7+ ימים ממועד ההחזרה הצפוי. המייל יצא
+  //    הרבה יותר מוקדם ממה שמשתמשים/לקוחות מצפים ל"איחור" - עכשיו משתמש באותה
+  //    נוסחה בדיוק (getLateReturnInfo) כדי לא לשכפל את ההגדרה בפעם שלישית.
+  // 2. אין דה-דופליקציה - הלולאה שלחה מייל מחדש לכל הזמנה שעדיין באיחור בכל הרצה
+  //    יומית (בניגוד לדפוס alreadyCharged שכבר קיים באותו קובץ בסעיפים 3/23
+  //    למטה) - כך שלקוח שלא החזיר קיבל את אותו מייל כל יום במשך שבועות. עכשיו
+  //    נשלח פעם אחת בלבד להזמנה, לפי EmailLog קיים (בלי צורך בעמודה חדשה ב-DB).
   if (get('late_return_email_enabled') === 'true') {
     try {
       const text = get('late_return_email_text') || 'המערכת זיהתה שלא החזרתם את השמלות, במידה ולא יחזרו במיידי המערכת מעבירה לגביה אוטומטית.';
-      const overdueOrders = await prisma.order.findMany({
+      const candidates = await prisma.order.findMany({
         where: {
           isDeleted: false,
           returnDate: { lt: today },
           items: { some: { isTaken: true, isReturned: false, isDeleted: false } }
         },
         include: { customer: true, items: { where: { isTaken: true, isReturned: false, isDeleted: false } } },
-        take: 100
+        take: 200
       });
+      const overdueOrders = candidates.filter(o => getLateReturnInfo(o).isLate);
       for (const o of overdueOrders) {
         const email = o.customer?.email;
         if (!email || !email.includes('@')) continue;
+        const subject = `תזכורת החזרה - הזמנה #${o.orderId}`;
+        const alreadySent = await prisma.emailLog.findFirst({ where: { subject, status: 'success' } });
+        if (alreadySent) continue;
         const body = `שלום ${o.customer.firstName || ''},\n\n${text}\nהזמנה #${o.orderId} - תאריך החזרה: ${getHebrewDateString(o.returnDate)}\n`;
         const html = `<div dir="rtl" style="font-family:Arial"><h2 style="color:#d32f2f">החזרה באיחור - הזמנה #${o.orderId}</h2><p>${text}</p><p>תאריך החזרה: ${getHebrewDateString(o.returnDate)}</p></div>`;
-        const r = await sendSystemEmail({ to: email, subject: `תזכורת החזרה - הזמנה #${o.orderId}`, body, html });
+        const r = await sendSystemEmail({ to: email, subject, body, html });
         if (r.success) results.lateEmails++;
         else results.errors.push(`late ${o.orderId}: ${r.message}`);
       }
