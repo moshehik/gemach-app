@@ -884,6 +884,13 @@ export async function POST(request) {
       pricingWarning = `ההזמנה נשמרה (#${order.orderId}), אך חישוב החיובים נכשל: ${pricingError.message}. יש לפתוח את ההזמנה ולחשב מחדש.`;
     }
 
+    // 15 - חיוב משלוח אוטומטי לפי עיר (אם זו הזמנת משלוח ויש טבלת מחירים) - לוגיקה משותפת
+    // עם עדכון הזמנה קיימת (PUT /api/orders/[id]), ר' lib/pricingEngine.js. חייב לרוץ לפני
+    // ה-findUnique למטה (בדיוק כמו ב-PUT) - אחרת ה-updatedOrder שמוחזר בתשובה (ומשמש גם
+    // לחישוב סכום המייל האוטומטי למטה) לא כולל את חיוב המשלוח שזה עתה נוצר. ר' דיווח
+    // org2 3a4d36df (2026-09-14) - "הוספתי משלוח להזמנה חדשה והוא לא עדכן את זה".
+    await applyDeliveryCharge(order.orderId);
+
     const updatedOrder = await prisma.order.findUnique({
       where: { orderId: order.orderId },
       include: {
@@ -924,10 +931,6 @@ export async function POST(request) {
       // eslint-disable-next-line no-restricted-syntax -- כתיבה מקוננת (items/payments create בתוך order.create/update) לא עוברת דרך תוסף היומן, ר' ההסבר למעלה
       await prisma.auditLog.createMany({ data: nestedCreateAuditRows });
     }
-
-    // 15 - חיוב משלוח אוטומטי לפי עיר (אם זו הזמנת משלוח ויש טבלת מחירים) - לוגיקה משותפת
-    // עם עדכון הזמנה קיימת (PUT /api/orders/[id]), ר' lib/pricingEngine.js
-    await applyDeliveryCharge(order.orderId);
 
     // 5 - מייל אוטומטי בעת יצירת הזמנה (אם מופעל בהגדרות) - כולל פרטי לקיחה והחזרה.
     // דיווח 70554835 (2026-09-14, org2): המייל הזה היה נתיב-שליחה נפרד ומצומצם משמעותית
