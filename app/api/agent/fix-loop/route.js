@@ -1,9 +1,11 @@
 // מצב "סוכן תיקון אוטומטי" - דגל SystemSetting שהאייקון ב-ErrorReportButton.js קובע.
 // ה-workflow ב-.github/workflows/claude-fix-reports.yml רץ מ-cron כל 5 דק' ותמיד, אבל
 // שלב 0 שלו (scripts/agent-loop-status.js) בודק את הדגל הזה ישירות ב-DB ויוצא מיד אם כבוי -
-// זה מה שהופך את ה-cron התמידי לפעולה נשלטת מהאייקון בפועל. הפעלה מכאן גם מאפסת את
-// agent_fix_loop_last_activity ("שעון השקט") - כך שהסוכן לא ייכנס מיד למצב שינה
-// (20 דק' בלי פעילות, ר' scripts/agent-loop-status.js --idle-minutes) מיד אחרי שהודלק.
+// זה מה שהופך את ה-cron התמידי לפעולה נשלטת מהאייקון בפועל. הדגל נשאר דלוק ללא הגבלת
+// זמן ברגע שהודלק (אין יותר כיבוי-אוטומטי-משקט, בוטל 2026-09-14) - הכיבוי היחיד הוא
+// הוראת-עצירה מפורשת בתוך דיווח, או כאן דרך PATCH עם enabled:false. הפעלה מכאן גם
+// כותבת ל-agent_fix_loop_last_activity - תיעוד "מתי הודלק לאחרונה" בלבד כרגע, לא
+// נבדק ע"י שום שלב עוד.
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { cookies } from 'next/headers';
