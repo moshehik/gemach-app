@@ -412,8 +412,9 @@ export default function OrdersPage() {
 
     if (await window.customConfirm('האם אתה בטוח שברצונך למחוק הזמנה זו?')) {
       // 14 - בקשת ת״ז לפני ביטול אם מופעל
+      // 2026-09-14 - רק כשללקוח יש בפועל ת״ז שמורה - ר' הערה מקבילה ב-app/orders/[id]/page.js
       let zeoutForDelete = null;
-      if (requireIdForEdit) {
+      if (requireIdForEdit && order.customer?.zeout) {
         const msg = 'ביטול הזמנה דורש אימות תעודת זהות של הלקוח. נא להזין ת״ז:';
         if (window.customPrompt) zeoutForDelete = await window.customPrompt(msg, '', 'text');
         else zeoutForDelete = window.prompt(msg);
