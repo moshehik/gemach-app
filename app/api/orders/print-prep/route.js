@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { getPrintPrepDate } from '@/lib/hebrewDate';
+import { getPrintPrepDate, getIsraelDayRange } from '@/lib/hebrewDate';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,13 +53,18 @@ export async function GET(request) {
 
     let orderIds;
     if (mode === 'event') {
-      const eventWindowEnd = new Date(targetTo);
-      eventWindowEnd.setHours(23, 59, 59, 999);
+      // גבולות לפי אזור הזמן של ישראל, לא setHours שתלוי בשרת - ר' דיווח 54daaa2e
+      // (בחירת "תאריך אחר" הדפיסה את היום הבא): eventDate נשמר לפעמים עם שעה אמיתית
+      // שהגיעה מהייבוא מ-Access (לא רק חצות UTC), וזו הופיעה תחת התאריך הקודם בגלל
+      // היסט UTC+2/+3 - ר' getIsraelDayRange ב-lib/hebrewDate.js, כבר בשימוש באותו
+      // אופן ב-app/api/alterations/route.js.
+      const eventWindowStart = getIsraelDayRange(fromStr).start;
+      const eventWindowEnd = getIsraelDayRange(toStr).end;
 
       const orders = await prisma.order.findMany({
         where: {
           isDeleted: false,
-          eventDate: { gte: targetFrom, lte: eventWindowEnd }
+          eventDate: { gte: eventWindowStart, lte: eventWindowEnd }
         },
         select: { orderId: true },
         orderBy: { eventDate: 'asc' }
