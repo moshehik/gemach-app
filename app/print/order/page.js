@@ -11,7 +11,9 @@ import { addDaysSkippingWeekends } from '../../../lib/clientInventory';
 // bare number without that word.
 const stripCodeLabel = (name) => (name || '').replace(/\(קוד:\s*([^)]*)\)/g, '($1)');
 
-// "פרטי החזרה" (top-of-rental-report line): the app has no dedicated
+// "פרטי החזרה" (top-of-print line, shown on both the order-confirmation and
+// rental-report print types - org2 report 5c1be668 asked for return day/hour on the
+// order-creation printout too, not just the rental report): the app has no dedicated
 // return-deadline field/setting for the standard flow - Order.returnDate is only
 // ever populated for the abroad/multi-day flow (see Order.toDate), and there's no
 // SystemSetting for a standard return hour. Best-effort: use the order's actual
@@ -252,7 +254,7 @@ export default function PrintOrderPage() {
           <tr>
             <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
               <div className="bsd">בס&quot;ד</div>
-              {printType === 'rental' && returnByDate && (
+              {returnByDate && (
                 <div className="return-details-box">
                   <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
                   {printSettings?.beltNotice && (
