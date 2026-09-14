@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
+import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 
 const renderCustomerNotes = (notes) => {
   if (!notes) return null;
@@ -44,6 +45,13 @@ const renderCustomerNotes = (notes) => {
 export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBlur, onSubmit, saving, onCopyEmail, onOpenEmailModal, cancelSignal, isHeadManagement, onUnblock, settings = {} }) {
   const [isEditing, setIsEditing] = useState(false);
   const isFirstCancelSignal = useRef(true);
+  const [locations, setLocations] = useState({ cities: [], streets: [] });
+
+  useEffect(() => {
+    fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
+      .then(data => setLocations({ cities: data?.cities || [], streets: data?.streets || [] }))
+      .catch(err => console.error(err));
+  }, []);
 
   // "ביטול שינויים" בכותרת העמוד משחזר את נתוני הלקוח, אבל לא ידע לסגור את מצב
   // העריכה המקומי הזה בלעדי אות מפורש - בלי זה השדות מתאפסים אבל הטופס נשאר פתוח
@@ -184,24 +192,30 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
                 )}
               </div>
               <div className="field">
-                <label>עיר {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                <input type="text" className="input" name="city" autoComplete="off" value={customer.city || ''} onChange={onChange} required={settings.require_full_address === 'true'} />
+                <label htmlFor="cust-edit-city">עיר {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                <input id="cust-edit-city" type="text" className="input" list="cust-edit-city-list" name="city" autoComplete="off" value={customer.city || ''} onChange={onChange} required={settings.require_full_address === 'true'} />
+                <datalist id="cust-edit-city-list">
+                  {locations.cities.map(c => <option key={c} value={c} />)}
+                </datalist>
               </div>
               <div className="field">
-                <label>רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                <input type="text" className="input" name="street" autoComplete="off" value={customer.street || ''} onChange={onChange} required={settings.require_full_address === 'true'} />
+                <label htmlFor="cust-edit-street">רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
+                <input id="cust-edit-street" type="text" className="input" list="cust-edit-street-list" name="street" autoComplete="off" value={customer.street || ''} onChange={onChange} required={settings.require_full_address === 'true'} />
+                <datalist id="cust-edit-street-list">
+                  {locations.streets.map(s => <option key={s} value={s} />)}
+                </datalist>
               </div>
               <div className="field">
                 <label>מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
                 <input type="number" className="input" name="houseNum" autoComplete="off" value={customer.houseNum || ''} onChange={onChange} required={settings.require_full_address === 'true'} />
               </div>
               <div className="field">
-                <label>תעודת זהות (לעריכה/ביטול) <span className="hint" style={{ fontWeight: 400 }}>- לבקשה 14</span></label>
+                <label>תעודת זהות (לעריכה/ביטול)</label>
                 <input type="text" className="input" style={{ direction: 'ltr' }} name="zeout" autoComplete="off" value={customer.zeout || ''} onChange={onChange} placeholder="ת״ז" />
               </div>
               <div className="field" style={{ display: 'flex', alignItems: 'center', gap: '8px', paddingTop: '24px' }}>
                 <input type="checkbox" id="marketingConsent" name="marketingConsent" checked={!!customer.marketingConsent} onChange={(e) => onChange({ target: { name: 'marketingConsent', value: e.target.checked } })} />
-                <label htmlFor="marketingConsent" style={{ margin: 0, fontWeight: 600 }}>מאשר/ת קבלת דיוורים <span className="hint" style={{ fontWeight: 400 }}>(לבקשה 4)</span></label>
+                <label htmlFor="marketingConsent" style={{ margin: 0, fontWeight: 600 }}>מאשר/ת קבלת דיוורים</label>
               </div>
             </div>
 
