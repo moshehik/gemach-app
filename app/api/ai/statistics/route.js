@@ -5,6 +5,7 @@ import { checkAuth } from '../../../../lib/auth';
 import { HDate } from '@hebcal/core';
 import { getHebrewYearContext, processHebrewDateMacro } from '../../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../../lib/orderReservation';
+import { assertReadOnlySelect } from '../../../../lib/sqlGuard';
 
 // Types below mirror prisma/schema.prisma: all `id` / foreign-key columns are UUID strings
 // (Prisma's `@id @default(uuid())`), never numeric, except Order.orderId/legacyId/DressModel
@@ -70,10 +71,14 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
       sqlQuery = processHebrewDateMacro(sqlQuery);
 
       try {
+        assertReadOnlySelect(sqlQuery);
         queryResult = await prisma.$queryRawUnsafe(sqlQuery);
       } catch (dbError) {
         dbErrorStr = dbError.message;
-        
+        if (dbError.rejectedSql) {
+          console.error('SQL Guard rejected AI-generated statistics query:', dbError.message, '\nRejected SQL:', dbError.rejectedSql);
+        }
+
         // Retry
         const retryPrompt = `${SYSTEM_PROMPT}\nSchema:\n${schemaContext}\nUser Question: ${prompt}\n\nYou generated this SQL query: ${sqlQuery}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY a corrected PostgreSQL SQL query starting with "SQL: " to fix this issue.`;
         let retryResponse = await generateContent(retryPrompt);
@@ -87,11 +92,15 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
           retrySql = processHebrewDateMacro(retrySql);
           
           try {
+             assertReadOnlySelect(retrySql);
              queryResult = await prisma.$queryRawUnsafe(retrySql);
              sqlQuery = retrySql;
              dbErrorStr = null;
           } catch (retryErr) {
              dbErrorStr = retryErr.message;
+             if (retryErr.rejectedSql) {
+               console.error('SQL Guard rejected AI-generated statistics retry query:', retryErr.message, '\nRejected SQL:', retryErr.rejectedSql);
+             }
           }
         }
       }

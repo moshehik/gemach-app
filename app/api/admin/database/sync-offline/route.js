@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { syncOfflineChangesIfAny } from '@/app/lib/prisma';
+import { checkAuth } from '@/lib/auth';
 
 // Manually kicks off the offline->cloud reconciliation (see lib/offlineSync.js and
 // app/lib/prisma.js). This exists because IS_OFFLINE_MODE is a process env var that
@@ -9,6 +10,9 @@ import { syncOfflineChangesIfAny } from '@/app/lib/prisma';
 // admin `/admin/database` page) trigger the same reconciliation on demand instead of
 // having to restart the server.
 export async function POST() {
+  if (!(await checkAuth('מנהל'))) {
+    return NextResponse.json({ error: 'Unauthorized. Admin access required.' }, { status: 401 });
+  }
   if (process.env.IS_OFFLINE_MODE === 'true') {
     return NextResponse.json(
       { error: 'המערכת עדיין במצב אופליין (IS_OFFLINE_MODE=true) - יש לצאת ממצב אופליין ולהפעיל מחדש לפני הסנכרון.' },

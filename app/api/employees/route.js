@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { hashSecret, last4Of } from '../../../lib/passwordAuth';
-import { checkAuth } from '../../../lib/auth';
+import { checkAuth, checkPageAccess } from '../../../lib/auth';
 
 // GET is intentionally left public (no checkAuth gate): the login screen itself
 // (app/components/LoginScreen.js) fetches this list to populate the employee
@@ -43,6 +43,8 @@ export async function GET(request) {
 }
 
 export async function POST(request) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkPageAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const body = await request.json();
 

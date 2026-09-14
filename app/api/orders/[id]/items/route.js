@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
+import { checkAuth } from '../../../../../lib/auth';
 import { recalculateOrderObligations } from '../../../../../lib/pricingEngine';
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../lib/inventory';
 import { orderHasPermanentHold } from '../../../../../lib/inventoryHold';
@@ -20,6 +21,7 @@ const hasFreeUnit = (sizeAvail) =>
   !!sizeAvail && sizeAvail.availableQuantity > 0 && !!sizeAvail.itemIds && sizeAvail.itemIds.length > 0;
 
 export async function POST(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const { id } = resolvedParams;
