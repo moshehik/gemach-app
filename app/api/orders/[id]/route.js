@@ -305,12 +305,6 @@ export async function PUT(request, { params }) {
       // 14 - אם require_id_for_edit_cancel מופעל, דרוש zeout שתואם ללקוח (גם למושכר חלקי כש-allow true)
       // אם allowPartial false כבר חסמנו למעלה, אז לא מגיעים לכאן למושכר
       if (requireIdVal && !isSignatureOnlyUpdate) {
-        const headerZeout = request.headers.get('x-zeout') || request.headers.get('x-customer-zeout') || request.headers.get('zeout');
-        const bodyZeout = data?.zeout || data?.customerZeout || data?.idNumber || data?.zeoutInput || null;
-        const providedZeout = String(headerZeout || bodyZeout || '').trim();
-        if (!providedZeout) {
-          return NextResponse.json({ error: 'דרוש אימות תעודת זהות לעריכת הזמנה (require_id_for_edit_cancel מופעל).' }, { status: 401 });
-        }
         let customerZeout = null;
         if (existingOrder.customerId) {
           try {
@@ -318,11 +312,20 @@ export async function PUT(request, { params }) {
             customerZeout = cust?.zeout || null;
           } catch {}
         }
-        if (!customerZeout) {
-          return NextResponse.json({ error: 'ללקוח אין ת״ז שמורה במערכת - יש לעדכן כרטיס לקוח לפני עריכה.' }, { status: 400 });
-        }
-        if (String(customerZeout).trim() !== providedZeout) {
-          return NextResponse.json({ error: 'תעודת הזהות אינה תואמת לרשום אצל הלקוח.' }, { status: 403 });
+        // 2026-09-14 (דיווח ce2904c4) - הדרישה חלה רק על הזמנות שבאמת יש להן ת״ז שמורה
+        // ללקוח (כלומר מאז שהשדה הפך לחובה) - להזמנה ישנה בלי ת״ז שמורה אין דרך לספק
+        // ת״ז מתאימה בכלל, כך שקודם לתיקון הזה עריכה/ביטול של הזמנות כאלה היו חסומות
+        // לצמיתות. אם אין ת״ז שמורה, לא דורשים אימות בכלל (לא חוסמים).
+        if (customerZeout) {
+          const headerZeout = request.headers.get('x-zeout') || request.headers.get('x-customer-zeout') || request.headers.get('zeout');
+          const bodyZeout = data?.zeout || data?.customerZeout || data?.idNumber || data?.zeoutInput || null;
+          const providedZeout = String(headerZeout || bodyZeout || '').trim();
+          if (!providedZeout) {
+            return NextResponse.json({ error: 'דרוש אימות תעודת זהות לעריכת הזמנה (require_id_for_edit_cancel מופעל).' }, { status: 401 });
+          }
+          if (String(customerZeout).trim() !== providedZeout) {
+            return NextResponse.json({ error: 'תעודת הזהות אינה תואמת לרשום אצל הלקוח.' }, { status: 403 });
+          }
         }
       }
 
@@ -963,21 +966,6 @@ export async function DELETE(request, { params }) {
         }
       }
       if (requireIdForDelete) {
-        let providedZeout = request.headers.get('x-zeout') || request.headers.get('x-customer-zeout') || request.headers.get('zeout') || '';
-        if (!providedZeout) {
-          try {
-            const bodyJson = await request.clone().json();
-            providedZeout = bodyJson?.zeout || bodyJson?.customerZeout || bodyJson?.idNumber || '';
-          } catch {}
-        }
-        // גם query param (?zeout=)
-        if (!providedZeout) {
-          try { providedZeout = new URL(request.url).searchParams.get('zeout') || ''; } catch {}
-        }
-        providedZeout = String(providedZeout || '').trim();
-        if (!providedZeout) {
-          return NextResponse.json({ error: 'דרוש אימות תעודת זהות לביטול הזמנה (require_id_for_edit_cancel מופעל).' }, { status: 401 });
-        }
         let customerZeout = null;
         if (order.customerId) {
           try {
@@ -985,11 +973,28 @@ export async function DELETE(request, { params }) {
             customerZeout = cust?.zeout || null;
           } catch {}
         }
-        if (!customerZeout) {
-          return NextResponse.json({ error: 'ללקוח אין ת״ז שמורה במערכת - יש לעדכן כרטיס לקוח לפני ביטול.' }, { status: 400 });
-        }
-        if (String(customerZeout).trim() !== providedZeout) {
-          return NextResponse.json({ error: 'תעודת הזהות אינה תואמת לרשום אצל הלקוח.' }, { status: 403 });
+        // 2026-09-14 (דיווח ce2904c4) - ר' הערה מקבילה למעלה בטיפול בעריכה (PUT): בלי
+        // ת״ז שמורה ללקוח (הזמנה ישנה מלפני שהשדה היה חובה) לא ניתן לספק ת״ז מתאימה
+        // בכלל, ולכן לא דורשים אימות ולא חוסמים ביטול.
+        if (customerZeout) {
+          let providedZeout = request.headers.get('x-zeout') || request.headers.get('x-customer-zeout') || request.headers.get('zeout') || '';
+          if (!providedZeout) {
+            try {
+              const bodyJson = await request.clone().json();
+              providedZeout = bodyJson?.zeout || bodyJson?.customerZeout || bodyJson?.idNumber || '';
+            } catch {}
+          }
+          // גם query param (?zeout=)
+          if (!providedZeout) {
+            try { providedZeout = new URL(request.url).searchParams.get('zeout') || ''; } catch {}
+          }
+          providedZeout = String(providedZeout || '').trim();
+          if (!providedZeout) {
+            return NextResponse.json({ error: 'דרוש אימות תעודת זהות לביטול הזמנה (require_id_for_edit_cancel מופעל).' }, { status: 401 });
+          }
+          if (String(customerZeout).trim() !== providedZeout) {
+            return NextResponse.json({ error: 'תעודת הזהות אינה תואמת לרשום אצל הלקוח.' }, { status: 403 });
+          }
         }
       }
     } catch (e) {

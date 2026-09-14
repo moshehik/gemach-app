@@ -6,7 +6,7 @@ import { checkAuth } from '../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
-import { validateOrderItemsAvailability } from '../../../lib/inventory';
+import { validateOrderItemsAvailability, addDaysSkippingWeekends } from '../../../lib/inventory';
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
 import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders, deriveConfirmedOrderStatus, DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
@@ -885,7 +885,7 @@ export async function POST(request) {
     const updatedOrder = await prisma.order.findUnique({
       where: { orderId: order.orderId },
       include: {
-        items: true,
+        items: { include: { dressItem: { include: { dress: true } } } },
         obligations: true,
         payments: true,
         customer: true
@@ -931,13 +931,17 @@ export async function POST(request) {
         : null;
       if (autoEmailSetting?.value === 'true' && email) {
           const hebrewDate = updatedOrder.eventDateHebrew || (updatedOrder.eventDate ? getHebrewDateString(updatedOrder.eventDate) : '');
-          const toDateStr = updatedOrder.toDate ? getHebrewDateString(updatedOrder.toDate) : '';
-          const fromDateStr = updatedOrder.fromDate ? getHebrewDateString(updatedOrder.fromDate) : '';
-          // לקיחה/החזרה: fromDate או יומיים לפני האירוע; החזרה: toDate/returnDate או אחרי האירוע
+          // לקיחה/החזרה: fromDate/toDate מלאים רק בהזמנות עם תפוסה מיוחדת (isAbroad/
+          // isWeekdayEvent) - בהזמנה רגילה (אירוע יחיד) הם null, ואז נופלים לברירת המחדל
+          // הרגילה של המערכת: לקיחה = תאריך האירוע, החזרה = יום אחד אחרי (ר' lib/inventory.js)
+          const fromDate = updatedOrder.fromDate || updatedOrder.eventDate;
+          const toDate = updatedOrder.toDate || updatedOrder.returnDate || (updatedOrder.eventDate ? addDaysSkippingWeekends(updatedOrder.eventDate, 1) : null);
+          const fromDateStr = fromDate ? getHebrewDateString(fromDate) : '';
+          const toDateStr = toDate ? getHebrewDateString(toDate) : '';
           const gmachName = (await getCachedSetting('gmach_name'))?.value || 'גמ"ח שמלות';
           const gmachAddress = (await getCachedSetting('gmach_address'))?.value || '';
           const gmachPhone = (await getCachedSetting('gmach_phone'))?.value || '';
-          const itemsList = (updatedOrder.items || []).map(i => i.description || i.sizeText || `פריט`).join(', ') || 'ללא פירוט';
+          const itemsList = (updatedOrder.items || []).map(i => i.dressItem?.dress?.name || i.dressItem?.dressName || i.description || `פריט`).join(', ') || 'ללא פירוט';
           // fire-and-forget - לא חוסם את תשובת ה-API
           const { sendSystemEmail } = await import('@/lib/mailer');
           const body = `שלום ${updatedOrder.customer.firstName || ''} ${updatedOrder.customer.lastName || ''},\nהזמנתך #${updatedOrder.orderId} נקלטה בהצלחה ב${gmachName}.\nתאריך אירוע: ${hebrewDate}\n${fromDateStr ? `מועד לקיחה: ${fromDateStr}\n` : ''}${toDateStr ? `מועד החזרה: ${toDateStr}\n` : ''}פריטים: ${itemsList}\nסה"כ לתשלום: ₪${updatedOrder.totalAmount || 0}\nכתובת איסוף: ${gmachAddress}\nטלפון: ${gmachPhone}\n\nנשמח לראותך!`;
