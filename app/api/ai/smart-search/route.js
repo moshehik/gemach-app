@@ -4,6 +4,7 @@ import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
 import { HDate } from '@hebcal/core';
 import { getHebrewYearContext, processHebrewDateMacro } from '../../../../lib/hebrewDate';
+import { assertReadOnlySelect } from '../../../../lib/sqlGuard';
 
 const SCHEMA_MAP = {
   customers: "Table: Customer\nColumns: id, firstName, lastName, phone1, phone2, city, street, houseNum, email, notes, isDeleted",
@@ -80,10 +81,15 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
       whereClause = reuseWhereClause;
       query = buildQuery(whereClause, (page - 1) * PAGE_SIZE);
       try {
+        assertReadOnlySelect(query);
         data = await prisma.$queryRawUnsafe(query);
         querySuccess = true;
       } catch (dbError) {
-        console.error('Smart search DB error (page reuse):', dbError.message);
+        if (dbError.rejectedSql) {
+          console.error('SQL Guard rejected AI-generated smart search query:', dbError.message, '\nRejected SQL:', dbError.rejectedSql);
+        } else {
+          console.error('Smart search DB error (page reuse):', dbError.message);
+        }
       }
     } else {
       const todayGregorian = new Date().toISOString().split('T')[0];
@@ -113,10 +119,15 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
       query = buildQuery(whereClause, 0);
 
       try {
+        assertReadOnlySelect(query);
         data = await prisma.$queryRawUnsafe(query);
         querySuccess = true;
       } catch (dbError) {
-        console.error('Smart search DB error attempt 1:', dbError.message);
+        if (dbError.rejectedSql) {
+          console.error('SQL Guard rejected AI-generated smart search query:', dbError.message, '\nRejected SQL:', dbError.rejectedSql);
+        } else {
+          console.error('Smart search DB error attempt 1:', dbError.message);
+        }
 
         // SELF HEALING RETRY
         const retryPrompt = `${systemPrompt}\n\nUser request: ${prompt}\n\nYou generated this condition: ${whereClause}\nBut it failed with this PostgreSQL error: ${dbError.message}\n\nPlease output ONLY a corrected PostgreSQL condition starting with "SQL: " to fix this issue.`;
@@ -129,10 +140,15 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
         query = buildQuery(whereClause, 0);
 
         try {
+           assertReadOnlySelect(query);
            data = await prisma.$queryRawUnsafe(query);
            querySuccess = true;
         } catch (retryError) {
-           console.error('Smart search DB error attempt 2:', retryError.message);
+           if (retryError.rejectedSql) {
+             console.error('SQL Guard rejected AI-generated smart search retry query:', retryError.message, '\nRejected SQL:', retryError.rejectedSql);
+           } else {
+             console.error('Smart search DB error attempt 2:', retryError.message);
+           }
         }
       }
     }
@@ -229,7 +245,9 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
 
     let total = data.length;
     try {
-      const countRows = await prisma.$queryRawUnsafe(buildCountQuery(whereClause));
+      const countQuery = buildCountQuery(whereClause);
+      assertReadOnlySelect(countQuery);
+      const countRows = await prisma.$queryRawUnsafe(countQuery);
       total = Number(countRows?.[0]?.count ?? total);
     } catch (countError) {
       console.error('Smart search count query failed (falling back to page length):', countError.message);
