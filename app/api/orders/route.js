@@ -378,7 +378,8 @@ export async function GET(request) {
               phone1: true,
               phone2: true,
               email: true,
-              city: true
+              city: true,
+              zeout: true
             }
           },
           items: {
@@ -438,7 +439,8 @@ export async function GET(request) {
             firstName: true,
             lastName: true,
             phone1: true,
-            phone2: true
+            phone2: true,
+            zeout: true
           }
         },
         payments: forRentals ? false : { select: { amount: true, isDeleted: true } },

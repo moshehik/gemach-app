@@ -220,8 +220,10 @@ export default function OrderDetailsPage({ params }) {
   }, []);
 
   // 14 - בקשת ת״ז לפני עריכה/ביטול (prompt פשוט, מותנה ב-require_id_for_edit_cancel)
+  // 2026-09-14 - רק כשללקוח יש בפועל ת״ז שמורה (השרת ממילא לא דורש כשאין - ר' route.js) -
+  // אין טעם לבקש קוד שאין מול מה לאמת אותו, וזה היה חוסם לצמיתות הזמנות ישנות בלי ת״ז
   const requestZeout = async () => {
-    if (!requireIdForEdit) return null;
+    if (!requireIdForEdit || !order?.customer?.zeout) return null;
     const msg = 'עריכה/ביטול דורשים אימות תעודת זהות של הלקוח. נא להזין ת״ז:';
     let zeout = null;
     if (typeof window !== 'undefined' && window.customPrompt) {
@@ -469,8 +471,9 @@ export default function OrderDetailsPage({ params }) {
       return null;
     }
     // 14 - אם דרוש ת״ז, בקש לפני שליחה וצרף ל-body+header
+    // 2026-09-14 - רק כשללקוח יש בפועל ת״ז שמורה, ר' הערה ב-requestZeout
     let zeoutForRequest = null;
-    if (requireIdForEdit) {
+    if (requireIdForEdit && order?.customer?.zeout) {
       zeoutForRequest = await requestZeout();
       if (!zeoutForRequest) {
         // ביטול ע״י המשתמש - לא שולחים כלום, מחזירים null כמו ב-409 discard
@@ -1021,8 +1024,9 @@ export default function OrderDetailsPage({ params }) {
     }
     if (!(await window.customConfirm('האם אתה בטוח שברצונך למחוק הזמנה זו?'))) return;
     // 14 - אם דרוש ת״ז, בקש לפני ביטול
+    // 2026-09-14 - רק כשללקוח יש בפועל ת״ז שמורה, ר' הערה ב-requestZeout
     let zeoutForDelete = null;
-    if (requireIdForEdit) {
+    if (requireIdForEdit && order?.customer?.zeout) {
       zeoutForDelete = await requestZeout();
       if (!zeoutForDelete) { alert('ביטול בוטל - לא הוזנה תעודת זהות.'); return; }
     }
