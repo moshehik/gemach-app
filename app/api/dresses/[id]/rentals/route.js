@@ -1,11 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../../lib/prisma';
+import { checkAuth } from '../../../../../lib/auth';
 
 /**
  * היסטוריית ההשכרות של דגם שלם — כל ההשכרות של כל הפריטים הפיזיים שלו.
  * (המקבילה ברמת הפריט הבודד היא /api/dresses/items/[itemId]/history).
  */
 export async function GET(request, { params }) {
+  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;

@@ -10,6 +10,7 @@ import path from 'path';
 import { HDate } from '@hebcal/core';
 import { getHebrewYearContext, processHebrewDateMacro, getHebrewDateString } from '../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
+import { assertReadOnlySelect } from '../../../lib/sqlGuard';
 
 let cachedSchema = null;
 function getSchemaContext() {
@@ -264,6 +265,12 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
           for (let i = 0; i < queries.length; i++) {
             queries[i] = processHebrewDateMacro(queries[i]);
             console.log(`AI generated SQL query ${i + 1}:`, queries[i]);
+            try {
+              assertReadOnlySelect(queries[i]);
+            } catch (guardErr) {
+              console.error('SQL Guard rejected AI-generated query:', guardErr.message, '\nRejected SQL:', queries[i]);
+              throw guardErr;
+            }
             const res = await prisma.$queryRawUnsafe(queries[i]);
             combinedResults.push(res);
           }
@@ -291,6 +298,12 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
               for (let i = 0; i < retryQueries.length; i++) {
                 retryQueries[i] = processHebrewDateMacro(retryQueries[i]);
                 console.log(`AI generated Retry SQL query ${i + 1}:`, retryQueries[i]);
+                try {
+                  assertReadOnlySelect(retryQueries[i]);
+                } catch (guardErr) {
+                  console.error('SQL Guard rejected AI-generated retry query:', guardErr.message, '\nRejected SQL:', retryQueries[i]);
+                  throw guardErr;
+                }
                 const res = await prisma.$queryRawUnsafe(retryQueries[i]);
                 combinedResults.push(res);
               }
