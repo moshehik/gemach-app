@@ -15,7 +15,11 @@ export default function OrderPrintMenu({
   triggerClassName,
   triggerTitle = 'הדפסה ומייל',
   triggerIconSize = 18,
-  preConfirm
+  preConfirm,
+  // דיווח לקוח (הגמח הראשי): במסך "החזרה" השאלה "האם הלקוח חתם על התקנון?" לא רלוונטית -
+  // החתימה כבר נאספה (או לא) בעת המסירה, לא בעת ההחזרה, והלקוח לרוב כבר לא מול העובד/ת.
+  // RentalReturnModal מעביר את זה true כדי לדלג על השער ולפתוח את התפריט ישירות.
+  skipRegulationsCheck = false
 }) {
   const [open, setOpen] = useState(false);
   const [showRegulationsModal, setShowRegulationsModal] = useState(false);
@@ -40,7 +44,7 @@ export default function OrderPrintMenu({
   }, [open]);
 
   const handleTriggerClick = () => {
-    if (order.hasSignedRegulations) {
+    if (skipRegulationsCheck || order.hasSignedRegulations) {
       setOpen(o => !o);
     } else {
       setShowRegulationsModal(true);

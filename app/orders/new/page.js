@@ -775,11 +775,13 @@ export default function NewOrderPage() {
     }
 
     // כשהתיקונים כבויים בהגדרות (settings.enable_alterations) שדות התיקון עצמם מוסתרים למטה
-    // (ר' עטיפת ה-NocCollapsible "תיקונים לפריט"), אז הם תמיד ריקים - אבל השארת הבדיקה בכל
-    // מקרה עקבית עם התבנית ב-ModernItemsManager.handleConfirmItem
-    if (settings.enable_alterations !== 'false' && (newItem.neckAlteration || newItem.sleeveAlteration || newItem.lengthAlteration) && (!newItem.repairs || !newItem.repairs.trim())) {
-      alert('יש להזין פרטי תיקון (בהערות לתיקון) מכיוון שסימנת שנדרש תיקון (צוואר, שרוול, או אורך).');
-      return;
+    // (ר' עטיפת ה-NocCollapsible "תיקונים לפריט"), אז הם תמיד ריקים.
+    // בעבר זה חסם לגמרי הוספה לסל אם סומן תיקון בלי הערות טקסט חופשי - הלקוח (הגמח הראשי)
+    // דיווח שזה מונע ממנו להוסיף פריט עם תיקון לסל. במקום לחסום, ממלאים הערות ברירת מחדל
+    // מהתיוג שכבר סומן (צוואר/שרוול/אורך) כדי שהתופרת עדיין תדע מה נדרש.
+    const itemToAdd = { ...newItem };
+    if (settings.enable_alterations !== 'false' && (itemToAdd.neckAlteration || itemToAdd.sleeveAlteration || itemToAdd.lengthAlteration) && (!itemToAdd.repairs || !itemToAdd.repairs.trim())) {
+      itemToAdd.repairs = describeAlterations(itemToAdd);
     }
 
     const selectedSizeInfo = availableSizes.find(s => s.sizeText === newItem.sizeText);
@@ -796,7 +798,7 @@ export default function NewOrderPage() {
     
     setOrder(prev => ({
       ...prev,
-      items: [...prev.items, { ...newItem }]
+      items: [...prev.items, itemToAdd]
     }));
     
     setAvailableSizes(prev => prev.map(s => {
@@ -944,6 +946,45 @@ export default function NewOrderPage() {
   }, [order.customerId, order.eventDate, order.eventDateHebrew, order.returnDate, order.isAbroad,
       order.isWeekdayEvent, order.fromDate, order.toDate, order.notes, order.customSpacing,
       order.items, totalAmount]);
+
+  // מגן מפני איבוד נתונים בלחיצת "אחורה" בדפדפן (דיווח לקוח: "כשעושים אחורה בדפדפן הוא
+  // מוחק את כל מה שעשיתי"). ה-draft האוטומטי למעלה מתחיל רק אחרי שיש גם לקוח וגם תאריכים
+  // וגם פריט אחד לפחות - עד אז (ולפני זה, בזמן הקלדת פרטי לקוח חדש) אין רשת ביטחון. ברגע
+  // שיש נתון משמעותי ראשון דוחפים רשומת "עצירה" אחת להיסטוריה; לחיצת אחורה שמגיעה אליה
+  // מבקשת אישור לפני שבאמת יוצאים (ואז חוזרים אחורה פעם נוספת כדי להגיע לעמוד האמיתי שלפני).
+  const backGuardArmedRef = useRef(false);
+  const hasStartedOrderRef = useRef(false);
+
+  useEffect(() => {
+    const activeItems = (order.items || []).filter(i => !i.isDeleted);
+    const hasNewCustomerInput = Object.values(newCustomer).some(v => typeof v === 'string' ? v.trim() : !!v);
+    hasStartedOrderRef.current = !!(
+      order.customerId ||
+      activeItems.length > 0 ||
+      hasNewCustomerInput ||
+      (phoneSearchInput && phoneSearchInput.trim())
+    );
+
+    if (hasStartedOrderRef.current && !backGuardArmedRef.current) {
+      backGuardArmedRef.current = true;
+      window.history.pushState({ gemachOrderGuard: true }, '', window.location.href);
+    }
+  }, [order.customerId, order.items, newCustomer, phoneSearchInput]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (!backGuardArmedRef.current || !hasStartedOrderRef.current) return;
+      const leave = window.confirm('יש נתונים שהוזנו בהזמנה ועדיין לא נשמרו. לצאת בכל זאת ולאבד אותם?');
+      if (!leave) {
+        window.history.pushState({ gemachOrderGuard: true }, '', window.location.href);
+        return;
+      }
+      backGuardArmedRef.current = false;
+      window.history.back();
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Escape closes whichever modal is on top. Skipped while a charge/save is in
   // flight so nobody dismisses a modal mid-transaction.

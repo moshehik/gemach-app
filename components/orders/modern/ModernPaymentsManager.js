@@ -209,6 +209,10 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       alert('יש להזין סכום חיובי לזיכוי');
       return;
     }
+    if (!refundData.bankName?.trim() || !refundData.bankBranch?.trim()) {
+      alert('יש להזין בנק וסניף לזיכוי');
+      return;
+    }
     setIsProcessing(true);
     try {
       const res = await fetch('/api/refunds', {
@@ -1235,8 +1239,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
               <span className="hint" style={{ display: 'block', fontSize: '13px', color: 'var(--text)', fontWeight: 700, marginBottom: '8px' }}>פרטי בנק לזיכוי</span>
               <div className="form-grid">
-                <div className="field"><label>בנק</label><input type="text" className="input" value={refundData.bankName} onChange={e => setRefundData({ ...refundData, bankName: e.target.value })} /></div>
-                <div className="field"><label>סניף</label><input type="text" className="input" value={refundData.bankBranch} onChange={e => setRefundData({ ...refundData, bankBranch: e.target.value })} /></div>
+                <div className="field"><label>בנק *</label><input type="text" className="input" value={refundData.bankName} onChange={e => setRefundData({ ...refundData, bankName: e.target.value })} /></div>
+                <div className="field"><label>סניף *</label><input type="text" className="input" value={refundData.bankBranch} onChange={e => setRefundData({ ...refundData, bankBranch: e.target.value })} /></div>
               </div>
               <div className="form-grid">
                 <div className="field"><label>מספר חשבון</label><input type="text" className="input" value={refundData.bankAccount} onChange={e => setRefundData({ ...refundData, bankAccount: e.target.value })} /></div>

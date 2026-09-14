@@ -419,17 +419,19 @@ export default function PrintAlterationsPage() {
           color: #444;
         }
 
-        /* Seamstress label cards - physical tags, so the key fields stay large */
+        /* Seamstress label cards - physical tags. דיווח לקוח (הגמח הראשי): "התוויות
+           גדולות מידי וצריכות להיות יותר צפופות" - צומצמו padding/גודל גופן ומרווחים,
+           והרשת עברה מ-3 לעמודות ל-4 כדי שיהיו יותר תוויות בעמוד. */
         .label-card {
           position: relative;
           border: 1px solid #e5e5e5;
-          padding: 18px 14px 14px;
+          padding: 10px 8px 8px;
           display: flex;
           flex-direction: column;
           justify-content: center;
           align-items: center;
           text-align: center;
-          min-height: 150px;
+          min-height: 100px;
           page-break-inside: avoid;
           break-inside: avoid;
           background: #fff;
@@ -438,41 +440,41 @@ export default function PrintAlterationsPage() {
         }
         .label-card .label-bsd {
           position: absolute;
-          top: 6px;
-          right: 10px;
-          font-size: 11px;
+          top: 4px;
+          right: 7px;
+          font-size: 9px;
           font-weight: 600;
           color: #999;
         }
         .label-card .label-customer {
           font-family: 'Frank Ruhl Libre', 'David Libre', serif;
-          font-size: 19px;
+          font-size: 15px;
           font-weight: 700;
           color: #262626;
-          margin-bottom: 9px;
+          margin-bottom: 5px;
         }
         .label-card .label-line {
-          font-size: 15px;
+          font-size: 12px;
           color: #555;
-          margin-bottom: 5px;
+          margin-bottom: 3px;
         }
         .label-card .label-line strong {
           color: #262626;
-          font-size: 16px;
+          font-size: 13px;
         }
         .label-card .label-alterations {
-          font-size: 14.5px;
+          font-size: 11.5px;
           font-weight: 700;
           border-top: 1px dashed #ddd;
-          padding-top: 9px;
-          margin-top: 9px;
+          padding-top: 6px;
+          margin-top: 6px;
           width: 100%;
           color: #555;
         }
         .label-card .label-alterations .label-details {
           font-weight: 400;
-          margin-top: 5px;
-          font-size: 13px;
+          margin-top: 3px;
+          font-size: 10.5px;
           color: #888;
         }
 
@@ -572,7 +574,7 @@ export default function PrintAlterationsPage() {
                   <h3 className="group-title">
                     תאריך אירוע: {group.items[0].order?.eventDateHebrew || (group.date !== 'ללא תאריך' ? getHebrewDateString(group.date) : 'ללא תאריך')}
                   </h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '15px' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                     {group.items.map(item => (
                       <div key={item.id} className="label-card">
                         <div className="label-bsd">בס&quot;ד</div>

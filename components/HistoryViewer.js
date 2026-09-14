@@ -354,7 +354,8 @@ export default function HistoryViewer({ entityType, entityId }) {
                 <input
                   className="input"
                   type="text"
-                  placeholder="חיפוש חופשי בהיסטוריה..."
+                  placeholder="חיפוש לפי ערך שהשתנה (למשל טלפון, שם, עיר...)"
+                  title="מחפש בתוך פרטי השינוי עצמו - הערך הישן או החדש של השדה שהשתנה, לא לפי שם העובד או סוג הפעולה"
                   value={searchInput}
                   onChange={e => setSearchInput(e.target.value)}
                 />

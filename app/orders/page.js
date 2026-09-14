@@ -503,6 +503,9 @@ export default function OrdersPage() {
             columns={[
               { key: 'orderId', label: getLabel('order_id', 'קוד הזמנה') },
               { key: 'customerName', label: getLabel('order_customerName', 'לקוח') },
+              { key: 'customerPhone', label: 'טלפון' },
+              { key: 'customerEmail', label: 'אימייל' },
+              { key: 'customerCity', label: 'עיר' },
               { key: 'totalAmount', label: getLabel('order_totalAmount', 'סכום לחיוב') },
               { key: 'totalPaid', label: 'שולם' },
               { key: 'paymentStatus', label: 'סטטוס תשלום' },

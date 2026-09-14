@@ -34,6 +34,16 @@ export async function PUT(request, { params }) {
 
     let updateData = { ...otherData };
 
+    // דיווח לקוח (הגמח הראשי): לא הייתה בדיקה שמונעת ביצוע זיכוי בלי פרטי בנק/סניף - גם
+    // כאן, בסגירה בפועל, לא רק ביצירת הבקשה (הזיכוי עשוי היה להיווצר לפני הוספת הדרישה).
+    if (isExecuted === true && !existingRefund.isExecuted) {
+      const finalBankName = otherData.bankName !== undefined ? otherData.bankName : existingRefund.bankName;
+      const finalBankBranch = otherData.bankBranch !== undefined ? otherData.bankBranch : existingRefund.bankBranch;
+      if (!finalBankName?.trim() || !finalBankBranch?.trim()) {
+        return NextResponse.json({ error: 'חובה להזין בנק וסניף לפני ביצוע הזיכוי' }, { status: 400 });
+      }
+    }
+
     // Handle execution logic
     if (isExecuted === true && !existingRefund.isExecuted) {
       // Two staff members can click "execute" on the same refund from different tabs at
