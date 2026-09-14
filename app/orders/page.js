@@ -920,7 +920,10 @@ export default function OrdersPage() {
       {showPrintWizard && (
         <PrintWizardModal
           onClose={() => setShowPrintWizard(false)}
-          defaultReportType="orders_all"
+          // דיווח 54daaa2e (2026-09-14, org2): "הכנות" הן ההדפסה הנפוצה בפועל
+          // (יותר מדוח נתונים כללי) - ברירת המחדל כאן שונתה בהתאם. עדיין אפשר
+          // לבחור כל סוג דוח אחר בתוך האשף עצמו.
+          defaultReportType="order_prep_by_date"
           getCurrentOrderIds={getCurrentFilteredOrderIds}
         />
       )}

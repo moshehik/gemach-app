@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { getPrintPrepDate } from '@/lib/hebrewDate';
+import { getPrintPrepDate, getIsraelDayRange } from '@/lib/hebrewDate';
 
 export const dynamic = 'force-dynamic';
 
@@ -10,13 +10,44 @@ export const dynamic = 'force-dynamic';
 // מרווח ביטחון בלי לסרוק את כל בסיס הנתונים.
 const LOOKAHEAD_DAYS = 12;
 
-// מנרמל מחרוזת "YYYY-MM-DD" ל-Date בחצות, באותה שיטה בדיוק כמו
-// subtractSkippingWeekendsAndChag (lib/hebrewDate.js) - כדי שההשוואה בין
-// prepDate המחושב לבין טווח היעד תהיה "תפוח מול תפוח" (אותו אזור זמן/מוסכמה).
+// מנרמל מחרוזת "YYYY-MM-DD" ל-Date בחצות UTC מילולית, באותה שיטה בדיוק כמו
+// parseSafeDate ב-app/api/orders/[id]/route.js (המוסכמה שהזמנות חדשות נשמרות
+// לפיה) - נחוץ ל-mode=prep, שם ההשוואה למטה (שורה prepDate.getTime() <=
+// targetTo.getTime()) מבוססת על שוויון-חצות מדויק מול prepDate (הפרש ימים
+// שלמים מ-eventDate, ר' subtractSkippingWeekendsAndChag) ולא על טווח - אסור
+// להזיז אותה בלי לשבור את ההשוואה.
 function parseDateOnly(dateStr) {
   const d = new Date(dateStr);
-  d.setHours(0, 0, 0, 0);
+  d.setUTCHours(0, 0, 0, 0);
   return d;
+}
+
+// דיווח 54daaa2e (2026-09-14, org2): "בחרתי תאריך אחר להדפסה, הוא הדפיס לי יום
+// אח"כ" (mode=event, "תאריך אחר"/"טווח תאריכים") - התברר (בדיקה ישירה מול ה-DB)
+// ש-Order.eventDate נשמר בפועל בשתי מוסכמות שונות בו-זמנית: הזמנות חדשות
+// (מ-app/api/orders/route.js / app/api/orders/[id]/route.js:parseSafeDate)
+// שומרות "YYYY-MM-DD" כחצות UTC מילולית (new Date(str), בלי שום התאמת אזור
+// זמן - זה התיקון המתועד שם), אבל כמות גדולה של הזמנות ותיקות/מיובאות עדיין
+// שמורות לפי חצות-ישראל-מומרת-ל-UTC (כ-21:00/22:00 היום הקודם ב-UTC - אותה
+// מוסכמה בדיוק ש-getIsraelDayRange מניחה, ושכבר משמשת את app/api/alterations/
+// route.js). כדי לא להתערב בין שתי המוסכמות בלי הגירת נתונים (סיכון גבוה, לא
+// משהו להחליט כאן) - mode=event משווה לרשימת ה"נקודות" המדויקות האפשריות (לא
+// טווח מורחב): לכל יום ביעד יש בדיוק שתי מוסכמות אפשריות, אלה נקודות זמן
+// בודדות (כל הזמנה שמורה בדיוק בשעה אחת, לא איפשהו לאורך היום), אז equality
+// מדויקת מול שתיהן היא הדרך היחידה שלא "דולפת" ליום הסמוך - טווח יום שלם
+// (00:00-23:59:59) לפי המוסכמה החדשה חופף בפועל לתחילת המוסכמה הישנה של היום
+// שאחריו (21:00-22:00 אותו יום UTC), וזה נבדק ישירות מול ה-DB האמיתי לפני
+// שהוחלט על equality ולא על טווח.
+function candidateInstantsForRange(fromStr, toStr) {
+  const instants = [];
+  let cur = new Date(`${fromStr}T00:00:00.000Z`);
+  const end = new Date(`${toStr}T00:00:00.000Z`);
+  while (cur.getTime() <= end.getTime()) {
+    const ds = cur.toISOString().slice(0, 10);
+    instants.push(parseDateOnly(ds), getIsraelDayRange(ds).start);
+    cur = new Date(cur.getTime() + 24 * 60 * 60 * 1000);
+  }
+  return instants;
 }
 
 // מחזיר את רשימת מספרי ההזמנות (orderId) המתאימות לתאריך/טווח המבוקש.
@@ -53,13 +84,10 @@ export async function GET(request) {
 
     let orderIds;
     if (mode === 'event') {
-      const eventWindowEnd = new Date(targetTo);
-      eventWindowEnd.setHours(23, 59, 59, 999);
-
       const orders = await prisma.order.findMany({
         where: {
           isDeleted: false,
-          eventDate: { gte: targetFrom, lte: eventWindowEnd }
+          eventDate: { in: candidateInstantsForRange(fromStr, toStr) }
         },
         select: { orderId: true },
         orderBy: { eventDate: 'asc' }
@@ -69,7 +97,7 @@ export async function GET(request) {
       const eventWindowStart = new Date(targetFrom);
       const eventWindowEnd = new Date(targetTo);
       eventWindowEnd.setDate(eventWindowEnd.getDate() + LOOKAHEAD_DAYS);
-      eventWindowEnd.setHours(23, 59, 59, 999);
+      eventWindowEnd.setUTCHours(23, 59, 59, 999);
 
       const candidates = await prisma.order.findMany({
         where: {
