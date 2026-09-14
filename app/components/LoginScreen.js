@@ -235,7 +235,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
   );
 
   const formFields = (
-    <form onSubmit={handleLogin} style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+    <form onSubmit={handleLogin} autoComplete="off" style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
 
       {error && (
         <div className="callout callout-danger" style={{ marginBottom: '14px' }}>
@@ -370,6 +370,11 @@ export default function LoginScreen({ isModal = false, onClose }) {
               onChange={(e) => setPinValue(e.target.value.slice(0, 4))}
               placeholder="••••"
               style={{ letterSpacing: '0.6em', textAlign: 'center' }}
+              // "new-password" ולא "off" - כרום מתעלם בפועל מ-off בשדות סיסמה של
+              // התחברות, אבל מכבד new-password (מסמן שזו לא סיסמה שמורה קיימת, אז
+              // לא מציע אוטופיל ולא מציע לשמור) - אותו טריק שכבר קיים בשדה העובד
+              // למעלה. ר' דיווח org2 5cb73cc0.
+              autoComplete="new-password"
             />
           ) : (
             <input data-element-name="שדה_LoginScreen_8"
@@ -379,6 +384,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="הזן את הקוד שלך"
+              autoComplete="new-password"
             />
           )}
         </div>
