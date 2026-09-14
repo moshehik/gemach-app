@@ -671,7 +671,21 @@ async function processDressItems() {
     rows: dbRows,
   });
 
-  return { accessCount: rows.length, toCreate, toUpdate, ...result };
+  // Orphan detection (report-only, never auto-fixed here): this importer is deliberately
+  // upsert-only and never deletes a DressItem row just because it disappeared from Access
+  // (renumbered/removed rows should not vanish on an incomplete export) - but that means a
+  // row genuinely removed from Access stays "active" in Postgres forever, silently inflating
+  // computed availability. Found live 2026-09-14 (model 622: 26 such ghost rows made the
+  // kiosk show 42 available when reality was 10). This only flags it for manual review via
+  // scratch/fix_orphaned_dressitems.js-style cleanup - it does not touch the DB.
+  const accessLegacyIds = new Set(rows.map(it => toInt(it['קוד'])).filter(Boolean)); // קוד
+  const activeInDb = await prisma.dressItem.findMany({
+    where: { legacyId: { not: null }, isDeleted: false, notInUse: false },
+    select: { legacyId: true, barcodePrefix: true, dressBarcode: true, sizeText: true }
+  });
+  const orphans = activeInDb.filter(i => !accessLegacyIds.has(i.legacyId));
+
+  return { accessCount: rows.length, toCreate, toUpdate, orphans, ...result };
 }
 
 async function processOrders() {
@@ -1223,6 +1237,21 @@ async function main() {
     const sample = unparsedDates.slice(0, 25);
     for (const s of sample) console.log(`  - ${s}`);
     if (unparsedDates.length > sample.length) console.log(`  ... and ${unparsedDates.length - sample.length} more`);
+  }
+
+  const orphans = summary.dressItem.orphans || [];
+  if (orphans.length) {
+    console.log(`\n${'!'.repeat(78)}`);
+    console.log(`DressItem ORPHANS (${orphans.length}): active in Postgres, no longer in this Access export.`);
+    console.log(`These are NOT auto-fixed (this script never deletes) - they will keep inflating`);
+    console.log(`computed availability until reviewed manually. See the 2026-09-14 incident (model`);
+    console.log(`622) in CLAUDE.md for the fix pattern (mark notInUse=true with a manual AuditLog entry).`);
+    const byModel = {};
+    for (const o of orphans) { const k = o.barcodePrefix || 'unknown'; byModel[k] = (byModel[k] || 0) + 1; }
+    for (const [prefix, count] of Object.entries(byModel).sort((a, b) => b[1] - a[1])) {
+      console.log(`  model ${prefix}: ${count} orphaned item(s)`);
+    }
+    console.log('!'.repeat(78));
   }
 
   // Print any per-row failures in full for investigation.

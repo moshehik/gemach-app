@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { HDate, gematriya, Sedra, Locale } from '@hebcal/core';
 import { getHebrewDateString, HEBREW_DAYS } from '@/lib/hebrewDate';
 import { getDressThumbUrl } from '@/app/lib/dressImageUrl';
+import { calculatePaymentStatus, getPaymentStatusColor } from '@/lib/orderStatus';
 import './kiosk.css';
 
 // 32/33 - קיוסק לקוח: מותנה ב-kiosk_customer_self_service / kiosk_allow_self_order (כבוי = מוסתר/דורש התחברות)
@@ -1569,14 +1570,20 @@ export default function CustomerInventoryViewer() {
                 <div style={{ color: 'var(--ink-faint)', textAlign: 'center', padding: '30px 0', fontSize: '13px' }}>לא נמצאו הזמנות לדגם זה בטווח התאריכים הנבחר.</div>
               ) : (
                 <div>
-                  {ordersModalOrders.map(order => (
+                  {ordersModalOrders.map(order => {
+                    // order.status מ-/api/orders הוא שדה DB גולמי שכמעט תמיד ריק בפועל (הסטטוס
+                    // האמיתי מחושב דינמית) - מציגים במקום זאת סטטוס תשלום אמיתי מ-totalAmount/
+                    // totalPaid, באותה שיטה כמו app/orders/page.js.
+                    const paymentStatus = calculatePaymentStatus(order.totalAmount || 0, order.totalPaid || 0);
+                    const paymentColor = getPaymentStatusColor(paymentStatus);
+                    return (
                     <div key={order.orderId} className="ka-order-row">
                       <div className="om">
                         <strong>הזמנה #{order.orderId} - {order.customer?.firstName} {order.customer?.lastName}</strong>
                         <span>תאריך אירוע: {new Date(order.eventDate).toLocaleDateString('he-IL')}</span>
                       </div>
-                      <span className={`ka-badge ${order.status === 'סגור' ? 'ka-badge-neutral' : 'ka-badge-primary'}`}>
-                        {order.status || 'פעיל'}
+                      <span className="ka-badge" style={{ background: paymentColor.bg, color: paymentColor.text }}>
+                        {paymentStatus}
                       </span>
                       <a
                         href={`/orders/${order.orderId}`}
@@ -1588,7 +1595,8 @@ export default function CustomerInventoryViewer() {
                         <svg className="icon"><use href="#i-link" /></svg>
                       </a>
                     </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
