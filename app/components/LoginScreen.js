@@ -370,6 +370,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
               onChange={(e) => setPinValue(e.target.value.slice(0, 4))}
               placeholder="••••"
               style={{ letterSpacing: '0.6em', textAlign: 'center' }}
+              autoComplete="new-password"
             />
           ) : (
             <input data-element-name="שדה_LoginScreen_8"
@@ -379,6 +380,7 @@ export default function LoginScreen({ isModal = false, onClose }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="הזן את הקוד שלך"
+              autoComplete="new-password"
             />
           )}
         </div>

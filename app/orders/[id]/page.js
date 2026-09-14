@@ -220,8 +220,11 @@ export default function OrderDetailsPage({ params }) {
   }, []);
 
   // 14 - בקשת ת״ז לפני עריכה/ביטול (prompt פשוט, מותנה ב-require_id_for_edit_cancel)
+  // ce2904c4 - הדרישה חלה רק על לקוחות שיש להם בפועל ת"ז שמורה (מאז שהיא הפכה לשדה חובה) -
+  // ר' zeoutVerificationNeeded למטה, שמונע קריאה לפונקציה הזו כשללקוח אין ת"ז שמורה כלל.
+  const zeoutVerificationNeeded = requireIdForEdit && !!String(order?.customer?.zeout || '').trim();
   const requestZeout = async () => {
-    if (!requireIdForEdit) return null;
+    if (!zeoutVerificationNeeded) return null;
     const msg = 'עריכה/ביטול דורשים אימות תעודת זהות של הלקוח. נא להזין ת״ז:';
     let zeout = null;
     if (typeof window !== 'undefined' && window.customPrompt) {
@@ -470,7 +473,7 @@ export default function OrderDetailsPage({ params }) {
     }
     // 14 - אם דרוש ת״ז, בקש לפני שליחה וצרף ל-body+header
     let zeoutForRequest = null;
-    if (requireIdForEdit) {
+    if (zeoutVerificationNeeded) {
       zeoutForRequest = await requestZeout();
       if (!zeoutForRequest) {
         // ביטול ע״י המשתמש - לא שולחים כלום, מחזירים null כמו ב-409 discard
@@ -1022,7 +1025,7 @@ export default function OrderDetailsPage({ params }) {
     if (!(await window.customConfirm('האם אתה בטוח שברצונך למחוק הזמנה זו?'))) return;
     // 14 - אם דרוש ת״ז, בקש לפני ביטול
     let zeoutForDelete = null;
-    if (requireIdForEdit) {
+    if (zeoutVerificationNeeded) {
       zeoutForDelete = await requestZeout();
       if (!zeoutForDelete) { alert('ביטול בוטל - לא הוזנה תעודת זהות.'); return; }
     }
