@@ -140,7 +140,7 @@ export default function PrintOrderPage() {
     }
   }, [loading, error, orders]);
 
-  const colCount = enableAlterations ? 5 : 4;
+  const colCount = enableAlterations ? 3 : 2;
 
   // 20 (print_sort_deliveries_first) - כשמדפיסים כמה הזמנות יחד, מקבצים לשתי חטיבות
   // נפרדות: הזמנות משלוח והזמנות רגילות (איסוף עצמי), כל אחת בעמוד/עמודים נפרדים.
@@ -352,9 +352,7 @@ export default function PrintOrderPage() {
           <tr>
             <th>דגם / תיאור</th>
             <th>מידה</th>
-            <th>ברקוד</th>
             {enableAlterations && <th>תיקונים</th>}
-            <th>סטטוס</th>
           </tr>
         </thead>
         <tfoot>
@@ -371,10 +369,6 @@ export default function PrintOrderPage() {
             </tr>
           ) : (
             activeItems.map((item) => {
-              let statusStr = 'טרם נלקח';
-              if (item.isReturned) statusStr = 'הוחזר';
-              else if (item.isTaken) statusStr = 'אצל הלקוח';
-
               // 21 (print_mark_missing_dresses) - פריט שטרם נלקח, שסומן ע"י /api/print/missing-dresses
               // כ"חסר" (אין יחידה פנויה כרגע, ויש יחידה שאמורה לחזור מחר מהזמנה אחרת)
               const missingInfo = markMissingInPrint && !item.isTaken ? missingMap[item.id] : null;
@@ -384,11 +378,9 @@ export default function PrintOrderPage() {
                   <tr>
                     <td style={{ fontWeight: '600', color: '#333' }}>{stripCodeLabel(item.description || item.dressItem?.dress?.name || item.dressItem?.dressName) || '-'}</td>
                     <td>{item.sizeText || item.dressItem?.sizeText || '-'}</td>
-                    <td style={{ fontWeight: '600', color: '#666' }}>{(item.isTaken && (item.barcode || item.dressItem?.dressBarcode)) || '-'}</td>
                     {enableAlterations && (
                       <td>{renderRepairChips(item)}</td>
                     )}
-                    <td>{statusStr}</td>
                   </tr>
                   {missingInfo && (
                     <tr className="missing-dress-row">
