@@ -263,7 +263,11 @@ export default function CustomerInventoryViewer() {
   const [search, setSearch] = useState('');
   const [showZeroSizes, setShowZeroSizes] = useState(false);
   const [viewMode, setViewMode] = useState('rows');
-  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    const saved = parseFloat(localStorage.getItem('ka_zoom_level'));
+    return !isNaN(saved) && saved >= 0.5 && saved <= 1.5 ? saved : 1;
+  });
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -1318,7 +1322,11 @@ export default function CustomerInventoryViewer() {
                     type="range"
                     min="0.5" max="1.5" step="0.1"
                     value={zoomLevel}
-                    onChange={e => setZoomLevel(parseFloat(e.target.value))}
+                    onChange={e => {
+                      const val = parseFloat(e.target.value);
+                      setZoomLevel(val);
+                      localStorage.setItem('ka_zoom_level', String(val));
+                    }}
                   />
                   <div className="s-ticks">
                     <span>קטן</span><span>גדול</span>
