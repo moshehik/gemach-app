@@ -142,6 +142,8 @@ export default function PrintOrderPage() {
     }
   }, [loading, error, orders]);
 
+  // ae986b9a - עמודות "ברקוד" ו"סטטוס" הוסרו (חסרות תוכן בכרטיס שנשלח מיד ביצירת
+  // ההזמנה, לפני שהפריטים נלקחו - הברקוד ריק וכל הסטטוסים "טרם נלקח").
   const colCount = enableAlterations ? 3 : 2;
 
   // 20 (print_sort_deliveries_first) - כשמדפיסים כמה הזמנות יחד, מקבצים לשתי חטיבות
@@ -254,6 +256,10 @@ export default function PrintOrderPage() {
           <tr>
             <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
               <div className="bsd">בס&quot;ד</div>
+              {/* 5c1be668 - היה מותנה ב-printType==='rental', אבל אף מסך באפליקציה לא
+                  פותח את דף ההדפסה עם type=rental בפועל (רק type=order, מיד ביצירת
+                  ההזמנה) - כך שפרטי ההחזרה מעולם לא הופיעו בכרטיס המודפס בפועל, בניגוד
+                  לתאריך הקבלה שמוצג תמיד למטה בלי תנאי דומה. */}
               {returnByDate && (
                 <div className="return-details-box">
                   <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
