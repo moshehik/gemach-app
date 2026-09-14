@@ -356,7 +356,7 @@ export default function DataExplorerPage() {
           <div className="page-desc">ניהול מתקדם של מסד הנתונים, ייצוא נתונים והרצת שאילתות מותאמות אישית</div>
         </div>
         <div className="page-actions">
-          <Link href="/admin" className="btn btn-secondary">
+          <Link href="/admin/site" className="btn btn-secondary">
             <svg className="icon"><use href="#i-chevron-end" /></svg>
             חזור לניהול
           </Link>

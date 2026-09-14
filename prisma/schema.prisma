@@ -617,6 +617,7 @@ model ErrorReport {
   isReadByUser       Boolean   @default(true)
   isReadByProgrammer Boolean   @default(false)
   isHandled          Boolean   @default(false) // סומן ע"י המשתמש/מתכנת כ"טופל" — עצמאי מ-status/ארכיון, נועד רק להבחנה חזותית ברשימה כדי למנוע פתיחות חוזרות
+  needsHuman         Boolean   @default(false) // המדווח/ת ביקש/ה מענה אנושי במקום הסוכן האוטומטי (כפתור "אוף! אני צריך מענה אנושי" ב-ErrorReportButton.js) - הסוכן האוטומטי (scripts/read-error-reports.js) מדלג על דיווח כזה לגמרי; מתאפס כשמתכנת אמיתי (employeeId מוגדר, לא הסקריפט) עונה בשרשור
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 

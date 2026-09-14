@@ -2,7 +2,48 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
-import { renderErrorReportEmailHtml } from '../../../lib/emailTemplates';
+import { renderErrorReportEmailHtml, renderGenericEmailHtml } from '../../../lib/emailTemplates';
+
+// שולח מייל לכל המתכנתים הפעילים (roleId=2) דרך אותו Google Apps Script mailer
+// ששאר המערכת משתמשת בו - ר' POST למטה (דיווח חדש) ו-lib/emailTemplates.js.
+async function sendProgrammerEmail({ subject, textBody, htmlBody, fileName }) {
+  const programmers = await prisma.employee.findMany({
+    where: { roleId: 2, isActive: true, email: { not: null } }
+  });
+  if (programmers.length === 0) return;
+
+  const settings = (await getAllCachedSettings()).filter(s => ['email_link_a', 'email_link_b', 'email_routing_strategy'].includes(s.key));
+  const linkA = settings.find(s => s.key === 'email_link_a')?.value;
+  const linkB = settings.find(s => s.key === 'email_link_b')?.value;
+  const strategy = settings.find(s => s.key === 'email_routing_strategy')?.value || 'all_a';
+
+  let scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
+  if ((strategy === 'all_b' || strategy === 'bugs_b_rest_a') && linkB) {
+    scriptUrl = linkB;
+  } else if (linkA) {
+    scriptUrl = linkA;
+  }
+
+  for (const prog of programmers) {
+    try {
+      await fetch(scriptUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          to: prog.email,
+          cc: '',
+          subject,
+          body: textBody,
+          htmlBody,
+          fileName: fileName || 'הודעה.txt',
+          fileContent: Buffer.from('הודעה').toString('base64')
+        })
+      });
+    } catch (e) {
+      console.error('Failed to send email to', prog.email, e);
+    }
+  }
+}
 
 export async function GET(request) {
   try {
@@ -59,18 +100,20 @@ export async function PATCH(request) {
       return NextResponse.json({ success: false, error: 'משתמש לא נמצא' }, { status: 404 });
     }
 
-    const { reportId, status, isHandled, isReadByUser, isReadByProgrammer } = await request.json();
+    const { reportId, status, isHandled, isReadByUser, isReadByProgrammer, needsHuman } = await request.json();
     const statusProvided = status !== undefined;
     const isHandledProvided = isHandled !== undefined;
     const isReadByUserProvided = isReadByUser !== undefined;
     const isReadByProgrammerProvided = isReadByProgrammer !== undefined;
+    const needsHumanProvided = needsHuman !== undefined;
     if (
       !reportId ||
-      (!statusProvided && !isHandledProvided && !isReadByUserProvided && !isReadByProgrammerProvided) ||
+      (!statusProvided && !isHandledProvided && !isReadByUserProvided && !isReadByProgrammerProvided && !needsHumanProvided) ||
       (statusProvided && !['OPEN', 'ARCHIVED'].includes(status)) ||
       (isHandledProvided && typeof isHandled !== 'boolean') ||
       (isReadByUserProvided && typeof isReadByUser !== 'boolean') ||
-      (isReadByProgrammerProvided && typeof isReadByProgrammer !== 'boolean')
+      (isReadByProgrammerProvided && typeof isReadByProgrammer !== 'boolean') ||
+      (needsHumanProvided && typeof needsHuman !== 'boolean')
     ) {
       return NextResponse.json({ success: false, error: 'נתונים חסרים או לא תקינים' }, { status: 400 });
     }
@@ -89,11 +132,38 @@ export async function PATCH(request) {
     if (isHandledProvided) data.isHandled = isHandled;
     if (isReadByUserProvided) data.isReadByUser = isReadByUser;
     if (isReadByProgrammerProvided) data.isReadByProgrammer = isReadByProgrammer;
+    if (needsHumanProvided) data.needsHuman = needsHuman;
 
     const updated = await prisma.errorReport.update({
       where: { id: reportId },
       data,
     });
+
+    // "אוף! אני צריך מענה אנושי!" - המדווח/ת ביקש/ה לדלג על הסוכן האוטומטי ולקבל
+    // מענה ישיר מתמיכה. שולחים מייל רק כשמדליקים את הדגל (לא כשמכבים אותו), ורק
+    // מי שאינו מתכנת יכול להדליק אותו (אכיפה למעלה: !isProgrammer && employeeId===own).
+    if (needsHumanProvided && needsHuman && !existing.needsHuman) {
+      const reporterName = employee.firstName ? `${employee.firstName} ${employee.lastName || ''}`.trim() : 'משתמש';
+      const textBody = `
+${reporterName} ביקש/ה מענה אנושי ישיר בדיווח תקלה, במקום המענה האוטומטי.
+
+חלון/דף: ${existing.title || 'לא צוין'}
+תיאור התקלה:
+${existing.userText}
+
+הסוכן האוטומטי ידלג על הדיווח הזה מעתה - יש לענות בעצמכם בשרשור.
+      `.trim();
+      const htmlBody = renderGenericEmailHtml({
+        title: 'התבקש מענה אנושי בדיווח תקלה',
+        bodyText: textBody
+      });
+      sendProgrammerEmail({
+        subject: `${reporterName} מבקש/ת מענה אנושי - דיווח תקלה`,
+        textBody,
+        htmlBody,
+        fileName: 'בקשה למענה אנושי.txt'
+      }).catch((e) => console.error('Failed to send needsHuman email', e));
+    }
 
     return NextResponse.json({ success: true, report: updated });
   } catch (error) {

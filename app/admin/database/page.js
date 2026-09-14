@@ -91,7 +91,7 @@ export default function DatabaseManagement() {
           <p className="page-desc">ייבוא, גיבוי וסנכרון נתונים</p>
         </div>
         <div className="page-actions">
-          <Link href="/admin" className="btn btn-secondary">
+          <Link href="/admin/site" className="btn btn-secondary">
             <svg className="icon"><use href="#i-arrow-end" /></svg>
             חזרה לניהול
           </Link>

@@ -1,55 +1,18 @@
 import Link from 'next/link';
 
-const categories = [
+const cards = [
   {
-    title: 'תובנות ודוחות',
-    description: 'סקירה, ניתוח וניהול חכם',
-    dotColor: 'var(--info)',
-    tint: 'var(--info-tint)',
-    fg: 'var(--info)',
-    items: [
-      { href: '/admin/ai', icon: 'i-message', label: 'מערכת AI', subLabel: 'תובנות ודוחות מלל' },
-      { href: '/admin/statistics', icon: 'i-activity', label: 'סטטיסטיקה', subLabel: 'דוחות שאילתות' },
-      { href: '/admin/ai-history', icon: 'i-history', label: 'היסטוריית AI', subLabel: 'כלל שיחות העוזר' },
-      { href: '/dashboard', icon: 'i-grid', label: 'דשבורד', subLabel: 'גרפים ומגמות' },
-      { href: '/dashboard/pricelist', icon: 'i-file', label: 'מחירון', subLabel: 'צפייה והדפסה' },
-    ]
+    href: '/admin/settings',
+    icon: 'i-settings',
+    label: 'הגדרות מערכת',
+    desc: 'תצורה, מיתוג, מדיניות תשלומים, ברקודים, הודעות, אוטומציה וסנכרון',
   },
   {
-    title: 'בקרה והתראות',
-    description: 'איתור חריגות והגדרות מערכת',
-    dotColor: 'var(--danger)',
-    tint: 'var(--danger-tint)',
-    fg: 'var(--danger)',
-    items: [
-      { href: '/admin/inventory-alerts', icon: 'i-alert-tri', label: 'התראות מלאי', subLabel: 'בדיקת Overbooking' },
-      { href: '/admin/recalculations', icon: 'i-coin', label: 'חישובים', subLabel: 'פערי תשלומים' },
-      { href: '/admin/settings', icon: 'i-settings', label: 'הגדרות', subLabel: 'תצורה ולוגו' },
-      { href: '/admin/departments', icon: 'i-users', label: 'ניהול מחלקות', subLabel: 'תפקידי עובדים ומספרי מחלקה' },
-      { href: '/admin/refund-policy', icon: 'i-receipt', label: 'מדיניות זיכויים', subLabel: 'תיעוד חוקי ביטול' },
-      { href: '/admin/labels', icon: 'i-tag', label: 'שינוי שמות', subLabel: 'כיתובים וטקסטים' },
-      { href: '/admin/trusted-devices', icon: 'i-shield', label: 'מחשבי מערכת מהימנים', subLabel: 'כניסה מהירה ב-4 ספרות' },
-      { href: '/admin/audit-system', icon: 'i-check-circle', label: 'מערכת ביקורת (11 סוכנים)', subLabel: 'תיעוד סוכני הבדיקה האוטומטיים' },
-    ]
+    href: '/admin/site',
+    icon: 'i-grid',
+    label: 'ניהול אתר',
+    desc: 'דוחות ותובנות, בקרה והתראות, נתונים ומערכת',
   },
-  {
-    title: 'נתונים ומערכת',
-    description: 'ניהול היסטוריה ומסד הנתונים',
-    dotColor: 'var(--success)',
-    tint: 'var(--success-tint)',
-    fg: 'var(--success)',
-    items: [
-      { href: '/admin/data-explorer', icon: 'i-search', label: 'סייר נתונים', subLabel: 'שאילתות SQL' },
-      { href: '/admin/data-explorer/full-view', icon: 'i-database', label: 'תצוגה מלאה', subLabel: 'כל הטבלאות במסך אחד' },
-      { href: '/admin/access-import', icon: 'i-database', label: 'ייבוא מאקסס', subLabel: 'תיעוד תהליך הייבוא' },
-      { href: '/admin/setup-new-machine', icon: 'i-download', label: 'התקנה על מחשב חדש', subLabel: 'סקריפט התקנה + תיעוד' },
-      { href: '/admin/data-history', icon: 'i-history', label: 'היסטוריית נתונים', subLabel: 'תיעוד שינויים' },
-      { href: '/admin/database', icon: 'i-database', label: 'גיבוי בסיס נתונים', subLabel: 'גיבוי ושחזור' },
-      { href: '/management/database', icon: 'i-database', label: 'איפוס נתונים', subLabel: 'החלפה מ-JSON' },
-      { href: '/management/email-logs', icon: 'i-mail', label: 'יומן מיילים', subLabel: 'כל המיילים שנשלחו' },
-      { href: '/management/history', icon: 'i-activity', label: 'היסטוריית גלישה', subLabel: 'דפים ושגיאות' },
-    ]
-  }
 ];
 
 export default function AdminHubPage() {
@@ -62,29 +25,24 @@ export default function AdminHubPage() {
         </div>
       </div>
 
-      {categories.map((category, catIndex) => (
-        <section key={catIndex} style={{ marginBottom: '36px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-            <span className="dot-badge" aria-hidden="true" style={{ color: category.dotColor }}></span>
-            <h2>{category.title}</h2>
-          </div>
-          <p className="page-desc" style={{ marginBottom: '16px' }}>{category.description}</p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '14px' }}>
-            {category.items.map((item, itemIndex) => (
-              <Link className="list-card" href={item.href} key={itemIndex}>
-                <div className="kpi-icon" style={{ background: category.tint, color: category.fg }}>
-                  <svg className="icon"><use href={`#${item.icon}`} /></svg>
-                </div>
-                <div>
-                  <h3 style={{ fontSize: '14.5px', marginBottom: '2px' }}>{item.label}</h3>
-                  <p className="page-desc" style={{ marginTop: 0 }}>{item.subLabel}</p>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      ))}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px', maxWidth: '700px' }}>
+        {cards.map((card) => (
+          <Link
+            key={card.href}
+            href={card.href}
+            className="list-card"
+            style={{ flexDirection: 'column', alignItems: 'flex-start', padding: '28px', gap: '14px' }}
+          >
+            <div className="kpi-icon" style={{ width: '52px', height: '52px', background: 'var(--primary-tint)', color: 'var(--primary)' }}>
+              <svg className="icon" style={{ width: '24px', height: '24px' }}><use href={`#${card.icon}`} /></svg>
+            </div>
+            <div>
+              <h2 style={{ fontSize: '18px', marginBottom: '4px' }}>{card.label}</h2>
+              <p className="page-desc" style={{ marginTop: 0 }}>{card.desc}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
     </>
   );
 }

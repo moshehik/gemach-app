@@ -168,6 +168,7 @@ const HEBREW_NAMES = {
   restrict_refunds_to_head_management: 'הגבלת זיכויים וחובות להנהלה ראשית',
   show_employee_profile_image: 'הצגת תמונת פרופיל בכרטיס עובד',
   error_report_handled_at_bottom: 'פניות מטופלות בתחתית הרשימה',
+  error_report_human_button_enabled: 'הצג כפתור "מענה אנושי" בדיווחי שגיאות',
   standard_return_hour: 'שעת החזרה סטנדרטית בדוח השכרה',
   rental_belt_notice: 'שורת הערת חגורות בדוח השכרה',
 
@@ -221,6 +222,7 @@ const HEBREW_NOTES = {
   restrict_refunds_to_head_management: 'כשמופעל, עמוד זיכויים וחובות נגיש רק להנהלה ראשית/מתכנת ולא למנהל סניף רגיל.',
   show_employee_profile_image: 'הצגת אזור העלאת/תצוגת תמונת פרופיל בכרטיס העובד (הפרופיל האישי וכרטיס העובד המנהלי). כבוי = האזור מוסתר לגמרי.',
   error_report_handled_at_bottom: 'פניות שסומנו "טופל" ברשימת הפניות הפתוחות יורדות לתחתית הרשימה, כדי שפניות חדשות יבלטו למעלה.',
+  error_report_human_button_enabled: 'כשמופעל, מוצג בשרשור דיווח שגיאה (אחרי תגובת הסוכן האוטומטי) כפתור "אוף! אני צריך מענה אנושי!" למדווח/ת. לחיצה עליו מדלגת על הסוכן האוטומטי בדיווח הזה ושולחת מייל לתמיכה לטיפול ידני. כבוי = הכפתור לא מוצג בכלל.',
   standard_return_hour: 'שעת ההחזרה המוצגת בשורת "פרטי החזרה" בדוח ההשכרה המודפס (פורמט HH:MM).',
   rental_belt_notice: 'שורה נוספת שתופיע מתחת ל"פרטי החזרה" בדוח ההשכרה המודפס (למשל הערה על החזרת חגורות). ריק = לא מוצגת.',
 
@@ -958,7 +960,7 @@ export default function SettingsClient() {
               'premium_pricing_enabled', 'show_not_taken_orders', 'cancellation_extra_columns', 'enable_rental_extension',
               // פרוטוקול תיקון דיווחי שגיאות - הגדרות עם שחזור
               'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management',
-              'show_employee_profile_image', 'error_report_handled_at_bottom', 'auto_print_on_order_create',
+              'show_employee_profile_image', 'error_report_handled_at_bottom', 'error_report_human_button_enabled', 'auto_print_on_order_create',
               'allow_additional_payment_on_order', 'hide_taken_orders_from_orders_list',
               'agent_digest_email_enabled'
             ].includes(setting.key);

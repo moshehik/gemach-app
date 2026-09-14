@@ -10,7 +10,7 @@ export default function DataHistoryPage() {
           <p className="page-desc">כאן תוכל לראות את כל שינויי הנתונים שבוצעו במערכת, ברמת הלקוח, ההזמנה, ועוד.</p>
         </div>
         <div className="page-actions">
-          <Link href="/admin" className="btn btn-secondary">
+          <Link href="/admin/site" className="btn btn-secondary">
             <svg className="icon"><use href="#i-arrow-end" /></svg>
             חזרה לניהול
           </Link>

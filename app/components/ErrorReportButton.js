@@ -23,6 +23,10 @@ export default function ErrorReportButton() {
   // לתחתית רשימת הפתוחות, כדי שפניות חדשות/לא-מטופלות יבלטו למעלה. ברירת מחדל
   // true כשהשורה עוד לא נוצרה ב-DB.
   const [handledAtBottom, setHandledAtBottom] = useState(true);
+  // error_report_human_button_enabled (הגדרות > תצוגה) - האם להציג בכלל את כפתור
+  // "אוף! אני צריך מענה אנושי!" בתוך שרשור. ברירת מחדל true כשהשורה עוד לא נוצרה ב-DB.
+  const [humanButtonEnabled, setHumanButtonEnabled] = useState(true);
+  const [isRequestingHuman, setIsRequestingHuman] = useState(false);
 
   const [selectedReport, setSelectedReport] = useState(null);
   const [replyText, setReplyText] = useState('');
@@ -230,8 +234,11 @@ export default function ErrorReportButton() {
     fetch('/api/settings')
       .then(r => r.json())
       .then(data => {
-        const s = Array.isArray(data) ? data.find(x => x.key === 'error_report_handled_at_bottom') : null;
+        if (!Array.isArray(data)) return;
+        const s = data.find(x => x.key === 'error_report_handled_at_bottom');
         if (s) setHandledAtBottom(s.value !== 'false');
+        const h = data.find(x => x.key === 'error_report_human_button_enabled');
+        if (h) setHumanButtonEnabled(h.value !== 'false');
       })
       .catch(() => {});
   }, []);
@@ -445,6 +452,35 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
     }
   };
 
+  // תגובת "תמיכה" מהסוכן האוטומטי (scripts/error-report-reply.js) לעולם לא מגדירה
+  // employeeId - רק תגובה אמיתית שמתכנת מקליד בעצמו ב-UI (POST /api/error-report/reply)
+  // כן. זה מה שמבחין בין השניים כדי להציג את כפתור "מענה אנושי" רק אחרי תגובת בוט.
+  const isBotReply = (reply) => !!reply?.isProgrammer && !reply?.employeeId;
+
+  const requestHumanReply = async () => {
+    if (!selectedReport || isRequestingHuman) return;
+    setIsRequestingHuman(true);
+    try {
+      const res = await fetch('/api/error-report', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reportId: selectedReport.id, needsHuman: true }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setSelectedReport(prev => ({ ...prev, needsHuman: true }));
+        setReports(prev => prev.map(r => r.id === selectedReport.id ? { ...r, needsHuman: true } : r));
+        showToast('הבקשה נשלחה - התמיכה תענה לך בעצמה בקרוב', 'success');
+      } else {
+        showToast(data.error || 'שגיאה בשליחת הבקשה', 'error');
+      }
+    } catch (err) {
+      showToast('שגיאת תקשורת', 'error');
+    } finally {
+      setIsRequestingHuman(false);
+    }
+  };
+
   // "ממתין לתשובה" - התגובה האחרונה בשרשור מסומנת isQuestion (ר' --question ב-
   // scripts/error-report-reply.js): מישהו שאל שאלה פתוחה והצד השני עדיין לא ענה.
   // נגזר מהתגובה האחרונה של כל דיווח בנפרד - לא גלובלי - כך ששרשורים מקבילים לא
@@ -611,6 +647,13 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                   </div>
                 )}
 
+                {selectedReport.needsHuman && (
+                  <div style={{ padding: '8px 22px', background: 'var(--danger-bg, #fef2f2)', color: 'var(--danger, #c0392b)', fontWeight: 600, fontSize: 12.5, borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <svg className="icon" style={{ width: 14, height: 14 }}><use href="#i-alert-circle" /></svg>
+                    {isProgrammer ? 'המדווח/ת ביקש/ה מענה אנושי ישיר - יש לענות בעצמכם' : 'הבקשה למענה אנושי נשלחה - התמיכה תענה לך בעצמה'}
+                  </div>
+                )}
+
                 <div style={{ flex: 1, overflowY: 'auto', padding: 22, display: 'flex', flexDirection: 'column', gap: 12 }}>
                   <div className="card card-pad" style={{ alignSelf: 'flex-start', maxWidth: '85%' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6, color: 'var(--text-3)', fontSize: 12.5 }}>
@@ -663,6 +706,21 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                       </div>
                     );
                   })}
+
+                  {!isProgrammer && humanButtonEnabled && !selectedReport.needsHuman
+                    && selectedReport.replies?.length > 0
+                    && isBotReply(selectedReport.replies[selectedReport.replies.length - 1]) && (
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      style={{ alignSelf: 'flex-start' }}
+                      disabled={isRequestingHuman}
+                      onClick={requestHumanReply}
+                    >
+                      <svg className="icon"><use href="#i-alert-circle" /></svg>
+                      אוף! אני צריך מענה אנושי!
+                    </button>
+                  )}
                 </div>
 
                 <form onSubmit={handleReply} style={{ padding: '10px 16px 16px', borderTop: '1px solid var(--border)', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -731,11 +789,13 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     // מדיווחי-תקלה רגילים.
                     const rowBackground = isAgentLog
                       ? 'var(--primary-tint)'
-                      : isUnread
-                        ? 'var(--primary-tint)'
-                        : awaitingReply
-                          ? 'var(--warning-tint)'
-                          : (report.isHandled ? 'var(--success-tint)' : 'var(--surface)');
+                      : report.needsHuman
+                        ? 'var(--danger-bg, #fef2f2)'
+                        : isUnread
+                          ? 'var(--primary-tint)'
+                          : awaitingReply
+                            ? 'var(--warning-tint)'
+                            : (report.isHandled ? 'var(--success-tint)' : 'var(--surface)');
                     return (
                       <div
                         key={report.id}
@@ -747,7 +807,17 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                           <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             {isUnread && <span className="dot-badge" />}
                             {isAgentLog ? report.title : (report.employee ? report.employee.firstName + ' ' + report.employee.lastName : 'משתמש')}
-                            {!isUnread && awaitingReply && (
+                            {report.needsHuman && (
+                              <span
+                                className="badge"
+                                style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, background: 'var(--danger-bg, #fef2f2)', color: 'var(--danger, #c0392b)' }}
+                                title={isProgrammer ? 'המדווח/ת ביקש/ה מענה אנושי ישיר' : 'הבקשה למענה אנושי נשלחה'}
+                              >
+                                <svg className="icon" style={{ width: 11, height: 11 }}><use href="#i-alert-circle" /></svg>
+                                מענה אנושי
+                              </span>
+                            )}
+                            {!isUnread && !report.needsHuman && awaitingReply && (
                               <span
                                 className="badge"
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))' }}
@@ -757,7 +827,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                                 ממתין לתשובה
                               </span>
                             )}
-                            {!isUnread && !awaitingReply && report.isHandled && (
+                            {!isUnread && !report.needsHuman && !awaitingReply && report.isHandled && (
                               <span
                                 className="badge badge-success"
                                 style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11 }}

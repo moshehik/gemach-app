@@ -48,13 +48,16 @@ export async function POST(request) {
       }
     });
 
-    // Update read status for the other party
+    // Update read status for the other party. תגובה אמיתית של מתכנת מחוברת (isProgrammer,
+    // employeeId מוגדר - לא הסוכן האוטומטי, ר' scripts/error-report-reply.js שלא מגדיר
+    // employeeId בכלל) מסירה את דגל "צריך מענה אנושי" - זו בדיוק התגובה שהמדווח/ת ביקש/ה.
     await prisma.errorReport.update({
       where: { id: reportId },
       data: {
         isReadByUser: !isProgrammer,
         isReadByProgrammer: isProgrammer,
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        ...(isProgrammer ? { needsHuman: false } : {})
       }
     });
 

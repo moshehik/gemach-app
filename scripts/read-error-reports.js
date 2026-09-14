@@ -42,6 +42,7 @@ async function main() {
       id: r.id,
       status: r.status,
       isHandled: r.isHandled,
+      needsHuman: r.needsHuman,
       reporter: r.employee ? `${r.employee.firstName || ''} ${r.employee.lastName || ''}`.trim() : 'לא ידוע',
       time: r.time,
       url: r.url,

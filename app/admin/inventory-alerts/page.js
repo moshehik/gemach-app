@@ -145,7 +145,7 @@ export default function InventoryAlertsPage() {
           <div className="page-desc">דגמים שהביקוש בהם חורג מהמלאי הפנוי</div>
         </div>
         <div className="page-actions">
-          <Link href="/admin" className="btn btn-secondary">
+          <Link href="/admin/site" className="btn btn-secondary">
             <svg className="icon"><use href="#i-chevron-end" /></svg>
             חזרה לניהול
           </Link>
