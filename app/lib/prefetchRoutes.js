@@ -146,8 +146,9 @@ export function buildRentalsListParams({
     forRentals: 'true'
   });
 
-  // סינון לפי מצב תצוגה פעיל רק כשאין חיפוש/סינון מתקדם — כמו בדף עצמו.
-  if (!search && !hasAdvFilters) {
+  // סינון לפי מצב תצוגה (לשונית) פעיל גם כשיש סינון מתקדם - הוא מצטרף אליו (AND),
+  // לא מחליף אותו. רק חיפוש טקסט חופשי עדיין עוקף את הלשונית (מחפש בכל הסטטוסים).
+  if (!search) {
     if (viewMode === 'rented') queryParams.append('activeOnly', 'true');
     else if (viewMode === 'rented_partial') queryParams.append('partiallyRentedOnly', 'true');
     else if (viewMode === 'returned') queryParams.append('returnedOnly', 'true');
