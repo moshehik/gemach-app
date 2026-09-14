@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Fragment } from 'react';
 import { createPortal } from 'react-dom';
-import { calculateOrderStatus } from '../../lib/orderStatus';
+import { calculateOrderStatus, getStatusColor } from '../../lib/orderStatus';
 import { getHebrewDateString } from '../../lib/hebrewDate';
 import ExportButtons from '../../components/ExportButtons';
 import StatisticsModal from '../components/StatisticsModal';
@@ -35,18 +35,6 @@ const buildRentalsAiPrompt = (f) => {
 // מטמון SWR משותף — ראה app/lib/pageCache.js; בניית ה-query עברה ל-prefetchRoutes.js
 // כדי שה-prefetch מדפים אחרים ייצר את אותו מפתח בדיוק.
 const rentalsCache = cacheNamespace('rentals');
-
-// צבעי נקודת-הסטטוס בטבלה — עקבי עם הצבעים של כפתורי הסינון (.pill-tabs) מעל הטבלה.
-const STATUS_DOT_COLORS = {
-  'הושכר': 'var(--warning)',
-  'הושכר חלקי': 'var(--accent)',
-  'הוחזר': 'var(--success)',
-  'הוחזר חלקי': 'var(--info)',
-  'מחוק': 'var(--danger)',
-  'טיוטה': 'var(--text-3)',
-  'עבר': 'var(--text-3)',
-  'בקרוב': 'var(--primary-solid)',
-};
 
 export default function RentalsPage() {
   const { getLabel } = useLabels();
@@ -574,29 +562,24 @@ export default function RentalsPage() {
               </tr>
             ) : orders.map(ord => {
               const statusLabel = calculateOrderStatus(ord);
-              const statusColor = STATUS_DOT_COLORS[statusLabel] || 'var(--text-3)';
+              const statusColor = getStatusColor(statusLabel).text;
               const totalItems = ord.items?.filter(i => !i.isDeleted).length || 0;
               const rentedItems = ord.items?.filter(i => i.isTaken && !i.isReturned && !i.isDeleted).length || 0;
               const returnedItems = ord.items?.filter(i => i.isReturned && !i.isDeleted).length || 0;
               const hasCustomSpacing = !hideCustomSpacing && ord.customSpacing !== null && ord.customSpacing !== undefined;
 
+              // צבע הרקע נגזר תמיד מ-statusLabel (calculateOrderStatus, מקור האמת היחיד) ולא
+              // מספירה מקומית של rentedItems/returnedItems - שרשרת if נפרדת שהתבססה על הספירות
+              // האלה בעבר לא הסכימה עם סדר-העדיפויות של calculateOrderStatus (היא בדקה "הושכר
+              // חלקי" לפני "הוחזר חלקי", בעוד ש-calculateOrderStatus בודק "הוחזר" לפני "הושכר"),
+              // כך שהזמנה עם גם פריט שיצא וגם פריט שהוחזר קיבלה שורה בצבע "הושכר חלקי" למרות
+              // שהתווית שהוצגה לצידה הייתה "הוחזר חלקי" - עכשיו שתיהן תמיד מסכימות.
               let rowStyle = {};
               if (hasCustomSpacing) {
-                // כל הפריטים הושכרו
                 rowStyle = { background: 'var(--warning-tint)', borderRight: '4px solid var(--warning)' };
-              } else if (totalItems > 0) {
-                if (rentedItems === totalItems) {
-                  rowStyle = { background: 'var(--info-tint)', borderRight: '4px solid var(--info)' };
-                } else if (rentedItems > 0) {
-                  // חלק מהפריטים הושכרו
-                  rowStyle = { background: 'var(--accent-tint)', borderRight: '4px solid var(--accent)' };
-                } else if (returnedItems === totalItems) {
-                  // כל הפריטים הוחזרו
-                  rowStyle = { background: 'var(--success-tint)', borderRight: '4px solid var(--success)' };
-                } else if (returnedItems > 0) {
-                  // חלק מהפריטים הוחזרו
-                  rowStyle = { background: 'var(--danger-tint)', borderRight: '4px solid var(--danger)' };
-                }
+              } else if (totalItems > 0 && ['הושכר', 'הושכר חלקי', 'הוחזר', 'הוחזר חלקי'].includes(statusLabel)) {
+                const { bg, text } = getStatusColor(statusLabel);
+                rowStyle = { background: bg, borderRight: `4px solid ${text}` };
               }
 
               return (
