@@ -99,9 +99,15 @@ export async function GET(request) {
 
       const eventTime = new Date(order.eventDate).getTime();
       const effectiveOutboundRange = order.deliveryOneDayBefore ? (outboundOneDayBeforeRange || outboundRange) : outboundRange;
+      // 1a02bcc5 - הכיוון שנבחר בהזמנה (deliveryDirection: הלוך/חזור/הלוך-חזור) לא נבדק
+      // כלל כאן, רק חפיפת התאריך - הזמנה שביקשה רק "הלוך" הופיעה גם ברשימת ה"חזור" של
+      // יום ההחזרה שלה, ולהפך, כאילו תמיד הוזמן משלוח הלוך-חזור.
+      const direction = order.deliveryDirection || 'הלוך-חזור';
+      const wantsOut = direction === 'הלוך' || direction === 'הלוך-חזור';
+      const wantsReturn = direction === 'חזור' || direction === 'הלוך-חזור';
       const directions = [];
-      if (eventTime >= effectiveOutboundRange.start.getTime() && eventTime <= effectiveOutboundRange.end.getTime()) directions.push('out');
-      if (eventTime >= returnRange.start.getTime() && eventTime <= returnRange.end.getTime()) directions.push('return');
+      if (wantsOut && eventTime >= effectiveOutboundRange.start.getTime() && eventTime <= effectiveOutboundRange.end.getTime()) directions.push('out');
+      if (wantsReturn && eventTime >= returnRange.start.getTime() && eventTime <= returnRange.end.getTime()) directions.push('return');
       if (directions.length === 0) continue;
 
       const dressModelNames = [...new Set(order.items.map(i => i.description).filter(Boolean))];

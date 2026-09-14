@@ -140,7 +140,9 @@ export default function PrintOrderPage() {
     }
   }, [loading, error, orders]);
 
-  const colCount = enableAlterations ? 5 : 4;
+  // ae986b9a - עמודות "ברקוד" ו"סטטוס" הוסרו (חסרות תוכן בכרטיס שנשלח מיד ביצירת
+  // ההזמנה, לפני שהפריטים נלקחו - הברקוד ריק וכל הסטטוסים "טרם נלקח").
+  const colCount = enableAlterations ? 3 : 2;
 
   // 20 (print_sort_deliveries_first) - כשמדפיסים כמה הזמנות יחד, מקבצים לשתי חטיבות
   // נפרדות: הזמנות משלוח והזמנות רגילות (איסוף עצמי), כל אחת בעמוד/עמודים נפרדים.
@@ -247,7 +249,11 @@ export default function PrintOrderPage() {
           <tr>
             <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
               <div className="bsd">בס&quot;ד</div>
-              {printType === 'rental' && returnByDate && (
+              {/* 5c1be668 - היה מותנה ב-printType==='rental', אבל אף מסך באפליקציה לא
+                  פותח את דף ההדפסה עם type=rental בפועל (רק type=order, מיד ביצירת
+                  ההזמנה) - כך שפרטי ההחזרה מעולם לא הופיעו בכרטיס המודפס בפועל, בניגוד
+                  לתאריך הקבלה שמוצג תמיד למטה בלי תנאי דומה. */}
+              {returnByDate && (
                 <div className="return-details-box">
                   <strong>פרטי החזרה:</strong> {getHebrewWeekdayLabel(returnByDate)} {getHebrewDateString(returnByDate)} עד השעה {printSettings?.returnHour || STANDARD_RETURN_HOUR}
                   {printSettings?.beltNotice && (
@@ -352,9 +358,7 @@ export default function PrintOrderPage() {
           <tr>
             <th>דגם / תיאור</th>
             <th>מידה</th>
-            <th>ברקוד</th>
             {enableAlterations && <th>תיקונים</th>}
-            <th>סטטוס</th>
           </tr>
         </thead>
         <tfoot>
@@ -371,10 +375,6 @@ export default function PrintOrderPage() {
             </tr>
           ) : (
             activeItems.map((item) => {
-              let statusStr = 'טרם נלקח';
-              if (item.isReturned) statusStr = 'הוחזר';
-              else if (item.isTaken) statusStr = 'אצל הלקוח';
-
               // 21 (print_mark_missing_dresses) - פריט שטרם נלקח, שסומן ע"י /api/print/missing-dresses
               // כ"חסר" (אין יחידה פנויה כרגע, ויש יחידה שאמורה לחזור מחר מהזמנה אחרת)
               const missingInfo = markMissingInPrint && !item.isTaken ? missingMap[item.id] : null;
@@ -384,11 +384,9 @@ export default function PrintOrderPage() {
                   <tr>
                     <td style={{ fontWeight: '600', color: '#333' }}>{stripCodeLabel(item.description || item.dressItem?.dress?.name || item.dressItem?.dressName) || '-'}</td>
                     <td>{item.sizeText || item.dressItem?.sizeText || '-'}</td>
-                    <td style={{ fontWeight: '600', color: '#666' }}>{(item.isTaken && (item.barcode || item.dressItem?.dressBarcode)) || '-'}</td>
                     {enableAlterations && (
                       <td>{renderRepairChips(item)}</td>
                     )}
-                    <td>{statusStr}</td>
                   </tr>
                   {missingInfo && (
                     <tr className="missing-dress-row">

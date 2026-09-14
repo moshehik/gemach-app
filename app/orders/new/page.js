@@ -1008,6 +1008,19 @@ export default function NewOrderPage() {
     if (!hasDates) return alert(order.isAbroad || order.isWeekdayEvent ? 'יש לבחור תאריכים עבור אירוע חו"ל/מיוחד' : 'יש לבחור תאריך אירוע');
     if (order.items.length === 0) return alert('יש לבחור לפחות פריט אחד');
 
+    // f82e76c1 - כשעיר המשלוח שהוזנה (לחישוב מחיר) שונה מעיר המגורים של הלקוח, כתובת
+    // המשלוח החלופית (deliveryAddress) חייבת להיות מלאה - אחרת אין למי שמבצע את
+    // המשלוח בפועל כתובת לפי מי לנסוע, רק את כתובת המגורים הרגילה שכבר לא רלוונטית.
+    if (
+      order.isDelivery
+      && settings.delivery_allow_address_override === 'true'
+      && String(order.deliveryCity || '').trim()
+      && String(order.deliveryCity || '').trim() !== String(order.selectedCustomer?.city || '').trim()
+      && !String(order.deliveryAddress || '').trim()
+    ) {
+      return alert('עיר המשלוח שונה מעיר הלקוח - יש למלא כתובת משלוח.');
+    }
+
     // חוסם שמירת הזמנה לתאריך שעבר בלי אישור מנהל, כדי למנוע הזמנות שנשמרות בטעות
     // לתאריך שכבר חלף. נבדק לפני חיוב אשראי/תשלום כדי לא לגבות כסף על הזמנה שתיחסם.
     const relevantDate = (order.isAbroad || order.isWeekdayEvent) ? order.fromDate : order.eventDate;
