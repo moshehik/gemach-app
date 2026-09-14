@@ -150,7 +150,12 @@ export default function PrintOrderPage() {
     if (orders.length <= 1 || !sortDeliveriesFirst) {
       return [{ label: null, list: orders }];
     }
-    const deliveryOrders = orders.filter(o => o.isDelivery);
+    // 22 - בתוך חטיבת המשלוחים, משלוח "הלוך" קודם (יוצא מהגמ"ח, הכי דחוף להכין) לפני "הלוך-חזור"/"חזור"
+    const directionOrder = { 'הלוך': 0, 'הלוך-חזור': 1, 'חזור': 2 };
+    const deliveryOrders = orders
+      .filter(o => o.isDelivery)
+      .slice()
+      .sort((a, b) => (directionOrder[a.deliveryDirection] ?? 1) - (directionOrder[b.deliveryDirection] ?? 1));
     const regularOrders = orders.filter(o => !o.isDelivery);
     if (deliveryOrders.length === 0 || regularOrders.length === 0) {
       return [{ label: null, list: orders }];

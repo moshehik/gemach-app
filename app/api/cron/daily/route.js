@@ -82,7 +82,7 @@ export async function GET(request) {
       const overdueOrders = await prisma.order.findMany({
         where: {
           isDeleted: false,
-          eventDate: { lt: today },
+          returnDate: { lt: today },
           items: { some: { isTaken: true, isReturned: false, isDeleted: false } }
         },
         include: { customer: true, items: { where: { isTaken: true, isReturned: false, isDeleted: false } } },
@@ -91,8 +91,8 @@ export async function GET(request) {
       for (const o of overdueOrders) {
         const email = o.customer?.email;
         if (!email || !email.includes('@')) continue;
-        const body = `שלום ${o.customer.firstName || ''},\n\n${text}\nהזמנה #${o.orderId} - תאריך אירוע: ${o.eventDateHebrew || getHebrewDateString(o.eventDate)}\n`;
-        const html = `<div dir="rtl" style="font-family:Arial"><h2 style="color:#d32f2f">החזרה באיחור - הזמנה #${o.orderId}</h2><p>${text}</p><p>תאריך אירוע: ${o.eventDateHebrew || getHebrewDateString(o.eventDate)}</p></div>`;
+        const body = `שלום ${o.customer.firstName || ''},\n\n${text}\nהזמנה #${o.orderId} - תאריך החזרה: ${getHebrewDateString(o.returnDate)}\n`;
+        const html = `<div dir="rtl" style="font-family:Arial"><h2 style="color:#d32f2f">החזרה באיחור - הזמנה #${o.orderId}</h2><p>${text}</p><p>תאריך החזרה: ${getHebrewDateString(o.returnDate)}</p></div>`;
         const r = await sendSystemEmail({ to: email, subject: `תזכורת החזרה - הזמנה #${o.orderId}`, body, html });
         if (r.success) results.lateEmails++;
         else results.errors.push(`late ${o.orderId}: ${r.message}`);
