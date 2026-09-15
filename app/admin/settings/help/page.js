@@ -1,7 +1,7 @@
 export const metadata = { title: 'מפת הגדרות - מדריך ניהול' };
 
 const ROWS = [
-  { id: 1, req: 'ציפוף ימים מיוחדים - הסתרה מוחלטת', key: 'hide_custom_spacing', cat: 'הזמנות', type: 'toggle', def: 'מופעל (מוסתר)', where: 'הגדרות מערכת → הזמנות → "הסתר ציפוף ימים מיוחד"' },
+  { id: 1, req: 'ציפוף ימים מיוחדים - הסתרה מוחלטת', key: 'hide_custom_spacing', cat: 'הזמנות', type: 'toggle', def: 'כבוי (=מוסתר, כפי שהתבקש במקור - הכיתוב במסך "אפשר ציפוף ימים מיוחד" הפוך מערך ה-DB הגולמי)', where: 'הגדרות מערכת → הזמנות → "אפשר ציפוף ימים מיוחד"' },
   { id: 2, req: 'קישור נדרים פלוס - רינת לב', key: 'nedarim_rinat_lev_url', cat: 'תשלומים', type: 'text', def: 'ריק - מוסד נפרד לגמרי (הוחלט), ממתין לקוד המוסד בפועל', where: 'הגדרות מערכת → תשלומים → "קישור נדרים פלוס - רינת לב"' },
   { id: 3, req: 'הוראת קבע וגביה ממאחרים (עד 19:00)', key: 'hok_enabled / hok_auto_charge_enabled / hok_auto_charge_hour / hok_charge_amount', cat: 'הוראת קבע', type: 'booleans+שעה+סכום', def: 'כבוי / כבוי / 19:00 / ריק=מחיר מקורי', where: 'הגדרות מערכת → הוראת קבע (4 שדות)' },
   { id: 4, req: 'אכיפת פרטים אישיים - ללא דילוג גם באישור מנהל (מייל+כתובת+דיוור)', key: 'strict_mandatory_fields, require_customer_email, require_full_address, require_marketing_consent', cat: 'הזמנות', type: 'toggles', def: 'מופעל / מופעל / מופעל / מופעל', where: 'הגדרות מערכת → הזמנות (4 מתגים) + שדות חובה (mandatory_fields)' },
