@@ -988,7 +988,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       {/* ===== מודל סליקת אשראי (נדרים פלוס) ===== */}
       {mounted && showCreditModal && createPortal(
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal" style={{ margin: 0 }}>
+          <div className="modal" style={{ margin: 0 }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}>
             <div className="modal-head">
               <strong>תשלום בכרטיס אשראי (נדרים פלוס)</strong>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1219,7 +1220,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       {/* ===== מודל בקשת זיכוי ===== */}
       {mounted && showRefundModal && createPortal(
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget) setShowRefundModal(false); }}>
-          <div className="modal" style={{ margin: 0, maxWidth: '620px', width: '95%' }}>
+          <div className="modal" style={{ margin: 0, maxWidth: '620px', width: '95%' }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }}>
             <div className="modal-head">
               <strong>יצירת בקשת זיכוי</strong>
               <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowRefundModal(false)}>
@@ -1271,7 +1273,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       {/* ===== מודל תשלום נוסף (מזומן/אחר) - מאחורי allow_additional_payment_on_order ===== */}
       {mounted && showAdditionalPaymentModal && createPortal(
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget && !isProcessing) setShowAdditionalPaymentModal(false); }}>
-          <div className="modal" style={{ margin: 0 }}>
+          <div className="modal" style={{ margin: 0 }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitAdditionalPayment(); } }}>
             <div className="modal-head">
               <strong>תשלום נוסף</strong>
               <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowAdditionalPaymentModal(false)} disabled={isProcessing}>

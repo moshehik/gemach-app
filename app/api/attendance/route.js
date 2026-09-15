@@ -51,8 +51,12 @@ export async function GET(request) {
 }
 
 // Punch In / Punch Out
+// הערה: אין checkAuth() גורף בתחילת הראוט הזה בכוונה - /punch-clock חייב להיות נגיש
+// גם בלי session קיים בכלל (למשל require_login מופעל ואף אחד עוד לא מחובר במחשב
+// הזה, ר' isPunchClock ב-app/layout.js), אחרת אף אחד לא יכול לרשום כניסה ראשונה
+// ביום. כשמסופקת סיסמה, אימות הסיסמה/PIN למטה הוא בעצמו הוכחת זהות מספקת; רק
+// המסלול "בלי סיסמה" (סומך על session קיים) דורש checkAuth בפועל, ר' למטה.
 export async function POST(request) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
     const { employeeId, password, action } = body; // action is 'IN' or 'OUT'
