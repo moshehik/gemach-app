@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import Link from 'next/link';
-import FullEmailListModal from '@/components/FullEmailListModal';
 import NeonUsageCard from './NeonUsageCard';
 import WebBackupModeToggle from './WebBackupModeToggle';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
@@ -703,7 +701,6 @@ export default function SettingsClient() {
   const [saveMessage, setSaveMessage] = useState(null);
   const [error, setError] = useState(null);
   const [uploadingLogo, setUploadingLogo] = useState(false);
-  const [isEmailModalOpen, setIsEmailModalOpen] = useState(false);
 
   const [modified, setModified] = useState({});
 
@@ -907,16 +904,6 @@ export default function SettingsClient() {
           <div className="page-desc">ניהול תצורת הגמ״ח, התאמה אישית והעדפות</div>
         </div>
         <div className="page-actions">
-          <Link href="/dashboard/pricelist" className="btn btn-secondary">
-            <svg className="icon"><use href="#i-tag" /></svg>
-            ניהול מחירון
-          </Link>
-
-          <button type="button" className="btn btn-secondary" onClick={() => setIsEmailModalOpen(true)}>
-            <svg className="icon"><use href="#i-mail" /></svg>
-            רשימת מיילים מלאה
-          </button>
-
           <button
             type="button"
             className={hasValidationErrors ? 'btn btn-danger-ghost' : 'btn btn-primary'}
@@ -1273,8 +1260,6 @@ export default function SettingsClient() {
         </div>
 
       </div>
-
-      <FullEmailListModal isOpen={isEmailModalOpen} onClose={() => setIsEmailModalOpen(false)} />
     </>
   );
 }

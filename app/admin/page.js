@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import EmailListCard from './EmailListCard';
 
 const cards = [
   {
@@ -12,6 +13,12 @@ const cards = [
     icon: 'i-grid',
     label: 'ניהול אתר',
     desc: 'דוחות ותובנות, בקרה והתראות, נתונים ומערכת',
+  },
+  {
+    href: '/dashboard/pricelist',
+    icon: 'i-tag',
+    label: 'ניהול מחירון',
+    desc: 'הגדרת מחירי השכרה לפי קטגוריה ומידה',
   },
 ];
 
@@ -42,6 +49,7 @@ export default function AdminHubPage() {
             </div>
           </Link>
         ))}
+        <EmailListCard />
       </div>
     </>
   );
