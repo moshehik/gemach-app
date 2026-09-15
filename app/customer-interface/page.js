@@ -243,9 +243,6 @@ function AtelierCalendar({ selectedDate, onSelect }) {
           })}
         </div>
         <div className="ka-cal-foot">
-          <button type="button" data-agy-id="kiosk_cal_today_btn" onClick={() => applyHdate(new HDate())}>
-            <svg className="icon"><use href="#i-home" /></svg>היום
-          </button>
           <span className="ka-parsha">{footStr}</span>
           <button type="button" data-agy-id="kiosk_cal_clear_btn" onClick={() => applyHdate(new HDate())}>
             <svg className="icon"><use href="#i-x" /></svg>ניקוי
