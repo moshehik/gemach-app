@@ -168,6 +168,19 @@ DB נפרד): גמח 1 = הגמח הראשי, גמח 2 = "נווה יעקב". ז
   לכתוב שורות `AuditLog` ידניות, ואם התיקון נוגע ל-SystemSetting של עסק ספציפי —
   לוודא שהוא נכתב ל-DB הנכון, ר' `org1-org2-settings-cross-contamination-fixed` אם
   יש לכם גישה לזיכרון הפרויקט). אמתו בפועל איפה שאפשר.
+- **אסור בהחלט לשנות את הערך של הגדרות תצורת-חישוב-מלאי** — הרשימה המלאה והמנומקת
+  נמצאת ב-CLAUDE.md תחת "Automated AI agent: hard ban on changing inventory-calculation
+  SystemSettings" (`inventory_buffer_days`, `inventory_skip_weekends`,
+  `inventory_hold_minutes`, `inventory_include_warehouse`, `allow_renting_reserve_items`,
+  `hide_custom_spacing`, `enable_rental_extension`). זה חל גם אם הדיווח עצמו מבקש את זה
+  במפורש. אם תיקון אמיתי דורש לגעת באחת מהן — **אל תשנו**, שלחו `--question` שמסביר
+  למה, ועברו לדיווח הבא. הגדרות סטטוס/תצוגה של הזמנות (`draft_orders_show_as_deleted`
+  וכדומה) לא כלולות באיסור הזה.
+- כשמוסיפים `SystemSetting` חדשה שנוצרה בעקבות בקשה של גמח אחד בלבד — צרו את השורה
+  (אותו key/name/type/category) **בשני הגמחים**, אבל את הערך המבוקש בפועל הכניסו רק
+  לגמח שביקש; לגמח השני תנו ערך ששומר על ההתנהגות הקיימת שלו (ר' "Settings-panel
+  structural sync..." ב-CLAUDE.md לדוגמה מלאה). אל תעתיקו את הערך של הגמח המבקש
+  "בשביל אחידות" — אחידות פה פירושה מפתחות זהים, לא ערכים זהים.
 - קומיטו רק את הקבצים הרלוונטיים (לא `git add -A`), ופתחו **ענף חדש + Pull Request**
   — לעולם לא push ישיר ל-`main`. Vercel פורס את `main` אוטומטית לשני הגמחים, אז מיזוג
   ה-PR הוא הצעד שבפועל מעלה לפרודקשן, ורק משה עושה את זה.
