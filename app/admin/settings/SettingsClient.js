@@ -334,6 +334,83 @@ const CUSTOMER_FIELDS = [
   { key: 'bankAccount', name: 'חשבון בנק', alias: 'חשבון' }
 ];
 
+// סדר תצוגה של הגדרות בתוך כל טאב, מקובץ לפי נושא (לא לפי סדר יצירה אקראי ב-DB).
+// מפתח שלא מופיע ברשימה של הטאב שלו מוצג בסוף הטאב, לפי הסדר שהגיע מה-DB -
+// כך שהוספת הגדרה חדשה בעתיד לא "נעלמת", היא רק לא מקובצת עד שמוסיפים אותה כאן.
+const SETTINGS_ORDER = {
+  'אוטומציה': [
+    'mailing_list_auto_sync', 'mailing_list_provider',
+    'auto_email_on_order_create',
+    'late_return_email_enabled', 'late_return_email_text',
+    'pickup_reminder_enabled', 'pickup_reminder_hour',
+    'daily_manager_report_enabled', 'daily_manager_report_hour', 'daily_manager_report_email',
+    'bulk_email_by_event_date',
+    'manual_barcode_daily_report',
+    'agent_digest_email_enabled', 'agent_digest_email_hours',
+  ],
+  'בינה מלאכותית': ['hide_ai_features', 'enable_ai_specific_employees'],
+  'ברקודים': ['manual_barcode_double_entry', 'barcode_invalid_list'],
+  'הדפסה': [
+    'standard_return_hour', 'rental_belt_notice',
+    'print_rental_box1', 'print_rental_box2', 'print_rental_footer',
+    'print_sort_deliveries_first', 'print_mark_missing_dresses',
+  ],
+  'הודעות': ['shift_handover_notes', 'management_messages', 'notify_on_new_message_at_login', 'laundress_return_check_on_exit'],
+  'הוראת קבע': ['hok_enabled', 'hok_auto_charge_enabled', 'hok_auto_charge_hour', 'hok_charge_amount', 'auto_charge_damaged_return'],
+  'הזמנות': [
+    'require_customer_email', 'require_full_address', 'require_marketing_consent',
+    'mandatory_fields', 'strict_mandatory_fields', 'require_id_for_edit_cancel',
+    'max_items_per_order', 'enforce_strict_max_items', 'BUFFER_DAYS', 'hide_custom_spacing',
+    'require_manager_code_for_item_changes', 'allow_edit_partially_rented',
+    'draft_orders_show_as_deleted', 'auto_print_on_order_create', 'phone_order_marker_enabled',
+    'enable_alterations', 'enable_rental_extension',
+  ],
+  'הרשאות': ['restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management'],
+  'יומן': ['inventory_buffer_days', 'inventory_skip_weekends'],
+  'כללי': [
+    'gmach_name', 'gmach_address', 'gmach_phone', 'main_email',
+    'require_login',
+    'item_locations', 'barcodePrefixLength', 'inventory_include_warehouse',
+  ],
+  'לא בשימוש': [
+    // קטלוג/דגמים
+    'has_variations', 'has_underskirts', 'dress_size_min', 'dress_size_max', 'dress_size_even_only',
+    'items_name_singular', 'items_name_plural', 'barcode_length',
+    // הזמנות
+    'allow_date_change', 'allow_free_exchange', 'cancel_order_permission', 'reserve_permission', 'max_order_days_ahead',
+    // תשלומים/החזרים
+    'refund_per_item', 'REFUND_DAYS', 'registration_fee',
+    // שונות
+    'calendar_filtering', 'gmach_subtitle',
+  ],
+  'מחירון': ['premium_pricing_enabled', 'premium_categories'],
+  'מיילים': ['email_link_a', 'email_link_b', 'email_routing_strategy'],
+  'מלאי': ['allow_renting_reserve_items', 'allow_shift_lead_reserve_rental'],
+  'מערכת': ['agent_fix_loop_enabled', 'agent_fix_loop_last_activity'],
+  'משלוחים': [
+    'enable_deliveries',
+    'delivery_days_before', 'delivery_days_after', 'delivery_price', 'delivery_price_by_city',
+    'delivery_show_in_order', 'delivery_allow_address_override',
+    'delivery_table_range_enabled', 'delivery_one_day_before_option',
+  ],
+  'סניפים': ['branches_enabled', 'branch_list', 'track_branch_on_order'],
+  'סנכרון': ['yemot_enabled', 'yemot_api_url', 'yemot_api_token', 'yemot_queue_view_enabled', 'yemot_import_customer_enabled'],
+  'תצוגה': [
+    'show_not_taken_orders', 'hide_taken_orders_from_orders_list', 'cancellation_extra_columns', 'rentals_sort_recent_first',
+    'hide_dress_images', 'useModelNames', 'useFileNamesForImages',
+    'hide_gregorian_calendar', 'hide_internal_messaging',
+    'hide_error_reporting', 'error_report_handled_at_bottom', 'error_report_human_button_enabled',
+    'show_employee_profile_image',
+    'kiosk_customer_self_service', 'kiosk_allow_self_order',
+  ],
+  'תשלומים': [
+    'nedarim_plus_enabled', 'nedarim_plus_terminal', 'nedarim_plus_token', 'nedarim_rinat_lev_url',
+    'ALLOWED_PAYMENT_METHODS', 'PAYMENT_APPROVAL_LEVEL',
+    'REFUND_PERCENTAGE', 'REFUND_DAYS_FROM_ORDER', 'NO_REFUND_DAYS_BEFORE_EVENT', 'REFUND_REPAIRS', 'CANCELLATION_CREDIT_MINUTES',
+    'ENABLE_SET_DISCOUNTS',
+  ],
+};
+
 function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef(null);
@@ -805,7 +882,15 @@ export default function SettingsClient() {
   // NEDARIM_MOSAD ו-nedarim_plus_terminal נשמרים בכוונה כשני מפתחות מסונכרנים תמיד
   // לאותו ערך (לתמיכה בקוד ישן שמחפש את השם הישן) - מציגים רק אחד מהם כדי שלא
   // ייראו כשני שדות כפולים באותו מסך.
-  const activeSettings = settings.filter(s => s.category === activeTab && s.key !== 'NEDARIM_MOSAD');
+  const tabOrder = SETTINGS_ORDER[activeTab];
+  const activeSettings = settings
+    .filter(s => s.category === activeTab && s.key !== 'NEDARIM_MOSAD')
+    .sort((a, b) => {
+      if (!tabOrder) return 0;
+      const ia = tabOrder.indexOf(a.key);
+      const ib = tabOrder.indexOf(b.key);
+      return (ia === -1 ? tabOrder.length : ia) - (ib === -1 ? tabOrder.length : ib);
+    });
   const hasChanges = Object.keys(modified).length > 0;
   const hasValidationErrors = Object.entries(modified).some(
     ([key, value]) => validateNumericSetting(key, value) !== null
