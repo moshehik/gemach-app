@@ -345,7 +345,12 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         body: JSON.stringify({ orderId: selectedOrder.orderId })
       });
       if (res.ok) {
-        alert('השכרה אושרה בהצלחה!');
+        // לפני שסוגרים אוטומטית - לתת הזדמנות מפורשת להדפיס את פרטי ההשכרה (בקשת
+        // הנהלה: לא לסגור ישר בלי הצעה להדפיס אחרי סריקת הברקוד האחרון).
+        const wantsPrint = await window.customConfirm('השכרה אושרה בהצלחה! להדפיס את פרטי ההשכרה?');
+        if (wantsPrint) {
+          window.open(`/print/order?orderId=${selectedOrder.orderId}`, '_blank');
+        }
         onClose();
         if (onUpdate) onUpdate();
       } else {

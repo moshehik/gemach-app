@@ -460,6 +460,14 @@ export default function LoginScreen({ isModal = false, onClose }) {
           {trustedNote}
         </div>
         {formFields}
+        <div style={{ textAlign: 'center', marginTop: '16px' }}>
+          <a
+            href="/punch-clock"
+            style={{ color: 'var(--text-3)', fontSize: '12px', fontWeight: 600, textDecoration: 'none' }}
+          >
+            רק לרישום כניסה/יציאה למשמרת? לחצו כאן
+          </a>
+        </div>
       </div>
     </div>
   );

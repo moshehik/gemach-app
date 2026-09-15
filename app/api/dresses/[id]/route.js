@@ -37,14 +37,21 @@ export async function GET(request, { params }) {
   }
 }
 
+// עריכת שם/מחיר/ברקוד/תמונה וכו' נשארת מוגבלת להנהלה ראשית/מתכנת, אבל סימון/ביטול
+// "לא פעיל" (בקשת ההנהלה: כלל העובדות, לא רק הנהלה) נשלח תמיד כבקשה שמכילה אך ורק
+// את השדות האלה - כל שדה אחר בגוף הבקשה מחזיר את הדרישה הרגילה של הנהלה ראשית.
+const ACTIVITY_TOGGLE_FIELDS = ['exitDateFromRepo', 'entryDateToRepo', 'inactiveReason'];
+
 export async function PUT(request, { params }) {
-  // עריכת דגם — פעולת ניהול, מוגבלת להנהלה ראשית/מתכנת גם כשהקטלוג פתוח לצפייה
-  // לכולם (ר' restrict_dress_catalog_to_head_management).
-  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'הרשאה זו שמורה להנהלה ראשית בלבד' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+  const bodyText = await request.text();
+  const body = bodyText ? JSON.parse(bodyText) : {};
+  const isActivityToggleOnly = Object.keys(body).length > 0 && Object.keys(body).every(k => ACTIVITY_TOGGLE_FIELDS.includes(k));
+  if (!(await checkAuth(isActivityToggleOnly ? undefined : 'הנהלה ראשית'))) {
+    return new Response(JSON.stringify({ error: 'הרשאה זו שמורה להנהלה ראשית בלבד' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
+  }
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
-    const body = await request.json();
 
     if (!id) {
       return NextResponse.json({ error: 'קוד שמלה חסר' }, { status: 400 });

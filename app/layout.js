@@ -42,6 +42,11 @@ export default async function RootLayout({ children }) {
   // no other way to know the current route.
   const headersList = await headers();
   const isPublicKiosk = (headersList.get('x-pathname') || '').startsWith('/customer-interface');
+  // /punch-clock has its own per-employee password/PIN check (POST /api/attendance) that
+  // doesn't depend on an existing session - it must stay reachable without first logging
+  // in, otherwise an employee can never punch in at all when require_login is on and no
+  // one else is already logged in on that computer.
+  const isPunchClock = (headersList.get('x-pathname') || '').startsWith('/punch-clock');
 
   // Check settings
   let requireLogin = false;
@@ -250,7 +255,7 @@ export default async function RootLayout({ children }) {
     );
   }
 
-  const showLogin = requireLogin && !isAuthenticated && !isPublicKiosk;
+  const showLogin = requireLogin && !isAuthenticated && !isPublicKiosk && !isPunchClock;
 
   let bodyClassName = hideAIFeatures ? 'hide-ai-features ' : '';
   if (hideGregorianCalendar) {
