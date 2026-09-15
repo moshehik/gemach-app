@@ -70,6 +70,27 @@ model AuditLog {
   @@index([employeeId])
 }
 
+// One row per cloud backup attempt (see scripts/cloud_backup.js + BACKUPS.md). Written
+// by the GitHub Actions workflow (.github/workflows/backup-to-drive.yml) via a raw
+// PrismaClient, and read by app/admin/backups for the run list/error log - never written
+// through the app's own request/response cycle, so excluded from the AuditLog
+// auto-logging extension (see app/lib/prisma.js) same as AuditLog/PageVisitLog/Shift.
+model BackupRun {
+  id           String    @id @default(uuid())
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+  status       String // 'running' | 'ok' | 'failed'
+  trigger      String // 'schedule' | 'manual'
+  sizeBytes    Int?
+  durationSec  Float?
+  tableSummary String? // e.g. "Order=12034, OrderItem=45012, ..."
+  fileName     String?
+  driveUrl     String?
+  errorMessage String?
+
+  @@index([startedAt])
+}
+
 // One row per /audit-system slash command run (see .claude/commands/audit-system.md).
 // Written by scripts/insert_audit_report.js via a raw PrismaClient, never through the
 // app's own request/response cycle - not part of the AuditLog auto-logging extension.

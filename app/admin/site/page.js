@@ -45,6 +45,7 @@ const categories = [
       { href: '/admin/setup-new-machine', icon: 'i-download', label: 'התקנה על מחשב חדש', subLabel: 'סקריפט התקנה + תיעוד' },
       { href: '/admin/data-history', icon: 'i-history', label: 'היסטוריית נתונים', subLabel: 'תיעוד שינויים' },
       { href: '/admin/database', icon: 'i-database', label: 'גיבוי בסיס נתונים', subLabel: 'גיבוי ושחזור' },
+      { href: '/admin/backups', icon: 'i-database', label: 'גיבוי לדרייב', subLabel: 'גיבוי אוטומטי, לחצן מיידי ולוג' },
       { href: '/admin/site-settings', icon: 'i-settings', label: 'הגדרות אתר', subLabel: 'מסד נתונים, מערכת ומיילים (מתכנת בלבד)' },
       { href: '/management/database', icon: 'i-database', label: 'איפוס נתונים', subLabel: 'החלפה מ-JSON' },
       { href: '/management/email-logs', icon: 'i-mail', label: 'יומן מיילים', subLabel: 'כל המיילים שנשלחו' },

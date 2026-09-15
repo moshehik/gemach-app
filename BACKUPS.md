@@ -1,6 +1,40 @@
 ﻿# Database backups
 
-Two independent layers protect the production Neon database. Neither replaces the other.
+Three independent layers protect the production data. None replaces the others.
+
+## Layer 0: cloud backup to Google Drive (current system, both gemachs)
+
+[scripts/cloud_backup.js](scripts/cloud_backup.js), run by
+[.github/workflows/backup-to-drive.yml](.github/workflows/backup-to-drive.yml) on GitHub's own
+infrastructure - not this machine. Covers **both** gemachs (main + Neve Yaakov, separate DBs),
+each backed up to its **own** Google Drive via the same Apps Script web app already used for
+emailing order/bug-report files ([docs/gas-mail-drive.gs](docs/gas-mail-drive.gs)) - see the
+"עדכון - גיבוי נתונים ענני" section in [docs/GAS_DRIVE_SETUP_HE.md](docs/GAS_DRIVE_SETUP_HE.md).
+
+- **Trigger:** a `schedule` cron every 15 minutes (cheap - the script itself decides per org
+  whether a backup is actually due, based on that org's `backup_interval_hours` setting) plus an
+  instant `repository_dispatch` fired by the admin's "גיבוי מיידי" button
+  (`app/api/admin/backups/trigger/route.js`) - same instant-trigger pattern as the fix-reports
+  agent (`claude-fix-reports.yml`).
+- **Managed from the app:** `/admin/backups` (both gemachs, each scoped to its own DB) - toggle
+  automatic backups on/off, set the interval (preset hours or a custom value), set the Drive
+  folder id and the owner email backups are shared to, trigger an immediate backup, and see the
+  run history / error log (`BackupRun` rows in `prisma/schema.prisma`).
+- **Security:** unlike client-facing email attachments (shared "anyone with the link"), backup
+  files are shared only to the specific `backup_owner_email` address configured per org - they
+  contain full customer/financial data.
+- **Retention:** same policy as the old local script - last 14 daily + one per ISO week for the
+  8 weeks before that, applied per org against that org's own Drive folder.
+- **Requires**, already configured from the `claude-fix-reports.yml` setup (reused, nothing new
+  to add unless it's somehow missing): GitHub secrets `DATABASE_URL` / `DATABASE_URL_ORG2`, and
+  Vercel env vars `GH_DISPATCH_TOKEN` / `GH_DISPATCH_REPO` on both projects.
+
+### Why this replaced the old local Task Scheduler job
+
+The old job (Layer 2 below) only ever covered the main gemach (Neve Yaakov had **no** backup at
+all beyond Neon's 7-day PITR) and depended on this one Windows machine being powered on and
+logged in - if it was off at 03:30, that night was silently skipped. Moving execution to GitHub
+Actions removes both problems and covers both orgs from one shared workflow.
 
 ## Layer 1: Neon PITR (point-in-time restore)
 
@@ -21,7 +55,14 @@ anything within the last 7 days.
   there is no scheduled-export / scheduled-backup-to-file endpoint on this plan - branching
   and restore are the only built-in mechanisms.
 
-## Layer 2: nightly logical dump (this repo)
+## Layer 2: nightly logical dump (this repo) - superseded by Layer 0
+
+**Superseded by the cloud backup above**, once it has completed a verified successful run for
+both orgs - at that point the Windows Scheduled Task (`GemachApp-ProdDbBackup`) gets disabled
+(not deleted). `scripts/backup_prod_db.js` stays in place as a manual local fallback (same
+treatment `scripts/neon_keepalive.ps1` got when it was retired) - it still works if run by hand
+(`npm run backup:prod`), it's just no longer meant to run automatically once the task above is
+off. The description below is kept for that manual-fallback use and for historical context.
 
 [scripts/backup_prod_db.js](scripts/backup_prod_db.js) is the additional layer: a portable,
 compressed plain-SQL export you can keep outside Neon entirely.

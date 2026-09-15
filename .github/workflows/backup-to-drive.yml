@@ -1,0 +1,54 @@
+# "גיבוי ענני לדרייב" - מריץ scripts/cloud_backup.js על שני הגמחים (הראשי + נווה יעקב,
+# כל אחד עם DB נפרד - ר' scripts/lib/db-env.js) ומעלה גיבוי מלא ל-Drive של כל גמח בנפרד
+# דרך ה-GAS web app הקיים (docs/gas-mail-drive.gs). ר' BACKUPS.md לתיעוד המלא.
+#
+# טריגר כפול, אותו דפוס בדיוק כמו claude-fix-reports.yml: schedule כל 15 דק' (בדיקה
+# זולה בלבד - ה-script עצמו מחליט אם באמת צריך לגבות, לפי backup_interval_hours שכל
+# גמח קובע ב-/admin/backups) + repository_dispatch מיידי (נורה מ-
+# app/api/admin/backups/trigger/route.js כשמנהל לוחץ "גיבוי מיידי").
+#
+# דורש (מוסיף משה עצמו, לא בקוד):
+# 1. secrets DATABASE_URL + DATABASE_URL_ORG2 - כבר קיימים ברפו הזה (משמשים גם את
+#    claude-fix-reports.yml) ומשמשים כאן ללא שינוי, שני ה-DB-ים.
+# 2. env vars GH_DISPATCH_TOKEN + GH_DISPATCH_REPO ב-Vercel (שני הפרויקטים) - כבר
+#    קיימים (אותו מנגנון ששולח repository_dispatch על דיווח תקלה חדש).
+# 3. docs/gas-mail-drive.gs מעודכן ומפורס מחדש בשני חשבונות ה-Google הנפרדים - ר'
+#    "עדכון - גיבוי נתונים ענני" ב-docs/GAS_DRIVE_SETUP_HE.md.
+# 4. הגדרת email_link_a (כבר קיימת לכל גמח) + backup_owner_email ב-/admin/backups
+#    לכל גמח (מי מקבל גישה לצפייה בקובצי הגיבוי בדרייב).
+
+name: Backup to Drive (גיבוי ענני)
+
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch: {} # הרצה ידנית מ-Actions, לבדיקה
+  repository_dispatch:
+    types: [run-backup-now] # נורה מ-app/api/admin/backups/trigger/route.js
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma Client
+        run: npx prisma generate
+
+      - name: Run cloud backup (both orgs)
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_ORG2: ${{ secrets.DATABASE_URL_ORG2 }}
+        run: node scripts/cloud_backup.js
