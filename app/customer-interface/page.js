@@ -1055,11 +1055,6 @@ export default function CustomerInventoryViewer() {
       {/* Stage 1: Search & Date Selection */}
       {stage === 1 && (
         <section>
-          <div className="ka-hero">
-            <h2>מה תחפש היום?</h2>
-            <p className="ka-lead">הזן סגנון, מידה או פשוט בחר תאריך מהיומן</p>
-          </div>
-
           {aiEnabled && aiMessages.length <= 1 && (
             <div className="ai-feature-element ka-search-pill">
               <svg className="icon"><use href="#i-search" /></svg>
