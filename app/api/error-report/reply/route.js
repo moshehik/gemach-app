@@ -17,6 +17,7 @@ export async function POST(request) {
     }
 
     const isProgrammer = employee.roleId === 2;
+    const isManager = [0, 1, 2].includes(employee.roleId);
 
     const body = await request.json();
     const { reportId, text, isQuestion } = body;
@@ -31,7 +32,8 @@ export async function POST(request) {
       return NextResponse.json({ success: false, error: 'דיווח השגיאה לא נמצא' }, { status: 404 });
     }
 
-    if (!isProgrammer && report.employeeId !== employee.id) {
+    const ownsReport = report.employeeId === employee.id || (isManager && report.employeeId === null);
+    if (!isProgrammer && !ownsReport) {
       return NextResponse.json({ success: false, error: 'אין לך הרשאה לדיווח זה' }, { status: 403 });
     }
 
