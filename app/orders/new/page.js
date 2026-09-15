@@ -904,7 +904,10 @@ export default function NewOrderPage() {
         items: order.items,
         eventDate: order.eventDate,
         isAbroad: order.isAbroad,
-        isWeekdayEvent: order.isWeekdayEvent
+        isWeekdayEvent: order.isWeekdayEvent,
+        isDelivery: order.isDelivery,
+        deliveryCity: order.deliveryCity,
+        deliveryDirection: order.deliveryDirection
       })
     })
       .then(res => res.json())
@@ -916,7 +919,7 @@ export default function NewOrderPage() {
         setCalculating(false);
       })
       .catch(() => setCalculating(false));
-  }, [order.items, order.eventDate, order.isAbroad, order.isWeekdayEvent]);
+  }, [order.items, order.eventDate, order.isAbroad, order.isWeekdayEvent, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
 
   const totalAmount = calculatedData.totalAmount;
 
