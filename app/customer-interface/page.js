@@ -292,7 +292,7 @@ export default function CustomerInventoryViewer() {
   const [regSuccess, setRegSuccess] = useState(null); // legacyId אחרי הצלחה
 
   // Sidebar filters (stage 2)
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [priceCategories, setPriceCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState([]);
@@ -1309,20 +1309,6 @@ export default function CustomerInventoryViewer() {
                   </div>
                 </div>
 
-                <div className="ka-slider-field">
-                  <div className="s-head"><span>גודל תצוגה</span><span>{Math.round(zoomLevel * 100)}%</span></div>
-                  <input
-                    data-agy-id="zoom_range_input"
-                    type="range"
-                    min="0.5" max="1.5" step="0.1"
-                    value={zoomLevel}
-                    onChange={e => setZoomLevel(parseFloat(e.target.value))}
-                  />
-                  <div className="s-ticks">
-                    <span>קטן</span><span>גדול</span>
-                  </div>
-                </div>
-
                 <button data-agy-id="clear_all_filters_btn" type="button" className="ka-btn-clear"
                   onClick={() => { setSearch(''); setSelectedCategories([]); setSelectedSizes([]); }}>
                   <svg className="icon"><use href="#i-x" /></svg>
@@ -1493,6 +1479,21 @@ export default function CustomerInventoryViewer() {
                   })}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* Display-size control - always visible regardless of the filter panel's open/closed state */}
+          <div className="ka-slider-field ka-zoom-bar">
+            <div className="s-head"><span>גודל תצוגה</span><span>{Math.round(zoomLevel * 100)}%</span></div>
+            <input
+              data-agy-id="zoom_range_input"
+              type="range"
+              min="0.5" max="1.5" step="0.1"
+              value={zoomLevel}
+              onChange={e => setZoomLevel(parseFloat(e.target.value))}
+            />
+            <div className="s-ticks">
+              <span>קטן</span><span>גדול</span>
             </div>
           </div>
         </section>

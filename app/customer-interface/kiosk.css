@@ -294,6 +294,11 @@ body.hide-gregorian-calendar .ka-cal-day .g{display:none}
 .katelier input[type="range"]{width:100%; accent-color:var(--terracotta)}
 .ka-slider-field .s-ticks{display:flex; justify-content:space-between; font-size:10.5px; color:var(--ink-faint); margin-top:4px}
 
+.ka-zoom-bar{
+  background:var(--card); border:1px solid var(--line); border-radius:var(--radius-lg); padding:14px 20px;
+  box-shadow:var(--shadow-sm); margin-top:18px; max-width:320px;
+}
+
 .ka-btn-clear{
   display:flex; align-items:center; justify-content:center; gap:8px; background:transparent; border:1.5px solid var(--brick-soft);
   color:var(--brick); padding:10px; border-radius:12px; font-weight:700; font-size:13px;
