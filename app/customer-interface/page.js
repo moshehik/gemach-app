@@ -264,7 +264,11 @@ export default function CustomerInventoryViewer() {
   const [search, setSearch] = useState('');
   const [showZeroSizes, setShowZeroSizes] = useState(false);
   const [viewMode, setViewMode] = useState('rows');
-  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    const saved = parseFloat(localStorage.getItem('ka_zoom_level'));
+    return !isNaN(saved) && saved >= 0.5 && saved <= 1.5 ? saved : 1;
+  });
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -294,8 +298,9 @@ export default function CustomerInventoryViewer() {
   const [regError, setRegError] = useState('');
   const [regSuccess, setRegSuccess] = useState(null); // legacyId אחרי הצלחה
 
-  // Sidebar filters (stage 2)
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Sidebar filters (stage 2) - סגור כברירת מחדל (דיווח 267e5bbb): נפתח רק ביוזמת
+  // הלקוחה דרך כפתור "סינון ותצוגה", לא אוטומטית בכל כניסה למסך.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [priceCategories, setPriceCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState([]);
@@ -1312,20 +1317,6 @@ export default function CustomerInventoryViewer() {
                   </div>
                 </div>
 
-                <div className="ka-slider-field">
-                  <div className="s-head"><span>גודל תצוגה</span><span>{Math.round(zoomLevel * 100)}%</span></div>
-                  <input
-                    data-agy-id="zoom_range_input"
-                    type="range"
-                    min="0.5" max="1.5" step="0.1"
-                    value={zoomLevel}
-                    onChange={e => setZoomLevel(parseFloat(e.target.value))}
-                  />
-                  <div className="s-ticks">
-                    <span>קטן</span><span>גדול</span>
-                  </div>
-                </div>
-
                 <button data-agy-id="clear_all_filters_btn" type="button" className="ka-btn-clear"
                   onClick={() => { setSearch(''); setSelectedCategories([]); setSelectedSizes([]); }}>
                   <svg className="icon"><use href="#i-x" /></svg>
@@ -1496,6 +1487,26 @@ export default function CustomerInventoryViewer() {
                   })}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* גודל תצוגה נשאר תמיד גלוי כאן, מחוץ לפאנל הסינון הניתן לקיפול - דיווח
+              267e5bbb: לקוחה שקיפלה את פאנל הסינון עדיין רוצה גישה מהירה לשליטה בגודל. */}
+          <div className="ka-slider-field ka-zoom-bar">
+            <div className="s-head"><span>גודל תצוגה</span><span>{Math.round(zoomLevel * 100)}%</span></div>
+            <input
+              data-agy-id="zoom_range_input"
+              type="range"
+              min="0.5" max="1.5" step="0.1"
+              value={zoomLevel}
+              onChange={e => {
+                const val = parseFloat(e.target.value);
+                setZoomLevel(val);
+                localStorage.setItem('ka_zoom_level', String(val));
+              }}
+            />
+            <div className="s-ticks">
+              <span>קטן</span><span>גדול</span>
             </div>
           </div>
         </section>
