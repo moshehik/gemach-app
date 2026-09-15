@@ -62,8 +62,15 @@ export async function GET(request) {
     const isProgrammer = employee.roleId === 2;
     const isManager = [0, 1, 2].includes(employee.roleId);
     
-    // Fetch reports: programmers see all, regular users see their own
-    const whereClause = isProgrammer ? {} : { employeeId: employee.id };
+    // Fetch reports: programmers see all, managers see their own plus any orphaned
+    // report with no employeeId (e.g. created while the reporter's session/employee
+    // link was broken - see the "אני לא רואה את כל הפניות הקודמות" fix), regular
+    // users see only their own.
+    const whereClause = isProgrammer
+      ? {}
+      : isManager
+        ? { OR: [{ employeeId: employee.id }, { employeeId: null }] }
+        : { employeeId: employee.id };
     
     const reports = await prisma.errorReport.findMany({
       where: whereClause,
@@ -119,11 +126,13 @@ export async function PATCH(request) {
     }
 
     const isProgrammer = employee.roleId === 2;
+    const isManager = [0, 1, 2].includes(employee.roleId);
     const existing = await prisma.errorReport.findUnique({ where: { id: reportId } });
     if (!existing) {
       return NextResponse.json({ success: false, error: 'הדיווח לא נמצא' }, { status: 404 });
     }
-    if (!isProgrammer && existing.employeeId !== employee.id) {
+    const ownsReport = existing.employeeId === employee.id || (isManager && existing.employeeId === null);
+    if (!isProgrammer && !ownsReport) {
       return NextResponse.json({ success: false, error: 'אין לך הרשאה לדיווח זה' }, { status: 403 });
     }
 
