@@ -1090,20 +1090,11 @@ export default function CustomerInventoryViewer() {
 
               <AtelierCalendar
                 selectedDate={selectedDate}
-                onSelect={(d) => setSelectedDate(d)}
+                onSelect={(d) => {
+                  setSelectedDate(d);
+                  setStage(2);
+                }}
               />
-
-              <div className="ka-cta-row">
-                <button
-                  data-agy-id="show_inventory_btn"
-                  type="button"
-                  className="ka-btn-cta"
-                  onClick={() => setStage(2)}
-                >
-                  הצג מלאי
-                  <svg className="icon"><use href="#i-star" /></svg>
-                </button>
-              </div>
             </div>
 
             {/* 32 - רישום עצמי: מוצג רק כשההגדרה "עמדת לקוח - רישום עצמי" דלוקה.
