@@ -1098,6 +1098,9 @@ export default function SettingsClient() {
             const isMandatoryFieldsSetting = setting.key === 'mandatory_fields';
             const isSelectSetting = setting.type === 'select' || setting.key === 'email_routing_strategy' || setting.key === 'PAYMENT_APPROVAL_LEVEL';
             const isSecretSetting = SECRET_SETTING_KEYS.includes(setting.key);
+            // ערך מלא ISO שנכתב אוטומטית ע"י הסוכן (agent_fix_loop_last_activity) - שדה
+            // תצוגה בלבד, לא לעריכה ידנית. מוצג בזמן ישראל, לא ה-UTC הגולמי מה-DB.
+            const isTimestampSetting = setting.key === 'agent_fix_loop_last_activity';
 
             const isDepartmentSetting =
               setting.key.toLowerCase().includes('permission') ||
@@ -1202,6 +1205,19 @@ export default function SettingsClient() {
                         {' '}הערך נשמר מוצפן ולא מוצג שוב לאחר השמירה.
                       </p>
                     </div>
+                  ) : isTimestampSetting ? (
+                    <input
+                      type="text"
+                      className="input"
+                      style={{ width: '100%' }}
+                      value={rawValue
+                        ? new Date(rawValue).toLocaleString('he-IL', {
+                            timeZone: 'Asia/Jerusalem', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                          })
+                        : 'מעולם לא רץ'}
+                      disabled
+                      readOnly
+                    />
                   ) : isMultiline ? (
                     <textarea
                       className="textarea"
