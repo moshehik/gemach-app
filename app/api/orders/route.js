@@ -6,7 +6,7 @@ import { checkAuth } from '../../../lib/auth';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
 import { getHebrewDateString, getHebrewWeekdayLabel, subtractSkippingWeekendsAndChag } from '../../../lib/hebrewDate';
-import { validateOrderItemsAvailability, addDaysSkippingWeekends } from '../../../lib/inventory';
+import { validateOrderItemsAvailability, addDaysSkippingWeekends, reconcileDressItemIds } from '../../../lib/inventory';
 import { isManagerApprovalPayment } from '../../../lib/inventoryHold';
 import { isReservedOrderPlaceholder, isFillableDraftOrder, cleanupSiblingDraftOrders, deriveConfirmedOrderStatus, DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { buildMultiWordRelationNameCondition } from '@/lib/searchUtils';
@@ -692,6 +692,11 @@ export async function POST(request) {
       }
     }
 
+    // הגנה מפני sampleItemId שנשאר מדגם/מידה קודמים שנבחרו במסך לפני שהוחלפו (ר' תיעוד
+    // 2026-09-15) - מתקן לפני היצירה, לא רק בודק, כדי שההזמנה תיווצר עם dressItemId
+    // שבאמת שייך לדגם שנשלח.
+    const reconciledItems = await reconcileDressItemIds(data.items);
+
     // 1 - אם hide_custom_spacing מופעל, כל ציפוף מיוחד נחסם שרתית (גם אם נשלח מהקליינט) - לא מוחקים שדה, רק מאפסים
     let effectiveCustomSpacing = data.customSpacing !== undefined && data.customSpacing !== null && data.customSpacing !== '' ? parseInt(data.customSpacing, 10) : null;
     try {
@@ -724,7 +729,7 @@ export async function POST(request) {
       ...(data.deliveryOneDayBefore !== undefined ? { deliveryOneDayBefore: !!data.deliveryOneDayBefore } : {}),
       ...(data.hokDetails !== undefined ? { hokDetails: typeof data.hokDetails === 'string' ? data.hokDetails : JSON.stringify(data.hokDetails) } : {}),
       items: {
-        create: data.items?.map(item => ({
+        create: reconciledItems?.map(item => ({
           dressItemId: item.sampleItemId,
           cartStatus: derivedCartStatus,
           sizeText: item.sizeText,

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { recalculateOrderObligations } from '@/lib/pricingEngine';
-import { validateOrderItemsAvailability } from '@/lib/inventory';
+import { validateOrderItemsAvailability, reconcileDressItemIds } from '@/lib/inventory';
 import { checkAuth } from '@/lib/auth';
 import { getHebrewDateString } from '@/lib/hebrewDate';
 import { cookies } from 'next/headers';
@@ -78,6 +78,11 @@ export async function POST(request) {
         }, { status: 409 });
       }
     }
+
+    // הגנה מפני sampleItemId שנשאר מדגם/מידה קודמים - ר' lib/inventory.js reconcileDressItemIds
+    // ותיעוד 2026-09-15. הטיוטה נשמרת שוב ושוב תוך כדי בניית העגלה, אז זו בדיוק הנקודה שבה
+    // חוסר-תיאום כזה נוצר לראשונה - חשוב לתקן כאן, לא רק ב-POST /api/orders הסופי.
+    data.items = await reconcileDressItemIds(data.items);
 
     const orderFields = {
       customerId: data.customerId || null,
