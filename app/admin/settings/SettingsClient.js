@@ -358,7 +358,7 @@ const SETTINGS_ORDER = {
   'הודעות': ['shift_handover_notes', 'management_messages', 'notify_on_new_message_at_login', 'laundress_return_check_on_exit'],
   'הוראת קבע': ['hok_enabled', 'hok_auto_charge_enabled', 'hok_auto_charge_hour', 'hok_charge_amount', 'auto_charge_damaged_return'],
   'הזמנות': [
-    'require_customer_email', 'require_full_address', 'require_marketing_consent',
+    'require_customer_email', 'require_full_address', 'require_marketing_consent', 'require_customer_id_number',
     'mandatory_fields', 'strict_mandatory_fields', 'require_id_for_edit_cancel',
     'max_items_per_order', 'enforce_strict_max_items', 'BUFFER_DAYS', 'hide_custom_spacing',
     'require_manager_code_for_item_changes', 'allow_edit_partially_rented',
@@ -405,7 +405,7 @@ const SETTINGS_ORDER = {
   ],
   'תשלומים': [
     'nedarim_plus_enabled', 'nedarim_plus_terminal', 'nedarim_plus_token', 'nedarim_rinat_lev_url',
-    'ALLOWED_PAYMENT_METHODS', 'PAYMENT_APPROVAL_LEVEL',
+    'ALLOWED_PAYMENT_METHODS', 'PAYMENT_APPROVAL_LEVEL', 'allow_additional_payment_on_order',
     'REFUND_PERCENTAGE', 'REFUND_DAYS_FROM_ORDER', 'NO_REFUND_DAYS_BEFORE_EVENT', 'REFUND_REPAIRS', 'CANCELLATION_CREDIT_MINUTES',
     'ENABLE_SET_DISCOUNTS',
   ],
