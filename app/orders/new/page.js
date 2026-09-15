@@ -2299,10 +2299,12 @@ export default function NewOrderPage() {
                     : getHebrewDateString(order.eventDate)}
                 </strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
-                <span className="hint" style={{ color: 'var(--text-3)' }}>ריווח ימים</span>
-                <strong>{spacingLabel}</strong>
-              </div>
+              {settings.hide_custom_spacing !== 'true' && order.customSpacing !== null && order.customSpacing !== undefined && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
+                  <span className="hint" style={{ color: 'var(--text-3)' }}>ריווח ימים</span>
+                  <strong>{spacingLabel}</strong>
+                </div>
+              )}
               {order.notes && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '8px 4px 4px' }}>
                   <span className="hint" style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>הערות</span>
