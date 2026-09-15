@@ -127,9 +127,15 @@ export async function GET(request) {
         eventDateHebrew: order.eventDateHebrew || getHebrewDateString(order.eventDate) || null,
         dressModelNames,
         directions,
+        // תואם גם את הפורמט הישן (2 שורות נפרדות, "משלוח הלוך"/"משלוח חזור" מדויק,
+        // בלי עיר) וגם את הפורמט החדש-יותר (שורה אחת משולבת, applyDeliveryCharge ב-
+        // lib/pricingEngine.js: `משלוח ${dir} - ${city}` - כולל "הלוך-חזור" לחיוב הלוך-חזור
+        // בשורה אחת). בדיקת includes ולא === בכוונה - שתי הצורות תקפות. לא תופס "ביטול
+        // משלוח"/"משלוחים בעיר"/"משלוח" גולמי (בלי מילת כיוון) - נשארים כלא-מחויבים במכוון,
+        // אין דרך אמינה לדעת לאיזה כיוון הם שייכים.
         chargeExists: {
-          out: order.obligations.some(o => o.description === 'משלוח הלוך'),
-          return: order.obligations.some(o => o.description === 'משלוח חזור')
+          out: order.obligations.some(o => o.description && o.description.includes('הלוך')),
+          return: order.obligations.some(o => o.description && o.description.includes('חזור'))
         }
       });
     }
