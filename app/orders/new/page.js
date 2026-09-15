@@ -2299,10 +2299,12 @@ export default function NewOrderPage() {
                     : getHebrewDateString(order.eventDate)}
                 </strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
-                <span className="hint" style={{ color: 'var(--text-3)' }}>ריווח ימים</span>
-                <strong>{spacingLabel}</strong>
-              </div>
+              {(order.customSpacing !== null && order.customSpacing !== undefined) && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
+                  <span className="hint" style={{ color: 'var(--text-3)' }}>ריווח ימים</span>
+                  <strong>{spacingLabel}</strong>
+                </div>
+              )}
               {order.notes && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '8px 4px 4px' }}>
                   <span className="hint" style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>הערות</span>
@@ -2314,7 +2316,6 @@ export default function NewOrderPage() {
             <div className="card card-pad">
               <div className="card-title-row" style={{ justifyContent: 'space-between', display: 'flex', marginBottom: '12px' }}>
                 <h3 style={{ margin: 0 }}>פריטים ({order.items.length})</h3>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(3)}>עריכה</button>
               </div>
 
               <div style={{ maxHeight: '42vh', overflowY: 'auto' }} role="region" aria-label="רשימת פריטים בהזמנה" tabIndex={0}>
