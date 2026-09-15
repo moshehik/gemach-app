@@ -1011,12 +1011,14 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 <label>סכום לחיוב (₪)</label>
                 <input type="number" className="input" value={creditCardData.amount}
                   onChange={e => setCreditCardData({ ...creditCardData, amount: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}
                   style={{ fontWeight: 700 }} />
               </div>
 
               <div className="field">
                 <label>מספר כרטיס אשראי</label>
                 <input type="text" className="input" value={creditCardData.cardNumber} onChange={handleCardNumberChange}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}
                   placeholder="0000 0000 0000 0000" maxLength={19}
                   style={{ direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
               </div>
@@ -1025,12 +1027,14 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 <div className="field">
                   <label>תוקף (MM/YY)</label>
                   <input type="text" className="input" value={creditCardData.tokef} onChange={handleTokefChange}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}
                     placeholder="12/28" maxLength={5} style={{ direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
                 </div>
                 <div className="field">
                   <label>תשלומים</label>
                   <input type="number" className="input" min={1} max={36} value={creditCardData.installments}
-                    onChange={e => setCreditCardData({ ...creditCardData, installments: e.target.value })} />
+                    onChange={e => setCreditCardData({ ...creditCardData, installments: e.target.value })}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }} />
                 </div>
               </div>
 
@@ -1038,6 +1042,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 <label>הערות</label>
                 <input type="text" className="input" value={creditCardData.notes}
                   onChange={e => setCreditCardData({ ...creditCardData, notes: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}
                   placeholder="הערות לחיוב" />
               </div>
 
@@ -1229,22 +1234,22 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
             <div className="modal-body">
               <div className="field">
                 <label>סכום לזיכוי (₪) *</label>
-                <input type="number" className="input" value={refundData.amount} onChange={e => setRefundData({ ...refundData, amount: e.target.value })} style={{ fontWeight: 700 }} />
+                <input type="number" className="input" value={refundData.amount} onChange={e => setRefundData({ ...refundData, amount: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} style={{ fontWeight: 700 }} />
               </div>
 
               <div className="field">
                 <label>סיבה לזיכוי / הערות</label>
-                <input type="text" className="input" value={refundData.reason} onChange={e => setRefundData({ ...refundData, reason: e.target.value })} />
+                <input type="text" className="input" value={refundData.reason} onChange={e => setRefundData({ ...refundData, reason: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} />
               </div>
 
               <span className="hint" style={{ display: 'block', fontSize: '13px', color: 'var(--text)', fontWeight: 700, marginBottom: '8px' }}>פרטי בנק לזיכוי</span>
               <div className="form-grid">
-                <div className="field"><label>בנק *</label><input type="text" className="input" value={refundData.bankName} onChange={e => setRefundData({ ...refundData, bankName: e.target.value })} /></div>
-                <div className="field"><label>סניף *</label><input type="text" className="input" value={refundData.bankBranch} onChange={e => setRefundData({ ...refundData, bankBranch: e.target.value })} /></div>
+                <div className="field"><label>בנק *</label><input type="text" className="input" value={refundData.bankName} onChange={e => setRefundData({ ...refundData, bankName: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
+                <div className="field"><label>סניף *</label><input type="text" className="input" value={refundData.bankBranch} onChange={e => setRefundData({ ...refundData, bankBranch: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
               </div>
               <div className="form-grid">
-                <div className="field"><label>מספר חשבון</label><input type="text" className="input" value={refundData.bankAccount} onChange={e => setRefundData({ ...refundData, bankAccount: e.target.value })} /></div>
-                <div className="field"><label>שם בעל החשבון</label><input type="text" className="input" value={refundData.bankAccountName} onChange={e => setRefundData({ ...refundData, bankAccountName: e.target.value })} /></div>
+                <div className="field"><label>מספר חשבון</label><input type="text" className="input" value={refundData.bankAccount} onChange={e => setRefundData({ ...refundData, bankAccount: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
+                <div className="field"><label>שם בעל החשבון</label><input type="text" className="input" value={refundData.bankAccountName} onChange={e => setRefundData({ ...refundData, bankAccountName: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
               </div>
 
               <div className="field">
@@ -1254,7 +1259,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
               <div className="field" style={{ marginBottom: 0 }}>
                 <label>מייל לקוח (לשליחת אישור זיכוי)</label>
-                <input type="email" className="input" value={refundData.email} onChange={e => setRefundData({ ...refundData, email: e.target.value })} style={{ direction: 'ltr' }} />
+                <input type="email" className="input" value={refundData.email} onChange={e => setRefundData({ ...refundData, email: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} style={{ direction: 'ltr' }} />
               </div>
             </div>
             <div className="modal-foot">
@@ -1295,12 +1300,14 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 <label>סכום (₪)</label>
                 <input type="number" className="input" placeholder="0" value={additionalPaymentData.amount}
                   onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, amount: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitAdditionalPayment(); } }}
                   style={{ fontWeight: 700 }} />
               </div>
               <div className="field" style={{ marginBottom: additionalPaymentError ? '14px' : 0 }}>
                 <label>הערות</label>
                 <input type="text" className="input" value={additionalPaymentData.notes}
                   onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, notes: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitAdditionalPayment(); } }}
                   placeholder="הערות לתשלום" />
               </div>
               {additionalPaymentError && (
