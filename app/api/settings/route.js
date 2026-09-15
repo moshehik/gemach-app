@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
-import { checkAuth, invalidateRequireLoginCache } from '@/lib/auth';
+import { checkAuth, invalidateRequireLoginCache, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
 import { invalidateSettingsCache } from '@/lib/settingsCache';
 import { validateNumericSetting } from '../../lib/settingsValidation';
 import { verifySecret } from '@/lib/passwordAuth';
@@ -40,22 +40,27 @@ export async function POST(request) {
   try {
     const body = await request.json();
 
-    // Legacy shape: a plain array, saved only when checkAuth('מנהל') sees a real
-    // logged-in admin session cookie. When require_login is off (the very setting an
-    // admin may be trying to turn ON from a fresh/anonymous browser), there is no
-    // session cookie to check — so the client falls back to the same one-time
+    // Legacy shape: a plain array, saved only when checkAuth('הנהלה ראשית') sees a real
+    // logged-in session cookie for roleId 0 (הנהלה ראשית) or 2 (מתכנת) - matches the
+    // /admin page-level gate (HEAD_MANAGEMENT_ROLES, see app/admin/layout.js). A branch
+    // manager (roleId 1) can't reach /admin/settings in the UI at all, so this endpoint
+    // must not accept their role either - previously it used checkAuth('מנהל') (roleId
+    // 1 or 2), which let a branch manager write settings via a direct API call even
+    // though the page itself was already closed to them. When require_login is off (the
+    // very setting an admin may be trying to turn ON from a fresh/anonymous browser),
+    // there is no session cookie to check - so the client falls back to the same one-time
     // employeeId+pin confirmation pattern used elsewhere in the app (e.g. the debt-
     // approval flow in app/orders/[id]/page.js) instead of the cookie-only checkAuth.
     const isWrapped = !Array.isArray(body) && body && Array.isArray(body.items);
     const data = isWrapped ? body.items : body;
 
-    let authorized = await checkAuth('מנהל');
+    let authorized = await checkAuth('הנהלה ראשית');
     if (!authorized && isWrapped && body.employeeId && body.pin) {
       const employee = await prisma.employee.findUnique({ where: { id: body.employeeId } });
       authorized = !!(
         employee &&
         employee.isActive &&
-        (employee.roleId === 1 || employee.roleId === 2) &&
+        HEAD_MANAGEMENT_ROLES.includes(employee.roleId) &&
         (await verifySecret(body.pin, employee.password))
       );
     }

@@ -61,7 +61,7 @@ export default async function RootLayout({ children }) {
   // lib/auth.js; legacy sessions without that cookie use the DB path below,
   // exactly as before).
   const settingsPromise = getAllCachedSettings().then(all =>
-    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management'].includes(s.key))
+    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management', 'restrict_board_to_managers'].includes(s.key))
   ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
@@ -148,6 +148,11 @@ export default async function RootLayout({ children }) {
   const restrictRefundsSetting = settings.find(s => s.key === 'restrict_refunds_to_head_management');
   const restrictRefundsToHeadManagement = !restrictRefundsSetting || restrictRefundsSetting.value !== 'false';
 
+  // שולט על הצגת "לוח חודשי" בסיידבר לעובד רגיל (לא מנהל) - ר' /admin/settings →
+  // תצוגה. ברירת המחדל 'true' (ההגבלה הקיימת מ-2026-09-09, ר' showBoardTab למטה).
+  const restrictBoardSetting = settings.find(s => s.key === 'restrict_board_to_managers');
+  const restrictBoardToManagers = !restrictBoardSetting || restrictBoardSetting.value !== 'false';
+
   let isManager = false;
   let isHeadManagement = false;
   let employeeShowAi = false;
@@ -184,8 +189,11 @@ export default async function RootLayout({ children }) {
   const showDressesTab = isAuthenticated
     ? (restrictDressCatalogToHeadManagement ? isHeadManagement : true)
     : !requireLogin;
-  // "לוח חודשי" הוסתר לעובד רגיל (לא מנהל) - בקשת משתמשת 2026-09-09.
-  const showBoardTab = isAuthenticated ? isManager : !requireLogin;
+  // "לוח חודשי" הוסתר לעובד רגיל (לא מנהל) - בקשת משתמשת 2026-09-09, כעת ניתנת
+  // לשליטה דרך restrict_board_to_managers (ר' למעלה) במקום קשיח בקוד בלבד.
+  const showBoardTab = isAuthenticated
+    ? (restrictBoardToManagers ? isManager : true)
+    : !requireLogin;
 
   const navGroups = buildNavGroups({
     showAdminTab,

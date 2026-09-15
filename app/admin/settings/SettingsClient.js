@@ -165,6 +165,7 @@ const HEBREW_NAMES = {
   // פרוטוקול תיקון דיווחי שגיאות (docs/fix-protocol-error-reports.md) - הגדרות עם שחזור
   restrict_dress_catalog_to_head_management: 'הגבלת קטלוג דגמים להנהלה ראשית',
   restrict_refunds_to_head_management: 'הגבלת זיכויים וחובות להנהלה ראשית',
+  restrict_board_to_managers: 'הגבלת לוח חודשי למנהלים בלבד',
   show_employee_profile_image: 'הצגת תמונת פרופיל בכרטיס עובד',
   error_report_handled_at_bottom: 'פניות מטופלות בתחתית הרשימה',
   error_report_human_button_enabled: 'הצג כפתור "מענה אנושי" בדיווחי שגיאות',
@@ -219,6 +220,7 @@ const HEBREW_NOTES = {
 
   restrict_dress_catalog_to_head_management: 'כשמופעל, קטלוג הדגמים נגיש לצפייה רק להנהלה ראשית/מתכנת. יצירה/עריכה/מחיקה של דגם מוגבלות להנהלה ראשית תמיד, גם כשההגדרה כבויה.',
   restrict_refunds_to_head_management: 'כשמופעל, עמוד זיכויים וחובות נגיש רק להנהלה ראשית/מתכנת ולא למנהל סניף רגיל.',
+  restrict_board_to_managers: 'כשמופעל (ברירת המחדל), הקישור "לוח חודשי" בסיידבר מוצג רק למנהל סניף/הנהלה ראשית/מתכנת - עובד רגיל לא רואה אותו. כשכבוי, הקישור מוצג לכל עובד מחובר.',
   show_employee_profile_image: 'הצגת אזור העלאת/תצוגת תמונת פרופיל בכרטיס העובד (הפרופיל האישי וכרטיס העובד המנהלי). כבוי = האזור מוסתר לגמרי.',
   error_report_handled_at_bottom: 'פניות שסומנו "טופל" ברשימת הפניות הפתוחות יורדות לתחתית הרשימה, כדי שפניות חדשות יבלטו למעלה.',
   error_report_human_button_enabled: 'כשמופעל, מוצג בשרשור דיווח שגיאה (אחרי תגובת הסוכן האוטומטי) כפתור "אוף! אני צריך מענה אנושי!" למדווח/ת. לחיצה עליו מדלגת על הסוכן האוטומטי בדיווח הזה ושולחת מייל לתמיכה לטיפול ידני. כבוי = הכפתור לא מוצג בכלל.',
@@ -399,7 +401,7 @@ const SETTINGS_ORDER = {
     'hide_dress_images', 'useModelNames', 'useFileNamesForImages',
     'hide_gregorian_calendar', 'hide_internal_messaging',
     'hide_error_reporting', 'error_report_handled_at_bottom', 'error_report_human_button_enabled',
-    'show_employee_profile_image',
+    'show_employee_profile_image', 'restrict_board_to_managers',
     'kiosk_customer_self_service', 'kiosk_allow_self_order',
   ],
   'תשלומים': [
@@ -687,11 +689,24 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
   );
 }
 
+// טאבים "שלי" (מתכנת בלבד) - תצורה טכנית של המערכת עצמה (מסד נתונים, אינטגרציית
+// מיילים, מצב הסוכן האוטומטי) ולא מדיניות עסקית של הגמ"ח. מוצגים רק בדף הנפרד
+// /admin/site-settings (mode="developer"), לא בהגדרות הכלליות של הנהלה ראשית.
+const DEVELOPER_CATEGORIES = ['מסד נתונים', 'מערכת', 'מיילים'];
+
+function filterCategoriesForMode(cats, mode) {
+  return mode === 'developer'
+    ? cats.filter(c => DEVELOPER_CATEGORIES.includes(c))
+    : cats.filter(c => !DEVELOPER_CATEGORIES.includes(c));
+}
+
 // מטמון SWR משותף — ראה app/lib/pageCache.js
-const settingsCache = cacheNamespace('settings-page');
 const deptsCache = cacheNamespace('departments');
 
-export default function SettingsClient() {
+export default function SettingsClient({ mode = 'general' }) {
+  // מטמון נפרד לכל מצב, כדי שדף ההגדרות הכללי ודף הגדרות האתר (מתכנת) לא
+  // ידרסו זה את רשימת הקטגוריות המסוננת של זה.
+  const settingsCache = cacheNamespace(`settings-page-${mode}`);
   const [settings, setSettings] = useState([]);
   const [categories, setCategories] = useState([]);
   const [departments, setDepartments] = useState([]);
@@ -724,13 +739,14 @@ export default function SettingsClient() {
       if (!res.ok) throw new Error('שגיאה בטעינת ההגדרות');
       const data = await res.json();
 
-      const cats = [...new Set(data.map(s => s.category).filter(Boolean))];
-      if (!cats.includes('תצוגה')) {
-        cats.unshift('תצוגה');
+      const rawCats = [...new Set(data.map(s => s.category).filter(Boolean))];
+      if (!rawCats.includes('תצוגה')) {
+        rawCats.unshift('תצוגה');
       }
-      if (!cats.includes('מסד נתונים')) {
-        cats.push('מסד נתונים');
+      if (!rawCats.includes('מסד נתונים')) {
+        rawCats.push('מסד נתונים');
       }
+      const cats = filterCategoriesForMode(rawCats, mode);
 
       settingsCache.set('settings', { settings: data, cats });
 
@@ -798,13 +814,14 @@ export default function SettingsClient() {
       });
 
       // אין עובד מחובר (למשל כשמנסים להפעיל את "חובת התחברות למערכת" בעצמה,
-      // כשאף אחד עדיין לא מחובר) — נדרש אישור מנהל נקודתי, כמו בפעולות רגישות
-      // אחרות במערכת (למשל שמירת הזמנה עם יתרת חוב).
+      // כשאף אחד עדיין לא מחובר) — נדרש אישור הנהלה ראשית/מתכנת נקודתי, כמו
+      // בפעולות רגישות אחרות במערכת (למשל שמירת הזמנה עם יתרת חוב). ההגדרות
+      // מוגבלות להנהלה ראשית/מתכנת בלבד - לא מנהל סניף רגיל (ר' app/api/settings/route.js).
       if (res.status === 401) {
-        const authResult = await window.customAuthPrompt('שמירת ההגדרות דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:', 'מנהל');
+        const authResult = await window.customAuthPrompt('שמירת ההגדרות דורשת הרשאת הנהלה ראשית/מתכנת. אנא בחר מנהל והזן סיסמה:', 'הנהלה ראשית');
         if (!authResult || !authResult.pin) {
           setSaving(false);
-          setSaveMessage('השמירה בוטלה: נדרש אישור מנהל.');
+          setSaveMessage('השמירה בוטלה: נדרש אישור הנהלה ראשית/מתכנת.');
           return;
         }
         res = await fetch('/api/settings', {
@@ -900,8 +917,12 @@ export default function SettingsClient() {
     <>
       <div className="page-head">
         <div>
-          <h1>הגדרות מערכת</h1>
-          <div className="page-desc">ניהול תצורת הגמ״ח, התאמה אישית והעדפות</div>
+          <h1>{mode === 'developer' ? 'הגדרות אתר' : 'הגדרות מערכת'}</h1>
+          <div className="page-desc">
+            {mode === 'developer'
+              ? 'תצורה טכנית למתכנת בלבד: מסד נתונים, מערכת ומיילים'
+              : 'ניהול תצורת הגמ״ח, התאמה אישית והעדפות'}
+          </div>
         </div>
         <div className="page-actions">
           <button
@@ -1040,7 +1061,7 @@ export default function SettingsClient() {
               'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management',
               'show_employee_profile_image', 'error_report_handled_at_bottom', 'error_report_human_button_enabled', 'auto_print_on_order_create',
               'allow_additional_payment_on_order', 'hide_taken_orders_from_orders_list',
-              'agent_digest_email_enabled'
+              'agent_digest_email_enabled', 'restrict_board_to_managers'
             ].includes(setting.key);
             const isBoolean = setting.type === 'boolean' || setting.type === 'checkbox' || rawValue === 'true' || rawValue === 'false' || isBooleanKey;
             const isNumberKey = [
