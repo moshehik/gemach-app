@@ -480,8 +480,10 @@ export default function NewOrderPage() {
     }
 
     if (!newCustomer.phone2.trim() && !newCustomer.email.trim()) {
-       alert('כל הזמנה מחייבת 2 אמצעי תקשורת: יש למלא טלפון נוסף או כתובת מייל.');
-       return;
+       // כל הזמנה מחייבת 2 אמצעי תקשורת (טלפון נוסף או אימייל) - אך לפי בקשת ההנהלה
+       // אין לחסום סופית, אלא לאפשר עקיפה עם אישור מנהל בפועל (PIN), כמו בלקוח קיים.
+       const auth = await verifyPin('כל הזמנה מחייבת 2 אמצעי תקשורת (טלפון נוסף או כתובת מייל) - חסר ללקוח זה. נדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת.', 'מנהל');
+       if (!auth) return;
     }
 
     if (skipDuplicateCheck !== true) {
@@ -553,10 +555,21 @@ export default function NewOrderPage() {
         alert(`לא ניתן להמשיך - ללקוח חסרים פרטי חובה: ${missingParts.join(', ')}. אפשר ללחוץ על "עריכת פרטי לקוח" להשלמת הפרטים ואז לחזור ולנסות שוב, או לבטל ולבחור לקוח אחר.`);
         return;
       }
-      const confirmed = await window.customConfirm(
-        `ללקוח זה חסרים פרטי חובה: ${missingParts.join(', ')}.\nהאם לאשר חריגה ולהמשיך בכל זאת בלי להשלים את הפרטים?`
-      );
-      if (!confirmed) return;
+      // חסר אמצעי תקשורת נוסף (טלפון 2/אימייל) דורש אישור מנהל בפועל (לא רק אישור
+      // חריגה של עובד רגיל) - לפי בקשת ההנהלה: 2 אמצעי תקשורת נדרשים, ורק מנהל יכול
+      // לעקוף כשחסר. שאר השדות החסרים (לא קשורים לאמצעי תקשורת) ממשיכים באישור חריגה רגיל.
+      if (missingContactMethod) {
+        const auth = await verifyPin(
+          `ללקוח זה חסרים פרטי חובה: ${missingParts.join(', ')}.\nנדרש אישור מנהל כדי לעקוף ולהמשיך בכל זאת בלי אמצעי תקשורת נוסף.`,
+          'מנהל'
+        );
+        if (!auth) return;
+      } else {
+        const confirmed = await window.customConfirm(
+          `ללקוח זה חסרים פרטי חובה: ${missingParts.join(', ')}.\nהאם לאשר חריגה ולהמשיך בכל זאת בלי להשלים את הפרטים?`
+        );
+        if (!confirmed) return;
+      }
     }
 
     setOrder(prev => ({ ...prev, customerId: existingCustomer.id, selectedCustomer: existingCustomer }));
@@ -904,7 +917,10 @@ export default function NewOrderPage() {
         items: order.items,
         eventDate: order.eventDate,
         isAbroad: order.isAbroad,
-        isWeekdayEvent: order.isWeekdayEvent
+        isWeekdayEvent: order.isWeekdayEvent,
+        isDelivery: order.isDelivery,
+        deliveryCity: order.deliveryCity,
+        deliveryDirection: order.deliveryDirection
       })
     })
       .then(res => res.json())
@@ -916,7 +932,7 @@ export default function NewOrderPage() {
         setCalculating(false);
       })
       .catch(() => setCalculating(false));
-  }, [order.items, order.eventDate, order.isAbroad, order.isWeekdayEvent]);
+  }, [order.items, order.eventDate, order.isAbroad, order.isWeekdayEvent, order.isDelivery, order.deliveryCity, order.deliveryDirection]);
 
   const totalAmount = calculatedData.totalAmount;
 
@@ -2299,10 +2315,12 @@ export default function NewOrderPage() {
                     : getHebrewDateString(order.eventDate)}
                 </strong>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
-                <span className="hint" style={{ color: 'var(--text-3)' }}>ריווח ימים</span>
-                <strong>{spacingLabel}</strong>
-              </div>
+              {settings.hide_custom_spacing !== 'true' && order.customSpacing !== null && order.customSpacing !== undefined && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '8px 4px', borderBottom: '1px solid var(--border)' }}>
+                  <span className="hint" style={{ color: 'var(--text-3)' }}>ריווח ימים</span>
+                  <strong>{spacingLabel}</strong>
+                </div>
+              )}
               {order.notes && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '16px', padding: '8px 4px 4px' }}>
                   <span className="hint" style={{ color: 'var(--text-3)', whiteSpace: 'nowrap' }}>הערות</span>
