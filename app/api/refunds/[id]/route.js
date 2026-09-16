@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
 import { checkAuth } from '@/lib/auth';
+import { sendSystemEmail } from '@/lib/mailer';
+import { renderGenericEmailHtml } from '@/lib/emailTemplates';
+import { getAllCachedSettings } from '@/lib/settingsCache';
 
 export async function PUT(request, { params }) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -25,7 +28,7 @@ export async function PUT(request, { params }) {
 
     const existingRefund = await prisma.refund.findUnique({
       where: { id },
-      include: { order: true }
+      include: { order: true, customer: true }
     });
 
     if (!existingRefund) {
@@ -117,6 +120,28 @@ export async function PUT(request, { params }) {
 
       if (!claimed) {
         return NextResponse.json({ error: 'הזיכוי כבר סומן כבוצע בינתיים על ידי משתמש אחר. רענן את הדף.' }, { status: 409 });
+      }
+
+      // דיווח לקוח (הגמח הראשי): "לא קיבלתי מייל אישור על ביצוע זיכוי" - עד כה לא נשלח
+      // בכלל מייל בעת ביצוע זיכוי, לאף אחד מהגמחים. לא חוסם את התגובה אם השליחה נכשלת -
+      // הזיכוי כבר בוצע בפועל, כשלון מייל לא אמור לגרום לשגיאה למשתמש.
+      const recipientEmail = existingRefund.email || existingRefund.customer?.email;
+      if (recipientEmail) {
+        try {
+          const settings = (await getAllCachedSettings()).filter(s => ['gmach_name'].includes(s.key));
+          const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
+          const customerName = [existingRefund.customer?.firstName, existingRefund.customer?.lastName].filter(Boolean).join(' ');
+          const orderLine = existingRefund.orderId ? `\nמספר הזמנה: ${existingRefund.orderId}` : '';
+          const bodyText = `שלום ${customerName},\n\nבוצע עבורך זיכוי על סך ₪${existingRefund.amount.toLocaleString('he-IL')}.${orderLine}\n\nהזיכוי יועבר לחשבון הבנק שנמסר לנו (בנק ${existingRefund.bankName || ''} סניף ${existingRefund.bankBranch || ''}).`;
+          await sendSystemEmail({
+            to: recipientEmail,
+            subject: 'אישור ביצוע זיכוי - מערכת הגמ"ח',
+            body: bodyText,
+            html: renderGenericEmailHtml({ title: 'אישור ביצוע זיכוי', bodyText, gmachName }),
+          });
+        } catch (emailErr) {
+          console.error('Failed to send refund confirmation email:', emailErr);
+        }
       }
 
       const updatedRefund = await prisma.refund.findUnique({ where: { id } });
