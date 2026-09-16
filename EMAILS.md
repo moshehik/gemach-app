@@ -19,6 +19,7 @@ that deployment is ever replaced, all of these need updating (or route them all 
 | Bug report submitted | `app/api/error-report/route.js` | `דיווח תקלה ממערכת הגמח - לטיפול AI` | `דוח שגיאה.txt` |
 | Internal message with "שלח גם במייל" (per-recipient `receiveEmailAlerts`) | `app/api/notifications/route.js` | message title | `הודעה.txt` |
 | Agent PR-approval digest (twice-daily cron, gated by `agent_digest_email_enabled`) | `app/api/cron/agent-digest/route.js` (via `lib/agentDigest.js`, `lib/mailer.js`) | `<N> שינויים ממתינים לאישור מיזוג - מערכת הגמ"ח` | `הודעה.txt` |
+| Refund/credit marked executed (`PUT /api/refunds/[id]`, `isExecuted: true`) | `app/api/refunds/[id]/route.js` (via `lib/mailer.js`) | `אישור ביצוע זיכוי - מערכת הגמ"ח` | `הודעה.txt` |
 | "הדפסת משלוחים" → שליחה במייל (`app/deliveries/page.js`, gated by `enable_deliveries` + `courier_email`) | `app/api/deliveries/courier-email/route.js` (via `lib/mailer.js`) | delivery group title, e.g. `משלוח הלוך אירועים...` | `נתוני משלוחים.txt` |
 
 All attachment filenames are dummy placeholders (base64 `fileName`/`fileContent` the script's
