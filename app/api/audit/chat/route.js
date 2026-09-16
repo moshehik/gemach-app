@@ -1,6 +1,7 @@
 ﻿import { NextResponse } from 'next/server';
 import { generateContent } from '../../../../lib/ai/gemini';
 import { checkAuth } from '../../../../lib/auth';
+import { HDate } from '@hebcal/core';
 
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -13,6 +14,7 @@ export async function POST(req) {
     }
 
     const todayIso = new Date().toISOString();
+    const todayHebrew = new HDate().renderGematriya();
     const systemPrompt = `You are a smart audit log filter assistant for a system called "Gemach".
 The user is asking a natural language question about system audit logs (e.g., "מי מחק הזמנות אתמול?"). 
 Your goal is to extract the filters from their request and return them strictly as a JSON object.
@@ -27,7 +29,7 @@ Allowed fields in JSON:
 
 Rules:
 1. ONLY return the JSON object. Do not include markdown formatting like \`\`\`json.
-2. If a date is mentioned (like "yesterday", "last week"), calculate the approximate ISO string relative to today: ${todayIso}.
+2. If a date is mentioned (like "yesterday", "last week"), calculate the approximate ISO string relative to today: ${todayIso} (Hebrew date today: ${todayHebrew}).
 3. If they ask about orders, entityType is "Order". Customers -> "Customer". Dresses -> "DressItem". Users/Employees -> "Employee".
 4. If the user searches for a specific value (e.g. size "08", name "כהן"), extract ONLY the value to the 'search' field (e.g. "08" or "כהן").
 5. DO NOT include Hebrew field names (like 'מידה' or 'שם') in the 'search' field, because the search runs on raw database JSON values.

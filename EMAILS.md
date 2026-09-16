@@ -20,6 +20,7 @@ that deployment is ever replaced, all of these need updating (or route them all 
 | Internal message with "שלח גם במייל" (per-recipient `receiveEmailAlerts`) | `app/api/notifications/route.js` | message title | `הודעה.txt` |
 | Agent PR-approval digest (twice-daily cron, gated by `agent_digest_email_enabled`) | `app/api/cron/agent-digest/route.js` (via `lib/agentDigest.js`, `lib/mailer.js`) | `<N> שינויים ממתינים לאישור מיזוג - מערכת הגמ"ח` | `הודעה.txt` |
 | Refund/credit marked executed (`PUT /api/refunds/[id]`, `isExecuted: true`) | `app/api/refunds/[id]/route.js` (via `lib/mailer.js`) | `אישור ביצוע זיכוי - מערכת הגמ"ח` | `הודעה.txt` |
+| "הדפסת משלוחים" → שליחה במייל (`app/deliveries/page.js`, gated by `enable_deliveries` + `courier_email`) | `app/api/deliveries/courier-email/route.js` (via `lib/mailer.js`) | delivery group title, e.g. `משלוח הלוך אירועים...` | `נתוני משלוחים.txt` |
 
 All attachment filenames are dummy placeholders (base64 `fileName`/`fileContent` the script's
 API requires) except the order/rental PDF, which is the real attached document.
@@ -36,6 +37,10 @@ as a fallback) **and** a styled `htmlBody`, built from `lib/emailTemplates.js`:
 - `renderErrorReportEmailHtml(...)` - bug-report emails. Deliberately leaves out the
   `---AI_DATA_START---/---AI_DATA_END---` machine-readable block that the plain-text `body`
   still carries (see `app/api/error-report/route.js`) - that block isn't meant for human eyes.
+- `renderCourierDeliveryEmailHtml({ groups, gmachName })` - "נתוני משלוחים למשלוחן" email.
+  `groups` come from `lib/deliveryCourier.js`'s `groupDeliveryRowsForCourier` (same grouping/title
+  logic the print view `app/print/delivery-courier/page.js` uses) - one `.files-table` section
+  per direction+event-date group, not the 2-column `meta-table` layout the other templates use.
 - `escapeHtml` / `textToHtml` - shared escaping helpers, exported for reuse.
 
 All three share one visual shell (`renderShell` internally): the same בס"ד header, gmach

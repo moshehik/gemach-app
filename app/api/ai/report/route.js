@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateContent } from '../../../../lib/ai/gemini';
+import { HDate } from '@hebcal/core';
 
 export async function POST(req) {
   try {
@@ -9,8 +10,12 @@ export async function POST(req) {
       return NextResponse.json({ error: 'Data and prompt are required' }, { status: 400 });
     }
 
+    const todayGregorian = new Date().toISOString().split('T')[0];
+    const todayHebrew = new HDate().renderGematriya();
+    const dateContext = `Today's date is Gregorian: ${todayGregorian}, Hebrew: ${todayHebrew}. Use this as the anchor for any relative date filtering/sorting/grouping the user asks for.`;
+
     let systemPrompt = '';
-    
+
     if (format === 'pdf') {
       systemPrompt = `You are an expert data analyst and report designer. You are given a JSON array of records and a user request in Hebrew on how to organize, sort, filter, summarize, and layout this data.
 Your task is to process the JSON data according to the user's request and output ONLY beautifully formatted HTML code that visually represents this data.
@@ -22,6 +27,8 @@ Rules for HTML Output:
 4. Design the layout using inline styles or generic HTML tags. You can use tables, headers (<h2>, <h3>), lists, or flexbox layouts to create a clean, elegant, and professional report.
 5. If the user asks to group data, create visual sections or grouped tables. If they ask for a summary, highlight the summary at the top or bottom.
 6. The keys in the data represent: ${JSON.stringify(columns)}. Always display the column names and data in Hebrew.
+
+${dateContext}
 
 User Request: "${prompt}"
 
@@ -37,6 +44,8 @@ Rules:
 2. The output MUST start with '[' and end with ']'.
 3. Try to keep the keys in Hebrew if the user asks for new columns or summaries, or stick to the provided keys if sorting/filtering.
 4. Understand the data context based on the columns: ${JSON.stringify(columns)}
+
+${dateContext}
 
 User Request: "${prompt}"
 

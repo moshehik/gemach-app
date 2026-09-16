@@ -18,7 +18,7 @@ export async function GET() {
     const settings = await prisma.systemSetting.findMany({
       where: {
         key: {
-          not: 'BRAND_LOGO'
+          notIn: ['BRAND_LOGO', 'backup_requested_at'] // backup_requested_at is an internal flag (app/api/admin/backups/trigger), not an admin-editable setting
         }
       },
       orderBy: [

@@ -56,6 +56,20 @@ file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); // 
 - `VIEW` ב-Drive = צפייה **והורדה** (כל עוד לא ננעל במפורש) - לכן הנמען יכול להוריד בלי לבקש גישה.
 - אם בארגון שלך יש מדיניות שחוסמת הורדה - הפעלת ה-Drive API בקוד פותחת אותה ברמת הקובץ.
 
+## עדכון - גיבוי נתונים ענני (scripts/cloud_backup.js, BACKUPS.md)
+
+אותו קובץ `docs/gas-mail-drive.gs` משמש גם את מערכת הגיבוי הענני: שלוש פעולות נוספות
+ב-`doPost` (`uploadBackup`, `listBackups`, `deleteBackup`) מעלות/מרשימות/מוחקות קובצי
+גיבוי בדרייב. **שונה במכוון מטבלת ההוראות למעלה**: קובצי גיבוי משותפים רק לכתובת מייל
+ספציפית אחת (`backup_owner_email` בהגדרות המערכת) ולא "כל מי שמחזיק בקישור" - כי הם
+מכילים נתוני לקוחות וכספים מלאים.
+
+**צעד חובה, לכל גמח בנפרד (שני חשבונות Google נפרדים)**: להדביק את הגרסה המעודכנת של
+`docs/gas-mail-drive.gs` ל-Code.gs ולעשות Deploy -> Manage deployments -> Edit -> New
+version מחדש (אותם צעדים כמו למעלה) - גם בפרויקט ה-GAS של הגמח הראשי וגם בזה של נווה
+יעקב. בלי זה קריאות הגיבוי ל-`action:'uploadBackup'` וכו' יחזרו לנתיב הכללי (`handleGenericEmail`)
+וייכשלו.
+
 ### תאימות לאחור
 
 - פריסת GAS ישנה מתעלמת מהשדות החדשים (`attachments`, `sendMode`, `driveFolderId`) וממשיכה לשלוח את `fileName/fileContent` הראשון - לכן המערכת תמשיך לעבוד גם לפני עדכון ה-GAS.

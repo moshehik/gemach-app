@@ -80,7 +80,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
         }
 
         // Retry
-        const retryPrompt = `${SYSTEM_PROMPT}\nSchema:\n${schemaContext}\nUser Question: ${prompt}\n\nYou generated this SQL query: ${sqlQuery}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY a corrected PostgreSQL SQL query starting with "SQL: " to fix this issue.`;
+        const retryPrompt = `${SYSTEM_PROMPT}\nSchema:\n${schemaContext}\n${dateContext}\nUser Question: ${prompt}\n\nYou generated this SQL query: ${sqlQuery}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY a corrected PostgreSQL SQL query starting with "SQL: " to fix this issue.`;
         let retryResponse = await generateContent(retryPrompt);
         
         if (retryResponse.trim().startsWith('SQL:')) {

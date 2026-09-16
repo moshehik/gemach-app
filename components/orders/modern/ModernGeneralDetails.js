@@ -24,10 +24,6 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const [isEditingOrderDate, setIsEditingOrderDate] = useState(false);
   const [systemDefaultSpacing, setSystemDefaultSpacing] = useState(3);
   const [enableRentalExtension, setEnableRentalExtension] = useState(false);
-  // ערי המשלוח לבחירה - מתוך מפתחות ה-JSON של delivery_price_by_city, כמו באשף
-  // ההזמנה החדשה (app/orders/new/page.js) - ר' דיווח org2 9090b43a.
-  const [deliveryCityOptions, setDeliveryCityOptions] = useState([]);
-  const [allowDeliveryAddressOverride, setAllowDeliveryAddressOverride] = useState(false);
 
   React.useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -37,13 +33,6 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
         if (setting && !isNaN(parseInt(setting.value, 10))) setSystemDefaultSpacing(parseInt(setting.value, 10));
         const extSetting = arr.find(s => s.key === 'enable_rental_extension');
         setEnableRentalExtension(!!extSetting && extSetting.value === 'true');
-        const cityMapSetting = arr.find(s => s.key === 'delivery_price_by_city');
-        try {
-          const cities = Object.keys(JSON.parse(cityMapSetting?.value || '{}'));
-          setDeliveryCityOptions(cities);
-        } catch { /* JSON לא תקין - נשאר בלי הצעות */ }
-        const overrideSetting = arr.find(s => s.key === 'delivery_allow_address_override');
-        setAllowDeliveryAddressOverride(!!overrideSetting && overrideSetting.value === 'true');
       })
       .catch(() => {});
   }, []);
@@ -181,13 +170,30 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   // כמה ימים מעבר לברירת המחדל, כדי שיהיה אפשר גם להרחיב את הציפוף ולא רק לצמצם אותו.
   // כש-hide_custom_spacing מופעל (בקשה 1 - לקוח זה), כל הציפוף מוסתר לגמרי.
   const [hideCustomSpacing, setHideCustomSpacing] = React.useState(false);
+  // כרטיס משלוח בעריכת הזמנה קיימת - מותנה כולו ב-enable_deliveries (מתג "הצג משלוחים"
+  // בהגדרות הניהול, קטגוריית "משלוחים"), אותו מתג שמסתיר/מציג את לשונית "משלוחים" עצמה
+  // (app/layout.js showDeliveries) - כשהמתג כבוי, הכרטיס לא מוצג כלל, לא רק שדותיו הפנימיים.
+  const [deliverySettings, setDeliverySettings] = React.useState({ enabled: false, allowAddressOverride: false, oneDayBeforeOption: false, priceByCity: {} });
   React.useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC }).then(arr => {
       const list = Array.isArray(arr) ? arr : [];
       const v = list.find(s => s.key === 'hide_custom_spacing')?.value;
       if (v === 'true') setHideCustomSpacing(true);
+      const find = (k) => list.find(s => s.key === k)?.value;
+      if (find('enable_deliveries') === 'true') {
+        let priceByCity = {};
+        try { priceByCity = JSON.parse(find('delivery_price_by_city') || '{}'); } catch { /* JSON לא תקין - בלי הצעות ערים */ }
+        setDeliverySettings({
+          enabled: true,
+          allowAddressOverride: find('delivery_allow_address_override') === 'true',
+          oneDayBeforeOption: find('delivery_one_day_before_option') === 'true',
+          priceByCity
+        });
+      }
     }).catch(() => {});
   }, []);
+  const deliveryCityOptions = Object.keys(deliverySettings.priceByCity || {});
+  const deliveryAddressRequired = !!(order.isDelivery && order.deliveryCity && customer?.city && order.deliveryCity !== customer.city);
   const hasCustomSpacing = !hideCustomSpacing && order.customSpacing !== null && order.customSpacing !== undefined;
   const selectedSpacing = hasCustomSpacing ? order.customSpacing : null;
   const maxAxisDay = Math.max(systemDefaultSpacing + 2, selectedSpacing !== null ? selectedSpacing : 0, 4);
@@ -389,63 +395,66 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                 placeholder="הערות לצוות בלבד - לא יופיעו בהדפסה או במייל ללקוח..."
               />
             </div>
-
-            {/* משלוח - ניתן להוסיף/לערוך גם על הזמנה קיימת, לא רק ביצירה - ר' דיווחי
-                org2 095ee564/e0c85176/af273d1b. החיוב בפועל (applyDeliveryCharge)
-                כבר רץ אוטומטית בשמירת ההזמנה, ר' lib/pricingEngine.js. */}
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input type="checkbox" checked={!!order.isDelivery} onChange={e => handleChange({ isDelivery: e.target.checked })} />
-                הזמנה עם משלוח
-              </label>
-            </div>
-            {order.isDelivery && (
-              <div style={{ marginTop: '10px' }}>
-                <div className="form-grid">
-                  <div className="field">
-                    <label>כיוון המשלוח</label>
-                    <select className="select" value={order.deliveryDirection || 'הלוך-חזור'} onChange={e => handleChange({ deliveryDirection: e.target.value })}>
-                      <option value="הלוך-חזור">הלוך-חזור</option>
-                      <option value="הלוך">הלוך בלבד</option>
-                      <option value="חזור">חזור בלבד</option>
-                    </select>
-                  </div>
-                  <div className="field">
-                    <label>עיר למשלוח</label>
-                    <input
-                      type="text"
-                      className="input"
-                      list="delivery-city-list-edit"
-                      autoComplete="new-password"
-                      value={order.deliveryCity || ''}
-                      onChange={e => handleChange({ deliveryCity: e.target.value })}
-                      placeholder="עיר"
-                    />
-                    <datalist id="delivery-city-list-edit">
-                      {deliveryCityOptions.map(c => <option key={c} value={c} />)}
-                    </datalist>
-                  </div>
-                </div>
-                {allowDeliveryAddressOverride && (
-                  <div className="field">
-                    <label>כתובת משלוח שונה</label>
-                    <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => handleChange({ deliveryAddress: e.target.value })} placeholder="כתובת למשלוח (שונה ממגורים)" />
-                  </div>
-                )}
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input type="checkbox" checked={!!order.deliveryOneDayBefore} onChange={e => handleChange({ deliveryOneDayBefore: e.target.checked })} />
-                    משלוח יוצא יום לפני האירוע (במקום יומיים)
-                  </label>
-                </div>
-              </div>
-            )}
           </>
         )}
       </div>
 
       {/* ציפוף ימים מיוחד — סעיף נפרד, מוצג בזמן עריכת האירוע וגם כאינדיקציה במצב קריאה. מוסתר לגמרי כאשר hide_custom_spacing מופעל */}
       {!hideCustomSpacing && (isEditingEvent || hasCustomSpacing) && spacingCardNode}
+
+      {/* כרטיס משלוח — קיים גם בהזמנה חדשה (app/orders/new/page.js), כאן מאפשר להוסיף/לערוך
+          משלוח גם על הזמנה שכבר נוצרה. מוצג רק כש-enable_deliveries מופעל בהגדרות; שמירת
+          השדות בפועל קורית ב-handleSave (app/orders/[id]/page.js) שמעביר אותם ל-PUT, וה-API
+          (app/api/orders/[id]/route.js) כבר מריץ applyDeliveryCharge מחדש בעדכון. */}
+      {deliverySettings.enabled && (
+        <div className="card card-pad" style={{ marginBottom: '16px' }}>
+          <h3 style={{ margin: '0 0 10px', fontSize: 14 }}>משלוח</h3>
+          <div className="field" style={{ marginBottom: order.isDelivery ? 8 : 0 }}>
+            <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+              <input type="checkbox" checked={!!order.isDelivery} onChange={e => handleChange({ isDelivery: e.target.checked })} />
+              <span>הזמנת משלוח</span>
+            </label>
+          </div>
+          {order.isDelivery && (
+            <div className="form-grid">
+              <div className="field">
+                <label>כיוון משלוח</label>
+                <select className="select" value={order.deliveryDirection || 'הלוך-חזור'} onChange={e => handleChange({ deliveryDirection: e.target.value })}>
+                  <option value="הלוך">הלוך</option>
+                  <option value="חזור">חזור</option>
+                  <option value="הלוך-חזור">הלוך-חזור</option>
+                </select>
+              </div>
+              <div className="field">
+                <label htmlFor="delivery-city-edit">עיר משלוח (לחישוב מחיר)</label>
+                <input id="delivery-city-edit" type="text" className="input" list="delivery-city-list-edit" autoComplete="new-password" value={order.deliveryCity || ''} onChange={e => handleChange({ deliveryCity: e.target.value })} placeholder="עיר" />
+                <datalist id="delivery-city-list-edit">
+                  {deliveryCityOptions.map(c => <option key={c} value={c} />)}
+                </datalist>
+              </div>
+              {(deliverySettings.allowAddressOverride || deliveryAddressRequired) && (
+                <div className="field">
+                  <label>כתובת משלוח שונה{deliveryAddressRequired && <span style={{ color: 'var(--danger)' }}> *</span>}</label>
+                  <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => handleChange({ deliveryAddress: e.target.value })} placeholder="כתובת למשלוח (שונה ממגורים)" />
+                  {deliveryAddressRequired && !String(order.deliveryAddress || '').trim() && (
+                    <p className="hint" style={{ color: 'var(--danger)', margin: '4px 0 0' }}>
+                      עיר המשלוח שונה מעיר הלקוח - יש להזין כתובת למשלוח.
+                    </p>
+                  )}
+                </div>
+              )}
+              {deliverySettings.oneDayBeforeOption && (
+                <div className="field">
+                  <label className="checkbox-row" style={{ cursor: 'pointer' }}>
+                    <input type="checkbox" checked={!!order.deliveryOneDayBefore} onChange={e => handleChange({ deliveryOneDayBefore: e.target.checked })} />
+                    <span>משלוח יוצא יום לפני האירוע (במקום יומיים)</span>
+                  </label>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* תאריך ביצוע ההזמנה */}
       <div className="card card-pad" style={{ display: 'flex', alignItems: 'center', gap: '14px', flexWrap: 'wrap' }}>
