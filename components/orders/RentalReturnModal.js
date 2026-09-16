@@ -10,7 +10,7 @@ import OrderPrintMenu from './OrderPrintMenu';
 import { fetchSharedJson, TTL } from '../../lib/apiCache';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../HistoryViewer';
 import { verifyPin } from './modern/mocAuth';
-import { getLateReturnInfo } from '../../lib/lateReturn';
+import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '../../lib/lateReturn';
 
 export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   const { getLabel } = useLabels();
@@ -21,6 +21,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   // allow_shift_lead_reserve_rental - ר' app/api/rentals/scan/route.js: כשדלוק, חסימת
   // רזרבה (לא מחסן) ניתנת לעקיפה בסיסמת כל עובד/ת פעיל/ה, לא רק מנהל/מתכנת.
   const [allowShiftLeadReserve, setAllowShiftLeadReserve] = useState(false);
+  const [lateReturnThresholdDays, setLateReturnThresholdDays] = useState(LATE_RETURN_THRESHOLD_DAYS);
 
   const [modalBarcode, setModalBarcode] = useState('');
   const modalBarcodeRef = useRef(null);
@@ -115,6 +116,8 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
         }
         const shiftLeadSetting = Array.isArray(data) ? data.find(s => s.key === 'allow_shift_lead_reserve_rental') : null;
         setAllowShiftLeadReserve(!!(shiftLeadSetting && shiftLeadSetting.value === 'true'));
+        const thresholdSetting = Array.isArray(data) ? data.find(s => s.key === 'late_return_threshold_days') : null;
+        if (thresholdSetting?.value) setLateReturnThresholdDays(Number(thresholdSetting.value) || LATE_RETURN_THRESHOLD_DAYS);
       })
       .catch(console.error);
   }, []);
@@ -280,7 +283,7 @@ export default function RentalReturnModal({ orderId, onClose, onUpdate }) {
   // בזרימת ההחזרה הרגילה).
   const checkLateReturnPrompt = async (item) => {
     if (!selectedOrder || !item) return false;
-    const { isLate, daysLate } = getLateReturnInfo(selectedOrder);
+    const { isLate, daysLate } = getLateReturnInfo(selectedOrder, lateReturnThresholdDays);
     if (!isLate) return false;
 
     const wantsBad = await window.customConfirm(
