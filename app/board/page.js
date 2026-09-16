@@ -89,6 +89,9 @@ export default function BoardPage() {
   const [jumpDate, setJumpDate] = useState(null);
   const [enableAlterations, setEnableAlterations] = useState(true);
   const [hideCustomSpacing, setHideCustomSpacing] = useState(false); // 1 - הסתרת ציפוף ימים (hide_custom_spacing)
+  // דיווח לקוח (הגמח הראשי): ר' ההערה הזהה ב-app/orders/page.js - "כריכה" מיותרת
+  // שהודלפה מהפיצ'ר שנוסף עבור נווה יעקב, ללא הגדרה שמפרידה בין הגמחים.
+  const [enableBatchPrintPrep, setEnableBatchPrintPrep] = useState(false);
 
   // כשהתיקונים כבויים בהגדרות, קטגוריית "יש תיקונים" לא רלוונטית ללוח הזה - כולל למקרה
   // של הזמנות ישנות שיובאו מ-Access עם ערכי תיקון היסטוריים על אף שהתכונה כבויה כעת
@@ -102,6 +105,8 @@ export default function BoardPage() {
         }
         const hideSetting = Array.isArray(data) ? data.find(s => s.key === 'hide_custom_spacing') : null;
         if (hideSetting?.value === 'true') setHideCustomSpacing(true);
+        const batchPrintSetting = Array.isArray(data) ? data.find(s => s.key === 'enable_batch_print_prep') : null;
+        if (batchPrintSetting?.value === 'true') setEnableBatchPrintPrep(true);
       })
       .catch(console.error);
   }, []);
@@ -539,7 +544,7 @@ export default function BoardPage() {
                           <svg className="icon"><use href="#i-expand" /></svg>
                         </button>
                       )}
-                      {dayOrders.length > 0 && (
+                      {dayOrders.length > 0 && enableBatchPrintPrep && (
                         <button
                           type="button"
                           className="btn btn-ghost btn-icon-only btn-sm"
@@ -599,9 +604,11 @@ export default function BoardPage() {
           <button type="button" className="btn btn-secondary btn-icon-only" onClick={() => changeMonth(1)} title="חודש הבא">
             <svg className="icon"><use href="#i-chevron-start" /></svg>
           </button>
-          <button type="button" className="btn btn-secondary btn-icon-only" title="הדפסת הזמנות להכנה" onClick={() => setShowPrintWizard(true)}>
-            <svg className="icon"><use href="#i-printer" /></svg>
-          </button>
+          {enableBatchPrintPrep && (
+            <button type="button" className="btn btn-secondary btn-icon-only" title="הדפסת הזמנות להכנה" onClick={() => setShowPrintWizard(true)}>
+              <svg className="icon"><use href="#i-printer" /></svg>
+            </button>
+          )}
         </div>
       </div>
 
@@ -977,9 +984,11 @@ export default function BoardPage() {
                 הזמנות ליום {selectedDayOrders.date.toLocaleDateString('he-IL')} ({selectedDayOrders.hebrewDate})
               </strong>
               <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="הדפסת פרוט ההזמנות ליום זה" onClick={() => printDayOrders(selectedDayOrders.orders)}>
-                  <svg className="icon"><use href="#i-printer" /></svg>
-                </button>
+                {enableBatchPrintPrep && (
+                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="הדפסת פרוט ההזמנות ליום זה" onClick={() => printDayOrders(selectedDayOrders.orders)}>
+                    <svg className="icon"><use href="#i-printer" /></svg>
+                  </button>
+                )}
                 <button type="button" className="btn btn-ghost btn-icon-only btn-sm" title="סגור" onClick={() => { setSelectedDayOrders(null); setDayOrdersFilter(''); }}>
                   <svg className="icon"><use href="#i-x" /></svg>
                 </button>
@@ -1037,7 +1046,8 @@ export default function BoardPage() {
       {showPrintWizard && (
         <PrintWizardModal
           onClose={() => setShowPrintWizard(false)}
-          defaultReportType="order_prep_by_date"
+          defaultReportType={enableBatchPrintPrep ? 'order_prep_by_date' : undefined}
+          enableBatchPrintPrep={enableBatchPrintPrep}
         />
       )}
 

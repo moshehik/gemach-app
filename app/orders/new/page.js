@@ -2481,7 +2481,7 @@ export default function NewOrderPage() {
 
                   {remaining > 0 && (
                     <p className="field hint" style={{ margin: '12px 0 0', color: 'var(--warning)' }}>
-                      נותרה יתרה של ₪{remaining.toLocaleString('he-IL')}. סיום ההזמנה ללא תשלום מלא אפשרי רק באמצעות &quot;יציאה באישור מנהל&quot;.
+                      נותרה יתרה של ₪{remaining.toLocaleString('he-IL')}. סיום ההזמנה ללא תשלום מלא אפשרי רק אם בוחרים &quot;יציאה באישור מנהל&quot; מתוך רשימת &quot;אופן תשלום&quot; למעלה (ולא בכפתור נפרד) - זה יבקש קוד וסיסמת מנהל.
                     </p>
                   )}
                 </div>

@@ -201,6 +201,10 @@ export default function OrderDetailsPage({ params }) {
   // לת״ז (לא במקומו). ברירת מחדל כבויה = ההתנהגות הקודמת (ת״ז בלבד). הוספת פריט חדש
   // נבדקת בנפרד ב-ModernItemsManager.js (POST מיידי, לא דרך שמירת ההזמנה הכללית כאן).
   const [requireManagerCodeForItems, setRequireManagerCodeForItems] = useState(false);
+  // דיווח לקוח (הגמח הראשי): "אנחנו לא רוצים טיוטות של הזמנות לא שמורות" - עד כה שמירת
+  // הטיוטה המקומית (ר' האפקט למטה) הייתה גלובלית וללא אפשרות כיבוי. ברירת המחדל true
+  // שומרת על ההתנהגות הקודמת אצל כל גמח שלא הגדיר את המפתח הזה ב-DB שלו במפורש.
+  const [enableLocalDrafts, setEnableLocalDrafts] = useState(true);
   useEffect(() => {
     let cancelled = false;
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -214,6 +218,8 @@ export default function OrderDetailsPage({ params }) {
         if (allowP) setAllowEditPartially(allowP.value === 'true');
         const reqManagerCode = data.find(s => s.key === 'require_manager_code_for_item_changes');
         if (reqManagerCode) setRequireManagerCodeForItems(reqManagerCode.value === 'true');
+        const localDrafts = data.find(s => s.key === 'enable_local_order_drafts');
+        if (localDrafts) setEnableLocalDrafts(localDrafts.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -413,6 +419,7 @@ export default function OrderDetailsPage({ params }) {
   // התלבטות לא דורסת בשקט את הטיוטה מהביקור הקודם.
   useEffect(() => {
     if (!order?.orderId) return;
+    if (!enableLocalDrafts) return;
     if (hasUnsavedChanges) {
       hadUnsavedRef.current = true;
       if (pendingDraft) return;
@@ -433,7 +440,7 @@ export default function OrderDetailsPage({ params }) {
       hadUnsavedRef.current = false;
       clearOrderDraft(order.orderId);
     }
-  }, [hasUnsavedChanges, order, items, obligations, payments, refunds, pendingDraft]);
+  }, [hasUnsavedChanges, order, items, obligations, payments, refunds, pendingDraft, enableLocalDrafts]);
 
   // טוען מחדש את ההזמנה מהשרת ומאפס את מצב "שינויים שלא נשמרו".
   const reloadOrderFromServer = async () => {
@@ -828,7 +835,13 @@ export default function OrderDetailsPage({ params }) {
       }
     }
     let exitDebtApprovedBy = typeof debtApproved === 'string' ? debtApproved : null;
-    if (totalRequired - totalPaid > 0 && !exitDebtApprovedBy) {
+    // דיווח לקוח (הגמח הראשי): יציאה מהכרטיס דרשה אישור מנהל גם כשהחוב היה קיים מראש ולא
+    // השתנה בעריכה הזו (למשל שינוי הערה בלבד) - בניגוד לכפתור "שמירה" למעלה, שכבר מדלג על
+    // האישור במקרה הזה (debtUnchangedSinceOpen). ליישר את שני המסלולים לאותה התנהגות.
+    const exitCurrentDebt = totalRequired - totalPaid;
+    const exitDebtUnchangedSinceOpen = openedDebt !== null
+      && Math.round(exitCurrentDebt * 100) === Math.round(openedDebt * 100);
+    if (exitCurrentDebt > 0 && !exitDebtUnchangedSinceOpen && !exitDebtApprovedBy) {
       const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
       if (!authResult || !authResult.pin) {
         return;
