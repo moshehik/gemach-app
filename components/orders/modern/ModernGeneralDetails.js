@@ -379,7 +379,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
               />
             </div>
 
-            <div className="field" style={{ marginBottom: order.isDelivery ? undefined : 0 }}>
+            <div className="field" style={{ marginBottom: 0 }}>
               <label>הערות פנימיות (לא מוצג ללקוח)</label>
               <textarea
                 className="textarea"
@@ -389,58 +389,62 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                 placeholder="הערות לצוות בלבד - לא יופיעו בהדפסה או במייל ללקוח..."
               />
             </div>
+          </>
+        )}
+      </div>
 
-            {/* משלוח - ניתן להוסיף/לערוך גם על הזמנה קיימת, לא רק ביצירה - ר' דיווחי
-                org2 095ee564/e0c85176/af273d1b. החיוב בפועל (applyDeliveryCharge)
-                כבר רץ אוטומטית בשמירת ההזמנה, ר' lib/pricingEngine.js. */}
-            <div className="field" style={{ marginBottom: 0 }}>
-              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <input type="checkbox" checked={!!order.isDelivery} onChange={e => handleChange({ isDelivery: e.target.checked })} />
-                הזמנה עם משלוח
-              </label>
+      {/* משלוח - כרטיס עצמאי, מוצג תמיד (לא רק בזמן עריכת פרטי האירוע) כדי שהאפשרות
+          תהיה גלויה גם על הזמנה קיימת בלי צורך להיכנס למצב עריכת תאריכים - ר' דיווחי
+          org2 095ee564/e0c85176/af273d1b (תוקן בקוד אבל נשאר לא-גלוי) וגם 84680b86/00014cb3
+          (אותה תלונה שוב, כי הסעיף היה מקונן בתוך פאנל עריכת האירוע). החיוב בפועל
+          (applyDeliveryCharge) כבר רץ אוטומטית בשמירת ההזמנה, ר' lib/pricingEngine.js. */}
+      <div className="card card-pad" style={{ marginBottom: '16px' }}>
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <input type="checkbox" checked={!!order.isDelivery} onChange={e => handleChange({ isDelivery: e.target.checked })} />
+            הזמנה עם משלוח
+          </label>
+        </div>
+        {order.isDelivery && (
+          <div style={{ marginTop: '10px' }}>
+            <div className="form-grid">
+              <div className="field">
+                <label>כיוון המשלוח</label>
+                <select className="select" value={order.deliveryDirection || 'הלוך-חזור'} onChange={e => handleChange({ deliveryDirection: e.target.value })}>
+                  <option value="הלוך-חזור">הלוך-חזור</option>
+                  <option value="הלוך">הלוך בלבד</option>
+                  <option value="חזור">חזור בלבד</option>
+                </select>
+              </div>
+              <div className="field">
+                <label>עיר למשלוח</label>
+                <input
+                  type="text"
+                  className="input"
+                  list="delivery-city-list-edit"
+                  autoComplete="new-password"
+                  value={order.deliveryCity || ''}
+                  onChange={e => handleChange({ deliveryCity: e.target.value })}
+                  placeholder="עיר"
+                />
+                <datalist id="delivery-city-list-edit">
+                  {deliveryCityOptions.map(c => <option key={c} value={c} />)}
+                </datalist>
+              </div>
             </div>
-            {order.isDelivery && (
-              <div style={{ marginTop: '10px' }}>
-                <div className="form-grid">
-                  <div className="field">
-                    <label>כיוון המשלוח</label>
-                    <select className="select" value={order.deliveryDirection || 'הלוך-חזור'} onChange={e => handleChange({ deliveryDirection: e.target.value })}>
-                      <option value="הלוך-חזור">הלוך-חזור</option>
-                      <option value="הלוך">הלוך בלבד</option>
-                      <option value="חזור">חזור בלבד</option>
-                    </select>
-                  </div>
-                  <div className="field">
-                    <label>עיר למשלוח</label>
-                    <input
-                      type="text"
-                      className="input"
-                      list="delivery-city-list-edit"
-                      autoComplete="new-password"
-                      value={order.deliveryCity || ''}
-                      onChange={e => handleChange({ deliveryCity: e.target.value })}
-                      placeholder="עיר"
-                    />
-                    <datalist id="delivery-city-list-edit">
-                      {deliveryCityOptions.map(c => <option key={c} value={c} />)}
-                    </datalist>
-                  </div>
-                </div>
-                {allowDeliveryAddressOverride && (
-                  <div className="field">
-                    <label>כתובת משלוח שונה</label>
-                    <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => handleChange({ deliveryAddress: e.target.value })} placeholder="כתובת למשלוח (שונה ממגורים)" />
-                  </div>
-                )}
-                <div className="field" style={{ marginBottom: 0 }}>
-                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <input type="checkbox" checked={!!order.deliveryOneDayBefore} onChange={e => handleChange({ deliveryOneDayBefore: e.target.checked })} />
-                    משלוח יוצא יום לפני האירוע (במקום יומיים)
-                  </label>
-                </div>
+            {allowDeliveryAddressOverride && (
+              <div className="field">
+                <label>כתובת משלוח שונה</label>
+                <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => handleChange({ deliveryAddress: e.target.value })} placeholder="כתובת למשלוח (שונה ממגורים)" />
               </div>
             )}
-          </>
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input type="checkbox" checked={!!order.deliveryOneDayBefore} onChange={e => handleChange({ deliveryOneDayBefore: e.target.checked })} />
+                משלוח יוצא יום לפני האירוע (במקום יומיים)
+              </label>
+            </div>
+          </div>
         )}
       </div>
 
