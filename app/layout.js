@@ -57,6 +57,7 @@ export default async function RootLayout({ children }) {
   let enableAiSpecific = false;
   let hideErrorReporting = false;
   let showDeliveries = false;
+  let showOverdueRemindersPopup = false;
 
   // The settings query and the employee-role query are independent — run
   // them in parallel instead of the old sequential awaits (each one is a
@@ -66,7 +67,7 @@ export default async function RootLayout({ children }) {
   // lib/auth.js; legacy sessions without that cookie use the DB path below,
   // exactly as before).
   const settingsPromise = getAllCachedSettings().then(all =>
-    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management', 'restrict_board_to_managers'].includes(s.key))
+    all.filter(s => ['require_login', 'enable_alterations', 'hide_ai_features', 'hide_internal_messaging', 'hide_gregorian_calendar', 'enable_ai_specific_employees', 'hide_error_reporting', 'enable_deliveries', 'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management', 'restrict_board_to_managers', 'enable_unreturned_orders_popup'].includes(s.key))
   ).catch(err => {
     console.warn('Failed to fetch settings:', err?.message || err);
     return [];
@@ -140,6 +141,15 @@ export default async function RootLayout({ children }) {
     const enableDeliveriesSetting = settings.find(s => s.key === 'enable_deliveries');
     if (enableDeliveriesSetting && enableDeliveriesSetting.value === 'true') {
       showDeliveries = true;
+    }
+
+    // דיווח: החלונית החוסמת "הזמנות באיחור" (OverdueRemindersWatcher) הופיעה גם
+    // בגמח הראשי - היא נבנתה ייעודית לגמח נווה יעקב בלבד. ברירת המחדל כבויה
+    // בכוונה (לא כמו שאר הטוגלים כאן שברירת המחדל שלהם 'מוצג') כדי שגמח שאין
+    // לו את השורה הזו כלל ב-DB לא יציג את החלונית בטעות.
+    const enableUnreturnedOrdersPopupSetting = settings.find(s => s.key === 'enable_unreturned_orders_popup');
+    if (enableUnreturnedOrdersPopupSetting && enableUnreturnedOrdersPopupSetting.value === 'true') {
+      showOverdueRemindersPopup = true;
     }
   }
 
@@ -588,6 +598,7 @@ function cpCssText(vars) {
                 isHeadManagement={isHeadManagement}
                 hideErrorReporting={hideErrorReporting}
                 hideInternalMessaging={hideInternalMessaging}
+                showOverdueRemindersPopup={showOverdueRemindersPopup}
                 authToken={authToken?.value}
                 themePreference={themePreference}
               >

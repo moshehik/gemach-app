@@ -29,6 +29,7 @@ export default function AppShell({
   isHeadManagement,
   hideErrorReporting,
   hideInternalMessaging,
+  showOverdueRemindersPopup,
   authToken,
   themePreference,
   children,
@@ -119,7 +120,7 @@ export default function AppShell({
 
   return (
     <div className="app-shell">
-      <OverdueRemindersWatcher authToken={authToken} />
+      {showOverdueRemindersPopup && <OverdueRemindersWatcher authToken={authToken} />}
       {!hideInternalMessaging && <ShiftMessageWatcher authToken={authToken} />}
       <aside className={`sidebar${mobileOpen ? ' open' : ''}`}>
         <div className="brand">
