@@ -42,7 +42,7 @@ export async function GET() {
         customerName: `${o.order.customer?.firstName || ''} ${o.order.customer?.lastName || ''}`.trim() || 'לקוח ללא שם',
         daysLate: o.late.daysLate,
       }))
-      .sort((a, b) => b.daysLate - a.daysLate);
+      .sort((a, b) => a.orderId - b.orderId);
 
     return NextResponse.json({ orders });
   } catch (error) {
