@@ -2,6 +2,24 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
+import SettingQuickPanel from '../../components/SettingQuickPanel';
+
+// מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
+// SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
+// רשימת המפתחות שיש להציג עבורם כפתור "פתח הגדרה". זהה במכוון לפונקציה המקבילה
+// ב-AIFloatingWidget.js וב-app/page.js - שלושה מקומות נפרדים שמציגים תשובות
+// מאותו /api/ai.
+function extractOpenSettingKeys(content) {
+  if (typeof content !== 'string') return { displayText: content, keys: [] };
+  const keys = [];
+  const tagRegex = /\[OPEN_SETTING:([a-zA-Z0-9_]+)\]/g;
+  let match;
+  while ((match = tagRegex.exec(content)) !== null) {
+    keys.push(match[1]);
+  }
+  const displayText = content.replace(tagRegex, '').trim();
+  return { displayText, keys };
+}
 
 export default function AIPage() {
   const [threads, setThreads] = useState([]);
@@ -10,6 +28,7 @@ export default function AIPage() {
   const [loading, setLoading] = useState(false);
   const [showTableModal, setShowTableModal] = useState(false);
   const [modalTableData, setModalTableData] = useState(null);
+  const [openSettingKey, setOpenSettingKey] = useState(null);
 
   const chatEndRef = useRef(null);
 
@@ -203,12 +222,30 @@ export default function AIPage() {
         {/* Chat area */}
         <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           <div className="chat-thread" style={{ flex: 1, overflowY: 'auto', padding: '20px', marginBottom: 0 }}>
-            {activeThread.messages.map((msg, idx) => (
-              <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{msg.content}</div>
-                {msg.tableData && renderTable(msg.tableData)}
-              </div>
-            ))}
+            {activeThread.messages.map((msg, idx) => {
+              const { displayText, keys: openSettingKeys } = extractOpenSettingKeys(msg.content);
+              return (
+                <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
+                  <div style={{ whiteSpace: 'pre-wrap' }}>{displayText}</div>
+                  {msg.tableData && renderTable(msg.tableData)}
+                  {openSettingKeys.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                      {openSettingKeys.map(key => (
+                        <button
+                          key={key}
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => setOpenSettingKey(key)}
+                        >
+                          <svg className="icon"><use href="#i-settings" /></svg>
+                          פתח הגדרה
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
             {loading && (
               <div className="bubble assistant" style={{ padding: 0 }}>
                 <div className="typing-indicator"><span></span><span></span><span></span></div>
@@ -285,6 +322,10 @@ export default function AIPage() {
           </div>
         </div>,
         document.body
+      )}
+
+      {openSettingKey && (
+        <SettingQuickPanel settingKey={openSettingKey} onClose={() => setOpenSettingKey(null)} />
       )}
     </>
   );

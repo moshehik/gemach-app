@@ -2,6 +2,22 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import SettingQuickPanel from './SettingQuickPanel';
+
+// מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
+// SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
+// רשימת המפתחות שיש להציג עבורם כפתור "פתח הגדרה".
+function extractOpenSettingKeys(content) {
+  if (typeof content !== 'string') return { displayText: content, keys: [] };
+  const keys = [];
+  const tagRegex = /\[OPEN_SETTING:([a-zA-Z0-9_]+)\]/g;
+  let match;
+  while ((match = tagRegex.exec(content)) !== null) {
+    keys.push(match[1]);
+  }
+  const displayText = content.replace(tagRegex, '').trim();
+  return { displayText, keys };
+}
 
 export default function AIFloatingWidget({ hideAIFeatures = false }) {
   const pathname = usePathname();
@@ -14,6 +30,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [showTableModal, setShowTableModal] = useState(false);
   const [modalTableData, setModalTableData] = useState(null);
+  const [openSettingKey, setOpenSettingKey] = useState(null);
 
   const [isListening, setIsListening] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -429,20 +446,38 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
             </div>
           ) : (
             <div className="chat-thread">
-              {messages.map((msg, idx) => (
-                <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
-                  <button
-                    type="button"
-                    className={`bubble-copy-btn${copiedIdx === idx ? ' copied' : ''}`}
-                    title="העתק"
-                    onClick={() => copyBubbleText(idx, msg.content)}
-                  >
-                    <svg className="icon"><use href={`#${copiedIdx === idx ? 'i-check' : 'i-copy'}`} /></svg>
-                  </button>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(msg.content)}</div>
-                  {msg.tableData && renderTable(msg.tableData)}
-                </div>
-              ))}
+              {messages.map((msg, idx) => {
+                const { displayText, keys: openSettingKeys } = extractOpenSettingKeys(msg.content);
+                return (
+                  <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
+                    <button
+                      type="button"
+                      className={`bubble-copy-btn${copiedIdx === idx ? ' copied' : ''}`}
+                      title="העתק"
+                      onClick={() => copyBubbleText(idx, msg.content)}
+                    >
+                      <svg className="icon"><use href={`#${copiedIdx === idx ? 'i-check' : 'i-copy'}`} /></svg>
+                    </button>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(displayText)}</div>
+                    {msg.tableData && renderTable(msg.tableData)}
+                    {openSettingKeys.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                        {openSettingKeys.map(key => (
+                          <button
+                            key={key}
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setOpenSettingKey(key)}
+                          >
+                            <svg className="icon"><use href="#i-settings" /></svg>
+                            פתח הגדרה
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {loading && (
                 <div className="bubble assistant" style={{ padding: 0 }}>
                   <div className="typing-indicator"><span></span><span></span><span></span></div>
@@ -547,6 +582,10 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
             </div>
           </div>
         </div>
+      )}
+
+      {openSettingKey && (
+        <SettingQuickPanel settingKey={openSettingKey} onClose={() => setOpenSettingKey(null)} />
       )}
     </>
   );
