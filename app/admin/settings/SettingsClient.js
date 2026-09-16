@@ -15,6 +15,7 @@ import {
   SETTINGS_BOOLEAN_KEYS,
   SETTINGS_NUMBER_KEYS,
   SETTINGS_DEVELOPER_CATEGORIES,
+  INVERTED_DISPLAY_KEYS,
 } from '@/lib/settingsMetadata';
 
 // אליאסים לשמות המקוריים - הנתונים עצמם עברו ל-lib/settingsMetadata.js (מקור
@@ -696,7 +697,7 @@ export default function SettingsClient({ mode = 'general' }) {
             const numberLimit = NUMBER_FIELD_LIMITS[setting.key];
             const numberError = (isNumber && !isBoolean) ? validateNumericSetting(setting.key, rawValue) : null;
 
-            const isHideSetting = setting.key.startsWith('hide_');
+            const isHideSetting = INVERTED_DISPLAY_KEYS.includes(setting.key);
 
             // Determine current state of toggle shown to user
             const uiValue = isHideSetting
