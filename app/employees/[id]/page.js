@@ -659,6 +659,16 @@ export default function EmployeePage({ params }) {
             </div>
           </div>
 
+          <div className="field">
+            <div className="checkbox-row">
+              <input data-element-name="שדה_page_39b" type="checkbox" id="employee-detail-canReportErrors" name="canReportErrors" checked={employee.canReportErrors || false} onChange={handleChange} />
+              <label htmlFor="employee-detail-canReportErrors" style={{ fontWeight: 600, color: 'var(--text)' }}>אישור פרטני לדיווח על תקלות</label>
+            </div>
+            <p style={{ margin: '4px 0 0', fontSize: 12.5, color: 'var(--text-3)' }}>
+              מאפשר לעובד זה לדווח על תקלות במערכת גם אם תפקידו אינו מנהל/הנהלה ראשית/מתכנת.
+            </p>
+          </div>
+
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
             <button data-agy-id="save-employee-button" data-element-name="כפתור_page_40" type="submit" className="btn btn-primary btn-lg" disabled={saving}>
               {saving ? 'שומר...' : 'שמור פרטים'}

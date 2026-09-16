@@ -96,7 +96,8 @@ export async function PUT(request, { params }) {
         // עיצוב פר-עובד (/api/me/design-prefs); כתיבה מכאן הייתה דורסת אותן.
         profileImage: body.profileImage,
         receiveEmailAlerts: typeof body.receiveEmailAlerts === 'boolean' ? body.receiveEmailAlerts : (body.receiveEmailAlerts === 'true' || body.receiveEmailAlerts === true),
-        showAi: typeof body.showAi === 'boolean' ? body.showAi : (body.showAi === 'true' || body.showAi === true)
+        showAi: typeof body.showAi === 'boolean' ? body.showAi : (body.showAi === 'true' || body.showAi === true),
+        canReportErrors: typeof body.canReportErrors === 'boolean' ? body.canReportErrors : (body.canReportErrors === 'true' || body.canReportErrors === true)
       }
     });
 

@@ -135,6 +135,7 @@ model Employee {
   profileImage       String? // קובץ פלוס תמונה
   receiveEmailAlerts Boolean        @default(false) // קבלת התראות למייל
   showAi             Boolean        @default(false) // הרשאת AI
+  canReportErrors    Boolean        @default(false) // אישור פרטני לדווח על שגיאות, בנוסף להרשאה הכללית לפי roleId (ר' app/api/error-report/route.js)
   pageVisits         PageVisitLog[]
 
   shifts Shift[]
