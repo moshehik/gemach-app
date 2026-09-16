@@ -658,18 +658,20 @@ table.data tbody tr.row-flag{background:var(--danger-tint)}
 .callout-success{background:var(--success-tint); color:var(--success); border-color:color-mix(in srgb, var(--success) 25%, transparent)}
 
 .modal-backdrop{background:rgba(20,14,10,.5); border-radius:var(--radius-lg); padding:34px}
-.modal{background:var(--surface); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg); max-width:520px; margin:0 auto; overflow:hidden; border:1px solid var(--border)}
-.modal-head{display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid var(--border)}
+/* max-height + flex מבטיחים שתוכן ארוך (למשל רשימת עשרות משפחות באיחור, dialog-2bda255f/bac0b1a8)
+   נגלל בתוך modal-body בלבד - modal-head/modal-foot (עם כפתורי אישור/יציאה) תמיד נשארים גלויים
+   גם כשהמודל גבוה מהמסך, במקום שה-overflow:hidden הישן על .modal יחתוך אותם מתחת לקצה המסך. */
+.modal{background:var(--surface); border-radius:var(--radius-lg); box-shadow:var(--shadow-lg); max-width:520px; max-height:90vh; margin:0 auto; display:flex; flex-direction:column; overflow:hidden; border:1px solid var(--border)}
+.modal-head{display:flex; align-items:center; justify-content:space-between; padding:18px 22px; border-bottom:1px solid var(--border); flex:0 0 auto}
 .modal-head strong{display:flex; align-items:center; gap:8px; font-size:15px}
 .modal-head strong .icon{width:17px;height:17px; color:var(--primary-solid)}
-.modal-body{padding:22px}
+.modal-body{padding:22px; overflow-y:auto; overscroll-behavior:contain; min-height:0}
 .modal-body .field:last-child{margin-bottom:0}
-.modal-foot{display:flex; justify-content:flex-end; gap:8px; padding:14px 22px; border-top:1px solid var(--border); background:var(--surface-alt)}
+.modal-foot{display:flex; justify-content:flex-end; gap:8px; padding:14px 22px; border-top:1px solid var(--border); background:var(--surface-alt); flex:0 0 auto}
 
-/* ---- חלונית הלוח הכפול (HebrewDateRangePicker): מודל בגובה קבוע — הגוף נגלל, הכותרת והכפתורים תמיד גלויים.
-   חייב לשבת אחרי חוקי ה-.modal ובספציפיות כפולה, אחרת max-width:520px של .modal דורס ---- */
-.modal.range-cal-modal{width:auto; max-width:min(100%,680px); max-height:92vh; margin:0; display:flex; flex-direction:column; min-width:0}
-.modal.range-cal-modal .modal-body{overflow-y:auto; overscroll-behavior:contain}
+/* ---- חלונית הלוח הכפול (HebrewDateRangePicker): מודל רחב יותר מברירת המחדל - שאר ההתנהגות
+   (גובה מוגבל + גוף נגלל) כבר ירשה מ-.modal למעלה ---- */
+.modal.range-cal-modal{width:auto; max-width:min(100%,680px); margin:0; min-width:0}
 .modal.range-cal-modal .modal-foot{flex-wrap:wrap}
 .range-cal-summary{margin:4px 0 0 0; font-size:12.5px; color:var(--text-3)}
 .range-cal-summary strong{color:var(--primary-solid)}
