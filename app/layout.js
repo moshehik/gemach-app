@@ -605,7 +605,7 @@ function cpCssText(vars) {
                 {children}
               </AppShell>
               <PrefetchManager />
-              {!hideAIFeatures && <AIFloatingWidget data-element-name="רכיב_layout_23" hideAIFeatures={hideAIFeatures} />}
+              {!hideAIFeatures && <AIFloatingWidget data-element-name="רכיב_layout_23" hideAIFeatures={hideAIFeatures} employeeId={authToken?.value} />}
             </PopupProvider>
           </LabelsProvider>
         )}

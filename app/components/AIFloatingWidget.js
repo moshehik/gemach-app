@@ -19,8 +19,12 @@ function extractOpenSettingKeys(content) {
   return { displayText, keys };
 }
 
-export default function AIFloatingWidget({ hideAIFeatures = false }) {
+export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = null }) {
   const pathname = usePathname();
+  // ממותג לפי עובד/ת - בלי זה, מחשב משותף (עמדת גמ"ח) מציג לעובדת הבאה שמתחברת
+  // את היסטוריית הצ'אט של הקודמת, כי localStorage הוא ברמת הדפדפן ולא נוקה בהתנתקות.
+  const chatKey = `ai_employee_chat_${employeeId || 'guest'}`;
+  const sessionsKey = `ai_employee_chat_sessions_${employeeId || 'guest'}`;
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -95,7 +99,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
   };
 
   useEffect(() => {
-    const savedSessions = localStorage.getItem('ai_employee_chat_sessions');
+    const savedSessions = localStorage.getItem(sessionsKey);
     let sessions = [];
     if (savedSessions) {
       try {
@@ -103,14 +107,14 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
       } catch (e) {}
     }
 
-    const saved = localStorage.getItem('ai_employee_chat');
+    const saved = localStorage.getItem(chatKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed.length > 1) {
           const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...parsed] };
           sessions = [newSession, ...sessions].slice(0, 10);
-          localStorage.setItem('ai_employee_chat_sessions', JSON.stringify(sessions));
+          localStorage.setItem(sessionsKey, JSON.stringify(sessions));
         }
       } catch (e) {}
     }
@@ -121,7 +125,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
 
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem('ai_employee_chat', JSON.stringify(messages));
+      localStorage.setItem(chatKey, JSON.stringify(messages));
     }
   }, [messages]);
 
@@ -137,7 +141,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
       const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
       const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
       setChatSessions(updatedSessions);
-      localStorage.setItem('ai_employee_chat_sessions', JSON.stringify(updatedSessions));
+      localStorage.setItem(sessionsKey, JSON.stringify(updatedSessions));
     }
     setMessages([{ role: 'assistant', content: 'שלום! אני עוזר ה-AI. כיצד אוכל לעזור לך למצוא נתונים במערכת?' }]);
     setActiveSessionId(null);
@@ -290,7 +294,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
       const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
       const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
       setChatSessions(updatedSessions);
-      localStorage.setItem('ai_employee_chat_sessions', JSON.stringify(updatedSessions));
+      localStorage.setItem(sessionsKey, JSON.stringify(updatedSessions));
     }
     setMessages(session.messages);
     setShowHistory(false);
