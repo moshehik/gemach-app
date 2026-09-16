@@ -115,6 +115,23 @@ export default function AppShell({
     window.location.href = window.location.pathname;
   };
 
+  // ניווט לקישור עם #hash (כמו /rentals#returned) בזמן שכבר נמצאים באותו path
+  // (למשל /rentals#rented) הוא, עבור <Link> של Next, ניווט client-side שמעדכן
+  // את ה-URL בלי לירות אירוע 'hashchange' אמיתי בדפדפן (זה קורה רק בניווט hash
+  // טבעי) - כך שהעמוד היעד (שמאזין ל-hashchange, ר' app/rentals/page.js) לא
+  // מתעדכן ונשאר על הלשונית הקודמת (דיווח 4c01513e). הפתרון: לזהות ניווט-hash
+  // באותו path ולעדכן את window.location.hash ידנית, שכן כן יורה hashchange.
+  const handleNavClick = (e, href) => {
+    setMobileOpen(false);
+    const hashIdx = href.indexOf('#');
+    if (hashIdx === -1) return;
+    const targetPath = href.slice(0, hashIdx);
+    const targetHash = href.slice(hashIdx);
+    if (targetPath !== pathname) return;
+    e.preventDefault();
+    if (window.location.hash !== targetHash) window.location.hash = targetHash;
+  };
+
   const isActive = (href) => (href === '/' ? pathname === '/' : pathname?.startsWith(href));
   const activeMeta = navGroups.flatMap((g) => g.items).find((item) => isActive(item.href));
 
@@ -134,7 +151,7 @@ export default function AppShell({
                 key={item.href}
                 href={item.href}
                 className={`nav-link${isActive(item.href) ? ' active' : ''}`}
-                onClick={() => setMobileOpen(false)}
+                onClick={(e) => handleNavClick(e, item.href)}
               >
                 <svg className="icon"><use href={`#${item.icon}`} /></svg>
                 <span className="nav-label">{item.label}</span>
@@ -190,6 +207,7 @@ export default function AppShell({
                   href={item.href}
                   className={`icon-btn topbar-pin-icon${isActive(item.href) ? ' active' : ''}`}
                   title={item.label}
+                  onClick={(e) => handleNavClick(e, item.href)}
                 >
                   <svg className="icon"><use href={`#${item.icon}`} /></svg>
                   {/* ההסרה מהתפריט העליון פתוחה לכולם בכוונה, בניגוד להצמדה (לעיל) -

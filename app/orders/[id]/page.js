@@ -735,6 +735,16 @@ export default function OrderDetailsPage({ params }) {
       setRefunds(updatedOrder.refunds || []);
       savedSnapshotRef.current = { order: updatedOrder, items: mergedItems, obligations: updatedOrder.obligations || [], payments: updatedOrder.payments || [], refunds: updatedOrder.refunds || [] };
 
+      // הוספת פריט חדש להזמנה קיימת יוצרת חיוב חדש שצריך לגבות - במקום להשאיר את
+      // זה לגילוי ידני (דיווח 68912d76: "איפה היא משלמת עליו?"), עוברים אוטומטית
+      // לטאב תשלומים כשבאמת נוצרה יתרת חוב חדשה מהשמירה הזו. מחושב מהתשובה הטרייה
+      // מהשרת (לא ממצב totalRequired/totalPaid הישן) כדי שיהיה מדויק מיד אחרי השמירה.
+      if (submittedLocalIds.length > 0 && activeTab === 'items') {
+        const freshRequired = (updatedOrder.obligations || []).filter(o => !o.isDeleted).reduce((sum, o) => sum + (parseFloat(o.amount) || 0), 0);
+        const freshPaid = (updatedOrder.payments || []).filter(p => !p.isDeleted).reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
+        if (freshRequired - freshPaid > 0) setActiveTab('payments');
+      }
+
       setSaveMessage('השינויים נשמרו בהצלחה!');
       setTimeout(() => setSaveMessage(''), 3000);
     } catch (err) {
