@@ -397,6 +397,26 @@ export default function NewOrderPage() {
 
   const paymentMethodOptions = computePaymentMethodOptions(settings);
 
+  const newCustomerFormRef = useRef(null);
+  // Enter עובר לשדה הבא בטופס לקוח חדש, ובשדה האחרון שולח בפועל - במקום לנסות לשלוח
+  // מכל שדה בנפרד (מה שנכשל כשעדיין חסרים שדות אחרים, אותה בעיה שתוקנה במודל
+  // האשראי למעלה). לא נוגע בתיבות סימון, כדי לא לשנות את הסימון שלהן בטעות (ר' דיווח e8ff9855).
+  const handleNewCustomerFieldEnter = (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    const container = newCustomerFormRef.current;
+    if (!container) return;
+    const focusable = Array.from(container.querySelectorAll('input, select, textarea, button'))
+      .filter(el => !el.disabled && el.type !== 'checkbox' && el.offsetParent !== null);
+    const next = focusable[focusable.indexOf(e.target) + 1];
+    if (next) {
+      next.focus();
+      if (typeof next.select === 'function') next.select();
+    } else {
+      handleSaveNewCustomerAndProceed();
+    }
+  };
+
   const handleCheckPhone = async () => {
     if (!phoneSearchInput || phoneSearchInput.trim().length < 9) {
       alert('נא להזין מספר טלפון תקין');
@@ -1598,6 +1618,7 @@ export default function NewOrderPage() {
                     type="tel"
                     dir="ltr"
                     className="input"
+                    autoComplete="new-password"
                     value={phoneSearchInput}
                     onChange={e => setPhoneSearchInput(e.target.value)}
                     onKeyDown={e => e.key === 'Enter' && handleCheckPhone()}
@@ -1659,10 +1680,15 @@ export default function NewOrderPage() {
                         ...(missingContact ? ['אמצעי תקשורת נוסף (טלפון 2 או אימייל)'] : [])
                       ];
                       return (
-                        <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                          <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
-                          חסר ללקוח: {parts.join(', ')}.
-                        </p>
+                        <div style={{ margin: '0 0 12px' }}>
+                          <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 8px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                            <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
+                            חסר ללקוח: {parts.join(', ')}.
+                          </p>
+                          <a href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">
+                            <svg className="icon"><use href="#i-user" /></svg> עריכת פרטי לקוח (נפתח בכרטיסייה נפרדת)
+                          </a>
+                        </div>
                       );
                     })()}
                     {foundCustomersFromPhone.length === 1 && renderHokFieldsForExistingCustomer()}
@@ -1731,12 +1757,14 @@ export default function NewOrderPage() {
                         ...(missingContact ? ['אמצעי תקשורת נוסף'] : [])
                       ];
                       return (
-                        <p className="hint" style={{ color: 'var(--warning)', textAlign: 'end', margin: '4px 0 0' }}>
-                          חסר ללקוח: {parts.join(', ')} —{' '}
-                          <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
-                            עריכת פרטי לקוח
+                        <div style={{ margin: '4px 0 0', textAlign: 'end' }}>
+                          <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 8px' }}>
+                            חסר ללקוח: {parts.join(', ')}.
+                          </p>
+                          <a href={`/customers/${order.selectedCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary btn-sm">
+                            <svg className="icon"><use href="#i-user" /></svg> עריכת פרטי לקוח (נפתח בכרטיסייה נפרדת)
                           </a>
-                        </p>
+                        </div>
                       );
                     })()}
                   </div>
@@ -1746,7 +1774,7 @@ export default function NewOrderPage() {
             )}
 
             {searchMode === 'new' && (
-              <div className="card card-pad">
+              <div className="card card-pad" ref={newCustomerFormRef}>
                 {/* 1 - לא נמצא לקוח לפי הטלפון שהוזן (או שנבחר "לקוח אחר") - לפני שממלאים
                     כרטיס לקוח חדש מלא, להציע במפורש לנסות חיפוש לפי שם/עיר, כדי שטעות הקלדה
                     בטלפון לא תדחוף ליצירת כרטיס כפול ללקוח שכבר קיים במערכת. */}
@@ -1761,27 +1789,27 @@ export default function NewOrderPage() {
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-firstName">שם פרטי <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-firstName" className="input" type="text" autoComplete="new-password" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleSaveNewCustomerAndProceed()} />
+                    <input id="cust-firstName" className="input" type="text" autoComplete="new-password" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                   </div>
                   <div className="field">
                     <label htmlFor="cust-lastName">שם משפחה <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-lastName" className="input" type="text" autoComplete="new-password" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleSaveNewCustomerAndProceed()} />
+                    <input id="cust-lastName" className="input" type="text" autoComplete="new-password" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                   </div>
                 </div>
                 <div className="field">
                   <label htmlFor="cust-phone1">טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleSaveNewCustomerAndProceed()} placeholder="נייד או קווי" />
+                  <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                 </div>
 
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-phone2">טלפון נוסף <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleSaveNewCustomerAndProceed()} placeholder="נייד או קווי" />
+                    <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="נייד או קווי" />
                   </div>
                   <div className="field">
                     <label htmlFor="cust-email">אימייל <span style={{ color: 'var(--danger)' }}>*</span></label>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <input id="cust-email" className="input" type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleSaveNewCustomerAndProceed()} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
+                      <input id="cust-email" className="input" type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
                       {newCustomer.email && !newCustomer.email.includes('@') && (
                         <button
                           type="button"
@@ -1808,21 +1836,21 @@ export default function NewOrderPage() {
                   <div className="form-grid">
                     <div className="field">
                       <label htmlFor="cust-city">עיר מגורים {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-city" className="input" type="text" list="cust-city-list" autoComplete="new-password" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} />
+                      <input id="cust-city" className="input" type="text" list="cust-city-list" autoComplete="new-password" value={newCustomer.city} onChange={e => setNewCustomer(prev => ({ ...prev, city: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                       <datalist id="cust-city-list">
                         {customerLocations.cities.map(c => <option key={c} value={c} />)}
                       </datalist>
                     </div>
                     <div className="field">
                       <label htmlFor="cust-street">רחוב {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-street" className="input" type="text" list="cust-street-list" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} />
+                      <input id="cust-street" className="input" type="text" list="cust-street-list" autoComplete="new-password" value={newCustomer.street || ''} onChange={e => setNewCustomer(prev => ({ ...prev, street: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                       <datalist id="cust-street-list">
                         {customerLocations.streets.map(s => <option key={s} value={s} />)}
                       </datalist>
                     </div>
                     <div className="field">
                       <label htmlFor="cust-house">מספר בית {settings.require_full_address === 'true' && <span style={{ color: 'var(--danger)' }}>*</span>}</label>
-                      <input id="cust-house" className="input" type="text" autoComplete="new-password" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} />
+                      <input id="cust-house" className="input" type="text" autoComplete="new-password" value={newCustomer.houseNum || ''} onChange={e => setNewCustomer(prev => ({ ...prev, houseNum: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} />
                     </div>
                   </div>
                   <div className="field">
@@ -1832,7 +1860,7 @@ export default function NewOrderPage() {
                         ? <span style={{ color: 'var(--danger)' }}>*</span>
                         : (settings.require_id_for_edit_cancel === 'true' && <span className="hint" style={{ fontWeight: 400 }}>(לעריכה/ביטול עתידי)</span>)}
                     </label>
-                    <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
+                    <input id="cust-zeout" className="input" type="text" style={{ direction: 'ltr' }} autoComplete="off" value={newCustomer.zeout || ''} onChange={e => setNewCustomer(prev => ({ ...prev, zeout: e.target.value }))} onKeyDown={handleNewCustomerFieldEnter} placeholder="ת״ז" required={settings.require_customer_id_number === 'true'} />
                   </div>
                   <div className="field" style={{ marginTop: 10 }}>
                     <label className="checkbox-row" style={{ cursor: 'pointer' }}>
