@@ -2332,7 +2332,6 @@ export default function NewOrderPage() {
             <div className="card card-pad">
               <div className="card-title-row" style={{ justifyContent: 'space-between', display: 'flex', marginBottom: '12px' }}>
                 <h3 style={{ margin: 0 }}>פריטים ({order.items.length})</h3>
-                <button type="button" className="btn btn-ghost btn-sm" onClick={() => setStep(3)}>עריכה</button>
               </div>
 
               <div style={{ maxHeight: '42vh', overflowY: 'auto' }} role="region" aria-label="רשימת פריטים בהזמנה" tabIndex={0}>
