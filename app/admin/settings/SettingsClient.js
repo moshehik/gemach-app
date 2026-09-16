@@ -150,6 +150,7 @@ const HEBREW_NAMES = {
   REFUND_DAYS_FROM_ORDER: 'ימי החזר מיום ביצוע ההזמנה',
   REFUND_REPAIRS: 'החזר על עלויות תיקונים',
   CANCELLATION_CREDIT_MINUTES: 'דקות לניצול זיכוי דמי ביטול על פריט חלופי',
+  same_model_swap_no_fee: 'החלפת מידה לאותו דגם - ללא דמי ביטול',
   ALLOWED_PAYMENT_METHODS: 'אפשרויות תשלום מורשות',
   PAYMENT_APPROVAL_LEVEL: 'רמת אישור ליציאה מהזמנה בלי תשלום מלא',
 
@@ -243,6 +244,7 @@ const HEBREW_NOTES = {
   REFUND_DAYS_FROM_ORDER: 'מספר ימים מביצוע ההזמנה שבהם זכאים להחזר מלא.',
   REFUND_REPAIRS: 'כולל עלויות תיקונים בחישוב ההחזר הכספי בביטול.',
   CANCELLATION_CREDIT_MINUTES: 'מספר הדקות לאחר ביטול פריט שבהן דמי הביטול ניתנים לניצול כזיכוי על פריט אחר שנוסף לאותה הזמנה. אם ההזמנה עדיין נערכת ונשמרת רק אחרי שהזמן הזה חלף, הזיכוי עדיין תקף - כי הזמן נספר החל משמירת הביטול בפועל.',
+  same_model_swap_no_fee: 'כשמופעל, ביטול פריט שיש לו פריט פעיל אחר באותה הזמנה מאותו דגם שמלה בדיוק (מידה שונה) מזוכה במלואו ללא דמי ביטול כלל - הלקוח/ה משלמ/ת רק את הפרש המחיר בין המידות, ללא הגבלת זמן. מחליף עבור הגמ"ח הזה בלבד את מנגנון "זיכוי דמי ביטול על פריט חלופי" הרגיל (CANCELLATION_CREDIT_MINUTES) - כבוי כברירת מחדל.',
   ALLOWED_PAYMENT_METHODS: 'רשימת אמצעי תשלום מורשים (מופרדים בפסיק, למשל: מזומן,אשראי,העברה).',
   PAYMENT_APPROVAL_LEVEL: 'קובע איזו הרשאה נדרשת (הזנת קוד עובד וסיסמה) לפני סיום הזמנה עם "יציאה באישור מנהל" - כולל המקרה שסכום התשלום נשאר 0 (יציאה בלי גביית תשלום כלל) - וכן לפני כל תשלום שאינו אשראי שאינו מכסה את מלוא סכום ההזמנה. "כולם" = ללא הגבלה (ברירת המחדל, ההתנהגות הקודמת). "עובד" = כל עובד פעיל מזהה את עצמו בסיסמה. "מנהל" = מנהל סניף או מתכנת בלבד (roleId 1/2). "מנהל סניף ומעלה" = מנהל סניף, הנהלה ראשית או מתכנת (roleId 0/1/2).',
 
@@ -408,7 +410,7 @@ const SETTINGS_ORDER = {
     'nedarim_plus_enabled', 'nedarim_plus_terminal', 'nedarim_plus_token', 'nedarim_rinat_lev_url',
     'ALLOWED_PAYMENT_METHODS', 'PAYMENT_APPROVAL_LEVEL', 'allow_additional_payment_on_order',
     'REFUND_PERCENTAGE', 'REFUND_DAYS_FROM_ORDER', 'NO_REFUND_DAYS_BEFORE_EVENT', 'REFUND_REPAIRS', 'CANCELLATION_CREDIT_MINUTES',
-    'ENABLE_SET_DISCOUNTS',
+    'same_model_swap_no_fee', 'ENABLE_SET_DISCOUNTS',
   ],
 };
 
@@ -1061,7 +1063,7 @@ export default function SettingsClient({ mode = 'general' }) {
               'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management',
               'show_employee_profile_image', 'error_report_handled_at_bottom', 'error_report_human_button_enabled', 'auto_print_on_order_create',
               'allow_additional_payment_on_order', 'hide_taken_orders_from_orders_list',
-              'agent_digest_email_enabled', 'restrict_board_to_managers'
+              'agent_digest_email_enabled', 'restrict_board_to_managers', 'same_model_swap_no_fee'
             ].includes(setting.key);
             const isBoolean = setting.type === 'boolean' || setting.type === 'checkbox' || rawValue === 'true' || rawValue === 'false' || isBooleanKey;
             const isNumberKey = [
