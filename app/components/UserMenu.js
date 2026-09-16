@@ -185,6 +185,15 @@ export default function UserMenu({ hideInternalMessaging = false }) {
             <svg className="icon"><use href="#i-clock" /></svg>
             שעון נוכחות
           </button>
+          <button
+            type="button"
+            className="user-menu-item"
+            disabled={actionLoading}
+            onClick={() => { setDropdownOpen(false); router.push('/my-hours'); }}
+          >
+            <svg className="icon"><use href="#i-calendar" /></svg>
+            שעות העבודה שלי
+          </button>
           {!hideInternalMessaging && (
             <button
               type="button"

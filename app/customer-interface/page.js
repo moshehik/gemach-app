@@ -243,9 +243,6 @@ function AtelierCalendar({ selectedDate, onSelect }) {
           })}
         </div>
         <div className="ka-cal-foot">
-          <button type="button" data-agy-id="kiosk_cal_today_btn" onClick={() => applyHdate(new HDate())}>
-            <svg className="icon"><use href="#i-home" /></svg>היום
-          </button>
           <span className="ka-parsha">{footStr}</span>
           <button type="button" data-agy-id="kiosk_cal_clear_btn" onClick={() => applyHdate(new HDate())}>
             <svg className="icon"><use href="#i-x" /></svg>ניקוי
@@ -264,7 +261,11 @@ export default function CustomerInventoryViewer() {
   const [search, setSearch] = useState('');
   const [showZeroSizes, setShowZeroSizes] = useState(false);
   const [viewMode, setViewMode] = useState('rows');
-  const [zoomLevel, setZoomLevel] = useState(1);
+  const [zoomLevel, setZoomLevel] = useState(() => {
+    if (typeof window === 'undefined') return 1;
+    const saved = parseFloat(localStorage.getItem('ka_zoom_level'));
+    return !isNaN(saved) && saved >= 0.5 && saved <= 1.5 ? saved : 1;
+  });
   const [selectedDate, setSelectedDate] = useState(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
@@ -294,8 +295,9 @@ export default function CustomerInventoryViewer() {
   const [regError, setRegError] = useState('');
   const [regSuccess, setRegSuccess] = useState(null); // legacyId אחרי הצלחה
 
-  // Sidebar filters (stage 2)
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  // Sidebar filters (stage 2) - סגור כברירת מחדל (דיווח 267e5bbb): נפתח רק ביוזמת
+  // הלקוחה דרך כפתור "סינון ותצוגה", לא אוטומטית בכל כניסה למסך.
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [priceCategories, setPriceCategories] = useState([]);
   const [selectedCategories, setSelectedCategories] = useState([]);
   const [selectedSizes, setSelectedSizes] = useState([]);
@@ -433,10 +435,12 @@ export default function CustomerInventoryViewer() {
       .then(data => {
         // עמדת הלקוחות היא ציבורית - דגמים "לא פעילים" (exitDateFromRepo ממולא,
         // כלומר הוצאו מהמאגר) לא אמורים להופיע כלל, בלי קשר לזמינות פריטים בפועל
-        // (מלאי אפס מדגם פעיל עדיין כן מוצג - דיווח c11ef570).
+        // (מלאי אפס מדגם פעיל עדיין כן מוצג - דיווח c11ef570). דגמים ללא אף פריט
+        // בכלל (שרידי יבוא ריקים, לא "מלאי אפס") גם לא אמורים להופיע - דיווח
+        // a0ecee8c/90472699.
         const list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : null);
         if (list) {
-          setDresses(list.filter(d => !d.exitDateFromRepo));
+          setDresses(list.filter(d => !d.exitDateFromRepo && d.items && d.items.length > 0));
         }
         setLoading(false);
       })
@@ -1055,11 +1059,6 @@ export default function CustomerInventoryViewer() {
       {/* Stage 1: Search & Date Selection */}
       {stage === 1 && (
         <section>
-          <div className="ka-hero">
-            <h2>מה תחפש היום?</h2>
-            <p className="ka-lead">הזן סגנון, מידה או פשוט בחר תאריך מהיומן</p>
-          </div>
-
           {aiEnabled && aiMessages.length <= 1 && (
             <div className="ai-feature-element ka-search-pill">
               <svg className="icon"><use href="#i-search" /></svg>
@@ -1090,20 +1089,11 @@ export default function CustomerInventoryViewer() {
 
               <AtelierCalendar
                 selectedDate={selectedDate}
-                onSelect={(d) => setSelectedDate(d)}
+                onSelect={(d) => {
+                  setSelectedDate(d);
+                  setStage(2);
+                }}
               />
-
-              <div className="ka-cta-row">
-                <button
-                  data-agy-id="show_inventory_btn"
-                  type="button"
-                  className="ka-btn-cta"
-                  onClick={() => setStage(2)}
-                >
-                  הצג מלאי
-                  <svg className="icon"><use href="#i-star" /></svg>
-                </button>
-              </div>
             </div>
 
             {/* 32 - רישום עצמי: מוצג רק כשההגדרה "עמדת לקוח - רישום עצמי" דלוקה.
@@ -1312,20 +1302,6 @@ export default function CustomerInventoryViewer() {
                   </div>
                 </div>
 
-                <div className="ka-slider-field">
-                  <div className="s-head"><span>גודל תצוגה</span><span>{Math.round(zoomLevel * 100)}%</span></div>
-                  <input
-                    data-agy-id="zoom_range_input"
-                    type="range"
-                    min="0.5" max="1.5" step="0.1"
-                    value={zoomLevel}
-                    onChange={e => setZoomLevel(parseFloat(e.target.value))}
-                  />
-                  <div className="s-ticks">
-                    <span>קטן</span><span>גדול</span>
-                  </div>
-                </div>
-
                 <button data-agy-id="clear_all_filters_btn" type="button" className="ka-btn-clear"
                   onClick={() => { setSearch(''); setSelectedCategories([]); setSelectedSizes([]); }}>
                   <svg className="icon"><use href="#i-x" /></svg>
@@ -1496,6 +1472,26 @@ export default function CustomerInventoryViewer() {
                   })}
                 </div>
               )}
+            </div>
+          </div>
+
+          {/* גודל תצוגה נשאר תמיד גלוי כאן, מחוץ לפאנל הסינון הניתן לקיפול - דיווח
+              267e5bbb: לקוחה שקיפלה את פאנל הסינון עדיין רוצה גישה מהירה לשליטה בגודל. */}
+          <div className="ka-slider-field ka-zoom-bar">
+            <div className="s-head"><span>גודל תצוגה</span><span>{Math.round(zoomLevel * 100)}%</span></div>
+            <input
+              data-agy-id="zoom_range_input"
+              type="range"
+              min="0.5" max="1.5" step="0.1"
+              value={zoomLevel}
+              onChange={e => {
+                const val = parseFloat(e.target.value);
+                setZoomLevel(val);
+                localStorage.setItem('ka_zoom_level', String(val));
+              }}
+            />
+            <div className="s-ticks">
+              <span>קטן</span><span>גדול</span>
             </div>
           </div>
         </section>

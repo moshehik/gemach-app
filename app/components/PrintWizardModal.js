@@ -108,7 +108,10 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
         alert('לא נמצאו הזמנות התואמות לתאריך/טווח שנבחר.');
         return;
       }
-      window.open(`/print/order?orderId=${data.orderIds.join(',')}&type=order`, '_blank');
+      // f4b54afc (2026-09-14): batch=1 מכריח את עיצוב ה"הדפסה מרוכזת" (המצומצם, ללא
+      // גלישה לעמוד נוסף) גם כשליום הנבחר יצאה הזמנה בודדת - ר' ההערה ליד isBatch
+      // ב-app/print/order/page.js.
+      window.open(`/print/order?orderId=${data.orderIds.join(',')}&type=order&batch=1`, '_blank');
       onClose();
     } catch (err) {
       console.error(err);
