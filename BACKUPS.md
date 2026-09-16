@@ -36,6 +36,17 @@ all beyond Neon's 7-day PITR) and depended on this one Windows machine being pow
 logged in - if it was off at 03:30, that night was silently skipped. Moving execution to GitHub
 Actions removes both problems and covers both orgs from one shared workflow.
 
+### Status (2026-09-16): code done, GAS deployment blocked on a decision
+
+Everything above is implemented and committed on branch `feature/cloud-backup-to-drive` (not
+merged, not pushed) and verified for real against org-1 (full dump + `BackupRun` row succeeded;
+only the final Drive-upload step is pending). The GAS-side redeploy this needs turned out to be
+more involved than a copy-paste - see the "Cloud backup to Drive" entry in
+[CLAUDE.md](CLAUDE.md) (2026-09-16) for the full story: the live mailer script doesn't match
+what `docs/gas-mail-drive.gs` documents, has no authentication on any action, and a much better
+already-proven secret-gated Drive-bridge pattern exists in two sibling personal projects that
+this feature should probably copy. Read that entry before doing the GAS deployment step.
+
 ## Layer 1: Neon PITR (point-in-time restore)
 
 The `gemach-db` Neon project has `history_retention_seconds` set to `604800` (7 days) - the
