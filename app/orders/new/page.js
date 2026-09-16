@@ -389,6 +389,17 @@ export default function NewOrderPage() {
       .catch(err => console.error(err));
   }, []);
 
+  // 8d499e7c (org2) - שהעובדת לא תצטרך לבחור סניף ביצוע מחדש בכל הזמנה: משמרים
+  // בדפדפן (לא ב-DB - אין קישור אמיתי בין הזמנה למשמרת) את הסניף האחרון שנבחר,
+  // וממלאים אותו כברירת מחדל בטופס הזמנה חדשה, עד שהיא תבחר סניף אחר.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const savedBranch = localStorage.getItem('lastOrderBranch');
+    if (savedBranch) {
+      setOrder(prev => (prev.branch ? prev : { ...prev, branch: savedBranch }));
+    }
+  }, []);
+
   useEffect(() => {
     fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
       .then(data => setCustomerLocations({ cities: data?.cities || [], streets: data?.streets || [] }))
@@ -2017,7 +2028,14 @@ export default function NewOrderPage() {
                       <select
                         className="input"
                         value={order.branch || ''}
-                        onChange={e => setOrder(prev => ({ ...prev, branch: e.target.value, isPhoneOrder: e.target.value ? false : prev.isPhoneOrder }))}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setOrder(prev => ({ ...prev, branch: val, isPhoneOrder: val ? false : prev.isPhoneOrder }));
+                          if (typeof window !== 'undefined') {
+                            if (val) localStorage.setItem('lastOrderBranch', val);
+                            else localStorage.removeItem('lastOrderBranch');
+                          }
+                        }}
                       >
                         <option value="">בחר סניף...</option>
                         {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (

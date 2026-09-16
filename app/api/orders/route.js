@@ -456,6 +456,8 @@ export async function GET(request) {
             lastName: true,
             phone1: true,
             phone2: true,
+            email: true,
+            city: true,
             zeout: true
           }
         },
@@ -507,13 +509,18 @@ export async function GET(request) {
       sortedOrders = orders.sort((a, b) => orderIdIndexMap.get(a.orderId) - orderIdIndexMap.get(b.orderId));
     }
 
-    // Optimize: Only fetch dress models for prefixes that are missing names in the current page
+    // דגמים רבים (בעיקר מיובאי-Access) נשמרו עם השם הזמני "ללא שם" (לא שם תיאורי
+    // אמיתי) - יש להתייחס אליו כמו לשם חסר ולא להציג אותו כמו שהוא, בדיוק כמו
+    // שכבר נעשה בעמדת הלקוחות וב-ModernItemsManager.js - ר' דיווח org2 2497afbc.
+    const isPlaceholderDressName = (name) => typeof name === 'string' && name.startsWith('ללא שם');
+
+    // Optimize: Only fetch dress models for prefixes that are missing/placeholder names in the current page
     const uniquePrefixes = new Set();
     sortedOrders.forEach(order => {
       order.items.forEach(i => {
         const dressName = i.dressItem?.dress?.name;
         const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
-        if (!dressName && prefix !== null && prefix !== undefined) {
+        if ((!dressName || isPlaceholderDressName(dressName)) && prefix !== null && prefix !== undefined) {
           const numPfx = parseInt(prefix, 10);
           if (!isNaN(numPfx)) uniquePrefixes.add(numPfx);
         }
@@ -565,19 +572,27 @@ export async function GET(request) {
         items: order.items.map(i => {
           let dressName = i.dressItem?.dress?.name;
           const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
+          if (isPlaceholderDressName(dressName)) dressName = null;
           if (!dressName && prefix !== null && prefix !== undefined) {
-            dressName = dressModelMap.get(Number(prefix)) || dressModelMap.get(String(prefix));
+            const mapped = dressModelMap.get(Number(prefix)) || dressModelMap.get(String(prefix));
+            dressName = isPlaceholderDressName(mapped) ? null : mapped;
           }
-          
+          if (!dressName && prefix !== null && prefix !== undefined) {
+            dressName = String(prefix);
+          }
+
+          // כש-dressName הוא בעצמו הקוד (נפל ל-fallback כי לא היה שם אמיתי/placeholder),
+          // אין טעם לצרף "(קוד: X)" שוב אחריו - זה כבר אותו מספר.
+          const showCodeSuffix = prefix && dressName !== String(prefix);
           let itemDesc = i.description;
           if (!itemDesc || itemDesc === 'פריט כללי') {
             if (dressName) {
-              itemDesc = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''}${i.sizeText ? `, מידה: ${i.sizeText}` : ''}`;
+              itemDesc = `${dressName}${showCodeSuffix ? ` (קוד: ${prefix})` : ''}${i.sizeText ? `, מידה: ${i.sizeText}` : ''}`;
             } else {
               itemDesc = 'פריט כללי';
             }
           } else if (dressName && !itemDesc.includes(dressName)) {
-            itemDesc = `${dressName}${prefix ? ` (קוד: ${prefix})` : ''} - ${itemDesc}`;
+            itemDesc = `${dressName}${showCodeSuffix ? ` (קוד: ${prefix})` : ''} - ${itemDesc}`;
           }
 
           return {
