@@ -10,6 +10,7 @@ import ModernItemsManager from '../../../components/orders/modern/ModernItemsMan
 import ModernPaymentsManager from '../../../components/orders/modern/ModernPaymentsManager';
 import ModernInfoTab from '../../../components/orders/modern/ModernInfoTab';
 import { calculateOrderStatus } from '../../../lib/orderStatus';
+import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { addHistory } from '../../../lib/historyManager';
 import { saveOrderDraft, loadOrderDraft, clearOrderDraft } from '../../lib/orderDrafts';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
@@ -1230,7 +1231,7 @@ export default function OrderDetailsPage({ params }) {
             <strong>נמצאו שינויים שלא נשמרו מביקור קודם בכרטיס</strong>
             {pendingDraft.savedAt && (
               <span style={{ color: 'var(--text-3)', fontSize: '12px' }}>
-                ({new Date(pendingDraft.savedAt).toLocaleDateString('he-IL')} · {new Date(pendingDraft.savedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })})
+                ({getHebrewDateString(pendingDraft.savedAt)} · {new Date(pendingDraft.savedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })})
               </span>
             )}
           </div>

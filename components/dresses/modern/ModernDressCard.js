@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 const TABS = [
   { id: 'details', label: 'פרטי דגם', icon: 'i-id' },
@@ -40,7 +41,7 @@ export default function ModernDressCard({
 
   const modelTitle = `דגם ${dress.barcodePrefix || '—'}`;
   const updatedLabel = dress.updatedAt
-    ? `עודכן ${new Date(dress.updatedAt).toLocaleDateString('he-IL')} · ${new Date(dress.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+    ? `עודכן ${getHebrewDateString(dress.updatedAt)} · ${new Date(dress.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
     : null;
 
   const descParts = [
