@@ -1,323 +1,28 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import NeonUsageCard from './NeonUsageCard';
 import WebBackupModeToggle from './WebBackupModeToggle';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
 import { NUMBER_FIELD_LIMITS, validateNumericSetting } from '@/app/lib/settingsValidation';
 import { SECRET_SETTING_KEYS, SECRET_MASK, SECRET_SETTING_LINKS } from '@/app/lib/secretSettingKeys';
+import {
+  SETTINGS_CATEGORY_ICONS,
+  SETTINGS_HEBREW_NAMES,
+  SETTINGS_HEBREW_NOTES,
+  SETTINGS_ORDER,
+  SETTINGS_BOOLEAN_KEYS,
+  SETTINGS_NUMBER_KEYS,
+  SETTINGS_DEVELOPER_CATEGORIES,
+} from '@/lib/settingsMetadata';
 
-const CATEGORY_ICONS = {
-  'מיילים': 'i-mail',
-  'תצוגה': 'i-grid',
-  'מסד נתונים': 'i-database',
-  'הזמנות': 'i-bag',
-  'מאגר': 'i-database',
-  'כללי': 'i-settings',
-  'כותרות': 'i-tag',
-  'תשלומים': 'i-card',
-  'יומן': 'i-calendar',
-  'הדפסה': 'i-printer',
-  'בינה מלאכותית': 'i-star',
-  'לא בשימוש': 'i-info',
-  'אוטומציה': 'i-clock',
-  'הוראת קבע': 'i-card',
-  'סנכרון': 'i-activity',
-  'סניפים': 'i-pin',
-  'מחירון': 'i-tag',
-  'הודעות': 'i-mail',
-  'ברקודים': 'i-tag',
-  'משלוחים': 'i-box',
-  'default': 'i-grid'
-};
-
-const HEBREW_NAMES = {
-  email_link_a: 'קישור פריסה א\' (ראשי)',
-  email_link_b: 'קישור פריסה ב\' (משני)',
-  email_routing_strategy: 'אסטרטגיית ניתוב מיילים',
-  email_drive_folder_id: 'תיקיית דרייב לשליחת קבצים',
-  gmach_name: 'שם הגמ"ח / המערכת',
-  gmach_subtitle: 'כותרת משנה לגמ"ח',
-  gmach_address: 'כתובת הגמ"ח',
-  gmach_phone: 'טלפון הגמ"ח',
-  require_login: 'חובת התחברות למערכת',
-  item_locations: 'מיקומי פריטים במלאי',
-  barcodePrefixLength: 'אורך קידומת ברקוד',
-  inventory_include_warehouse: 'ספירת מלאי מחסן',
-  allow_renting_reserve_items: 'אפשר השכרת שמלות ברזרבה',
-  allow_shift_lead_reserve_rental: 'אפשר לאחראית משמרת לאשר השכרת רזרבה',
-  main_email: 'כתובת אימייל ראשית',
-  // --- 38 בקשות: תוספות ---
-  hide_custom_spacing: 'אפשר ציפוף ימים מיוחד',
-  nedarim_rinat_lev_url: 'קישור נדרים פלוס - רינת לב',
-  hok_enabled: 'הפעל הוראת קבע (הו״ק)',
-  hok_auto_charge_enabled: 'גביה אוטומטית למאחרים',
-  hok_auto_charge_hour: 'שעת גביה אוטומטית',
-  hok_charge_amount: 'סכום גביה נוספת למאחר (לשמלה)',
-  strict_mandatory_fields: 'אכיפה קשיחה ללא אישור מנהל',
-  require_customer_email: 'חייב מייל לקוח',
-  require_full_address: 'חייב כתובת מלאה',
-  require_marketing_consent: 'חייב אישור דיוור',
-  require_customer_id_number: 'חייב ת"ז ביצירת לקוח',
-  auto_email_on_order_create: 'מייל אוטומטי בעת יצירת הזמנה',
-  pickup_reminder_enabled: 'תזכורת מייל יום לפני איסוף',
-  pickup_reminder_hour: 'שעת תזכורת איסוף',
-  daily_manager_report_enabled: 'דוח יומי למנהל',
-  daily_manager_report_email: 'מייל מנהל לדוח יומי',
-  daily_manager_report_hour: 'שעת דוח יומי',
-  late_return_email_enabled: 'מייל אוטומטי למאחרים',
-  late_return_email_text: 'נוסח מייל איחור',
-  yemot_enabled: 'הפעל סנכרון ימות המשיח',
-  yemot_api_url: 'URL ימות המשיח',
-  yemot_api_token: 'טוקן ימות המשיח',
-  yemot_queue_view_enabled: 'הצג תור מזמינים (ימות)',
-  yemot_import_customer_enabled: 'ייבוא לקוח מימות',
-  mailing_list_auto_sync: 'הוסף מיילים לרשימת תפוצה',
-  mailing_list_provider: 'ספק רשימת תפוצה',
-  phone_order_marker_enabled: 'סמן הזמנה טלפונית',
-  track_branch_on_order: 'זהה סניף ביצוע',
-  auto_print_on_order_create: 'הדפסה אוטומטית ביצירת הזמנה',
-  require_id_for_edit_cancel: 'דרוש ת״ז לעריכה/ביטול',
-  require_manager_code_for_item_changes: 'דרוש קוד מנהל לביטול/הוספת פריט',
-  delivery_price_by_city: 'מחיר משלוח לפי עיר (JSON)',
-  delivery_allow_address_override: 'אפשר כתובת משלוח שונה',
-  delivery_show_in_order: 'הצג משלוח בהזמנה',
-  rentals_sort_recent_first: 'השכרות - האחרונים למעלה',
-  enforce_strict_max_items: 'אכיפה קשיחה מקסימום ללא חריגה',
-  delivery_table_range_enabled: 'טבלת משלוחים לטווח',
-  delivery_one_day_before_option: 'אפשר משלוח יום לפני',
-  print_sort_deliveries_first: 'הדפסה - מיון משלוחים בנפרד',
-  print_mark_missing_dresses: 'הדפסה - סמן שמלה חסרה',
-  bulk_email_by_event_date: 'שליחת מייל לפי תאריך אירוע',
-  auto_charge_damaged_return: 'גביה על החזרה פגומה',
-  shift_handover_notes: 'הודעות בין משמרות',
-  management_messages: 'הודעות להנהלה',
-  barcode_invalid_list: 'רשימת ברקודים לא תקינים',
-  allow_edit_partially_rented: 'אפשר עריכת מושכר חלקי',
-  split_dress_enabled: 'דגם מפוצל ל-2 חלקים',
-  notify_on_new_message_at_login: 'התראה על הודעה חדשה בכניסה',
-  laundress_return_check_on_exit: 'בדיקת כובסת ביציאה',
-  manual_barcode_double_entry: 'הקלדה ידנית כפולה + חתימה',
-  manual_barcode_daily_report: 'דוח יומי ברקודים ידניים',
-  kiosk_customer_self_service: 'עמדת לקוח - רישום עצמי',
-  kiosk_allow_self_order: 'אפשר הזמנה עצמית באתר',
-  branches_enabled: 'הפעל סניפים',
-  branch_list: 'רשימת סניפים',
-  premium_pricing_enabled: 'הפעל מחירון פרימיום',
-  premium_categories: 'קטגוריות פרימיום',
-  show_not_taken_orders: 'הצג לא-נלקחו (קטגוריה)',
-  hide_taken_orders_from_orders_list: 'הסתר הזמנות שנלקחו מרשימת ההזמנות',
-  cancellation_extra_columns: 'עמודות ביטול נוספות',
-  enable_rental_extension: 'הפעל יום השכרה נוסף',
-
-  mandatory_fields: 'שדות חובה במילוי פרטי הזמנה',
-  draft_orders_show_as_deleted: 'הצג הזמנות טיוטה כמחוקות',
-  allow_alterations: 'מעקב ואפשרות תיקונים',
-  enable_alterations: 'הפעל אפשרות תיקונים במערכת',
-  max_items_per_order: 'כמות פריטים מקסימלית להזמנה',
-  allow_free_exchange: 'אפשר החלפת דגם ללא עלות',
-  cancel_order_permission: 'הרשאת ביטול הזמנה',
-  reserve_permission: 'הרשאת אישור שמלות רזרבה',
-  allow_date_change: 'אפשר שינוי טווח תאריכי השכרה',
-  BUFFER_DAYS: 'ימי מרווח ביטחון בין השכרות',
-
-  has_variations: 'ניהול וריאציות ודגמים משניים',
-  has_underskirts: 'ניהול פריטי עזר ותחתיות',
-  barcode_length: 'אורך תווים תקין לברקוד',
-  useModelNames: 'הצגת שמות דגמים במערכת',
-  useFileNamesForImages: 'טעינת תמונות לפי שם קובץ',
-
-  hide_ai_features: 'הפעל בינה מלאכותית (AI)',
-  enable_ai_specific_employees: 'תצוגת AI לעובדים מורשים בלבד',
-  hide_dress_images: 'הצג תמונות דגמים במערכת',
-  hide_gregorian_calendar: 'אפשר תאריך לועזי ביומן',
-  hide_internal_messaging: 'הפעל מערכת הודעות פנימית',
-  hide_error_reporting: 'הפעל מערכת דיווחי שגיאות',
-
-  items_name_plural: 'שם פריטים ברבים',
-  items_name_singular: 'שם פריט ביחיד',
-
-  refund_per_item: 'חישוב החזר לפי פריט בנפרד',
-  registration_fee: 'גביית דמי רישום מראש',
-  allow_additional_payment_on_order: 'אפשר תשלום נוסף בהזמנה קיימת',
-  nedarim_plus_enabled: 'סליקת אשראי בנדרים פלוס',
-  nedarim_plus_terminal: 'קוד מוסד נדרים פלוס',
-  NEDARIM_MOSAD: 'קוד מוסד נדרים פלוס',
-  ENABLE_SET_DISCOUNTS: 'הפעל מבצע סטים וזיכויים',
-  REFUND_PERCENTAGE: 'אחוז החזר כספי בביטול',
-  REFUND_DAYS: 'ימי זכאות להחזר ממועד האירוע',
-  NO_REFUND_DAYS_BEFORE_EVENT: 'ימים ללא החזר לפני אירוע',
-  REFUND_DAYS_FROM_ORDER: 'ימי החזר מיום ביצוע ההזמנה',
-  REFUND_REPAIRS: 'החזר על עלויות תיקונים',
-  CANCELLATION_CREDIT_MINUTES: 'דקות לניצול זיכוי דמי ביטול על פריט חלופי',
-  ALLOWED_PAYMENT_METHODS: 'אפשרויות תשלום מורשות',
-  PAYMENT_APPROVAL_LEVEL: 'רמת אישור ליציאה מהזמנה בלי תשלום מלא',
-
-  calendar_filtering: 'סינון ואירועים עבריים ביומן',
-  inventory_skip_weekends: 'דלג על סוף שבוע בחישוב מלאי',
-  inventory_buffer_days: 'ימי מרווח ביטחון בין השכרות',
-
-  print_rental_box1: 'הערות השכרה - תיבה 1 (עליונה)',
-  print_rental_box2: 'הערות השכרה - תיבה 2 (אמצעית)',
-  print_rental_footer: 'הערות השכרה - טקסט תחתון ותקנון',
-  home_welcome_title: 'כותרת ברוכים הבאים בדף הבית',
-
-  // פרוטוקול תיקון דיווחי שגיאות (docs/fix-protocol-error-reports.md) - הגדרות עם שחזור
-  restrict_dress_catalog_to_head_management: 'הגבלת קטלוג דגמים להנהלה ראשית',
-  restrict_refunds_to_head_management: 'הגבלת זיכויים וחובות להנהלה ראשית',
-  restrict_board_to_managers: 'הגבלת לוח חודשי למנהלים בלבד',
-  show_employee_profile_image: 'הצגת תמונת פרופיל בכרטיס עובד',
-  error_report_handled_at_bottom: 'פניות מטופלות בתחתית הרשימה',
-  error_report_human_button_enabled: 'הצג כפתור "מענה אנושי" בדיווחי שגיאות',
-  standard_return_hour: 'שעת החזרה סטנדרטית בדוח השכרה',
-  rental_belt_notice: 'שורת הערת חגורות בדוח השכרה',
-
-  // עדכון PR-ים ממתינים לאישור (docs/fix-protocol-error-reports.md, lib/agentDigest.js)
-  agent_digest_email_enabled: 'מייל עדכון על ענפי תיקון ממתינים לאישור',
-  agent_digest_email_hours: 'שעות שליחת עדכון ענפי תיקון'
-};
-
-const HEBREW_NOTES = {
-  email_link_a: 'הקישור הראשי לשליחת מיילים מהמערכת (Script URL)',
-  email_link_b: 'הקישור המשני (מומלץ עבור דיווחי שגיאות או גיבוי)',
-  email_routing_strategy: 'קבע איזה קישור ישמש כברירת מחדל ואם להפריד שליחות.',
-  email_drive_folder_id: 'מזהה תיקיית יעד בדרייב להעלאת קבצים (ID מה-URL). ריק = שורש הדרייב של חשבון ה-GAS. הקבצים משותפים עם הנמען בהרשאת הורדה מלאה.',
-  gmach_name: 'שם המערכת שיופיע בראש העמוד, במסמכים ובחשבוניות.',
-  gmach_subtitle: 'כותרת משנה המופיעה מתחת לשם הגמ"ח בדף הראשי ובתדפיסים.',
-  gmach_address: 'כתובת הגמ"ח שתופיע בראש המסמכים והתדפיסים.',
-  gmach_phone: 'מספר הטלפון של הגמ"ח שיופיע בראש המסמכים והתדפיסים.',
-  require_login: 'משתמשים יצטרכו להזין קוד עובד וסיסמה בכניסה למערכת.',
-  item_locations: 'רשימת מיקומים פיזיים בגמ"ח (לדוגמה: מדף א, קומה 2, מחסן אחורי) מופרדים בפסיקים.',
-  barcodePrefixLength: 'מספר הספרות הראשונות בברקוד המגדירות את קידומת זיהוי סוג הפריט.',
-  inventory_include_warehouse: 'הצג וספור במלאי גם פריטים הנמצאים במחסן או ברזרבה.',
-  allow_renting_reserve_items: 'כשמופעל, פריטים שמסומנים "רזרבה" נחשבים זמינים להשכרה כמו כל פריט אחר - הן בחישובי הזמינות, הן בבחירת פריט להזמנה, והן בסריקת ברקוד (לא נדרש עוד אישור מנהל לכל השכרה). ברירת המחדל כבויה (התנהגות קיימת - פריטי רזרבה חסומים). נפרד בכוונה מ"ספירת מלאי מחסן" - רזרבה ומחסן הם שני מצבים שונים.',
-  allow_shift_lead_reserve_rental: 'שאלה נפרדת מ"אפשר השכרת שמלות ברזרבה" למעלה - זו קובעת האם פריט רזרבה ניתן להשכרה בכלל, וזו קובעת מי מורשה לאשר את החריגה כשהוא עדיין חסום. כשמופעל, סריקת ברקוד של פריט "רזרבה" חסום (לא מחסן) ניתנת לאישור בסיסמה של כל עובד/ת פעיל/ה, לא רק מנהל/מתכנת - "אחראית משמרת" שאינה מנהלת תוכל לאשר בעצמה. פריטי "מחסן" תמיד נשארים חסומים לאישור מנהל/מתכנת בלבד, ללא תלות בהגדרה הזו. בכל השכרת רזרבה שאושרה כך נשלחת התראה פנימית לכל המנהלים עם פרטי הברקוד. ברירת המחדל כבויה (התנהגות קיימת - רק מנהל/מתכנת יכולים לאשר).',
-  main_email: 'כתובת האימייל הראשית של הגמ"ח ליצירת קשר והודעות.',
-
-  mandatory_fields: 'סמן בתיבת הבחירה (צ\'קבוקס) את השדות מתוך פרטי לקוח שיהיו חובה בעת מילוי הזמנה.',
-  draft_orders_show_as_deleted: 'כשמופעל, הזמנות טיוטה שנשמרו אוטומטית בזמן מילוי הזמנה חדשה ולא הושלמו מוצגות בסטטוס ובסינון "מחוק" יחד עם שאר ההזמנות המחוקות, במקום להופיע בטאב "טיוטות" נפרד ברשימת ההזמנות.',
-  allow_alterations: 'מעקב ואפשרות ניהול תיקונים והתאמות אישיות לשמלות.',
-  enable_alterations: 'הצגת אפשרויות לניהול תיקונים בכרטיסי ההזמנה.',
-  max_items_per_order: 'הגבלת הכמות המרבית של פריטים שניתן לשבץ בהזמנה אחת.',
-  allow_free_exchange: 'אפשרות להחלפת דגם שמלה ללא גביית דמי טיפול נוספים.',
-  cancel_order_permission: 'הגדרת הרשאות הנדרשות לצורך ביטול הזמנה במערכת (בחירת מחלקות מורשות).',
-  reserve_permission: 'הגדרת הרשאות הנדרשות לאישור שמלות רזרבה (בחירת מחלקות מורשות).',
-  allow_date_change: 'מאפשר למשתמש לשנות את טווח תאריכי ההשכרה של ההזמנה.',
-  BUFFER_DAYS: 'מספר ימים לפני ואחרי תאריך אירוע שבהם השמלה נחשבת תפוסה במלאי.',
-
-  has_variations: 'אפשרות לנהל פריטי משנה (כגון: ווסט, חליפה) תחת אותו דגם.',
-  has_underskirts: 'אפשרות לשילוב פריטי עזר כגון תחתיות יחד עם השמלות.',
-  barcode_length: 'מספר התווים התקני לברקוד במאגר השמלות.',
-  useModelNames: 'הצגת שם הדגם לצד המזהה הקטלוגי בטפסים ובחיפושים.',
-  useFileNamesForImages: 'טעינה אוטומטית של תמונות לפי שם הקובץ מהשרת.',
-
-  hide_ai_features: 'הצגה או הסתרה של תכונות ה-AI, הצאט ושורת החיפוש החכמה.',
-  enable_ai_specific_employees: 'אם מופעל, גישה ל-AI תינתן רק לעובדים שצוינו במפורש.',
-  hide_dress_images: 'מסתיר תמונות דגמים במסכי הניהול ובכרטיסי הדגמים.',
-  hide_gregorian_calendar: 'הסתרת תאריכים לועזיים והתמקדות בלוח העברי.',
-  hide_internal_messaging: 'הסתרה או הפעלה של פעמון ההתראות והודעות בין עובדים.',
-  hide_error_reporting: 'הסתרה או הפעלה של אפשרות דיווח שגיאות מהמערכת (כפתור גלגל הצלה).',
-
-  restrict_dress_catalog_to_head_management: 'כשמופעל, קטלוג הדגמים נגיש לצפייה רק להנהלה ראשית/מתכנת. יצירה/עריכה/מחיקה של דגם מוגבלות להנהלה ראשית תמיד, גם כשההגדרה כבויה.',
-  restrict_refunds_to_head_management: 'כשמופעל, עמוד זיכויים וחובות נגיש רק להנהלה ראשית/מתכנת ולא למנהל סניף רגיל.',
-  restrict_board_to_managers: 'כשמופעל (ברירת המחדל), הקישור "לוח חודשי" בסיידבר מוצג רק למנהל סניף/הנהלה ראשית/מתכנת - עובד רגיל לא רואה אותו. כשכבוי, הקישור מוצג לכל עובד מחובר.',
-  show_employee_profile_image: 'הצגת אזור העלאת/תצוגת תמונת פרופיל בכרטיס העובד (הפרופיל האישי וכרטיס העובד המנהלי). כבוי = האזור מוסתר לגמרי.',
-  error_report_handled_at_bottom: 'פניות שסומנו "טופל" ברשימת הפניות הפתוחות יורדות לתחתית הרשימה, כדי שפניות חדשות יבלטו למעלה.',
-  error_report_human_button_enabled: 'כשמופעל, מוצג בשרשור דיווח שגיאה (אחרי תגובת הסוכן האוטומטי) כפתור "אוף! אני צריך מענה אנושי!" למדווח/ת. לחיצה עליו מדלגת על הסוכן האוטומטי בדיווח הזה ושולחת מייל לתמיכה לטיפול ידני. כבוי = הכפתור לא מוצג בכלל.',
-  standard_return_hour: 'שעת ההחזרה המוצגת בשורת "פרטי החזרה" בדוח ההשכרה המודפס (פורמט HH:MM).',
-  rental_belt_notice: 'שורה נוספת שתופיע מתחת ל"פרטי החזרה" בדוח ההשכרה המודפס (למשל הערה על החזרת חגורות). ריק = לא מוצגת.',
-
-  items_name_plural: 'הכיתוב שיופיע בכל הטבלאות (למשל: שמלות / חליפות / פריטים).',
-  items_name_singular: 'הכיתוב ביחיד (למשל: שמלה / חליפה / פריט).',
-
-  refund_per_item: 'חישוב החזר דמי ביטול בנפרד עבור כל פריט בהזמנה.',
-  registration_fee: 'האם לגבות דמי רישום מראש בעת פתיחת הזמנה.',
-  allow_additional_payment_on_order: 'הצגת כפתור "תשלום נוסף" בטאב תשלומים של הזמנה קיימת, לרישום תשלום (למשל מזומן) נוסף על ההיסטוריה הקיימת - לא כרוך בחיוב/חוב חדש.',
-  nedarim_plus_enabled: 'הפעלת אפשרות סליקת אשראי דרך מערכת נדרים פלוס.',
-  nedarim_plus_terminal: 'קוד המוסד המזהה במערכת נדרים פלוס עבור חיוב אשראי.',
-  NEDARIM_MOSAD: 'קוד המוסד המזהה במערכת נדרים פלוס עבור חיוב אשראי.',
-  ENABLE_SET_DISCOUNTS: 'מתן זיכוי/הנחה אוטומטית על פריטים נלווים בהזמנת סט.',
-  REFUND_PERCENTAGE: 'אחוז החזר כספי מסך העסקה בעת ביטול הזמנה.',
-  REFUND_DAYS: 'מספר ימים מרבי ממועד האירוע שבהם ניתן לבקש החזר.',
-  NO_REFUND_DAYS_BEFORE_EVENT: 'מספר ימים לפני האירוע שמתחתיו לא יינתן החזר כספי.',
-  REFUND_DAYS_FROM_ORDER: 'מספר ימים מביצוע ההזמנה שבהם זכאים להחזר מלא.',
-  REFUND_REPAIRS: 'כולל עלויות תיקונים בחישוב ההחזר הכספי בביטול.',
-  CANCELLATION_CREDIT_MINUTES: 'מספר הדקות לאחר ביטול פריט שבהן דמי הביטול ניתנים לניצול כזיכוי על פריט אחר שנוסף לאותה הזמנה. אם ההזמנה עדיין נערכת ונשמרת רק אחרי שהזמן הזה חלף, הזיכוי עדיין תקף - כי הזמן נספר החל משמירת הביטול בפועל.',
-  ALLOWED_PAYMENT_METHODS: 'רשימת אמצעי תשלום מורשים (מופרדים בפסיק, למשל: מזומן,אשראי,העברה).',
-  PAYMENT_APPROVAL_LEVEL: 'קובע איזו הרשאה נדרשת (הזנת קוד עובד וסיסמה) לפני סיום הזמנה עם "יציאה באישור מנהל" - כולל המקרה שסכום התשלום נשאר 0 (יציאה בלי גביית תשלום כלל) - וכן לפני כל תשלום שאינו אשראי שאינו מכסה את מלוא סכום ההזמנה. "כולם" = ללא הגבלה (ברירת המחדל, ההתנהגות הקודמת). "עובד" = כל עובד פעיל מזהה את עצמו בסיסמה. "מנהל" = מנהל סניף או מתכנת בלבד (roleId 1/2). "מנהל סניף ומעלה" = מנהל סניף, הנהלה ראשית או מתכנת (roleId 0/1/2).',
-
-  calendar_filtering: 'סינון תצוגת יומן לפי חודשים ומועדים עבריים.',
-  inventory_skip_weekends: 'האם לדלג על ימי שישי-שבת בחישוב ימי מרווח ביטחון.',
-  inventory_buffer_days: 'מספר ימים לפני ואחרי אירוע שבהם השמלה חסומה במלאי.',
-
-  print_rental_box1: 'טקסט הערות שיופיע בתיבה העליונה בכרטיס השכרה מודפס.',
-  print_rental_box2: 'טקסט הערות שיופיע בתיבה האמצעית בכרטיס השכרה מודפס.',
-  print_rental_footer: 'טקסט תקנון וחתימה בתחתית כרטיס השכרה מודפס.',
-  home_welcome_title: 'הכותרת הראשית שמופיעה בראש דף הבית של המערכת.',
-  hide_custom_spacing: 'כשמופעל, ניתן לבחור ריווח ימים (ציפוף) מותאם בין השכרות בעת יצירה ועריכה של הזמנה, ומוצג גם בלוח התפוסה. כשכבוי, האפשרות מוסתרת לגמרי מכל התהליך - כולל בחישוב זמינות המלאי, שמתעלם מציפוף שהוגדר בעבר להזמנה.',
-  enable_rental_extension: 'מאפשר להוסיף להזמנת חו"ל/חול יום השכרה נוסף (לפני הלקיחה או אחרי ההחזרה), בתוספת 50% מסך ההזמנה המחושבת אוטומטית.',
-  nedarim_rinat_lev_url: 'URL סליקה ייעודי עבור רינת לב (בריק - משתמש בקוד מוסד הכללי).',
-  hok_enabled: 'מאפשר הזנת פרטי הוראת קבע בכל הזמנה.',
-  hok_auto_charge_enabled: 'אם הלקוח לא החזיר עד שעת היעד - חיוב אוטומטי (מחיר השכרה נוסף לכל שמלה).',
-  hok_auto_charge_hour: 'שעת היעד ביום ההחזרה (לדוגמה 19:00).',
-  hok_charge_amount: 'סכום קבוע לגביה (ריק = מחיר השכרה מקורי).',
-  strict_mandatory_fields: 'חוסם דילוג גם באישור מנהל - חובה למלא שדות.',
-  require_customer_email: 'חובה להזין מייל תקין לכל לקוח/הזמנה.',
-  require_full_address: 'חובה עיר+רחוב+מספר בית.',
-  require_marketing_consent: 'חובה לסמן "מאשר/ת קבלת דיוורים".',
-  require_customer_id_number: 'חובה להזין תעודת זהות בעת יצירת לקוח חדש (טופס "לקוח חדש" ב-app/customers, וגם הוספת לקוח מהירה בתוך הזמנה). לא משפיע על עריכת לקוח קיים.',
-  auto_email_on_order_create: 'מייל עם פרטי הזמנה + איסוף/החזרה נשלח אוטומטית ביצירה.',
-  pickup_reminder_enabled: 'תזכורת אוטומטית יום לפני איסוף עם שעה וכתובת.',
-  pickup_reminder_hour: 'שעת שליחת תזכורת האיסוף.',
-  daily_manager_report_enabled: 'שולח כל יום מייל למנהל עם רשימת הזמנות.',
-  daily_manager_report_email: 'לאן לשלוח את הדוח היומי (ריק = main_email).',
-  daily_manager_report_hour: 'שעת שליחת הדוח היומי.',
-  late_return_email_enabled: 'שולח מייל אוטומטי למאחרים.',
-  late_return_email_text: 'נוסח ההודעה למאחרים.',
-  yemot_enabled: 'הפעלת חיבור לימות המשיח.',
-  yemot_api_url: 'כתובת ה-Webhook/API של ימות המשיח.',
-  yemot_api_token: 'טוקן סנכרון (נשמר מוצפן).',
-  yemot_queue_view_enabled: 'הצגת תור מזמינים מימות.',
-  yemot_import_customer_enabled: 'ייבוא פרטי לקוח מימות לכרטיס לקוח.',
-  mailing_list_auto_sync: 'כל מייל חדש מתווסף לרשימת התפוצה.',
-  mailing_list_provider: 'ספק דיוור (רב מסר/Smoove/Mailchimp - ריק=פנימי).',
-  phone_order_marker_enabled: 'סימון הזמנה שהוזנה טלפונית + זיהוי סניף.',
-  track_branch_on_order: 'שומר באיזה סניף בוצעה ההזמנה.',
-  auto_print_on_order_create: 'כשמסיימים ליצור הזמנה חדשה (כפתור "סיום ויצירת ההזמנה"), פותח אוטומטית חלון הדפסת הזמנה. כבוי = ההתנהגות הקודמת (בלי הדפסה אוטומטית).',
-  require_id_for_edit_cancel: 'עריכה/ביטול רק לאחר אימות תעודת זהות.',
-  require_manager_code_for_item_changes: 'כשמופעל, ביטול או הוספה של פריט (שמלה) בהזמנה קיימת דורשים גם אימות קוד/סיסמת מנהל אמיתי (בנוסף לאימות ת״ז - לא במקומו). כבוי = ההתנהגות הקודמת: אימות ת״ז בלבד, ללא הרשאת מנהל.',
-  delivery_price_by_city: 'JSON מחירים לפי עיר. דוגמה {"ירושלים":60}.',
-  delivery_allow_address_override: 'מאפשר כתובת משלוח שונה מכתובת מגורים.',
-  delivery_show_in_order: 'מציג תג משלוח הלוך/חזור בהזמנה.',
-  rentals_sort_recent_first: 'ממיין השכרות מהאחרונים ביותר (אתמול למעלה).',
-  enforce_strict_max_items: 'לא מאפשר חריגה מ-max_items_per_order גם באישור מנהל.',
-  delivery_table_range_enabled: 'טבלת משלוחים לטווח שבוע/חודש + עבר.',
-  delivery_one_day_before_option: 'משלוח יוצא יום לפני האירוע (במקום יומיים).',
-  print_sort_deliveries_first: 'דפי הכנה ממוינים: משלוחים בנפרד ורגילות בנפרד.',
-  print_mark_missing_dresses: 'מסמן שמלה חסרה ומציין "אמורה לחזור מחר ממשפחת...".',
-  bulk_email_by_event_date: 'שליחת מייל לכל אירוע בתאריך/טווח + מעקב אישורים.',
-  auto_charge_damaged_return: 'גביה אוטומטית בהו״ק על "הוחזרה שמלה פגומה".',
-  shift_handover_notes: 'מקום להודעות בין משמרת למשמרת.',
-  management_messages: 'מקום להודעות להנהלה.',
-  barcode_invalid_list: 'ברקוד לא תקין → רשימה להנהלה + סימון "טופל".',
-  allow_edit_partially_rented: 'עריכת הזמנה מושכרת חלקית (מידה/משלוח) עם ת״ז.',
-  split_dress_enabled: 'דגם כסט 2 ברקודים (חולצה+חצאית).',
-  notify_on_new_message_at_login: 'התראה בכניסה אם יש הודעה שלא טופלה.',
-  laundress_return_check_on_exit: 'ביציאת כובסת - מקפיץ משפחות שלא החזירו.',
-  manual_barcode_double_entry: 'הקלדה ידנית כפולה + חתימת "בידי עכשיו".',
-  manual_barcode_daily_report: 'דוח יומי למנהלת על ברקודים ידניים.',
-  kiosk_customer_self_service: 'לקוח יכול לרשום פרטים ולחפש דגם לבד (נעילת מסך).',
-  kiosk_allow_self_order: 'לקוח יכול להזמין לבד באתר ללא הגעה.',
-  branches_enabled: 'הפעלת סניפים (בוצעה בנוה יעקב / איסוף בבית שמש).',
-  branch_list: 'רשימת סניפים מופרדת בפסיק.',
-  premium_pricing_enabled: 'הפעלת קטגוריית מחיר פרימיום.',
-  premium_categories: 'קטגוריות פרימיום (מופרד בפסיק).',
-  show_not_taken_orders: 'הזמנות שלא נלקחו/חלקית → קטגוריה נפרדת.',
-  hide_taken_orders_from_orders_list: 'כאשר מופעל, הזמנה שכל הפריטים בה כבר נלקחו (גם אם חלקם/כולם כבר הוחזרו) לא תופיע יותר בטאבי "בקרוב"/"הכל" ב-/orders - היא שייכת מעכשיו לטאבי ההשכרות/החזרות ב-/rentals. הזמנה "הושכר חלקי" (יש גם פריט שטרם נלקח) נשארת ב-/orders. ברירת מחדל כבוי - מציג הכל, כמו היום.',
-  cancellation_extra_columns: 'עמודות ביטול ילדות/נשים בדוח.',
-  agent_digest_email_enabled: 'שולח מייל עם רשימת ה-PR-ים (ענפי תיקון) שהסוכן האוטומטי פתח ועדיין לא מוזגו - משני הגמחים יחד, כי מדובר בריפו קוד משותף. פועל רק בשעות המוגדרות למטה, ולא בשבתות/חגים. הגדרה זו קיימת בכוונה רק בגמח הראשי - אין להפעיל את אותה הגדרה גם בנווה יעקב, זה ישלח מייל כפול.',
-  agent_digest_email_hours: 'אילו מתוך 2 שעות השליחה הקבועות (17:00 ו-00:00) פעילות כרגע - רשימה מופרדת בפסיק, למשל "17:00,00:00" או רק "17:00". השעה בפועל עשויה לזוז עד חצי שעה בין קיץ לחורף (מגבלת cron קבוע). הוספת שעה שלישית דורשת שינוי קוד (cron חדש), לא רק כאן.',
-};
+// אליאסים לשמות המקוריים - הנתונים עצמם עברו ל-lib/settingsMetadata.js (מקור
+// אמת יחיד, משותף גם עם app/api/settings/guide/route.js לצורך עוזר ה-AI) כדי
+// שלא ייווצר עותק שני שעלול לסטות ממנו (ר' סוכם ההגדרות org1/org2 ב-CLAUDE.md).
+const CATEGORY_ICONS = SETTINGS_CATEGORY_ICONS;
+const HEBREW_NAMES = SETTINGS_HEBREW_NAMES;
+const HEBREW_NOTES = SETTINGS_HEBREW_NOTES;
 
 const CUSTOMER_FIELDS = [
   { key: 'firstName', name: 'שם פרטי', alias: 'שם_פרטי' },
@@ -334,83 +39,6 @@ const CUSTOMER_FIELDS = [
   { key: 'bankBranch', name: 'סניף בנק', alias: 'סניף' },
   { key: 'bankAccount', name: 'חשבון בנק', alias: 'חשבון' }
 ];
-
-// סדר תצוגה של הגדרות בתוך כל טאב, מקובץ לפי נושא (לא לפי סדר יצירה אקראי ב-DB).
-// מפתח שלא מופיע ברשימה של הטאב שלו מוצג בסוף הטאב, לפי הסדר שהגיע מה-DB -
-// כך שהוספת הגדרה חדשה בעתיד לא "נעלמת", היא רק לא מקובצת עד שמוסיפים אותה כאן.
-const SETTINGS_ORDER = {
-  'אוטומציה': [
-    'mailing_list_auto_sync', 'mailing_list_provider',
-    'auto_email_on_order_create',
-    'late_return_email_enabled', 'late_return_email_text',
-    'pickup_reminder_enabled', 'pickup_reminder_hour',
-    'daily_manager_report_enabled', 'daily_manager_report_hour', 'daily_manager_report_email',
-    'bulk_email_by_event_date',
-    'manual_barcode_daily_report',
-    'agent_digest_email_enabled', 'agent_digest_email_hours',
-  ],
-  'בינה מלאכותית': ['hide_ai_features', 'enable_ai_specific_employees'],
-  'ברקודים': ['manual_barcode_double_entry', 'barcode_invalid_list'],
-  'הדפסה': [
-    'standard_return_hour', 'rental_belt_notice',
-    'print_rental_box1', 'print_rental_box2', 'print_rental_footer',
-    'print_sort_deliveries_first', 'print_mark_missing_dresses',
-  ],
-  'הודעות': ['shift_handover_notes', 'management_messages', 'notify_on_new_message_at_login', 'laundress_return_check_on_exit'],
-  'הוראת קבע': ['hok_enabled', 'hok_auto_charge_enabled', 'hok_auto_charge_hour', 'hok_charge_amount', 'auto_charge_damaged_return'],
-  'הזמנות': [
-    'require_customer_email', 'require_full_address', 'require_marketing_consent', 'require_customer_id_number',
-    'mandatory_fields', 'strict_mandatory_fields', 'require_id_for_edit_cancel',
-    'max_items_per_order', 'enforce_strict_max_items', 'BUFFER_DAYS', 'hide_custom_spacing',
-    'require_manager_code_for_item_changes', 'allow_edit_partially_rented',
-    'draft_orders_show_as_deleted', 'auto_print_on_order_create', 'phone_order_marker_enabled',
-    'enable_alterations', 'enable_rental_extension',
-  ],
-  'הרשאות': ['restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management'],
-  'יומן': ['inventory_buffer_days', 'inventory_skip_weekends'],
-  'כללי': [
-    'gmach_name', 'gmach_address', 'gmach_phone', 'main_email',
-    'require_login',
-    'item_locations', 'barcodePrefixLength', 'inventory_include_warehouse',
-  ],
-  'לא בשימוש': [
-    // קטלוג/דגמים
-    'has_variations', 'has_underskirts', 'dress_size_min', 'dress_size_max', 'dress_size_even_only',
-    'items_name_singular', 'items_name_plural', 'barcode_length',
-    // הזמנות
-    'allow_date_change', 'allow_free_exchange', 'cancel_order_permission', 'reserve_permission', 'max_order_days_ahead',
-    // תשלומים/החזרים
-    'refund_per_item', 'REFUND_DAYS', 'registration_fee',
-    // שונות
-    'calendar_filtering', 'gmach_subtitle',
-  ],
-  'מחירון': ['premium_pricing_enabled', 'premium_categories'],
-  'מיילים': ['email_link_a', 'email_link_b', 'email_routing_strategy'],
-  'מלאי': ['allow_renting_reserve_items', 'allow_shift_lead_reserve_rental'],
-  'מערכת': ['agent_fix_loop_enabled', 'agent_fix_loop_last_activity'],
-  'משלוחים': [
-    'enable_deliveries',
-    'delivery_days_before', 'delivery_days_after', 'delivery_price', 'delivery_price_by_city',
-    'delivery_show_in_order', 'delivery_allow_address_override',
-    'delivery_table_range_enabled', 'delivery_one_day_before_option',
-  ],
-  'סניפים': ['branches_enabled', 'branch_list', 'track_branch_on_order'],
-  'סנכרון': ['yemot_enabled', 'yemot_api_url', 'yemot_api_token', 'yemot_queue_view_enabled', 'yemot_import_customer_enabled'],
-  'תצוגה': [
-    'show_not_taken_orders', 'hide_taken_orders_from_orders_list', 'cancellation_extra_columns', 'rentals_sort_recent_first',
-    'hide_dress_images', 'useModelNames', 'useFileNamesForImages',
-    'hide_gregorian_calendar', 'hide_internal_messaging',
-    'hide_error_reporting', 'error_report_handled_at_bottom', 'error_report_human_button_enabled',
-    'show_employee_profile_image', 'restrict_board_to_managers',
-    'kiosk_customer_self_service', 'kiosk_allow_self_order',
-  ],
-  'תשלומים': [
-    'nedarim_plus_enabled', 'nedarim_plus_terminal', 'nedarim_plus_token', 'nedarim_rinat_lev_url',
-    'ALLOWED_PAYMENT_METHODS', 'PAYMENT_APPROVAL_LEVEL', 'allow_additional_payment_on_order',
-    'REFUND_PERCENTAGE', 'REFUND_DAYS_FROM_ORDER', 'NO_REFUND_DAYS_BEFORE_EVENT', 'REFUND_REPAIRS', 'CANCELLATION_CREDIT_MINUTES',
-    'ENABLE_SET_DISCOUNTS',
-  ],
-};
 
 function CustomerFieldsCheckboxPicker({ value, onChange, elementName }) {
   const [isOpen, setIsOpen] = useState(false);
@@ -692,12 +320,12 @@ function DepartmentDropdownPicker({ value, onChange, departments, elementName })
 // טאבים "שלי" (מתכנת בלבד) - תצורה טכנית של המערכת עצמה (מסד נתונים, אינטגרציית
 // מיילים, מצב הסוכן האוטומטי) ולא מדיניות עסקית של הגמ"ח. מוצגים רק בדף הנפרד
 // /admin/site-settings (mode="developer"), לא בהגדרות הכלליות של הנהלה ראשית.
-const DEVELOPER_CATEGORIES = ['מסד נתונים', 'מערכת', 'מיילים'];
-
+// (הרשימה עצמה ב-lib/settingsMetadata.js - SETTINGS_DEVELOPER_CATEGORIES - כדי
+// ש-getSettingsPagePath שם ידע להצביע לעמוד הנכון בקישורים ישירים.)
 function filterCategoriesForMode(cats, mode) {
   return mode === 'developer'
-    ? cats.filter(c => DEVELOPER_CATEGORIES.includes(c))
-    : cats.filter(c => !DEVELOPER_CATEGORIES.includes(c));
+    ? cats.filter(c => SETTINGS_DEVELOPER_CATEGORIES.includes(c))
+    : cats.filter(c => !SETTINGS_DEVELOPER_CATEGORIES.includes(c));
 }
 
 // מטמון SWR משותף — ראה app/lib/pageCache.js
@@ -718,6 +346,14 @@ export default function SettingsClient({ mode = 'general' }) {
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
   const [modified, setModified] = useState({});
+
+  // תמיכה בקישור ישיר להגדרה ספציפית - ?tab=<קטגוריה>&highlight=<key> - נפתח
+  // מ-SettingQuickPanel.js ("פתח בעמוד ההגדרות המלא") וגם מכפתור [OPEN_SETTING:key]
+  // בצ'אט ה-AI. פותח ישירות את הטאב הנכון וממקד/מהבהב את השורה המבוקשת.
+  const searchParams = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const highlightParam = searchParams.get('highlight');
+  const [highlightedKey, setHighlightedKey] = useState(null);
 
   const fetchDepartments = async (isPrefetch = false) => {
     try {
@@ -753,7 +389,7 @@ export default function SettingsClient({ mode = 'general' }) {
       setSettings(data);
       setCategories(cats);
       if (cats.length > 0 && !activeTab) {
-        setActiveTab(cats[0]);
+        setActiveTab(tabParam && cats.includes(tabParam) ? tabParam : cats[0]);
       }
     } catch (err) {
       setError(err.message);
@@ -768,7 +404,9 @@ export default function SettingsClient({ mode = 'general' }) {
       const data = settingsCache.get('settings');
       setSettings(data.settings);
       setCategories(data.cats);
-      if (data.cats.length > 0 && !activeTab) setActiveTab(data.cats[0]);
+      if (data.cats.length > 0 && !activeTab) {
+        setActiveTab(tabParam && data.cats.includes(tabParam) ? tabParam : data.cats[0]);
+      }
       setLoading(false);
     }
     // SWR Cache Hit for Departments
@@ -779,6 +417,18 @@ export default function SettingsClient({ mode = 'general' }) {
     fetchSettings(settingsCache.has('settings'));
     fetchDepartments(deptsCache.has('depts'));
   }, []);
+
+  // ממקד ומהבהב את שורת ההגדרה שביקש ה-?highlight= (ר' למעלה) - רץ מחדש כש-activeTab
+  // מתעדכן כדי לוודא שהשורה כבר קיימת ב-DOM (הטאב הנכון נבחר) לפני שמנסים לגלול אליה.
+  useEffect(() => {
+    if (!highlightParam || loading) return;
+    const el = document.getElementById(`setting-row-${highlightParam}`);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setHighlightedKey(highlightParam);
+    const timer = setTimeout(() => setHighlightedKey(null), 2600);
+    return () => clearTimeout(timer);
+  }, [highlightParam, activeTab, loading]);
 
   const handleChange = (key, newValue) => {
     setModified(prev => {
@@ -1037,40 +687,11 @@ export default function SettingsClient({ mode = 'general' }) {
 
           {activeSettings.map((setting) => {
             const rawValue = modified[setting.key] !== undefined ? modified[setting.key] : setting.value;
-            const isBooleanKey = [
-              'require_login', 'enable_alterations', 'allow_alterations', 'allow_free_exchange',
-              'allow_date_change', 'has_variations', 'has_underskirts', 'useModelNames',
-              'useFileNamesForImages', 'hide_ai_features', 'enable_ai_specific_employees',
-              'hide_dress_images', 'hide_gregorian_calendar', 'hide_internal_messaging',
-              'hide_error_reporting', 'refund_per_item', 'registration_fee', 'nedarim_plus_enabled', 'ENABLE_SET_DISCOUNTS',
-              'REFUND_REPAIRS', 'inventory_include_warehouse', 'allow_renting_reserve_items', 'allow_shift_lead_reserve_rental', 'inventory_skip_weekends',
-              'calendar_filtering',
-              // 38 בקשות - בוליאנים חדשים
-              'hide_custom_spacing', 'hok_enabled', 'hok_auto_charge_enabled', 'strict_mandatory_fields',
-              'require_customer_email', 'require_full_address', 'require_marketing_consent', 'require_customer_id_number', 'auto_email_on_order_create',
-              'pickup_reminder_enabled', 'daily_manager_report_enabled', 'late_return_email_enabled', 'yemot_enabled',
-              'yemot_queue_view_enabled', 'yemot_import_customer_enabled', 'mailing_list_auto_sync', 'phone_order_marker_enabled',
-              'track_branch_on_order', 'require_id_for_edit_cancel', 'require_manager_code_for_item_changes', 'delivery_allow_address_override', 'delivery_show_in_order',
-              'rentals_sort_recent_first', 'enforce_strict_max_items', 'delivery_table_range_enabled', 'delivery_one_day_before_option',
-              'print_sort_deliveries_first', 'print_mark_missing_dresses', 'bulk_email_by_event_date', 'auto_charge_damaged_return',
-              'shift_handover_notes', 'management_messages', 'barcode_invalid_list', 'allow_edit_partially_rented',
-              'split_dress_enabled', 'notify_on_new_message_at_login', 'laundress_return_check_on_exit', 'manual_barcode_double_entry',
-              'manual_barcode_daily_report', 'kiosk_customer_self_service', 'kiosk_allow_self_order', 'branches_enabled',
-              'premium_pricing_enabled', 'show_not_taken_orders', 'cancellation_extra_columns', 'enable_rental_extension',
-              // פרוטוקול תיקון דיווחי שגיאות - הגדרות עם שחזור
-              'restrict_dress_catalog_to_head_management', 'restrict_refunds_to_head_management',
-              'show_employee_profile_image', 'error_report_handled_at_bottom', 'error_report_human_button_enabled', 'auto_print_on_order_create',
-              'allow_additional_payment_on_order', 'hide_taken_orders_from_orders_list',
-              'agent_digest_email_enabled', 'restrict_board_to_managers'
-            ].includes(setting.key);
+            // רשימות המפתחות עברו ל-lib/settingsMetadata.js (SETTINGS_BOOLEAN_KEYS/
+            // SETTINGS_NUMBER_KEYS) - מקור אמת יחיד המשותף גם עם app/api/settings/guide.
+            const isBooleanKey = SETTINGS_BOOLEAN_KEYS.includes(setting.key);
             const isBoolean = setting.type === 'boolean' || setting.type === 'checkbox' || rawValue === 'true' || rawValue === 'false' || isBooleanKey;
-            const isNumberKey = [
-              'max_items_per_order', 'barcodePrefixLength', 'BUFFER_DAYS',
-              'barcode_length', 'REFUND_PERCENTAGE', 'REFUND_DAYS',
-              'NO_REFUND_DAYS_BEFORE_EVENT', 'REFUND_DAYS_FROM_ORDER',
-              'full_refund_days', 'inventory_buffer_days', 'registration_fee',
-              'CANCELLATION_CREDIT_MINUTES', 'hok_charge_amount', 'delivery_price'
-            ].includes(setting.key);
+            const isNumberKey = SETTINGS_NUMBER_KEYS.includes(setting.key);
             const isNumber = setting.type === 'number' || isNumberKey;
             const numberLimit = NUMBER_FIELD_LIMITS[setting.key];
             const numberError = (isNumber && !isBoolean) ? validateNumericSetting(setting.key, rawValue) : null;
@@ -1135,7 +756,17 @@ export default function SettingsClient({ mode = 'general' }) {
             );
 
             return (
-              <div key={setting.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '24px', padding: '16px 0', borderBottom: '1px solid var(--border)' }}>
+              <div
+                key={setting.key}
+                id={`setting-row-${setting.key}`}
+                style={{
+                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '24px',
+                  padding: '16px 10px', margin: '0 -10px', borderBottom: '1px solid var(--border)',
+                  borderRadius: 'var(--radius-md)',
+                  background: highlightedKey === setting.key ? 'var(--primary-tint)' : 'transparent',
+                  transition: 'background 0.6s ease',
+                }}
+              >
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <h3 style={{ fontSize: '14.5px', margin: '0 0 4px' }}>{displayName}</h3>
                   {notes && (
