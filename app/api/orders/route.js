@@ -109,8 +109,19 @@ export async function GET(request) {
     // את מחרוזת החיפוש ומסננים גם לפי בר-הקוד שלהם.
     let searchModelPrefixes = [];
     if (search) {
+      // דגמים רבים (בעיקר מיובאי-Access) נשארים עם שם placeholder ("ללא שם - X") שלא
+      // מכיל את מספר הדגם עצמו - name.contains לבדו מפספס אותם. אותה בעיה שדיווח 9460cf81
+      // (נווה יעקב, דגם 811) חשף: חיפוש טקסט חופשי לפי מספר דגם צריך להתאים גם לפי
+      // barcodePrefix מספרי, בדיוק כמו ש-/api/inventory/models וה"דגם" בחיפוש המתקדם כבר עושים.
+      const searchAsInt = parseInt(search, 10);
       const matchingModels = await prisma.dressModel.findMany({
-        where: { name: { contains: search }, barcodePrefix: { not: null } },
+        where: {
+          barcodePrefix: { not: null },
+          OR: [
+            { name: { contains: search } },
+            ...(!isNaN(searchAsInt) ? [{ barcodePrefix: searchAsInt }] : [])
+          ]
+        },
         select: { barcodePrefix: true }
       });
       searchModelPrefixes = matchingModels.map(m => m.barcodePrefix).filter(p => p !== null && p !== undefined);
