@@ -157,26 +157,39 @@ function AtelierCalendar({ selectedDate, onSelect }) {
     return s;
   }, [selectedDate, selHd]);
 
-  // תאי הגריד: זנב החודש הקודם (מעומעם) + החודש + ראש החודש הבא להשלמת שבוע
-  const cells = useMemo(() => {
+  // תאי הגריד לחודש נתון: זנב החודש הקודם (מעומעם) + החודש + ראש החודש הבא להשלמת שבוע
+  const buildMonthCells = (month, year) => {
     const out = [];
     try {
-      const first = new HDate(1, viewMonth, viewYear);
+      const dim = HDate.daysInMonth(month, year);
+      const first = new HDate(1, month, year);
       const firstDow = first.greg().getDay();
       for (let i = firstDow; i > 0; i--) {
         out.push({ hd: first.subtract(i, 'd'), muted: true });
       }
-      for (let d = 1; d <= daysInMonth; d++) {
-        out.push({ hd: new HDate(d, viewMonth, viewYear), muted: false });
+      for (let d = 1; d <= dim; d++) {
+        out.push({ hd: new HDate(d, month, year), muted: false });
       }
-      let tail = new HDate(daysInMonth, viewMonth, viewYear);
+      let tail = new HDate(dim, month, year);
       while (out.length % 7 !== 0) {
         tail = tail.add(1, 'd');
         out.push({ hd: tail, muted: true });
       }
     } catch (e) {}
     return out;
-  }, [viewMonth, viewYear, daysInMonth]);
+  };
+
+  // מציגים 3 חודשים רצופים (חודש נוכחי + 2 הבאים) כדי לראות תאריכים קרובים בלי לדפדף
+  const monthsToShow = useMemo(() => {
+    const list = [{ month: viewMonth, year: viewYear, label: monthLabel }];
+    let cur = new HDate(1, viewMonth, viewYear);
+    for (let i = 0; i < 2; i++) {
+      cur = cur.add(HDate.daysInMonth(cur.getMonth(), cur.getFullYear()), 'd');
+      const label = getMonthsForYear(cur.getFullYear()).find(m => m.value === cur.getMonth())?.label || '';
+      list.push({ month: cur.getMonth(), year: cur.getFullYear(), label });
+    }
+    return list;
+  }, [viewMonth, viewYear, monthLabel]);
 
   return (
     <>
@@ -215,33 +228,38 @@ function AtelierCalendar({ selectedDate, onSelect }) {
           <button type="button" className="ka-icon-btn" title="חודש קודם" onClick={prevMonth}>
             <svg className="icon"><use href="#i-chevron-end" /></svg>
           </button>
-          <span>{monthLabel} {gematriya(viewYear)}</span>
+          <span>{monthsToShow[0].label} {gematriya(monthsToShow[0].year)} - {monthsToShow[monthsToShow.length - 1].label} {gematriya(monthsToShow[monthsToShow.length - 1].year)}</span>
           <button type="button" className="ka-icon-btn" title="חודש הבא" onClick={nextMonth}>
             <svg className="icon"><use href="#i-chevron-start" /></svg>
           </button>
         </div>
-        <div className="ka-cal-weekdays">
-          <span>א</span><span>ב</span><span>ג</span><span>ד</span><span>ה</span><span>ו</span><span>ש</span>
-        </div>
-        <div className="ka-cal-grid">
-          {cells.map(({ hd, muted }, idx) => {
-            const abs = hd.abs();
-            const isSelected = abs === selAbs;
-            const isToday = todayAbs !== null && abs === todayAbs;
-            return (
-              <button
-                key={idx}
-                type="button"
-                className={`ka-cal-day${muted ? ' muted' : ''}${isSelected ? ' selected' : ''}${isToday && !isSelected ? ' today' : ''}`}
-                onClick={muted ? undefined : () => applyHdate(hd)}
-                tabIndex={muted ? -1 : 0}
-              >
-                <span>{HEBREW_DAYS[hd.getDate()]}</span>
-                <span className="g">{hd.greg().getDate()}</span>
-              </button>
-            );
-          })}
-        </div>
+        {monthsToShow.map(({ month, year, label }, mi) => (
+          <div key={mi} className="ka-cal-month">
+            <div className="ka-cal-month-label">{label} {gematriya(year)}</div>
+            <div className="ka-cal-weekdays">
+              <span>א</span><span>ב</span><span>ג</span><span>ד</span><span>ה</span><span>ו</span><span>ש</span>
+            </div>
+            <div className="ka-cal-grid">
+              {buildMonthCells(month, year).map(({ hd, muted }, idx) => {
+                const abs = hd.abs();
+                const isSelected = abs === selAbs;
+                const isToday = todayAbs !== null && abs === todayAbs;
+                return (
+                  <button
+                    key={idx}
+                    type="button"
+                    className={`ka-cal-day${muted ? ' muted' : ''}${isSelected ? ' selected' : ''}${isToday && !isSelected ? ' today' : ''}`}
+                    onClick={muted ? undefined : () => applyHdate(hd)}
+                    tabIndex={muted ? -1 : 0}
+                  >
+                    <span>{HEBREW_DAYS[hd.getDate()]}</span>
+                    <span className="g">{hd.greg().getDate()}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ))}
         <div className="ka-cal-foot">
           <span className="ka-parsha">{footStr}</span>
           <button type="button" data-agy-id="kiosk_cal_clear_btn" onClick={() => applyHdate(new HDate())}>
