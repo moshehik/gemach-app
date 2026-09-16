@@ -389,6 +389,17 @@ export default function NewOrderPage() {
       .catch(err => console.error(err));
   }, []);
 
+  // 13 - זיהוי סניף ביצוע: העובדת מתלוננת שהיא צריכה לבחור סניף מחדש בכל הזמנה -
+  // ממלאים ברירת מחדל מהסניף האחרון שנבחר בדפדפן הזה (נשמר ב-onChange של ה-select
+  // למטה), כדי שלא תצטרך לבחור שוב כל פעם; עדיין ניתן לשינוי לכל הזמנה בנפרד.
+  useEffect(() => {
+    if (settings.track_branch_on_order !== 'true') return;
+    let remembered = '';
+    try { remembered = localStorage.getItem('gemach_last_order_branch') || ''; } catch {}
+    if (!remembered) return;
+    setOrder(prev => (prev.branch || prev.isPhoneOrder) ? prev : { ...prev, branch: remembered });
+  }, [settings.track_branch_on_order]);
+
   useEffect(() => {
     fetchSharedJson('/api/customers/locations', { ttl: TTL.REFERENCE })
       .then(data => setCustomerLocations({ cities: data?.cities || [], streets: data?.streets || [] }))
@@ -2017,7 +2028,11 @@ export default function NewOrderPage() {
                       <select
                         className="input"
                         value={order.branch || ''}
-                        onChange={e => setOrder(prev => ({ ...prev, branch: e.target.value, isPhoneOrder: e.target.value ? false : prev.isPhoneOrder }))}
+                        onChange={e => {
+                          const val = e.target.value;
+                          setOrder(prev => ({ ...prev, branch: val, isPhoneOrder: val ? false : prev.isPhoneOrder }));
+                          try { if (val) localStorage.setItem('gemach_last_order_branch', val); } catch {}
+                        }}
                       >
                         <option value="">בחר סניף...</option>
                         {String(settings.branch_list || '').split(',').map(s => s.trim()).filter(Boolean).map(b => (
