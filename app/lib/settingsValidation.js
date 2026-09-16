@@ -17,6 +17,7 @@ export const NUMBER_FIELD_LIMITS = {
   CANCELLATION_CREDIT_MINUTES: { min: 0, max: 10080 }, // one week, in minutes
   hok_charge_amount: { min: 0, max: 10000, allowDecimal: true },
   delivery_price: { min: 0, max: 1000, allowDecimal: true },
+  late_return_threshold_days: { min: 1, max: 90 },
 };
 
 // Returns null when the value is valid (or the key has no numeric limit configured),

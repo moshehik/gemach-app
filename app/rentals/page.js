@@ -12,7 +12,7 @@ import OrderModelSelector from '../../components/orders/OrderModelSelector';
 import useDebounce from '@/hooks/useDebounce';
 import { cacheNamespace } from '@/app/lib/pageCache';
 import { buildRentalsListParams, defaultRentalsAdvFilters } from '@/app/lib/prefetchRoutes';
-import { getLateReturnInfo } from '@/lib/lateReturn';
+import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 import RentedPastEventWidget from '@/app/components/RentedPastEventWidget';
 
 // שמור על 50 רשומות בטעינה - עקבי עם app/orders/page.js ו-app/refunds/page.js.
@@ -145,12 +145,15 @@ export default function RentalsPage() {
   const [sort, setSort] = useState('eventDateSmart');
   const [order, setOrder] = useState('desc');
   const [hideCustomSpacing, setHideCustomSpacing] = useState(false); // 1 - הסתרת ציפוף
+  const [lateReturnThresholdDays, setLateReturnThresholdDays] = useState(LATE_RETURN_THRESHOLD_DAYS);
   useEffect(() => {
     fetch('/api/settings').then(r => r.json()).then(arr => {
       const v = Array.isArray(arr) ? arr.find(s => s.key === 'rentals_sort_recent_first')?.value : null;
       if (v === 'true') { setSort('eventDate'); setOrder('desc'); }
       const hide = Array.isArray(arr) ? arr.find(s => s.key === 'hide_custom_spacing')?.value : null;
       if (hide === 'true') setHideCustomSpacing(true);
+      const threshold = Array.isArray(arr) ? arr.find(s => s.key === 'late_return_threshold_days')?.value : null;
+      if (threshold) setLateReturnThresholdDays(Number(threshold) || LATE_RETURN_THRESHOLD_DAYS);
     }).catch(()=>{});
   }, []);
 
@@ -314,7 +317,7 @@ export default function RentalsPage() {
         const lookupRes = await fetch(`/api/returns/scan?barcode=${encodeURIComponent(cleanBarcode)}`);
         if (lookupRes.ok) {
           const lookupData = await lookupRes.json();
-          const { isLate, daysLate } = getLateReturnInfo(lookupData.order);
+          const { isLate, daysLate } = getLateReturnInfo(lookupData.order, lateReturnThresholdDays);
           if (isLate) {
             const wantsFullCard = await window.customConfirm(
               `ההחזרה מאוחרת ב-${daysLate} ימים ממועד ההחזרה הצפוי. יש לטפל בהחזרה זו דרך כרטיס ההשכרה המלא (כדי לתעד ולסמן במידת הצורך כלא תקין). לפתוח את כרטיס ההזמנה?`,
