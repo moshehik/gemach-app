@@ -273,7 +273,10 @@ export default function BoardPage() {
   const printDayOrders = (dayOrders) => {
     if (!dayOrders || dayOrders.length === 0) return;
     const ids = dayOrders.map(o => o.orderId).join(',');
-    window.open(`/print/order?orderId=${ids}&type=order`, '_blank');
+    // f4b54afc (2026-09-14): אותו batch=1 שנוסף ב-PrintWizardModal.handlePrepPrint -
+    // בלעדיו, יום עם הזמנה בודדת (למשל יום עם רק הזמנת משלוח אחת) נופל בטעות
+    // לעיצוב המלא/הישן במקום עיצוב ה"הדפסה מרוכזת" הקבוע והחסין מפני גלישה לעמוד נוסף.
+    window.open(`/print/order?orderId=${ids}&type=order&batch=1`, '_blank');
   };
 
   const getOrderCategory = (order) => {
@@ -516,6 +519,9 @@ export default function BoardPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <strong style={{ fontSize: '13px', color: isToday ? 'var(--primary-solid)' : undefined }}>{hebrewDayStr}</strong>
+                      {dayOrders.length > 0 && (
+                        <span className="cell-muted" style={{ fontSize: '11px' }} title="מספר הזמנות ליום זה">{dayOrders.length}</span>
+                      )}
                       {dayOrders.length > 2 && (
                         <button
                           type="button"

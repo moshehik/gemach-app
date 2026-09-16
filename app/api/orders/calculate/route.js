@@ -6,7 +6,7 @@ import { getAllCachedSettings } from '@/lib/settingsCache';
 export async function POST(request) {
   try {
     const data = await request.json();
-    const { items, eventDate, isAbroad } = data;
+    const { items, eventDate, isAbroad, isDelivery, deliveryCity, deliveryDirection } = data;
 
     if (!items || !Array.isArray(items)) {
       return NextResponse.json({ totalAmount: 0, items: [] });
@@ -119,7 +119,27 @@ export async function POST(request) {
       });
     }
 
-    return NextResponse.json({ totalAmount, calculatedItems });
+    // 15 - חיוב משלוח: כשההזמנה עדיין באשף היצירה (אין orderId עדיין), ה"סכום לתשלום"
+    // המוצג בשלב התשלום היה מחשב רק פריטים - ולכן הלקוח היה משלם בפועל פחות ממה
+    // שבאמת ייגבה בסוף, וה-obligation האוטומטי (applyDeliveryCharge, שרץ אחרי יצירת
+    // ההזמנה) נשאר פתוח/לא משולם על אף שהוצג "שולם במלואו" באשף - ר' דיווח org2 e799b1e0.
+    // אותה נוסחת מחיר בדיוק כמו applyDeliveryCharge ב-lib/pricingEngine.js.
+    let deliveryAmount = 0;
+    if (isDelivery && deliveryCity) {
+      const priceByCity = getSetting('delivery_price_by_city', '');
+      let priceMap = {};
+      try { priceMap = JSON.parse(priceByCity || '{}'); } catch { /* ignore invalid JSON */ }
+      let cityPrice = priceMap[deliveryCity];
+      if (!cityPrice) cityPrice = getSetting('delivery_price', '0');
+      if (cityPrice && Number(cityPrice) > 0) {
+        const dir = deliveryDirection || 'הלוך-חזור';
+        const count = dir === 'הלוך-חזור' ? 2 : 1;
+        deliveryAmount = Number(cityPrice) * count;
+      }
+    }
+    totalAmount += deliveryAmount;
+
+    return NextResponse.json({ totalAmount, calculatedItems, deliveryAmount });
   } catch (error) {
     console.error('Error in calculate route:', error);
     return NextResponse.json({ error: 'Failed to calculate' }, { status: 500 });

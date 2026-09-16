@@ -83,6 +83,20 @@ export default function RentalsPage() {
     return (h === 'rented' || h === 'returned') ? h : 'rented';
   });
 
+  // ניווט מהסיידבר ל-/rentals#returned כשהעמוד כבר פתוח (/rentals#rented) הוא ניווט-לקוח
+  // בלי רענון מלא, אז ה-useState למעלה (שקורא את ה-hash פעם אחת, בעת ה-mount בלבד) לא
+  // מתעדכן - התוצאה: הכתובת/כותרת אומרות "החזרות" אבל התוכן נשאר "השכרות" (או להפך),
+  // מה שנראה כאילו שתי הלשוניות "מעורבבות" - ר' דיווח org2 c8381e7f. מאזינים לשינוי ה-hash
+  // כדי לעדכן את הלשונית גם כשהעמוד כבר טעון.
+  useEffect(() => {
+    const handleHashChange = () => {
+      const h = window.location.hash.replace('#', '');
+      if (h === 'rented' || h === 'returned') setViewMode(h);
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
   // הלשונית הראשית הנוכחית (לצורך הדגשת כפתור הלשונית) - 'rented_partial' שייך
   // ללשונית "השכרות" (הוא תת-סינון שלה), 'returned_partial' ל"החזרות".
   const activeTabGroup = (viewMode === 'returned' || viewMode === 'returned_partial') ? 'returns' : 'rentals';
@@ -353,7 +367,7 @@ export default function RentalsPage() {
     <>
       <div className="page-head">
         <div>
-          <h1>השכרות והחזרות</h1>
+          <h1>{activeTabGroup === 'returns' ? 'החזרות' : 'השכרות'}</h1>
           <div className="page-desc">סה&quot;כ רשומות: {loading ? '...' : totalCount}</div>
         </div>
         <div className="page-actions">

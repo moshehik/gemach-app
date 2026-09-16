@@ -24,6 +24,10 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
   const [isEditingOrderDate, setIsEditingOrderDate] = useState(false);
   const [systemDefaultSpacing, setSystemDefaultSpacing] = useState(3);
   const [enableRentalExtension, setEnableRentalExtension] = useState(false);
+  // ערי המשלוח לבחירה - מתוך מפתחות ה-JSON של delivery_price_by_city, כמו באשף
+  // ההזמנה החדשה (app/orders/new/page.js) - ר' דיווח org2 9090b43a.
+  const [deliveryCityOptions, setDeliveryCityOptions] = useState([]);
+  const [allowDeliveryAddressOverride, setAllowDeliveryAddressOverride] = useState(false);
 
   React.useEffect(() => {
     fetchSharedJson('/api/settings', { ttl: TTL.STATIC })
@@ -33,6 +37,13 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
         if (setting && !isNaN(parseInt(setting.value, 10))) setSystemDefaultSpacing(parseInt(setting.value, 10));
         const extSetting = arr.find(s => s.key === 'enable_rental_extension');
         setEnableRentalExtension(!!extSetting && extSetting.value === 'true');
+        const cityMapSetting = arr.find(s => s.key === 'delivery_price_by_city');
+        try {
+          const cities = Object.keys(JSON.parse(cityMapSetting?.value || '{}'));
+          setDeliveryCityOptions(cities);
+        } catch { /* JSON לא תקין - נשאר בלי הצעות */ }
+        const overrideSetting = arr.find(s => s.key === 'delivery_allow_address_override');
+        setAllowDeliveryAddressOverride(!!overrideSetting && overrideSetting.value === 'true');
       })
       .catch(() => {});
   }, []);
@@ -368,7 +379,7 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
               />
             </div>
 
-            <div className="field" style={{ marginBottom: 0 }}>
+            <div className="field" style={{ marginBottom: order.isDelivery ? undefined : 0 }}>
               <label>הערות פנימיות (לא מוצג ללקוח)</label>
               <textarea
                 className="textarea"
@@ -378,6 +389,57 @@ export default function ModernGeneralDetails({ order, onOrderChange, onSaveReque
                 placeholder="הערות לצוות בלבד - לא יופיעו בהדפסה או במייל ללקוח..."
               />
             </div>
+
+            {/* משלוח - ניתן להוסיף/לערוך גם על הזמנה קיימת, לא רק ביצירה - ר' דיווחי
+                org2 095ee564/e0c85176/af273d1b. החיוב בפועל (applyDeliveryCharge)
+                כבר רץ אוטומטית בשמירת ההזמנה, ר' lib/pricingEngine.js. */}
+            <div className="field" style={{ marginBottom: 0 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input type="checkbox" checked={!!order.isDelivery} onChange={e => handleChange({ isDelivery: e.target.checked })} />
+                הזמנה עם משלוח
+              </label>
+            </div>
+            {order.isDelivery && (
+              <div style={{ marginTop: '10px' }}>
+                <div className="form-grid">
+                  <div className="field">
+                    <label>כיוון המשלוח</label>
+                    <select className="select" value={order.deliveryDirection || 'הלוך-חזור'} onChange={e => handleChange({ deliveryDirection: e.target.value })}>
+                      <option value="הלוך-חזור">הלוך-חזור</option>
+                      <option value="הלוך">הלוך בלבד</option>
+                      <option value="חזור">חזור בלבד</option>
+                    </select>
+                  </div>
+                  <div className="field">
+                    <label>עיר למשלוח</label>
+                    <input
+                      type="text"
+                      className="input"
+                      list="delivery-city-list-edit"
+                      autoComplete="new-password"
+                      value={order.deliveryCity || ''}
+                      onChange={e => handleChange({ deliveryCity: e.target.value })}
+                      placeholder="עיר"
+                    />
+                    <datalist id="delivery-city-list-edit">
+                      {deliveryCityOptions.map(c => <option key={c} value={c} />)}
+                    </datalist>
+                  </div>
+                </div>
+                {allowDeliveryAddressOverride && (
+                  <div className="field">
+                    <label>כתובת משלוח שונה</label>
+                    <input type="text" className="input" value={order.deliveryAddress || ''} onChange={e => handleChange({ deliveryAddress: e.target.value })} placeholder="כתובת למשלוח (שונה ממגורים)" />
+                  </div>
+                )}
+                <div className="field" style={{ marginBottom: 0 }}>
+                  <label style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input type="checkbox" checked={!!order.deliveryOneDayBefore} onChange={e => handleChange({ deliveryOneDayBefore: e.target.checked })} />
+                    משלוח יוצא יום לפני האירוע (במקום יומיים)
+                  </label>
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>

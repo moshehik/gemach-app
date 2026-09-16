@@ -54,6 +54,12 @@ export default function PrintOrderPage() {
   const orderIdParam = searchParams.get('orderId') || '';
   const orderIdList = orderIdParam.split(',').map(s => s.trim()).filter(Boolean);
   const printType = searchParams.get('type') || 'order';
+  // f4b54afc (2026-09-14): "פירוט הזמנות להכנה" (PrintWizardModal.handlePrepPrint)
+  // אמור תמיד להשתמש בעיצוב המצומצם/ללא-גלישה, גם כשליום הנבחר יצאה הזמנה אחת
+  // בלבד - בלי הדגל הזה, יום עם הזמנה בודדת נפל בטעות לעיצוב המלא/הישן (המיועד
+  // להדפסת כרטיס בודד רגיל מתוך ההזמנה עצמה), רק כי orderIdList.length===1 באותו
+  // מקרה בדיוק כמו בהדפסת כרטיס בודד. batch=1 מגיע רק מ-handlePrepPrint.
+  const isBatch = orderIdList.length > 1 || searchParams.get('batch') === '1';
 
   const fetchData = async () => {
     try {
@@ -410,7 +416,7 @@ export default function PrintOrderPage() {
         <tbody>
           <tr className="print-flow-row">
             <td colSpan={colCount} style={{ border: 'none', padding: 0 }}>
-              {orderIdList.length > 1 ? (
+              {isBatch ? (
                 // הדפסה מרוכזת (בקשת רבקה לוי, 2026-09-10): בלי פירוט חיוב/יתרה מלא -
                 // רק שורת סכום קטנה, כדי שכל הזמנה תישאר בדף בודד.
                 <div className="summary-section" style={{ fontSize: '11px' }}>שולם: ₪{totalPayments}</div>
@@ -438,7 +444,7 @@ export default function PrintOrderPage() {
               {/* בהדפסה מרוכזת (כמה הזמנות יחד, "אשף הדפסה") רבקה לוי ביקשה שכל הזמנה
                   תישאר בדף בודד ובלי פירוט תשלומים - רק סכום קטן (כבר מוצג למעלה בטבלת
                   הסיכום). בהדפסת הזמנה בודדת (הכרטיס הרגיל) נשאר הפירוט המלא כמו קודם. */}
-              {activePayments.length > 0 && orderIdList.length === 1 && (
+              {activePayments.length > 0 && !isBatch && (
                 <div className="payments-section">
                   <h4 className="payments-title">תשלומים שהתקבלו</h4>
                   <table className="print-table" style={{ marginBottom: '30px' }}>
@@ -493,8 +499,8 @@ export default function PrintOrderPage() {
                   למעלה (בשורת פרטי הלקוח ובתיבת order-notes-box הראשונה) - החזרה
                   השלישית כאן מיותרת שם וגוזלת בדיוק את השורות שדוחפות הזמנה עם הערות
                   + משלוח לעמוד שני (337e5938/075858d6, 2026-09-14). בהדפסת הזמנה בודדת
-                  (orderIdList.length === 1) לא נגעתי - נשאר כמו קודם. */}
-              {ord.notes && orderIdList.length === 1 && (
+                  שאינה חלק מ"פירוט הזמנות להכנה" (!isBatch) לא נגעתי - נשאר כמו קודם. */}
+              {ord.notes && !isBatch && (
                 <div className="order-notes-box">
                   <strong>הערות להזמנה: </strong>{ord.notes}
                 </div>
@@ -915,7 +921,7 @@ export default function PrintOrderPage() {
         // Signals to app/api/pdf/route.js's Puppeteer render (page.goto() + waitForSelector)
         // that data has finished loading and the DOM reflects its final state.
         data-print-ready={loading ? undefined : 'true'}
-        className={`print-container${orderIdList.length > 1 ? ' batch-print' : ''}`}
+        className={`print-container${isBatch ? ' batch-print' : ''}`}
       >
         {loading ? (
           <div style={{ textAlign: 'center', padding: '50px', color: '#6c757d', fontSize: '18px' }}>טוען נתונים להדפסה...</div>

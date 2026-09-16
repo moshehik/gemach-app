@@ -71,7 +71,8 @@ const RECALC_SETTING_KEYS = [
   'ENABLE_SET_DISCOUNTS',
   'CANCELLATION_CREDIT_MINUTES',
   'premium_pricing_enabled',
-  'premium_categories'
+  'premium_categories',
+  'same_model_swap_no_fee'
 ];
 
 export async function GET(request, { params }) {

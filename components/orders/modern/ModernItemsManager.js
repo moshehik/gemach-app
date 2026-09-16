@@ -644,7 +644,14 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   // שם הדגם בלבד — בלי "(קוד: X)" שמוטמע בתיאור, כי הקוד מוצג בכיתוב הקטן מתחת
   const itemName = (item) => {
     const raw = item.dressItem?.dress?.name || item.description || item.dressItem?.dressName || 'פריט כללי';
-    return raw.replace(/\s*\(קוד:[^)]*\)/g, '').trim() || 'פריט כללי';
+    const cleaned = raw.replace(/\s*\(קוד:[^)]*\)/g, '').trim() || 'פריט כללי';
+    // כמה דגמים ישנים נשמרו עם השם הזמני "ללא שם" (לא שם תיאורי אמיתי) - עדיף להציג
+    // את מספר הדגם, כמו שכבר קורה בעמדת הלקוחות - ר' דיווח org2 df1cdacf.
+    if (cleaned.startsWith('ללא שם')) {
+      const code = itemCode(item);
+      if (code) return String(code);
+    }
+    return cleaned;
   };
 
   const itemCode = (item) => item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix || null;
