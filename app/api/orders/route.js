@@ -382,6 +382,7 @@ export async function GET(request) {
           notes: true,
           eventDate: true,
           eventDateHebrew: true,
+          orderDate: true,
           returnDate: true,
           isAbroad: true,
           fromDate: true,
@@ -445,6 +446,7 @@ export async function GET(request) {
         notes: true,
         eventDate: true,
         eventDateHebrew: true,
+        orderDate: true,
         returnDate: true,
         isAbroad: true,
         fromDate: true,
@@ -456,6 +458,8 @@ export async function GET(request) {
             lastName: true,
             phone1: true,
             phone2: true,
+            email: true,
+            city: true,
             zeout: true
           }
         },
@@ -555,6 +559,7 @@ export async function GET(request) {
         notes: order.notes,
         eventDate: order.eventDate,
         eventDateHebrew: order.eventDateHebrew,
+        orderDate: order.orderDate,
         returnDate: order.returnDate,
         isAbroad: order.isAbroad,
         fromDate: order.fromDate,
@@ -563,12 +568,19 @@ export async function GET(request) {
         // בלי השדה הזה בתשובה הצביעה לעולם לא מופיעה בצד הלקוח
         customSpacing: order.customSpacing,
         items: order.items.map(i => {
+          // דגמים רבים (בעיקר מיובאי-Access) נשמרו עם שם placeholder מילולי "ללא שם - X"
+          // (לא ריק/null) - isPlaceholderDressName מזהה גם את זה, לא רק שם חסר, כדי
+          // שנופלים למספר הדגם במקום להציג את המחרוזת הזו כאילו היא שם אמיתי (ר' דיווח
+          // 2497afbc: "עדיין יש הזמנות ששם הדגם הוא 'ללא שם'" - אותה בעיה שכבר תוקנה
+          // בעמדת הלקוחות ב-getModelDisplayName, אבל לא כאן).
+          const isPlaceholderDressName = (n) => !n || String(n).trim().startsWith('ללא שם');
           let dressName = i.dressItem?.dress?.name;
           const prefix = i.dressItem?.dress?.barcodePrefix || i.dressItem?.barcodePrefix || i.barcodePrefix;
-          if (!dressName && prefix !== null && prefix !== undefined) {
-            dressName = dressModelMap.get(Number(prefix)) || dressModelMap.get(String(prefix));
+          if (isPlaceholderDressName(dressName) && prefix !== null && prefix !== undefined) {
+            const mapped = dressModelMap.get(Number(prefix)) || dressModelMap.get(String(prefix));
+            dressName = isPlaceholderDressName(mapped) ? String(prefix) : mapped;
           }
-          
+
           let itemDesc = i.description;
           if (!itemDesc || itemDesc === 'פריט כללי') {
             if (dressName) {

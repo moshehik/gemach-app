@@ -469,7 +469,9 @@ export default function OrdersPage() {
       return (data.data || []).map(o => ({
         ...o,
         status: calculateOrderStatus(o, { draftsAsDeleted }),
-        paymentStatus: calculatePaymentStatus(o.totalAmount || 0, o.totalPaid || 0)
+        paymentStatus: calculatePaymentStatus(o.totalAmount || 0, o.totalPaid || 0),
+        orderDateFormatted: o.orderDate ? new Date(o.orderDate).toLocaleDateString('he-IL') : '',
+        orderTimeFormatted: o.orderDate ? new Date(o.orderDate).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' }) : ''
       }));
     } catch (e) {
       console.error(e);
@@ -515,6 +517,8 @@ export default function OrdersPage() {
               { key: 'customerPhone', label: 'טלפון' },
               { key: 'customerEmail', label: 'אימייל' },
               { key: 'customerCity', label: 'עיר' },
+              { key: 'orderDateFormatted', label: 'תאריך ביצוע ההזמנה' },
+              { key: 'orderTimeFormatted', label: 'שעת ביצוע ההזמנה' },
               { key: 'totalAmount', label: getLabel('order_totalAmount', 'סכום לחיוב') },
               { key: 'totalPaid', label: 'שולם' },
               { key: 'paymentStatus', label: 'סטטוס תשלום' },
