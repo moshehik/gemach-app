@@ -4,6 +4,7 @@ import './design-system.css';
 import { cookies, headers } from 'next/headers';
 import prisma from './lib/prisma';
 import { readVerifiedSession } from '@/lib/auth';
+import { getDepartmentEffectiveValue } from '@/lib/permissions';
 import { buildCustomPaletteVars, customPaletteCssText } from './lib/customPalette';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 
@@ -185,10 +186,21 @@ export default async function RootLayout({ children }) {
     employeeShowAi = true;
   }
 
+  // Department-level "feature:ai" permission (/admin/permissions) - a whole
+  // department can be granted AI without flipping showAi per employee. See
+  // lib/permissionsMetadata.js's feature:ai note and CLAUDE.md's "Permissions
+  // system" section. Only checked when we have a role to look up, to avoid a
+  // DB round-trip for anonymous visitors.
+  let departmentHasAi = false;
+  if (emp && !isHeadManagement) {
+    departmentHasAi = await getDepartmentEffectiveValue(emp.roleId, 'feature:ai').catch(() => false);
+  }
+
   // הנהלה ראשית (roleId 0) ומתכנת (roleId 2) מקבלים AI תמיד; מעבר לזה, ה-AI
-  // מוצג רק כשעובד ספציפי סומן ל-showAi וגם ההגדרה הזו הופעלה. סוכם ב-2026-08-24:
-  // AI לא אמור להיות זמין למנהל סניף רגיל או לעובדים כברירת מחדל.
-  if (!isHeadManagement && (!enableAiSpecific || !employeeShowAi)) {
+  // מוצג רק כשעובד ספציפי סומן ל-showAi (או שמחלקתו קיבלה הרשאת feature:ai) וגם
+  // ההגדרה הזו הופעלה. סוכם ב-2026-08-24: AI לא אמור להיות זמין למנהל סניף רגיל
+  // או לעובדים כברירת מחדל.
+  if (!isHeadManagement && (!enableAiSpecific || !(employeeShowAi || departmentHasAi))) {
     hideAIFeatures = true;
   }
 

@@ -149,6 +149,7 @@ model Employee {
   AIChatSession         AIChatSession[]
   errorReports          ErrorReport[]      @relation("EmployeeToErrorReport")
   errorReportReplies    ErrorReportReply[] @relation("EmployeeToErrorReportReply")
+  permissionOverrides   EmployeePermissionOverride[]
   updatedAt             DateTime           @updatedAt
 
   @@index([phone1])
@@ -576,7 +577,45 @@ model Department {
   roleId   Int    @unique // מס_מחלקה
   name     String // שם_מחלקה
 
-  employees Employee[]
+  employees   Employee[]
+  permissions DepartmentPermission[]
+}
+
+// Department-level default for one key from lib/permissionsMetadata.js's
+// PERMISSION_CATALOG. Absence of a row for a given department+key means "use the
+// catalog item's own default for that department's roleId" — see lib/permissions.js.
+// Keyed by roleId (not Department.id) to match Employee's own relation to Department
+// (Employee.roleId → Department.roleId, see the Employee model above) — every call
+// site already has an employee's roleId in hand without a join, from the session
+// token, an existing `select: { roleId: true }`, or Employee.roleId itself.
+model DepartmentPermission {
+  id         String     @id @default(uuid())
+  roleId     Int
+  department Department @relation(fields: [roleId], references: [roleId], onDelete: Cascade)
+  key        String // e.g. "feature:ai", "page:admin" — see lib/permissionsMetadata.js
+  value      String // "true"/"false", or a plain number as a string
+  updatedAt  DateTime   @updatedAt
+
+  @@unique([roleId, key])
+  @@index([key])
+}
+
+// Per-employee override of one permissions-catalog key, taking precedence over their
+// department's value. Never used for a catalog item that has `legacyEmployeeField` set
+// (showAi/canReportErrors) - those are edited via the existing Employee column instead,
+// see the field comments below and lib/permissions.js.
+model EmployeePermissionOverride {
+  id          String   @id @default(uuid())
+  employeeId  String
+  employee    Employee @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+  key         String
+  value       String
+  note        String? // optional free-text reason, shown next to the override in the admin UI
+  createdAt   DateTime @default(now()) // who granted it is already in AuditLog (this model isn't excluded from the auto-logging extension)
+  updatedAt   DateTime @updatedAt
+
+  @@unique([employeeId, key])
+  @@index([key])
 }
 
 model AIChatSession {

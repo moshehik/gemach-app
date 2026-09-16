@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { hashSecret, last4Of } from '../../../lib/passwordAuth';
 import { checkAuth, checkPageAccess } from '../../../lib/auth';
+import { getEffectiveValueForEmployees } from '../../../lib/permissions';
 
 // GET is intentionally left public (no checkAuth gate): the login screen itself
 // (app/components/LoginScreen.js) fetches this list to populate the employee
@@ -28,11 +29,22 @@ export async function GET(request) {
     // for the anonymous login-screen picker to see it.
     const isLoggedIn = all && !!(await checkAuth());
 
+    // canApproveWithoutPayment powers the "מאשר הזמנה ללא תשלום" employee
+    // picker in app/components/PopupProvider.js (which fetches this route without
+    // `all=true`) - checked against any logged-in caller, not just the `all=true`
+    // admin list, so that picker keeps working. See lib/permissions.js /
+    // lib/permissionsMetadata.js's feature:debt_approval.
+    const requesterIsAuthenticated = !!(await checkAuth());
+    const debtApprovalByEmployee = requesterIsAuthenticated
+      ? await getEffectiveValueForEmployees(employees, 'feature:debt_approval')
+      : new Map();
+
     // Never send hashes (password/pinHash) to the client - there's no legitimate reason
     // for the browser to hold them, hashed or not.
     const safeEmployees = employees.map(({ password, pinHash, ...emp }) => ({
       ...emp,
-      ...(isLoggedIn ? { needsPasswordReset: !!password && !password.startsWith('$2') } : {})
+      ...(isLoggedIn ? { needsPasswordReset: !!password && !password.startsWith('$2') } : {}),
+      ...(requesterIsAuthenticated ? { canApproveWithoutPayment: !!debtApprovalByEmployee.get(emp.id) } : {})
     }));
 
     return NextResponse.json(safeEmployees);

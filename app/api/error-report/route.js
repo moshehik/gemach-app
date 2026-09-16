@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
 import { renderErrorReportEmailHtml, renderGenericEmailHtml } from '../../../lib/emailTemplates';
+import { hasPermission } from '@/lib/permissions';
 
 // שולח מייל לכל המתכנתים הפעילים (roleId=2) דרך אותו Google Apps Script mailer
 // ששאר המערכת משתמשת בו - ר' POST למטה (דיווח חדש) ו-lib/emailTemplates.js.
@@ -60,9 +61,10 @@ export async function GET(request) {
     }
 
     const isProgrammer = employee.roleId === 2;
-    // isManager = מותר להגיש דיווח חדש: תפקיד מנהל/הנהלה/מתכנת, או אישור פרטני בכרטיס העובד
-    const isManager = [0, 1, 2].includes(employee.roleId) || !!employee.canReportErrors;
-    
+    // isManager = מותר להגיש דיווח חדש: תפקיד מנהל/הנהלה/מתכנת, הרשאת feature:error_reports
+    // למחלקה שלו (/admin/permissions), או אישור פרטני בכרטיס העובד (canReportErrors)
+    const isManager = await hasPermission(employee, 'feature:error_reports');
+
     // Fetch reports: programmers see all, regular users see their own
     const whereClause = isProgrammer ? {} : { employeeId: employee.id };
     
@@ -190,8 +192,9 @@ export async function POST(request) {
         requester = emp;
       }
     }
-    // הגבלת יצירת דיווח חדש למנהלים/הנהלה ראשית/מתכנת, או לעובד שקיבל אישור פרטני בכרטיס שלו (בקשה 4191ef31)
-    if (!requester || (![0, 1, 2].includes(requester.roleId) && !requester.canReportErrors)) {
+    // הגבלת יצירת דיווח חדש למנהלים/הנהלה ראשית/מתכנת, למחלקה עם הרשאת feature:error_reports
+    // (/admin/permissions), או לעובד שקיבל אישור פרטני בכרטיס שלו (בקשה 4191ef31)
+    if (!requester || !(await hasPermission(requester, 'feature:error_reports'))) {
       return NextResponse.json({ success: false, error: 'יצירת דיווח חדש מותרת למנהלים בלבד' }, { status: 403 });
     }
 

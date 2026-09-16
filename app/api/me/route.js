@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
+import { getEmployeeEffectiveValue } from '@/lib/permissions';
 
 export async function GET(request) {
   try {
@@ -41,6 +42,10 @@ export async function GET(request) {
     if (!employee || !employee.isActive) {
       return NextResponse.json({ success: false, error: 'Employee not found or inactive' }, { status: 401 });
     }
+
+    // exportMaxRows - כמות שורות מרבית לייצוא בלי אישור מנהל (components/ExportButtons.js),
+    // לפי המחלקה של העובד או חריגה פרטנית לו - ר' lib/permissionsMetadata.js feature:export_max_rows
+    employee.exportMaxRows = await getEmployeeEffectiveValue(employee, 'feature:export_max_rows');
 
     // Check for active shift today
     const now = new Date();
