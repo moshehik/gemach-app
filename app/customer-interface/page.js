@@ -740,15 +740,12 @@ export default function CustomerInventoryViewer() {
     let tableRows = '';
     displayDresses.forEach(model => {
       const sizeMap = new Map();
-      let totalItems = 0;
       let totalAvailable = 0;
       model.items?.forEach(item => {
         if (item.notInUse || item.isDeleted || item.isUnusable) return;
         const st = item.sizeText || 'כללי';
-        if (!sizeMap.has(st)) sizeMap.set(st, { available: 0, total: 0 });
+        if (!sizeMap.has(st)) sizeMap.set(st, { available: 0 });
         const info = sizeMap.get(st);
-        info.total += 1;
-        totalItems += 1;
         if (item.quantity > 0) {
           info.available += 1;
           totalAvailable += 1;
@@ -758,14 +755,14 @@ export default function CustomerInventoryViewer() {
       const sizesArray = Array.from(sizeMap.entries()).sort((a, b) => String(a[0]).localeCompare(String(b[0]), undefined, { numeric: true }));
       let sizesHtml = sizesArray.map(([sName, sData]) => {
         const isAvail = sData.available > 0;
-        return `<span style="display:inline-block; margin:2px; padding:4px 8px; border-radius:6px; font-size:13px; border:1px solid ${isAvail ? '#555' : '#ccc'}; color:${isAvail ? '#000' : '#999'}; ${isAvail ? 'font-weight:bold;' : ''}">${sName} (${sData.available}/${sData.total})</span>`;
+        return `<span style="display:inline-block; margin:2px; padding:4px 8px; border-radius:6px; font-size:13px; border:1px solid ${isAvail ? '#555' : '#ccc'}; color:${isAvail ? '#000' : '#999'}; ${isAvail ? 'font-weight:bold;' : ''}">${sName} (${sData.available})</span>`;
       }).join('');
 
       tableRows += `
         <tr>
           <td style="font-weight:bold;">${getModelDisplayName(model)}</td>
           <td>${model.barcodePrefix || model.id || ''}</td>
-          <td style="font-weight:bold;">${totalAvailable} מתוך ${totalItems}</td>
+          <td style="font-weight:bold;">${totalAvailable}</td>
           <td>${sizesHtml || 'אין מלאי'}</td>
         </tr>
       `;
@@ -808,7 +805,7 @@ export default function CustomerInventoryViewer() {
             <tr>
               <th style="width: 25%;">שם הדגם</th>
               <th style="width: 15%;">קידומת ברקוד</th>
-              <th style="width: 15%;">זמינים / סה"כ</th>
+              <th style="width: 15%;">כמות זמינה</th>
               <th style="width: 45%;">פירוט מידות וזמינות</th>
             </tr>
           </thead>

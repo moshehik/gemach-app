@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
@@ -106,6 +106,17 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     amount: '', reason: '', bankName: '', bankBranch: '', bankAccount: '', bankAccountName: '', paymentDetails: '', email: ''
   });
   const [creditCardData, setCreditCardData] = useState({ cardNumber: '', tokef: '', installments: 1, notes: '', amount: '' });
+  const creditAmountRef = useRef(null);
+  const creditCardNumberRef = useRef(null);
+  const creditTokefRef = useRef(null);
+  const creditInstallmentsRef = useRef(null);
+  const creditNotesRef = useRef(null);
+  /** Enter עובר לשדה הבא בטופס האשראי (לא שולח את הטופס באמצע מילוי) - ר' nextRef. */
+  const focusNextOnEnter = (e, nextRef) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    nextRef?.current?.focus();
+  };
   const [isProcessing, setIsProcessing] = useState(false);
   const [creditError, setCreditError] = useState('');
   const [settings, setSettings] = useState({});
@@ -995,8 +1006,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       {/* ===== מודל סליקת אשראי (נדרים פלוס) ===== */}
       {mounted && showCreditModal && createPortal(
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="modal" style={{ margin: 0 }}
-            onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}>
+          <div className="modal" style={{ margin: 0 }}>
             <div className="modal-head">
               <strong>תשלום בכרטיס אשראי (נדרים פלוס)</strong>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
@@ -1017,16 +1027,16 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
               <div className="field">
                 <label>סכום לחיוב (₪)</label>
-                <input type="number" className="input" value={creditCardData.amount}
+                <input ref={creditAmountRef} type="number" className="input" value={creditCardData.amount}
                   onChange={e => setCreditCardData({ ...creditCardData, amount: e.target.value })}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}
+                  onKeyDown={(e) => focusNextOnEnter(e, creditCardNumberRef)}
                   style={{ fontWeight: 700 }} />
               </div>
 
               <div className="field">
                 <label>מספר כרטיס אשראי</label>
-                <input type="text" className="input" value={creditCardData.cardNumber} onChange={handleCardNumberChange}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}
+                <input ref={creditCardNumberRef} type="text" className="input" value={creditCardData.cardNumber} onChange={handleCardNumberChange}
+                  onKeyDown={(e) => focusNextOnEnter(e, creditTokefRef)}
                   placeholder="0000 0000 0000 0000" maxLength={19}
                   style={{ direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
               </div>
@@ -1034,21 +1044,21 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               <div className="form-grid">
                 <div className="field">
                   <label>תוקף (MM/YY)</label>
-                  <input type="text" className="input" value={creditCardData.tokef} onChange={handleTokefChange}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}
+                  <input ref={creditTokefRef} type="text" className="input" value={creditCardData.tokef} onChange={handleTokefChange}
+                    onKeyDown={(e) => focusNextOnEnter(e, creditInstallmentsRef)}
                     placeholder="12/28" maxLength={5} style={{ direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
                 </div>
                 <div className="field">
                   <label>תשלומים</label>
-                  <input type="number" className="input" min={1} max={36} value={creditCardData.installments}
+                  <input ref={creditInstallmentsRef} type="number" className="input" min={1} max={36} value={creditCardData.installments}
                     onChange={e => setCreditCardData({ ...creditCardData, installments: e.target.value })}
-                    onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }} />
+                    onKeyDown={(e) => focusNextOnEnter(e, creditNotesRef)} />
                 </div>
               </div>
 
               <div className="field" style={{ marginBottom: creditError ? '14px' : 0 }}>
                 <label>הערות</label>
-                <input type="text" className="input" value={creditCardData.notes}
+                <input ref={creditNotesRef} type="text" className="input" value={creditCardData.notes}
                   onChange={e => setCreditCardData({ ...creditCardData, notes: e.target.value })}
                   onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}
                   placeholder="הערות לחיוב" />

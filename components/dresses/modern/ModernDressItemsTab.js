@@ -70,6 +70,7 @@ export default function ModernDressItemsTab({
   const [draft, setDraft] = useState(null);
   const [rowSaving, setRowSaving] = useState(false);
   const [rowError, setRowError] = useState('');
+  const [quickMovingId, setQuickMovingId] = useState(null);
 
   const [newItem, setNewItem] = useState({ sizeText: '', serialNumber: '', dressBarcode: '', location: '' });
   const [adding, setAdding] = useState(false);
@@ -176,6 +177,7 @@ export default function ModernDressItemsTab({
     setEditingId(item.id);
     setDraft({
       location: item.location || '',
+      cartonNumber: item.cartonNumber || '',
       inRepair: !!item.inRepair,
       notInUse: !!item.notInUse,
       notInUseReason: item.notInUseReason || ''
@@ -209,6 +211,7 @@ export default function ModernDressItemsTab({
     try {
       const payload = {
         location: draft.location || null,
+        cartonNumber: draft.cartonNumber || null,
         inRepair: draft.inRepair,
         notInUse: draft.notInUse,
         notInUseSince: draft.notInUse ? (item.notInUseSince || new Date().toISOString()) : null,
@@ -231,6 +234,31 @@ export default function ModernDressItemsTab({
       setRowError('שגיאה בתקשורת עם השרת');
     } finally {
       setRowSaving(false);
+    }
+  };
+
+  // העברה מהירה למחסן/לחנות - קיצור דרך לשינוי מיקום בלבד, בלי לפתוח את מצב
+  // העריכה המלאה של השורה (משתמש באותו endpoint ששמירת השורה משתמשת בו).
+  const quickSetLocation = async (item, location) => {
+    if (quickMovingId) return;
+    setQuickMovingId(item.id);
+    try {
+      const res = await fetch(`/api/dresses/items/${item.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'שגיאה בעדכון מיקום');
+        return;
+      }
+      onItemsChange(items.map(i => i.id === item.id ? { ...i, ...data } : i));
+    } catch (err) {
+      console.error(err);
+      alert('שגיאה בתקשורת עם השרת');
+    } finally {
+      setQuickMovingId(null);
     }
   };
 
@@ -486,6 +514,9 @@ export default function ModernDressItemsTab({
                     <th className={sort.key === 'location' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('location')}>
                       מיקום <SortIcon sort={sort} colKey="location" />
                     </th>
+                    <th>
+                      מס&apos; קרטון
+                    </th>
                     <th className={sort.key === 'inRepair' ? 'sortable sort-active' : 'sortable'} onClick={() => handleSort('inRepair')}>
                       בתיקון <SortIcon sort={sort} colKey="inRepair" />
                     </th>
@@ -501,6 +532,7 @@ export default function ModernDressItemsTab({
                       <td style={{ padding: '6px 10px' }}><input className="input" style={{ padding: '5px 8px', fontSize: '12px' }} type="text" placeholder="סנן מס'" value={colFilters.serialNumber} onChange={e => setColFilters({ ...colFilters, serialNumber: e.target.value })} /></td>
                       <td style={{ padding: '6px 10px' }}><input className="input" style={{ padding: '5px 8px', fontSize: '12px' }} type="text" placeholder="סנן ברקוד" value={colFilters.dressBarcode} onChange={e => setColFilters({ ...colFilters, dressBarcode: e.target.value })} /></td>
                       <td style={{ padding: '6px 10px' }}><input className="input" style={{ padding: '5px 8px', fontSize: '12px' }} type="text" placeholder="סנן מיקום" value={colFilters.location} onChange={e => setColFilters({ ...colFilters, location: e.target.value })} /></td>
+                      <td />
                       <td colSpan={3} className="cell-muted" style={{ fontSize: '11.5px' }}>סינון לפי סטטוס — דרך הצ&apos;יפים שמעל הטבלה</td>
                     </tr>
                   )}
@@ -544,7 +576,23 @@ export default function ModernDressItemsTab({
                             <span>{item.location || '—'}</span>
                           )}
                         </td>
-  
+
+                        {/* מספר קרטון */}
+                        <td>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              className="input"
+                              style={{ padding: '6px 9px', fontSize: '12.5px', width: '90px' }}
+                              value={draft.cartonNumber}
+                              onChange={e => setDraft({ ...draft, cartonNumber: e.target.value })}
+                              onKeyDown={e => { if (e.key === 'Enter') saveEdit(item); if (e.key === 'Escape') cancelEdit(); }}
+                            />
+                          ) : (
+                            <span>{item.cartonNumber || '—'}</span>
+                          )}
+                        </td>
+
                         {/* בתיקון */}
                         <td>
                           {isEditing ? (
@@ -648,6 +696,28 @@ export default function ModernDressItemsTab({
                                 >
                                   <svg className="icon"><use href="#i-info" /></svg>
                                 </button>
+                                {!item.isDeleted && item.location !== 'מחסן' && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    title="העבר למחסן"
+                                    disabled={quickMovingId === item.id}
+                                    onClick={() => quickSetLocation(item, 'מחסן')}
+                                  >
+                                    {quickMovingId === item.id ? <span className="spinner" /> : '→ מחסן'}
+                                  </button>
+                                )}
+                                {!item.isDeleted && item.location !== 'חנות' && (
+                                  <button
+                                    type="button"
+                                    className="btn btn-ghost btn-sm"
+                                    title="העבר לחנות"
+                                    disabled={quickMovingId === item.id}
+                                    onClick={() => quickSetLocation(item, 'חנות')}
+                                  >
+                                    {quickMovingId === item.id ? <span className="spinner" /> : '→ חנות'}
+                                  </button>
+                                )}
                                 {item.isDeleted ? (
                                   <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר פריט" onClick={() => restoreItem(item)}>
                                     <svg className="icon"><use href="#i-refresh" /></svg>

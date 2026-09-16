@@ -38,6 +38,7 @@ export async function PUT(request, { params }) {
       dressBarcode: body.dressBarcode !== undefined ? body.dressBarcode : undefined,
       location: body.location !== undefined ? body.location : undefined,
       locationNum: body.locationNum !== undefined ? (body.locationNum ? parseInt(body.locationNum) : null) : undefined,
+      cartonNumber: body.cartonNumber !== undefined ? (body.cartonNumber || null) : undefined,
       quantity: body.quantity !== undefined ? parseInt(body.quantity) : undefined,
       inRepair: body.inRepair !== undefined ? body.inRepair : undefined,
       notInUse: body.notInUse !== undefined ? body.notInUse : undefined,

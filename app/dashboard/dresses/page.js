@@ -442,7 +442,7 @@ export default function DressesManagement() {
                               <svg className="icon"><use href="#i-refresh" /></svg>
                             </button>
                           ) : isInactive ? (
-                            isHeadManagement && <button onClick={() => handleReturnToActivity(dress)} className="btn btn-secondary btn-sm" style={{ color: 'var(--warning)' }} title="החזר לפעילות">
+                            <button onClick={() => handleReturnToActivity(dress)} className="btn btn-secondary btn-sm" style={{ color: 'var(--warning)' }} title="החזר לפעילות">
                               החזר לפעילות
                             </button>
                           ) : (
