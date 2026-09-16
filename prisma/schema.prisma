@@ -264,6 +264,7 @@ model DressItem {
   dressBarcode    String? // בר_קוד_שמלה
   location        String? // מיקום
   locationNum     Int? // מיקום_מס
+  cartonNumber    String? // מספר קרטון
   quantity        Int?        @default(1) // כמות
   inRepair        Boolean     @default(false) // שמלה_בתיקון
   notInUse        Boolean     @default(false) // לא_בשימוש

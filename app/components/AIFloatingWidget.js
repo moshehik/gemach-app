@@ -2,9 +2,29 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import SettingQuickPanel from './SettingQuickPanel';
 
-export default function AIFloatingWidget({ hideAIFeatures = false }) {
+// מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
+// SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
+// רשימת המפתחות שיש להציג עבורם כפתור "פתח הגדרה".
+function extractOpenSettingKeys(content) {
+  if (typeof content !== 'string') return { displayText: content, keys: [] };
+  const keys = [];
+  const tagRegex = /\[OPEN_SETTING:([a-zA-Z0-9_]+)\]/g;
+  let match;
+  while ((match = tagRegex.exec(content)) !== null) {
+    keys.push(match[1]);
+  }
+  const displayText = content.replace(tagRegex, '').trim();
+  return { displayText, keys };
+}
+
+export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = null }) {
   const pathname = usePathname();
+  // ממותג לפי עובד/ת - בלי זה, מחשב משותף (עמדת גמ"ח) מציג לעובדת הבאה שמתחברת
+  // את היסטוריית הצ'אט של הקודמת, כי localStorage הוא ברמת הדפדפן ולא נוקה בהתנתקות.
+  const chatKey = `ai_employee_chat_${employeeId || 'guest'}`;
+  const sessionsKey = `ai_employee_chat_sessions_${employeeId || 'guest'}`;
   const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -14,6 +34,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
   const [activeSessionId, setActiveSessionId] = useState(null);
   const [showTableModal, setShowTableModal] = useState(false);
   const [modalTableData, setModalTableData] = useState(null);
+  const [openSettingKey, setOpenSettingKey] = useState(null);
 
   const [isListening, setIsListening] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
@@ -78,7 +99,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
   };
 
   useEffect(() => {
-    const savedSessions = localStorage.getItem('ai_employee_chat_sessions');
+    const savedSessions = localStorage.getItem(sessionsKey);
     let sessions = [];
     if (savedSessions) {
       try {
@@ -86,14 +107,14 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
       } catch (e) {}
     }
 
-    const saved = localStorage.getItem('ai_employee_chat');
+    const saved = localStorage.getItem(chatKey);
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
         if (parsed.length > 1) {
           const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...parsed] };
           sessions = [newSession, ...sessions].slice(0, 10);
-          localStorage.setItem('ai_employee_chat_sessions', JSON.stringify(sessions));
+          localStorage.setItem(sessionsKey, JSON.stringify(sessions));
         }
       } catch (e) {}
     }
@@ -104,7 +125,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
 
   useEffect(() => {
     if (messages.length > 0) {
-      localStorage.setItem('ai_employee_chat', JSON.stringify(messages));
+      localStorage.setItem(chatKey, JSON.stringify(messages));
     }
   }, [messages]);
 
@@ -120,7 +141,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
       const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
       const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
       setChatSessions(updatedSessions);
-      localStorage.setItem('ai_employee_chat_sessions', JSON.stringify(updatedSessions));
+      localStorage.setItem(sessionsKey, JSON.stringify(updatedSessions));
     }
     setMessages([{ role: 'assistant', content: 'שלום! אני עוזר ה-AI. כיצד אוכל לעזור לך למצוא נתונים במערכת?' }]);
     setActiveSessionId(null);
@@ -139,7 +160,14 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
     setLoading(true);
 
     try {
-      const historyContext = newMessages.map(m => ({ role: m.role, content: m.content }));
+      // Cap the history sent to the AI to the most recent exchanges - a chat window left
+      // open for hours/days (messages never auto-expire, see the mount effect above) was
+      // sending its entire, possibly stale, history as context on every new question,
+      // which could lead the model to answer with old context (e.g. a date from an old
+      // question) instead of the new one (reported: an answer about "yesterday's orders"
+      // from an old exchange resurfacing as the reply to an unrelated new question).
+      const AI_HISTORY_MAX_MESSAGES = 10;
+      const historyContext = newMessages.slice(-AI_HISTORY_MAX_MESSAGES).map(m => ({ role: m.role, content: m.content }));
 
       let currentContext = '';
       if (pathname.includes('/orders/')) {
@@ -266,7 +294,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
       const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
       const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
       setChatSessions(updatedSessions);
-      localStorage.setItem('ai_employee_chat_sessions', JSON.stringify(updatedSessions));
+      localStorage.setItem(sessionsKey, JSON.stringify(updatedSessions));
     }
     setMessages(session.messages);
     setShowHistory(false);
@@ -429,20 +457,38 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
             </div>
           ) : (
             <div className="chat-thread">
-              {messages.map((msg, idx) => (
-                <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
-                  <button
-                    type="button"
-                    className={`bubble-copy-btn${copiedIdx === idx ? ' copied' : ''}`}
-                    title="העתק"
-                    onClick={() => copyBubbleText(idx, msg.content)}
-                  >
-                    <svg className="icon"><use href={`#${copiedIdx === idx ? 'i-check' : 'i-copy'}`} /></svg>
-                  </button>
-                  <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(msg.content)}</div>
-                  {msg.tableData && renderTable(msg.tableData)}
-                </div>
-              ))}
+              {messages.map((msg, idx) => {
+                const { displayText, keys: openSettingKeys } = extractOpenSettingKeys(msg.content);
+                return (
+                  <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
+                    <button
+                      type="button"
+                      className={`bubble-copy-btn${copiedIdx === idx ? ' copied' : ''}`}
+                      title="העתק"
+                      onClick={() => copyBubbleText(idx, msg.content)}
+                    >
+                      <svg className="icon"><use href={`#${copiedIdx === idx ? 'i-check' : 'i-copy'}`} /></svg>
+                    </button>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(displayText)}</div>
+                    {msg.tableData && renderTable(msg.tableData)}
+                    {openSettingKeys.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                        {openSettingKeys.map(key => (
+                          <button
+                            key={key}
+                            type="button"
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setOpenSettingKey(key)}
+                          >
+                            <svg className="icon"><use href="#i-settings" /></svg>
+                            פתח הגדרה
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
               {loading && (
                 <div className="bubble assistant" style={{ padding: 0 }}>
                   <div className="typing-indicator"><span></span><span></span><span></span></div>
@@ -547,6 +593,10 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
             </div>
           </div>
         </div>
+      )}
+
+      {openSettingKey && (
+        <SettingQuickPanel settingKey={openSettingKey} onClose={() => setOpenSettingKey(null)} />
       )}
     </>
   );

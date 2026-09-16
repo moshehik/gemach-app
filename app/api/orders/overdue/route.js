@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
+import { getCachedSetting } from '@/lib/settingsCache';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,8 +13,10 @@ export const dynamic = 'force-dynamic';
 export async function GET() {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
+    const thresholdSetting = await getCachedSetting('late_return_threshold_days');
+    const thresholdDays = Number(thresholdSetting?.value) || LATE_RETURN_THRESHOLD_DAYS;
     const cutoff = new Date();
-    cutoff.setDate(cutoff.getDate() - (LATE_RETURN_THRESHOLD_DAYS - 1));
+    cutoff.setDate(cutoff.getDate() - (thresholdDays - 1));
 
     const candidates = await prisma.order.findMany({
       where: {
@@ -35,14 +38,14 @@ export async function GET() {
     });
 
     const orders = candidates
-      .map((o) => ({ order: o, late: getLateReturnInfo(o) }))
+      .map((o) => ({ order: o, late: getLateReturnInfo(o, thresholdDays) }))
       .filter((o) => o.late.isLate)
       .map((o) => ({
         orderId: o.order.orderId,
         customerName: `${o.order.customer?.firstName || ''} ${o.order.customer?.lastName || ''}`.trim() || 'לקוח ללא שם',
         daysLate: o.late.daysLate,
       }))
-      .sort((a, b) => b.daysLate - a.daysLate);
+      .sort((a, b) => a.orderId - b.orderId);
 
     return NextResponse.json({ orders });
   } catch (error) {

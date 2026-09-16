@@ -6,6 +6,23 @@ import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { HDate } from '@hebcal/core';
 import { fetchJson, getSettingsCached } from '@/app/lib/pageCache';
+import SettingQuickPanel from './components/SettingQuickPanel';
+
+// מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
+// SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
+// רשימת המפתחות שיש להציג עבורם כפתור "פתח הגדרה". זהה במכוון לפונקציה המקבילה
+// ב-AIFloatingWidget.js - שני מקומות נפרדים שמציגים תשובות מאותו /api/ai.
+function extractOpenSettingKeys(content) {
+  if (typeof content !== 'string') return { displayText: content, keys: [] };
+  const keys = [];
+  const tagRegex = /\[OPEN_SETTING:([a-zA-Z0-9_]+)\]/g;
+  let match;
+  while ((match = tagRegex.exec(content)) !== null) {
+    keys.push(match[1]);
+  }
+  const displayText = content.replace(tagRegex, '').trim();
+  return { displayText, keys };
+}
 
 // Hrefs among QUICK_LINKS below that mirror a gated item in navConfig.js's sidebar
 // (same rules RootLayout computes server-side: showAdminTab-equivalent for the
@@ -94,6 +111,7 @@ export default function HomeDashboard() {
   // חבויה בתוך רכיב AISearchBar הישן; ההתנהגות זהה, רק המבנה/הסגנון עברו לעיצוב החדש.
   const [aiInputMode, setAiInputMode] = useState(false);
   const [aiInputText, setAiInputText] = useState('');
+  const [openSettingKey, setOpenSettingKey] = useState(null);
 
   // ניווט באותה כרטיסייה (SPA, ללא רענון מלא) בלחיצה רגילה - שומר על ctrl/cmd/shift/
   // middle-click כדי שמשתמש שרוצה בכוונה לפתוח בכרטיסייה חדשה עדיין יוכל (כמו Next Link).
@@ -433,7 +451,9 @@ export default function HomeDashboard() {
           </div>
 
           <div className="chat-thread" style={{ maxHeight: '600px', overflowY: 'auto' }}>
-            {aiMessages.map((msg, idx) => (
+            {aiMessages.map((msg, idx) => {
+              const { displayText, keys: openSettingKeys } = extractOpenSettingKeys(msg.content);
+              return (
               <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
                 <button
                   type="button"
@@ -443,7 +463,22 @@ export default function HomeDashboard() {
                 >
                   <svg className="icon"><use href={`#${copiedAiIdx === idx ? 'i-check' : 'i-copy'}`} /></svg>
                 </button>
-                <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(msg.content)}</div>
+                <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(displayText)}</div>
+                {openSettingKeys.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                    {openSettingKeys.map(key => (
+                      <button
+                        key={key}
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setOpenSettingKey(key)}
+                      >
+                        <svg className="icon"><use href="#i-settings" /></svg>
+                        פתח הגדרה
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {msg.data && msg.data.length > 0 && (
                   <div style={{ marginTop: '10px' }}>
                     <button type="button" className="btn btn-secondary btn-sm" style={{ marginBottom: '10px' }} onClick={() => exportTableToExcel(msg.data, 'AI_Export')}>
@@ -489,7 +524,8 @@ export default function HomeDashboard() {
                   </div>
                 )}
               </div>
-            ))}
+              );
+            })}
             {aiLoading && (
               <div className="bubble assistant" style={{ padding: 0 }}>
                 <div className="typing-indicator"><span></span><span></span><span></span></div>
@@ -671,6 +707,10 @@ export default function HomeDashboard() {
           </div>
         </div>,
         document.body
+      )}
+
+      {openSettingKey && (
+        <SettingQuickPanel settingKey={openSettingKey} onClose={() => setOpenSettingKey(null)} />
       )}
 
     </div>
