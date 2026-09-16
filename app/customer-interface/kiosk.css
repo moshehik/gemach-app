@@ -182,6 +182,8 @@ body.katelier-bg .content{padding:0}
 .ka-cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; font-weight:800; color:var(--terracotta-deep)}
 .ka-cal-head .ka-icon-btn{width:32px; height:32px}
 .ka-cal-head .ka-icon-btn .icon{width:15px; height:15px}
+.ka-cal-month-block + .ka-cal-month-block{margin-top:16px; padding-top:14px; border-top:1px solid var(--line-soft)}
+.ka-cal-month-label{text-align:center; font-weight:800; font-size:13px; color:var(--terracotta-deep); margin-bottom:8px}
 .ka-cal-weekdays{display:grid; grid-template-columns:repeat(7,1fr); text-align:center; font-size:11.5px; font-weight:700; color:var(--ink-faint); margin-bottom:6px}
 .ka-cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px}
 .ka-cal-day{
