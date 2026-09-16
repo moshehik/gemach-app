@@ -16,6 +16,12 @@ import { cacheNamespace, getSettingsCached } from '@/app/lib/pageCache';
 // השדות של הדגם שנשמרים בכפתור השמירה (הפריטים נשמרים בנפרד, מיידית)
 const MODEL_FIELDS = ['name', 'barcodePrefix', 'priceCategory', 'notes', 'inInspection', 'imageUrl', 'entryDateToRepo', 'exitDateFromRepo', 'inactiveReason', 'isSplit', 'isPremium'];
 
+// חייב להיות זהה בדיוק ל-ACTIVITY_TOGGLE_FIELDS בשרת (app/api/dresses/[id]/route.js) -
+// זו הרשימה שמאפשרת לכל עובדת (לא רק הנהלה ראשית) לסמן דגם כלא-פעיל/פעיל. אם
+// saveDress שולח גם שדה אחר (למשל name/barcodePrefix) יחד עם אלה, השרת דורש שוב
+// הרשאת הנהלה ראשית - ר' דיווח e3689f4c/c11ef570.
+const ACTIVITY_TOGGLE_FIELDS = ['exitDateFromRepo', 'entryDateToRepo', 'inactiveReason'];
+
 const emptyDress = {
   name: '',
   barcodePrefix: '',
@@ -166,7 +172,7 @@ export default function DressCardPage({ params }) {
   };
 
   // ===== שמירה =====
-  const saveDress = async (overrides = null) => {
+  const saveDress = async (overrides = null, fieldsToSend = MODEL_FIELDS) => {
     if (saving) return null;
     const current = overrides ? { ...dress, ...overrides } : dress;
 
@@ -185,8 +191,8 @@ export default function DressCardPage({ params }) {
     }
 
     const payload = {};
-    MODEL_FIELDS.forEach(f => { payload[f] = current[f] ?? null; });
-    if (!useModelNames && !payload.name) {
+    fieldsToSend.forEach(f => { payload[f] = current[f] ?? null; });
+    if (fieldsToSend === MODEL_FIELDS && !useModelNames && !payload.name) {
       payload.name = `דגם ${payload.barcodePrefix || 'ללא קוד'}`;
     }
 
@@ -290,7 +296,7 @@ export default function DressCardPage({ params }) {
   const handleReturnToActivity = async () => {
     if (!(await window.customConfirm('האם להחזיר את הדגם לפעילות?'))) return;
     const activeItems = items.filter(i => !i.isDeleted && !i.notInUse);
-    const saved = await saveDress({ exitDateFromRepo: null, inactiveReason: null });
+    const saved = await saveDress({ exitDateFromRepo: null, inactiveReason: null }, ACTIVITY_TOGGLE_FIELDS);
     if (saved && activeItems.length === 0) {
       flashMessage('הדגם חזר לפעילות — שים לב שאין לו פריטים פעילים במלאי.', 6000);
     }
@@ -298,7 +304,7 @@ export default function DressCardPage({ params }) {
 
   const handleSaveInactive = async ({ exitDateFromRepo, inactiveReason }) => {
     setShowReasonModal(false);
-    await saveDress({ exitDateFromRepo, inactiveReason });
+    await saveDress({ exitDateFromRepo, inactiveReason }, ACTIVITY_TOGGLE_FIELDS);
   };
 
   const handleToggleInspection = async () => {
@@ -350,9 +356,9 @@ export default function DressCardPage({ params }) {
       return;
     }
     if (type === 'export') {
-      const rows = [['מידה', "מס' סידורי", 'ברקוד', 'מיקום', 'בתיקון', 'לא בשימוש', 'סיבת אי-שימוש', 'מחוק']];
+      const rows = [['מידה', "מס' סידורי", 'ברקוד', 'מיקום', "מס' קרטון", 'בתיקון', 'לא בשימוש', 'סיבת אי-שימוש', 'מחוק']];
       items.forEach(i => rows.push([
-        i.sizeText || '', i.serialNumber ?? '', i.dressBarcode || '', i.location || '',
+        i.sizeText || '', i.serialNumber ?? '', i.dressBarcode || '', i.location || '', i.cartonNumber || '',
         i.inRepair ? 'כן' : 'לא', i.notInUse ? 'כן' : 'לא', i.notInUseReason || '', i.isDeleted ? 'כן' : 'לא'
       ]));
       // BOM כדי שאקסל יזהה עברית ב-UTF-8

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from 'react';
 import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { verifyPin } from './mocAuth';
@@ -106,6 +106,17 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     amount: '', reason: '', bankName: '', bankBranch: '', bankAccount: '', bankAccountName: '', paymentDetails: '', email: ''
   });
   const [creditCardData, setCreditCardData] = useState({ cardNumber: '', tokef: '', installments: 1, notes: '', amount: '' });
+  const creditAmountRef = useRef(null);
+  const creditCardNumberRef = useRef(null);
+  const creditTokefRef = useRef(null);
+  const creditInstallmentsRef = useRef(null);
+  const creditNotesRef = useRef(null);
+  /** Enter עובר לשדה הבא בטופס האשראי (לא שולח את הטופס באמצע מילוי) - ר' nextRef. */
+  const focusNextOnEnter = (e, nextRef) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    nextRef?.current?.focus();
+  };
   const [isProcessing, setIsProcessing] = useState(false);
   const [creditError, setCreditError] = useState('');
   const [settings, setSettings] = useState({});
@@ -623,7 +634,14 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   const parsedDeliveryPrice = parseFloat(settings.delivery_price);
   const deliveryPrice = isNaN(parsedDeliveryPrice) ? 50 : parsedDeliveryPrice;
 
-  const hasActiveObligationWithDescription = (description) => obligations.some(o => !o.isDeleted && o.description === description);
+  // ה-obligation האוטומטי של משלוח (applyDeliveryCharge, lib/pricingEngine.js) נשמר
+  // בתור "משלוח <כיוון> - <עיר>", לא בדיוק "משלוח הלוך"/"משלוח חזור" - השוואת שוויון
+  // מדויקת לא זיהתה חיוב אוטומטי קיים, ואפשרה להוסיף גם חיוב ידני זהה על גביו (חיוב
+  // כפול), ר' דיווח org2 64260eba. בודקים לפי מילת הכיוון בתוך התיאור במקום שוויון מלא.
+  const hasActiveObligationWithDescription = (description) => {
+    const direction = description.replace('משלוח ', '');
+    return obligations.some(o => !o.isDeleted && o.description?.includes('משלוח') && o.description?.includes(direction));
+  };
 
   // אופציות "אופן תשלום" לתשלום נוסף ידני - מבוסס על אותה הגדרת ALLOWED_PAYMENT_METHODS
   // כמו אשף ההזמנה החדשה (ר' computePaymentMethodOptions ב-app/orders/new/page.js), בלי
@@ -1009,14 +1027,16 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
               <div className="field">
                 <label>סכום לחיוב (₪)</label>
-                <input type="number" className="input" value={creditCardData.amount}
+                <input ref={creditAmountRef} type="number" className="input" value={creditCardData.amount}
                   onChange={e => setCreditCardData({ ...creditCardData, amount: e.target.value })}
+                  onKeyDown={(e) => focusNextOnEnter(e, creditCardNumberRef)}
                   style={{ fontWeight: 700 }} />
               </div>
 
               <div className="field">
                 <label>מספר כרטיס אשראי</label>
-                <input type="text" className="input" value={creditCardData.cardNumber} onChange={handleCardNumberChange}
+                <input ref={creditCardNumberRef} type="text" className="input" value={creditCardData.cardNumber} onChange={handleCardNumberChange}
+                  onKeyDown={(e) => focusNextOnEnter(e, creditTokefRef)}
                   placeholder="0000 0000 0000 0000" maxLength={19}
                   style={{ direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
               </div>
@@ -1024,20 +1044,23 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
               <div className="form-grid">
                 <div className="field">
                   <label>תוקף (MM/YY)</label>
-                  <input type="text" className="input" value={creditCardData.tokef} onChange={handleTokefChange}
+                  <input ref={creditTokefRef} type="text" className="input" value={creditCardData.tokef} onChange={handleTokefChange}
+                    onKeyDown={(e) => focusNextOnEnter(e, creditInstallmentsRef)}
                     placeholder="12/28" maxLength={5} style={{ direction: 'ltr', textAlign: 'left', letterSpacing: '2px' }} />
                 </div>
                 <div className="field">
                   <label>תשלומים</label>
-                  <input type="number" className="input" min={1} max={36} value={creditCardData.installments}
-                    onChange={e => setCreditCardData({ ...creditCardData, installments: e.target.value })} />
+                  <input ref={creditInstallmentsRef} type="number" className="input" min={1} max={36} value={creditCardData.installments}
+                    onChange={e => setCreditCardData({ ...creditCardData, installments: e.target.value })}
+                    onKeyDown={(e) => focusNextOnEnter(e, creditNotesRef)} />
                 </div>
               </div>
 
               <div className="field" style={{ marginBottom: creditError ? '14px' : 0 }}>
                 <label>הערות</label>
-                <input type="text" className="input" value={creditCardData.notes}
+                <input ref={creditNotesRef} type="text" className="input" value={creditCardData.notes}
                   onChange={e => setCreditCardData({ ...creditCardData, notes: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); handleProcessCreditCard(); } }}
                   placeholder="הערות לחיוב" />
               </div>
 
@@ -1219,7 +1242,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       {/* ===== מודל בקשת זיכוי ===== */}
       {mounted && showRefundModal && createPortal(
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget) setShowRefundModal(false); }}>
-          <div className="modal" style={{ margin: 0, maxWidth: '620px', width: '95%' }}>
+          <div className="modal" style={{ margin: 0, maxWidth: '620px', width: '95%' }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }}>
             <div className="modal-head">
               <strong>יצירת בקשת זיכוי</strong>
               <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowRefundModal(false)}>
@@ -1229,22 +1253,22 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
             <div className="modal-body">
               <div className="field">
                 <label>סכום לזיכוי (₪) *</label>
-                <input type="number" className="input" value={refundData.amount} onChange={e => setRefundData({ ...refundData, amount: e.target.value })} style={{ fontWeight: 700 }} />
+                <input type="number" className="input" value={refundData.amount} onChange={e => setRefundData({ ...refundData, amount: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} style={{ fontWeight: 700 }} />
               </div>
 
               <div className="field">
                 <label>סיבה לזיכוי / הערות</label>
-                <input type="text" className="input" value={refundData.reason} onChange={e => setRefundData({ ...refundData, reason: e.target.value })} />
+                <input type="text" className="input" value={refundData.reason} onChange={e => setRefundData({ ...refundData, reason: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} />
               </div>
 
               <span className="hint" style={{ display: 'block', fontSize: '13px', color: 'var(--text)', fontWeight: 700, marginBottom: '8px' }}>פרטי בנק לזיכוי</span>
               <div className="form-grid">
-                <div className="field"><label>בנק *</label><input type="text" className="input" value={refundData.bankName} onChange={e => setRefundData({ ...refundData, bankName: e.target.value })} /></div>
-                <div className="field"><label>סניף *</label><input type="text" className="input" value={refundData.bankBranch} onChange={e => setRefundData({ ...refundData, bankBranch: e.target.value })} /></div>
+                <div className="field"><label>בנק *</label><input type="text" className="input" value={refundData.bankName} onChange={e => setRefundData({ ...refundData, bankName: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
+                <div className="field"><label>סניף *</label><input type="text" className="input" value={refundData.bankBranch} onChange={e => setRefundData({ ...refundData, bankBranch: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
               </div>
               <div className="form-grid">
-                <div className="field"><label>מספר חשבון</label><input type="text" className="input" value={refundData.bankAccount} onChange={e => setRefundData({ ...refundData, bankAccount: e.target.value })} /></div>
-                <div className="field"><label>שם בעל החשבון</label><input type="text" className="input" value={refundData.bankAccountName} onChange={e => setRefundData({ ...refundData, bankAccountName: e.target.value })} /></div>
+                <div className="field"><label>מספר חשבון</label><input type="text" className="input" value={refundData.bankAccount} onChange={e => setRefundData({ ...refundData, bankAccount: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
+                <div className="field"><label>שם בעל החשבון</label><input type="text" className="input" value={refundData.bankAccountName} onChange={e => setRefundData({ ...refundData, bankAccountName: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} /></div>
               </div>
 
               <div className="field">
@@ -1254,7 +1278,7 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
 
               <div className="field" style={{ marginBottom: 0 }}>
                 <label>מייל לקוח (לשליחת אישור זיכוי)</label>
-                <input type="email" className="input" value={refundData.email} onChange={e => setRefundData({ ...refundData, email: e.target.value })} style={{ direction: 'ltr' }} />
+                <input type="email" className="input" value={refundData.email} onChange={e => setRefundData({ ...refundData, email: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitRefund(); } }} style={{ direction: 'ltr' }} />
               </div>
             </div>
             <div className="modal-foot">
@@ -1271,7 +1295,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       {/* ===== מודל תשלום נוסף (מזומן/אחר) - מאחורי allow_additional_payment_on_order ===== */}
       {mounted && showAdditionalPaymentModal && createPortal(
         <div className="modal-backdrop" style={{ position: 'fixed', inset: 0, zIndex: 1100, display: 'flex', alignItems: 'center', justifyContent: 'center' }} onClick={(e) => { if (e.target === e.currentTarget && !isProcessing) setShowAdditionalPaymentModal(false); }}>
-          <div className="modal" style={{ margin: 0 }}>
+          <div className="modal" style={{ margin: 0 }}
+            onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitAdditionalPayment(); } }}>
             <div className="modal-head">
               <strong>תשלום נוסף</strong>
               <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => setShowAdditionalPaymentModal(false)} disabled={isProcessing}>
@@ -1295,12 +1320,14 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
                 <label>סכום (₪)</label>
                 <input type="number" className="input" placeholder="0" value={additionalPaymentData.amount}
                   onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, amount: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitAdditionalPayment(); } }}
                   style={{ fontWeight: 700 }} />
               </div>
               <div className="field" style={{ marginBottom: additionalPaymentError ? '14px' : 0 }}>
                 <label>הערות</label>
                 <input type="text" className="input" value={additionalPaymentData.notes}
                   onChange={e => setAdditionalPaymentData({ ...additionalPaymentData, notes: e.target.value })}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && !isProcessing) { e.preventDefault(); submitAdditionalPayment(); } }}
                   placeholder="הערות לתשלום" />
               </div>
               {additionalPaymentError && (

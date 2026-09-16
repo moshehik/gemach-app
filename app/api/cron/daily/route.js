@@ -3,7 +3,7 @@ import prisma from '@/app/lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { sendSystemEmail } from '@/lib/mailer';
 import { getHebrewDateString } from '@/lib/hebrewDate';
-import { getLateReturnInfo } from '@/lib/lateReturn';
+import { getLateReturnInfo, LATE_RETURN_THRESHOLD_DAYS } from '@/lib/lateReturn';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,7 +106,8 @@ export async function GET(request) {
         include: { customer: true, items: { where: { isTaken: true, isReturned: false, isDeleted: false } } },
         take: 200
       });
-      const overdueOrders = candidates.filter(o => getLateReturnInfo(o).isLate);
+      const lateReturnThresholdDays = Number(get('late_return_threshold_days')) || LATE_RETURN_THRESHOLD_DAYS;
+      const overdueOrders = candidates.filter(o => getLateReturnInfo(o, lateReturnThresholdDays).isLate);
       for (const o of overdueOrders) {
         const email = o.customer?.email;
         if (!email || !email.includes('@')) continue;

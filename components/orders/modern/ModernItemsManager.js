@@ -644,7 +644,14 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   // שם הדגם בלבד — בלי "(קוד: X)" שמוטמע בתיאור, כי הקוד מוצג בכיתוב הקטן מתחת
   const itemName = (item) => {
     const raw = item.dressItem?.dress?.name || item.description || item.dressItem?.dressName || 'פריט כללי';
-    return raw.replace(/\s*\(קוד:[^)]*\)/g, '').trim() || 'פריט כללי';
+    const cleaned = raw.replace(/\s*\(קוד:[^)]*\)/g, '').trim() || 'פריט כללי';
+    // כמה דגמים ישנים נשמרו עם השם הזמני "ללא שם" (לא שם תיאורי אמיתי) - עדיף להציג
+    // את מספר הדגם, כמו שכבר קורה בעמדת הלקוחות - ר' דיווח org2 df1cdacf.
+    if (cleaned.startsWith('ללא שם')) {
+      const code = itemCode(item);
+      if (code) return String(code);
+    }
+    return cleaned;
   };
 
   const itemCode = (item) => item.dressItem?.dress?.barcodePrefix || item.dressItem?.barcodePrefix || item.barcodePrefix || null;
@@ -879,7 +886,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                                 <svg className="icon"><use href="#i-check" /></svg>החזרה
                               </button>
                             ) : item.isReturned && !isDeletedRow ? (
-                              renderConditionToggle(item)
+                              <>
+                                {renderConditionToggle(item)}
+                                <button type="button" className="btn btn-danger-ghost btn-sm" title="בטל החזרה"
+                                  onClick={(e) => { e.stopPropagation(); setConfirmModal({ isOpen: true, item, actionType: 'cancelReturn' }); }}>
+                                  <svg className="icon"><use href="#i-refresh" /></svg>ביטול החזרה
+                                </button>
+                              </>
                             ) : (
                               <span className="hint" style={{ fontStyle: 'italic', color: 'var(--text-3)' }}>נעול</span>
                             )
@@ -997,7 +1010,13 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
               {confirmModal.actionType === 'rent' ? 'אישור השכרה' : confirmModal.actionType === 'return' ? 'אישור החזרה' : confirmModal.actionType === 'cancelRent' ? 'ביטול השכרה' : 'ביטול החזרה'}
             </h3>
             <p>
-              האם אתה בטוח שברצונך {confirmModal.actionType === 'rent' ? 'לסמן פריט זה כמושכר' : confirmModal.actionType === 'return' ? 'לסמן פריט זה כמוחזר' : confirmModal.actionType === 'cancelRent' ? 'לבטל את השכרת הפריט' : 'לבטל את החזרת הפריט'}?
+              {(() => {
+                const label = confirmModal.item ? `"${itemName(confirmModal.item)}"${itemCode(confirmModal.item) ? ` (קוד: ${itemCode(confirmModal.item)})` : ''}` : 'פריט זה';
+                if (confirmModal.actionType === 'rent') return `האם אתה בטוח שברצונך לסמן את ${label} כמושכר?`;
+                if (confirmModal.actionType === 'return') return `האם אתה בטוח שברצונך לסמן את ${label} כמוחזר?`;
+                if (confirmModal.actionType === 'cancelRent') return `האם אתה בטוח שברצונך לבטל את השכרת ${label}?`;
+                return `האם אתה בטוח שברצונך לבטל את החזרת ${label}?`;
+              })()}
             </p>
             {!isFullyPaid && (confirmModal.actionType === 'rent' || confirmModal.actionType === 'return') && (
               <div className="callout callout-danger" style={{ marginBottom: '20px', textAlign: 'start' }}>

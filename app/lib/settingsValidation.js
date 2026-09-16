@@ -18,6 +18,7 @@ export const NUMBER_FIELD_LIMITS = {
   hok_charge_amount: { min: 0, max: 10000, allowDecimal: true },
   delivery_price: { min: 0, max: 1000, allowDecimal: true },
   backup_interval_hours: { min: 1, max: 336, allowDecimal: true }, // 336h = 2 weeks
+  late_return_threshold_days: { min: 1, max: 90 },
 };
 
 // Returns null when the value is valid (or the key has no numeric limit configured),

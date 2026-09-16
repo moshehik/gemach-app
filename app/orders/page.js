@@ -211,6 +211,10 @@ export default function OrdersPage() {
   const [showNotTakenOrders, setShowNotTakenOrders] = useState(true); // 37 - הצג לא-נלקחו
   const [requireIdForEdit, setRequireIdForEdit] = useState(false); // 14 - ת״ז לעריכה/ביטול
   const [allowEditPartially, setAllowEditPartially] = useState(true); // 27 - עריכת מושכר חלקי
+  // דיווח לקוח (הגמח הראשי): "כריכה" מיותרת שהודפסה - הפיצ'ר "פירוט הזמנות להכנה" באשף
+  // ההדפסה פותח עבור נווה יעקב ויצא ללא הגדרה שמפרידה בין הגמחים. ברירת מחדל false כדי
+  // לשמר את ההתנהגות הקודמת (בלי האפשרות הזו) אצל כל גמח שלא הפעיל את המפתח בפירוש.
+  const [enableBatchPrintPrep, setEnableBatchPrintPrep] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -231,6 +235,8 @@ export default function OrdersPage() {
         if (reqIdSetting) setRequireIdForEdit(reqIdSetting.value === 'true');
         const allowPartialSetting = data.find(s => s.key === 'allow_edit_partially_rented');
         if (allowPartialSetting) setAllowEditPartially(allowPartialSetting.value === 'true');
+        const batchPrintSetting = data.find(s => s.key === 'enable_batch_print_prep');
+        if (batchPrintSetting) setEnableBatchPrintPrep(batchPrintSetting.value === 'true');
       })
       .catch(() => {});
     return () => { cancelled = true; };
@@ -920,7 +926,8 @@ export default function OrdersPage() {
       {showPrintWizard && (
         <PrintWizardModal
           onClose={() => setShowPrintWizard(false)}
-          defaultReportType="order_prep_by_date"
+          defaultReportType={enableBatchPrintPrep ? 'order_prep_by_date' : undefined}
+          enableBatchPrintPrep={enableBatchPrintPrep}
           getCurrentOrderIds={getCurrentFilteredOrderIds}
         />
       )}

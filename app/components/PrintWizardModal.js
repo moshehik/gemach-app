@@ -41,11 +41,17 @@ const PREP_DATE_MODE_OPTIONS = [
   { value: 'custom', label: 'טווח תאריכים' },
 ];
 
-export default function PrintWizardModal({ onClose, defaultStartDate, defaultEndDate, defaultReportType, getCurrentOrderIds }) {
-  const [dateMode, setDateMode] = useState(defaultReportType === 'order_prep_by_date' ? 'prep_today' : 'current');
+export default function PrintWizardModal({ onClose, defaultStartDate, defaultEndDate, defaultReportType, getCurrentOrderIds, enableBatchPrintPrep = false }) {
+  // דיווח לקוח (הגמח הראשי): "פירוט הזמנות להכנה" (כולל דפי ההפרדה בין קבוצות שכונו
+  // "כריכה") פותח עבור נווה יעקב ויצא לשני הגמחים בלי הגדרה - כעת מוצג רק כש-
+  // enable_batch_print_prep מופעל. גם אם defaultReportType עדיין הועבר כ-'order_prep_by_date'
+  // (למשל קריאה ישנה לרכיב), לא סומכים עליו כשההגדרה כבויה.
+  const reportTypeOptions = enableBatchPrintPrep ? REPORT_TYPE_OPTIONS : REPORT_TYPE_OPTIONS.filter(o => o.value !== 'order_prep_by_date');
+  const safeDefaultReportType = (defaultReportType === 'order_prep_by_date' && !enableBatchPrintPrep) ? 'alterations_pending' : defaultReportType;
+  const [dateMode, setDateMode] = useState(safeDefaultReportType === 'order_prep_by_date' ? 'prep_today' : 'current');
   const [startDate, setStartDate] = useState(defaultStartDate || '');
   const [endDate, setEndDate] = useState(defaultEndDate || '');
-  const [reportType, setReportType] = useState(defaultReportType || 'alterations_pending'); // 'alterations_pending', 'alterations_all', 'orders_no_alterations', 'orders_all', 'order_prep_by_date'
+  const [reportType, setReportType] = useState(safeDefaultReportType || 'alterations_pending'); // 'alterations_pending', 'alterations_all', 'orders_no_alterations', 'orders_all', 'order_prep_by_date'
   const [mounted, setMounted] = useState(false);
   const [isPreparing, setIsPreparing] = useState(false);
 
@@ -102,7 +108,10 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
         alert('לא נמצאו הזמנות התואמות לתאריך/טווח שנבחר.');
         return;
       }
-      window.open(`/print/order?orderId=${data.orderIds.join(',')}&type=order`, '_blank');
+      // f4b54afc (2026-09-14): batch=1 מכריח את עיצוב ה"הדפסה מרוכזת" (המצומצם, ללא
+      // גלישה לעמוד נוסף) גם כשליום הנבחר יצאה הזמנה בודדת - ר' ההערה ליד isBatch
+      // ב-app/print/order/page.js.
+      window.open(`/print/order?orderId=${data.orderIds.join(',')}&type=order&batch=1`, '_blank');
       onClose();
     } catch (err) {
       console.error(err);
@@ -209,7 +218,7 @@ export default function PrintWizardModal({ onClose, defaultStartDate, defaultEnd
           <div className="field">
             <label>סוג הדוח</label>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {REPORT_TYPE_OPTIONS.map(opt => (
+              {reportTypeOptions.map(opt => (
                 <div className="checkbox-row" key={opt.value}>
                   <input
                     data-element-name={`שדה_PrintWizardModal_${opt.value}`}

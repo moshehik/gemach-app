@@ -219,10 +219,18 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
               </div>
             </div>
 
-            <div className="field" style={{ marginBottom: 0 }}>
+            <div className="field">
               <label>הערות</label>
               <textarea className="textarea" name="notes" autoComplete="off" value={customer.notes || ''} onChange={onChange} rows={4} />
             </div>
+
+            {/* כפתור שמירה בסוף הטופס, בנוסף לכפתור "שמירת שינויים" הראשי למעלה
+                ולכפתור ה-V בכותרת הכרטיס - בקשת עובדת (דיווח 823fef1d): לא צריך
+                לגלול חזרה למעלה אחרי מילוי כל הפרטים כדי לשמור. */}
+            <button type="submit" className="btn btn-primary" style={{ marginTop: '18px', width: '100%' }} disabled={saving}>
+              {saving ? <span className="spinner" style={{ width: '14px', height: '14px', borderWidth: '2px' }} /> : <svg className="icon"><use href="#i-check" /></svg>}
+              שמירת שינויים
+            </button>
           </form>
         )}
       </div>
