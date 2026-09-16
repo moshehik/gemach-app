@@ -273,7 +273,10 @@ export default function BoardPage() {
   const printDayOrders = (dayOrders) => {
     if (!dayOrders || dayOrders.length === 0) return;
     const ids = dayOrders.map(o => o.orderId).join(',');
-    window.open(`/print/order?orderId=${ids}&type=order`, '_blank');
+    // f4b54afc (2026-09-14): אותו batch=1 שנוסף ב-PrintWizardModal.handlePrepPrint -
+    // בלעדיו, יום עם הזמנה בודדת (למשל יום עם רק הזמנת משלוח אחת) נופל בטעות
+    // לעיצוב המלא/הישן במקום עיצוב ה"הדפסה מרוכזת" הקבוע והחסין מפני גלישה לעמוד נוסף.
+    window.open(`/print/order?orderId=${ids}&type=order&batch=1`, '_blank');
   };
 
   const getOrderCategory = (order) => {
