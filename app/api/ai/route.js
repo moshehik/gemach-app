@@ -11,6 +11,7 @@ import { HDate } from '@hebcal/core';
 import { getHebrewYearContext, processHebrewDateMacro, getHebrewDateString } from '../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { assertReadOnlySelect } from '../../../lib/sqlGuard';
+import { buildSettingsGuide } from '../../../lib/settingsMetadata';
 
 let cachedSchema = null;
 function getSchemaContext() {
@@ -89,16 +90,29 @@ export async function POST(req) {
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token');
     let employeeContext = '';
+    let isManager = false;
     if (token && token.value) {
       const employee = await prisma.employee.findUnique({ where: { id: token.value } });
       if (employee) {
         if (employee.roleId !== 1 && employee.roleId !== 2) {
           employeeContext = `\nCRITICAL SECURITY RULE: The current user is a standard employee (Role: ${employee.roleId}). Do NOT provide any sensitive financial data (such as total revenues, employee wages, or overall business statistics). Only answer questions related to daily operations like customers, orders, or dress inventory.`;
         } else {
+          isManager = true;
           employeeContext = `\nUser Role: Manager/Admin. Full access to all data is permitted.`;
         }
       }
     }
+
+    // ACTION: SETTINGS_GUIDE() - see the branch below that handles it - lets the AI
+    // point a manager to a specific SystemSetting's location, explain what it does,
+    // and (via the [OPEN_SETTING:key] tag) let the frontend open a quick-edit panel.
+    // Only offered to managers/programmers (isManager) - a regular employee's prompt
+    // never even mentions this action exists, matching the same access tier already
+    // used above ("Full access to all data is permitted") and by /api/settings/guide.
+    const settingsGuideInstructions = isManager ? `
+20. CRITICAL RULE FOR SYSTEM SETTINGS: The system has a "SystemSetting" configuration table, managed by the admin at "הגדרות מערכת" (Settings). If the user's question is about a system setting - where to find it, what it does, its current value, or how to open/turn on/off/change it (e.g. "איפה מכבים את X", "איך משנים את Y", "מה עושה ההגדרה Z", "תפתח לי הגדרה של...", "איפה ההגדרה ש...") - you MUST NOT guess the answer, and you MUST NOT generate SQL for this (SystemSetting values are not meant to be queried via SQL here). Instead, output EXACTLY this on its own line and nothing else:
+ACTION: SETTINGS_GUIDE()
+The system will then give you the full, up-to-date catalog of every configurable system setting (exact key, Hebrew name, category/location in the admin menu, description, field type, and current value), and you must answer based on that catalog alone.` : '';
 
     const schemaText = getSchemaContext();
     const todayGregorian = new Date().toISOString().split('T')[0];
@@ -110,7 +124,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
     const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
     const warehouseContext = includeWarehouse ? '' : `\nCRITICAL INVENTORY RULE: The system settings define that dresses in the warehouse MUST NOT be shown to customers! Whenever you query the "DressItem" table in SQL, you MUST add: AND "location" NOT ILIKE '%מחסן%' AND "location" NOT ILIKE '%warehouse%' AND "location" NOT ILIKE '%רזרבה%' AND "location" NOT ILIKE '%reserve%'.`;
     
-    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${employeeContext}${dateContext}${warehouseContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${employeeContext}${settingsGuideInstructions}${dateContext}${warehouseContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
     
     let aiResponse = await generateContent(initialPrompt);
     
@@ -121,11 +135,49 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
     let tableData = null;
     let sqlQueryToReturn = null;
 
+    // Check for the settings-guide action (see settingsGuideInstructions above) -
+    // only ever requested when isManager is true, but re-checked here defensively
+    // so a non-manager's prompt can never trigger it even if the literal text
+    // somehow ended up in their message history.
+    const settingsGuideMatch = isManager ? /ACTION:\s*SETTINGS_GUIDE\(\)/i.exec(aiResponse) : null;
+
     // Check for Custom Action with JSON payload
     const actionRegex = /ACTION:\s*CHECK_AVAILABILITY\(([\s\S]+?)\)/i;
     const actionMatch = actionRegex.exec(aiResponse);
 
-    if (actionMatch) {
+    if (settingsGuideMatch) {
+      try {
+        const settingRows = await getAllCachedSettings();
+        const catalog = buildSettingsGuide(settingRows);
+
+        const followupPrompt = `The user asked: "${prompt}".
+You determined this question is about a system setting and requested the full settings catalog.
+Here is the complete, up-to-date catalog of every configurable system setting in the admin panel ("הגדרות מערכת") - key, Hebrew name, category/tab, location, description, field type, and current value:
+${JSON.stringify(catalog)}
+
+Answer the user in Hebrew:
+1. Say clearly where the relevant setting is found (the category/tab, e.g. "הגדרות מערכת ← הזמנות").
+2. Briefly explain in plain Hebrew what the setting does and its current value.
+3. Do NOT invent a setting key that does not appear in the catalog above. If nothing in the catalog genuinely answers the question, say so honestly instead of guessing.
+4. Keep the answer short and conversational. DO NOT use markdown formatting like asterisks (**) for bolding or bullet points.
+CRITICAL: If you identified one or more specific setting keys that answer the question (at most 3), end your response with each one on its own new line in this EXACT format: [OPEN_SETTING:the_exact_key]. Use the exact "key" field from the catalog above, never the Hebrew name, and never a key that is not in the catalog. Omit this tag entirely if no specific setting genuinely matches the question.`;
+
+        try {
+          fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== SETTINGS GUIDE FOLLOWUP PROMPT ====\n' + followupPrompt + '\n');
+        } catch (e) {}
+
+        const finalResponse = await generateContent(followupPrompt);
+
+        try {
+          fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== SETTINGS GUIDE FINAL RESPONSE ====\n' + finalResponse + '\n\n');
+        } catch (e) {}
+
+        return NextResponse.json({ response: finalResponse, data: null, sqlQuery: null });
+      } catch (err) {
+        console.error('Settings guide action error:', err);
+        aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת קטלוג ההגדרות. אנא נסה לנסח את השאלה מחדש.';
+      }
+    } else if (actionMatch) {
       try {
         let jsonStr = actionMatch[1].trim();
         // Remove markdown backticks if AI added them
@@ -284,7 +336,7 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
           dbErrorStr = dbError.message;
           
           // SELF HEALING RETRY
-          const retryPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n\nUser Question: ${prompt}\n\nYou generated these SQL queries:\n${queries.join('\n')}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY corrected PostgreSQL SQL queries starting with "SQL: " to fix this issue.`;
+          const retryPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${dateContext}\n\nUser Question: ${prompt}\n\nYou generated these SQL queries:\n${queries.join('\n')}\nBut it failed with this PostgreSQL error: ${dbErrorStr}\n\nPlease output ONLY corrected PostgreSQL SQL queries starting with "SQL: " to fix this issue.`;
           let retryResponse = await generateContent(retryPrompt);
           
           const retryQueries = [];

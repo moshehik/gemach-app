@@ -130,7 +130,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
         }
 
         // SELF HEALING RETRY
-        const retryPrompt = `${systemPrompt}\n\nUser request: ${prompt}\n\nYou generated this condition: ${whereClause}\nBut it failed with this PostgreSQL error: ${dbError.message}\n\nPlease output ONLY a corrected PostgreSQL condition starting with "SQL: " to fix this issue.`;
+        const retryPrompt = `${systemPrompt}\n${dateContext}\n\nUser request: ${prompt}\n\nYou generated this condition: ${whereClause}\nBut it failed with this PostgreSQL error: ${dbError.message}\n\nPlease output ONLY a corrected PostgreSQL condition starting with "SQL: " to fix this issue.`;
 
         let retryResponse = await generateContent(retryPrompt);
         console.log('AI Smart Search Retry Response:', retryResponse);
