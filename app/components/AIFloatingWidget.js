@@ -156,7 +156,14 @@ export default function AIFloatingWidget({ hideAIFeatures = false }) {
     setLoading(true);
 
     try {
-      const historyContext = newMessages.map(m => ({ role: m.role, content: m.content }));
+      // Cap the history sent to the AI to the most recent exchanges - a chat window left
+      // open for hours/days (messages never auto-expire, see the mount effect above) was
+      // sending its entire, possibly stale, history as context on every new question,
+      // which could lead the model to answer with old context (e.g. a date from an old
+      // question) instead of the new one (reported: an answer about "yesterday's orders"
+      // from an old exchange resurfacing as the reply to an unrelated new question).
+      const AI_HISTORY_MAX_MESSAGES = 10;
+      const historyContext = newMessages.slice(-AI_HISTORY_MAX_MESSAGES).map(m => ({ role: m.role, content: m.content }));
 
       let currentContext = '';
       if (pathname.includes('/orders/')) {
