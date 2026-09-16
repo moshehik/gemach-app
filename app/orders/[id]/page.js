@@ -685,6 +685,14 @@ export default function OrderDetailsPage({ params }) {
           customSpacing: currentOrder.customSpacing !== undefined ? currentOrder.customSpacing : null,
           notes: currentOrder.notes,
           internalNotes: currentOrder.internalNotes,
+          // כרטיס משלוח (ModernGeneralDetails, מותנה ב-enable_deliveries) - השדות עצמם כבר
+          // נתמכים ב-PUT מזמן ראשון (route.js:585-589 + applyDeliveryCharge), רק לא היו
+          // מגיעים לכאן כי הפיילוד הזה מפורש שדה-שדה ולא spread של כל האובייקט.
+          isDelivery: currentOrder.isDelivery,
+          deliveryDirection: currentOrder.deliveryDirection,
+          deliveryAddress: currentOrder.deliveryAddress,
+          deliveryCity: currentOrder.deliveryCity,
+          deliveryOneDayBefore: currentOrder.deliveryOneDayBefore,
           status: currentOrder.status,
           hasSignedRegulations: currentOrder.hasSignedRegulations,
           updatedAt: currentOrder.updatedAt,
