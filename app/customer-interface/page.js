@@ -435,10 +435,12 @@ export default function CustomerInventoryViewer() {
       .then(data => {
         // עמדת הלקוחות היא ציבורית - דגמים "לא פעילים" (exitDateFromRepo ממולא,
         // כלומר הוצאו מהמאגר) לא אמורים להופיע כלל, בלי קשר לזמינות פריטים בפועל
-        // (מלאי אפס מדגם פעיל עדיין כן מוצג - דיווח c11ef570).
+        // (מלאי אפס מדגם פעיל עדיין כן מוצג - דיווח c11ef570). דגמים ללא אף פריט
+        // בכלל (שרידי יבוא ריקים, לא "מלאי אפס") גם לא אמורים להופיע - דיווח
+        // a0ecee8c/90472699.
         const list = Array.isArray(data) ? data : (data && Array.isArray(data.data) ? data.data : null);
         if (list) {
-          setDresses(list.filter(d => !d.exitDateFromRepo));
+          setDresses(list.filter(d => !d.exitDateFromRepo && d.items && d.items.length > 0));
         }
         setLoading(false);
       })
