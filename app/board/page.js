@@ -516,6 +516,9 @@ export default function BoardPage() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                       <strong style={{ fontSize: '13px', color: isToday ? 'var(--primary-solid)' : undefined }}>{hebrewDayStr}</strong>
+                      {dayOrders.length > 0 && (
+                        <span className="cell-muted" style={{ fontSize: '11px' }} title="מספר הזמנות ליום זה">{dayOrders.length}</span>
+                      )}
                       {dayOrders.length > 2 && (
                         <button
                           type="button"

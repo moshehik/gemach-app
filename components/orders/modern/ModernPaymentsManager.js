@@ -623,7 +623,14 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   const parsedDeliveryPrice = parseFloat(settings.delivery_price);
   const deliveryPrice = isNaN(parsedDeliveryPrice) ? 50 : parsedDeliveryPrice;
 
-  const hasActiveObligationWithDescription = (description) => obligations.some(o => !o.isDeleted && o.description === description);
+  // ה-obligation האוטומטי של משלוח (applyDeliveryCharge, lib/pricingEngine.js) נשמר
+  // בתור "משלוח <כיוון> - <עיר>", לא בדיוק "משלוח הלוך"/"משלוח חזור" - השוואת שוויון
+  // מדויקת לא זיהתה חיוב אוטומטי קיים, ואפשרה להוסיף גם חיוב ידני זהה על גביו (חיוב
+  // כפול), ר' דיווח org2 64260eba. בודקים לפי מילת הכיוון בתוך התיאור במקום שוויון מלא.
+  const hasActiveObligationWithDescription = (description) => {
+    const direction = description.replace('משלוח ', '');
+    return obligations.some(o => !o.isDeleted && o.description?.includes('משלוח') && o.description?.includes(direction));
+  };
 
   // אופציות "אופן תשלום" לתשלום נוסף ידני - מבוסס על אותה הגדרת ALLOWED_PAYMENT_METHODS
   // כמו אשף ההזמנה החדשה (ר' computePaymentMethodOptions ב-app/orders/new/page.js), בלי
