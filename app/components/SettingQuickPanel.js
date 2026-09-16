@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { invalidateSettings } from '@/app/lib/pageCache';
 import { validateNumericSetting } from '@/app/lib/settingsValidation';
+import { toDisplayValue } from '@/lib/settingsMetadata';
 
 // פאנל עריכה מהיר להגדרה בודדת - נפתח מכפתור [OPEN_SETTING:key] שעוזר ה-AI
 // (app/api/ai/route.js, ACTION: SETTINGS_GUIDE) מוסיף לתשובתו כשהוא מזהה שמדובר
@@ -77,7 +78,11 @@ export default function SettingQuickPanel({ settingKey, onClose }) {
     setSaving(true);
     setSaveMessage(null);
 
-    const payload = [{ key: entry.key, value, name: entry.name }];
+    // "value" כאן הוא ערך התצוגה (הפוך למפתחות hide_* - ר' toDisplayValue) - צריך
+    // להפוך אותו בחזרה לערך הגולמי הנשמר ב-DB לפני השליחה. הפונקציה סימטרית, אז
+    // אותה קריאה בדיוק ממירה גם raw→display וגם display→raw.
+    const rawValueToSave = toDisplayValue(entry.key, value);
+    const payload = [{ key: entry.key, value: rawValueToSave, name: entry.name }];
 
     try {
       let res = await fetch('/api/settings', {
