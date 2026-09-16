@@ -219,7 +219,7 @@ export default function ModernCustomerDetailsTab({ customer, onChange, onEmailBl
               </div>
             </div>
 
-            <div className="field" style={{ marginBottom: 0 }}>
+            <div className="field">
               <label>הערות</label>
               <textarea className="textarea" name="notes" autoComplete="off" value={customer.notes || ''} onChange={onChange} rows={4} />
             </div>
