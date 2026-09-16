@@ -350,9 +350,9 @@ export default function DressCardPage({ params }) {
       return;
     }
     if (type === 'export') {
-      const rows = [['מידה', "מס' סידורי", 'ברקוד', 'מיקום', 'בתיקון', 'לא בשימוש', 'סיבת אי-שימוש', 'מחוק']];
+      const rows = [['מידה', "מס' סידורי", 'ברקוד', 'מיקום', "מס' קרטון", 'בתיקון', 'לא בשימוש', 'סיבת אי-שימוש', 'מחוק']];
       items.forEach(i => rows.push([
-        i.sizeText || '', i.serialNumber ?? '', i.dressBarcode || '', i.location || '',
+        i.sizeText || '', i.serialNumber ?? '', i.dressBarcode || '', i.location || '', i.cartonNumber || '',
         i.inRepair ? 'כן' : 'לא', i.notInUse ? 'כן' : 'לא', i.notInUseReason || '', i.isDeleted ? 'כן' : 'לא'
       ]));
       // BOM כדי שאקסל יזהה עברית ב-UTF-8

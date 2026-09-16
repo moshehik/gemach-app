@@ -32,6 +32,7 @@ export async function POST(request, { params }) {
         dressBarcode: body.dressBarcode || null,
         location: body.location || null,
         locationNum: body.locationNum ? parseInt(body.locationNum) : null,
+        cartonNumber: body.cartonNumber || null,
         quantity: body.quantity ? parseInt(body.quantity) : 1,
         inRepair: body.inRepair || false,
         notInUse: body.notInUse || false,

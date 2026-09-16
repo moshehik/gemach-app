@@ -1662,10 +1662,6 @@ export default function NewOrderPage() {
                         <p className="hint" style={{ color: 'var(--warning)', margin: '0 0 12px', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                           <svg className="icon" style={{ width: '14px', height: '14px' }}><use href="#i-alert-circle" /></svg>
                           חסר ללקוח: {parts.join(', ')}.
-                          {' '}
-                          <a href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer" style={{ fontWeight: 700 }}>
-                            עריכת פרטי לקוח
-                          </a>
                         </p>
                       );
                     })()}
@@ -1674,6 +1670,11 @@ export default function NewOrderPage() {
                       <button type="button" className="btn btn-primary" style={{ flex: 1, minWidth: '160px' }} onClick={() => handleUseExistingCustomer(foundCustomer)}>
                         <svg className="icon"><use href="#i-check" /></svg> כן, זה הלקוח
                       </button>
+                      {(getMissingMandatoryCustomerFields(foundCustomer).length > 0 || (!foundCustomer.phone2 && !foundCustomer.email)) && (
+                        <a href={`/customers/${foundCustomer.id}`} target="_blank" rel="noreferrer" className="btn btn-secondary" style={{ flex: 1, minWidth: '160px' }}>
+                          <svg className="icon"><use href="#i-edit" /></svg> עריכת פרטי לקוח
+                        </a>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -1760,27 +1761,27 @@ export default function NewOrderPage() {
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-firstName">שם פרטי <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-firstName" className="input" type="text" autoComplete="new-password" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} />
+                    <input id="cust-firstName" className="input" type="text" autoComplete="new-password" value={newCustomer.firstName} onChange={e => setNewCustomer(prev => ({ ...prev, firstName: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleSaveNewCustomerAndProceed()} />
                   </div>
                   <div className="field">
                     <label htmlFor="cust-lastName">שם משפחה <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-lastName" className="input" type="text" autoComplete="new-password" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} />
+                    <input id="cust-lastName" className="input" type="text" autoComplete="new-password" value={newCustomer.lastName} onChange={e => setNewCustomer(prev => ({ ...prev, lastName: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleSaveNewCustomerAndProceed()} />
                   </div>
                 </div>
                 <div className="field">
                   <label htmlFor="cust-phone1">טלפון <span style={{ color: 'var(--danger)' }}>*</span></label>
-                  <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} placeholder="נייד או קווי" />
+                  <input id="cust-phone1" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone1} onChange={e => setNewCustomer(prev => ({ ...prev, phone1: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleSaveNewCustomerAndProceed()} placeholder="נייד או קווי" />
                 </div>
 
                 <div className="form-grid">
                   <div className="field">
                     <label htmlFor="cust-phone2">טלפון נוסף <span style={{ color: 'var(--danger)' }}>*</span></label>
-                    <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} placeholder="נייד או קווי" />
+                    <input id="cust-phone2" className="input" type="tel" dir="ltr" autoComplete="new-password" value={newCustomer.phone2} onChange={e => setNewCustomer(prev => ({ ...prev, phone2: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleSaveNewCustomerAndProceed()} placeholder="נייד או קווי" />
                   </div>
                   <div className="field">
                     <label htmlFor="cust-email">אימייל <span style={{ color: 'var(--danger)' }}>*</span></label>
                     <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
-                      <input id="cust-email" className="input" type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
+                      <input id="cust-email" className="input" type="email" dir="ltr" autoComplete="new-password" value={newCustomer.email} onChange={e => setNewCustomer(prev => ({ ...prev, email: e.target.value }))} onKeyDown={e => e.key === 'Enter' && handleSaveNewCustomerAndProceed()} placeholder="לשליחת ההזמנה במייל" style={{ flex: 1 }} />
                       {newCustomer.email && !newCustomer.email.includes('@') && (
                         <button
                           type="button"
