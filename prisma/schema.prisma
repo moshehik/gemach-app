@@ -618,6 +618,24 @@ model EmployeePermissionOverride {
   @@index([key])
 }
 
+// A named, admin-defined row on /admin/permissions' "pages" table that bundles
+// several PERMISSION_CATALOG ('pages' group) keys so they can be viewed and set
+// together in one floating panel, instead of one matrix row per page. `keys` is a
+// JSON-encoded string array of catalog keys; a key belongs to at most one row at a
+// time (enforced in app/api/admin/permissions/page-groups). Any catalog page key not
+// listed in any row here is still shown on the page as its own implicit single-page
+// row — this table only exists for keys an admin has actively grouped. Saving a row's
+// access writes the same DepartmentPermission value to every key in `keys`, for every
+// department — see app/api/admin/permissions/page-groups/[groupId]/route.js.
+model PermissionPageGroup {
+  id        String   @id @default(uuid())
+  name      String
+  keys      String   @default("[]")
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
 model AIChatSession {
   id           String    @id @default(uuid())
   employeeId   String?
