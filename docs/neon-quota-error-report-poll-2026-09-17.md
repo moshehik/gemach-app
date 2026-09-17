@@ -273,3 +273,20 @@ const unreadCount = reports.filter(r => r.status !== 'ARCHIVED' &&
 כל שלוש המחיקות אומתו עם `404 project not found` אחרי. `GET /v2/projects?org_id=org-young-fire-22908884` מחזיר כעת **רשימה ריקה** — **הארגון האישי ריק לגמרי**, המטרה המקורית (4 ארגונים נפרדים, ארגון אישי סגור) הושגה בפועל.
 
 **הערת אבטחה**: בזמן הדיבוג של `fancy-hill`, סיסמת ה-DB שלו (`neondb_owner`) הוצגה פעם אחת בטעות בפלט debug גולמי לפני שהוחלף לגישה שמסננת סיסמאות. הפרויקט **נמחק** מיד אחרי, כך שהסיסמה החשופה כבר לא רלוונטית (אין יותר DB לגשת אליו) — צוין כאן לשם שקיפות מלאה, לא נדרשת פעולה.
+
+---
+
+## עדכון סטטוס — סבב חמישי (2026-09-18): הראשי הועבר לארגון ייעודי חדש (`gmach-RASY`)
+
+הבעלים יצר ארגון נאון חדש נוסף בקונסולה (שוב, יצירת ארגון חסומה ל-API — דורש Referer מהדפדפן) בשם **`gmach-RASY`** (`org-shy-rice-65680838`, נוצר `2026-09-17T21:12:19Z`) במטרה מפורשת לאכלס בו את ה-DB האמיתי של הגמ"ח הראשי, ומסר מפתח API חדש שלו (org-scoped — `GET /v2/users/me` החזיר 404 "not allowed for organization API keys" כצפוי, אבל `GET /v2/users/me/organizations` איתו כן עבד וזיהה את הארגון). אומת ישירות מול ה-API לפני כל פעולה שהארגון **ריק לחלוטין** (`GET /v2/projects` החזיר `[]`).
+
+**לפני ההעברה** — אומת מחדש (לא רק נסמך על הסבב הקודם) ש-`purple-term-91836431` הוא עדיין ה-DB האמיתי: `PROD_DATABASE_URL`/`TEST_DATABASE_URL` ב-`.env` של האתר תואמים בדיוק ל-`ep-orange-waterfall-avthvs1g...` (PROD) ול-`ep-raspy-brook-avvyd9g5...` (TEST), ו-`GET /v2/projects/purple-term-91836431/endpoints` הראה בדיוק את שני ה-hostnames האלה, לפני ואחרי.
+
+**הפעולה**: `POST /v2/organizations/org-lucky-base-81578277/projects/transfer` (org-lucky-base-81578277 = GMACH, ארגון המקור) עם המפתח החזק ברמת-החשבון, `{"destination_org_id": "org-shy-rice-65680838", "project_ids": ["purple-term-91836431"]}`. החזיר `200 {}`.
+
+**אומת מיד אחרי**:
+- `GET /v2/projects/purple-term-91836431` → `org_id` כעת `org-shy-rice-65680838`. ✅
+- `GET /v2/projects/purple-term-91836431/endpoints` → אותם שני hostnames בדיוק, ללא שינוי (`ep-orange-waterfall-avthvs1g...` ו-`ep-raspy-brook-avvyd9g5...`) — כצפוי, העברה בין ארגונים לא משנה endpoints, כך שאין צורך לעדכן כלום ב-Vercel. ✅
+- `GET https://gemach-app-uyh4-beryl.vercel.app/api/health` → `{"ok":true,"db":"up",...}`. ✅
+
+**מצב עדכני**: פרויקט הראשי (`purple-term-91836431`) יושב כעת בארגון הייעודי `gmach-RASY` (`org-shy-rice-65680838`) במקום ב-GMACH (`org-lucky-base-81578277`) — צעד נוסף לקראת בידוד מלא של כל יעד לארגון נאון משלו. ארגון GMACH לא נמחק ולא נגע בו מעבר להעברה עצמה; לא בוצעה כל פעולה נוספת.
