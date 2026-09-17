@@ -7,27 +7,49 @@ Three independent layers protect the production data. None replaces the others.
 [scripts/cloud_backup.js](scripts/cloud_backup.js), run by
 [.github/workflows/backup-to-drive.yml](.github/workflows/backup-to-drive.yml) on GitHub's own
 infrastructure - not this machine. Covers **both** gemachs (main + Neve Yaakov, separate DBs),
-each backed up to its **own** Google Drive via the same Apps Script web app already used for
-emailing order/bug-report files ([docs/gas-mail-drive.gs](docs/gas-mail-drive.gs)) - see the
-"עדכון - גיבוי נתונים ענני" section in [docs/GAS_DRIVE_SETUP_HE.md](docs/GAS_DRIVE_SETUP_HE.md).
+each backed up to Google Drive via the **same shared** Apps Script "archive bridge"
+([scripts/lib/driveBridge.js](scripts/lib/driveBridge.js)) that already runs print-center's and
+the bagrut site's Drive archiving (`apps-script-send`/`ArchiveBridge.js`, same Google account) -
+reused as-is per the owner's decision (2026-09-17): one bridge, one secret, separation between
+orgs is purely a distinct Drive **root folder name** per org (`backup_drive_folder_id` setting,
+default `gemach-backup-org1`/`gemach-backup-org2` - see "Status" below for why this replaced the
+originally-planned per-org GAS mailer routing).
 
-- **Trigger:** a `schedule` cron every 15 minutes (cheap - the script itself decides per org
-  whether a backup is actually due, based on that org's `backup_interval_hours` setting) plus an
-  instant `repository_dispatch` fired by the admin's "גיבוי מיידי" button
-  (`app/api/admin/backups/trigger/route.js`) - same instant-trigger pattern as the fix-reports
-  agent (`claude-fix-reports.yml`).
-- **Managed from the app:** `/admin/backups` (both gemachs, each scoped to its own DB) - toggle
-  automatic backups on/off, set the interval (preset hours or a custom value), set the Drive
-  folder id and the owner email backups are shared to, trigger an immediate backup, and see the
-  run history / error log (`BackupRun` rows in `prisma/schema.prisma`).
-- **Security:** unlike client-facing email attachments (shared "anyone with the link"), backup
-  files are shared only to the specific `backup_owner_email` address configured per org - they
-  contain full customer/financial data.
+- **Trigger:** a `schedule` cron once daily (cheap - the script itself decides per org whether a
+  backup is actually due, based on that org's `backup_interval_hours` setting - see "Why the
+  schedule is once daily, not every 15 minutes" below) plus an instant `repository_dispatch`
+  fired by the admin's **"גיבוי מיידי"** button on `/admin/backups`
+  ([gemach-app-uyh4-beryl.vercel.app/admin/backups](https://gemach-app-uyh4-beryl.vercel.app/admin/backups)
+  for the main gemach,
+  [gmach-neve-yaakov.vercel.app/admin/backups](https://gmach-neve-yaakov.vercel.app/admin/backups)
+  for Neve Yaakov - `app/api/admin/backups/trigger/route.js`) - same instant-trigger pattern as
+  the fix-reports agent (`claude-fix-reports.yml`). The button always runs immediately regardless
+  of the daily schedule.
+- **Managed from the app:** the same `/admin/backups` page (each gemach scoped to its own DB) -
+  toggle automatic backups on/off, set the interval (preset hours or a custom number - the field
+  still accepts any value, but see the daily-schedule caveat below for what actually happens if
+  it's set below 24h), set the Drive root-folder name and the owner email backups are shared to,
+  trigger an immediate backup, and see the run history / error log (`BackupRun` rows in
+  `prisma/schema.prisma`).
+- **Upload path:** a resumable direct-to-Drive REST upload (`archive_token` gets a short-lived
+  OAuth token from the bridge, then the calling server talks straight to
+  `googleapis.com/drive/v3/...`) - this bypasses GAS's own ~50MB/request ceiling entirely, which
+  matters since backups only grow over time (already ~29MB gzipped for org1).
+- **Security:** files land in the bridge's Drive account **private by default** (the bridge never
+  calls `setSharing` on anything); unlike client-facing email attachments (shared "anyone with
+  the link"), each backup is additionally shared only to the specific `backup_owner_email`
+  address configured per org via an explicit read-only permission - they contain full
+  customer/financial data. The bridge itself is gated by a shared secret (`archiveCheck_` in
+  `ArchiveBridge.js`) - `DRIVE_BRIDGE_URL`/`DRIVE_BRIDGE_SECRET` are GitHub secrets, not
+  `SystemSetting` rows, since they aren't per-org data (same treatment as `DATABASE_URL`/
+  `DATABASE_URL_ORG2`).
 - **Retention:** same policy as the old local script - last 14 daily + one per ISO week for the
-  8 weeks before that, applied per org against that org's own Drive folder.
-- **Requires**, already configured from the `claude-fix-reports.yml` setup (reused, nothing new
-  to add unless it's somehow missing): GitHub secrets `DATABASE_URL` / `DATABASE_URL_ORG2`, and
-  Vercel env vars `GH_DISPATCH_TOKEN` / `GH_DISPATCH_REPO` on both projects.
+  8 weeks before that, applied per org against that org's own root folder.
+- **Requires**: GitHub secrets `DATABASE_URL`/`DATABASE_URL_ORG2` (already configured from the
+  `claude-fix-reports.yml` setup, reused unchanged) plus `DRIVE_BRIDGE_URL`/`DRIVE_BRIDGE_SECRET`
+  (added 2026-09-17 - same values already used by `apps-script-send`'s other consumers, see
+  `scripts/lib/driveBridge.js`'s header comment for where to find them again if they ever need
+  rotating), and Vercel env vars `GH_DISPATCH_TOKEN`/`GH_DISPATCH_REPO` on both projects.
 
 ### Why this replaced the old local Task Scheduler job
 
@@ -36,16 +58,54 @@ all beyond Neon's 7-day PITR) and depended on this one Windows machine being pow
 logged in - if it was off at 03:30, that night was silently skipped. Moving execution to GitHub
 Actions removes both problems and covers both orgs from one shared workflow.
 
-### Status (2026-09-16): code done, GAS deployment blocked on a decision
+### Why the schedule is once daily, not every 15 minutes (2026-09-17)
 
-Everything above is implemented and committed on branch `feature/cloud-backup-to-drive` (not
-merged, not pushed) and verified for real against org-1 (full dump + `BackupRun` row succeeded;
-only the final Drive-upload step is pending). The GAS-side redeploy this needs turned out to be
-more involved than a copy-paste - see the "Cloud backup to Drive" entry in
-[CLAUDE.md](CLAUDE.md) (2026-09-16) for the full story: the live mailer script doesn't match
-what `docs/gas-mail-drive.gs` documents, has no authentication on any action, and a much better
-already-proven secret-gated Drive-bridge pattern exists in two sibling personal projects that
-this feature should probably copy. Read that entry before doing the GAS deployment step.
+The workflow originally polled every 15 minutes ("cheap - most ticks just log and exit"), on the
+assumption that a no-op due-check costs nothing. That assumption broke while the upload step was
+failing (see "Status" below): a run that never reaches `status: 'ok'` never updates "last ok
+backup", so **every single 15-minute tick still saw the backup as overdue and ran a brand new
+full production DB dump** - not a cheap no-op at all. For roughly a day, org-1 was dumping its
+entire database up to ~96 times/day instead of once, burning GitHub Actions minutes and real
+Postgres read load for nothing (a contributing factor considered alongside the separate, larger
+`/api/error-report` polling leak documented in
+[docs/neon-quota-error-report-poll-2026-09-17.md](docs/neon-quota-error-report-poll-2026-09-17.md)
+- both are instances of the same pattern: a background loop that looks cheap on paper but isn't,
+once its own "am I actually needed right now" check can get stuck permanently answering "yes").
+Now that uploads work, this specific case is resolved - but as defense-in-depth against the exact
+same waste pattern if some *other* future failure ever gets a run stuck below `ok` again, the
+`schedule` trigger was reduced to once daily (`cron: '0 1 * * *'`, ~03:00-04:00 Israel time
+depending on DST - see the agent-digest cron entry in [CLAUDE.md](CLAUDE.md) for why a fixed UTC
+anchor drifts seasonally, same accepted trade-off here). A stuck run can now waste at most one
+extra full dump per day, not up to 96.
+
+**This does not reduce how often backups actually happen** - `backup_interval_hours` (default 24)
+already meant one real backup per day for both orgs even under the old 15-minute polling; the
+schedule was always just a cheap-looking "is it time yet" check layered on top of that setting,
+never the thing deciding the real cadence. The one real behavior change: if an admin sets
+`backup_interval_hours` below 24 hours expecting genuinely more-frequent *automatic* backups,
+the daily schedule tick is now the ceiling on how often that automatic check even runs - a
+6-hour setting, for example, would still only be evaluated once a day and so would still produce
+only one backup a day automatically. For anything more frequent than daily, use the **"גיבוי
+מיידי"** button on `/admin/backups` (linked above) as many times as needed - it always fires
+immediately, independent of both the schedule and the interval setting.
+
+### Status (2026-09-17): live and verified end-to-end for org-1
+
+Merged to `main` on 2026-09-16 ([PR #85](https://github.com/moshehik/gemach-app/pull/85)) still
+routing through the org's own mailer GAS project (`email_link_a`) - but every run failed at the
+final upload step, because (see the "Cloud backup to Drive" entry in [CLAUDE.md](CLAUDE.md) for
+the full investigation) the live mailer script doesn't actually have any Drive-upload code
+deployed, only `MailApp` email sending, which hit `Limit Exceeded: Email Total Attachments Size`
+on every attempt; org2 was skipped outright (no GAS URL configured for it at all).
+
+**Fixed 2026-09-17**, per the owner's decision: rather than deploy new code into the gemach's own
+mailer project, `cloud_backup.js` now uploads through the already-deployed, already-proven shared
+"archive bridge" GAS project (see the Layer-0 description above) - zero new GAS code, zero new
+deployment, only two new GitHub secrets. Verified for real: a full manual run completed org-1's
+dump (29,163,542 bytes, 112s) and uploaded it directly to Drive via the bridge's resumable REST
+path; the file was independently confirmed present in the `gemach-backup-org1` root folder
+afterward. Org2 will get its first real run once `DATABASE_URL_ORG2` is available to the
+workflow (already a configured GitHub secret) on the next scheduled tick.
 
 ## Layer 1: Neon PITR (point-in-time restore)
 
