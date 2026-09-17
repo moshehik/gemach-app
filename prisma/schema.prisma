@@ -239,7 +239,8 @@ model DressModel {
   priceCategory    String? // קטגורית_מחיר
   notes            String? // הערות
   inInspection     Boolean     @default(false) // הצג_בבדיקה
-  imageUrl         String? // נתיב לתמונה
+  imageUrl         String? // נתיב לתמונה (גרסת ווב, ר' lib/dressImageStorage.js)
+  thumbnailUrl     String? // נתיב לתמונת thumbnail - נשמר בנפרד מ-imageUrl כי אין יותר מוסכמת שם קובץ לגזירה ממנה (Attachment.id אטום)
   entryDateToRepo  DateTime? // תאריך_כניסה_למאגר
   exitDateFromRepo DateTime? // תאריך_יציאה_מהמאגר
   inactiveReason   String? // סיבת לא פעיל
@@ -699,4 +700,19 @@ model ErrorReportReply {
   attachmentUrls String?    @db.Text // JSON-encoded array of URLs, same as ErrorReport.attachmentUrls
   previewUrl    String? // temporary Vercel preview link for this fix (see scripts/get-preview-deployment-url.js) - shown as a button in the UI, never a raw URL in `text`
   createdAt     DateTime    @default(now())
+}
+
+// אחסון בינארי גנרי בתוך ה-DB (Postgres bytea) - מחליף את Vercel Blob (הוסר
+// כליל, 2026-09-18: מנוי Pro לא רצוי, וה-Store היה מוצא את עצמו כתשתית "מוכנה"
+// שכל תכונת-העלאה חדשה מתחברת אליה בלי מחשבה שנייה). משמש תמונות דגמי שמלה
+// (lib/dressImageStorage.js), צילומי/הקלטות מסך בדיווחי שגיאה
+// (lib/attachmentUpload.js) והקלטות מסך בעוזר ה-AI (lib/uploadScreenRecording.js) -
+// כולם דרך אותו נתיב הגשה גנרי, app/api/attachment/[id]/route.js. אין ניקוי
+// אוטומטי לרשומות יתומות (למשל דגם שנוצר ואז בוטל) - אותה מגבלה כמו ב-Blob
+// המקורי, לא רגרסיה.
+model Attachment {
+  id          String   @id @default(uuid())
+  data        Bytes
+  contentType String
+  createdAt   DateTime @default(now())
 }

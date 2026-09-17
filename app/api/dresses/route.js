@@ -123,6 +123,7 @@ export async function GET(request) {
           notes: true,
           inInspection: true,
           imageUrl: true,
+          thumbnailUrl: true,
           entryDateToRepo: true,
           exitDateFromRepo: true,
           inactiveReason: true,
@@ -216,6 +217,7 @@ export async function GET(request) {
         notes: model.notes,
         inInspection: model.inInspection,
         imageUrl: model.imageUrl,
+        thumbnailUrl: model.thumbnailUrl,
         entryDateToRepo: model.entryDateToRepo,
         exitDateFromRepo: model.exitDateFromRepo,
         inactiveReason: model.inactiveReason,
@@ -287,6 +289,7 @@ export async function POST(request) {
         notes: body.notes || null,
         inInspection: body.inInspection || false,
         imageUrl: body.imageUrl || null,
+        thumbnailUrl: body.thumbnailUrl || null,
         entryDateToRepo: body.entryDateToRepo ? new Date(body.entryDateToRepo) : new Date(),
       }
     });

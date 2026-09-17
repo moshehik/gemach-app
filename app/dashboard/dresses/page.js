@@ -388,7 +388,7 @@ export default function DressesManagement() {
                   const imgSrc = getImageSource(dress);
                   // תא של 44px לא צריך את תמונת המקור — מנסים קודם את ה-thumb
                   // (קיים רק להעלאות חדשות); onError נופל חזרה למקור ורק אז מוותר.
-                  const thumbSrc = getDressThumbUrl(imgSrc);
+                  const thumbSrc = getDressThumbUrl(dress);
                   return (
                     <tr key={dress.id} className={dress.isDeleted ? 'row-flag' : undefined} style={!dress.isDeleted && isInactive ? { background: 'var(--warning-tint)' } : undefined}>
                       {showImageColumn && (
