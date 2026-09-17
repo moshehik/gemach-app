@@ -398,7 +398,7 @@ export default function ModernNewDressWizard({
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '14px', flexWrap: 'wrap', marginTop: '10px' }}>
                 <div>
                   <div style={{ fontWeight: 700 }}>הצג בבדיקה (התראה)</div>
-                  <div className="hint" style={{ color: 'var(--text-3)' }}>הדגם יופיע בהתראות המלאי ותוצג אזהרה בבחירת פריט</div>
+                  <div className="hint" style={{ color: 'var(--text-3)' }}>תג ויזואלי בלבד לסימון עצמי - מופיע תג "בבדיקה" בכותרת הדגם ובתדפיס. לא חוסם השכרה ולא מופיע ברשימת התראות המלאי.</div>
                 </div>
                 <div
                   className={`switch${dress.inInspection ? ' on' : ''}`}
