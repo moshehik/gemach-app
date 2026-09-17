@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { verifySecret } from '@/lib/passwordAuth';
 import { HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
+import { hasPermission } from '@/lib/permissions';
 
 export async function POST(request) {
   try {
@@ -65,6 +66,12 @@ export async function POST(request) {
     const isBranchManagerOrAbove = [0, 1, 2].includes(employee.roleId);
     if (requiredLevel === 'מנהל סניף ומעלה' && !isBranchManagerOrAbove) {
       return NextResponse.json({ success: false, error: 'פעולה זו מוגבלת למנהל סניף ומעלה בלבד' }, { status: 403 });
+    }
+
+    // מאשר הזמנה ללא תשלום - מנהל/מתכנת כתמיד, בתוספת הרשאת feature:debt_approval
+    // (/admin/permissions, ר' lib/permissionsMetadata.js) ישירות לעובד או למחלקה שלו.
+    if (requiredLevel === 'מאשר הזמנה ללא תשלום' && !isManager && !(await hasPermission(employee, 'feature:debt_approval'))) {
+      return NextResponse.json({ success: false, error: 'פעולה זו מוגבלת למי שהורשה לאשר הזמנה ללא תשלום מלא' }, { status: 403 });
     }
 
     return NextResponse.json({ success: true, employeeId: employee.id, employeeName: employee.firstName + ' ' + employee.lastName });

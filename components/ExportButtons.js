@@ -26,6 +26,20 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
   const [showAdminPrompt, setShowAdminPrompt] = useState(false);
   const [isAdminVerified, setIsAdminVerified] = useState(false);
   const [pendingAction, setPendingAction] = useState(null);
+  // כמות שורות מרבית בלי אישור מנהל - לפי המחלקה של המשתמש המחובר (או חריגה פרטנית
+  // לו), ר' /admin/permissions ("כמות שורות מרבית לייצוא") ו-lib/permissionsMetadata.js
+  // feature:export_max_rows. 200 היא רק ברירת המחדל לפני שהערך האמיתי נטען מהשרת.
+  const [maxRowsWithoutApproval, setMaxRowsWithoutApproval] = useState(200);
+
+  useEffect(() => {
+    fetch('/api/me')
+      .then((r) => r.json())
+      .then((data) => {
+        const n = data?.employee?.exportMaxRows;
+        if (typeof n === 'number' && !isNaN(n)) setMaxRowsWithoutApproval(n);
+      })
+      .catch(() => {});
+  }, []);
 
   const processDataForExport = (dataToProcess) => {
     return columns.length > 0
@@ -198,7 +212,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
   };
 
   const handleActionClick = (action) => {
-    if (exportLimit > 200 && !isAdminVerified) {
+    if (exportLimit > maxRowsWithoutApproval && !isAdminVerified) {
       setPendingAction(action);
       setShowAdminPrompt(true);
     } else {
@@ -284,7 +298,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
               {showAdminPrompt ? (
                 <div className="callout callout-warning" style={{ flexDirection: 'column', alignItems: 'stretch' }}>
                   <h4 style={{ margin: '0 0 6px' }}>נדרש אישור מנהל</h4>
-                  <p style={{ margin: '0 0 12px' }}>ייצוא של מעל 200 שורות דורש אימות מנהל. אנא הזן סיסמת מנהל:</p>
+                  <p style={{ margin: '0 0 12px' }}>ייצוא של מעל {maxRowsWithoutApproval} שורות דורש אימות מנהל. אנא הזן סיסמת מנהל:</p>
                   <div style={{ display: 'flex', gap: '0.5rem' }}>
                     <input
                       data-agy-id="export_admin_pin_input"
@@ -348,7 +362,7 @@ export default function ExportButtons({ data = [], filename = 'export', columns 
                           }}
                           style={{ width: '80px' }}
                         />
-                        {exportLimit > 200 && !isAdminVerified && (
+                        {exportLimit > maxRowsWithoutApproval && !isAdminVerified && (
                           <span className="badge badge-danger">דורש מנהל</span>
                         )}
                         {isAdminVerified && (

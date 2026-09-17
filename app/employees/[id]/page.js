@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import SendEmailModal from '@/components/SendEmailModal';
 import HebrewDatePicker from '@/components/HebrewDatePicker';
 import ModernEmployeeHistoryTab from '@/components/employees/ModernEmployeeHistoryTab';
+import EmployeePermissionsPanel from '@/app/components/permissions/EmployeePermissionsPanel';
 
 export default function EmployeePage({ params }) {
   const router = useRouter();
@@ -668,6 +669,16 @@ export default function EmployeePage({ params }) {
               מאפשר לעובד זה לדווח על תקלות במערכת גם אם תפקידו אינו מנהל/הנהלה ראשית/מתכנת.
             </p>
           </div>
+
+          {id !== 'new' && (
+            <>
+              <h2 className="section-title">הרשאות ספציפיות</h2>
+              <p className="page-desc" style={{ marginTop: '-6px' }}>
+                חריגות מברירת המחדל של מחלקת העובד. הרשימה המלאה, לפי מחלקה, נמצאת ב<a href="/admin/permissions">מסך ההרשאות</a>.
+              </p>
+              <EmployeePermissionsPanel employeeId={id} />
+            </>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '20px' }}>
             <button data-agy-id="save-employee-button" data-element-name="כפתור_page_40" type="submit" className="btn btn-primary btn-lg" disabled={saving}>

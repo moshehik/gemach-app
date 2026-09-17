@@ -606,7 +606,7 @@ export default function OrderDetailsPage({ params }) {
     const debtUnchangedSinceOpen = openedDebt !== null
       && Math.round(currentDebt * 100) === Math.round(openedDebt * 100);
     if (currentDebt > 0 && !debtUnchangedSinceOpen) {
-      const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. שמירת השינויים דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
+      const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. שמירת השינויים דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מאשר הזמנה ללא תשלום');
       if (!authResult || !authResult.pin) {
         setSaving(false);
         // Returning quietly here made the Save button look broken - nothing happened and
@@ -856,7 +856,7 @@ export default function OrderDetailsPage({ params }) {
     const exitDebtUnchangedSinceOpen = openedDebt !== null
       && Math.round(exitCurrentDebt * 100) === Math.round(openedDebt * 100);
     if (exitCurrentDebt > 0 && !exitDebtUnchangedSinceOpen && !exitDebtApprovedBy) {
-      const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מנהל');
+      const authResult = await window.customAuthPrompt("נותרת יתרת חוב לתשלום. יציאה דורשת הרשאת מנהל. אנא בחר מנהל והזן סיסמה:", 'מאשר הזמנה ללא תשלום');
       if (!authResult || !authResult.pin) {
         return;
       }
