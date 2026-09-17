@@ -330,6 +330,9 @@ export function PopupProvider({ children }) {
                     className="input"
                     value={authEmployeeSearch}
                     placeholder="הקלד לחיפוש..."
+                    // ר' הערה זהה ב-LoginScreen.js - "new-password" ולא "off", אחרת הדפדפן
+                    // מציג dropdown native משלו עם שמות שהוקלדו בעבר מעל רשימת ההצעות.
+                    autoComplete="new-password"
                     onChange={(e) => {
                       setAuthEmployeeSearch(e.target.value);
                       setIsAuthEmployeeDropdownOpen(true);
