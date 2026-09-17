@@ -92,7 +92,7 @@ export default function ModernOrderCard({
     : (order.eventDateHebrew || (order.eventDate ? getHebrewDateString(order.eventDate) : 'ללא תאריך אירוע'));
 
   const updatedLabel = order.updatedAt
-    ? `עודכן: ${new Date(order.updatedAt).toLocaleDateString('he-IL')} · ${new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+    ? `עודכן: ${getHebrewDateString(order.updatedAt)} · ${new Date(order.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
     : '';
 
   const isErrorMsg = saveMessage && (saveMessage.includes('שגיאה') || saveMessage.includes('בוטלה'));

@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { getHebrewDateString } from '../../../lib/hebrewDate';
 
 const TABS = [
   { id: 'details', label: 'פרטים אישיים', icon: 'i-id' },
@@ -28,7 +29,7 @@ export default function ModernCustomerCard({
   const address = [customer.street && `${customer.street} ${customer.houseNum || ''}`.trim(), customer.city].filter(Boolean).join(', ');
 
   const updatedLabel = customer.updatedAt
-    ? `עודכן לאחרונה: ${new Date(customer.updatedAt).toLocaleDateString('he-IL')} · ${new Date(customer.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
+    ? `עודכן לאחרונה: ${getHebrewDateString(customer.updatedAt)} · ${new Date(customer.updatedAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}`
     : '';
 
   const initials = `${customer.firstName?.[0] || ''}${customer.lastName?.[0] || ''}` || '?';
