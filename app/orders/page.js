@@ -76,6 +76,7 @@ const buildOrdersAiPrompt = (f) => {
   if (f.customerPhone) parts.push(`עם טלפון ${f.customerPhone}`);
   if (f.customerCity) parts.push(`בעיר ${f.customerCity}`);
   if (f.advModelName) parts.push(`בדגם ${f.advModelName}`);
+  if (f.advSize) parts.push(`במידה ${f.advSize}`);
   if (f.itemDetails) parts.push(`עם פריט/ברקוד ${f.itemDetails}`);
   if (f.eventDateFrom && f.eventDateTo) parts.push(`בטווח תאריכי אירוע מ-${f.eventDateFrom} עד ${f.eventDateTo}`);
   else if (f.eventDateFrom) parts.push(`מתאריך אירוע ${f.eventDateFrom}`);
@@ -706,6 +707,13 @@ export default function OrdersPage() {
                       />
                   </div>
                   <div className="field">
+                    <label>מידה</label>
+                    <div className="input-icon-wrap">
+                      <svg className="icon"><use href="#i-tag" /></svg>
+                      <input type="text" className="input" value={advFilters.advSize} onChange={e => setAdvFilters(p => ({ ...p, advSize: e.target.value }))} placeholder="לדוגמה: 38..." />
+                    </div>
+                  </div>
+                  <div className="field">
                     <label>{getLabel('order_customerName', 'שם לקוח')}</label>
                     <input type="text" className="input" value={advFilters.customerName} onChange={e => setAdvFilters(p => ({ ...p, customerName: e.target.value }))} placeholder="שם הלקוח..." />
                   </div>
@@ -734,7 +742,7 @@ export default function OrdersPage() {
             </div>
             <div className="modal-foot">
               <button type="button" className="btn btn-secondary" onClick={() => {
-                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', eventDateFrom: '', eventDateTo: '', rentalStatus: [] });
+                setAdvFilters({ customerName: '', customerPhone: '', customerCity: '', advOrderId: '', itemDetails: '', advModelName: '', advSize: '', eventDateFrom: '', eventDateTo: '', rentalStatus: [] });
               }}>נקה הכל</button>
               <button type="button" className="btn btn-primary" onClick={() => {
                 if (advAiMode) {

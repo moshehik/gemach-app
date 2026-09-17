@@ -28,40 +28,50 @@ export default async function Dashboard() {
     totalOrders,
     revenueAggregation,
     paymentMethodsStats,
-    recentOrders,
+    recentPayments,
   ] = await Promise.all([
     prisma.customer.count({ where: { isDeleted: false } }),
     prisma.employee.count({ where: { isActive: true } }),
     prisma.order.count(),
-    prisma.order.aggregate({
-      _sum: { totalAmount: true }
+    // דיווח 58d71561 (נווה יעקב) - הגרפים כאן היו ריקים תמיד: Order.totalAmount/
+    // paymentMethod/paymentDate מוזנים רק בהזמנות שהגיעו ממיגרציית האקסס (ר'
+    // scripts/import_all_data.js), לא נכתבים בכלל ע"י יצירה/עריכה של הזמנה במערכת
+    // החיה (app/api/orders/route.js, app/api/orders/[id]/route.js) - התשלומים
+    // האמיתיים נמצאים רק בטבלת Payment. amount שלילי = זיכוי/החזר (ר'
+    // app/api/refunds/[id]/route.js), כך שסכימה רגילה כבר נטו מהחזרים.
+    prisma.payment.aggregate({
+      where: { isDeleted: false },
+      _sum: { amount: true }
     }),
-    prisma.order.groupBy({
+    // isRefund מוצא כאן החוצה (בניגוד לסכום הכולל למעלה) - זיכוי הוא amount שלילי
+    // תחת אמצעי-תשלום 'החזר/זיכוי' משלו, שגרף עוגה לא יודע לצייר כפרוסה שלילית
+    prisma.payment.groupBy({
       by: ['paymentMethod'],
-      _sum: { totalAmount: true },
+      where: { isDeleted: false, isRefund: false },
+      _sum: { amount: true },
       _count: { id: true }
     }),
-    prisma.order.findMany({
+    prisma.payment.findMany({
       orderBy: { paymentDate: 'desc' },
-      select: { paymentDate: true, totalAmount: true },
-      where: { paymentDate: { gte: trendSince } }
+      select: { paymentDate: true, amount: true },
+      where: { isDeleted: false, paymentDate: { gte: trendSince } }
     }),
   ]);
 
-  const totalRevenue = revenueAggregation._sum.totalAmount || 0;
+  const totalRevenue = revenueAggregation._sum.amount || 0;
 
   const revenueByMethod = paymentMethodsStats.map(stat => ({
     method: stat.paymentMethod || 'לא מוגדר',
-    amount: stat._sum.totalAmount || 0,
+    amount: stat._sum.amount || 0,
     count: stat._count.id
   })).sort((a, b) => b.amount - a.amount);
 
   const dateRevenueMap = {};
-  recentOrders.forEach(order => {
-    if (!order.paymentDate) return;
-    const dateStr = order.paymentDate.toISOString().split('T')[0];
+  recentPayments.forEach(payment => {
+    if (!payment.paymentDate) return;
+    const dateStr = payment.paymentDate.toISOString().split('T')[0];
     if (!dateRevenueMap[dateStr]) dateRevenueMap[dateStr] = 0;
-    dateRevenueMap[dateStr] += (order.totalAmount || 0);
+    dateRevenueMap[dateStr] += (payment.amount || 0);
   });
 
   // Limit to last 30 active days
