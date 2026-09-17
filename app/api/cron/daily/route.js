@@ -132,7 +132,10 @@ export async function GET(request) {
       const now = new Date();
       const deadlinePassed = now.getHours() > (hh || 19) || (now.getHours() === (hh || 19) && now.getMinutes() >= (mm || 0));
       if (deadlinePassed) {
-        const fixedAmount = parseFloat(get('hok_charge_amount') || '');
+        const hokChargeAmountRaw = get('hok_charge_amount');
+        // ריק = ברירת המחדל ההיסטורית (מחיר ההשכרה המקורי); "0" מפורש = ללא גביה כלל
+        // (לא רק ליפול לברירת המחדל, כמו שקרה לפני התיקון הזה).
+        const fixedAmount = parseFloat(hokChargeAmountRaw || '');
         const overdue = await prisma.order.findMany({
           where: {
             isDeleted: false,
@@ -144,9 +147,10 @@ export async function GET(request) {
         });
         for (const o of overdue) {
           try {
-            const perDress = !isNaN(fixedAmount) && fixedAmount > 0
+            const perDress = !isNaN(fixedAmount) && fixedAmount >= 0
               ? fixedAmount
               : Math.round(((o.totalAmount || 0) / Math.max(1, o.items.length)) * 100) / 100;
+            if (perDress <= 0) continue;
             const alreadyCharged = (o.obligations || []).some(x => String(x.description || '').includes('גביה אוטומטית - איחור'));
             if (alreadyCharged) continue;
             const total = perDress * o.items.length;

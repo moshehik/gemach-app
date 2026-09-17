@@ -128,7 +128,9 @@ export default function ErrorReportButton() {
     // when the tab regains focus instead of waiting for the next tick.
     const start = () => {
       if (intervalId) return;
-      intervalId = setInterval(fetchReports, 30000);
+      // הפאנל סגור בזמן הטיק הזה (start נקרא רק מתוך התנאי !isOpen למטה) - מספיק
+      // fetch קליל, ר' ההערה על ?light=1 ליד fetchReports.
+      intervalId = setInterval(() => fetchReports({ light: true }), 30000);
     };
     const stop = () => {
       clearInterval(intervalId);
@@ -139,7 +141,7 @@ export default function ErrorReportButton() {
       if (document.hidden) {
         stop();
       } else {
-        fetchReports();
+        fetchReports({ light: true });
         start();
       }
     };
@@ -153,7 +155,8 @@ export default function ErrorReportButton() {
 
   useEffect(() => {
     setMounted(true);
-    fetchReports();
+    // הפאנל סגור בטעינה הראשונית - רק מונה/נקודה אדומה, ר' ההערה ליד fetchReports.
+    fetchReports({ light: true });
 
     const handleGlobalClick = (e) => {
       let target = e.target;
@@ -204,10 +207,16 @@ export default function ErrorReportButton() {
     picker.startPicking();
   };
 
-  async function fetchReports() {
+  // { light: true } - שימוש בבדיקת הרקע כל 30 שנ' (טאב פתוח, פאנל סגור) בלבד:
+  // מביא רק את השדות הדרושים לחישוב unreadCount/הנקודה האדומה, לא את כל הדיווחים
+  // עם כל התגובות המקוננות - זו הייתה כמות תעבורת הנתונים הדומיננטית מול נאון
+  // (ר' תיעוד docs/neon-quota-error-report-poll-2026-09-17.md). כל קריאה שקורית
+  // בזמן שהפאנל *פתוח* (פתיחה, רענון ידני, תגובה, סימון טופל וכו') נשארת מלאה
+  // כרגיל - שם באמת צריך title/userText/attachmentUrls/replies לרשימה ולחיפוש.
+  async function fetchReports({ light = false } = {}) {
     if (authFailedRef.current) return;
     try {
-      const res = await fetch('/api/error-report');
+      const res = await fetch(light ? '/api/error-report?light=1' : '/api/error-report');
       if (res.status === 401) {
         authFailedRef.current = true;
         return;

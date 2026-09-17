@@ -9,7 +9,7 @@ export const dynamic = 'force-dynamic';
 const SETTING_META = {
   backup_enabled: { name: 'גיבוי אוטומטי לדרייב פעיל', category: 'גיבויים', type: 'boolean' },
   backup_interval_hours: { name: 'תדירות גיבוי אוטומטי (שעות)', category: 'גיבויים', type: 'number' },
-  backup_drive_folder_id: { name: 'מזהה תיקיית דרייב לגיבויים', category: 'גיבויים', type: 'text' },
+  backup_drive_folder_id: { name: 'שם תיקיית דרייב לגיבויים', category: 'גיבויים', type: 'text' },
   backup_owner_email: { name: 'כתובת מייל לצפייה בגיבויים', category: 'גיבויים', type: 'text' },
 };
 

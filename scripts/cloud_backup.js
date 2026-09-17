@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 /**
- * Cloud backup: full logical dump of both gemachs' production DBs, uploaded to each
- * org's own Google Drive via the shared Apps Script web app (docs/gas-mail-drive.gs,
- * action:'uploadBackup'/'listBackups'/'deleteBackup'). Replaces the old local-machine-only
+ * Cloud backup: full logical dump of both gemachs' production DBs, uploaded to Google
+ * Drive via the shared Apps Script "archive bridge" (scripts/lib/driveBridge.js) - the
+ * SAME already-deployed GAS project that print-center and the bagrut site already use
+ * (apps-script-send/ArchiveBridge.js), reused as-is per the owner's decision (17.09.2026):
+ * one bridge, separation is done purely in Drive via a distinct root folder per org - no
+ * new GAS project, no new deployment, no new secret. Replaces the old local-machine-only
  * scripts/backup_prod_db.js (org1-only, dependent on this machine being on) - see BACKUPS.md.
  *
  * Runs from .github/workflows/backup-to-drive.yml on two triggers:
@@ -15,25 +18,29 @@
  * For EACH org (1 = main gemach, 2 = נווה יעקב - scripts/lib/db-env.js resolves the
  * right DATABASE_URL/DATABASE_URL_ORG2), independently:
  *   1. Read that org's own SystemSetting rows: backup_enabled, backup_interval_hours,
- *      backup_drive_folder_id, backup_owner_email, backup_requested_at, email_link_a
- *      (the org's own GAS web app URL - already used for order/bug-report emails).
+ *      backup_drive_folder_id (repurposed: the Drive ROOT FOLDER NAME for this org's
+ *      backups, auto-created by the bridge if missing - not an id, the bridge only
+ *      works by name), backup_owner_email, backup_requested_at.
  *   2. Skip entirely (no BackupRun row written) if backup_enabled='false', or if not due
  *      yet: the last 'ok' BackupRun is more recent than backup_interval_hours ago AND
  *      there's no pending backup_requested_at newer than that last ok run.
  *   3. Otherwise: insert a BackupRun row (status='running'), run the dump (same
  *      introspect + topological-sort + batched multi-row INSERT approach as
  *      scripts/backup_prod_db.js, gzipped fully in memory - this runs on an ephemeral
- *      GitHub-hosted runner, no local disk to write to), POST it to that org's GAS URL,
- *      then update the row to 'ok' (with size/duration/table summary/Drive link) or
- *      'failed' (with the error message) - this is what app/admin/backups renders as
- *      the run list + error log.
+ *      GitHub-hosted runner, no local disk to write to), upload it straight to Drive via
+ *      a resumable REST upload (bypasses GAS's own ~50MB/request ceiling entirely - see
+ *      driveBridge.js), share it with backup_owner_email if set (explicit read-only
+ *      permission, never "anyone with the link"), then update the row to 'ok' (with
+ *      size/duration/table summary/Drive link) or 'failed' (with the error message) -
+ *      this is what app/admin/backups renders as the run list + error log.
  *   4. On a successful upload: list that org's Drive backup files and delete old ones,
  *      keeping the last 14 daily + one per ISO week for the 8 weeks before that (same
  *      retention policy backup_prod_db.js used locally).
  *
- * Org2's uploadBackup/listBackups/deleteBackup rely on docs/gas-mail-drive.gs having
- * been redeployed in NEVE YAAKOV'S OWN separate Google account too - see the "עדכון -
- * גיבוי נתונים ענני" section in docs/GAS_DRIVE_SETUP_HE.md.
+ * Requires DRIVE_BRIDGE_URL + DRIVE_BRIDGE_SECRET (GitHub secrets, shared by both orgs -
+ * the bridge and its secret aren't per-org data, same treatment as DATABASE_URL/
+ * DATABASE_URL_ORG2). Both orgs are skipped with a clear log line, not an error, if
+ * these aren't configured.
  *
  * Usage: node scripts/cloud_backup.js   (always attempts org 1, then org 2 - org 2 is
  * skipped with a log line, not an error, if no org-2 DB URL is configured at all)
@@ -45,6 +52,7 @@ const zlib = require('zlib');
 const { Client } = require('pg');
 const { PrismaClient } = require('@prisma/client');
 const { resolveDbUrl } = require('./lib/db-env');
+const driveBridge = require('./lib/driveBridge');
 
 const DAILY_KEEP = 14;
 const WEEKLY_KEEP = 8;
@@ -57,7 +65,6 @@ const SETTING_KEYS = [
   'backup_drive_folder_id',
   'backup_owner_email',
   'backup_requested_at',
-  'email_link_a',
 ];
 
 // ---------------------------------------------------------------------------
@@ -232,27 +239,6 @@ async function dumpDatabase(dbUrl) {
 }
 
 // ---------------------------------------------------------------------------
-// Google Apps Script Drive routing (docs/gas-mail-drive.gs)
-// ---------------------------------------------------------------------------
-async function gasCall(gasUrl, payload) {
-  const res = await fetch(gasUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  });
-  let json;
-  try {
-    json = await res.json();
-  } catch (e) {
-    throw new Error(`GAS returned non-JSON (HTTP ${res.status})`);
-  }
-  if (json.status !== 'success') {
-    throw new Error(`GAS error: ${json.message || 'unknown'}`);
-  }
-  return json;
-}
-
-// ---------------------------------------------------------------------------
 // Retention: keep last 14 daily + last 8 weekly, delete the rest (same policy
 // as rotateBackups() in the old backup_prod_db.js, ported to operate on the
 // Drive file list instead of local filenames).
@@ -287,13 +273,12 @@ function decideRotation(files) {
   return dated.filter((f) => !keep.has(f.id)).map((f) => f.id);
 }
 
-async function rotateDriveBackups(gasUrl, folderId, org) {
-  const listed = await gasCall(gasUrl, { action: 'listBackups', driveFolderId: folderId || undefined });
-  const files = (listed.files || []).filter((f) => f.name.startsWith(`gemach-org${org}-`));
+async function rotateDriveBackups(rootFolder, org) {
+  const files = (await driveBridge.listFiles(rootFolder)).filter((f) => f.name.startsWith(`gemach-org${org}-`));
   const deleteIds = decideRotation(files);
   for (const id of deleteIds) {
     try {
-      await gasCall(gasUrl, { action: 'deleteBackup', fileId: id });
+      await driveBridge.deleteFile(id);
     } catch (e) {
       console.error(`[org${org}] failed to delete old backup ${id}:`, e.message);
     }
@@ -321,11 +306,11 @@ async function runOrgBackup(org) {
     const settings = await prisma.systemSetting.findMany({ where: { key: { in: SETTING_KEYS } } });
     const val = (key, fallback = null) => settings.find((s) => s.key === key)?.value ?? fallback;
 
-    const gasUrl = val('email_link_a');
-    if (!gasUrl) {
-      console.log(`[org${org}] no email_link_a (GAS web app URL) configured, cannot upload - skipping.`);
+    if (!driveBridge.isConfigured()) {
+      console.log(`[org${org}] Drive bridge not configured (DRIVE_BRIDGE_URL/DRIVE_BRIDGE_SECRET) - skipping.`);
       return;
     }
+    const rootFolder = val('backup_drive_folder_id') || `gemach-backup-org${org}`;
 
     const intervalHours = Number(val('backup_interval_hours', '24')) || 24;
     const requestedAtRaw = val('backup_requested_at');
@@ -365,17 +350,17 @@ async function runOrgBackup(org) {
 
       const shareEmail = val('backup_owner_email');
       if (!shareEmail) {
-        console.warn(`[org${org}] backup_owner_email not set - backup file will only be reachable from the GAS-owning Google account itself, not shared to anyone.`);
+        console.warn(`[org${org}] backup_owner_email not set - backup file will only be reachable from the bridge's own Google account, not shared to anyone.`);
       }
-      const folderId = val('backup_drive_folder_id');
-      const uploaded = await gasCall(gasUrl, {
-        action: 'uploadBackup',
-        fileName,
-        fileContent: buffer.toString('base64'),
+      const uploaded = await driveBridge.uploadFile({
+        root: rootFolder,
+        name: fileName,
         mimeType: 'application/gzip',
-        driveFolderId: folderId || undefined,
-        shareEmail: shareEmail || undefined,
+        buffer,
       });
+      if (shareEmail) {
+        await driveBridge.shareFile(uploaded.fileId, shareEmail);
+      }
 
       await prisma.backupRun.update({
         where: { id: run.id },
@@ -386,12 +371,12 @@ async function runOrgBackup(org) {
           durationSec,
           tableSummary,
           fileName,
-          driveUrl: uploaded.url,
+          driveUrl: driveBridge.webViewLink(uploaded.fileId),
         },
       });
       console.log(`[org${org}] OK ${fileName} ${buffer.length} bytes ${durationSec.toFixed(1)}s`);
 
-      await rotateDriveBackups(gasUrl, folderId, org);
+      await rotateDriveBackups(rootFolder, org);
     } catch (err) {
       const durationSec = (Date.now() - startedAt) / 1000;
       await prisma.backupRun.update({

@@ -573,7 +573,16 @@ export default function ModernDressItemsTab({
                               {(locations || []).map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
                             </select>
                           ) : (
-                            <span>{item.location || '—'}</span>
+                            <select
+                              className="select"
+                              style={{ padding: '6px 9px', fontSize: '12.5px' }}
+                              value={item.location || ''}
+                              disabled={quickMovingId === item.id || item.isDeleted}
+                              onChange={e => e.target.value && quickSetLocation(item, e.target.value)}
+                            >
+                              {!item.location && <option value="" disabled hidden>---</option>}
+                              {(locations || []).map((loc, idx) => <option key={idx} value={loc}>{loc}</option>)}
+                            </select>
                           )}
                         </td>
 
@@ -696,28 +705,6 @@ export default function ModernDressItemsTab({
                                 >
                                   <svg className="icon"><use href="#i-info" /></svg>
                                 </button>
-                                {!item.isDeleted && item.location !== 'מחסן' && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-ghost btn-sm"
-                                    title="העבר למחסן"
-                                    disabled={quickMovingId === item.id}
-                                    onClick={() => quickSetLocation(item, 'מחסן')}
-                                  >
-                                    {quickMovingId === item.id ? <span className="spinner" /> : '→ מחסן'}
-                                  </button>
-                                )}
-                                {!item.isDeleted && item.location !== 'חנות' && (
-                                  <button
-                                    type="button"
-                                    className="btn btn-ghost btn-sm"
-                                    title="העבר לחנות"
-                                    disabled={quickMovingId === item.id}
-                                    onClick={() => quickSetLocation(item, 'חנות')}
-                                  >
-                                    {quickMovingId === item.id ? <span className="spinner" /> : '→ חנות'}
-                                  </button>
-                                )}
                                 {item.isDeleted ? (
                                   <button type="button" className="btn btn-ghost btn-icon-only btn-sm" style={{ color: 'var(--success)' }} title="שחזר פריט" onClick={() => restoreItem(item)}>
                                     <svg className="icon"><use href="#i-refresh" /></svg>

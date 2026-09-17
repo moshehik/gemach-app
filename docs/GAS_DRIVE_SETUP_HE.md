@@ -56,19 +56,19 @@ file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); // 
 - `VIEW` ב-Drive = צפייה **והורדה** (כל עוד לא ננעל במפורש) - לכן הנמען יכול להוריד בלי לבקש גישה.
 - אם בארגון שלך יש מדיניות שחוסמת הורדה - הפעלת ה-Drive API בקוד פותחת אותה ברמת הקובץ.
 
-## עדכון - גיבוי נתונים ענני (scripts/cloud_backup.js, BACKUPS.md)
+## עדכון (מבוטל) - גיבוי נתונים ענני עבר לגשר נפרד, לא לקובץ הזה (2026-09-17)
 
-אותו קובץ `docs/gas-mail-drive.gs` משמש גם את מערכת הגיבוי הענני: שלוש פעולות נוספות
-ב-`doPost` (`uploadBackup`, `listBackups`, `deleteBackup`) מעלות/מרשימות/מוחקות קובצי
-גיבוי בדרייב. **שונה במכוון מטבלת ההוראות למעלה**: קובצי גיבוי משותפים רק לכתובת מייל
-ספציפית אחת (`backup_owner_email` בהגדרות המערכת) ולא "כל מי שמחזיק בקישור" - כי הם
-מכילים נתוני לקוחות וכספים מלאים.
+**הסעיף הזה תיאר תוכנית שמעולם לא נפרסה בפועל** (ר' "Cloud backup to Drive" ב-CLAUDE.md,
+2026-09-16) - הפעולות `uploadBackup`/`listBackups`/`deleteBackup` שתוארו כאן נוספו ל-
+`docs/gas-mail-drive.gs` אבל אף פעם לא הודבקו בפועל ל-Code.gs החי, ולכן כל ריצת גיבוי
+נכשלה (הבקשות נפלו לנתיב הכללי `handleGenericEmail`, שניסה לשלוח את הגיבוי כצרופת מייל
+ונכשל ב-`Limit Exceeded: Email Total Attachments Size`).
 
-**צעד חובה, לכל גמח בנפרד (שני חשבונות Google נפרדים)**: להדביק את הגרסה המעודכנת של
-`docs/gas-mail-drive.gs` ל-Code.gs ולעשות Deploy -> Manage deployments -> Edit -> New
-version מחדש (אותם צעדים כמו למעלה) - גם בפרויקט ה-GAS של הגמח הראשי וגם בזה של נווה
-יעקב. בלי זה קריאות הגיבוי ל-`action:'uploadBackup'` וכו' יחזרו לנתיב הכללי (`handleGenericEmail`)
-וייכשלו.
+**הוחלט (17.09.2026) שלא לפרוס גרסה מעודכנת של הקובץ הזה בשביל גיבויים.** במקום זאת
+`scripts/cloud_backup.js` מעלה ישירות ל-Drive דרך גשר Apps Script **משותף ונפרד** שכבר
+פרוס ורץ (`apps-script-send`/`ArchiveBridge.js` - ר' `scripts/lib/driveBridge.js`) - אין
+צורך בשום עדכון/פריסה מחדש של `docs/gas-mail-drive.gs` או של פרויקטי ה-GAS של אף אחד
+מהגמחים בשביל גיבויים. הפעולות שהוסרו מהקובץ לא ישמשו יותר.
 
 ### תאימות לאחור
 
