@@ -45,6 +45,14 @@ function getModelDisplayName(model) {
   return model.barcodePrefix ? String(model.barcodePrefix) : rawName;
 }
 
+// דגמים בלי שם תיאורי אמיתי (getModelDisplayName מחזיר להם את מספר הדגם עצמו) מציגים
+// בתצוגת "שורות" את אותו מספר פעמיים נוספות (תג "#מספר" בכותרת + שורת קוד נפרדת),
+// בנוסף לעיגול שכבר מציג אותו — ר' דיווח ffa88595.
+function modelHasRealName(model) {
+  const rawName = (model.name || '').trim();
+  return !!rawName && !rawName.startsWith('ללא שם');
+}
+
 // עיגול פרופיל לדגם: תמונה אם קיימת (ומותרת), אחרת אותיות הדגם —
 // אות ראשונה משתי המילים הראשונות, או שתי האותיות הראשונות בשם של מילה אחת.
 function ModelAvatar({ model, size, showImage }) {
@@ -1408,14 +1416,16 @@ export default function CustomerInventoryViewer() {
                       <div key={model.id} className="ka-dress-row" style={{ cursor: isLocked ? 'default' : 'pointer' }}
                         onClick={() => handleModelDoubleClick(model)}>
                         <ModelAvatar model={model} size="md" showImage={settings.hide_dress_images !== 'true'} />
-                        <div className="ka-rmeta">
-                          <h3>
-                            {getModelDisplayName(model)}
-                            {model.barcodePrefix && <span className="ka-badge ka-badge-neutral">#{model.barcodePrefix}</span>}
-                            {model.priceCategory && model.priceCategory !== 'כללי' && <span className="ka-badge ka-badge-primary">{model.priceCategory}</span>}
-                          </h3>
-                          <div className="ka-dress-code">{model.barcodePrefix ? `#${model.barcodePrefix}` : ''}{model.priceCategory ? ` · ${model.priceCategory}` : ''}</div>
-                        </div>
+                        {modelHasRealName(model) && (
+                          <div className="ka-rmeta">
+                            <h3>
+                              {getModelDisplayName(model)}
+                              {model.barcodePrefix && <span className="ka-badge ka-badge-neutral">#{model.barcodePrefix}</span>}
+                              {model.priceCategory && model.priceCategory !== 'כללי' && <span className="ka-badge ka-badge-primary">{model.priceCategory}</span>}
+                            </h3>
+                            <div className="ka-dress-code">{model.barcodePrefix ? `#${model.barcodePrefix}` : ''}{model.priceCategory ? ` · ${model.priceCategory}` : ''}</div>
+                          </div>
+                        )}
                         <button type="button" className="ka-icon-btn" title="הדפסת הדגם הזה בלבד"
                           onClick={(e) => {
                             e.stopPropagation();
