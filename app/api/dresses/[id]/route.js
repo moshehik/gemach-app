@@ -82,6 +82,7 @@ export async function PUT(request, { params }) {
     if (body.priceCategory !== undefined) updatedData.priceCategory = body.priceCategory;
     if (body.notes !== undefined) updatedData.notes = body.notes;
     if (body.imageUrl !== undefined) updatedData.imageUrl = body.imageUrl;
+    if (body.thumbnailUrl !== undefined) updatedData.thumbnailUrl = body.thumbnailUrl;
     if (body.inInspection !== undefined) updatedData.inInspection = body.inInspection;
     
     if (body.barcodePrefix !== undefined) {
