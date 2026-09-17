@@ -3,6 +3,10 @@
 import { useState, useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import SettingQuickPanel from './SettingQuickPanel';
+import useElementPicker, { ElementPickerOverlay } from './useElementPicker';
+import useScreenRecorder from './useScreenRecorder';
+import { captureElement, captureViewport, dataUrlToParts } from '../../lib/clientCapture';
+import { uploadScreenRecording } from '../../lib/uploadScreenRecording';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
 // SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
@@ -17,6 +21,21 @@ function extractOpenSettingKeys(content) {
   }
   const displayText = content.replace(tagRegex, '').trim();
   return { displayText, keys };
+}
+
+// מפריד תגיות [OPEN_LINK:route|תווית] שה-AI מוסיף (app/api/ai/route.js, ACTION:
+// HOWTO_GUIDE) - מקביל ל-extractOpenSettingKeys אבל לניווט ישיר לעמוד, לא לפתיחת
+// פאנל עריכת הגדרה.
+function extractOpenLinks(content) {
+  if (typeof content !== 'string') return { displayText: content, links: [] };
+  const links = [];
+  const tagRegex = /\[OPEN_LINK:([^\]|]+)\|([^\]]+)\]/g;
+  let match;
+  while ((match = tagRegex.exec(content)) !== null) {
+    links.push({ route: match[1].trim(), label: match[2].trim() });
+  }
+  const displayText = content.replace(tagRegex, '').trim();
+  return { displayText, links };
 }
 
 export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = null }) {
@@ -40,8 +59,72 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   const [showHistory, setShowHistory] = useState(false);
   const [chatSessions, setChatSessions] = useState([]);
 
+  // צילום/הקלטה מצורפים להודעה הבאה - ר' תוכנית Phase 3/4.
+  const [pendingImage, setPendingImage] = useState(null); // data URL
+  const [pendingRecordingUrl, setPendingRecordingUrl] = useState(null);
+  const [showCaptureMenu, setShowCaptureMenu] = useState(false);
+  const [recordingEnabled, setRecordingEnabled] = useState(false);
+  const [isUploadingRecording, setIsUploadingRecording] = useState(false);
+
   const recognitionRef = useRef(null);
   const chatEndRef = useRef(null);
+
+  const handleWidgetElementPicked = async (el) => {
+    setIsOpen(true);
+    const capture = await captureElement(el);
+    if (capture) setPendingImage(capture.dataUrl);
+  };
+  const elementPicker = useElementPicker(handleWidgetElementPicked);
+
+  const captureFullScreenForChat = async () => {
+    setShowCaptureMenu(false);
+    setIsOpen(false);
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const capture = await captureViewport();
+    setIsOpen(true);
+    if (capture) setPendingImage(capture.dataUrl);
+  };
+
+  const startElementCaptureForChat = () => {
+    setShowCaptureMenu(false);
+    setIsOpen(false);
+    elementPicker.startPicking();
+  };
+
+  const screenRecorder = useScreenRecorder();
+
+  const toggleRecording = async () => {
+    setShowCaptureMenu(false);
+    if (screenRecorder.isRecording) {
+      screenRecorder.stop();
+      return;
+    }
+    setIsOpen(false);
+    const blob = await screenRecorder.start();
+    setIsOpen(true);
+    if (!blob) return;
+    setIsUploadingRecording(true);
+    try {
+      const url = await uploadScreenRecording(blob);
+      setPendingRecordingUrl(url);
+    } catch (e) {
+      console.error('Failed to upload screen recording:', e);
+      alert('העלאת ההקלטה נכשלה.');
+    } finally {
+      setIsUploadingRecording(false);
+    }
+  };
+
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json())
+      .then((data) => {
+        if (!Array.isArray(data)) return;
+        const s = data.find((x) => x.key === 'ai_screen_recording_enabled');
+        setRecordingEnabled(s?.value === 'true');
+      })
+      .catch(() => {});
+  }, []);
 
   // ניווט באותה כרטיסייה (SPA, ללא רענון מלא) בלחיצה רגילה - שומר על ctrl/cmd/shift/
   // middle-click כדי שמשתמש שרוצה בכוונה לפתוח בכרטיסייה חדשה עדיין יוכל (כמו Next Link).
@@ -150,12 +233,16 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
 
   const sendMessage = async (e) => {
     e.preventDefault();
-    if (!input.trim() || loading) return;
+    if ((!input.trim() && !pendingImage && !pendingRecordingUrl) || loading) return;
 
-    const userMsg = input.trim();
+    const userMsg = input.trim() || (pendingRecordingUrl ? 'מה קרה בהקלטה הזו?' : 'מה רואים בתמונה הזו?');
+    const imageToSend = pendingImage ? dataUrlToParts(pendingImage) : null;
+    const recordingToSend = pendingRecordingUrl;
     setInput('');
+    setPendingImage(null);
+    setPendingRecordingUrl(null);
 
-    const newMessages = [...messages, { role: 'user', content: userMsg }];
+    const newMessages = [...messages, { role: 'user', content: userMsg, attachedImage: pendingImage, attachedRecording: recordingToSend }];
     setMessages(newMessages);
     setLoading(true);
 
@@ -181,7 +268,9 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
         body: JSON.stringify({
           prompt: userMsg,
           history: historyContext,
-          context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ${currentContext}אתה עוזר וירטואלי עבור עובדי הגמ"ח. מותר לך לספק נתונים על לקוחות, הזמנות, פריטים ומלאי כדי לעזור בשירות לקוחות. אסור לך לחשוף מידע על עובדים אחרים, משמרות או הרשאות. אסור לך להציג סטטיסטיקות כלליות, סיכומי רווחים, דוחות או פילוחים ניהוליים מתקדמים (אם העובד מבקש סטטיסטיקות כאלו, אמור לו שזה זמין רק בממשק מנהל).`
+          context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ${currentContext}אתה עוזר וירטואלי עבור עובדי הגמ"ח. מותר לך לספק נתונים על לקוחות, הזמנות, פריטים ומלאי כדי לעזור בשירות לקוחות. אסור לך לחשוף מידע על עובדים אחרים, משמרות או הרשאות. אסור לך להציג סטטיסטיקות כלליות, סיכומי רווחים, דוחות או פילוחים ניהוליים מתקדמים (אם העובד מבקש סטטיסטיקות כאלו, אמור לו שזה זמין רק בממשק מנהל).`,
+          image: imageToSend,
+          recordingUrl: recordingToSend,
         }),
       });
 
@@ -279,6 +368,16 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
     recognition.onerror = (event) => {
       console.error('Speech recognition error:', event.error);
       setIsListening(false);
+      // ללא הודעה כאן הכפתור פשוט "לא עושה כלום" מבחינת המשתמש - למשל כשהרשאת
+      // המיקרופון נדחתה בעבר, recognition.start() נכשל מיד בלי onstart בכלל.
+      const messages = {
+        'not-allowed': 'לא ניתנה הרשאת מיקרופון. יש לאשר גישה למיקרופון בהגדרות הדפדפן ולנסות שוב.',
+        'permission-denied': 'לא ניתנה הרשאת מיקרופון. יש לאשר גישה למיקרופון בהגדרות הדפדפן ולנסות שוב.',
+        'no-speech': 'לא זוהה דיבור. נסו שוב ודברו בסמוך למיקרופון.',
+        'audio-capture': 'לא נמצא מיקרופון זמין במחשב זה.',
+        'network': 'שגיאת רשת בזיהוי הקול. נסו שוב.',
+      };
+      alert(messages[event.error] || 'אירעה שגיאה בהקלטת הקול. נסו שוב.');
     };
 
     recognition.onend = () => {
@@ -305,37 +404,43 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   }
 
   if (!isOpen) {
+    // הכפתור מוסתר בכוונה בזמן איתור/צילום/הקלטה (setIsOpen(false) ב-Phase 3/4)
+    // כדי שהוא לא ייכנס לצילום עצמו - אבל שכבת האיתור/הצילום עצמה חייבת עדיין
+    // להיות מוצגת, אחרת אין למשתמש שום משוב חזותי בזמן שהחלונית סגורה.
     return (
-      <button data-element-name="כפתור_AIFloatingWidget_2"
-        type="button"
-        className="print-hide ai-widget-fab"
-        onClick={() => setIsOpen(true)}
-        style={{
-          position: 'fixed',
-          bottom: '20px',
-          insetInlineStart: '20px',
-          width: '44px',
-          height: '44px',
-          borderRadius: 'var(--radius-full)',
-          backgroundColor: 'var(--primary-solid)',
-          color: 'var(--text-on-primary)',
-          border: 'none',
-          boxShadow: 'var(--shadow-lg)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          cursor: 'pointer',
-          zIndex: 900,
-          transition: 'transform 0.2s'
-        }}
-        onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
-        onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-        title="עוזר AI"
-      >
-        <svg data-element-name="רכיב_AIFloatingWidget_3" className="icon" style={{ width: '22px', height: '22px' }}>
-          <use href="#i-star" />
-        </svg>
-      </button>
+      <>
+        <button data-element-name="כפתור_AIFloatingWidget_2"
+          type="button"
+          className="print-hide ai-widget-fab"
+          onClick={() => setIsOpen(true)}
+          style={{
+            position: 'fixed',
+            bottom: '20px',
+            insetInlineStart: '20px',
+            width: '44px',
+            height: '44px',
+            borderRadius: 'var(--radius-full)',
+            backgroundColor: 'var(--primary-solid)',
+            color: 'var(--text-on-primary)',
+            border: 'none',
+            boxShadow: 'var(--shadow-lg)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            cursor: 'pointer',
+            zIndex: 900,
+            transition: 'transform 0.2s'
+          }}
+          onMouseOver={e => e.currentTarget.style.transform = 'scale(1.05)'}
+          onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+          title="עוזר AI"
+        >
+          <svg data-element-name="רכיב_AIFloatingWidget_3" className="icon" style={{ width: '22px', height: '22px' }}>
+            <use href="#i-star" />
+          </svg>
+        </button>
+        <ElementPickerOverlay isPicking={elementPicker.isPicking} hoverRect={elementPicker.hoverRect} />
+      </>
     );
   }
 
@@ -458,7 +563,8 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
           ) : (
             <div className="chat-thread">
               {messages.map((msg, idx) => {
-                const { displayText, keys: openSettingKeys } = extractOpenSettingKeys(msg.content);
+                const { displayText: afterSettings, keys: openSettingKeys } = extractOpenSettingKeys(msg.content);
+                const { displayText, links: openLinks } = extractOpenLinks(afterSettings);
                 return (
                   <div key={idx} className={`bubble ${msg.role === 'user' ? 'user' : 'assistant'}`}>
                     <button
@@ -470,6 +576,12 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                       <svg className="icon"><use href={`#${copiedIdx === idx ? 'i-check' : 'i-copy'}`} /></svg>
                     </button>
                     <div style={{ whiteSpace: 'pre-wrap' }}>{parseMessageToLinks(displayText)}</div>
+                    {msg.attachedImage && (
+                      <img src={msg.attachedImage} alt="צילום מצורף" style={{ maxWidth: 180, maxHeight: 140, borderRadius: 6, marginTop: 6, display: 'block' }} />
+                    )}
+                    {msg.attachedRecording && (
+                      <video src={msg.attachedRecording} controls style={{ maxWidth: 220, maxHeight: 160, borderRadius: 6, marginTop: 6, display: 'block' }} />
+                    )}
                     {msg.tableData && renderTable(msg.tableData)}
                     {openSettingKeys.length > 0 && (
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
@@ -486,6 +598,21 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                         ))}
                       </div>
                     )}
+                    {openLinks.length > 0 && (
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginTop: '8px' }}>
+                        {openLinks.map((link, i) => (
+                          <a
+                            key={i}
+                            href={link.route}
+                            onClick={(e) => navigateInApp(e, link.route)}
+                            className="btn btn-secondary btn-sm"
+                          >
+                            <svg className="icon"><use href="#i-chevron-start" /></svg>
+                            {link.label}
+                          </a>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -499,47 +626,114 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
           )}
         </div>
 
+        {/* תצוגה ממתינה - תמונה/הקלטת מסך שצורפו ועדיין לא נשלחו */}
+        {(pendingImage || pendingRecordingUrl || isUploadingRecording) && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderTop: '1px solid var(--border)', backgroundColor: 'var(--surface)' }}>
+            {pendingImage && (
+              <div style={{ position: 'relative' }}>
+                <img src={pendingImage} alt="צילום ממתין" style={{ width: 48, height: 48, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                <button type="button" onClick={() => setPendingImage(null)} style={{ position: 'absolute', top: -6, insetInlineEnd: -6, width: 16, height: 16, borderRadius: '50%', background: 'var(--danger-solid)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 10, lineHeight: 1 }}>×</button>
+              </div>
+            )}
+            {isUploadingRecording && <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />}
+            {pendingRecordingUrl && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <svg className="icon" style={{ width: 16, height: 16 }}><use href="#i-check" /></svg>
+                <span style={{ fontSize: 12.5 }}>הקלטת מסך מוכנה לשליחה</span>
+                <button type="button" onClick={() => setPendingRecordingUrl(null)} className="btn btn-ghost btn-icon-only btn-sm">
+                  <svg className="icon"><use href="#i-x" /></svg>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Input Area */}
         <form onSubmit={sendMessage} style={{
           display: 'flex',
           padding: '12px',
           borderTop: '1px solid var(--border)',
           backgroundColor: 'var(--surface)',
-          gap: '8px'
+          gap: '8px',
+          position: 'relative'
         }}>
-          <button data-element-name="כפתור_AIFloatingWidget_16"
-            type="button"
-            onClick={toggleListen}
-            className="icon-btn"
-            style={{
-              background: isListening ? 'var(--danger-solid)' : 'var(--surface-alt)',
-              color: isListening ? 'var(--text-on-primary)' : 'var(--text)',
-              borderColor: isListening ? 'var(--danger-solid)' : 'var(--border)',
-              animation: isListening ? 'pulse 1.5s infinite' : 'none'
-            }}
-            title="הקלט הודעה"
-          >
-            <svg data-element-name="רכיב_AIFloatingWidget_17" className="icon"><use href="#i-mic" /></svg>
-          </button>
-          <input data-element-name="שדה_AIFloatingWidget_18"
-            type="text"
-            autoFocus
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="שאל שאלה..."
-            className="input"
-            style={{ flex: 1, borderRadius: 'var(--radius-full)' }}
-          />
-          <button data-element-name="כפתור_AIFloatingWidget_19"
-            type="submit"
-            disabled={loading}
-            className="btn btn-primary btn-icon-only"
-            style={{ borderRadius: '50%' }}
-          >
-            <svg data-element-name="רכיב_AIFloatingWidget_20" className="icon"><use href="#i-chevron-start" /></svg>
-          </button>
+          {screenRecorder.isRecording ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, background: 'var(--danger-tint)', borderRadius: 'var(--radius-full)', padding: '0 14px' }}>
+              <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--danger-solid)', animation: 'pulse 1.5s infinite' }} />
+              <span style={{ fontSize: 13, fontWeight: 600 }}>מקליט מסך... {screenRecorder.seconds}/{screenRecorder.maxSeconds} שנ'</span>
+              <button type="button" className="btn btn-secondary btn-sm" style={{ marginInlineStart: 'auto' }} onClick={() => screenRecorder.stop()}>עצור</button>
+            </div>
+          ) : (
+            <>
+              <div style={{ position: 'relative' }}>
+                <button data-element-name="כפתור_AIFloatingWidget_22"
+                  type="button"
+                  onClick={() => setShowCaptureMenu((v) => !v)}
+                  className="icon-btn"
+                  title="צרף צילום/הקלטת מסך"
+                >
+                  <svg className="icon"><use href="#i-grid" /></svg>
+                </button>
+                {showCaptureMenu && (
+                  <div style={{
+                    position: 'absolute', bottom: '110%', insetInlineStart: 0,
+                    background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)',
+                    boxShadow: 'var(--shadow-lg)', padding: 6, display: 'flex', flexDirection: 'column', gap: 2,
+                    minWidth: 190, zIndex: 10,
+                  }}>
+                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={startElementCaptureForChat}>
+                      <svg className="icon"><use href="#i-pin" /></svg>
+                      צלם אזור באתר
+                    </button>
+                    <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={captureFullScreenForChat}>
+                      <svg className="icon"><use href="#i-grid" /></svg>
+                      צלם את כל המסך
+                    </button>
+                    {recordingEnabled && (
+                      <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={toggleRecording}>
+                        <svg className="icon"><use href="#i-activity" /></svg>
+                        הקלט מסך
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+              <button data-element-name="כפתור_AIFloatingWidget_16"
+                type="button"
+                onClick={toggleListen}
+                className="icon-btn"
+                style={{
+                  background: isListening ? 'var(--danger-solid)' : 'var(--surface-alt)',
+                  color: isListening ? 'var(--text-on-primary)' : 'var(--text)',
+                  borderColor: isListening ? 'var(--danger-solid)' : 'var(--border)',
+                  animation: isListening ? 'pulse 1.5s infinite' : 'none'
+                }}
+                title="הקלט הודעה"
+              >
+                <svg data-element-name="רכיב_AIFloatingWidget_17" className="icon"><use href="#i-mic" /></svg>
+              </button>
+              <input data-element-name="שדה_AIFloatingWidget_18"
+                type="text"
+                autoFocus
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="שאל שאלה..."
+                className="input"
+                style={{ flex: 1, borderRadius: 'var(--radius-full)' }}
+              />
+              <button data-element-name="כפתור_AIFloatingWidget_19"
+                type="submit"
+                disabled={loading}
+                className="btn btn-primary btn-icon-only"
+                style={{ borderRadius: '50%' }}
+              >
+                <svg data-element-name="רכיב_AIFloatingWidget_20" className="icon"><use href="#i-chevron-start" /></svg>
+              </button>
+            </>
+          )}
         </form>
       </div>
+      <ElementPickerOverlay isPicking={elementPicker.isPicking} hoverRect={elementPicker.hoverRect} />
 
       {/* Table Modal */}
       {showTableModal && modalTableData && (

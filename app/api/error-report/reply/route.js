@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
+import { uploadAttachmentDataUrls } from '../../../../lib/attachmentUpload';
 
 export async function POST(request) {
   try {
@@ -20,11 +21,13 @@ export async function POST(request) {
     const isManager = [0, 1, 2].includes(employee.roleId);
 
     const body = await request.json();
-    const { reportId, text, isQuestion } = body;
+    const { reportId, text, isQuestion, attachments } = body;
 
     if (!reportId || !text) {
       return NextResponse.json({ success: false, error: 'חסרים נתונים לשמירה' }, { status: 400 });
     }
+
+    const attachmentUrls = await uploadAttachmentDataUrls(attachments, 'error-report-reply');
 
     // Verify report exists and user has access
     const report = await prisma.errorReport.findUnique({ where: { id: reportId } });
@@ -43,7 +46,8 @@ export async function POST(request) {
         employeeId: employee.id,
         isProgrammer,
         text,
-        isQuestion: !!isQuestion
+        isQuestion: !!isQuestion,
+        attachmentUrls: attachmentUrls.length > 0 ? JSON.stringify(attachmentUrls) : null
       },
       include: {
         employee: { select: { firstName: true, lastName: true } }

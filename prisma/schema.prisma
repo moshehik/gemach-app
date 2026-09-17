@@ -636,6 +636,7 @@ model ErrorReport {
   queryParams        String?
   lastButtons        String?   @db.Text
   userText           String    @db.Text
+  attachmentUrls     String?   @db.Text // JSON-encoded array of URLs - screenshots (lib/clientCapture.js) and/or one screen recording (useScreenRecorder.js)
   status             String    @default("OPEN")
   isReadByUser       Boolean   @default(true)
   isReadByProgrammer Boolean   @default(false)
@@ -656,6 +657,7 @@ model ErrorReportReply {
   isProgrammer  Boolean     @default(false)
   text          String      @db.Text
   isQuestion    Boolean     @default(false) // true = this reply is an open question expecting a response from the other side, not just a status update/log - drives the "awaiting reply" thread tint in ErrorReportButton.js and the --question flag in scripts/error-report-reply.js
+  attachmentUrls String?    @db.Text // JSON-encoded array of URLs, same as ErrorReport.attachmentUrls
   previewUrl    String? // temporary Vercel preview link for this fix (see scripts/get-preview-deployment-url.js) - shown as a button in the UI, never a raw URL in `text`
   createdAt     DateTime    @default(now())
 }

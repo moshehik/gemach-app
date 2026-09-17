@@ -12,6 +12,12 @@ import { getHebrewYearContext, processHebrewDateMacro, getHebrewDateString } fro
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
 import { assertReadOnlySelect } from '../../../lib/sqlGuard';
 import { buildSettingsGuide } from '../../../lib/settingsMetadata';
+import { buildHowToGuide } from '../../../lib/howToGuide';
+import { uploadAndWaitForFile } from '../../../lib/ai/geminiFiles';
+
+// הקלטת מסך + פולינג ל-ACTIVE יכולים לקחת יותר מברירת המחדל של Vercel לפונקציית
+// serverless - ר' Phase 4 בתוכנית.
+export const maxDuration = 60;
 
 let cachedSchema = null;
 function getSchemaContext() {
@@ -78,14 +84,44 @@ IMPORTANT: If the user explicitly asks to SEE OR FIND ORDERS (e.g., "When was it
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
-    const { prompt, history = [], context = '' } = await req.json();
+    const { prompt, history = [], context = '', image = null, recordingUrl = null } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
     const historyText = history.map(msg => `${msg.role === 'user' ? 'User' : 'AI'}: ${msg.content}`).join('\n');
-    
+
+    // שאלה על צילום מסך/הקלטה היא "תסתכל על זה", לא שאילתת נתונים - מדלגים על כל
+    // צינור ה-SQL/ACTIONS ופונים ישירות ל-Gemini עם הפרומפט + המדיה.
+    if (image || recordingUrl) {
+      try {
+        const media = [];
+        if (image?.mimeType && image?.data) {
+          media.push({ mimeType: image.mimeType, data: image.data });
+        }
+        if (recordingUrl) {
+          const recordingSetting = await getCachedSetting('ai_screen_recording_enabled');
+          if (!recordingSetting || recordingSetting.value !== 'true') {
+            return NextResponse.json({ response: 'ניתוח הקלטות מסך אינו מופעל במערכת כרגע.', data: null, sqlQuery: null });
+          }
+          const videoRes = await fetch(recordingUrl);
+          if (!videoRes.ok) throw new Error(`Failed to fetch recording (${videoRes.status})`);
+          const contentType = videoRes.headers.get('content-type') || 'video/webm';
+          const buffer = Buffer.from(await videoRes.arrayBuffer());
+          const fileUri = await uploadAndWaitForFile(buffer, contentType);
+          media.push({ mimeType: contentType, fileUri });
+        }
+
+        const mediaPrompt = `אתה עוזר וירטואלי למערכת ניהול גמ"ח שמלות. המשתמש/ת צירף/ה ${recordingUrl ? 'הקלטת מסך' : 'צילום מסך'} מהמערכת ושאל/ה: "${prompt}".\n${context ? `הקשר נוסף: ${context}\n` : ''}ענה/י בעברית בצורה קצרה וברורה, בהתבסס על מה שרואים בפועל במדיה המצורפת. אל תשתמש בסימוני markdown כמו כוכביות.`;
+        const mediaResponse = await generateContent(mediaPrompt, null, media);
+        return NextResponse.json({ response: mediaResponse, data: null, sqlQuery: null });
+      } catch (mediaErr) {
+        console.error('AI media analysis error:', mediaErr);
+        return NextResponse.json({ response: 'מצטער, נתקלתי בשגיאה בעת ניתוח הצילום/ההקלטה. אנא נסה שוב.', data: null, sqlQuery: null });
+      }
+    }
+
     // Employee Classification Protections
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token');
@@ -114,6 +150,16 @@ export async function POST(req) {
 ACTION: SETTINGS_GUIDE()
 The system will then give you the full, up-to-date catalog of every configurable system setting (exact key, Hebrew name, category/location in the admin menu, description, field type, and current value), and you must answer based on that catalog alone.` : '';
 
+    // ACTION: HOWTO_GUIDE() - operational "how do I do X" questions (e.g. "איך
+    // מוסיפים תיקון להזמנה", "איך מדפיסים תווית משלוח"), as opposed to
+    // SETTINGS_GUIDE above which is about where a SystemSetting lives. Available to
+    // EVERY employee (not gated by isManager) since these are day-to-day operation
+    // questions, not admin/financial ones.
+    const howToGuideInstructions = `
+21. CRITICAL RULE FOR "HOW DO I..." QUESTIONS: If the user asks how to perform some operational action in the system (e.g. "איך מוסיפים...", "איך מבטלים...", "איך מדפיסים...", "איפה עושים...", "מאיפה אפשר ל...") and it is NOT a question about a SystemSetting (see rule above) and NOT a request for data from the database - you MUST NOT guess the answer, and you MUST NOT generate SQL. Instead, output EXACTLY this on its own line and nothing else:
+ACTION: HOWTO_GUIDE()
+The system will then give you a catalog of common operational actions (title, short instructions, and the page route to open), and you must answer based on that catalog alone. If nothing in the catalog genuinely matches, say honestly that you don't have instructions for that yet instead of guessing.`;
+
     const schemaText = getSchemaContext();
     const todayGregorian = new Date().toISOString().split('T')[0];
     const todayHebrew = new HDate().renderGematriya();
@@ -124,7 +170,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
     const includeWarehouse = warehouseSetting && warehouseSetting.value === 'true';
     const warehouseContext = includeWarehouse ? '' : `\nCRITICAL INVENTORY RULE: The system settings define that dresses in the warehouse MUST NOT be shown to customers! Whenever you query the "DressItem" table in SQL, you MUST add: AND "location" NOT ILIKE '%מחסן%' AND "location" NOT ILIKE '%warehouse%' AND "location" NOT ILIKE '%רזרבה%' AND "location" NOT ILIKE '%reserve%'.`;
     
-    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${employeeContext}${settingsGuideInstructions}${dateContext}${warehouseContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
+    const initialPrompt = `${SYSTEM_PROMPT_BASE}\n\n${schemaText}\n${employeeContext}${settingsGuideInstructions}${howToGuideInstructions}${dateContext}${warehouseContext}\n\nSystem Context/Instructions:\n${context}\n\nChat History Context:\n${historyText}\n\nCurrent User Question: ${prompt}`;
     
     let aiResponse = await generateContent(initialPrompt);
     
@@ -140,6 +186,10 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
     // so a non-manager's prompt can never trigger it even if the literal text
     // somehow ended up in their message history.
     const settingsGuideMatch = isManager ? /ACTION:\s*SETTINGS_GUIDE\(\)/i.exec(aiResponse) : null;
+
+    // Check for the how-to-guide action (see howToGuideInstructions above) -
+    // available to every employee, unlike the settings guide.
+    const howToGuideMatch = /ACTION:\s*HOWTO_GUIDE\(\)/i.exec(aiResponse);
 
     // Check for Custom Action with JSON payload
     const actionRegex = /ACTION:\s*CHECK_AVAILABILITY\(([\s\S]+?)\)/i;
@@ -176,6 +226,36 @@ CRITICAL: If you identified one or more specific setting keys that answer the qu
       } catch (err) {
         console.error('Settings guide action error:', err);
         aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת קטלוג ההגדרות. אנא נסה לנסח את השאלה מחדש.';
+      }
+    } else if (howToGuideMatch) {
+      try {
+        const catalog = buildHowToGuide();
+
+        const followupPrompt = `The user asked: "${prompt}".
+You determined this is an operational "how do I..." question and requested the how-to catalog.
+Here is the complete catalog of common operational actions in the system - key, title, short instructions, and the page route to open:
+${JSON.stringify(catalog)}
+
+Answer the user in Hebrew:
+1. Explain briefly and clearly, in plain conversational Hebrew, the steps to perform the action, based on the "steps" field.
+2. Do NOT invent an action/route that does not appear in the catalog above. If nothing in the catalog genuinely answers the question, say so honestly instead of guessing.
+3. Keep the answer short. DO NOT use markdown formatting like asterisks (**) for bolding or bullet points.
+CRITICAL: If you identified one or more specific catalog entries that answer the question (at most 2), end your response with each one on its own new line in this EXACT format: [OPEN_LINK:the_exact_route|the_exact_title]. Use the exact "route" and "title" fields from the catalog above, never invented ones. Omit this tag entirely if nothing in the catalog genuinely matches.`;
+
+        try {
+          fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== HOWTO GUIDE FOLLOWUP PROMPT ====\n' + followupPrompt + '\n');
+        } catch (e) {}
+
+        const finalResponse = await generateContent(followupPrompt);
+
+        try {
+          fs.appendFileSync(path.join(process.cwd(), 'ai-log.txt'), '\n==== HOWTO GUIDE FINAL RESPONSE ====\n' + finalResponse + '\n\n');
+        } catch (e) {}
+
+        return NextResponse.json({ response: finalResponse, data: null, sqlQuery: null });
+      } catch (err) {
+        console.error('Howto guide action error:', err);
+        aiResponse = 'מצטער, נתקלתי בשגיאה בעת שליפת ההדרכה. אנא נסה לנסח את השאלה מחדש.';
       }
     } else if (actionMatch) {
       try {

@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
 import { renderErrorReportEmailHtml, renderGenericEmailHtml } from '../../../lib/emailTemplates';
+import { uploadAttachmentDataUrls } from '../../../lib/attachmentUpload';
 
 // שולח מייל לכל המתכנתים הפעילים (roleId=2) דרך אותו Google Apps Script mailer
 // ששאר המערכת משתמשת בו - ר' POST למטה (דיווח חדש) ו-lib/emailTemplates.js.
@@ -196,11 +197,13 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { userText, url, title, time, queryParams, lastButtons } = body;
+    const { userText, url, title, time, queryParams, lastButtons, attachments } = body;
 
     if (!userText) {
       return NextResponse.json({ success: false, error: 'יש להזין תיאור שגיאה' }, { status: 400 });
     }
+
+    const attachmentUrls = await uploadAttachmentDataUrls(attachments, 'error-report');
 
     // Save to Database
     const newReport = await prisma.errorReport.create({
@@ -212,6 +215,7 @@ export async function POST(request) {
         queryParams,
         lastButtons: lastButtons ? JSON.stringify(lastButtons) : null,
         userText,
+        attachmentUrls: attachmentUrls.length > 0 ? JSON.stringify(attachmentUrls) : null,
         isReadByUser: true,
         isReadByProgrammer: false
       }
