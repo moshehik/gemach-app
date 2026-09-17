@@ -13,7 +13,10 @@ export async function GET() {
     return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
   }
   try {
-    const departments = await prisma.department.findMany({ orderBy: { roleId: 'asc' } });
+    // roleId 2 (מתכנת) תמיד מאושר לכל דבר בקוד הקיים (HEAD_MANAGEMENT_ROLES/DEVELOPER_ONLY_ROLES
+    // ב-lib/auth.js) - עמודה עבורו במטריצה הזו הייתה רק מטעה, אין ערך שאפשר לשנות בפועל.
+    const departments = (await prisma.department.findMany({ orderBy: { roleId: 'asc' } }))
+      .filter((d) => d.roleId !== 2);
     const rows = await prisma.departmentPermission.findMany();
     const rowByRoleAndKey = new Map(rows.map((r) => [`${r.roleId}:${r.key}`, r.value]));
 
