@@ -233,13 +233,13 @@ export default function BackupsPage() {
         </div>
 
         <div className="field">
-          <label>מזהה תיקיית דרייב לגיבויים (רשות)</label>
+          <label>שם תיקיית דרייב לגיבויים (רשות)</label>
           <input
             type="text"
             className="input"
             value={settings.backup_drive_folder_id}
             onChange={(e) => setSettings({ ...settings, backup_drive_folder_id: e.target.value })}
-            placeholder="ריק = שורש הדרייב של חשבון ה-GAS"
+            placeholder="ריק = ברירת מחדל לפי הגמח (נוצרת אוטומטית אם לא קיימת)"
           />
         </div>
 

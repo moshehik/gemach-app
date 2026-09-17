@@ -31,15 +31,6 @@ function doPost(e) {
     if (data.action === 'sendGemachOrderEmail') {
       return handleOrderEmail(data);
     }
-    if (data.action === 'uploadBackup') {
-      return handleUploadBackup(data);
-    }
-    if (data.action === 'listBackups') {
-      return handleListBackups(data);
-    }
-    if (data.action === 'deleteBackup') {
-      return handleDeleteBackup(data);
-    }
     return handleGenericEmail(data);
   } catch (err) {
     return jsonOut({ status: 'error', message: String(err && err.stack || err) });
@@ -316,68 +307,8 @@ function handleOrderEmail(data) {
   return jsonOut({ status: 'success', emailed: emailedNames, driveLinks: driveLinks });
 }
 
-// ---------- מסלול גיבוי נתונים (scripts/cloud_backup.js) ----------
-//
-// שונה במכוון מ-uploadToDriveWithFullDownload למעלה: קבצי גיבוי מכילים נתוני
-// לקוחות/כספים מלאים ולכן אסור שיהיו "כל מי שמחזיק בקישור" כמו צרופות ללקוח -
-// משתפים רק עם shareEmail ספציפי (addViewer בלבד, בלי setSharing(ANYONE_WITH_LINK)).
-
-/**
- * מעלה קובץ גיבוי (gzip) לדרייב, משותף רק לכתובת מהימנה אחת.
- * data: {fileName, fileContent(base64), mimeType?, driveFolderId?, shareEmail}
- */
-function handleUploadBackup(data) {
-  if (!data.fileName || !data.fileContent) {
-    return jsonOut({ status: 'error', message: 'Missing fileName/fileContent' });
-  }
-  var folder = getTargetFolder(data.driveFolderId);
-  var mime = data.mimeType || 'application/gzip';
-  var blob = Utilities.newBlob(decodeB64(data.fileContent), mime, data.fileName);
-  var file = folder.createFile(blob);
-  file.setName(data.fileName);
-  if (data.shareEmail && String(data.shareEmail).indexOf('@') > -1) {
-    try { file.addViewer(String(data.shareEmail).trim()); } catch (err) {}
-  }
-  return jsonOut({
-    status: 'success',
-    id: file.getId(),
-    url: file.getUrl(),
-    name: file.getName(),
-    size: file.getSize(),
-    createdTime: file.getDateCreated().toISOString()
-  });
-}
-
-/**
- * מחזיר את כל קבצי הגיבוי בתיקייה (לרשימה במסך הניהול ולרוטציה).
- * data: {driveFolderId?}
- */
-function handleListBackups(data) {
-  var folder = getTargetFolder(data.driveFolderId);
-  var files = [];
-  var it = folder.getFiles();
-  while (it.hasNext()) {
-    var f = it.next();
-    files.push({
-      id: f.getId(),
-      name: f.getName(),
-      size: f.getSize(),
-      createdTime: f.getDateCreated().toISOString()
-    });
-  }
-  return jsonOut({ status: 'success', files: files });
-}
-
-/**
- * מעביר קובץ גיבוי ישן לאשפה (רוטציה - שומר 14 יומיים + 8 שבועיים, ר' scripts/cloud_backup.js).
- * data: {fileId}
- */
-function handleDeleteBackup(data) {
-  if (!data.fileId) return jsonOut({ status: 'error', message: 'Missing fileId' });
-  try {
-    DriveApp.getFileById(String(data.fileId)).setTrashed(true);
-  } catch (err) {
-    return jsonOut({ status: 'error', message: String(err) });
-  }
-  return jsonOut({ status: 'success' });
-}
+// גיבוי הנתונים (scripts/cloud_backup.js) כבר לא עובר דרך הסקריפט הזה - הפעולות
+// uploadBackup/listBackups/deleteBackup שהיו כאן מעולם לא נפרסו בפועל לגרסה החיה
+// (ר' "Cloud backup to Drive" ב-CLAUDE.md, 2026-09-16/17), והוחלפו לחלוטין ב-
+// scripts/lib/driveBridge.js - גשר Apps Script משותף ונפרד (apps-script-send/
+// ArchiveBridge.js), לא בקובץ הזה. אין כאן יותר קוד גיבוי בכוונה.
