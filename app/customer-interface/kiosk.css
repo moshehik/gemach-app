@@ -313,10 +313,11 @@ body.hide-gregorian-calendar .ka-cal-day .g{display:none}
 /* results grid */
 .ka-results-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:16px}
 .ka-dress-card{
-  background:var(--card); border:1px solid var(--line); border-radius:var(--radius-md); padding:16px; box-shadow:var(--shadow-sm);
+  position:relative; background:var(--card); border:1px solid var(--line); border-radius:var(--radius-md); padding:16px; box-shadow:var(--shadow-sm);
   transition:transform .15s, box-shadow .15s; cursor:pointer;
 }
 .ka-dress-card:hover{transform:translateY(-3px); box-shadow:var(--shadow-md); border-color:var(--gold)}
+.ka-dress-card .ka-card-print-btn{position:absolute; top:10px; inset-inline-start:10px}
 /* תמונת דגם כעיגול פרופיל; ללא תמונה — אותיות הדגם על רקע חם */
 .ka-avatar{
   border-radius:50%; background:linear-gradient(150deg,var(--paper-deep),var(--gold-soft));

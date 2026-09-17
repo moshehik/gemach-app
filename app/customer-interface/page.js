@@ -325,6 +325,9 @@ export default function CustomerInventoryViewer() {
   // True during an employee-authorized print from a locked kiosk, so the
   // fullscreen exit caused by the print popup doesn't re-open the unlock modal.
   const suppressRelockRef = useRef(false);
+  // דגם ספציפי שמחכה להדפסה אחרי אישור עובד (כפתור המדפסת שליד דגם בודד, כשהמסך
+  // נעול) - null = הדפסת כל הקטלוג המסונן, כמו כפתור המדפסת הראשי.
+  const printModelRef = useRef(null);
 
   const aiEnabled = settings.hide_ai_features !== 'true' && settings.enable_ai_specific_employees !== 'true';
   const kioskSelfServiceOn = settings.kiosk_customer_self_service === 'true';
@@ -518,7 +521,8 @@ export default function CustomerInventoryViewer() {
           // Employee only authorized a print — the kiosk stays locked.
           setUnlockIntent('unlock');
           suppressRelockRef.current = true;
-          handleCatalogPrint();
+          handleCatalogPrint(printModelRef.current ? [printModelRef.current] : undefined);
+          printModelRef.current = null;
           setTimeout(() => {
             suppressRelockRef.current = false;
             // Best effort to restore fullscreen after the print popup closed;
@@ -746,17 +750,20 @@ export default function CustomerInventoryViewer() {
     return displayDresses.reduce((sum, model) => sum + getModelSizeInfo(model).totalAvailable, 0);
   }, [displayDresses]);
 
-  const handleCatalogPrint = () => {
+  // modelsToPrint - אופציונלי: להדפסת דגם בודד (כפתור המדפסת שליד כל דגם) במקום כל
+  // הקטלוג המסונן (כפתור המדפסת הראשי בסרגל העליון) - דיווח 1c6a2c23.
+  const handleCatalogPrint = (modelsToPrint) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
       alert("נא לאפשר חלונות קופצים (Pop-ups) כדי להדפיס");
       return;
     }
 
+    const modelsForReport = modelsToPrint || displayDresses;
     const dateStr = getHebrewDateString(selectedDate);
 
     let tableRows = '';
-    displayDresses.forEach(model => {
+    modelsForReport.forEach(model => {
       const sizeMap = new Map();
       let totalAvailable = 0;
       model.items?.forEach(item => {
@@ -816,7 +823,7 @@ export default function CustomerInventoryViewer() {
         <div class="bsd">בס"ד</div>
         <div class="report-header">
           <h1>דוח זמינות דגמים - גמ"ח שמלות</h1>
-          <p>תאריך אירוע מבוקש: ${dateStr} | סינון: ${search ? `"${search}"` : 'ללא סינון'}</p>
+          <p>תאריך אירוע מבוקש: ${dateStr} | סינון: ${modelsToPrint ? getModelDisplayName(modelsToPrint[0]) : (search ? `"${search}"` : 'ללא סינון')}</p>
         </div>
         <table>
           <thead>
@@ -832,7 +839,7 @@ export default function CustomerInventoryViewer() {
           </tbody>
         </table>
         <div class="summary">
-          סה"כ דגמים מוצגים: ${displayDresses.length}
+          סה"כ דגמים מוצגים: ${modelsForReport.length}
         </div>
         <script>
           window.onload = () => {
@@ -1409,6 +1416,14 @@ export default function CustomerInventoryViewer() {
                           </h3>
                           <div className="ka-dress-code">{model.barcodePrefix ? `#${model.barcodePrefix}` : ''}{model.priceCategory ? ` · ${model.priceCategory}` : ''}</div>
                         </div>
+                        <button type="button" className="ka-icon-btn" title="הדפסת הדגם הזה בלבד"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isLocked) { printModelRef.current = model; setUnlockIntent('print'); setShowUnlockModal(true); return; }
+                            handleCatalogPrint([model]);
+                          }}>
+                          <svg className="icon"><use href="#i-printer" /></svg>
+                        </button>
 
                         <div className={`ka-avail-line ${totalAvailable > 0 ? 'ok' : 'bad'}`}>
                           <svg className="icon"><use href={totalAvailable > 0 ? '#i-check-circle' : '#i-alert-tri'} /></svg>
@@ -1449,6 +1464,14 @@ export default function CustomerInventoryViewer() {
                       <div key={model.id} className="ka-dress-card" style={{ cursor: isLocked ? 'default' : 'pointer' }} onClick={() => {
                         handleModelDoubleClick(model);
                       }}>
+                        <button type="button" className="ka-icon-btn ka-card-print-btn" title="הדפסת הדגם הזה בלבד"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (isLocked) { printModelRef.current = model; setUnlockIntent('print'); setShowUnlockModal(true); return; }
+                            handleCatalogPrint([model]);
+                          }}>
+                          <svg className="icon"><use href="#i-printer" /></svg>
+                        </button>
                         <ModelAvatar model={model} size="lg" showImage={settings.hide_dress_images !== 'true'} />
 
                         <h3>
