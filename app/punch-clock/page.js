@@ -132,6 +132,11 @@ export default function PunchClockPage() {
                 }}
                 onFocus={() => setIsDropdownOpen(true)}
                 onBlur={() => setTimeout(() => setIsDropdownOpen(false), 200)}
+                // autoComplete="new-password" (לא "off", שכרום מתעלם ממנו בפועל בשדות
+                // מהסוג הזה) - אותו טריק שכבר קיים בשדה העובד המקביל ב-LoginScreen.js,
+                // בלי זה הדפדפן הציג dropdown native משלו עם שמות עובדים שהוקלדו בעבר
+                // מעל תיבת הבחירה המותאמת-אישית של הרכיב (דיווח 60de1c60).
+                autoComplete="new-password"
               />
               {isDropdownOpen && (
                 <div className="combobox-results">
@@ -182,6 +187,7 @@ export default function PunchClockPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="הזן סיסמא"
+                autoComplete="new-password"
               />
               <button type="button" className="toggle-visibility" title="הצג סיסמה" onClick={() => setShowPassword(v => !v)}>
                 <svg className="icon"><use href="#i-eye" /></svg>
