@@ -62,22 +62,36 @@ export async function GET(request) {
     const isProgrammer = employee.roleId === 2;
     // isManager = מותר להגיש דיווח חדש: תפקיד מנהל/הנהלה/מתכנת, או אישור פרטני בכרטיס העובד
     const isManager = [0, 1, 2].includes(employee.roleId) || !!employee.canReportErrors;
-    
+
     // Fetch reports: programmers see all, regular users see their own
     const whereClause = isProgrammer ? {} : { employeeId: employee.id };
-    
+
+    // ?light=1 - הבדיקה התקופתית כל 30 שנ' (ErrorReportButton.js, פועלת ברקע כל עוד
+    // הפאנל סגור) צריכה רק את השדות שמחשבים את מונה "לא נקראו"/הנקודה האדומה על
+    // הכפתור - לא את הרשימה המלאה עם כל התגובות המקוננות. לפני התיקון הזה כל טיק
+    // כזה הריץ בדיוק את אותה שאילתה הכבדה שהפאנל הפתוח משתמש בה: אצל כל מתכנת (רואה
+    // את *כל* הדיווחים בכל הארגון + כל התגובות) עם טאב פתוח ברקע 24/7 זה יצא
+    // ~720KB בכל 30 שניות - על נווה יעקב לבד כ-2000 קריאות/יום, ~250MB ליום, שהיה
+    // הגורם הדומיננטי (רוב מתוך כ-3.85GB) לחריגת מכסת התעבורה החודשית של נאון
+    // (5GB/פרויקט ב-Free) ב-2026-09-17. ר' תיעוד: docs/neon-quota-error-report-poll-2026-09-17.md
+    const isLight = new URL(request.url).searchParams.get('light') === '1';
+
     const reports = await prisma.errorReport.findMany({
       where: whereClause,
       orderBy: { updatedAt: 'desc' },
-      include: {
-        employee: { select: { firstName: true, lastName: true } },
-        replies: {
-          orderBy: { createdAt: 'asc' },
-          include: {
-            employee: { select: { firstName: true, lastName: true } }
-          }
-        }
-      }
+      ...(isLight
+        ? { select: { id: true, status: true, isReadByProgrammer: true, isReadByUser: true } }
+        : {
+            include: {
+              employee: { select: { firstName: true, lastName: true } },
+              replies: {
+                orderBy: { createdAt: 'asc' },
+                include: {
+                  employee: { select: { firstName: true, lastName: true } }
+                }
+              }
+            }
+          })
     });
 
     return NextResponse.json({ success: true, reports, isProgrammer, isManager });
