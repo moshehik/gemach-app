@@ -140,16 +140,17 @@ export default function PermissionsClient() {
                         const cellId = `${dept.roleId}:${item.key}`;
                         const isSaving = savingCell === cellId;
                         return (
-                          <td key={dept.roleId} style={{ textAlign: 'center' }}>
+                          <td key={dept.roleId} className="perm-cell" style={{ textAlign: 'center' }}>
                             {item.type === 'boolean' ? (
                               <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                                 <div
                                   className={cell.value ? 'switch on' : 'switch'}
                                   onClick={() => !isSaving && setCell(dept.roleId, item.key, !cell.value)}
+                                  style={cell.isExplicit ? { boxShadow: '0 0 0 2px var(--primary-tint)' } : undefined}
                                   title={cell.isExplicit ? 'ערך מוגדר במפורש למחלקה זו' : 'ברירת מחדל (עדיין לא נקבע ערך מפורש)'}
                                 />
                                 {cell.isExplicit && (
-                                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" disabled={isSaving} onClick={() => resetCell(dept.roleId, item.key)} title="אפס לברירת מחדל">
+                                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm perm-reset" disabled={isSaving} onClick={() => resetCell(dept.roleId, item.key)} title="אפס לברירת מחדל">
                                     <svg className="icon"><use href="#i-refresh" /></svg>
                                   </button>
                                 )}
@@ -159,7 +160,7 @@ export default function PermissionsClient() {
                                 <input
                                   className="input"
                                   type="number"
-                                  style={{ width: '80px', textAlign: 'center' }}
+                                  style={{ width: '80px', textAlign: 'center', ...(cell.isExplicit ? { borderColor: 'var(--primary-solid)' } : {}) }}
                                   defaultValue={cell.value}
                                   disabled={isSaving}
                                   onBlur={(e) => {
@@ -168,7 +169,7 @@ export default function PermissionsClient() {
                                   }}
                                 />
                                 {cell.isExplicit && (
-                                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm" disabled={isSaving} onClick={() => resetCell(dept.roleId, item.key)} title="אפס לברירת מחדל">
+                                  <button type="button" className="btn btn-ghost btn-icon-only btn-sm perm-reset" disabled={isSaving} onClick={() => resetCell(dept.roleId, item.key)} title="אפס לברירת מחדל">
                                     <svg className="icon"><use href="#i-refresh" /></svg>
                                   </button>
                                 )}

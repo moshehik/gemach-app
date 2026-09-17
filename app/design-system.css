@@ -403,6 +403,12 @@ a{color:inherit; text-decoration:none}
 .switch.on{background:var(--primary-solid)}
 .switch.on::after{inset-inline-start:18px}
 
+/* A dense grid of switches (e.g. /admin/permissions) reads calmer when the
+   per-cell "reset to default" control only appears on hover, instead of a
+   permanently-visible icon button next to every customized switch. */
+.perm-cell .perm-reset{opacity:0; transition:opacity .15s ease}
+.perm-cell:hover .perm-reset, .perm-cell:focus-within .perm-reset{opacity:1}
+
 /* ---- password field: lead lock icon + show/hide toggle ---- */
 .password-field{position:relative}
 .password-field .input{padding-inline-start:36px; padding-inline-end:38px}
