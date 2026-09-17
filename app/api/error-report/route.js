@@ -3,6 +3,7 @@ import prisma from '../../lib/prisma';
 import { getAllCachedSettings } from '@/lib/settingsCache';
 import { cookies } from 'next/headers';
 import { renderErrorReportEmailHtml, renderGenericEmailHtml } from '../../../lib/emailTemplates';
+import { uploadAttachmentDataUrls } from '../../../lib/attachmentUpload';
 
 // שולח מייל לכל המתכנתים הפעילים (roleId=2) דרך אותו Google Apps Script mailer
 // ששאר המערכת משתמשת בו - ר' POST למטה (דיווח חדש) ו-lib/emailTemplates.js.
@@ -49,7 +50,7 @@ export async function GET(request) {
   try {
     const cookieStore = await cookies();
     const token = cookieStore.get('auth_token');
-    
+
     if (!token?.value) {
       return NextResponse.json({ success: false, error: 'לא מורשה' }, { status: 401 });
     }
@@ -195,7 +196,7 @@ export async function POST(request) {
     let employeeId = null;
     let employeeName = 'לא ידוע / אורח';
     let requester = null;
-    
+
     if (token?.value) {
       const emp = await prisma.employee.findUnique({ where: { id: token.value } });
       if (emp) {
@@ -210,11 +211,13 @@ export async function POST(request) {
     }
 
     const body = await request.json();
-    const { userText, url, title, time, queryParams, lastButtons } = body;
+    const { userText, url, title, time, queryParams, lastButtons, attachments } = body;
 
     if (!userText) {
       return NextResponse.json({ success: false, error: 'יש להזין תיאור שגיאה' }, { status: 400 });
     }
+
+    const attachmentUrls = await uploadAttachmentDataUrls(attachments, 'error-report');
 
     // Save to Database
     const newReport = await prisma.errorReport.create({
@@ -226,6 +229,7 @@ export async function POST(request) {
         queryParams,
         lastButtons: lastButtons ? JSON.stringify(lastButtons) : null,
         userText,
+        attachmentUrls: attachmentUrls.length > 0 ? JSON.stringify(attachmentUrls) : null,
         isReadByUser: true,
         isReadByProgrammer: false
       }
@@ -245,14 +249,14 @@ export async function POST(request) {
       const gmachName = settings.find(s => s.key === 'gmach_name')?.value || 'גמ"ח שמלות';
 
       let scriptUrl = 'https://script.google.com/macros/s/AKfycbyBDsY2mF7h9PyGCw-ZpuaVK4XbtybOcd5t1Ka9TAU-cNFmKPsZYwxeNTxL3juZC-GvQA/exec';
-      
+
       // For bugs, use B if strategy is 'all_b' OR 'bugs_b_rest_a'
       if ((strategy === 'all_b' || strategy === 'bugs_b_rest_a') && linkB) {
         scriptUrl = linkB;
       } else if (linkA) {
         scriptUrl = linkA;
       }
-      
+
       const hiddenData = JSON.stringify({
         employeeName, time, title, url, queryParams, lastButtons, userText, status: 'OPEN', reportId: newReport.id
       });

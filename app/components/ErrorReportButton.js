@@ -3,10 +3,38 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getHebrewDateString } from '../../lib/hebrewDate';
+import { captureElement, captureViewport } from '../../lib/clientCapture';
+import useElementPicker, { describeElement, ElementPickerOverlay } from './useElementPicker';
 
 // כותרת קבועה לזיהוי שרשור "יומן הסוכן האוטומטי" (ר' scripts/agent-log-report.js -
 // חייבת להישאר זהה בשני המקומות, אין שדה ייעודי בסכימה בכוונה כדי לא לדרוש migration).
 const AGENT_LOG_TITLE = '🤖 יומן הסוכן האוטומטי (נא לא למחוק)';
+
+// attachmentUrls מאוחסן כמערך JSON של כתובות (תמונות מ-Phase 3 ו/או הקלטת מסך
+// אחת מ-Phase 4) - מוצג כגלריה קטנה של תמונות קליקביליות ווידאו.
+function AttachmentGallery({ attachmentUrls }) {
+  let urls = [];
+  try {
+    urls = attachmentUrls ? JSON.parse(attachmentUrls) : [];
+  } catch (e) {
+    return null;
+  }
+  if (!Array.isArray(urls) || urls.length === 0) return null;
+
+  return (
+    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+      {urls.map((url, idx) => (
+        url.endsWith('.webm') ? (
+          <video key={idx} src={url} controls style={{ maxWidth: 220, maxHeight: 160, borderRadius: 6, border: '1px solid var(--border)' }} />
+        ) : (
+          <a key={idx} href={url} target="_blank" rel="noopener noreferrer">
+            <img src={url} alt="צילום מצורף" style={{ maxWidth: 140, maxHeight: 140, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+          </a>
+        )
+      ))}
+    </div>
+  );
+}
 
 export default function ErrorReportButton() {
   const [isOpen, setIsOpen] = useState(false);
@@ -43,16 +71,51 @@ export default function ErrorReportButton() {
   const listScrollRef = useRef(null);
   const scrollPositions = useRef({ list: 0, archive: 0 });
 
-  // סימון אלמנט בעמוד — "מצב איתור": המודל נסגר זמנית, כל קליק בעמוד
-  // נחסם ונאסף כתיאור האלמנט במקום להפעיל את הפעולה האמיתית שלו.
-  const [isPicking, setIsPicking] = useState(false);
+  // סימון אלמנט בעמוד — "מצב איתור" (useElementPicker.js, משותף גם עם
+  // AIFloatingWidget): כל קליק בעמוד נחסם ונאסף כתיאור האלמנט + צילום קרופ שלו,
+  // במקום להפעיל את הפעולה האמיתית שלו.
   const [pickedElements, setPickedElements] = useState([]);
-  const [hoverRect, setHoverRect] = useState(null);
-  const hoveredElRef = useRef(null);
+  // תמונות ממתינות לצירוף - גם קרופ של אלמנט שסומן וגם "צלם את כל המסך".
+  // מופרד לפי הקשר ('new'/'reply') כמו pickingContextRef.
+  const [newAttachments, setNewAttachments] = useState([]);
+  const [replyAttachments, setReplyAttachments] = useState([]);
   // 'new' = טופס דיווח חדש (pickedElements, כמו קודם), 'reply' = תגובה בתוך
   // שרשור קיים (מוסיף ישירות לטקסט התגובה) - כדי שאיתור אלמנטים יעבוד גם
   // כשעונים על דיווח פתוח, לא רק בהודעה הראשונה.
   const pickingContextRef = useRef('new');
+
+  const handleElementPicked = async (el) => {
+    const described = describeElement(el);
+    const capture = await captureElement(el);
+    if (pickingContextRef.current === 'reply') {
+      if (described) setReplyText(prev => `${prev ? prev + ' ' : ''}[אלמנט מסומן: ${described.label}]`);
+      if (capture) setReplyAttachments(prev => [...prev, capture.dataUrl]);
+      setIsOpen(true);
+      setActiveTab('thread');
+    } else {
+      if (described) setPickedElements(prev => [...prev, described]);
+      if (capture) setNewAttachments(prev => [...prev, capture.dataUrl]);
+      setIsOpen(true);
+      setActiveTab('new');
+    }
+  };
+  const picker = useElementPicker(handleElementPicked);
+
+  const captureFullScreen = async (context = 'new') => {
+    pickingContextRef.current = context;
+    setIsOpen(false);
+    // לתת למודל לסיים להיסגר לפני הצילום, כדי שהוא לא ייכנס לתמונה עצמה.
+    await new Promise((resolve) => setTimeout(resolve, 150));
+    const capture = await captureViewport();
+    setIsOpen(true);
+    setActiveTab(context === 'reply' ? 'thread' : 'new');
+    if (!capture) {
+      showToast('צילום המסך נכשל', 'error');
+      return;
+    }
+    if (context === 'reply') setReplyAttachments(prev => [...prev, capture.dataUrl]);
+    else setNewAttachments(prev => [...prev, capture.dataUrl]);
+  };
 
   // אין משתמש מחובר (עמדת לקוחות, דפי הדפסה) - הבקשה תמיד תחזיר 401, אז אחרי
   // הפעם הראשונה מפסיקים לגמרי כדי לא להציף את הקונסול כל 30 שניות.
@@ -138,78 +201,10 @@ export default function ErrorReportButton() {
     }
   }, [activeTab]);
 
-  const describeElement = (el) => {
-    if (!el) return null;
-    const tag = el.tagName ? el.tagName.toLowerCase() : 'אלמנט';
-    const text = (el.innerText || el.textContent || '').trim().replace(/\s+/g, ' ').slice(0, 60);
-    const idPart = el.id ? `#${el.id}` : '';
-    const classNames = (typeof el.className === 'string' ? el.className : '').trim().split(/\s+/).filter(Boolean).slice(0, 2);
-    const classPart = classNames.length ? `.${classNames.join('.')}` : '';
-    const selector = `${tag}${idPart}${classPart}`;
-    const label = text ? `${selector} — "${text}"` : selector;
-    return { selector, text, label };
-  };
-
-  // מצב איתור אלמנט: המודל סגור בזמן שהמצב פעיל, כך שהמשתמש רואה ולוחץ על
-  // העמוד האמיתי. הקליק נתפס בשלב ה-capture ונחסם כדי שלא יפעיל את האלמנט עצמו.
-  useEffect(() => {
-    if (!isPicking) return;
-
-    const handleMove = (e) => {
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      if (el && el !== hoveredElRef.current) {
-        hoveredElRef.current = el;
-        setHoverRect(el.getBoundingClientRect());
-      }
-    };
-    const stopPicking = () => {
-      setIsPicking(false);
-      setIsOpen(true);
-      // בתגובה לשרשור קיים נשארים על אותה חלונית 'thread' (selectedReport כבר
-      // מוגדר); בדיווח חדש חוזרים לטופס 'new' כמו קודם.
-      setActiveTab(pickingContextRef.current === 'reply' ? 'thread' : 'new');
-      setHoverRect(null);
-    };
-    const handleClick = (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      const el = hoveredElRef.current || e.target;
-      const described = describeElement(el);
-      if (described) {
-        if (pickingContextRef.current === 'reply') {
-          setReplyText(prev => `${prev ? prev + ' ' : ''}[אלמנט מסומן: ${described.label}]`);
-        } else {
-          setPickedElements(prev => [...prev, described]);
-        }
-      }
-      stopPicking();
-    };
-    const handleKey = (e) => {
-      if (e.key === 'Escape') {
-        e.preventDefault();
-        stopPicking();
-      }
-    };
-
-    document.addEventListener('mousemove', handleMove, true);
-    document.addEventListener('click', handleClick, true);
-    document.addEventListener('keydown', handleKey, true);
-    const prevCursor = document.body.style.cursor;
-    document.body.style.cursor = 'crosshair';
-
-    return () => {
-      document.removeEventListener('mousemove', handleMove, true);
-      document.removeEventListener('click', handleClick, true);
-      document.removeEventListener('keydown', handleKey, true);
-      document.body.style.cursor = prevCursor;
-      hoveredElRef.current = null;
-    };
-  }, [isPicking]);
-
   const startPicking = (context = 'new') => {
     pickingContextRef.current = context;
     setIsOpen(false);
-    setIsPicking(true);
+    picker.startPicking();
   };
 
   // { light: true } - שימוש בבדיקת הרקע כל 30 שנ' (טאב פתוח, פאנל סגור) בלבד:
@@ -276,6 +271,7 @@ export default function ErrorReportButton() {
       time: getHebrewDateString(new Date()) + ' ' + new Date().toLocaleTimeString('he-IL'),
       queryParams: window.location.search || 'אין',
       lastButtons: window.__lastButtons || [],
+      attachments: newAttachments,
     };
 
     try {
@@ -289,6 +285,7 @@ export default function ErrorReportButton() {
         showToast('הדיווח נשלח בהצלחה למתכנת! תודה.', 'success');
         setUserText('');
         setPickedElements([]);
+        setNewAttachments([]);
         setActiveTab('list');
         fetchReports();
       } else {
@@ -308,12 +305,13 @@ export default function ErrorReportButton() {
       const res = await fetch('/api/error-report/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reportId: selectedReport.id, text: replyText, isQuestion: replyIsQuestion }),
+        body: JSON.stringify({ reportId: selectedReport.id, text: replyText, isQuestion: replyIsQuestion, attachments: replyAttachments }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setReplyText('');
         setReplyIsQuestion(false);
+        setReplyAttachments([]);
         setSelectedReport(prev => ({ ...prev, replies: [...prev.replies, data.reply] }));
         fetchReports();
       } else {
@@ -671,6 +669,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                       <span>{getHebrewDateString(selectedReport.createdAt)} {new Date(selectedReport.createdAt).toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })}</span>
                     </div>
                     <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{selectedReport.userText}</p>
+                    <AttachmentGallery attachmentUrls={selectedReport.attachmentUrls} />
                   </div>
 
                   {selectedReport.replies && selectedReport.replies.map(reply => {
@@ -700,6 +699,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                           )}
                         </div>
                         <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{reply.text}</p>
+                        <AttachmentGallery attachmentUrls={reply.attachmentUrls} />
                         {reply.previewUrl && (
                           <a
                             href={reply.previewUrl}
@@ -741,6 +741,20 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     />
                     זו שאלה פתוחה - ממתינה לתשובה (לא רק עדכון/סיכום)
                   </label>
+                  {replyAttachments.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+                      {replyAttachments.map((src, idx) => (
+                        <div key={idx} style={{ position: 'relative' }}>
+                          <img src={src} alt="צילום מצורף" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                          <button
+                            type="button"
+                            onClick={() => setReplyAttachments(prev => prev.filter((_, i) => i !== idx))}
+                            style={{ position: 'absolute', top: -6, insetInlineEnd: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--danger-solid)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}
+                          >×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 10 }}>
                     <button
                       type="button"
@@ -749,6 +763,14 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                       onClick={() => startPicking('reply')}
                     >
                       <svg className="icon"><use href="#i-pin" /></svg>
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-icon-only"
+                      title="צלם את כל המסך וצרף לתגובה"
+                      onClick={() => captureFullScreen('reply')}
+                    >
+                      <svg className="icon"><use href="#i-grid" /></svg>
                     </button>
                     <input
                       type="text"
@@ -952,6 +974,37 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     </span>
                     {pickedElements.length > 0 ? 'סמן אלמנט נוסף' : 'סמן אלמנט בעמוד שקשור לתקלה'}
                   </button>
+
+                  <button
+                    type="button"
+                    onClick={() => captureFullScreen('new')}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                      padding: '10px 14px', cursor: 'pointer', marginTop: 8,
+                      borderRadius: 'var(--radius-sm)',
+                      border: '1px solid var(--border)',
+                      background: 'var(--surface)',
+                      color: 'var(--text)', fontWeight: 600, fontSize: 13
+                    }}
+                  >
+                    <svg className="icon" style={{ width: 15, height: 15 }}><use href="#i-grid" /></svg>
+                    צלם את כל המסך
+                  </button>
+
+                  {newAttachments.length > 0 && (
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
+                      {newAttachments.map((src, idx) => (
+                        <div key={idx} style={{ position: 'relative' }}>
+                          <img src={src} alt="צילום מצורף" style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                          <button
+                            type="button"
+                            onClick={() => setNewAttachments(prev => prev.filter((_, i) => i !== idx))}
+                            style={{ position: 'absolute', top: -6, insetInlineEnd: -6, width: 18, height: 18, borderRadius: '50%', background: 'var(--danger-solid)', color: '#fff', border: 'none', cursor: 'pointer', fontSize: 11, lineHeight: 1 }}
+                          >×</button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="field">
@@ -967,7 +1020,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                 </div>
 
                 <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 'auto', paddingTop: 10 }}>
-                  <button type="button" className="btn btn-secondary" onClick={() => { setActiveTab('list'); setPickedElements([]); }}>ביטול</button>
+                  <button type="button" className="btn btn-secondary" onClick={() => { setActiveTab('list'); setPickedElements([]); setNewAttachments([]); }}>ביטול</button>
                   <button type="submit" className="btn btn-primary">
                     <svg className="icon"><use href="#i-arrow-end" /></svg>
                     שליחה למתכנת
@@ -981,47 +1034,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
         document.body
       )}
 
-      {isPicking && mounted && createPortal(
-        <>
-          {hoverRect && (
-            <div
-              style={{
-                position: 'fixed',
-                top: hoverRect.top,
-                left: hoverRect.left,
-                width: hoverRect.width,
-                height: hoverRect.height,
-                border: '2px solid var(--primary-solid)',
-                background: 'var(--primary-tint)',
-                opacity: 0.55,
-                borderRadius: 4,
-                pointerEvents: 'none',
-                zIndex: 999998
-              }}
-            />
-          )}
-          <div
-            style={{
-              position: 'fixed',
-              top: 16,
-              left: '50%',
-              transform: 'translateX(-50%)',
-              zIndex: 999999,
-              background: 'var(--text)',
-              color: 'var(--surface)',
-              padding: '10px 18px',
-              borderRadius: 999,
-              fontSize: 13.5,
-              fontWeight: 600,
-              boxShadow: 'var(--shadow-lg)',
-              pointerEvents: 'none'
-            }}
-          >
-            לחץ על האלמנט הרצוי בעמוד לסימונו · Esc לביטול
-          </div>
-        </>,
-        document.body
-      )}
+      <ElementPickerOverlay isPicking={picker.isPicking} hoverRect={picker.hoverRect} />
 
       {toast && mounted && createPortal(
         <div className={`toast ${toast.type}`} style={{ position: 'fixed', top: 20, left: '50%', transform: 'translateX(-50%)', zIndex: 9999999 }}>
