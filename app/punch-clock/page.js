@@ -125,6 +125,10 @@ export default function PunchClockPage() {
                 type="text"
                 value={employeeSearch}
                 placeholder={employees === null ? 'טוען רשימת עובדים...' : 'הקלד לחיפוש שם...'}
+                // "new-password" ולא "off" - כרום מתעלם בפועל מ-off בשדות מהסוג הזה,
+                // ובלעדיו הדפדפן מציג dropdown native משלו עם שמות שהוקלדו בעבר, מעל
+                // רשימת ההצעות המותאמת-אישית של הרכיב (אותו באג שכבר תוקן ב-LoginScreen).
+                autoComplete="new-password"
                 onChange={(e) => {
                   setEmployeeSearch(e.target.value);
                   setIsDropdownOpen(true);
