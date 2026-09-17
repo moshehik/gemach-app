@@ -126,3 +126,39 @@ const unreadCount = reports.filter(r => r.status !== 'ARCHIVED' &&
 `/api/error-report?light=1` אמורות לחזור בגודל דו-ספרתי/תלת-ספרתי בבייטים (כמו
 ה-68 בייט שנצפו לפני התיקון), לא מאות KB. פתיחת הפאנל עצמו (`/api/error-report`
 בלי `light`) אמורה להמשיך להחזיר את הרשימה המלאה כרגיל.
+
+---
+
+## עדכון סטטוס — המשך אותו יום (2026-09-17, אחה"צ)
+
+**בוצע:**
+- ✅ **PR #92 מוזג ל-`main`** (קומיט `8f5534c`) — התיקון בקוד חי ב-main. **לוודא ש-Vercel ביצע דיפלוי חדש** לשני האתרים (זה קורה אוטומטית ממיזוג ל-main, אבל שווה אימות ב-`vercel.com/moshehiks-projects` שהדיפלוי האחרון אכן מהקומיט הזה).
+- ✅ **`gemach-db` (הפרויקט המיותם, `morning-morning-55300514`) נמחק** מחשבון נאון א' (`org-young-fire-22908884`) — `DELETE /v2/projects/morning-morning-55300514`, אומת עם 404 אחרי.
+- מכסת `gemach-dresses-2` (נווה יעקב) בזמן הבדיקה האחרונה: **3.85GB/5GB (77%)**, אחסון 156MB/512MB. עוד לא ירד (הדיפלוי החדש עוד לא הספיק להשפיע על התעבורה בפועל בזמן הבדיקה).
+
+**עדיין פתוח — הכי חשוב למי שממשיך:**
+
+1. **מכסת חשבון הנאון של הגמ"ח הראשי (PROD `ep-orange-waterfall-avthvs1g` + TEST `ep-raspy-brook-avvyd9g5`, שניהם us-east-1) — עדיין לא נבדקה בפועל.** לא מדובר בחשבון נאון נפרד באמת (כנראה) אלא **בהיקף "Personal account" באותו login** (`moshehik@gmail.com`) — התגלה כי מפתח ה-API שיש לי גישה אליו הוא **org-scoped** (מחזיר "not allowed for organization API keys" ב-`/users/me` וב-`/consumption/projects`), ורואה רק את הפרויקטים של הארגון `org-young-fire-22908884` (חשבון א'). פרויקט אישי (לא תחת ארגון) לא ייראה לו כלל.
+   - **מפתח ה-`NEON_API_KEY` שכרגע שמור ב-Vercel** (env var על הפרויקט `gemach-app-uyh4`, `prj_ZZT2jYlvQZbQtN2evU5cfL3dOZzQ`, ID `CyaxuB0Fnv10gZlw`) **פג/בוטל** — נבדק ישירות מול נאון, מחזיר "supplied credentials do not pass authentication". צריך מפתח חדש.
+   - **הצעד הבא המדויק:** להיכנס ל-https://console.neon.tech, ליד הלוגו למעלה-שמאל יש בורר workspace — לעבור מ-"moshehik@gmail.com" (הארגון) ל-**"Personal account"**, לחפש שם פרויקט עם host שמתחיל ב-`ep-orange-waterfall-avthvs1g`. אם נמצא — ליצור מפתח חדש ב-https://console.neon.tech/app/settings/api-keys ולבדוק את המכסה. אם לא נמצא שם — כנראה login אחר לגמרי (אין רמז נוסף בקוד לאיזה מייל).
+   - אימות ביניים: **האתר של הגמ"ח הראשי חי ותקין כרגע** (`GET https://gemach-app-uyh4-beryl.vercel.app/api/health` → `{"ok":true,"db":"up","ms":1499}`), אז זה לא מצב חירום כמו שנווה יעקב היה — רק פער מידע.
+   - גודל TEST DB (נבדק ישירות דרך `scripts` עם `TEST_DATABASE_URL`): **214MB**. גודל PROD לא נמדד — חיבור ישיר עם `pg.Client` גרם ל-`ECONNRESET` עקבי (כנראה אי-תאימות עם `channel_binding=require`/pgbouncer בחיבור גולמי, לא תקלה אמיתית — ה-health check של האפליקציה עצמה מתחבר בלי בעיה).
+
+2. **`.github/workflows/backup-to-drive.yml` (גיבוי לענן, על חשבון הגמ"ח הראשי) עדיין נכשל בכל ריצה** עם `GAS error: Limit Exceeded: Email Total Attachments Size`, ולפני הכישלון **מבצע dump מלא של כל ה-DB** (~1.5 דקות). זה רץ 4-5 פעמים ביום (GitHub מדליל את התדירות המוצהרת של `*/15 * * * *`) ועלול לתרום משמעותית לתעבורה בחשבון הנאון של הגמ"ח הראשי — בדיוק מה שסעיף 1 לא יכול לאמת עדיין כי אין מפתח API עובד. **לא נגעתי בזה** — זו עבודה פעילה מתועדת עם החלטת ארכיטקטורה פתוחה (ר' `CLAUDE.md`, "Cloud backup to Drive"), ויש שינויים לא-committed על הקבצים האלה בעץ העבודה המשותף (`feature/ai-assistant-capture`). אם רוצים לעצור מיד את הבזבוז בלי לפתור את כל הסוגיה: לכבות `backup_enabled=false` ב-`/admin/backups` של הגמ"ח הראשי.
+
+3. **נקודות קצה כבדות נוספות שנמצאו אך לא נחקרו לעומק** (ב-`PageVisitLog` של נווה יעקב): `/api/dresses?eventDate=...&limit=10000` (תגובה קבועה ~922KB), `/api/dresses?page=1&limit=50...` (395KB בממוצע ל"50 פריטים" בלבד — חשוד, יתכן over-fetching). לא דחוף כרגע (הרבה קטן יותר מ-`/api/error-report`), אבל שווה מבט אם החריגה תחזור אחרי שהתיקון הנוכחי ייכנס לתוקף.
+
+### טבלת כל משאבי הנאון הידועים (מצב 2026-09-17 אחה"צ)
+
+| אתר | פרויקט Vercel | פרויקט Neon | אזור | אחסון (0.5GB) | תעבורה החודש (5GB) | סטטוס |
+|---|---|---|---|---|---|---|
+| נווה יעקב | `gmach-neve-yaakov` (`prj_nha4IxNtvyP6B0Try78r6ApWkRBa`) | `gemach-dresses-2` (`jolly-silence-63127698`), ענף `reimport-staging-2026-09-15` | eu-central-1 | 156MB (30%) | 3.85GB (77%) | חי; התיקון עלה, ממתין לאישוש שהמכסה יורדת |
+| גמ"ח ראשי — PROD | `gemach-app-uyh4` (`prj_ZZT2jYlvQZbQtN2evU5cfL3dOZzQ`) | לא זוהה — כנראה Personal account תחת אותו login | us-east-1 (`ep-orange-waterfall-avthvs1g`) | לא נמדד | **לא ידוע** | חי (`/api/health` תקין) |
+| גמ"ח ראשי — TEST | אותו פרויקט Vercel | אותו חשבון (משוער) | us-east-1 (`ep-raspy-brook-avvyd9g5`) | 214MB (42%) | לא ידוע | לא נבדק לעומק |
+| ~~gemach-db~~ | — | `morning-morning-55300514` | eu-central-1 | — | — | **נמחק 2026-09-17** |
+| print-center-NOW | — | `dry-sky-36955442` | eu-central-1 | 30MB (6%) | 0GB | לא קשור לגמ"ח |
+| print-center | — | `divine-credit-39212163` | eu-central-1 | 35MB (7%) | 0GB | לא קשור לגמ"ח |
+| bagrut-materials | — | `fancy-hill-59651059` | eu-central-1 | 32MB (6%) | 0GB | לא קשור לגמ"ח |
+
+### הערת אבטחה
+טוקן Vercel אישי (`vcp_...`) נמסר בצ'אט הזה לצורך הבדיקות הנ"ל — **לא נשמר בשום קובץ בריפו**. אם הסשן הבא צריך גישת API ל-Vercel שוב, יש לבקש טוקן טרי מהבעלים (Vercel → Settings → Tokens) ולא לצפות שהוא עדיין תקף/זמין.
