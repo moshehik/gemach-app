@@ -63,6 +63,7 @@ export default function IconSprite() {
         <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M6 3.5h12v17l-2.2-1.5-2 1.5-1.8-1.5-2 1.5-1.8-1.5L6 20.5Z" /><path d="M8.5 8h7M8.5 11.5h7M8.5 15h4" /></symbol>
         <symbol id="i-truck" viewBox="0 0 24 24"><path d="M3.5 7h10v9h-10Z" /><path d="M13.5 10.5H17l3 3v2.5h-2.5" /><circle cx="7" cy="18" r="1.7" /><circle cx="16.5" cy="18" r="1.7" /></symbol>
         <symbol id="i-link" viewBox="0 0 24 24"><path d="M9.5 14.5 14.5 9.5" /><path d="M11 7l1.5-1.5a3 3 0 0 1 4.2 4.2L15 11.5" /><path d="M13 17l-1.5 1.5a3 3 0 0 1-4.2-4.2L9 12.5" /></symbol>
+        <symbol id="i-external-link" viewBox="0 0 24 24"><path d="M14 4.5h5.5V10" /><path d="M19.5 4.5 10.5 13.5" /><path d="M18 13.5V18a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 6 18V9a1.5 1.5 0 0 1 1.5-1.5H12" /></symbol>
         <symbol id="i-image" viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2" /><circle cx="9" cy="10" r="1.6" /><path d="m5 17 5-5 3.5 3.5L18 11l2.5 2.5" /></symbol>
         <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 5.5v13l11-6.5Z" /></symbol>
         <symbol id="i-arrow-end" viewBox="0 0 24 24"><path d="M4 12h16M13 6l6 6-6 6" /></symbol>

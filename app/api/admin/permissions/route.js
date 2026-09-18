@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { PERMISSION_CATALOG, getCatalogGroup, getCatalogItem, defaultValueForRoleId } from '@/lib/permissionsMetadata';
+import { PERMISSION_CATALOG, getCatalogItem, defaultValueForRoleId } from '@/lib/permissionsMetadata';
 
 // Full permissions matrix: every department's effective value for every catalog key
 // (lib/permissionsMetadata.js). Powers /admin/permissions — see CLAUDE.md's
@@ -34,22 +34,23 @@ export async function GET() {
       return { roleId: department.roleId, name: department.name, values };
     });
 
-    const pageGroups = await buildPageGroups(departmentValues);
+    const pageGroups = await buildPermissionGroups(departmentValues, 'pages');
+    const featureGroups = await buildPermissionGroups(departmentValues, 'features');
 
-    return NextResponse.json({ departments: departmentValues, pageGroups });
+    return NextResponse.json({ departments: departmentValues, pageGroups, featureGroups });
   } catch (error) {
     console.error('Error loading permissions matrix:', error);
     return NextResponse.json({ error: 'שגיאה בטעינת מטריצת ההרשאות' }, { status: 500 });
   }
 }
 
-// Merges the admin-defined PermissionPageGroup rows with an implicit single-page row
-// for every 'pages' catalog key nobody has grouped yet, so the pages table always
-// covers every page with no gaps. See prisma/schema.prisma's PermissionPageGroup doc
-// comment and app/api/admin/permissions/page-groups/route.js for the write side.
-export async function buildPageGroups(departmentValues) {
-  const pageCatalog = getCatalogGroup('pages');
-  const rows = await prisma.permissionPageGroup.findMany({ orderBy: { order: 'asc' } });
+// Loads the admin-defined PermissionPageGroup rows for one catalog group ('pages' or
+// 'features'). Unlike the first version of this table, a catalog key with no row is
+// simply not returned — see prisma/schema.prisma's PermissionPageGroup doc comment —
+// so /admin/permissions only ever shows rows an admin actually created. See
+// app/api/admin/permissions/page-groups/route.js for the write side.
+export async function buildPermissionGroups(departmentValues, catalogGroup) {
+  const rows = await prisma.permissionPageGroup.findMany({ where: { catalogGroup }, orderBy: { order: 'asc' } });
 
   const accessFor = (keys) => {
     const access = {};
@@ -59,24 +60,21 @@ export async function buildPageGroups(departmentValues) {
     return access;
   };
 
-  const groupedKeys = new Set();
-  const pageGroups = rows.map((row) => {
-    const keys = JSON.parse(row.keys || '[]').filter((k) => getCatalogItem(k)?.group === 'pages');
-    keys.forEach((k) => groupedKeys.add(k));
-    return { id: row.id, name: row.name, keys, access: accessFor(keys), isAuto: false };
-  });
-
-  for (const item of pageCatalog) {
-    if (groupedKeys.has(item.key)) continue;
-    pageGroups.push({
-      id: `auto:${item.key}`,
-      name: item.label,
-      description: item.description,
-      keys: [item.key],
-      access: accessFor([item.key]),
-      isAuto: true,
+  // Same "read keys[0], apply to the whole row" convention as accessFor above — a
+  // row's employee-level access is represented by whoever has an explicit override
+  // on its first key (applyAccessToEmployees in lib/permissionPageGroups.js keeps
+  // every key in the row in sync with that on save).
+  const employeeAccessFor = async (keys) => {
+    if (!keys.length) return [];
+    const overrides = await prisma.employeePermissionOverride.findMany({
+      where: { key: keys[0], value: 'true' },
+      select: { employeeId: true },
     });
-  }
+    return overrides.map((o) => o.employeeId);
+  };
 
-  return pageGroups;
+  return Promise.all(rows.map(async (row) => {
+    const keys = JSON.parse(row.keys || '[]').filter((k) => getCatalogItem(k)?.group === catalogGroup);
+    return { id: row.id, name: row.name, keys, access: accessFor(keys), employeeAccess: await employeeAccessFor(keys) };
+  }));
 }
