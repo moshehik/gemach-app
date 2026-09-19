@@ -1,16 +1,14 @@
 import { NextResponse } from 'next/server';
 import { checkAuth } from '../../../lib/auth';
-import { createImageVariants, storeBuffers, hasBlobToken } from '../../../lib/dressImageStorage';
+import { createImageVariants, storeBuffers } from '../../../lib/dressImageStorage';
 
-// העלאת תמונת שמלה. מאז 2026-08:
+// העלאת תמונת שמלה (וגם הקלטת מסך של עוזר ה-AI, ר' lib/uploadScreenRecording.js -
+// אותו נתיב, sharp פשוט לא מפענח וידאו ונופל לשמירת הקובץ המקורי כמו שהוא). מאז 2026-08:
 // - התמונה מוקטנת ונדחסת עם sharp לשתי גרסאות: ווב (עד 1600px, נשמרת
-//   ב-imageUrl) ו-thumbnail (עד 300px, אותו שם עם "-thumb") — במקום לשמור
-//   קובץ מצלמה של 5MB+ שהוצג בתאי טבלה של 44px.
-// - כשקיים BLOB_READ_WRITE_TOKEN הקבצים נשמרים ב-Vercel Blob (בפרודקשן
-//   מערכת הקבצים אפמרלית — כתיבה ל-public/uploads נעלמת בין דיפלויים);
-//   בפיתוח מקומי ללא טוקן נשמרים ב-public/uploads כמו קודם.
-// תמונות ישנות עם כתובות /uploads/... או /images/dresses/... ממשיכות לעבוד —
-// שום דבר בצד הקריאה לא השתנה, רק נוספה גזירת thumb עם נפילה חזרה למקור.
+//   ב-imageUrl) ו-thumbnail (עד 300px, נשמרת בנפרד ב-thumbnailUrl) — במקום
+//   לשמור קובץ מצלמה של 5MB+ שהוצג בתאי טבלה של 44px.
+// - הקבצים נשמרים ב-DB (Attachment, ר' lib/dressImageStorage.js) - לא תלוי
+//   בסביבה (Vercel/מקומי), אין אפמריות ואין טוקן להגדיר.
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -20,15 +18,6 @@ export async function POST(request) {
 
     if (!file) {
       return NextResponse.json({ error: 'לא נמצא קובץ' }, { status: 400 });
-    }
-
-    // בסביבת Vercel ללא טוקן Blob אין יעד כתיבה עמיד — עדיף שגיאה ברורה
-    // מאשר קובץ שייעלם בדיפלוי הבא.
-    if (!hasBlobToken() && process.env.VERCEL) {
-      return NextResponse.json(
-        { error: 'אחסון תמונות אינו מוגדר בשרת: יש ליצור Blob Store בלוח הבקרה של Vercel ולהגדיר את משתנה הסביבה BLOB_READ_WRITE_TOKEN.' },
-        { status: 500 }
-      );
     }
 
     const buffer = Buffer.from(await file.arrayBuffer());

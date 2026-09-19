@@ -161,7 +161,7 @@ export default function ModernNewDressWizard({
       formData.append('file', file);
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
       const data = await res.json();
-      if (data.success) patch({ imageUrl: data.imageUrl });
+      if (data.success) patch({ imageUrl: data.imageUrl, thumbnailUrl: data.thumbnailUrl });
       else flash('שגיאה בהעלאת התמונה');
     } catch (err) {
       console.error(err);
@@ -360,7 +360,7 @@ export default function ModernNewDressWizard({
                         <svg className="icon"><use href="#i-upload" /></svg>החלף תמונה
                       </button>
                       <input ref={fileRef} type="file" accept="image/*" style={{ display: 'none' }} onChange={(e) => { const f = e.target.files?.[0]; if (f) handleImageUpload(f); e.target.value = ''; }} />
-                      <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '10px', width: 'fit-content' }} onClick={() => patch({ imageUrl: '' })}>
+                      <button type="button" className="btn btn-secondary btn-sm" style={{ marginTop: '10px', width: 'fit-content' }} onClick={() => patch({ imageUrl: '', thumbnailUrl: '' })}>
                         <svg className="icon"><use href="#i-trash" /></svg>הסר תמונה
                       </button>
                     </>

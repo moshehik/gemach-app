@@ -14,7 +14,7 @@ import { addHistory } from '../../../../lib/historyManager';
 import { cacheNamespace, getSettingsCached } from '@/app/lib/pageCache';
 
 // השדות של הדגם שנשמרים בכפתור השמירה (הפריטים נשמרים בנפרד, מיידית)
-const MODEL_FIELDS = ['name', 'barcodePrefix', 'priceCategory', 'notes', 'inInspection', 'imageUrl', 'entryDateToRepo', 'exitDateFromRepo', 'inactiveReason', 'isSplit', 'isPremium'];
+const MODEL_FIELDS = ['name', 'barcodePrefix', 'priceCategory', 'notes', 'inInspection', 'imageUrl', 'thumbnailUrl', 'entryDateToRepo', 'exitDateFromRepo', 'inactiveReason', 'isSplit', 'isPremium'];
 
 // חייב להיות זהה בדיוק ל-ACTIVITY_TOGGLE_FIELDS בשרת (app/api/dresses/[id]/route.js) -
 // זו הרשימה שמאפשרת לכל עובדת (לא רק הנהלה ראשית) לסמן דגם כלא-פעיל/פעיל. אם
@@ -29,6 +29,7 @@ const emptyDress = {
   notes: '',
   inInspection: false,
   imageUrl: '',
+  thumbnailUrl: '',
   entryDateToRepo: new Date().toISOString()
 };
 
@@ -321,7 +322,7 @@ export default function DressCardPage({ params }) {
       const res = await fetch('/api/upload', { method: 'POST', body: formData });
       const data = await res.json();
       if (data.success) {
-        patchDress({ imageUrl: data.imageUrl });
+        patchDress({ imageUrl: data.imageUrl, thumbnailUrl: data.thumbnailUrl });
         flashMessage('התמונה הועלתה — לחץ שמירה כדי לשמור אותה בדגם.', 4000);
       } else {
         flashMessage('שגיאה בהעלאת התמונה', 4000);
@@ -444,7 +445,7 @@ export default function DressCardPage({ params }) {
               imageSrc={imageSrc}
               uploading={uploading}
               onImageUpload={handleImageUpload}
-              onRemoveImage={() => patchDress({ imageUrl: null })}
+              onRemoveImage={() => patchDress({ imageUrl: null, thumbnailUrl: null })}
               onAutoCode={handleAutoCode}
               onMarkInactive={() => setShowReasonModal(true)}
               onReturnToActivity={handleReturnToActivity}

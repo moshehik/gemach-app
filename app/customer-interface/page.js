@@ -16,7 +16,7 @@ import './kiosk.css';
 // נופלים חזרה לתמונה המלאה. loading="lazy" כדי שגלילה בקטלוג לא תוריד את
 // כל התמונות מראש.
 function KioskThumbImg({ model }) {
-  const thumbSrc = getDressThumbUrl(model.imageUrl);
+  const thumbSrc = getDressThumbUrl(model);
   return (
     <img
       src={thumbSrc || model.imageUrl}
