@@ -24,7 +24,7 @@ export const getThreeMonthsAgoDateString = () => {
 export function defaultOrdersAdvFilters() {
   return {
     customerName: '', customerPhone: '', customerCity: '',
-    advOrderId: '', itemDetails: '', advModelName: '',
+    advOrderId: '', itemDetails: '', advModelName: '', advSize: '',
     eventDateFrom: getThreeMonthsAgoDateString(),
     eventDateTo: '',
     rentalStatus: []
