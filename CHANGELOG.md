@@ -2,11 +2,12 @@
 
 ## 2026-09-20: /admin/permissions redesign shipped; DB schema applied to both gemachs
 
-- **Code:** new permissions page (explicit rows only, separate pages/features tables, movable items in the row editor, specific-employee tags) merged from `redesign/permissions-ui`; linked from `/admin/site-settings` (developer sidebar). Page rows stay documentation-only (`enforced: false`); the "features" table is intentionally empty until rows are added manually. Details: `CLAUDE.md` -> "Permissions system".
+- **Code:** new permissions page (explicit rows only, separate pages/features tables, specific-employee tags) merged from `redesign/permissions-ui`; linked from `/admin/site-settings` (developer sidebar). Each row stores its own access; a page may be in several rows (highlighted; effective access = union, lenient); rows can be deleted for real (items revert to catalog defaults). Page rows stay documentation-only (`enforced: false`). Both tables intentionally start empty - no seed script. Details: `CLAUDE.md` -> "Permissions system".
 - **DB (applied by hand to both, additive only):**
-  1. org1 `misty-darkness-06917297` (`ep-weathered-tree-avpypjjr`): `ALTER TABLE "PermissionPageGroup" ADD COLUMN "catalogGroup" TEXT NOT NULL DEFAULT 'pages'`, then `scripts/backfill-permission-groups.js` (18 `page:*` rows).
-  2. org2 `gemach-dresses-2` (`ep-broad-night-b1fxha9e`): `catalogGroup` already existed; deleted 4 stray `feature:*` rows; also added the missing `DressModel.thumbnailUrl` column and `Attachment` table (schema drift from the earlier "remove Vercel Blob" push).
-- **Verified:** `prisma migrate diff --from-url <db> --to-schema-datamodel prisma/schema.prisma` returns an empty migration for both DBs; both have 18 `pages` / 0 `features` rows.
+  1. org1 `misty-darkness-06917297` (`ep-weathered-tree-avpypjjr`) and org2 `gemach-dresses-2` (`ep-broad-night-b1fxha9e`): `PermissionPageGroup` gained `catalogGroup`, `access`, `employeeIds` (all NOT NULL with defaults).
+  2. All existing `PermissionPageGroup` rows deleted on both (18 each) for a clean start; `DepartmentPermission` / `EmployeePermissionOverride` were already empty.
+  3. org2 only: also added the missing `DressModel.thumbnailUrl` column and `Attachment` table (drift from the earlier "remove Vercel Blob" push).
+- **Verified:** `prisma migrate diff --from-url <db> --to-schema-datamodel prisma/schema.prisma` returned an empty migration for both DBs (re-checked against the final schema after all changes).
 
 ## 2026-09-08: DB Connection & Missing Schema Fix
 

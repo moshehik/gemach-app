@@ -21,28 +21,42 @@ export default function PageGroupModal({ group, catalogGroup, catalog, allGroups
   });
   const [employeeIds, setEmployeeIds] = useState(() => new Set(group?.employeeAccess || []));
   const [employeeQuery, setEmployeeQuery] = useState('');
+  const [accessTouched, setAccessTouched] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
 
   const isEditingRealGroup = !!group;
 
-  // key -> name of the OTHER row currently holding it. Such keys stay pickable:
-  // saving moves them into this row (the API strips them from the other row).
-  const heldByOtherGroup = new Map(
-    (allGroups || [])
-      .filter((g) => g.id !== group?.id)
-      .flatMap((g) => g.keys.map((k) => [k, g.name]))
-  );
+  // key -> names of the OTHER rows that also hold it. A key may sit in several rows:
+  // it is highlighted, and the real access is the union of those rows (lenient — if
+  // any row allows a department/employee, they're in). See lib/permissionPageGroups.js.
+  const otherRowsByKey = new Map();
+  for (const g of allGroups || []) {
+    if (g.id === group?.id) continue;
+    for (const k of g.keys) otherRowsByKey.set(k, [...(otherRowsByKey.get(k) || []), g.name]);
+  }
+  // Number-type items (feature:export_max_rows) have no yes/no to set from a row, so
+  // they aren't offered here (managed from the employee's own permissions card).
   const availableToAdd = catalog
-    .filter((item) => !keys.includes(item.key))
-    .map((item) => ({ ...item, heldBy: heldByOtherGroup.get(item.key) }));
+    .filter((item) => item.type === 'boolean' && !keys.includes(item.key))
+    .map((item) => ({ ...item, alsoIn: otherRowsByKey.get(item.key) }));
 
   const addKey = (key) => {
     if (!key || keys.includes(key)) return;
+    // First item added to a brand-new row, toggles untouched: start the toggles from
+    // that item's current default so saving can't silently revoke today's access.
+    if (!isEditingRealGroup && !accessTouched && keys.length === 0) {
+      const item = catalog.find((i) => i.key === key);
+      if (item?.defaultForRoleId) {
+        const next = {};
+        for (const dept of departments) next[dept.roleId] = !!item.defaultForRoleId(dept.roleId);
+        setAccess(next);
+      }
+    }
     setKeys([...keys, key]);
   };
   const removeKey = (key) => setKeys(keys.filter((k) => k !== key));
-  const toggleAccess = (roleId) => setAccess((prev) => ({ ...prev, [roleId]: !prev[roleId] }));
+  const toggleAccess = (roleId) => { setAccessTouched(true); setAccess((prev) => ({ ...prev, [roleId]: !prev[roleId] })); };
 
   const itemFor = (key) => catalog.find((item) => item.key === key);
   const labelFor = (key) => itemFor(key)?.label || key;
@@ -93,17 +107,17 @@ export default function PageGroupModal({ group, catalogGroup, catalog, allGroups
     }
   };
 
-  const handleDisband = async () => {
-    if (!(await window.customConfirm(`לפרק את השורה? ה${itemNounPlural} ישארו עם ההרשאה הנוכחית שלהם, כל אחד בשורה נפרדת.`))) return;
+  const handleDelete = async () => {
+    if (!(await window.customConfirm(`למחוק את השורה "${group.name}"? ה${itemNounPlural} שבה יחזרו להרשאת ברירת המחדל שלהם (למעט אלה שמופיעים גם בשורה אחרת).`))) return;
     setSaving(true);
     try {
       const res = await fetch(`/api/admin/permissions/page-groups/${group.id}`, { method: 'DELETE' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'שגיאה בפירוק');
+      if (!res.ok) throw new Error(data.error || 'שגיאה במחיקה');
       onSaved();
       onClose();
     } catch (e) {
-      setError(e.message || 'שגיאה בפירוק');
+      setError(e.message || 'שגיאה במחיקה');
     } finally {
       setSaving(false);
     }
@@ -140,8 +154,15 @@ export default function PageGroupModal({ group, catalogGroup, catalog, allGroups
               {keys.length === 0 && <span style={{ fontSize: '13px', color: 'var(--text-3)' }}>לא צורפו {itemNounPlural} עדיין</span>}
               {keys.map((key) => {
                 const item = itemFor(key);
+                const alsoIn = otherRowsByKey.get(key);
                 return (
-                  <span key={key} className="chip">
+                  <span
+                    key={key}
+                    className="chip"
+                    title={alsoIn ? `מופיע גם בשורה: ${alsoIn.join(', ')}` : undefined}
+                    style={alsoIn ? { background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontWeight: 700 } : undefined}
+                  >
+                    {alsoIn && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-link" /></svg>}
                     {labelFor(key)}
                     {item?.route && (
                       <button
@@ -173,7 +194,7 @@ export default function PageGroupModal({ group, catalogGroup, catalog, allGroups
             ) : (
               <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>כל ה{itemNounPlural} כבר משובצים לשורה זו</span>
             )}
-            <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>{itemNoun} שמצורף לשורה מאמץ את רמת ההרשאה הנוכחית שלה. {itemNoun} שכבר שייך לשורה אחרת יעבור לכאן.</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>{itemNoun} יכול להופיע בכמה שורות — הוא יודגש, ואם לפחות אחת מהן מתירה גישה, הגישה מותרת.</div>
           </div>
 
           <div className="field">
@@ -235,8 +256,8 @@ export default function PageGroupModal({ group, catalogGroup, catalog, allGroups
 
         <div className="modal-foot" style={{ justifyContent: 'space-between' }}>
           {isEditingRealGroup ? (
-            <button type="button" className="btn btn-ghost" style={{ color: 'var(--danger)' }} onClick={handleDisband} disabled={saving}>
-              <svg className="icon"><use href="#i-trash" /></svg>פרק שורה
+            <button type="button" className="btn btn-ghost" style={{ color: 'var(--danger)' }} onClick={handleDelete} disabled={saving}>
+              <svg className="icon"><use href="#i-trash" /></svg>מחק שורה
             </button>
           ) : <span />}
           <div style={{ display: 'flex', gap: '8px' }}>

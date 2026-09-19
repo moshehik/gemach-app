@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { releaseKeysFromOtherGroups, validatePageKeys, applyAccessToKeys, applyAccessToEmployees } from '@/lib/permissionPageGroups';
+import { validatePageKeys, sanitizeAccess, sanitizeEmployeeIds, syncKeys } from '@/lib/permissionPageGroups';
 
 // POST { name, catalogGroup, keys?, access?, employeeIds? } — creates a new group row
-// for one catalog group ('pages' | 'features'). `access` and `employeeIds` (both
-// optional) are applied to those keys immediately, same as a PUT — see
-// [groupId]/route.js.
+// for one catalog group ('pages' | 'features'). The row stores its own `access` /
+// `employeeIds`; the real per-key values are then re-derived (union of every row that
+// contains the key) by syncKeys — see lib/permissionPageGroups.js. A key may sit in
+// several rows at once.
 export async function POST(request) {
   if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
@@ -25,12 +26,17 @@ export async function POST(request) {
 
     const maxOrder = await prisma.permissionPageGroup.aggregate({ _max: { order: true }, where: { catalogGroup } });
     const created = await prisma.permissionPageGroup.create({
-      data: { name: name.trim(), catalogGroup, keys: JSON.stringify(keys), order: (maxOrder._max.order ?? -1) + 1 },
+      data: {
+        name: name.trim(),
+        catalogGroup,
+        keys: JSON.stringify(keys),
+        access: JSON.stringify(sanitizeAccess(access)),
+        employeeIds: JSON.stringify(sanitizeEmployeeIds(employeeIds)),
+        order: (maxOrder._max.order ?? -1) + 1,
+      },
     });
 
-    if (keys.length) await releaseKeysFromOtherGroups(keys, created.id);
-    if (access) await applyAccessToKeys(keys, access);
-    if (employeeIds !== undefined) await applyAccessToEmployees(keys, employeeIds, [], name.trim());
+    await syncKeys(keys);
 
     return NextResponse.json({ success: true, id: created.id });
   } catch (error) {

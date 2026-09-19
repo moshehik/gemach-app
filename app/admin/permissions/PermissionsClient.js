@@ -194,9 +194,17 @@ function PermissionGroupTable({ title, catalogGroup, catalog, groups, department
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
                         {group.keys.map((key) => {
                           const item = catalog.find((i) => i.key === key);
+                          const otherRows = groups.filter((g) => g.id !== group.id && g.keys.includes(key)).map((g) => g.name);
                           return (
                             <span key={key} style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                              <span className="chip">{item?.label || key}</span>
+                              <span
+                                className="chip"
+                                title={otherRows.length ? `מופיע גם בשורה: ${otherRows.join(', ')} — אם אחת השורות מתירה, הגישה מותרת` : undefined}
+                                style={otherRows.length ? { background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontWeight: 700 } : undefined}
+                              >
+                                {otherRows.length > 0 && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-link" /></svg>}
+                                {item?.label || key}
+                              </span>
                               {item && !item.enforced && (
                                 <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontSize: '10px' }}>מתועד בלבד</span>
                               )}

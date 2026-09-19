@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
 import { PERMISSION_CATALOG, getCatalogItem, defaultValueForRoleId } from '@/lib/permissionsMetadata';
+import { parseJson } from '@/lib/permissionPageGroups';
 
 // Full permissions matrix: every department's effective value for every catalog key
 // (lib/permissionsMetadata.js). Powers /admin/permissions — see CLAUDE.md's
@@ -52,29 +53,15 @@ export async function GET() {
 export async function buildPermissionGroups(departmentValues, catalogGroup) {
   const rows = await prisma.permissionPageGroup.findMany({ where: { catalogGroup }, orderBy: { order: 'asc' } });
 
-  const accessFor = (keys) => {
+  // Each row carries its OWN access (`access` / `employeeIds` columns) — not derived
+  // from the shared per-key DepartmentPermission values, which are the union of every
+  // row containing a key (see lib/permissionPageGroups.js syncKeys). That's what lets
+  // one page sit in two rows with different access.
+  return rows.map((row) => {
+    const keys = parseJson(row.keys, []).filter((k) => getCatalogItem(k)?.group === catalogGroup);
+    const storedAccess = parseJson(row.access, {});
     const access = {};
-    for (const dept of departmentValues) {
-      access[dept.roleId] = keys.length ? !!dept.values[keys[0]]?.value : false;
-    }
-    return access;
-  };
-
-  // Same "read keys[0], apply to the whole row" convention as accessFor above — a
-  // row's employee-level access is represented by whoever has an explicit override
-  // on its first key (applyAccessToEmployees in lib/permissionPageGroups.js keeps
-  // every key in the row in sync with that on save).
-  const employeeAccessFor = async (keys) => {
-    if (!keys.length) return [];
-    const overrides = await prisma.employeePermissionOverride.findMany({
-      where: { key: keys[0], value: 'true' },
-      select: { employeeId: true },
-    });
-    return overrides.map((o) => o.employeeId);
-  };
-
-  return Promise.all(rows.map(async (row) => {
-    const keys = JSON.parse(row.keys || '[]').filter((k) => getCatalogItem(k)?.group === catalogGroup);
-    return { id: row.id, name: row.name, keys, access: accessFor(keys), employeeAccess: await employeeAccessFor(keys) };
-  }));
+    for (const dept of departmentValues) access[dept.roleId] = !!storedAccess[dept.roleId];
+    return { id: row.id, name: row.name, keys, access, employeeAccess: parseJson(row.employeeIds, []) };
+  });
 }

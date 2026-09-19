@@ -1,13 +1,13 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { releaseKeysFromOtherGroups, validatePageKeys, applyAccessToKeys, applyAccessToEmployees } from '@/lib/permissionPageGroups';
-import { getCatalogItem } from '@/lib/permissionsMetadata';
+import { validatePageKeys, sanitizeAccess, sanitizeEmployeeIds, parseJson, syncKeys } from '@/lib/permissionPageGroups';
 
 // PUT { name?, keys?, access?, employeeIds? } — updates a row's display name, its
-// attached pages (full replacement array), and/or pushes an access level (department
-// and/or specific-employee) to every one of its pages at once. `keys`/`access`/
-// `employeeIds` are independent: renaming doesn't require resending any of them.
+// attached pages (full replacement array), and/or its own department / specific-employee
+// access. All independent: renaming doesn't require resending any of them. Afterwards
+// syncKeys re-derives the real per-key values for the row's old AND new keys (union of
+// every row containing a key — see lib/permissionPageGroups.js).
 export async function PUT(request, { params }) {
   if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
@@ -25,7 +25,7 @@ export async function PUT(request, { params }) {
       if (!name.trim()) return NextResponse.json({ error: 'יש להזין שם לשורה' }, { status: 400 });
       data.name = name.trim();
     }
-    const priorKeys = JSON.parse(existing.keys || '[]');
+    const priorKeys = parseJson(existing.keys, []);
     let effectiveKeys = priorKeys;
     if (keys !== undefined) {
       if (!validatePageKeys(keys, existing.catalogGroup)) {
@@ -34,18 +34,13 @@ export async function PUT(request, { params }) {
       effectiveKeys = keys;
       data.keys = JSON.stringify(keys);
     }
+    if (access !== undefined) data.access = JSON.stringify(sanitizeAccess(access));
+    if (employeeIds !== undefined) data.employeeIds = JSON.stringify(sanitizeEmployeeIds(employeeIds));
 
     if (Object.keys(data).length) {
       await prisma.permissionPageGroup.update({ where: { id: groupId }, data });
     }
-    if (keys !== undefined && keys.length) await releaseKeysFromOtherGroups(keys, groupId);
-    if (access) await applyAccessToKeys(effectiveKeys, access);
-    if (employeeIds !== undefined) {
-      const previousEmployeeIds = priorKeys.length
-        ? (await prisma.employeePermissionOverride.findMany({ where: { key: priorKeys[0], value: 'true' }, select: { employeeId: true } })).map((o) => o.employeeId)
-        : [];
-      await applyAccessToEmployees(effectiveKeys, employeeIds, previousEmployeeIds, data.name || existing.name);
-    }
+    await syncKeys([...priorKeys, ...effectiveKeys]);
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -54,10 +49,10 @@ export async function PUT(request, { params }) {
   }
 }
 
-// DELETE — disbands the row. Its keys keep whatever DepartmentPermission values
-// they already have; since there's no more implicit/auto row, each one is recreated
-// here as its own real single-key row (named after the catalog item) so nothing
-// simply vanishes from the table.
+// DELETE — removes the row for real. Any page/feature that is not in another row
+// falls back to its catalog default (its DepartmentPermission / row-created
+// EmployeePermissionOverride values are cleared); one that is also in another row
+// keeps that row's access.
 export async function DELETE(request, { params }) {
   if (!(await checkAuth('הנהלה ראשית'))) {
     return NextResponse.json({ error: 'נדרשת הרשאת הנהלה ראשית' }, { status: 401 });
@@ -68,25 +63,11 @@ export async function DELETE(request, { params }) {
     if (!existing) {
       return NextResponse.json({ error: 'השורה לא נמצאה' }, { status: 404 });
     }
-    const keys = JSON.parse(existing.keys || '[]');
-
-    await prisma.$transaction(async (tx) => {
-      await tx.permissionPageGroup.delete({ where: { id: groupId } });
-      if (!keys.length) return;
-      const maxOrder = await tx.permissionPageGroup.aggregate({ _max: { order: true }, where: { catalogGroup: existing.catalogGroup } });
-      let nextOrder = (maxOrder._max.order ?? -1) + 1;
-      for (const key of keys) {
-        const item = getCatalogItem(key);
-        if (!item) continue;
-        await tx.permissionPageGroup.create({
-          data: { name: item.label, catalogGroup: existing.catalogGroup, keys: JSON.stringify([key]), order: nextOrder++ },
-        });
-      }
-    });
-
+    await prisma.permissionPageGroup.delete({ where: { id: groupId } });
+    await syncKeys(parseJson(existing.keys, []));
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting permission page group:', error);
-    return NextResponse.json({ error: 'שגיאה בפירוק השורה' }, { status: 500 });
+    return NextResponse.json({ error: 'שגיאה במחיקת השורה' }, { status: 500 });
   }
 }

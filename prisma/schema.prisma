@@ -621,22 +621,23 @@ model EmployeePermissionOverride {
 
 // A named, admin-defined row on /admin/permissions ("pages" or "features" table)
 // that bundles several PERMISSION_CATALOG keys — all from the same `catalogGroup` —
-// so they can be viewed and set together in one floating panel, instead of one
-// matrix row per key. `keys` is a JSON-encoded string array of catalog keys; a key
-// belongs to at most one row at a time (enforced in
-// app/api/admin/permissions/page-groups). Unlike the first version of this table,
-// a catalog key with NO row here is simply not shown on either table — there is no
-// implicit/auto row anymore. This means adding a new PERMISSION_CATALOG item does
-// NOT make it visible on /admin/permissions by itself: also create (or attach it
-// to) a row here, e.g. via the UI's "שורת הרשאה חדשה" button, or it stays
-// unmanageable from this page. Saving a row's access writes the same
-// DepartmentPermission value to every key in `keys`, for every department — see
-// app/api/admin/permissions/page-groups/[groupId]/route.js.
+// so they can be viewed and set together in one floating panel. `keys` is a
+// JSON-encoded string array of catalog keys. Each row stores ITS OWN access:
+// `access` = JSON { "<roleId>": boolean } and `employeeIds` = JSON string array of
+// specific employees. A catalog key MAY sit in several rows at once (the UI highlights
+// it); its real DepartmentPermission / EmployeePermissionOverride values are then the
+// union (OR — lenient) of every row containing it, re-derived on every write by
+// syncKeys in lib/permissionPageGroups.js. A key in no row has no explicit values
+// (catalog default) — adding a new PERMISSION_CATALOG item therefore does NOT make it
+// visible on /admin/permissions by itself: create a row for it via the UI's
+// "שורת הרשאה חדשה" button. Both tables start empty on purpose (no seeding).
 model PermissionPageGroup {
   id           String   @id @default(uuid())
   name         String
   keys         String   @default("[]")
   catalogGroup String   @default("pages") // 'pages' | 'features' — which PERMISSION_CATALOG group this row belongs to
+  access       String   @default("{}")    // { "<roleId>": boolean } — this row's own department access
+  employeeIds  String   @default("[]")    // specific employees this row grants access to
   order        Int      @default(0)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
