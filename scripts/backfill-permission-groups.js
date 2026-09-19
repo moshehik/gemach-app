@@ -3,7 +3,10 @@
 // app/api/admin/permissions/route.js's buildPermissionGroups): every
 // PERMISSION_CATALOG item that isn't already covered by an existing
 // PermissionPageGroup row gets a new real single-key row, named after that item's
-// label, so nothing disappears from either table on launch day.
+// label, so nothing disappears from the pages table on launch day.
+//
+// Only the 'pages' group is backfilled. The 'features' table is deliberately left
+// empty — it shows only rows an admin adds manually via "שורת הרשאה חדשה".
 //
 // Idempotent — safe to re-run; only creates rows for keys not already covered by
 // SOME existing row (regardless of that row's catalogGroup, though in practice
@@ -31,6 +34,7 @@ async function backfillPermissionGroups() {
 
   let created = 0;
   for (const item of PERMISSION_CATALOG) {
+    if (item.group !== 'pages') continue;
     if (coveredKeys.has(item.key)) {
       console.log(`Already covered, skipped: ${item.key}`);
       continue;

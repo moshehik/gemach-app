@@ -40,6 +40,9 @@ export default function GroupPagePicker({ items, onAdd }) {
           <div key={item.key} style={{ borderBottom: '1px solid var(--border)' }}>
             <div className="combobox-option" style={{ borderBottom: 'none' }} onClick={() => onAdd(item.key)}>
               <span style={{ flex: 1 }}>{item.label}</span>
+              {item.heldBy && (
+                <span className="badge badge-neutral" style={{ fontSize: '10.5px' }} title="הוספה תעביר אותו לשורה הנוכחית">כעת בשורה: {item.heldBy}</span>
+              )}
               {item.route && (
                 <>
                   <button

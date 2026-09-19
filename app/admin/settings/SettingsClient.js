@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
 import NeonUsageCard from './NeonUsageCard';
 import WebBackupModeToggle from './WebBackupModeToggle';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
@@ -634,6 +635,19 @@ export default function SettingsClient({ mode = 'general' }) {
               </button>
             );
           })}
+
+          {/* עמוד הרשאות נפרד (/admin/permissions) - נגיש רק מכאן (מתכנת). דפי הגישה שם
+              הם תיעוד כוונה בלבד (enforced:false ב-lib/permissionsMetadata.js) ואינם נאכפים. */}
+          {mode === 'developer' && (
+            <Link
+              href="/admin/permissions"
+              className="tab settings-cat"
+              style={{ marginInlineEnd: 0, width: '100%', textAlign: 'start', textDecoration: 'none', borderTop: 'none' }}
+            >
+              <svg className="icon"><use href="#i-shield" /></svg>
+              הרשאות
+            </Link>
+          )}
         </div>
 
         {/* Content pane */}

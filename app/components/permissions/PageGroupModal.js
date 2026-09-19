@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
 import GroupPagePicker from './GroupPagePicker';
+import EmployeeTag, { employeeDisplayName } from './EmployeeTag';
 
 // Floating panel for creating/editing one row of the pages or features table on
 // /admin/permissions/PermissionsClient.js (`catalogGroup` picks which). A row
@@ -25,12 +26,16 @@ export default function PageGroupModal({ group, catalogGroup, catalog, allGroups
 
   const isEditingRealGroup = !!group;
 
-  const claimedByOtherGroups = new Set(
+  // key -> name of the OTHER row currently holding it. Such keys stay pickable:
+  // saving moves them into this row (the API strips them from the other row).
+  const heldByOtherGroup = new Map(
     (allGroups || [])
       .filter((g) => g.id !== group?.id)
-      .flatMap((g) => g.keys)
+      .flatMap((g) => g.keys.map((k) => [k, g.name]))
   );
-  const availableToAdd = catalog.filter((item) => !keys.includes(item.key) && !claimedByOtherGroups.has(item.key));
+  const availableToAdd = catalog
+    .filter((item) => !keys.includes(item.key))
+    .map((item) => ({ ...item, heldBy: heldByOtherGroup.get(item.key) }));
 
   const addKey = (key) => {
     if (!key || keys.includes(key)) return;
@@ -51,7 +56,7 @@ export default function PageGroupModal({ group, catalogGroup, catalog, allGroups
     const item = itemFor(key);
     return item && item.type === 'boolean' && !item.legacyEmployeeField;
   });
-  const employeeLabel = (emp) => [emp.lastName, emp.firstName].filter(Boolean).join(' ') || emp.id;
+  const employeeLabel = employeeDisplayName;
   const selectedEmployees = (employees || []).filter((emp) => employeeIds.has(emp.id));
   const employeeSearchResults = employeeQuery.trim()
     ? (employees || []).filter((emp) => !employeeIds.has(emp.id) && employeeLabel(emp).toLowerCase().includes(employeeQuery.trim().toLowerCase()))
@@ -166,9 +171,9 @@ export default function PageGroupModal({ group, catalogGroup, catalog, allGroups
             {availableToAdd.length > 0 ? (
               <GroupPagePicker items={availableToAdd} onAdd={addKey} />
             ) : (
-              <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>כל ה{itemNounPlural} כבר משובצים לשורה זו או לשורה אחרת</span>
+              <span style={{ fontSize: '12px', color: 'var(--text-3)' }}>כל ה{itemNounPlural} כבר משובצים לשורה זו</span>
             )}
-            <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>{itemNoun} שמצורף לשורה מאמץ את רמת ההרשאה הנוכחית שלה.</div>
+            <div style={{ fontSize: '12px', color: 'var(--text-3)', marginTop: '4px' }}>{itemNoun} שמצורף לשורה מאמץ את רמת ההרשאה הנוכחית שלה. {itemNoun} שכבר שייך לשורה אחרת יעבור לכאן.</div>
           </div>
 
           <div className="field">
@@ -194,19 +199,7 @@ export default function PageGroupModal({ group, catalogGroup, catalog, allGroups
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '8px' }}>
                   {selectedEmployees.length === 0 && <span style={{ fontSize: '13px', color: 'var(--text-3)' }}>לא נבחרו עובדים ספציפיים</span>}
                   {selectedEmployees.map((emp) => (
-                    <span key={emp.id} className="chip">
-                      {employeeLabel(emp)}
-                      <button
-                        type="button"
-                        onClick={() => removeEmployee(emp.id)}
-                        disabled={saving}
-                        title="הסר עובד"
-                        aria-label="הסר עובד"
-                        style={{ display: 'inline-flex', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-3)', padding: 0 }}
-                      >
-                        <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-x" /></svg>
-                      </button>
-                    </span>
+                    <EmployeeTag key={emp.id} employee={emp} onRemove={() => removeEmployee(emp.id)} disabled={saving} />
                   ))}
                 </div>
                 <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>

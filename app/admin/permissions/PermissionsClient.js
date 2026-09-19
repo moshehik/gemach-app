@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { getCatalogGroup } from '@/lib/permissionsMetadata';
 import EmployeePermissionsPanel from '@/app/components/permissions/EmployeePermissionsPanel';
 import PageGroupModal from '@/app/components/permissions/PageGroupModal';
+import EmployeeTag from '@/app/components/permissions/EmployeeTag';
 
 const GROUP_LABELS = { pages: 'עמודי מערכת', features: 'פיצ\'רים' };
 const PAGE_CATALOG = getCatalogGroup('pages');
@@ -87,6 +88,7 @@ export default function PermissionsClient() {
         catalog={PAGE_CATALOG}
         groups={pageGroups}
         departments={departments}
+        employees={employees}
         onNew={() => setModal({ catalogGroup: 'pages', group: null })}
         onEdit={(group) => setModal({ catalogGroup: 'pages', group })}
       />
@@ -97,6 +99,7 @@ export default function PermissionsClient() {
         catalog={FEATURE_CATALOG}
         groups={featureGroups}
         departments={departments}
+        employees={employees}
         onNew={() => setModal({ catalogGroup: 'features', group: null })}
         onEdit={(group) => setModal({ catalogGroup: 'features', group })}
       />
@@ -149,7 +152,7 @@ export default function PermissionsClient() {
 // sections above with the same shape (name / linked catalog items / who's allowed /
 // edit button), driven by real PermissionPageGroup rows only (see that model's doc
 // comment in prisma/schema.prisma — there is no implicit row for an ungrouped key).
-function PermissionGroupTable({ title, catalogGroup, catalog, groups, departments, onNew, onEdit }) {
+function PermissionGroupTable({ title, catalogGroup, catalog, groups, departments, employees, onNew, onEdit }) {
   const itemNounPlural = catalogGroup === 'features' ? 'פיצ\'רים' : 'עמודים';
 
   return (
@@ -181,6 +184,7 @@ function PermissionGroupTable({ title, catalogGroup, catalog, groups, department
               )}
               {groups.map((group) => {
                 const allowedDepts = departments.filter((d) => group.access[d.roleId]);
+                const allowedEmployees = (group.employeeAccess || []).map((id) => employees.find((e) => e.id === id)).filter(Boolean);
                 return (
                   <tr key={group.id}>
                     <td>
@@ -202,15 +206,16 @@ function PermissionGroupTable({ title, catalogGroup, catalog, groups, department
                       </div>
                     </td>
                     <td>
-                      {allowedDepts.length === 0 ? (
-                        <span className="badge badge-neutral">ללא הרשאה</span>
-                      ) : allowedDepts.length === departments.length ? (
-                        <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>כולם</span>
-                      ) : (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
-                          {allowedDepts.map((d) => <span key={d.roleId} className="badge badge-primary">{d.name}</span>)}
-                        </div>
-                      )}
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', alignItems: 'center' }}>
+                        {allowedDepts.length === 0 && allowedEmployees.length === 0 ? (
+                          <span className="badge badge-neutral">ללא הרשאה</span>
+                        ) : allowedDepts.length === departments.length ? (
+                          <span className="badge badge-success"><svg className="icon"><use href="#i-check" /></svg>כולם</span>
+                        ) : (
+                          allowedDepts.map((d) => <span key={d.roleId} className="badge badge-primary">{d.name}</span>)
+                        )}
+                        {allowedEmployees.map((emp) => <EmployeeTag key={emp.id} employee={emp} />)}
+                      </div>
                     </td>
                     <td style={{ textAlign: 'center' }}>
                       <button type="button" className="btn btn-ghost btn-icon-only btn-sm" onClick={() => onEdit(group)} title="ערוך שורה" aria-label="ערוך שורה">
