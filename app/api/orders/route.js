@@ -33,6 +33,7 @@ export async function GET(request) {
     const advOrderId = searchParams.get('advOrderId') || '';
     const advItemDetails = searchParams.get('itemDetails') || '';
     const advModelName = searchParams.get('advModelName') || '';
+    const advSize = searchParams.get('advSize') || '';
     const advModelBarcodePrefixRaw = searchParams.get('modelBarcodePrefix') || '';
     const advModelBarcodePrefix = advModelBarcodePrefixRaw && !isNaN(parseInt(advModelBarcodePrefixRaw, 10)) ? parseInt(advModelBarcodePrefixRaw, 10) : null;
     const advEventDateFrom = searchParams.get('eventDateFrom') || '';
@@ -243,7 +244,7 @@ export async function GET(request) {
         }
       });
     }
-    if (itemStatuses.length > 0 || advItemDetails || advModelName || advModelBarcodePrefix) {
+    if (itemStatuses.length > 0 || advItemDetails || advModelName || advModelBarcodePrefix || advSize) {
       conditions.push({
         items: {
           some: {
@@ -266,6 +267,13 @@ export async function GET(request) {
               ...(advModelName ? [{
                 isDeleted: false,
                 dressItem: { dress: { name: { contains: advModelName } } }
+              }] : []),
+              ...(advSize ? [{
+                isDeleted: false,
+                OR: [
+                  { sizeText: { contains: advSize } },
+                  { dressItem: { sizeText: { contains: advSize } } }
+                ]
               }] : [])
             ]
           }
