@@ -202,7 +202,7 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
       return (
         <div className="field" style={{ marginBottom: 0 }}>
           <label>אילו מחלקות מורשות</label>
-          <div style={hint}>חל בבת אחת על כל הפריטים בשורה. התג ליד כל מחלקה מראה מה ברירת המחדל של המערכת היום עבורה.</div>
+          <div style={hint}>חל בבת אחת על כל הפריטים בשורה. התג ליד כל מחלקה מראה מה ברירת המחדל של המערכת היום עבורה. הנהלה ראשית ומתכנת תמיד מורשים לכל דבר (למעט מה שמוגבל למתכנת בלבד), ולכן אינם מופיעים ברשימה.</div>
           <div style={{ display: 'flex', gap: '8px', marginBottom: '8px', flexWrap: 'wrap' }}>
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAllAccess(true)} disabled={saving}>סמן הכל</button>
             <button type="button" className="btn btn-secondary btn-sm" onClick={() => setAllAccess(false)} disabled={saving}>נקה הכל</button>

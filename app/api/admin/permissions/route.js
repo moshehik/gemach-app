@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
-import { PERMISSION_CATALOG, getCatalogItem, defaultValueForRoleId } from '@/lib/permissionsMetadata';
+import { PERMISSION_CATALOG, getCatalogItem, defaultValueForRoleId, ALWAYS_ALLOWED_ROLE_IDS } from '@/lib/permissionsMetadata';
 import { parseJson } from '@/lib/permissionPageGroups';
 
 // Full permissions matrix: every department's effective value for every catalog key
@@ -17,7 +17,7 @@ export async function GET() {
     // roleId 2 (מתכנת) תמיד מאושר לכל דבר בקוד הקיים (HEAD_MANAGEMENT_ROLES/DEVELOPER_ONLY_ROLES
     // ב-lib/auth.js) - עמודה עבורו במטריצה הזו הייתה רק מטעה, אין ערך שאפשר לשנות בפועל.
     const departments = (await prisma.department.findMany({ orderBy: { roleId: 'asc' } }))
-      .filter((d) => d.roleId !== 2);
+      .filter((d) => !ALWAYS_ALLOWED_ROLE_IDS.includes(d.roleId));
     const rows = await prisma.departmentPermission.findMany();
     const rowByRoleAndKey = new Map(rows.map((r) => [`${r.roleId}:${r.key}`, r.value]));
 
