@@ -41,6 +41,14 @@ on:
   repository_dispatch:
     types: [new-error-report] # נורה מ-app/api/error-report/route.js בעת יצירת דיווח חדש
 
+# ריצה אחת בכל רגע: בלי זה דיווחים שמגיעים בזה אחר זה (repository_dispatch) הריצו כמה instances
+# במקביל על אותם דיווחים/ענפים - בזבוז מכסת Claude ודקות Actions, וסיכון לשני PR-ים לאותו תיקון.
+# cancel-in-progress=false: ריצה שכבר מטפלת בדיווח לא נקטעת באמצע; ריצה ממתינה אחת לכל היותר
+# (GitHub מחליף ממתינה ישנה בחדשה) - וזה מספיק כי כל ריצה סורקת את *כל* הדיווחים הפתוחים.
+concurrency:
+  group: claude-fix-reports
+  cancel-in-progress: false
+
 jobs:
   fix-reports:
     runs-on: ubuntu-latest

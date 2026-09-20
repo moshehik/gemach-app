@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 
-// Keep-alive / health endpoint, hit by the Vercel cron in vercel.json (and
-// usable by any external pinger) to stop Neon's compute from autosuspending
-// during working hours. Intentionally does NOT go through checkAuth() — the
-// whole point is a single tiny round-trip (`SELECT 1`) and nothing else.
-// Reads are not audit-logged by the prisma extension, so this writes nothing.
+// Health endpoint for manual/external checks ("is the DB up?"). It used to also be hit by a
+// daily Vercel cron as a Neon keep-alive - that cron was removed 2026-09-20 (keep-alive was
+// retired 2026-09-01 so Neon may sleep; the ping only woke the compute for nothing).
+// Intentionally does NOT go through checkAuth() — a single tiny round-trip (`SELECT 1`) and
+// nothing else. Reads are not audit-logged by the prisma extension, so this writes nothing.
 export const dynamic = 'force-dynamic';
 
 export async function GET() {

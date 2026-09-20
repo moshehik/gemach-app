@@ -5,9 +5,16 @@ import { usePathname } from 'next/navigation';
 
 export default function NotificationBell({ employeeId }) {
   const [notifications, setNotifications] = useState([]);
+  // מונה "לא נקראו" מהבדיקה הקלה (?light=1). הרשימה המלאה נטענת רק בפתיחת הפעמון.
+  const [unreadFromPoll, setUnreadFromPoll] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef(null);
+  const isOpenRef = useRef(false);
   const pathname = usePathname();
+
+  useEffect(() => {
+    isOpenRef.current = isOpen;
+  }, [isOpen]);
 
   const fetchNotifications = () => {
     if (!employeeId) return;
@@ -21,12 +28,28 @@ export default function NotificationBell({ employeeId }) {
       .catch(err => console.error('Failed to fetch notifications:', err));
   };
 
+  // בדיקה קלה לנקודה האדומה - מונה בלבד, בלי תוכן ההודעות (ר' ההערה ב-app/api/notifications/route.js).
+  const fetchUnreadCount = () => {
+    if (!employeeId) return;
+    fetch('/api/notifications?light=1')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && typeof data.unreadCount === 'number') {
+          setUnreadFromPoll(data.unreadCount);
+          // הפעמון סגור - רשימה שנטענה קודם כבר עלולה להיות מיושנת, אז המונה העדכני הוא מקור האמת
+          if (!isOpenRef.current) setNotifications([]);
+        }
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
-    fetchNotifications();
+    fetchUnreadCount();
     let interval = null;
     const startPolling = () => {
       if (interval) return;
-      interval = setInterval(fetchNotifications, 60000);
+      // 120 שנ' (היה 60, ורשימה מלאה): כל טיק הוא invocation + שאילתת DB לכל טאב פתוח.
+      interval = setInterval(fetchUnreadCount, 120000);
     };
     const stopPolling = () => {
       clearInterval(interval);
@@ -39,7 +62,7 @@ export default function NotificationBell({ employeeId }) {
       if (document.hidden) {
         stopPolling();
       } else {
-        fetchNotifications();
+        fetchUnreadCount();
         startPolling();
       }
     };
@@ -57,7 +80,8 @@ export default function NotificationBell({ employeeId }) {
   // route change and whenever the dropdown is opened so the dot/count reflect
   // reads made elsewhere without waiting for the interval.
   useEffect(() => {
-    fetchNotifications();
+    // מונה בלבד - הרשימה המלאה נטענת בפתיחת הפעמון (הכפתור למטה)
+    fetchUnreadCount();
   }, [pathname]);
 
   useEffect(() => {
@@ -86,6 +110,7 @@ export default function NotificationBell({ employeeId }) {
       });
       if (res.ok) {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, isRead: true } : n));
+        setUnreadFromPoll(prev => Math.max(0, prev - 1));
       }
     } catch (err) {
       console.error(err);
@@ -96,7 +121,10 @@ export default function NotificationBell({ employeeId }) {
 
   // Mirror /messages's fetchData filtering: archived messages shouldn't inflate the badge/dropdown.
   const activeNotifications = notifications.filter(n => !n.isArchived);
-  const unreadCount = activeNotifications.filter(n => !n.isRead).length;
+  // כשהרשימה המלאה נטענה (הפעמון נפתח) היא מקור האמת; אחרת - המונה מהבדיקה הקלה.
+  const unreadCount = notifications.length > 0
+    ? activeNotifications.filter(n => !n.isRead).length
+    : unreadFromPoll;
 
   return (
     <div style={{ position: 'relative' }} ref={menuRef}>

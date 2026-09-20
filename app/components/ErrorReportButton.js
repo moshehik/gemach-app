@@ -130,7 +130,9 @@ export default function ErrorReportButton() {
       if (intervalId) return;
       // הפאנל סגור בזמן הטיק הזה (start נקרא רק מתוך התנאי !isOpen למטה) - מספיק
       // fetch קליל, ר' ההערה על ?light=1 ליד fetchReports.
-      intervalId = setInterval(() => fetchReports({ light: true }), 30000);
+      // 120 שנ' (היה 30): כל טיק הוא invocation מלא + שאילתת DB גם ב-light, ועל תוכנית Free
+      // (מכסת invocations ב-Vercel + 5GB תעבורה ב-Neon) עם כמה טאבים פתוחים זה הצטבר. ר' docs/vercel-resource-audit-2026-09-20.md.
+      intervalId = setInterval(() => fetchReports({ light: true }), 120000);
     };
     const stop = () => {
       clearInterval(intervalId);

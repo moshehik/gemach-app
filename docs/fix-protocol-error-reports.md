@@ -32,12 +32,18 @@
 
 ## 1. שני בסיסי הנתונים (Neon)
 
-יש שני בסיסי נתונים, חובה לבדוק את שניהם בכל סבב:
+יש שני גמחים, כל אחד עם בסיס נתונים חי משלו ב-Neon - חובה לבדוק את שניהם בכל סבב
+(מעודכן 2026-09-20, אחרי החלפת ה-DB של הגמח הראשי ב-2026-09-18 ושל נווה יעקב ב-2026-09-15):
 
-| כינוי | הוסט | סטטוס |
+| גמח | הוסט החי | איפה הוא מוגדר |
 |---|---|---|
-| NEW-DB (חי) | `ep-orange-waterfall-avthvs1g-pooler.c-11.us-east-1.aws.neon.tech` / `neondb` | בסיס הייצור הפעיל — האתר החי כותב לכאן (`.env` → `PROD_DATABASE_URL`) |
-| OLD-DB (מדור קודם) | `ep-royal-dawn-asr9j84y-pooler.c-4.eu-central-1.aws.neon.tech` / `neondb` | בסיס ישן, 5 דיווחי ניסוי מאוגוסט 2026, כולם בארכיון. לא פעיל. נשמר לבדיקה בלבד. |
+| org1 - ראשי | `ep-weathered-tree-avpypjjr-pooler.c-11.us-east-1.aws.neon.tech` / `neondb` (פרויקט `gemach-main-prod`) | `.env` → `PROD_DATABASE_URL`/`DATABASE_URL`; GitHub secret `DATABASE_URL`; Vercel `DATABASE_URL` (Production) של `gemach-app-uyh4` |
+| org2 - נווה יעקב | `ep-broad-night-b1fxha9e.c-5.eu-central-1.aws.neon.tech` (פרויקט `gemach-dresses-2`, ענף `reimport-staging-2026-09-15`) | `scratch/new_gemach_db.env` → `PROD_DATABASE_URL`; GitHub secret `DATABASE_URL_ORG2`; Vercel `DATABASE_URL` (Production) של `gmach-neve-yaakov` |
+
+**בסיסים שאסור לפנות אליהם / לא חיים:** `ep-orange-waterfall-avthvs1g` (פרויקט `purple-term-91836431`) - חסום על חריגת
+מכסת תעבורה, מחזיק את הדלתא של 17-18.9 ולא נמחק; `ep-royal-dawn-asr9j84y` (eu-central-1, מדור ראשון) - ארכיון ישן;
+`ep-raspy-brook-avvyd9g5` (TEST הישן) - חסום. בסיסי הגיבוי (`ep-fancy-pine-aw5fbjvp`, `ep-aged-sunset-b2liz6y8`) הם snapshot
+חד-פעמי מ-2026-09-20 ולא חיים. אימות עדכני של כל המצביעים: `docs/vercel-resource-audit-2026-09-20.md`.
 
 בדיקה ישירה (מעקף AuditLog) עם `pg`:
 

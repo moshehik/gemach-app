@@ -17,6 +17,11 @@ export default function PageTracker() {
     const url = pathname + (searchParams.toString() ? `?${searchParams.toString()}` : '');
 
     const logVisit = async (errorMsg = null) => {
+      // התור המשותף מ-app/layout.js (אצווה אחת כל ~20 שנ') - במקום POST נפרד לכל ניווט.
+      if (typeof window !== 'undefined' && typeof window.__queueVisitLog === 'function') {
+        window.__queueVisitLog({ pageUrl: url, loadingError: errorMsg });
+        return;
+      }
       try {
         await fetch('/api/log-visit', {
           method: 'POST',
