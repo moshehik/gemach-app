@@ -3,7 +3,77 @@
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import FormattedMessage from '../../components/FormattedMessage';
+import { downloadRowsAsXlsx } from '../../lib/xlsxExport';
 import { X, Send, MessageSquare, BarChart3 } from 'lucide-react';
+
+// שורות הנתונים שהסוכן מחזיר (רשימת הזמנות/לקוחות וכו') - מוצגות כטבלה מתחת לתשובה.
+// עד 2026-09-20 הסוכן החזיר טקסט בלבד, והמשתמשת שאלה "איפה הרשימה?" וביקשה הורדה לאקסל.
+const stripRows = (msgs) => msgs.map(({ role, content }) => ({ role, content }));
+
+function formatCell(v) {
+  if (v === null || v === undefined) return '';
+  if (typeof v === 'boolean') return v ? 'כן' : 'לא';
+  if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/.test(v)) {
+    const d = new Date(v);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
+  }
+  return String(v);
+}
+
+function downloadCsv(rows) {
+  const cols = Object.keys(rows[0]).filter(k => !k.startsWith('_'));
+  const esc = (v) => `"${formatCell(v).replace(/"/g, '""')}"`;
+  const csv = [cols.map(c => `"${c.replace(/"/g, '""')}"`).join(',')]
+    .concat(rows.map(r => cols.map(c => esc(r[c])).join(','))).join('\r\n');
+  // BOM כדי שאקסל יקרא עברית נכון
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `נתונים-${new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' })}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function downloadXlsx(rows) {
+  const day = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+  return downloadRowsAsXlsx(rows, `נתונים-${day}`, { sheetName: 'נתונים' })
+    .catch(() => alert('לא הצלחתי ליצור את קובץ האקסל. אפשר להוריד CSV במקום.'));
+}
+
+function ResultTable({ rows }) {
+  const cols = Object.keys(rows[0]).filter(k => !k.startsWith('_'));
+  const hasAction = rows.some(r => r._actionUrl);
+  const shown = rows.slice(0, 100);
+  return (
+    <div style={{ marginTop: '8px' }}>
+      <div style={{ overflow: 'auto', maxHeight: '260px', border: '1px solid var(--border)', borderRadius: '8px' }}>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+          <thead>
+            <tr>
+              {cols.map(c => <th key={c} style={{ position: 'sticky', top: 0, background: 'var(--surface-2, var(--bg))', textAlign: 'right', padding: '4px 8px', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>{c}</th>)}
+              {hasAction && <th style={{ position: 'sticky', top: 0, background: 'var(--surface-2, var(--bg))', borderBottom: '1px solid var(--border)' }} />}
+            </tr>
+          </thead>
+          <tbody>
+            {shown.map((r, i) => (
+              <tr key={i}>
+                {cols.map(c => <td key={c} style={{ padding: '3px 8px', whiteSpace: 'nowrap', borderBottom: '1px solid var(--border)' }}>{formatCell(r[c])}</td>)}
+                {hasAction && <td style={{ padding: '3px 8px', borderBottom: '1px solid var(--border)' }}>{r._actionUrl ? <a href={r._actionUrl} target="_blank" rel="noreferrer" style={{ color: 'var(--accent)' }}>{r._actionLabel || 'פתיחה'}</a> : null}</td>}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', marginTop: '6px', fontSize: '0.8rem', color: 'var(--text-3)' }}>
+        <span>{rows.length} שורות{rows.length > shown.length ? ` (מוצגות ${shown.length} הראשונות)` : ''}</span>
+        <button type="button" className="btn btn-secondary btn-sm" onClick={() => downloadXlsx(rows)}>הורדה לאקסל (XLSX)</button>
+        <button type="button" className="btn btn-ghost btn-sm" onClick={() => downloadCsv(rows)}>CSV</button>
+      </div>
+    </div>
+  );
+}
 
 export default function StatisticsModal({ isOpen, onClose, contextQuery, pageContext, position }) {
   const [messages, setMessages] = useState([]);
@@ -40,7 +110,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
 
   const startNewChat = () => {
     if (messages.length > 1) {
-      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
+      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: stripRows(messages) };
       const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
       setChatSessions(updatedSessions);
       localStorage.setItem(sessionsStorageKey, JSON.stringify(updatedSessions));
@@ -61,7 +131,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
   const loadSession = (session) => {
     if (messages.length > 1 && !chatSessions.find(s => s.id === session.id)) {
       // eslint-disable-next-line react-hooks/purity -- runs inside the loadSession click handler, never during render
-      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: [...messages] };
+      const newSession = { id: Date.now(), date: new Date().toLocaleString('he-IL'), messages: stripRows(messages) };
       const updatedSessions = [newSession, ...chatSessions].slice(0, 10);
       setChatSessions(updatedSessions);
       localStorage.setItem(sessionsStorageKey, JSON.stringify(updatedSessions));
@@ -99,7 +169,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
       const data = await res.json();
       
       const assistantMessage = res.ok 
-        ? { role: 'assistant', content: data.response }
+        ? { role: 'assistant', content: data.response, rows: Array.isArray(data.data) && data.data.length > 0 ? data.data : undefined }
         : { role: 'assistant', content: 'מצטער, חלה שגיאה בהפקת הסטטיסטיקה.' };
 
       const finalMessages = [...newMessages, assistantMessage];
@@ -112,7 +182,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
           body: JSON.stringify({
             sessionId: activeSessionId,
             context: `דוח AI - ${pageContext}`,
-            messages: finalMessages
+            messages: stripRows(finalMessages)
           })
         });
         const syncData = await syncRes.json();
@@ -248,6 +318,7 @@ export default function StatisticsModal({ isOpen, onClose, contextQuery, pageCon
               {messages.map((msg, idx) => (
                 <div key={idx} className={`bubble ${msg.role}`} style={{ whiteSpace: 'pre-wrap' }}>
                   <FormattedMessage content={msg.content} />
+                  {msg.rows && <ResultTable rows={msg.rows} />}
                 </div>
               ))}
               {loading && (
