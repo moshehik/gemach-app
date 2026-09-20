@@ -3,7 +3,7 @@
 // Modern pill for a specific employee with access to a permission row — initials
 // avatar + name, info-tinted so it reads differently from a department's
 // badge-primary. Used in /admin/permissions' "מי מורשה" column (read-only) and in
-// PageGroupModal's picker (with onRemove).
+// PermissionRowWizard's employee step (with onRemove).
 export function employeeDisplayName(emp) {
   return [emp?.lastName, emp?.firstName].filter(Boolean).join(' ') || emp?.id || '';
 }

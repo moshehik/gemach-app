@@ -1,24 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { getCatalogGroup } from '@/lib/permissionsMetadata';
+import { PERMISSION_CATALOG } from '@/lib/permissionsMetadata';
 import EmployeePermissionsPanel from '@/app/components/permissions/EmployeePermissionsPanel';
-import PageGroupModal from '@/app/components/permissions/PageGroupModal';
+import PermissionRowWizard from '@/app/components/permissions/PermissionRowWizard';
 import EmployeeTag from '@/app/components/permissions/EmployeeTag';
-
-const GROUP_LABELS = { pages: 'עמודי מערכת', features: 'פיצ\'רים' };
-const PAGE_CATALOG = getCatalogGroup('pages');
-const FEATURE_CATALOG = getCatalogGroup('features');
+import ItemLabel from '@/app/components/permissions/ItemInfo';
 
 export default function PermissionsClient() {
   const [departments, setDepartments] = useState(null);
-  const [pageGroups, setPageGroups] = useState([]);
-  const [featureGroups, setFeatureGroups] = useState([]);
+  const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [employees, setEmployees] = useState([]);
   const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
-  const [modal, setModal] = useState(null); // null=closed, { catalogGroup, group } — group is null for a new row
+  const [modal, setModal] = useState(null); // null=closed, { group } — group is null for a new row
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -28,8 +24,7 @@ export default function PermissionsClient() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'שגיאה בטעינת ההרשאות');
       setDepartments(data.departments);
-      setPageGroups(data.pageGroups || []);
-      setFeatureGroups(data.featureGroups || []);
+      setGroups(data.groups || []);
     } catch (e) {
       setError(e.message || 'שגיאה בטעינת ההרשאות');
     } finally {
@@ -50,7 +45,7 @@ export default function PermissionsClient() {
   }
   if (error) {
     return (
-      <div className="callout callout-error" style={{ margin: '20px 0' }}>
+      <div className="callout callout-danger" style={{ margin: '20px 0' }}>
         {error}
         <div style={{ marginTop: '10px' }}>
           <button type="button" className="btn btn-secondary btn-sm" onClick={load}>
@@ -76,40 +71,27 @@ export default function PermissionsClient() {
         <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
           <svg className="icon" style={{ color: 'var(--info)', flexShrink: 0, marginTop: '2px' }}><use href="#i-info" /></svg>
           <div style={{ fontSize: '13px', color: 'var(--text-2)', lineHeight: 1.7 }}>
-            שורה עם התג &quot;מתועד בלבד&quot; משקפת את ההרשאה בפועל היום (roleId קשיח בקוד), אבל שינוי אותה כרגע <strong>לא</strong> משנה התנהגות אמיתית באפליקציה — היום זה כל שורות &quot;{GROUP_LABELS.pages}&quot;; שורות &quot;{GROUP_LABELS.features}&quot; כן פעילות בקוד.
-            כל שני הטבלאות מציגות רק שורות שנוצרו במפורש (&quot;שורת הרשאה חדשה&quot;) — דף או פיצ&apos;ר חדש לא מופיע כאן אוטומטית, יש ליצור לו שורה.
+            הטבלה מציגה רק שורות שנוצרו במפורש (&quot;שורת הרשאה חדשה&quot;) — עמוד או פיצ&apos;ר חדש לא מופיע כאן אוטומטית. כל שורה יכולה לשלב עמודים ופיצ&apos;רים יחד.
+            פריט עם התג &quot;מתועד בלבד&quot; נשמר כתיעוד כוונה — הגישה בפועל אליו עדיין נשלטת בקוד ושינוי כאן <strong>לא</strong> ישנה התנהגות אמיתית. פיצ&apos;רים ללא התג נאכפים בפועל מיד.
+            פריט שמופיע בכמה שורות מודגש, והגישה אליו מותרת אם אחת מהשורות מתירה.
           </div>
         </div>
       </div>
 
       <PermissionGroupTable
-        title={GROUP_LABELS.pages}
-        catalogGroup="pages"
-        catalog={PAGE_CATALOG}
-        groups={pageGroups}
+        catalog={PERMISSION_CATALOG}
+        groups={groups}
         departments={departments}
         employees={employees}
-        onNew={() => setModal({ catalogGroup: 'pages', group: null })}
-        onEdit={(group) => setModal({ catalogGroup: 'pages', group })}
-      />
-
-      <PermissionGroupTable
-        title={GROUP_LABELS.features}
-        catalogGroup="features"
-        catalog={FEATURE_CATALOG}
-        groups={featureGroups}
-        departments={departments}
-        employees={employees}
-        onNew={() => setModal({ catalogGroup: 'features', group: null })}
-        onEdit={(group) => setModal({ catalogGroup: 'features', group })}
+        onNew={() => setModal({ group: null })}
+        onEdit={(group) => setModal({ group })}
       />
 
       {modal && (
-        <PageGroupModal
+        <PermissionRowWizard
           group={modal.group}
-          catalogGroup={modal.catalogGroup}
-          catalog={modal.catalogGroup === 'features' ? FEATURE_CATALOG : PAGE_CATALOG}
-          allGroups={modal.catalogGroup === 'features' ? featureGroups : pageGroups}
+          catalog={PERMISSION_CATALOG}
+          allGroups={groups}
           departments={departments}
           employees={employees}
           onClose={() => setModal(null)}
@@ -148,17 +130,14 @@ export default function PermissionsClient() {
   );
 }
 
-// One table of grouped permission rows — used for both the "pages" and "features"
-// sections above with the same shape (name / linked catalog items / who's allowed /
-// edit button), driven by real PermissionPageGroup rows only (see that model's doc
-// comment in prisma/schema.prisma — there is no implicit row for an ungrouped key).
-function PermissionGroupTable({ title, catalogGroup, catalog, groups, departments, employees, onNew, onEdit }) {
-  const itemNounPlural = catalogGroup === 'features' ? 'פיצ\'רים' : 'עמודים';
-
+// The one table of permission rows — pages AND features together, each row a
+// PermissionPageGroup (see that model's doc comment in prisma/schema.prisma): name /
+// linked items / who's allowed / edit. Only explicitly created rows ever appear here.
+function PermissionGroupTable({ catalog, groups, departments, employees, onNew, onEdit }) {
   return (
     <div className="card" style={{ marginBottom: '20px' }}>
       <div className="card-pad" style={{ borderBottom: '1px solid var(--border)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px', flexWrap: 'wrap' }}>
-        <h2 className="section-title" style={{ margin: 0 }}>{title}</h2>
+        <h2 className="section-title" style={{ margin: 0 }}>שורות הרשאה</h2>
         <button type="button" className="btn btn-secondary btn-sm" onClick={onNew}>
           <svg className="icon"><use href="#i-plus" /></svg>שורת הרשאה חדשה
         </button>
@@ -169,7 +148,7 @@ function PermissionGroupTable({ title, catalogGroup, catalog, groups, department
             <thead>
               <tr>
                 <th style={{ minWidth: '200px' }}>שם</th>
-                <th style={{ minWidth: '220px' }}>{itemNounPlural} מקושרים</th>
+                <th style={{ minWidth: '260px' }}>עמודים ופיצ&apos;רים</th>
                 <th style={{ minWidth: '180px' }}>מי מורשה</th>
                 <th style={{ width: '54px' }} />
               </tr>
@@ -191,7 +170,7 @@ function PermissionGroupTable({ title, catalogGroup, catalog, groups, department
                       <span className="cell-primary">{group.name}</span>
                     </td>
                     <td>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px' }}>
+                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
                         {group.keys.map((key) => {
                           const item = catalog.find((i) => i.key === key);
                           const otherRows = groups.filter((g) => g.id !== group.id && g.keys.includes(key)).map((g) => g.name);
@@ -203,8 +182,9 @@ function PermissionGroupTable({ title, catalogGroup, catalog, groups, department
                                 style={otherRows.length ? { background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontWeight: 700 } : undefined}
                               >
                                 {otherRows.length > 0 && <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-link" /></svg>}
-                                {item?.label || key}
+                                <ItemLabel item={item} fallbackKey={key} />
                               </span>
+                              {item?.group === 'features' && <span className="badge badge-neutral" style={{ fontSize: '10px' }}>פיצ&apos;ר</span>}
                               {item && !item.enforced && (
                                 <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontSize: '10px' }}>מתועד בלבד</span>
                               )}

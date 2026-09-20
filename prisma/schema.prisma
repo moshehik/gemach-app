@@ -619,10 +619,9 @@ model EmployeePermissionOverride {
   @@index([key])
 }
 
-// A named, admin-defined row on /admin/permissions ("pages" or "features" table)
-// that bundles several PERMISSION_CATALOG keys — all from the same `catalogGroup` —
-// so they can be viewed and set together in one floating panel. `keys` is a
-// JSON-encoded string array of catalog keys. Each row stores ITS OWN access:
+// A named, admin-defined row on /admin/permissions (ONE unified table) that bundles
+// several PERMISSION_CATALOG keys — pages and features may be mixed in the same row —
+// edited via a 5-step wizard. `keys` is a JSON-encoded string array of catalog keys. Each row stores ITS OWN access:
 // `access` = JSON { "<roleId>": boolean } and `employeeIds` = JSON string array of
 // specific employees. A catalog key MAY sit in several rows at once (the UI highlights
 // it); its real DepartmentPermission / EmployeePermissionOverride values are then the
@@ -630,12 +629,12 @@ model EmployeePermissionOverride {
 // syncKeys in lib/permissionPageGroups.js. A key in no row has no explicit values
 // (catalog default) — adding a new PERMISSION_CATALOG item therefore does NOT make it
 // visible on /admin/permissions by itself: create a row for it via the UI's
-// "שורת הרשאה חדשה" button. Both tables start empty on purpose (no seeding).
+// "שורת הרשאה חדשה" button. The table starts empty on purpose (no seeding).
 model PermissionPageGroup {
   id           String   @id @default(uuid())
   name         String
   keys         String   @default("[]")
-  catalogGroup String   @default("pages") // 'pages' | 'features' — which PERMISSION_CATALOG group this row belongs to
+  catalogGroup String   @default("pages") // DEPRECATED, unused since the pages/features tables were merged (rows may mix both); kept only to avoid another manual two-DB migration
   access       String   @default("{}")    // { "<roleId>": boolean } — this row's own department access
   employeeIds  String   @default("[]")    // specific employees this row grants access to
   order        Int      @default(0)
