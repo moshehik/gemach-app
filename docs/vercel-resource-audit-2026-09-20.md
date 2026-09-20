@@ -24,6 +24,7 @@ Vercel וקוד הריפו. **אזהרה על שיטה:** הסוכנים קרא�
 | נווה יעקב (org2) | `gmach-neve-yaakov` (`prj_nha4IxNtvyP6B0Try78r6ApWkRBa`) | `gemach-dresses-2` (`jolly-silence-63127698`, `ep-broad-night-b1fxha9e`) | **eu-central-1** |
 
 הפרויקט הישן `purple-term-91836431` (ארגון `gmach-RASY`) חסום ומחזיק את הדלתא של 17-18.9 - לא למחוק.
+בנוסף נוצרו ב-2026-09-20 שני פרויקטי גיבוי נפרדים (**מכסת 5GB נפרדת**, בניגוד ל-branches): `gemach-main-backup` (`proud-mountain-79208831`, us-east-1) ו-`gemach-neve-yaakov-backup` (`winter-sea-73672567`, eu-central-1), בארגון `GMACH`. הם snapshot חד-פעמי (מתיישן), והם היעד של מתג "מסד נתונים" בהגדרות (`web_backup_mode` → `TEST_DATABASE_URL`).
 
 ## מה תוקן (ענף `perf/vercel-resource-savings-2026-09-20`)
 1. **אזור פונקציות לכל גמח בנפרד (השפעה הגדולה ביותר על זמני ריצה).** `vercel.json` נעל `"regions": ["fra1"]`
