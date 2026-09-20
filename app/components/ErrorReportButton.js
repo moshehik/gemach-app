@@ -6,6 +6,8 @@ import { getHebrewDateString } from '../../lib/hebrewDate';
 import { captureElement, captureViewport } from '../../lib/clientCapture';
 import useElementPicker, { describeElement, ElementPickerOverlay } from './useElementPicker';
 import useActionRecorder from './useActionRecorder';
+import useScreenRecorder from './useScreenRecorder';
+import { uploadScreenRecording, prepareScreenRecordingUpload } from '../../lib/uploadScreenRecording';
 import { formatActionSteps, appendStepsToReport, splitReportSteps, stepsCountLabel } from '../../lib/actionRecorderCore';
 
 // כותרת קבועה לזיהוי שרשור "יומן הסוכן האוטומטי" (ר' scripts/agent-log-report.js -
@@ -17,13 +19,23 @@ const AGENT_LOG_TITLE = '🤖 יומן הסוכן האוטומטי (נא לא ל
 // אייקון תמונה שבורה.
 function AttachmentThumb({ url, index }) {
   const [broken, setBroken] = useState(false);
-  const isVideo = /\.(webm|mp4)$/i.test(url);
+  const driveId = url.startsWith('gdrive:') ? url.slice(7) : null;
+  const isVideo = Boolean(driveId) || /\.(webm|mp4)$/i.test(url);
   const box = { width: 96, height: 96, borderRadius: 8, border: '1px solid var(--border)', flexShrink: 0 };
   if (broken) {
     return (
       <div title="הקובץ אינו זמין יותר" style={{ ...box, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 4, background: 'var(--surface-alt)', color: 'var(--text-3)', fontSize: 11, textAlign: 'center', padding: 6 }}>
         <svg className="icon" style={{ width: 18, height: 18 }}><use href="#i-alert-circle" /></svg>
         הקובץ אינו זמין יותר
+      </div>
+    );
+  }
+  if (driveId) {
+    // הסרטת מסך שנשמרה בדרייב (ר' lib/driveBridgeServer.js) — מושמעת דרך השרת, כי הקובץ פרטי
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <video src={`/api/recordings/${driveId}`} controls preload="metadata" onError={() => setBroken(true)} style={{ width: 260, maxWidth: '100%', borderRadius: 8, border: '1px solid var(--border)', background: '#000' }} />
+        <span style={{ fontSize: 11.5, color: 'var(--text-3)' }}>הסרטת מסך</span>
       </div>
     );
   }
@@ -152,20 +164,72 @@ export default function ErrorReportButton() {
   };
   const picker = useElementPicker(handleElementPicked);
 
-  const startStepsRecording = () => {
+  // "הסרטת מסך" (וידאו + פעולות) — זמינה כשההגדרה ai_screen_recording_enabled פעילה. הוידאו עולה ישר לדרייב
+  // ונשמר בדיווח כמזהה "gdrive:<fileId>"; הפעולות נכתבות לטקסט הדיווח. "הקלט את הפעולות שלי" — בלי וידאו.
+  const screenRecorder = useScreenRecorder();
+  const [recordingEnabled, setRecordingEnabled] = useState(false);
+  const [recordingMode, setRecordingMode] = useState('steps'); // 'steps' | 'video'
+  const [videoUploading, setVideoUploading] = useState(false);
+  const [replySteps, setReplySteps] = useState('');
+
+  const setStepsFor = (context, text) => (context === 'reply' ? setReplySteps(text) : setRecordedSteps(text));
+  const addAttachmentFor = (context, value) => (context === 'reply' ? setReplyAttachments(prev => [...prev, value]) : setNewAttachments(prev => [...prev, value]));
+
+  const startStepsRecording = (context = 'new') => {
+    pickingContextRef.current = context;
     setIsOpen(false);
     setStepCount(0);
+    setRecordingMode('steps');
     setIsRecordingSteps(true);
     actionRecorder.start();
   };
 
   const finishStepsRecording = () => {
+    const context = pickingContextRef.current;
     const text = formatActionSteps(actionRecorder.stop());
     setIsRecordingSteps(false);
-    setRecordedSteps(text);
+    setStepsFor(context, text);
     setIsOpen(true);
-    setActiveTab('new');
+    setActiveTab(context === 'reply' ? 'thread' : 'new');
     if (!text) showToast('לא נרשמו פעולות — נסה שוב', 'info');
+  };
+
+  const startVideoRecording = async (context = 'new') => {
+    pickingContextRef.current = context;
+    setIsOpen(false);
+    setStepCount(0);
+    setRecordingMode('video');
+    setIsRecordingSteps(true);
+    actionRecorder.start();
+    // פותחים את ההעלאה לדרייב כבר עכשיו — הפנייה לגשר איטית, וכך היא רצה בזמן ההסרטה
+    const prepared = prepareScreenRecordingUpload('error-report');
+    prepared.catch(() => {});
+    const blob = await screenRecorder.start();
+    const text = formatActionSteps(actionRecorder.stop());
+    setIsRecordingSteps(false);
+    setIsOpen(true);
+    setActiveTab(context === 'reply' ? 'thread' : 'new');
+    if (text) setStepsFor(context, text);
+    if (!blob) {
+      showToast(text ? 'ההסרטה נעצרה — הפעולות נשמרו, בלי וידאו' : 'ההסרטה בוטלה', 'info');
+      return;
+    }
+    setVideoUploading(true);
+    try {
+      const fileId = await uploadScreenRecording(blob, prepared);
+      addAttachmentFor(context, `gdrive:${fileId}`);
+    } catch (err) {
+      if (err.code !== 'DRIVE_NOT_CONFIGURED') console.error('Failed to upload screen recording:', err);
+      showToast(text ? 'העלאת הוידאו נכשלה — הפעולות נשמרו' : 'העלאת ההסרטה נכשלה', 'error');
+    } finally {
+      setVideoUploading(false);
+    }
+  };
+
+  // סיום מהסרגל הצף: בהסרטת מסך עוצרים את ההקלטה (ההמשך רץ ב-startVideoRecording), אחרת מסיימים רישום פעולות
+  const finishRecording = () => {
+    if (recordingMode === 'video') screenRecorder.stop();
+    else finishStepsRecording();
   };
 
   useEffect(() => {
@@ -193,6 +257,7 @@ export default function ErrorReportButton() {
   // אין משתמש מחובר (עמדת לקוחות, דפי הדפסה) - הבקשה תמיד תחזיר 401, אז אחרי
   // הפעם הראשונה מפסיקים לגמרי כדי לא להציף את הקונסול כל 30 שניות.
   const authFailedRef = useRef(false);
+  const fetchSeqRef = useRef(0);
 
   useEffect(() => {
     let intervalId;
@@ -290,6 +355,9 @@ export default function ErrorReportButton() {
   // כרגיל - שם באמת צריך title/userText/attachmentUrls/replies לרשימה ולחיפוש.
   async function fetchReports({ light = false } = {}) {
     if (authFailedRef.current) return;
+    // תוצאה של בקשה ישנה לא דורסת בקשה שהתחילה אחריה: קריאת ה-light שנשלחת בטעינה עלולה להסתיים אחרי הקריאה המלאה
+    // של פתיחת הפאנל, ואז הרשימה מתרוקנת לשורות בלי שם/תאריך/טקסט (נראה בסביבת פיתוח איטית).
+    const seq = ++fetchSeqRef.current;
     try {
       const res = await fetch(light ? '/api/error-report?light=1' : '/api/error-report');
       if (res.status === 401) {
@@ -298,6 +366,7 @@ export default function ErrorReportButton() {
       }
       if (res.ok) {
         const data = await res.json();
+        if (seq !== fetchSeqRef.current) return;
         if (data.success) {
           setReports(data.reports || []);
           setIsProgrammer(data.isProgrammer || false);
@@ -318,6 +387,8 @@ export default function ErrorReportButton() {
         if (s) setHandledAtBottom(s.value !== 'false');
         const h = data.find(x => x.key === 'error_report_human_button_enabled');
         if (h) setHumanButtonEnabled(h.value !== 'false');
+        const rec = data.find(x => x.key === 'ai_screen_recording_enabled');
+        setRecordingEnabled(rec?.value === 'true');
       })
       .catch(() => {});
   }, []);
@@ -330,6 +401,10 @@ export default function ErrorReportButton() {
     }
     if (!userText.trim()) {
       showToast('יש להזין תיאור שגיאה', 'error');
+      return;
+    }
+    if (videoUploading) {
+      showToast('ההסרטה עדיין עולה — נא להמתין רגע', 'info');
       return;
     }
 
@@ -376,19 +451,24 @@ export default function ErrorReportButton() {
   const handleReply = async (e) => {
     e.preventDefault();
     if (!replyText.trim() || !selectedReport) return;
+    if (videoUploading) {
+      showToast('ההסרטה עדיין עולה — נא להמתין רגע', 'info');
+      return;
+    }
 
     setIsReplying(true);
     try {
       const res = await fetch('/api/error-report/reply', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ reportId: selectedReport.id, text: replyText, isQuestion: replyIsQuestion, attachments: replyAttachments }),
+        body: JSON.stringify({ reportId: selectedReport.id, text: appendStepsToReport(replyText, replySteps), isQuestion: replyIsQuestion, attachments: replyAttachments }),
       });
       const data = await res.json();
       if (res.ok && data.success) {
         setReplyText('');
         setReplyIsQuestion(false);
         setReplyAttachments([]);
+        setReplySteps('');
         setSelectedReport(prev => ({ ...prev, replies: [...prev.replies, data.reply] }));
         fetchReports();
       } else {
@@ -775,7 +855,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                             </span>
                           )}
                         </div>
-                        <p style={{ margin: 0, whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>{reply.text}</p>
+                        <ReportText text={reply.text} />
                         <AttachmentGallery attachmentUrls={reply.attachmentUrls} />
                         {reply.previewUrl && (
                           <a
@@ -822,7 +902,9 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                       {replyAttachments.map((src, idx) => (
                         <div key={idx} style={{ position: 'relative' }}>
-                          <img src={src} alt="צילום מצורף" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                          {src.startsWith('gdrive:')
+                            ? <div style={{ width: 60, height: 60, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, fontSize: 10, color: 'var(--text-3)', textAlign: 'center' }}><svg className="icon" style={{ width: 16, height: 16 }}><use href="#i-activity" /></svg>הסרטת מסך</div>
+                            : <img src={src} alt="צילום מצורף" style={{ width: 60, height: 60, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />}
                           <button
                             type="button"
                             onClick={() => setReplyAttachments(prev => prev.filter((_, i) => i !== idx))}
@@ -832,7 +914,23 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                       ))}
                     </div>
                   )}
+                  {replySteps && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12.5, padding: '6px 10px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface-alt)' }}>
+                      <svg className="icon" style={{ width: 14, height: 14 }}><use href="#i-check" /></svg>
+                      נרשמו {stepsCountLabel(replySteps.split('\n').length)} — יצורפו לתגובה
+                      <button type="button" className="btn btn-ghost btn-sm" style={{ marginInlineStart: 'auto' }} onClick={() => setReplySteps('')}>הסר</button>
+                    </div>
+                  )}
                   <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-icon-only"
+                      title={recordingEnabled ? 'הסרטת מסך (וידאו + פעולות) וצירוף לתגובה' : 'הקלט את הפעולות שלי וצרף לתגובה'}
+                      disabled={videoUploading}
+                      onClick={() => (recordingEnabled ? startVideoRecording('reply') : startStepsRecording('reply'))}
+                    >
+                      <svg className="icon"><use href="#i-activity" /></svg>
+                    </button>
                     <button
                       type="button"
                       className="btn btn-secondary btn-icon-only"
@@ -857,7 +955,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                       placeholder="הקלד תגובה..."
                       required
                     />
-                    <button type="submit" className="btn btn-primary btn-icon-only" disabled={isReplying}>
+                    <button type="submit" className="btn btn-primary btn-icon-only" disabled={isReplying || videoUploading}>
                       <svg className="icon"><use href="#i-arrow-end" /></svg>
                     </button>
                   </div>
@@ -1068,9 +1166,33 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     צלם את כל המסך
                   </button>
 
+                  {recordingEnabled && (
+                    <button
+                      type="button"
+                      onClick={() => startVideoRecording('new')}
+                      disabled={videoUploading}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: 10, width: '100%',
+                        padding: '10px 14px', cursor: 'pointer', marginTop: 8, textAlign: 'start',
+                        borderRadius: 'var(--radius-sm)',
+                        border: '1px solid var(--primary-tint-2)',
+                        background: 'var(--primary-tint)',
+                        color: 'var(--primary-solid)', fontWeight: 700, fontSize: 13
+                      }}
+                    >
+                      <svg className="icon" style={{ width: 15, height: 15, flexShrink: 0 }}><use href="#i-activity" /></svg>
+                      <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <span>{videoUploading ? 'מעלה את ההסרטה...' : 'הסרטת מסך'}</span>
+                        <span style={{ fontWeight: 400, fontSize: 11.5, color: 'var(--text-3)' }}>
+                          מסריטה את המסך ורושמת מה אתה לוחץ ומקליד (בלי סיסמאות ופרטי אשראי) בזמן שאתה משחזר את התקלה. הוידאו נשמר בדרייב והפעולות מצורפות לדיווח
+                        </span>
+                      </span>
+                    </button>
+                  )}
+
                   <button
                     type="button"
-                    onClick={startStepsRecording}
+                    onClick={() => startStepsRecording('new')}
                     style={{
                       display: 'flex', alignItems: 'center', gap: 10, width: '100%',
                       padding: '10px 14px', cursor: 'pointer', marginTop: 8, textAlign: 'start',
@@ -1084,7 +1206,7 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     <span style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                       <span>{recordedSteps ? 'הקלט את הפעולות מחדש' : 'הקלט את הפעולות שלי'}</span>
                       <span style={{ fontWeight: 400, fontSize: 11.5, color: 'var(--text-3)' }}>
-                        המערכת תרשום מה אתה לוחץ ומקליד (בלי סיסמאות ופרטי אשראי) בזמן שאתה משחזר את התקלה, ותצרף לדיווח
+                        בלי וידאו ובלי בקשת שיתוף מסך: המערכת רק תרשום מה אתה לוחץ ומקליד (בלי סיסמאות ופרטי אשראי) ותצרף לדיווח
                       </span>
                     </span>
                   </button>
@@ -1104,7 +1226,9 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
                     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 10 }}>
                       {newAttachments.map((src, idx) => (
                         <div key={idx} style={{ position: 'relative' }}>
-                          <img src={src} alt="צילום מצורף" style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />
+                          {src.startsWith('gdrive:')
+                            ? <div style={{ width: 70, height: 70, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface-alt)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3, fontSize: 10.5, color: 'var(--text-3)', textAlign: 'center' }}><svg className="icon" style={{ width: 18, height: 18 }}><use href="#i-activity" /></svg>הסרטת מסך</div>
+                            : <img src={src} alt="צילום מצורף" style={{ width: 70, height: 70, objectFit: 'cover', borderRadius: 6, border: '1px solid var(--border)' }} />}
                           <button
                             type="button"
                             onClick={() => setNewAttachments(prev => prev.filter((_, i) => i !== idx))}
@@ -1154,10 +1278,10 @@ ${report.lastButtons ? (Array.isArray(JSON.parse(report.lastButtons)) ? JSON.par
         }}>
           <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--danger-solid)', animation: 'pulse 1.5s infinite' }} />
           <span style={{ fontSize: 13, fontWeight: 600 }}>
-            רושם את הפעולות שלך · {stepsCountLabel(stepCount)}
+            {recordingMode === 'video' ? 'מסריט את המסך' : 'רושם את הפעולות שלך'} · {stepsCountLabel(stepCount)}{recordingMode === 'video' ? ` · ${screenRecorder.seconds}/${screenRecorder.maxSeconds} שנ'` : ''}
           </span>
           <span style={{ fontSize: 12, color: 'var(--text-3)' }}>שחזר את התקלה, ואז לחץ "סיום"</span>
-          <button type="button" data-no-record="true" className="btn btn-primary btn-sm" onClick={finishStepsRecording}>סיום</button>
+          <button type="button" data-no-record="true" className="btn btn-primary btn-sm" onClick={finishRecording}>סיום</button>
         </div>,
         document.body
       )}
