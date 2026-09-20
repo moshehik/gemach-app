@@ -205,4 +205,20 @@ async function deleteFile(fileId) {
   if (!res.ok && res.status !== 404) throw new Error(`מחיקת קובץ מהדרייב נכשלה (${res.status})`);
 }
 
-module.exports = { isConfigured, ping, uploadFile, shareFile, webViewLink, listFiles, deleteFile };
+/** פרטי קובץ (שם, גודל, appProperties, trashed) - לאימות לפני הורדה. */
+async function getFileInfo(fileId) {
+  const res = await driveFetch(`drive/v3/files/${encodeURIComponent(fileId)}?fields=id,name,mimeType,size,createdTime,appProperties,trashed`);
+  if (!res.ok) throw new Error(`קריאת פרטי קובץ מהדרייב נכשלה (${res.status})`);
+  return res.json();
+}
+
+/** מוריד קובץ מהדרייב ישירות לדיסק (זרם, בלי לטעון הכול לזיכרון). */
+async function downloadFile(fileId, destPath) {
+  const res = await driveFetch(`drive/v3/files/${encodeURIComponent(fileId)}?alt=media`);
+  if (!res.ok || !res.body) throw new Error(`הורדת קובץ מהדרייב נכשלה (${res.status})`);
+  const { Readable } = require('stream');
+  const { pipeline } = require('stream/promises');
+  await pipeline(Readable.fromWeb(res.body), require('fs').createWriteStream(destPath));
+}
+
+module.exports = { isConfigured, ping, uploadFile, shareFile, webViewLink, listFiles, deleteFile, getFileInfo, downloadFile };
