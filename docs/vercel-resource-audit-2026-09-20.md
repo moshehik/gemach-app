@@ -35,12 +35,14 @@ Vercel וקוד הריפו. **אזהרה על שיטה:** הסוכנים קרא�
    `curl https://gemach-app-uyh4-beryl.vercel.app/api/health` צריך להחזיר `ms` בעשרות בודדות (לא ~460).
    **כלל קבוע: אם ה-DB של גמח עובר אזור, לעדכן את `serverlessFunctionRegion` של *הפרויקט שלו* ב-Vercel - לא ב-`vercel.json`.**
 2. **`/api/log-visit` בצורת אצווה.** לפני: כל קריאת `/api/*` מהקליינט יצרה POST נוסף (invocation + auth + employee lookup +
-   insert) - כפל invocations ופעילות DB. עכשיו ה-interceptor ב-`app/layout.js` אוסף רשומות ושולח אצווה אחת
+   insert). **נמדד ב-`PageVisitLog` של ה-DB-ים החיים:** בשיא (13-15.9) נווה יעקב קיבל עד 10,487 POST-ים כאלה ביום (מול 9,473
+   קריאות API אמיתיות באותו יום - כלומר כמעט כפל) ≈ 26% מכלל ה-invocations בשיא (~40K ליום); הגמח הראשי עד 2,093 ביום.
+   (ההערכה הראשונית של הסוכנים, 35-50%, הייתה גבוהה מהמדידה.) עכשיו ה-interceptor ב-`app/layout.js` אוסף רשומות ושולח אצווה אחת
    (כל ~20 שנ', מיד ב-25 רשומות, ובסגירת הדף דרך `sendBeacon`); `app/api/log-visit/route.js` מקבל `{ entries: [...] }`
    (וגם רשומה בודדת - דפי `app/print/*` עדיין שולחים כך) ועושה `createMany` יחיד. חותמת הזמן של הקליינט נשמרת;
    `requestQuery` נחתך ל-4000 תווים. קריאות `?light=1` (polling רקע) לא נרשמות בהיסטוריה.
    `PageTracker` משתמש באותו תור. היסטוריית `PageVisitLog` ו-`/management/history` ממשיכות לעבוד כרגיל.
-3. **פעמון ההתראות:** `GET /api/notifications?light=1` מחזיר רק `unreadCount` (אותם where/take/חישוב כמו הרשימה, אבל
+3. **פעמון ההתראות** (בפועל נמדד כמעט לא פעיל - 10 קריאות `/api/notifications` בשבוע בנווה יעקב, ולכן התועלת כאן קטנה; השינוי בטוח ונשאר): `GET /api/notifications?light=1` מחזיר רק `unreadCount` (אותם where/take/חישוב כמו הרשימה, אבל
    בלי include ובלי תוכן ההודעות ובלי שאילתת outgoing). `NotificationBell.js` עושה polling קל כל 120 שנ' (היה: רשימה מלאה
    של עד 250 שורות כל 60 שנ' + בכל ניווט), והרשימה המלאה נטענת רק בפתיחת הפעמון.
 4. **`ErrorReportButton.js`:** polling הרקע (כבר `light`) הואט מ-30 ל-120 שנ'.
@@ -77,3 +79,59 @@ Vercel וקוד הריפו. **אזהרה על שיטה:** הסוכנים קרא�
    (`bagrut-files`, `print-center-files`, יחד 1.14GB) מושעים על חריגת מכסה.
 5. **ימי שגיאות ב-Vercel** (30.8, 3.9, 6-7.9, 18.9 עם 7.4%) - אי אפשר לשייך ל-route בלי runtime logs (Hobby שומר שעה בלבד).
 6. **הטוקן של Vercel שהודבק בצ'אט** - לבטל ב-Account Settings → Tokens.
+
+## אימות מצביעי מסדי הנתונים (2026-09-20, אחרי החלפת ה-Neon)
+נבדק ישירות מול ה-DB-ים החיים (שאילתות קריאה בלבד; ה-`BackupRun` שנכתב ע"י ה-workflow ב-GitHub נמצא בתוך ה-DB החי = הוכחה שה-secret מצביע אליו):
+
+| מצביע | היעד בפועל | סטטוס |
+|---|---|---|
+| `.env` `DATABASE_URL` / `PROD_DATABASE_URL` (המכונה המקומית, הגיבוי המקומי) | `ep-weathered-tree-avpypjjr` (org1 חי) | תקין |
+| GitHub secret `DATABASE_URL` (עודכן 19.9 23:36) | org1 חי - `BackupRun` ok מ-19.9 20:36 UTC נמצא ב-DB החי | תקין |
+| GitHub secret `DATABASE_URL_ORG2` (עודכן 15.9) | org2 חי `ep-broad-night-b1fxha9e` - `BackupRun` ok מ-19.9 20:33 UTC נמצא ב-DB החי | תקין |
+| Vercel `DATABASE_URL` Production של `gemach-app-uyh4` (עודכן 18.9) | האתר חי ו-`/api/health` מחזיר `db:"up"` (הבסיס הישן חסום ומחזיר `down`) | תקין |
+| Vercel `DATABASE_URL` Production של `gmach-neve-yaakov` (עודכן 15.9) | `ep-broad-night-b1fxha9e` (cutover 15.9) | תקין |
+| Vercel `TEST_DATABASE_URL` Production, שני הפרויקטים (עודכן 20.9) | פרויקטי הגיבוי (`ep-fancy-pine-aw5fbjvp` / `ep-aged-sunset-b2liz6y8`) | תקין |
+| `scripts/seed_phase1_settings.js` - שומר ה-host | הצביע ל-`ep-orange-waterfall` הישן (היה מונע הרצה על ה-DB החדש) | **תוקן** ל-`ep-weathered-tree-avpypjjr` |
+| `docs/fix-protocol-error-reports.md` - טבלת ה-DB-ים | ציין את הבסיס החסום כ"חי" | **תוקן** |
+| `test-db.js` (tracked) | חיבור עם סיסמה בטקסט גלוי ל-`ep-royal-dawn` הישן | **נמחק** |
+| `.env` `POSTGRES_URL` + Vercel `POSTGRES_URL` של org1 (Production+Preview) | עדיין `ep-orange-waterfall` החסום. **אין בקוד שום קריאה ל-`POSTGRES_URL`** - שריד של אינטגרציית Vercel↔Neon הישנה | לא בשימוש; מומלץ למחוק |
+| Vercel org1 `DATABASE_URL` לסביבת **Preview** | לא קיים (נמחק בעת ה-cutover של 18.9, שנעשה רק ל-Production) | previews של org1 לא מתחברים ל-DB - מכוון או לתקן לפי הצורך |
+| Vercel `TEST_DATABASE_URL` Preview של org1 (8.9) / `DATABASE_URL` Preview של org2 (8.9) | hosts ישנים | לא בשימוש בייצור |
+
+## איך עובד הגיבוי - מלא או רק שינויים?
+**מלא, בכל פעם - אין שום מנגנון של שינויים בלבד.** `scripts/cloud_backup.js` פותח טרנזקציית `REPEATABLE READ, READ ONLY` וקורא **כל שורה
+בכל טבלה** (`SELECT ... ORDER BY id`, מעמוד לעמוד), בונה קובץ SQL מלא, דוחס (gzip) בזיכרון ומעלה ל-Drive של הגמח. רק ההחלטה *אם* לרוץ
+תלויה בזמן (`backup_interval_hours`, ברירת מחדל 24, ו"גיבוי מיידי"); אין השוואה למה שהשתנה מאז הגיבוי הקודם. חשוב: הדחיסה קורית
+**אחרי** שהנתונים כבר עברו על החוט, ולכן מכסת ה-5GB של Neon נספרת לפי הנפח הגולמי:
+
+| גמח | גודל DB | קובץ דחוס | נפח גולמי על החוט (הערכה) | גיבוי יומי בחודש |
+|---|---|---|---|---|
+| org1 ראשי | 183MB | 28.8MB | ~148MB | **~4.4GB (89% מהמכסה)** |
+| org2 נווה יעקב | 134MB | 15.2MB | ~78MB | ~2.3GB (47%) |
+
+עם המשימה המקומית `GemachApp-ProdDbBackup` שרצה במקביל, org1 עמד על ~8.9GB בחודש - וזה הסבר סביר לחריגה של 17-18.9.
+**גם אחרי כיבוי המשימה המקומית, גיבוי יומי מלא לבדו אוכל כמעט את כל המכסה של org1.** אפשרויות (לא בוצעו - דורשות החלטה):
+(א) `backup_interval_hours` = 72 (או 168) ב-`/admin/backups` ל-org1 - PITR של 7 ימים ב-Neon כבר מכסה שחזור לטווח קצר;
+(ב) "דילוג כשלא השתנה כלום": לפני ה-dump לבדוק `max(createdAt)` ב-`AuditLog` מול הגיבוי האחרון ולוותר על ריצה חסרת שינויים
+(כל כתיבה באפליקציה נרשמת ב-`AuditLog`) - **לא נעשה כי `scripts/cloud_backup.js` נמצא בעריכה בסשן מקביל**;
+(ג) גיבוי אמיתי אינקרמנטלי לפי `updatedAt` - מורכב יותר ולא תופס מחיקות פיזיות.
+
+## צריכת משאבים: לפני ואחרי
+"לפני" = **נמדד** (PageVisitLog של ה-DB-ים החיים, Vercel `/v2/usage`, מדידת `/api/health`) אלא אם כתוב אחרת. "אחרי" = **הערכה** מהקוד -
+עדיין לא נמדד בייצור; לאמת כמה ימים אחרי המיזוג.
+
+| משאב | על מה | לפני | אחרי (הערכה) |
+|---|---|---|---|
+| Vercel invocations - `/api/log-visit` | POST נפרד לכל קריאת API | עד 10,487 ליום (org2), 2,093 (org1) בשיא; ~26% מהכלל | ~10 פעמים פחות (אצווה כל ~20 שנ') - כ-1,000 ליום בשיא |
+| Vercel invocations - polling רקע | מונה דיווחי תקלות / פעמון התראות | תקלות: כל 30 שנ' לטאב; פעמון: כל 60 שנ' (בפועל כמעט לא רץ) | כל 120 שנ' לכל אחד = פי 4 פחות (ופי 2 לפעמון), ולא נרשם ב-log-visit |
+| זמן ריצת פונקציות org1 (GB-hours) | חציית אוקיינוס: פונקציה ב-fra1 מול DB ב-us-east-1 | `SELECT 1` = 459ms; 0.17 GB-hr לכל 1K invocations (פי ~6.7 מנווה יעקב) | ~2-5ms; קרוב ל-0.025 - ירידה של כ-80% בזמן ריצה לכל בקשה |
+| Neon egress - מונה דיווחי תקלות | `GET /api/error-report` מלא כל 30 שנ' | org2: 8,014 קריאות x 121KB = **~950MB בשבוע** (org1: ~95MB) - **טופל כבר ב-17.9** (light: 2.8KB, -97%) | ההאטה ל-120 שנ' חוסכת עוד פי 4 בקריאות |
+| Neon egress - גיבוי | dump מלא בכל ריצה | org1 ~148MB + org2 ~78MB ליום; + משימה מקומית = ~8.9GB/חודש ל-org1 | **ללא שינוי** עד החלטה (ר' למעלה) |
+| Vercel deployments | כל push = 2 builds, כולל תיעוד וענפי org2 בפרויקט הראשי | 284 ב-34 יום: 258 חסומים (seat) + 26 builds אמיתיים; 6 זוגות SHA זהים + 2 previews מיותרים | דילוג על קומיטי תיעוד וענפי `fix-reports/org2-*` בראשי (~5 מתוך 19 builds של הגמחים). החסימות ימשיכו עד תיקון קישור GitHub↔Vercel |
+| Vercel cron | `/api/health` יומי | 1 invocation ליום לפרויקט + הערת Neon | 0 |
+| GitHub Actions | `claude-fix-reports`: 278 ריצות ב-12 יום, חלקן חופפות | ללא `concurrency` | ריצה אחת בכל רגע |
+| Vercel storage | Upstash Redis יתום `upstash-kv-beige-school` | קיים, לא מחובר לאף פרויקט, אפס שימוש בקוד | **נמחק** ב-2026-09-20 |
+
+**מה עדיין הכי יקר ב-Neon egress (נמדד, לא שונה כאן):** `/api/dresses` (~1.3MB לקריאה, 169MB בשבוע ב-org1), `/api/orders`
+(85-105KB, 367MB בשבוע ב-org2) ו-`/api/settings` (43-53KB x 372-1,957 קריאות, עד 100MB בשבוע) - מועמדים לסבב הבא (cache שרת /
+`limit` קטן יותר / `Cache-Control`).
