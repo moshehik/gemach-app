@@ -46,7 +46,8 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
   // Number-type items (feature:export_max_rows) have no yes/no to set from a row, so
   // they aren't offered (managed from the employee's own permissions card).
   const availableToAdd = catalog
-    .filter((item) => item.type === 'boolean' && !keys.includes(item.key))
+    // notConfigurable items (locked to head management / no login) have nothing to configure here
+    .filter((item) => item.type === 'boolean' && !item.notConfigurable && !keys.includes(item.key))
     .map((item) => ({ ...item, alsoIn: otherRowsByKey.get(item.key) }));
 
   const defaultsFor = (itemList) => {
@@ -293,13 +294,13 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
         {hasEnforced && (
           <div className="callout callout-warning">
             <svg className="icon"><use href="#i-alert-tri" /></svg>
-            השורה כוללת פיצ&apos;רים שנאכפים <strong>בפועל</strong> — שמירה משנה את ההתנהגות באפליקציה מיד.
+            השורה כוללת פריטים שנאכפים <strong>בפועל</strong> — שמירה משנה מיד את מי שמורשה (עמוד שנשלל ממחלקה נחסם גם בכניסה ישירה בכתובת, ונעלם מהתפריט).
           </div>
         )}
         {hasEnforced && nobodyAllowed && (
           <div className="callout callout-danger">
             <svg className="icon"><use href="#i-alert-circle" /></svg>
-            לא נבחרה אף מחלקה ואף עובד — הפיצ&apos;רים שבשורה ייחסמו לכולם (חוץ ממתכנת).
+            לא נבחרה אף מחלקה ואף עובד — הפריטים שבשורה ייחסמו לכולם (חוץ מהנהלה ראשית ומתכנת).
           </div>
         )}
         {hasDocOnly && (
