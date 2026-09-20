@@ -91,7 +91,7 @@ export default function EmployeePermissionsPanel({ employeeId, linkToCard = fals
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                 <strong style={{ fontSize: '13.5px' }}>{catalogItem.label}</strong>
                 {!catalogItem.enforced && (
-                  <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))' }}>מתועד בלבד — עדיין לא מיושם בקוד</span>
+                  <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))' }}>לתיעוד בלבד — עדיין לא משנה את הגישה בפועל</span>
                 )}
               </div>
               <p style={{ margin: '4px 0 0', fontSize: '12.5px', color: 'var(--text-3)' }}>{catalogItem.description}</p>

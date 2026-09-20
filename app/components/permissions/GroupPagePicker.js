@@ -5,10 +5,11 @@ import ItemLabel from './ItemInfo';
 
 // Searchable list for the wizard's "pages / features" step (PermissionRowWizard.js).
 // Pages and features are listed together under two headings. Each row: the item's label
-// (a link opening the real page in a new tab, for pages) + an info icon, an "already in
-// row X" badge when the item also sits in another row (allowed — it's highlighted and the
-// real access is the union of its rows), and — for pages — an eye button toggling a lazy,
-// on-demand scaled preview inline under that row (never a live iframe per row up front).
+// (a link opening the real page in a new tab, for pages) + an info icon, and an "already
+// in row X" badge when the item also sits in another row (allowed — it's highlighted and
+// the real access is the union of its rows). There used to be an inline iframe preview
+// (eye button) here; it rendered a blank white window, so it was removed — the label link
+// opens the real page instead.
 const SECTIONS = [
   { group: 'pages', title: 'עמודים' },
   { group: 'features', title: 'פיצ\'רים' },
@@ -16,7 +17,6 @@ const SECTIONS = [
 
 export default function GroupPagePicker({ items, onAdd }) {
   const [query, setQuery] = useState('');
-  const [previewKey, setPreviewKey] = useState(null);
 
   const q = query.trim().toLowerCase();
   const filtered = q ? items.filter((item) => item.label.toLowerCase().includes(q) || (item.description || '').toLowerCase().includes(q)) : items;
@@ -30,29 +30,7 @@ export default function GroupPagePicker({ items, onAdd }) {
             כבר בשורה: {item.alsoIn.join(', ')}
           </span>
         )}
-        {item.route && (
-          <button
-            type="button"
-            className="btn btn-ghost btn-icon-only btn-sm"
-            title="תצוגה מקדימה"
-            aria-label="תצוגה מקדימה"
-            onClick={(e) => { e.stopPropagation(); setPreviewKey((k) => (k === item.key ? null : item.key)); }}
-          >
-            <svg className="icon"><use href="#i-eye" /></svg>
-          </button>
-        )}
       </div>
-      {previewKey === item.key && item.route && (
-        <div style={{ padding: '8px', background: 'var(--surface-alt)' }}>
-          <div style={{ width: '320px', height: '200px', overflow: 'hidden', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--surface)' }}>
-            <iframe
-              src={item.route}
-              title={item.label}
-              style={{ width: '1280px', height: '800px', border: 'none', transform: 'scale(0.25)', transformOrigin: '0 0' }}
-            />
-          </div>
-        </div>
-      )}
     </div>
   );
 

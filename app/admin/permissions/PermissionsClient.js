@@ -72,7 +72,7 @@ export default function PermissionsClient() {
           <svg className="icon" style={{ color: 'var(--info)', flexShrink: 0, marginTop: '2px' }}><use href="#i-info" /></svg>
           <div style={{ fontSize: '13px', color: 'var(--text-2)', lineHeight: 1.7 }}>
             הטבלה מציגה רק שורות שנוצרו במפורש (&quot;שורת הרשאה חדשה&quot;) — עמוד או פיצ&apos;ר חדש לא מופיע כאן אוטומטית. כל שורה יכולה לשלב עמודים ופיצ&apos;רים יחד.
-            פריט עם התג &quot;מתועד בלבד&quot; נשמר כתיעוד כוונה — הגישה בפועל אליו עדיין נשלטת בקוד ושינוי כאן <strong>לא</strong> ישנה התנהגות אמיתית. פיצ&apos;רים ללא התג נאכפים בפועל מיד.
+            פריט עם התג &quot;לתיעוד בלבד&quot; נשמר לתיעוד בלבד — הגישה בפועל אליו נשארת כמו שהיא היום ושינוי כאן <strong>לא</strong> ישנה התנהגות אמיתית. פיצ&apos;רים ללא התג נאכפים בפועל מיד.
             פריט שמופיע בכמה שורות מודגש, והגישה אליו מותרת אם אחת מהשורות מתירה.
           </div>
         </div>
@@ -186,7 +186,7 @@ function PermissionGroupTable({ catalog, groups, departments, employees, onNew, 
                               </span>
                               {item?.group === 'features' && <span className="badge badge-neutral" style={{ fontSize: '10px' }}>פיצ&apos;ר</span>}
                               {item && !item.enforced && (
-                                <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontSize: '10px' }}>מתועד בלבד</span>
+                                <span className="badge" style={{ background: 'var(--warning-tint)', color: 'var(--warning-solid, var(--warning))', fontSize: '10px' }}>לתיעוד בלבד</span>
                               )}
                             </span>
                           );

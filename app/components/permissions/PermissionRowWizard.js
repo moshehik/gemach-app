@@ -305,7 +305,7 @@ export default function PermissionRowWizard({ group, catalog, allGroups, departm
         {hasDocOnly && (
           <div className="callout callout-info">
             <svg className="icon"><use href="#i-info" /></svg>
-            עמודים המסומנים &quot;מתועד בלבד&quot; נשמרים כתיעוד כוונה — הגישה בפועל אליהם עדיין נשלטת בקוד ולא תשתנה.
+            עמודים המסומנים &quot;לתיעוד בלבד&quot; נשמרים לתיעוד בלבד — הגישה בפועל אליהם נשארת כמו שהיא היום ולא תשתנה.
           </div>
         )}
         {sharedItems.length > 0 && (

@@ -75,12 +75,12 @@ export function ItemInfoButton({ item }) {
         >
           <div style={{ fontWeight: 700, fontSize: '13.5px', marginBottom: '4px' }}>{item.label}</div>
           {item.description && <div style={{ color: 'var(--text-2)', marginBottom: '8px' }}>{item.description}</div>}
-          <div style={{ marginBottom: item.note || item.route ? '6px' : 0 }}>
+          <div style={{ marginBottom: item.userNote || item.route ? '6px' : 0 }}>
             {item.enforced
-              ? <span className="badge badge-success">פעיל בפועל</span>
-              : <span className="badge badge-warning">מתועד בלבד — לא משנה התנהגות בפועל</span>}
+              ? <span className="badge badge-success">פעיל — שינוי כאן משפיע מיד</span>
+              : <span className="badge badge-warning">לתיעוד בלבד — לא משנה את הגישה בפועל</span>}
           </div>
-          {item.note && <div style={{ color: 'var(--text-3)' }}>{item.enforced ? 'איפה נאכף: ' : 'מה שולט בזה היום: '}{item.note}</div>}
+          {item.userNote && <div style={{ color: 'var(--text-3)' }}>{item.userNote}</div>}
           {item.route && (
             <a
               href={item.route}
@@ -110,7 +110,9 @@ export default function ItemLabel({ item, fallbackKey, style }) {
           rel="noopener noreferrer"
           onClick={(e) => e.stopPropagation()}
           title="פתיחת העמוד בטאב חדש"
-          style={{ color: 'inherit', textDecoration: 'underline', textDecorationStyle: 'dotted', textUnderlineOffset: '3px' }}
+          style={{ color: 'inherit', textDecoration: 'none' }}
+          onMouseEnter={(e) => { e.currentTarget.style.textDecoration = 'underline'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.textDecoration = 'none'; }}
         >
           {item.label}
         </a>

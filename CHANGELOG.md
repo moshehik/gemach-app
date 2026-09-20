@@ -3,6 +3,7 @@
 ## 2026-09-20: /admin/permissions redesign shipped; DB schema applied to both gemachs
 
 - **Code:** new permissions page, linked from `/admin/site-settings` (developer sidebar). One unified, initially empty table of rows (pages and features mixed); a 5-step wizard (name -> pages/features -> departments -> specific employees -> confirmation); every item has an info icon with an explanation and pages are links opening in a new tab; each row stores its own access; a page may be in several rows (highlighted; effective access = union, lenient); rows can be deleted for real (items revert to catalog defaults); specific employees shown as tags. Page items stay documentation-only (`enforced: false`). No seed script. Details: `CLAUDE.md` -> "Permissions system".
+- **Plain-language pass:** catalog labels lost their `(/route)` suffixes, every item got a plain-Hebrew `userNote` (shown in the info popover instead of the developer `note`), page links lost their underline, and the blank-iframe preview eye was removed.
 - **הנהלה ראשית / מתכנת** have no column or toggle: both are always allowed every boolean permission (`ALWAYS_ALLOWED_ROLE_IDS`). Consequence: head management now also passes `feature:debt_approval` (its catalog default used to exclude roleId 0).
 - **DB (applied by hand to both, additive only):**
   1. org1 `misty-darkness-06917297` (`ep-weathered-tree-avpypjjr`) and org2 `gemach-dresses-2` (`ep-broad-night-b1fxha9e`): `PermissionPageGroup` gained `catalogGroup` (now deprecated/unused), `access`, `employeeIds` (all NOT NULL with defaults).
