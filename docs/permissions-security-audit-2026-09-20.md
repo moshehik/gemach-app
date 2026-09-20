@@ -99,3 +99,15 @@ the audit rows the sample users generated were deleted from both databases after
 
 The catalog's page items are now enforced (layout guards + sidebar), see CLAUDE.md → "Pages connected". Results of the
 live sample-user run are appended below.
+
+Live results of the second pass (fresh sample users, deployed commit `040fbed`):
+
+| Suite | org 1 | org 2 |
+|---|---|---|
+| Page permissions (`pagerows`): defaults unchanged for every level, deny row, second department member also denied, real departments unaffected, employee exception, grant beyond the default (board / refunds / dress catalog), head-management-only pages cannot be opened by a row, sidebar link appears/disappears with the page, delete row = back to defaults, wizard API defaults follow the org settings | 87 / 87 | 87 / 87 |
+| Regression: access matrix by level | 91 / 91 | 90 / 91 (expected, org-2 refunds setting) |
+| Regression: rows / overrides / escalation / leaks / AI | 104 / 104 | 104 / 104 |
+
+Found while testing: a UUID that starts with digits was also matched against the employee whose numeric `legacyId` equals that
+prefix (login for that employee failed with "wrong password"); fixed by using `legacyId` only for digits-only input.
+Sample employees, the temporary department, rows and generated audit rows were deleted again from both databases.
