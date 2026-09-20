@@ -68,7 +68,9 @@ Vercel וקוד הריפו. **אזהרה על שיטה:** הסוכנים קרא�
    יומי + `GemachApp-ProdDbBackup` המקומי (03:30, עכשיו מצביע ל-DB החדש) = שני dumps ביום ≈ 8-9GB בחודש > 5GB. לפי
    `BACKUPS.md` המשימה המקומית אמורה להיות מושבתת ברגע שהגיבוי הענני מאומת לשני הארגונים. מומלץ: להשבית את המקומית
    (`Disable-ScheduledTask -TaskName GemachApp-ProdDbBackup`) ואולי להעלות את `backup_interval_hours` מ-24 ל-48-72 (PITR של 7 ימים
-   ממילא מכסה את הטווח הקצר) - **לא בוצע**, כי זה הגיבוי היחיד שמחוץ ל-Neon עד שהענני מאומת ב-org2.
+   ממילא מכסה את הטווח הקצר). **עדכון 2026-09-20: המשימה המקומית הושבתה** (state=Disabled, לא נמחקה; הקבצים ב-`backups/` נשארו;
+   פירוט, מה משתנה ואיך להחזיר - ב-BACKUPS.md, "Local backup task disabled"). **עדיין פתוח:** העלאת `backup_interval_hours` של org1
+   (הגיבוי הענני היומי לבדו = ~4.4GB בחודש), והגדרת `backup_owner_email` ב-`/admin/backups`.
 2. **חשבון GitHub ↔ Vercel:** 258 מתוך 284 deployments ב-34 ימים הם `BLOCKED` (`seatBlock: TEAM_ACCESS_REQUIRED`) - ה-GitHub user
    מקושר לחשבון Vercel אחר שאינו חבר בצוות. כמעט כולם ב-`print-center` (מושהה) וב-`bagrut-materials` (לא חלק מהריפו הזה). לתקן ב-Vercel:
    Settings → Authentication, או לנתק את ה-Git integration של שני הפרויקטים. `bagrut-materials` עדיין מקבל ~13K invocations

@@ -24,4 +24,5 @@
 ## 2026-09-20: Vercel/Neon resource-waste fixes
 
 - **Issue:** Audit (see `docs/vercel-resource-audit-2026-09-20.md`) found waste in function invocations, Neon egress and deployments; org1's functions ran in `fra1` against a `us-east-1` Neon DB (~459ms per `SELECT 1` vs 2ms on org2).
+- **Follow-up (same day):** disabled the local Windows task `GemachApp-ProdDbBackup` (duplicate full-DB dump against Neon's 5GB egress cap; cloud backup covers both orgs), deleted the orphan Upstash Redis store, fixed stale Neon host references (`seed_phase1_settings.js`, `docs/fix-protocol-error-reports.md`), removed `test-db.js`. See BACKUPS.md "Local backup task disabled".
 - **Changes:** per-project function regions (removed `regions` from `vercel.json`; org1 `iad1`, org2 `fra1` set on the Vercel projects), batched `/api/log-visit`, light notification-bell polling (`/api/notifications?light=1`, 120s), error-report badge polling 30s -> 120s, removed the daily `/api/health` cron, `ignoreCommand` (`scripts/vercel-ignore-build.sh`) to skip docs-only / other-org preview builds (`[force-deploy]` overrides), `concurrency` on `claude-fix-reports.yml`.
