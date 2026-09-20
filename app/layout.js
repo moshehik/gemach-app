@@ -305,13 +305,38 @@ export default async function RootLayout({ children }) {
   if (typeof window === 'undefined' || window.__apiInterceptorInstalled) return;
   window.__apiInterceptorInstalled = true;
   var originalFetch = window.fetch;
+
+  // תור ל-/api/log-visit: לפני זה כל קריאת /api/* יצרה POST נוסף משלה (כל קריאה = 2
+  // invocations ב-Vercel + 2-3 שאילתות DB), ועל תוכנית Free זה בזבז גם מכסת invocations
+  // וגם תעבורת Neon. עכשיו הרשומות נאספות ונשלחות יחד: כל ~20 שנ', מיד ב-25 רשומות,
+  // ובסגירת הדף/מעבר לרקע (sendBeacon). ר' docs/vercel-resource-audit-2026-09-20.md.
+  var visitQueue = [];
+  var visitFlushTimer = null;
+  function flushVisitQueue(useBeacon) {
+    if (visitFlushTimer) { clearTimeout(visitFlushTimer); visitFlushTimer = null; }
+    if (!visitQueue.length) return;
+    var payload = JSON.stringify({ entries: visitQueue.splice(0, visitQueue.length) });
+    try {
+      if (useBeacon && navigator.sendBeacon && navigator.sendBeacon('/api/log-visit', new Blob([payload], { type: 'application/json' }))) return;
+      originalFetch('/api/log-visit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: payload }).catch(function(){});
+    } catch (e) {}
+  }
+  window.__queueVisitLog = function(entry) {
+    entry.ts = Date.now();
+    visitQueue.push(entry);
+    if (visitQueue.length >= 25) { flushVisitQueue(false); return; }
+    if (!visitFlushTimer) visitFlushTimer = setTimeout(function() { flushVisitQueue(false); }, 20000);
+  };
+  document.addEventListener('visibilitychange', function() { if (document.visibilityState === 'hidden') flushVisitQueue(true); });
+  window.addEventListener('pagehide', function() { flushVisitQueue(true); });
   window.fetch = async function() {
     var args = arguments;
     var url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url ? args[0].url : '');
     var startTime = performance.now();
     var response = await originalFetch.apply(this, args);
 
-    if (url && url.indexOf('/api/') !== -1 && url.indexOf('/api/log-visit') === -1 && url.indexOf('/api/queries-by-path') === -1) {
+    // light=1: בדיקות polling רקע (פעמון ההתראות, מונה דיווחי התקלות) - לא פעולת משתמש, לא נרשמות בהיסטוריה
+    if (url && url.indexOf('/api/') !== -1 && url.indexOf('/api/log-visit') === -1 && url.indexOf('/api/queries-by-path') === -1 && url.indexOf('light=1') === -1) {
       var recordAndDispatch = function(respSize, execTime) {
         try {
           var parsedUrl = new URL(url, window.location.origin);
@@ -326,7 +351,7 @@ export default async function RootLayout({ children }) {
           window.__LAST_API_METADATA__ = window.__LAST_API_METADATA__ || {};
           window.__LAST_API_METADATA__[url] = { responseSize: respSize, executionTime: execTime, timestamp: new Date().toISOString() };
           window.dispatchEvent(new CustomEvent('agy_api_call', { detail: { url: url, endpoint: endpoint, requestQuery: requestQuery, responseSize: respSize, executionTime: execTime } }));
-          originalFetch('/api/log-visit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, keepalive: true, body: JSON.stringify({ pageUrl: url, requestQuery: requestQuery || null, responseSize: respSize, executionTime: execTime }) }).catch(function(){});
+          window.__queueVisitLog({ pageUrl: url, requestQuery: requestQuery ? String(requestQuery).slice(0, 4000) : null, responseSize: respSize, executionTime: execTime });
         } catch(e) {}
       };
 

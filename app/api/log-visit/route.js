@@ -8,9 +8,24 @@ export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const body = await request.json();
-    const { pageUrl, loadingError, requestQuery, responseSize, executionTime } = body;
+    // שני צורות גוף: { entries: [...] } - האצווה שה-interceptor ב-app/layout.js שולח (כל ~20 שנ'
+    // או בסגירת הדף), או רשומה בודדת { pageUrl, ... } - דפי ההדפסה (app/print/*) עדיין שולחים כך.
+    const rawEntries = Array.isArray(body?.entries) ? body.entries : [body];
+    const now = Date.now();
+    const entries = rawEntries
+      .slice(0, 50)
+      .filter((e) => e && typeof e.pageUrl === 'string' && e.pageUrl)
+      .map((e) => ({
+        pageUrl: e.pageUrl.slice(0, 2000),
+        loadingError: e.loadingError ? String(e.loadingError).slice(0, 2000) : null,
+        requestQuery: e.requestQuery ? String(e.requestQuery).slice(0, 4000) : null,
+        responseSize: typeof e.responseSize === 'number' ? e.responseSize : null,
+        executionTime: typeof e.executionTime === 'number' ? e.executionTime : null,
+        // חותמת הזמן של הקליינט נשמרת (האצווה נשלחת עד ~20 שנ' אחרי הפעולה) - רק אם סבירה
+        timestamp: typeof e.ts === 'number' && e.ts <= now + 60000 && e.ts >= now - 15 * 60000 ? new Date(e.ts) : undefined,
+      }));
 
-    if (!pageUrl) {
+    if (entries.length === 0) {
       return NextResponse.json({ success: false, message: 'URL is required' }, { status: 400 });
     }
 
@@ -36,17 +51,8 @@ export async function POST(request) {
       }
     }
 
-    await prisma.pageVisitLog.create({
-      data: {
-        pageUrl,
-        employeeId,
-        employeeName,
-        loadingError: loadingError || null,
-        isGuest,
-        requestQuery: requestQuery || null,
-        responseSize: typeof responseSize === 'number' ? responseSize : null,
-        executionTime: typeof executionTime === 'number' ? executionTime : null,
-      }
+    await prisma.pageVisitLog.createMany({
+      data: entries.map((e) => ({ ...e, employeeId, employeeName, isGuest })),
     });
 
     return NextResponse.json({ success: true });

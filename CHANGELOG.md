@@ -18,3 +18,8 @@
   2. Triggered a manual deployment on Vercel to load the new config.
   3. Ran `npx prisma db push` against the `ep-rough-dawn-b1bepx3d` DB to sync the Prisma schema and create the missing `extraDay` column.
 - **Result:** API and order pages are functioning normally again, and all 121 settings are correctly loaded.
+
+## 2026-09-20: Vercel/Neon resource-waste fixes
+
+- **Issue:** Audit (see `docs/vercel-resource-audit-2026-09-20.md`) found waste in function invocations, Neon egress and deployments; org1's functions ran in `fra1` against a `us-east-1` Neon DB (~459ms per `SELECT 1` vs 2ms on org2).
+- **Changes:** per-project function regions (removed `regions` from `vercel.json`; org1 `iad1`, org2 `fra1` set on the Vercel projects), batched `/api/log-visit`, light notification-bell polling (`/api/notifications?light=1`, 120s), error-report badge polling 30s -> 120s, removed the daily `/api/health` cron, `ignoreCommand` (`scripts/vercel-ignore-build.sh`) to skip docs-only / other-org preview builds (`[force-deploy]` overrides), `concurrency` on `claude-fix-reports.yml`.
