@@ -9,6 +9,7 @@ import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../../HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
 import { isWithinItemEditWindow } from '../../../lib/orderItemEditWindow';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
+import { postRentalRent } from './rentalToggle';
 
 // שדות פנימיים של עגלת הקניות (טיימר ההחזקה) — לא מידע שמעניין את המשתמש ביומן השינויים
 const HIDDEN_HISTORY_FIELDS = ['id', 'orderId', 'dressItemId', 'deletedAt', 'barcode', 'barcodePrefix', 'cartStatus', 'cartStatusDate'];
@@ -508,13 +509,16 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
 
     if (item.id && !item.isNew) {
       try {
-        const res = await fetch('/api/rentals/toggle', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ itemId: item.id, action: 'rent', barcode: barcodeToAssign })
-        });
-        if (!res.ok) throw new Error('API failed');
+        // postRentalRent מטפל גם בדחיית השרת "הברקוד לא תואם לדגם/מידה שהוזמנו"
+        // (enforce_rental_barcode_match) - הצגת הפער ואפשרות עקיפה באישור מנהל.
+        const result = await postRentalRent(item.id, barcodeToAssign);
+        if (!result.ok) {
+          const failure = new Error('API failed');
+          failure.userMessage = result.message;
+          throw failure;
+        }
       } catch (err) {
-        alert('שגיאה בשמירת סטטוס השכרה');
+        alert(err.userMessage || 'שגיאה בשמירת סטטוס השכרה');
         onItemsChange(prev => prev.map(i => i.id === item.id ? { ...i, isTaken: item.isTaken, takenDate: item.takenDate, barcode: item.barcode } : i));
       }
     }

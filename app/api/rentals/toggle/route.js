@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma, { auditAs } from '../../../lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { checkRentalBarcodeMatch, RENTAL_MATCH_ITEM_SELECT } from '@/lib/rentalBarcodeGuard';
 
 // כל פעולה כאן נרשמת ביומן בשם ברור (ולא כ"עדכון" גנרי), כדי שבהיסטוריית הפריט
 // אפשר יהיה לראות במפורש מתי בוצעה השכרה, החזרה, ביטול השכרה או ביטול החזרה.
@@ -15,7 +16,7 @@ const AUDIT_ACTIONS = {
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
-    const { itemId, action, barcode, returnedOk } = await request.json();
+    const { itemId, action, barcode, returnedOk, overridePin, overrideEmployeeId } = await request.json();
 
     if (!itemId || !action) {
       return NextResponse.json({ error: 'חסרים נתונים' }, { status: 400 });
@@ -43,16 +44,27 @@ export async function POST(request) {
     // המצב לפני העדכון נשמר כדי שרשומת ההיסטוריה תציג "מ-X ל-Y" ולא רק את הערך החדש
     const before = await prisma.orderItem.findUnique({
       where: { id: String(itemId) },
-      select: { isTaken: true, takenDate: true, isReturned: true, returnedOk: true, returnDate: true, barcode: true }
+      select: { isTaken: true, takenDate: true, isReturned: true, returnedOk: true, returnDate: true, barcode: true, ...RENTAL_MATCH_ITEM_SELECT }
     });
     if (!before) {
       return NextResponse.json({ error: 'פריט לא נמצא' }, { status: 404 });
+    }
+
+    // enforce_rental_barcode_match (ברירת מחדל כבוי = התנהגות ישנה): ברקוד שמשייכים בהשכרה
+    // חייב להתאים לדגם/מידה שהוזמנו, אחרת 409 - אלא אם מנהל אישר עקיפה (מאומת בשרת בלבד).
+    // ההשכרה נשלחת מהמודל "הזנת ברקוד ידנית" ומסריקת הסיידבר, ושם אין בדיקה אחרת מול ההזמנה.
+    let overrideNote = null;
+    if (action === 'rent' && barcode) {
+      const guard = await checkRentalBarcodeMatch(before, barcode, { overridePin, overrideEmployeeId });
+      if (guard.response) return guard.response;
+      overrideNote = guard.auditNote;
     }
 
     const changes = {};
     for (const [field, to] of Object.entries(updateData)) {
       changes[field] = { from: before[field] ?? null, to: to ?? null };
     }
+    if (overrideNote) changes.note = overrideNote;
 
     const updatedItem = await prisma.orderItem.update(auditAs(
       AUDIT_ACTIONS[action],
