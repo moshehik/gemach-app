@@ -21,12 +21,37 @@ export const NUMBER_FIELD_LIMITS = {
   late_return_threshold_days: { min: 1, max: 90 },
 };
 
+// allowEmpty: ערך ריק (או שורה חסרה) חוקי ומשמעותו "ברירת המחדל הישנה" - חל על הגדרות
+// מדיניות ההחלפה/ביטול, שבהן ריק = התנהגות legacy. emptyHint: הטקסט שמוצג בשדה הריק.
+export const POLICY_NUMBER_LIMITS = {
+  swap_min_days_before_event: { min: 0, max: 365, allowEmpty: true, emptyHint: 'ריק = בלי הגבלה' },
+  swap_pairing_window_minutes: { min: 0, max: 1440, allowEmpty: true, emptyHint: 'ריק = בלי הגבלה' },
+  instant_undo_minutes: { min: 0, max: 10080, allowEmpty: true, emptyHint: 'ריק = כמו זיכוי דמי ביטול' },
+  size_edit_until_days_before_event: { min: 0, max: 365, allowEmpty: true, emptyHint: 'ריק = כבוי' },
+};
+Object.assign(NUMBER_FIELD_LIMITS, POLICY_NUMBER_LIMITS);
+
+// הגדרות בחירה עם רשימה סגורה של ערכים תקינים (ריק חוקי = ברירת המחדל).
+export const SELECT_FIELD_ALLOWED_VALUES = {
+  gap_size_price_rule: ['none', 'cheaper'],
+};
+
+// Returns null when the value is valid, otherwise a Hebrew error message.
+export function validateSelectSetting(key, value) {
+  const allowed = SELECT_FIELD_ALLOWED_VALUES[key];
+  if (!allowed) return null;
+  if (value === '' || value === null || value === undefined) return null;
+  return allowed.includes(String(value)) ? null : 'ערך לא תקין - יש לבחור מהרשימה.';
+}
+
 // Returns null when the value is valid (or the key has no numeric limit configured),
 // otherwise a Hebrew error message describing why it was rejected.
 export function validateNumericSetting(key, value) {
   const limit = NUMBER_FIELD_LIMITS[key];
   if (!limit) return null;
-  if (value === '' || value === null || value === undefined) return 'יש להזין ערך מספרי.';
+  if (value === '' || value === null || value === undefined) {
+    return limit.allowEmpty ? null : 'יש להזין ערך מספרי.';
+  }
 
   const num = Number(value);
   if (Number.isNaN(num)) return 'יש להזין מספר בלבד.';

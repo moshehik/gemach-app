@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { checkAuth, invalidateRequireLoginCache, HEAD_MANAGEMENT_ROLES } from '@/lib/auth';
 import { invalidateSettingsCache } from '@/lib/settingsCache';
-import { validateNumericSetting } from '../../lib/settingsValidation';
+import { validateNumericSetting, validateSelectSetting } from '../../lib/settingsValidation';
 import { verifySecret } from '@/lib/passwordAuth';
 import { encryptSecret } from '@/lib/secretCrypto';
 import { SECRET_SETTING_KEYS, SECRET_MASK } from '../../lib/secretSettingKeys';
@@ -74,7 +74,7 @@ export async function POST(request) {
 
     for (const item of data) {
       if (!item.key) continue;
-      const validationError = validateNumericSetting(item.key, item.value);
+      const validationError = validateNumericSetting(item.key, item.value) || validateSelectSetting(item.key, item.value);
       if (validationError) {
         return NextResponse.json({ error: `${item.key}: ${validationError}` }, { status: 400 });
       }

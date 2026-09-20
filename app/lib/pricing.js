@@ -1,4 +1,6 @@
 import prisma from './prisma';
+import { getCachedSetting } from '@/lib/settingsCache';
+import { findPriceRowForSize, normalizeGapRule } from '@/lib/priceRows';
 
 /**
  * Calculates the exact price for a dress model based on its category and size.
@@ -44,23 +46,13 @@ export async function calculatePrice(dressModelId, sizeText, eventDate = new Dat
     });
   }
 
-  // Filter by size and date
-  const validRules = rules.filter(r => {
-    // Check size range
-    const minSize = r.fromSize !== null ? r.fromSize : -999;
-    const maxSize = r.toSize !== null ? r.toSize : 999;
-    if (sizeNum < minSize || sizeNum > maxSize) return false;
+  // חיפוש שורת המחיר לפי מידה ותאריך - אותו כלל כמו במנוע (lib/priceRows.js), כולל
+  // gap_size_price_rule: מידה שבין שני טווחים מחויבת לפי הזול כשההגדרה מופעלת.
+  const gapRuleRow = await getCachedSetting('gap_size_price_rule');
+  const gapRule = normalizeGapRule(gapRuleRow ? gapRuleRow.value : '');
+  const { row: rule } = findPriceRowForSize(rules, rules[0]?.category, sizeNum, { eventDate, gapRule });
 
-    // Check dates
-    if (r.startDate && eventDate < r.startDate) return false;
-    if (r.endDate && eventDate > r.endDate) return false;
-
-    return true;
-  });
-
-  if (validRules.length > 0) {
-    // Pick the most relevant rule (usually there's only one matching)
-    const rule = validRules[0];
+  if (rule) {
     return {
       basePrice: rule.price || 0,
       ruleId: rule.id,

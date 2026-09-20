@@ -120,6 +120,9 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   const [isProcessing, setIsProcessing] = useState(false);
   const [creditError, setCreditError] = useState('');
   const [settings, setSettings] = useState({});
+  // עד שההגדרות נטענו לא מציגים תג/אריח זיכוי בכלל - אחרת ברירת המחדל (כשהגדרה חסרה) הייתה
+  // מהבהבת לרגע גם בגמח שכיבה את הזיכוי.
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
   const [selectedPaymentDetails, setSelectedPaymentDetails] = useState(null);
   const [selectedObligationDetails, setSelectedObligationDetails] = useState(null);
   const [mounted, setMounted] = useState(false);
@@ -132,8 +135,10 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
       .then(data => {
         if (Array.isArray(data)) {
           setSettings(data.reduce((acc, curr) => ({ ...acc, [curr.key]: curr.value }), {}));
-        } else {
-          setSettings(data || {});
+          setSettingsLoaded(true);
+        } else if (data && !data.error) {
+          setSettings(data);
+          setSettingsLoaded(true);
         }
       })
       .catch(err => console.error(err));
@@ -679,6 +684,16 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
   // דמי ביטול, כל הסכום כבר נוצל, שהזמן פג, או שאין deletedAt לפריט שמקורו בו.
   // הזיכוי עשוי להיות ממומש חלקית (למשל פריט חלופי ששווה פחות מדמי הביטול המלאים) -
   // במקרה כזה עדיין נשארת יתרה בת-מימוש כל עוד הטיימר לא פג.
+  // חלון "זיכוי דמי ביטול על פריט חלופי" בדקות - רק CANCELLATION_CREDIT_MINUTES, בלי שום קשר
+  // לחלון "ביטול מיידי" (זה נקבע בשרת בלבד). כמו במנוע החישוב: הגדרה חסרה = 15 דקות;
+  // הגדרה שקיימת אך 0, ריקה, שלילית או לא מספר = הזיכוי כבוי - אין תג ואין אריח.
+  const creditWindowMinutes = (() => {
+    if (!settingsLoaded) return null;
+    const raw = settings.CANCELLATION_CREDIT_MINUTES;
+    const minutes = raw === undefined || raw === null ? 15 : parseFloat(raw);
+    return Number.isFinite(minutes) && minutes > 0 ? minutes : null;
+  })();
+
   const getCancellationCreditInfo = (obs) => {
     if (!obs.orderItemId || !obs.description?.startsWith('דמי ביטול')) return null;
     const consumed = activeObligations
@@ -688,8 +703,8 @@ const ModernPaymentsManager = forwardRef(function ModernPaymentsManager({ orderI
     if (remaining <= 0) return null;
     const sourceItem = items.find(i => i.id === obs.orderItemId);
     if (!sourceItem?.deletedAt) return null;
-    const minutes = parseFloat(settings.CANCELLATION_CREDIT_MINUTES);
-    if (isNaN(minutes)) return null;
+    if (creditWindowMinutes === null) return null;
+    const minutes = creditWindowMinutes;
     const deadline = new Date(sourceItem.deletedAt).getTime() + minutes * 60000;
     return { deadline, remaining };
   };

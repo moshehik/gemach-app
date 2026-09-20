@@ -7,7 +7,10 @@ import OrderSizeSelector from '../OrderSizeSelector';
 import ItemCapacityModal from '../ItemCapacityModal';
 import { FIELD_TRANSLATIONS, ACTION_TRANSLATIONS } from '../../HistoryViewer';
 import { getHebrewDateString } from '../../../lib/hebrewDate';
-import { isWithinItemEditWindow } from '../../../lib/orderItemEditWindow';
+import { isWithinItemEditWindow, parseSizeEditDays, evaluateSizeOnlyEdit } from '../../../lib/orderItemEditWindow';
+import { normalizeGapRule } from '../../../lib/priceRows';
+import { calculateDynamicAvailability } from '../../../lib/clientInventory';
+import { sortSizeRows } from '../../../lib/sizeSort';
 import { fetchSharedJson, TTL } from '../../../lib/apiCache';
 
 // שדות פנימיים של עגלת הקניות (טיימר ההחזקה) — לא מידע שמעניין את המשתמש ביומן השינויים
@@ -64,6 +67,9 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   const [confirmModal, setConfirmModal] = useState({ isOpen: false, item: null, actionType: null });
   const [itemChoiceModal, setItemChoiceModal] = useState({ isOpen: false, candidates: [], barcode: null });
   const [savingConditionId, setSavingConditionId] = useState(null);
+  // המחירון (נטען רק כשהחלפת מידה בתוך הפריט פעילה) והודעת דחייה לבחירת מידה מקטגוריה אחרת
+  const [priceList, setPriceList] = useState([]);
+  const [sizeSwapNotice, setSizeSwapNotice] = useState({});
   const [expandedHistory, setExpandedHistory] = useState({});
   const isFullyPaid = totalPaid >= totalRequired;
 
@@ -136,6 +142,104 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
   }, []);
 
   const enableAlterations = settings.enable_alterations !== 'false';
+
+  // size_edit_until_days_before_event: ריק/חסר = כבוי. אחרת מותר להחליף מידה בתוך הפריט גם אחרי
+  // סגירת חלון ה-15 דקות (אותה קטגוריית מחיר, ועד N ימים לפני האירוע). השרת אוכף את אותו כלל.
+  const sizeEditDays = parseSizeEditDays(settings.size_edit_until_days_before_event);
+  const gapRule = normalizeGapRule(settings.gap_size_price_rule);
+  useEffect(() => {
+    if (sizeEditDays === null) return;
+    fetchSharedJson('/api/pricelists', { ttl: TTL.STATIC })
+      .then(data => { if (Array.isArray(data)) setPriceList(data); })
+      .catch(console.error);
+  }, [sizeEditDays]);
+
+  // בורר מידה להחלפת מידה בתוך פריט אחרי סגירת חלון העריכה המלא: מציג רק מידות פנויות שמותר
+  // לעבור אליהן בלי אישור מנהל (אותה קטגוריית מחיר). isSizeAllowed(מידה) -> { ok, reason }.
+  // כשמטמון המלאי עוד לא נטען אין רשימה מקומית לסנן, ולכן חוזרים לבורר הרגיל - ובחירה
+  // מקטגוריה אחרת נדחית בעת הבחירה. השרת בודק את אותו כלל בכל מקרה.
+  const renderSameBandSizeSelect = ({ modelId, value, onChange, currentCartItems, isSizeAllowed, onRejected }) => {
+    const rows = (() => {
+      if (!modelId || !inventoryCache) return null;
+      try {
+        return sortSizeRows(calculateDynamicAvailability(
+          modelId,
+          order.isAbroad ? order.fromDate : order.eventDate,
+          order.isAbroad ? order.toDate : null,
+          inventoryCache,
+          currentCartItems || [],
+          order.customSpacing
+        ));
+      } catch (err) {
+        console.error('Failed to calculate sizes from cache', err);
+        return null;
+      }
+    })();
+
+    if (!rows) {
+      return (
+        <OrderSizeSelector
+          modelId={modelId}
+          order={order}
+          value={value}
+          inventoryCache={inventoryCache}
+          currentCartItems={currentCartItems}
+          onChange={(val) => {
+            const verdict = val ? isSizeAllowed(val) : { ok: true };
+            if (!verdict.ok) { onRejected(verdict.reason); return; }
+            onChange(val);
+          }}
+        />
+      );
+    }
+
+    const hasCustom = order && order.customSpacing !== undefined && order.customSpacing !== null;
+    const options = rows
+      .map(row => ({ row, sizeVal: row.sizeText || row.size }))
+      .filter(({ sizeVal }) => sizeVal && (sizeVal === value || isSizeAllowed(sizeVal).ok))
+      .map(({ row, sizeVal }) => {
+        const normalAvail = row.withNormalBuffer?.availableQuantity ?? row.availableQuantity;
+        const customAvail = row.withCustomSpacing?.availableQuantity;
+        const selectedAvail = hasCustom ? customAvail : normalAvail;
+        const disabled = selectedAvail !== undefined && selectedAvail <= 0;
+        const info = normalAvail !== undefined
+          ? `פנוי ${selectedAvail ?? normalAvail} מתוך ${row.totalInStock}`
+          : `במלאי: ${row.totalQuantity || row.totalInStock}`;
+        return { sizeVal, disabled, info };
+      });
+
+    return (
+      <select
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        style={{ width: '100%', height: '42px', padding: '0.5rem 0.8rem', borderRadius: '8px', border: '1px solid var(--border-strong)', textAlign: 'center', backgroundColor: 'var(--surface)', color: 'var(--text)', cursor: 'pointer', appearance: 'none', boxSizing: 'border-box', fontSize: '0.95rem', outline: 'none' }}
+      >
+        {!value && <option value="">-</option>}
+        {options.map(({ sizeVal, disabled, info }) => (
+          <option key={sizeVal} value={sizeVal} disabled={disabled}>{sizeVal} ({info})</option>
+        ))}
+      </select>
+    );
+  };
+
+  // האם ואיך אפשר להחליף מידה בפריט שחלון העריכה המלא שלו נסגר. בלי checkedSize נבדקים רק
+  // התנאים הכלליים (הגדרה, קטגוריה, תאריך וימים) מול המידה השמורה עצמה.
+  const evaluateSizeSwap = (item, checkedSize) => {
+    if (sizeEditDays === null || !item || item.isNew || !item.id) return { ok: false, reason: null };
+    if (item.isTaken) return { ok: false, reason: null };
+    if (!priceList.length) return { ok: false, reason: null };
+    const savedSize = item.originalState ? item.originalState.sizeText : item.sizeText;
+    return evaluateSizeOnlyEdit({
+      item,
+      oldSizeText: savedSize,
+      newSizeText: checkedSize || savedSize,
+      eventDate: order?.eventDate,
+      priceList,
+      sizeEditDays,
+      gapRule
+    });
+  };
+
   const activeItems = (items || []).filter(i => !i.isDeleted);
   const totalPrice = activeItems.reduce((sum, item) => sum + (parseFloat(item.finalPrice) || parseFloat(item.price) || 0), 0);
 
@@ -783,6 +887,9 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                   // ורק פרטי התיקון ניתנים לעריכה.
                   const fullyEditableNow = canFullyEditItem(item);
                   const canEditModelSize = item.isNew || (item.isEditing && !!item.dressModelId && fullyEditableNow);
+                  // חלון העריכה המלא סגור, אבל מותר להחליף מידה באותה קטגוריית מחיר בלי אישור מנהל
+                  const swapEligibility = (!item.isNew && !fullyEditableNow) ? evaluateSizeSwap(item) : { ok: false, reason: null };
+                  const canEditSizeOnly = !canEditModelSize && !!item.isEditing && !!item.dressModelId && swapEligibility.ok;
                   const code = itemCode(item);
   
                   return (
@@ -809,6 +916,31 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                                 // תוצג כלא זמינה רק כי הוא כבר מחזיק אותה
                                 currentCartItems={items.filter((_, i) => i !== originalIndex)}
                               />
+                            </div>
+                          </div>
+                        ) : canEditSizeOnly ? (
+                          <div className="form-grid" style={{ gap: '8px', gridTemplateColumns: '1fr 1fr' }}>
+                            <div className="field" style={{ marginBottom: 0 }}>
+                              <label>דגם</label>
+                              <strong>{itemName(item)}</strong>
+                              {code && <div className="cell-muted" style={{ fontWeight: 400, fontSize: '11.5px', marginTop: '2px' }}>קוד: {code}</div>}
+                            </div>
+                            <div className="field" style={{ marginBottom: 0 }}>
+                              <label>מידה</label>
+                              {renderSameBandSizeSelect({
+                                modelId: item.dressModelId,
+                                value: item.sizeText,
+                                currentCartItems: items.filter((_, i) => i !== originalIndex),
+                                isSizeAllowed: (sz) => evaluateSizeSwap(item, sz),
+                                onRejected: (reason) => setSizeSwapNotice(prev => ({ ...prev, [item.id]: reason })),
+                                onChange: (val) => {
+                                  setSizeSwapNotice(prev => ({ ...prev, [item.id]: '' }));
+                                  handleItemChange(originalIndex, 'sizeText', val);
+                                }
+                              })}
+                              <div className="hint" style={{ fontSize: '11.5px', color: sizeSwapNotice[item.id] ? 'var(--danger)' : 'var(--text-3)', marginTop: '4px' }}>
+                                {sizeSwapNotice[item.id] || 'אפשר להחליף רק למידה באותה קטגוריית מחיר.'}
+                              </div>
                             </div>
                           </div>
                         ) : (
@@ -839,7 +971,12 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                               {!item.isNew && !fullyEditableNow && (
                                 <div className="hint" style={{ flexBasis: '100%', fontSize: '11.5px', color: 'var(--text-3)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                                  <span>חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך כעת רק את פירוט התיקון</span>
+                                  <span>
+                                    {swapEligibility.ok
+                                      ? 'חלון העריכה המלא (15 דק׳) נסגר — אפשר להחליף מידה באותה קטגוריית מחיר ולערוך את פירוט התיקון'
+                                      : 'חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך כעת רק את פירוט התיקון'}
+                                    {!swapEligibility.ok && swapEligibility.reason ? ` (${swapEligibility.reason})` : ''}
+                                  </span>
                                   <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleReopenFullEdit(item)}>
                                     <svg className="icon" style={{ width: '11px', height: '11px' }}><use href="#i-unlock" /></svg>
                                     פתיחת עריכה מלאה (אישור מנהל)
@@ -913,7 +1050,7 @@ const ModernItemsManager = forwardRef(function ModernItemsManager({ orderId, ord
                             <>
                               {!item.isTaken && (
                                 <button type="button" className="btn btn-secondary btn-sm"
-                                  title={canFullyEditItem(item) ? 'ערוך פרטי פריט' : 'חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך רק את פירוט התיקון'}
+                                  title={canFullyEditItem(item) ? 'ערוך פרטי פריט' : (evaluateSizeSwap(item).ok ? 'חלון העריכה המלא (15 דק׳) נסגר — אפשר להחליף מידה באותה קטגוריית מחיר ולערוך את פירוט התיקון' : 'חלון העריכה המלא (15 דק׳) נסגר — ניתן לערוך רק את פירוט התיקון')}
                                   onClick={(e) => { e.stopPropagation(); handleEditItem(originalIndex); }}>
                                   <svg className="icon"><use href="#i-edit" /></svg>עריכה
                                 </button>

@@ -4,7 +4,8 @@ import { getAllCachedSettings } from '@/lib/settingsCache';
 import { checkAuth } from '../../../../../../lib/auth';
 import { recalculateOrderObligations } from '../../../../../../lib/pricingEngine';
 import { loadInventoryContext, refreshInventoryBookings, computeInventoryAvailability } from '../../../../../../lib/inventory';
-import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES } from '../../../../../../lib/orderItemEditWindow';
+import { isWithinItemEditWindow, ITEM_EDIT_WINDOW_MINUTES, parseSizeEditDays, evaluateSizeOnlyEdit } from '../../../../../../lib/orderItemEditWindow';
+import { normalizeGapRule } from '../../../../../../lib/priceRows';
 
 // Rules the caller can actually do something about (missing dates, nothing free in stock).
 // Everything else is a fault on our side: reporting those as 400 too made a server crash
@@ -41,6 +42,37 @@ const buildUpdateData = (itemData, dressItemId) => ({
   alterationDetails: itemData.alterationDetails || null,
   alterationDone: itemData.alterationDone || false
 });
+
+// אכיפת חלון העריכה אחרי שנסגר (15 דקות מהעדכון האחרון של הפריט, ולא נפתח מחדש באישור מנהל).
+// מחזירה true כשהשינוי הוא "החלפת מידה בלבד" שמותרת לפי size_edit_until_days_before_event,
+// false כשלא השתנה שום שדה נעול, וזורקת שגיאה (עם הסיבה המדויקת) בכל מקרה אחר.
+// זו האכיפה הקובעת - הממשק רק משקף אותה.
+const enforceClosedWindow = ({ item, updateData, modelChanged, order, sizeEditDays, gapRule, priceList }) => {
+  const changedFields = LOCKED_FIELDS.filter(field => formatVal(item[field]) !== formatVal(updateData[field]));
+  if (changedFields.length === 0) return false;
+
+  const closedMessage = `חלון העריכה של הפריט (${ITEM_EDIT_WINDOW_MINUTES} דקות מהעדכון האחרון) נסגר. ניתן לערוך כעת רק את תיאור התיקון.`;
+  // החלפת מידה בתוך הפריט: המידה משתנה (ובעקבותיה הפריט הפיזי), והדגם והתיקונים נשארים כמו שהיו
+  const sizeOnly = !modelChanged
+    && changedFields.includes('sizeText')
+    && changedFields.every(field => field === 'sizeText' || field === 'dressItemId');
+  if (sizeEditDays === null || !sizeOnly) throw ruleError(closedMessage);
+
+  if (item.isTaken) {
+    throw ruleError('לא ניתן לשנות מידה לפריט שכבר נלקח. יש להחזירו תחילה.');
+  }
+  const verdict = evaluateSizeOnlyEdit({
+    item,
+    oldSizeText: item.sizeText,
+    newSizeText: updateData.sizeText,
+    eventDate: order.eventDate,
+    priceList,
+    sizeEditDays,
+    gapRule
+  });
+  if (!verdict.ok) throw ruleError(verdict.reason || closedMessage);
+  return true;
+};
 
 const diffFields = (item, updateData) => {
   const changes = {};
@@ -82,7 +114,8 @@ export async function PUT(request, { params }) {
       prisma.order.findUnique({ where: { orderId: parsedId } }),
       prisma.orderItem.findUnique({
         where: { id: itemId },
-        include: { dressItem: true }
+        // dress: קטגוריית המחיר של הדגם, לבדיקת "אותה שורת מחיר" בהחלפת מידה אחרי סגירת החלון
+        include: { dressItem: { include: { dress: true } } }
       }),
       getAllCachedSettings()
     ]);
@@ -96,6 +129,10 @@ export async function PUT(request, { params }) {
     if (bufferSetting) bufferDays = parseInt(bufferSetting.value, 10);
     const weekendSetting = settingsRaw.find(s => s.key === 'inventory_skip_weekends');
     if (weekendSetting) skipWeekends = weekendSetting.value === 'true';
+
+    // size_edit_until_days_before_event: ריק/חסר/לא תקין = כבוי (נשארת רק נעילת 15 הדקות)
+    const sizeEditDays = parseSizeEditDays(settingsRaw.find(s => s.key === 'size_edit_until_days_before_event')?.value);
+    const gapRule = normalizeGapRule(settingsRaw.find(s => s.key === 'gap_size_price_rule')?.value);
 
     const newOrderIsAbroad = order.isAbroad || order.isWeekdayEvent;
     let targetMinDate, targetMaxDate;
@@ -118,6 +155,21 @@ export async function PUT(request, { params }) {
     // בודקים זמינות מלאי מחדש רק כשיש בכלל דגם לבדוק מולו (הרכיב לא מציג בורר דגם/מידה
     // לפריטים ישנים בלי dressModelId, כך שאין להם ממה "לשנות" בפועל).
     const needsAvailabilityCheck = (modelChanged || sizeChanged) && !!(incomingDressModelId || currentDressModelId);
+
+    // המחירון נטען רק כשבאמת ייתכן שימוש במסלול "החלפת מידה בלבד" (הגדרה פעילה + מידה השתנתה)
+    const swapPriceList = (sizeEditDays !== null && sizeChanged && !itemData.forceFullEdit)
+      ? await prisma.priceList.findMany()
+      : [];
+
+    // בדיקה מוקדמת של כללי החלון על נתוני הרגע, כדי שהמשתמש יקבל את הסיבה המדויקת (למשל
+    // "קטגוריית מחיר אחרת") לפני שאלת הזמינות. הבדיקה הקובעת חוזרת בתוך הטרנזקציה.
+    if (!itemData.forceFullEdit && !isWithinItemEditWindow(currentItem)) {
+      enforceClosedWindow({
+        item: currentItem,
+        updateData: buildUpdateData(itemData, currentItem.dressItemId),
+        modelChanged, order, sizeEditDays, gapRule, priceList: swapPriceList
+      });
+    }
 
     let inventoryContext = null;
     if (needsAvailabilityCheck) {
@@ -146,7 +198,11 @@ export async function PUT(request, { params }) {
     const updatedOrder = await prisma.$transaction(async (tx) => {
       // קריאה חוזרת של הפריט דרך ה-tx: חלון העריכה, סימון "נלקח" ותוכן ה-changes
       // נקבעים לפי המצב ברגע הכתיבה ולא לפי מה שנקרא לפני חישוב הזמינות.
-      const freshItem = await tx.orderItem.findUnique({ where: { id: itemId } });
+      // dressItem.dress נדרש לקביעת קטגוריית המחיר בבדיקת עריכת המידה אחרי סגירת החלון.
+      const freshItem = await tx.orderItem.findUnique({
+        where: { id: itemId },
+        include: { dressItem: { include: { dress: true } } }
+      });
       if (!freshItem) throw ruleError('פריט בהזמנה לא נמצא');
 
       let dressItemIdToUse = freshItem.dressItemId;
@@ -175,12 +231,23 @@ export async function PUT(request, { params }) {
       // האחרון של הפריט. סימון "תיקון בוצע" ופירוט התיקון נשארים פתוחים תמיד — לא כפופים לחלון.
       // forceFullEdit: המשתמש כבר עבר אישור מנהל בצד הלקוח (ר' handleReopenFullEdit
       // ב-ModernItemsManager) כדי לפתוח מחדש עריכה מלאה אחרי שהחלון נסגר.
+      // כש-size_edit_until_days_before_event פעילה מותרת גם אחרי סגירת החלון החלפת מידה בלבד
+      // (אותה שורת מחיר, הפריט לא נלקח, ועד האירוע נשארו מספיק ימים) - ר' enforceClosedWindow.
+      let sizeOnlyAfterWindow = false;
       if (!itemData.forceFullEdit && !isWithinItemEditWindow(freshItem)) {
-        const lockedFieldChanged = LOCKED_FIELDS.some(field => formatVal(freshItem[field]) !== formatVal(updateData[field]));
-        if (lockedFieldChanged) {
-          throw ruleError(`חלון העריכה של הפריט (${ITEM_EDIT_WINDOW_MINUTES} דקות מהעדכון האחרון) נסגר. ניתן לערוך כעת רק את תיאור התיקון.`);
-        }
+        sizeOnlyAfterWindow = enforceClosedWindow({
+          item: freshItem,
+          updateData,
+          modelChanged,
+          order,
+          sizeEditDays,
+          gapRule,
+          priceList: swapPriceList
+        });
       }
+      // החלפת מידה אחרי סגירת החלון לא מרעננת את updatedAt: אחרת היא הייתה פותחת מחדש ל-15
+      // דקות נוספות עריכה מלאה (החלפת דגם ותיקונים) ועוקפת את המדיניות.
+      if (sizeOnlyAfterWindow) updateData.updatedAt = freshItem.updatedAt;
 
       // Update the item.
       // ה-changes המחושב כאן מועבר לתוסף ה-audit כדי שתיווצר שורת היסטוריה אחת בלבד,

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import NeonUsageCard from './NeonUsageCard';
 import WebBackupModeToggle from './WebBackupModeToggle';
 import { cacheNamespace, invalidateSettings } from '@/app/lib/pageCache';
-import { NUMBER_FIELD_LIMITS, validateNumericSetting } from '@/app/lib/settingsValidation';
+import { NUMBER_FIELD_LIMITS, validateNumericSetting, validateSelectSetting } from '@/app/lib/settingsValidation';
 import { SECRET_SETTING_KEYS, SECRET_MASK, SECRET_SETTING_LINKS } from '@/app/lib/secretSettingKeys';
 import {
   SETTINGS_CATEGORY_ICONS,
@@ -15,6 +15,7 @@ import {
   SETTINGS_ORDER,
   SETTINGS_BOOLEAN_KEYS,
   SETTINGS_NUMBER_KEYS,
+  SETTINGS_SELECT_OPTIONS,
   SETTINGS_DEVELOPER_CATEGORIES,
   INVERTED_DISPLAY_KEYS,
 } from '@/lib/settingsMetadata';
@@ -560,7 +561,7 @@ export default function SettingsClient({ mode = 'general' }) {
     });
   const hasChanges = Object.keys(modified).length > 0;
   const hasValidationErrors = Object.entries(modified).some(
-    ([key, value]) => validateNumericSetting(key, value) !== null
+    ([key, value]) => validateNumericSetting(key, value) !== null || validateSelectSetting(key, value) !== null
   );
 
   const currentIcon = CATEGORY_ICONS[activeTab] || CATEGORY_ICONS['default'];
@@ -746,7 +747,7 @@ export default function SettingsClient({ mode = 'general' }) {
             };
 
             const isMandatoryFieldsSetting = setting.key === 'mandatory_fields';
-            const isSelectSetting = setting.type === 'select' || setting.key === 'email_routing_strategy' || setting.key === 'PAYMENT_APPROVAL_LEVEL';
+            const isSelectSetting = setting.type === 'select' || setting.key === 'email_routing_strategy' || setting.key === 'PAYMENT_APPROVAL_LEVEL' || !!SETTINGS_SELECT_OPTIONS[setting.key];
             const isSecretSetting = SECRET_SETTING_KEYS.includes(setting.key);
             // ערך מלא ISO שנכתב אוטומטית ע"י הסוכן (agent_fix_loop_last_activity) - שדה
             // תצוגה בלבד, לא לעריכה ידנית. מוצג בזמן ישראל, לא ה-UTC הגולמי מה-DB.
@@ -820,6 +821,17 @@ export default function SettingsClient({ mode = 'general' }) {
                       <option value="עובד">עובד (זיהוי עצמי בסיסמה)</option>
                       <option value="מנהל">מנהל סניף / מתכנת</option>
                       <option value="מנהל סניף ומעלה">מנהל סניף ומעלה (כולל הנהלה ראשית)</option>
+                    </select>
+                  ) : isSelectSetting && setting.key === 'gap_size_price_rule' ? (
+                    <select
+                      className="select"
+                      style={{ width: '100%' }}
+                      value={rawValue || 'none'}
+                      onChange={(e) => handleChange(setting.key, e.target.value)}
+                    >
+                      {SETTINGS_SELECT_OPTIONS.gap_size_price_rule.map(opt => (
+                        <option key={opt.value} value={opt.value}>{opt.label}</option>
+                      ))}
                     </select>
                   ) : isSelectSetting ? (
                     <select
@@ -905,7 +917,7 @@ export default function SettingsClient({ mode = 'general' }) {
                             handleChange(setting.key, e.target.value);
                           }
                         }}
-                        placeholder={isNumber ? (numberLimit ? `מספר בין ${numberLimit.min} ל-${numberLimit.max}...` : 'הזן מספר בלבד...') : 'הקלד ערך...'}
+                        placeholder={isNumber ? (numberLimit ? `מספר בין ${numberLimit.min} ל-${numberLimit.max}${numberLimit.emptyHint ? ` (${numberLimit.emptyHint})` : ''}...` : 'הזן מספר בלבד...') : 'הקלד ערך...'}
                       />
                       {numberError && (
                         <p style={{ margin: '4px 0 0', color: 'var(--danger)', fontSize: '11.5px', fontWeight: 600 }}>{numberError}</p>

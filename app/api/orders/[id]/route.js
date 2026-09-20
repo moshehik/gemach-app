@@ -74,7 +74,13 @@ const RECALC_SETTING_KEYS = [
   'CANCELLATION_CREDIT_MINUTES',
   'premium_pricing_enabled',
   'premium_categories',
-  'same_model_swap_no_fee'
+  'same_model_swap_no_fee',
+  'swap_min_days_before_event',
+  'swap_same_category_only',
+  'refund_tiers_at_deletion_time',
+  'swap_pairing_window_minutes',
+  'instant_undo_minutes',
+  'gap_size_price_rule'
 ];
 
 export async function GET(request, { params }) {
