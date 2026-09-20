@@ -93,8 +93,8 @@ export default function PrintDeliveryCourierPage() {
         {loading && <p>טוען נתונים...</p>}
         {!loading && error && <p style={{ color: '#c0392b' }}>{error}</p>}
         {!loading && !error && groups.length === 0 && <p>אין משלוחים בטווח/כיוון שנבחרו.</p>}
-        {!loading && !error && groups.map(group => (
-          <div className="courier-group" key={`${group.direction}-${group.eventDate}`}>
+        {!loading && !error && groups.map((group, idx) => (
+          <div className="courier-group" key={`${group.direction}-${group.eventDate}-${idx}`}>
             <h2>{group.title}</h2>
             <table className="courier-table">
               <thead>
