@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
+import { checkAiAccess } from '@/lib/permissions';
 import { getCachedSetting } from '@/lib/settingsCache';
 import { isDriveBridgeConfigured, startResumableUpload } from '@/lib/driveBridgeServer';
 
@@ -11,6 +12,7 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!(await checkAiAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const setting = await getCachedSetting('ai_screen_recording_enabled');
     if (!setting || setting.value !== 'true') {
