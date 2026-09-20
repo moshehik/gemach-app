@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { PERMISSION_CATALOG } from '@/lib/permissionsMetadata';
-import EmployeePermissionsPanel from '@/app/components/permissions/EmployeePermissionsPanel';
 import PermissionRowWizard from '@/app/components/permissions/PermissionRowWizard';
 import EmployeeTag from '@/app/components/permissions/EmployeeTag';
 import ItemLabel from '@/app/components/permissions/ItemInfo';
@@ -13,7 +12,6 @@ export default function PermissionsClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [employees, setEmployees] = useState([]);
-  const [selectedEmployeeId, setSelectedEmployeeId] = useState('');
   const [modal, setModal] = useState(null); // null=closed, { group } — group is null for a new row
 
   const load = useCallback(async () => {
@@ -98,34 +96,6 @@ export default function PermissionsClient() {
           onSaved={load}
         />
       )}
-
-      <div className="card">
-        <div className="card-pad" style={{ borderBottom: '1px solid var(--border)' }}>
-          <h2 className="section-title" style={{ margin: 0 }}>הרשאה פרטנית לעובד</h2>
-          <p className="page-desc" style={{ margin: '4px 0 0' }}>חריגה מברירת המחדל של המחלקה לעובד ספציפי — ניתן להגדיר גם מכרטיס העובד עצמו.</p>
-        </div>
-        <div className="card-pad">
-          <select
-            className="input"
-            style={{ maxWidth: '360px' }}
-            value={selectedEmployeeId}
-            onChange={(e) => setSelectedEmployeeId(e.target.value)}
-          >
-            <option value="">בחר עובד...</option>
-            {employees.map((emp) => (
-              <option key={emp.id} value={emp.id}>
-                {[emp.lastName, emp.firstName].filter(Boolean).join(' ')} {emp.department?.name ? `— ${emp.department.name}` : ''}
-              </option>
-            ))}
-          </select>
-
-          {selectedEmployeeId && (
-            <div style={{ marginTop: '16px' }}>
-              <EmployeePermissionsPanel employeeId={selectedEmployeeId} linkToCard />
-            </div>
-          )}
-        </div>
-      </div>
     </>
   );
 }
