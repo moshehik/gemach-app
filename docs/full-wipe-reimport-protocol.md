@@ -115,6 +115,25 @@ customSpacing, extraDay, hokDetails, isWeekdayEvent` — **לוודא ידנית
 3. כל שורה כזו - להעתיק ידנית (upsert) גם ל-branch/ה-DB החדש לפני שמחליפים את
    `DATABASE_URL` בפועל, לא לסמוך על כך ש"SystemSetting לא נמחק אז זה בטוח".
 
+## שלב 4.7 — אחרי הייבוא: נורמליזציית "נלקח" לנתוני אקסס ישנים
+
+הכלי המייבא (`import_from_access.js` / `scratch/import_new_gemach.js`) כבר מריץ את הכלל
+הזה אוטומטית כצעד אחרון בהרצת `--write` (וב-dry-run רק מדווח). אבל בפרוטוקול wipe+reimport
+מלא — במיוחד כשהייבוא רץ מול branch מבודד ב-Neon — **מריצים ובודקים אותו במפורש גם
+ידנית, אחרי הייבוא ולפני ה-cutover:**
+
+1. `node scripts/normalize_legacy_rental_flags.js --org=N` (dry-run, ברירת מחדל) — לבדוק
+   את הספירות והטבלה. (ל-branch מבודד: להעביר את ה-connection string שלו במשתנה הסביבה
+   `PROD_DATABASE_URL` / `PROD_DATABASE_URL_ORG2`, ר' `scripts/lib/db-env.js`.)
+2. אם הרשימה סבירה: `node scripts/normalize_legacy_rental_flags.js --org=N --write
+   --expect-host=<תחילית ה-host שהודפסה ב-dry-run>`.
+
+**למה:** באקסס הישן לא תמיד נלחץ "אשר השכרה" — פריטים עם ברקוד ותאריך לקיחה (או
+שכבר הוחזרו) נשארו עם `isTaken=false`, וההזמנה נשארת ב"הזמנות" במקום ב"השכרות". מחיקה
+מלאה + ייבוא מחדש מחזירה את המצב הגולמי מהאקסס, לכן הכלל חייב לחול שוב. הכלל לא ממציא
+תאריכים, לא נוגע במחוקים/במיקום השמלה, אידמפוטנטי, וכותב שורת AuditLog לכל פריט
+ששונה. תיעוד מלא: `/admin/access-import` והכותרת של הסקריפט.
+
 ## שלב 5 — אימות סופי
 
 - השוואת ספירה טבלה-טבלה (גישה מול DB) לכל טבלה שהושפעה.
