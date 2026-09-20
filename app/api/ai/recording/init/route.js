@@ -12,7 +12,10 @@ export const dynamic = 'force-dynamic';
 
 export async function POST(request) {
   if (!(await checkAuth())) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  if (!(await checkAiAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  const body = await request.json().catch(() => ({}));
+  // הסרטה מתוך דיווח שגיאה לא דורשת הרשאת AI (מי שמדווח אינו בהכרח משתמש AI); הסרטה מעוזר ה-AI דורשת.
+  const forErrorReport = body.purpose === 'error-report';
+  if (!forErrorReport && !(await checkAiAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const setting = await getCachedSetting('ai_screen_recording_enabled');
     if (!setting || setting.value !== 'true') {
@@ -22,7 +25,6 @@ export async function POST(request) {
       // הלקוח ממשיך בלי וידאו (רק רשימת הפעולות) — ר' uploadScreenRecording
       return NextResponse.json({ error: 'אחסון הוידאו בדרייב אינו מוגדר בשרת', code: 'DRIVE_NOT_CONFIGURED' }, { status: 503 });
     }
-    const body = await request.json().catch(() => ({}));
     // הלקוח פותח את ההעלאה כבר בתחילת ההקלטה (כדי להסתיר את זמן ההמתנה לגשר), כשהגודל עוד לא ידוע
     const size = Number(body.size) || 0;
     if (size < 0 || size > MAX_BYTES) return NextResponse.json({ error: 'גודל הקלטה לא חוקי' }, { status: 400 });

@@ -14,7 +14,7 @@ export async function GET() {
     }
 
     const employeeId = token.value;
-    const parsedLegacyId = parseInt(employeeId, 10);
+    const parsedLegacyId = /^\d+$/.test(String(employeeId)) ? parseInt(employeeId, 10) : NaN; // digits only: a UUID that merely STARTS with digits must not match some other employee's legacyId
     const employee = await prisma.employee.findFirst({
       where: {
         OR: [

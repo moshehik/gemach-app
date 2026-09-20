@@ -15,7 +15,7 @@ async function getSessionEmployee() {
   const token = getVerifiedAuthCookie(cookieStore);
   if (!token || !token.value) return null;
 
-  const parsedLegacy = parseInt(token.value, 10);
+  const parsedLegacy = /^\d+$/.test(String(token.value)) ? parseInt(token.value, 10) : NaN; // digits only: a UUID that merely STARTS with digits must not match some other employee's legacyId
   return prisma.employee.findFirst({
     where: {
       OR: [
