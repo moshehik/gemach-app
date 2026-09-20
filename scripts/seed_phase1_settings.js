@@ -10,7 +10,9 @@ import prisma from '../app/lib/prisma.js';
 // ל-scratch/write_new_gemach_settings.js. ריצה בטעות מול הסביבה הרגילה כבר "דלפה" ערכים
 // ספציפיים לנווה יעקב (enable_alterations/max_items_per_order/hide_custom_spacing) לתוך
 // ה-PROD של הגמח הרגיל - ר' תיעוד ותיקון בזיכרון org1-org2-settings-cross-contamination-fixed.
-const EXPECTED_MAIN_GEMACH_HOST = 'ep-orange-waterfall-avthvs1g';
+// org1's live Neon host since the 2026-09-18 outage cutover (gemach-main-prod / misty-darkness-06917297).
+// The previous host (ep-orange-waterfall-avthvs1g, purple-term-91836431) is quota-blocked and retired.
+const EXPECTED_MAIN_GEMACH_HOST = 'ep-weathered-tree-avpypjjr';
 const targetUrl = process.env.PROD_DATABASE_URL || process.env.DATABASE_URL || '';
 const targetHost = (targetUrl.match(/@([^/]+)\//) || [])[1] || '';
 if (!targetHost.startsWith(EXPECTED_MAIN_GEMACH_HOST)) {

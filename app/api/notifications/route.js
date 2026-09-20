@@ -22,6 +22,28 @@ export async function GET(request) {
       return NextResponse.json({ success: false, error: 'Invalid token' }, { status: 401 });
     }
 
+    // ?light=1 - הבדיקה התקופתית של פעמון ההתראות (NotificationBell.js) צריכה רק את מונה
+    // "לא נקראו" לנקודה האדומה. אותם ה-where/orderBy/take והחישוב של isRead/isArchived בדיוק
+    // כמו למטה (כך שהמספר זהה לזה שהרשימה המלאה מציגה), אבל בלי include של שולח/מטפל/תגיות,
+    // בלי תוכן ההודעות ובלי שאילתת ה-outgoing - עד 250 שורות עם תוכן כל דקה לכל טאב היו
+    // תעבורה מיותרת מול מכסת ה-5GB של Neon. הרשימה המלאה נטענת רק כשהעובד פותח את הפעמון.
+    if (new URL(request.url).searchParams.get('light') === '1') {
+      const rows = await prisma.notification.findMany({
+        where: { OR: [{ receiverId: employeeId }, { receiverId: null }] },
+        select: { receiverId: true, isRead: true, isArchived: true, readBy: true, archivedBy: true },
+        orderBy: { createdAt: 'desc' },
+        take: 150
+      });
+      const unreadCount = rows.filter((n) => {
+        const isGlobal = n.receiverId === null;
+        const archived = isGlobal ? parseIdList(n.archivedBy).includes(employeeId) : n.isArchived;
+        if (archived) return false;
+        const read = isGlobal ? parseIdList(n.readBy).includes(employeeId) : n.isRead;
+        return !read;
+      }).length;
+      return NextResponse.json({ success: true, unreadCount });
+    }
+
     // Fetch personal messages or global messages
     const notifications = await prisma.notification.findMany({
       where: {
