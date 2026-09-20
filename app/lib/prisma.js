@@ -23,6 +23,7 @@ import fs from 'fs';
 import path from 'path';
 import { AsyncLocalStorage } from 'node:async_hooks';
 import { runOfflineSync } from '@/lib/offlineSync';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // Tracks the active interactive-transaction client (if any) for the current
 // async execution context, so writes made inside `prisma.$transaction(async tx => ...)`
@@ -65,7 +66,7 @@ export function auditAs(action, args, changes) {
 export async function getActingEmployeeId() {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
+    const token = getVerifiedAuthCookie(cookieStore)?.value;
     if (!token) return null;
     if (token.includes('.')) {
       try {
@@ -129,6 +130,23 @@ const createPrismaClient = (url) => {
                changesJson = JSON.stringify({ deleted: true });
              }
 
+             // Never write credential hashes (or, for legacy accounts, the plaintext password) into
+             // the audit trail - /api/audit and the employee history tab are readable by every
+             // logged-in employee (found 2026-09-20).
+             if (model === 'Employee') {
+               try {
+                 const parsed = JSON.parse(changesJson);
+                 if (parsed && typeof parsed === 'object') {
+                   for (const secret of ['password', 'pinHash']) {
+                     if (secret in parsed) {
+                       parsed[secret] = (parsed[secret] && typeof parsed[secret] === 'object') ? { from: '***', to: '***' } : '***';
+                     }
+                   }
+                   changesJson = JSON.stringify(parsed);
+                 }
+               } catch (e) { /* not JSON - leave as is */ }
+             }
+
              try {
                // If we're inside an interactive transaction, write the audit row through
                // that same tx client so it lands on the same connection and is rolled
@@ -164,7 +182,7 @@ const globalForPrisma = globalThis;
 // version of `createPrismaClient` keeps being handed out until the process itself restarts -
 // which is why a fix to the extension setup above can look like it did nothing. Bump this
 // whenever `createPrismaClient` changes, and the cached clients are rebuilt on next load.
-const CLIENT_SETUP_VERSION = 5;
+const CLIENT_SETUP_VERSION = 6;
 
 if (globalForPrisma.prismaSetupVersion !== CLIENT_SETUP_VERSION) {
   for (const stale of [globalForPrisma.prismaProd, globalForPrisma.prismaTest]) {

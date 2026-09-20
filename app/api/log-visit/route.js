@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { checkAuth } from '../../../lib/auth';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 
 export async function POST(request) {
@@ -30,7 +31,7 @@ export async function POST(request) {
     }
 
     const cookieStore = await cookies();
-    const authCookie = cookieStore.get('auth_token');
+    const authCookie = getVerifiedAuthCookie(cookieStore);
 
     let employeeId = null;
     let employeeName = 'אורח';

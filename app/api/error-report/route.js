@@ -5,6 +5,7 @@ import { cookies } from 'next/headers';
 import { renderErrorReportEmailHtml, renderGenericEmailHtml } from '../../../lib/emailTemplates';
 import { uploadAttachmentDataUrls } from '../../../lib/attachmentUpload';
 import { hasPermission } from '@/lib/permissions';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // שולח מייל לכל המתכנתים הפעילים (roleId=2) דרך אותו Google Apps Script mailer
 // ששאר המערכת משתמשת בו - ר' POST למטה (דיווח חדש) ו-lib/emailTemplates.js.
@@ -50,7 +51,7 @@ async function sendProgrammerEmail({ subject, textBody, htmlBody, fileName }) {
 export async function GET(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
 
     if (!token?.value) {
       return NextResponse.json({ success: false, error: 'לא מורשה' }, { status: 401 });
@@ -107,7 +108,7 @@ export async function GET(request) {
 export async function PATCH(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
 
     if (!token?.value) {
       return NextResponse.json({ success: false, error: 'לא מורשה' }, { status: 401 });
@@ -193,7 +194,7 @@ ${existing.userText}
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
 
     let employeeId = null;
     let employeeName = 'לא ידוע / אורח';

@@ -2,12 +2,13 @@ import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { checkAuth } from '@/lib/auth';
 import { cookies } from 'next/headers';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // Resolves the employee behind the auth_token cookie, same lookup /api/me uses
 // (auth_token can hold either the Employee UUID or its legacy numeric id).
 async function getActingEmployee() {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
     if (!token?.value) return null;
     const employeeId = token.value;
     const parsedLegacyId = parseInt(employeeId, 10);

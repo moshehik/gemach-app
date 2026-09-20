@@ -62,6 +62,8 @@ import { validateOrderItemsAvailability, loadInventoryContext, refreshInventoryB
 import { orderHasPermanentHold } from '../../../../lib/inventoryHold';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS, deriveConfirmedOrderStatus } from '../../../../lib/orderReservation';
 import { verifyManagerPin } from '../../../../lib/managerAuth';
+import { SAFE_EMPLOYEE_SELECT } from '@/lib/safeSelect';
+import { canApproveDebt } from '@/lib/permissions';
 
 const RECALC_SETTING_KEYS = [
   'REFUND_DAYS_FROM_ORDER',
@@ -87,7 +89,7 @@ export async function GET(request, { params }) {
     if (id.includes('-')) {
       order = await prisma.order.findUnique({
         where: { id },
-        include: { customer: true, employee: true }
+        include: { customer: true, employee: { select: SAFE_EMPLOYEE_SELECT } }
       });
       if (order) parsedOrderId = order.orderId;
     } else {
@@ -95,7 +97,7 @@ export async function GET(request, { params }) {
       if (!isNaN(parsedOrderId)) {
         order = await prisma.order.findUnique({
           where: { orderId: parsedOrderId },
-          include: { customer: true, employee: true }
+          include: { customer: true, employee: { select: SAFE_EMPLOYEE_SELECT } }
         });
       }
     }
@@ -282,6 +284,11 @@ export async function PUT(request, { params }) {
     }
 
     const data = await request.json();
+
+    // The approver named in debtApprovedBy must really hold feature:debt_approval (lib/permissions.js).
+    if (data.debtApprovedBy && !(await canApproveDebt(data.debtApprovedBy))) {
+      return NextResponse.json({ error: 'העובד שצוין כמאשר אינו מורשה לאשר הזמנה ללא תשלום מלא' }, { status: 403 });
+    }
 
     // אישור "הלקוח חתם על התקנון" הוא לא באמת עריכה/ביטול של תוכן ההזמנה (פריטים,
     // תאריכים, סכומים) - זו רק הצהרה של הצוות שנייר פיזי נחתם, ולכן לא אמור לעבור את
@@ -818,7 +825,7 @@ export async function PUT(request, { params }) {
         where: { orderId: parsedOrderId },
         include: {
           customer: true,
-          employee: true
+          employee: { select: SAFE_EMPLOYEE_SELECT }
         }
       }),
       fetchOrderItemsWithDress(parsedOrderId),

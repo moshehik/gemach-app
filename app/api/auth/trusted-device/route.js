@@ -9,6 +9,7 @@ import {
   getTrustedDeviceFromCookieStore,
   TRUSTED_DEVICE_COOKIE
 } from '@/lib/trustedDevice';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // Manager-only management of "trusted system computers" (מחשבי מערכת), the shared
 // front-desk machines employees are allowed to log into with just the last 4 characters of
@@ -60,7 +61,7 @@ export async function POST(request) {
     const label = (body.label || '').trim() || null;
 
     const cookieStore = await cookies();
-    const managerId = cookieStore.get('auth_token')?.value || null;
+    const managerId = getVerifiedAuthCookie(cookieStore)?.value || null;
 
     const token = generateDeviceToken();
     const tokenHash = hashDeviceToken(token);

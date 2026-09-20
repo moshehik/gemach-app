@@ -1,15 +1,17 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
-import { checkAuth, checkPageAccess } from '@/lib/auth';
+import { checkAuth, checkPageAccess, HEAD_MANAGEMENT_ROLES, getSessionEmployee, canManageRoles } from '@/lib/auth';
 import { hashSecret, last4Of } from '@/lib/passwordAuth';
 
 // הרשומה המלאה כוללת שכר, תפקיד ומשמרות — לכן מעבר ל-checkAuth הרגיל, הקריאה
-// והעדכון מוגבלים באותו כלל כמו דפי /employees עצמם (checkPageAccess): כשחובת
-// התחברות פעילה רק מנהל/מתכנת עוברים. עובד רגיל מעדכן את עצמו דרך /api/me/profile.
+// והעדכון מוגבלים באותו כלל כמו דפי /employees עצמם (app/employees/layout.js):
+// הנהלה ראשית/מתכנת בלבד (HEAD_MANAGEMENT_ROLES). עובד רגיל מעדכן את עצמו דרך /api/me/profile.
+// (עד 2026-09-20 הבדיקה כאן הייתה ברירת המחדל [1,2] - מנהל סניף עבר, והנהלה ראשית נחסמה,
+// וזה איפשר למנהל סניף להעלות כל עובד, כולל את עצמו, למתכנת.)
 
 export async function GET(request, { params }) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
-  if (!(await checkPageAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkPageAccess(HEAD_MANAGEMENT_ROLES))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
@@ -45,8 +47,8 @@ export async function GET(request, { params }) {
 }
 
 export async function PUT(request, { params }) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
-  if (!(await checkPageAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkPageAccess(HEAD_MANAGEMENT_ROLES))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const resolvedParams = await params;
     const id = resolvedParams.id;
@@ -55,6 +57,19 @@ export async function PUT(request, { params }) {
     }
 
     const body = await request.json();
+
+    // Privilege-escalation guard: the actor may only touch an employee at or below their own
+    // rank, and may only assign a roleId at or below their own rank (a head-management user
+    // can no longer mint or take over a programmer account).
+    const actor = await getSessionEmployee();
+    const target = await prisma.employee.findUnique({ where: { id }, select: { roleId: true } });
+    if (!target) {
+      return NextResponse.json({ error: 'Employee not found' }, { status: 404 });
+    }
+    const requestedRoleId = body.roleId !== "" && body.roleId !== null && body.roleId !== undefined ? parseInt(body.roleId, 10) : null;
+    if (!actor || !canManageRoles(actor.roleId, target.roleId, requestedRoleId)) {
+      return NextResponse.json({ error: 'אין הרשאה לערוך עובד או להגדיר תפקיד בכיר מהתפקיד שלך' }, { status: 403 });
+    }
 
     // body.password only arrives here as plaintext when a caller genuinely means to set a
     // brand-new password (e.g. an admin resetting one directly on the edit form). The normal

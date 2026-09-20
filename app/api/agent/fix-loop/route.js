@@ -10,6 +10,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { cookies } from 'next/headers';
 import { getCachedSetting, invalidateSettingsCache } from '@/lib/settingsCache';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 const SETTING_KEY = 'agent_fix_loop_enabled';
 const ACTIVITY_KEY = 'agent_fix_loop_last_activity';
@@ -27,7 +28,7 @@ export async function GET() {
 export async function PATCH(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
     if (!token?.value) {
       return NextResponse.json({ success: false, error: 'לא מורשה' }, { status: 401 });
     }

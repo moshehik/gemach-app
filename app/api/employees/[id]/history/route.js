@@ -4,7 +4,7 @@ import { checkAuth } from '@/lib/auth';
 import { attachEmployeeNames } from '@/app/lib/auditLog';
 
 export async function GET(request, { params }) {
-  if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkAuth('הנהלה ראשית'))) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const resolvedParams = await params;
     const employeeId = resolvedParams.id;

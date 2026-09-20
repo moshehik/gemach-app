@@ -26,7 +26,17 @@ export async function GET(request) {
     const page = parseInt(searchParams.get('page') || '1', 10);
 
     let where = {};
-    if (entityType) where.entityType = entityType;
+    // The change history of Employee records (wages, roles, passwords) is head-management
+    // material; every other logged-in employee gets the log without those rows.
+    const canSeeEmployeeHistory = await checkAuth('הנהלה ראשית');
+    if (entityType) {
+      if (entityType === 'Employee' && !canSeeEmployeeHistory) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+      }
+      where.entityType = entityType;
+    } else if (!canSeeEmployeeHistory) {
+      where.entityType = { not: 'Employee' };
+    }
     if (entityId) where.entityId = entityId;
     if (entityIds) {
       const ids = entityIds.split(',').map(s => s.trim()).filter(Boolean);

@@ -4,6 +4,7 @@ import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { parseIdList } from '../../../lib/notificationLists';
 import { renderGenericEmailHtml } from '../../../lib/emailTemplates';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // #24/#25 — קטגוריות הודעה מותרות. כל ערך אחר (כולל undefined) = הודעה כללית.
 const ALLOWED_CATEGORIES = ['shift_handover', 'management'];
@@ -11,7 +12,7 @@ const ALLOWED_CATEGORIES = ['shift_handover', 'management'];
 export async function GET(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
 
     if (!token?.value) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
@@ -110,7 +111,7 @@ export async function GET(request) {
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
 
     if (!token?.value) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });

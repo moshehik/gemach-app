@@ -91,6 +91,8 @@ export async function POST(request) {
       value: employee.id, // Ensure we store the UUID string
       httpOnly: true,
       path: '/',
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
     });
 
     // Signed session cookie (auth_session) — DB-free role verification fast

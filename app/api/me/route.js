@@ -2,11 +2,12 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { getEmployeeEffectiveValue } from '@/lib/permissions';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 export async function GET(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
 
     if (!token?.value) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
@@ -79,7 +80,7 @@ export async function GET(request) {
 export async function PATCH(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
 
     if (!token?.value) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });

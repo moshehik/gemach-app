@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
-import { checkAuth } from '@/lib/auth';
+import { checkAuth, HEAD_MANAGEMENT_ROLES, checkPageAccess } from '@/lib/auth';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  // Wages + hours of EVERY employee: same audience as the /employees pages (head management + programmer).
+  if (!(await checkPageAccess(HEAD_MANAGEMENT_ROLES))) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const { searchParams } = new URL(request.url);
     const month = searchParams.get('month');
@@ -45,7 +47,9 @@ export async function GET(request) {
     });
 
     // Filter out inactive employees that have no shifts in this period
-    const activeOrWithShifts = employees.filter(e => e.isActive || e.shifts.length > 0);
+    const activeOrWithShifts = employees
+      .filter(e => e.isActive || e.shifts.length > 0)
+      .map(({ password, pinHash, ...safe }) => safe); // never send the password/pin hashes to the browser
 
     return NextResponse.json({
       success: true,

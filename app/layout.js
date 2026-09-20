@@ -31,10 +31,11 @@ import DesignPrefsSync from './components/DesignPrefsSync';
 import OfflineIndicator from './components/OfflineIndicator';
 import ClipboardDebugger from '../components/ClipboardDebugger';
 import StickyTableHeaders from './components/StickyTableHeaders';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 export default async function RootLayout({ children }) {
   const cookieStore = await cookies();
-  const authToken = cookieStore.get('auth_token');
+  const authToken = getVerifiedAuthCookie(cookieStore);
   const isAuthenticated = !!authToken?.value;
 
   // The customer-facing kiosk (see KIOSK.md) has its own separate lock/unlock
@@ -200,7 +201,7 @@ export default async function RootLayout({ children }) {
   // מוצג רק כשעובד ספציפי סומן ל-showAi (או שמחלקתו קיבלה הרשאת feature:ai) וגם
   // ההגדרה הזו הופעלה. סוכם ב-2026-08-24: AI לא אמור להיות זמין למנהל סניף רגיל
   // או לעובדים כברירת מחדל.
-  if (!isHeadManagement && (!enableAiSpecific || !(employeeShowAi || departmentHasAi))) {
+  if (!isHeadManagement && !(employeeShowAi || departmentHasAi)) {
     hideAIFeatures = true;
   }
 
@@ -211,7 +212,7 @@ export default async function RootLayout({ children }) {
   const showAdminTab = isAuthenticated ? isHeadManagement : !requireLogin;
   const showEmployeesTab = isAuthenticated ? isHeadManagement : !requireLogin;
   const showRefundsTab = isAuthenticated
-    ? (restrictRefundsToHeadManagement ? isHeadManagement : isManager)
+    ? (restrictRefundsToHeadManagement ? isHeadManagement : (isManager || isHeadManagement))
     : !requireLogin;
   const showDressesTab = isAuthenticated
     ? (restrictDressCatalogToHeadManagement ? isHeadManagement : true)

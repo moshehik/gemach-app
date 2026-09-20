@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server';
+import { checkAiAccess } from '../../../../lib/permissions';
 import { generateContent } from '../../../../lib/ai/gemini';
 import { HDate } from '@hebcal/core';
 
 export async function POST(req) {
+  // Was completely unauthenticated (a free Gemini proxy for anyone on the internet).
+  if (!(await checkAiAccess())) return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
   try {
     const { data, prompt, columns, format } = await req.json();
 

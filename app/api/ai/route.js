@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getAllCachedSettings, getCachedSetting } from '@/lib/settingsCache';
 import { generateContent } from '../../../lib/ai/gemini';
 import { checkAuth } from '../../../lib/auth';
+import { checkAiAccess } from '../../../lib/permissions';
 import { getBulkAvailableInventory } from '../../../lib/inventory';
 import { cookies } from 'next/headers';
 import prisma from '../../lib/prisma';
@@ -10,10 +11,11 @@ import path from 'path';
 import { HDate } from '@hebcal/core';
 import { getHebrewYearContext, processHebrewDateMacro, getHebrewDateString } from '../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../lib/orderReservation';
-import { assertReadOnlySelect } from '../../../lib/sqlGuard';
+import { assertReadOnlySelect, stripSecretColumns } from '../../../lib/sqlGuard';
 import { buildSettingsGuide } from '../../../lib/settingsMetadata';
 import { buildHowToGuide } from '../../../lib/howToGuide';
 import { uploadAndWaitForFile } from '../../../lib/ai/geminiFiles';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // הקלטת מסך + פולינג ל-ACTIVE יכולים לקחת יותר מברירת המחדל של Vercel לפונקציית
 // serverless - ר' Phase 4 בתוכנית.
@@ -83,6 +85,7 @@ IMPORTANT: If the user explicitly asks to SEE OR FIND ORDERS (e.g., "When was it
 
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   try {
     const { prompt, history = [], context = '', image = null, recordingUrl = null } = await req.json();
 
@@ -124,7 +127,7 @@ export async function POST(req) {
 
     // Employee Classification Protections
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
     let employeeContext = '';
     let isManager = false;
     if (token && token.value) {
@@ -408,7 +411,7 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
               console.error('SQL Guard rejected AI-generated query:', guardErr.message, '\nRejected SQL:', queries[i]);
               throw guardErr;
             }
-            const res = await prisma.$queryRawUnsafe(queries[i]);
+            const res = stripSecretColumns(await prisma.$queryRawUnsafe(queries[i]));
             combinedResults.push(res);
           }
         } catch (dbError) {
@@ -441,7 +444,7 @@ Summarize the information nicely.${context ? `\n\nSystem Instructions:\n${contex
                   console.error('SQL Guard rejected AI-generated retry query:', guardErr.message, '\nRejected SQL:', retryQueries[i]);
                   throw guardErr;
                 }
-                const res = await prisma.$queryRawUnsafe(retryQueries[i]);
+                const res = stripSecretColumns(await prisma.$queryRawUnsafe(retryQueries[i]));
                 combinedResults.push(res);
               }
               queries.splice(0, queries.length, ...retryQueries);

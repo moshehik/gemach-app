@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../lib/prisma';
 import { cookies } from 'next/headers';
 import { checkAuth } from '@/lib/auth';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
@@ -104,7 +105,7 @@ export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token')?.value;
+    const token = getVerifiedAuthCookie(cookieStore)?.value;
     
     const body = await request.json();
     const { 

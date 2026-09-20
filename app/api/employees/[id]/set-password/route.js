@@ -1,6 +1,6 @@
 import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
-import { checkAuth } from '@/lib/auth';
+import { checkAuth, canManageRoles } from '@/lib/auth';
 import { hashSecret, verifySecret, last4Of } from '@/lib/passwordAuth';
 
 // Manager sets a chosen password directly, no email required - for employees with no
@@ -33,7 +33,7 @@ export async function POST(request, { params }) {
     }
 
     const authEmployee = await prisma.employee.findUnique({ where: { id: authEmployeeId } });
-    const isManager = authEmployee && authEmployee.isActive && (authEmployee.roleId === 1 || authEmployee.roleId === 2);
+    const isManager = authEmployee && authEmployee.isActive && [0, 1, 2].includes(authEmployee.roleId);
     if (!isManager || !(await verifySecret(authPin, authEmployee.password))) {
       return NextResponse.json({ success: false, message: 'קוד מנהל שגוי או הרשאה לא מספקת' }, { status: 403 });
     }
@@ -41,6 +41,11 @@ export async function POST(request, { params }) {
     const employee = await prisma.employee.findUnique({ where: { id } });
     if (!employee) {
       return NextResponse.json({ success: false, message: 'עובד לא נמצא' }, { status: 404 });
+    }
+    // A manager may not take over a more senior account (branch manager -> head management /
+    // programmer, head management -> programmer): they'd simply set/reset its password and log in.
+    if (!canManageRoles(authEmployee.roleId, employee.roleId)) {
+      return NextResponse.json({ success: false, message: 'אין הרשאה לשנות סיסמה לעובד בכיר יותר' }, { status: 403 });
     }
 
     const hashedPassword = await hashSecret(newPassword);

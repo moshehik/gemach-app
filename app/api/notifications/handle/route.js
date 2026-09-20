@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '../../../lib/prisma';
 import { cookies } from 'next/headers';
 import { getCachedSetting } from '@/lib/settingsCache';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // #24/#25 — סימון הודעת "להנהלה" או "בין משמרות" כ"טופל" / ביטול טיפול.
 // management: מוגבל ל-roleId 0/1/2 (הנהלה ראשית/מנהל/מתכנת) ומותנה בהגדרת
@@ -20,7 +21,7 @@ const SETTING_KEY_BY_CATEGORY = {
 export async function POST(request) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
     if (!token?.value) {
       return NextResponse.json({ success: false, error: 'Not authenticated' }, { status: 401 });
     }

@@ -10,7 +10,9 @@ import NoAccessMessage from '@/app/components/NoAccessMessage';
 export default async function RefundsLayout({ children }) {
   const setting = await getCachedSetting('restrict_refunds_to_head_management');
   const restrictToHeadManagement = !setting || setting.value !== 'false';
-  const allowedRoles = restrictToHeadManagement ? HEAD_MANAGEMENT_ROLES : [1, 2];
+  // Unrestricted = branch managers too, and head management (roleId 0) must never be LOCKED OUT of a
+  // page a branch manager can open (it used to be [1, 2], which excluded roleId 0 - fixed 2026-09-20).
+  const allowedRoles = restrictToHeadManagement ? HEAD_MANAGEMENT_ROLES : [0, 1, 2];
 
   if (!(await checkPageAccess(allowedRoles))) {
     return <NoAccessMessage />;

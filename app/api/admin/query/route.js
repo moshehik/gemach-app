@@ -4,6 +4,7 @@ import { cookies } from 'next/headers';
 
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 export async function POST(request) {
   if (!(await checkAuth('הנהלה ראשית'))) {
@@ -13,7 +14,7 @@ export async function POST(request) {
   let employeeId = null;
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
     if (token && token.value) {
       employeeId = token.value;
     }

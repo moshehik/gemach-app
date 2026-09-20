@@ -1,10 +1,13 @@
 ﻿import { NextResponse } from 'next/server';
 import prisma from '@/app/lib/prisma';
 import { checkAuth } from '@/lib/auth';
+import { checkAiAccess } from '@/lib/permissions';
 import { cookies } from 'next/headers';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 export async function GET(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
 
   try {
     const { searchParams } = new URL(request.url);
@@ -44,12 +47,13 @@ export async function GET(request) {
 
 export async function POST(request) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
 
   try {
     const { sessionId, context, messages } = await request.json();
 
     const cookieStore = await cookies();
-    const token = cookieStore.get('auth_token');
+    const token = getVerifiedAuthCookie(cookieStore);
     const employeeId = token ? token.value : null;
 
     if (!messages || !Array.isArray(messages)) {

@@ -3,6 +3,7 @@ import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { checkAuth } from '@/lib/auth';
 import { hashSecret, verifySecret, last4Of } from '@/lib/passwordAuth';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // Self-service "change my password": requires knowing the CURRENT password (verified
 // server-side via bcrypt) and replaces it with a new one, re-deriving the trusted-device
@@ -31,7 +32,7 @@ export async function POST(request, { params }) {
     // (a manager helping a locked-out employee) uses the reset-password endpoint instead,
     // which emails a fresh temporary password rather than requiring the old one.
     const cookieStore = await cookies();
-    const sessionEmployeeId = cookieStore.get('auth_token')?.value;
+    const sessionEmployeeId = getVerifiedAuthCookie(cookieStore)?.value;
     if (sessionEmployeeId !== id) {
       return NextResponse.json({ success: false, message: 'ניתן לשנות רק את הסיסמה של המשתמש המחובר' }, { status: 403 });
     }

@@ -2,10 +2,12 @@
 import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
+import { checkAiAccess } from '../../../../lib/permissions';
 import { HDate } from '@hebcal/core';
 import { getHebrewYearContext, processHebrewDateMacro } from '../../../../lib/hebrewDate';
 import { DRAFT_ORDER_STATUS, RESERVED_ORDER_STATUS } from '../../../../lib/orderReservation';
-import { assertReadOnlySelect } from '../../../../lib/sqlGuard';
+import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGuard';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // Types below mirror prisma/schema.prisma: all `id` / foreign-key columns are UUID strings
 // (Prisma's `@id @default(uuid())`), never numeric, except Order.orderId/legacyId/DressModel
@@ -37,6 +39,7 @@ Rules for SQL query generation:
 
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   
   try {
     const { prompt, history = [], contextQuery = '', pageContext = 'customers' } = await req.json();
@@ -72,7 +75,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
 
       try {
         assertReadOnlySelect(sqlQuery);
-        queryResult = await prisma.$queryRawUnsafe(sqlQuery);
+        queryResult = stripSecretColumns(await prisma.$queryRawUnsafe(sqlQuery));
       } catch (dbError) {
         dbErrorStr = dbError.message;
         if (dbError.rejectedSql) {
@@ -93,7 +96,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
           
           try {
              assertReadOnlySelect(retrySql);
-             queryResult = await prisma.$queryRawUnsafe(retrySql);
+             queryResult = stripSecretColumns(await prisma.$queryRawUnsafe(retrySql));
              sqlQuery = retrySql;
              dbErrorStr = null;
           } catch (retryErr) {
@@ -127,7 +130,7 @@ IMPORTANT: You are directly talking to the user. Output ONLY the exact final ans
     try {
       const { cookies } = await import('next/headers');
       const cookieStore = await cookies();
-      const token = cookieStore.get('auth_token');
+      const token = getVerifiedAuthCookie(cookieStore);
       const employeeId = token?.value || null;
       if (employeeId) {
         await prisma.aIChatSession.create({

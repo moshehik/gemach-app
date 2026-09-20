@@ -1,10 +1,12 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 import { generateContent } from '../../../../lib/ai/gemini';
 import prisma from '../../../lib/prisma';
 import { checkAuth } from '../../../../lib/auth';
+import { checkAiAccess } from '../../../../lib/permissions';
 import { HDate } from '@hebcal/core';
 import { getHebrewYearContext, processHebrewDateMacro } from '../../../../lib/hebrewDate';
-import { assertReadOnlySelect } from '../../../../lib/sqlGuard';
+import { assertReadOnlySelect, stripSecretColumns } from '../../../../lib/sqlGuard';
 
 const SCHEMA_MAP = {
   customers: "Table: Customer\nColumns: id, firstName, lastName, phone1, phone2, city, street, houseNum, email, notes, isDeleted",
@@ -12,6 +14,28 @@ const SCHEMA_MAP = {
   dresses: "Table: DressItem\nColumns: id, dressModelId, dressName, barcodePrefix, sizeText, serialNumber, dressBarcode, location, locationNum, quantity, inRepair, notInUse\nRelated Table: DressModel (id, name, priceCategory)",
   rentals: "Table: OrderItem\nColumns: id, orderId, dressItemId, barcode, barcodePrefix, price, sizeText, finalPrice, isTaken, isReturned, returnedOk\nRelated Tables: Order (orderId, customerId), Customer (id, firstName, lastName), DressItem (id, dressName, dressBarcode)"
 };
+
+// The where-clause the LLM produced is handed to the browser so that "page 2" can re-run it
+// without asking the LLM again. It used to come back as raw SQL that this route then executed -
+// i.e. client-supplied SQL ('1=1) UNION SELECT ... FROM "Employee"'). It now travels as an opaque
+// HMAC-signed token; anything that is not a token we issued for this page context is rejected.
+function signWhere(clause, ctx) {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret) return clause; // cannot sign - readWhere() below then refuses to reuse it
+  const body = Buffer.from(clause, 'utf8').toString('base64url');
+  const sig = crypto.createHmac('sha256', secret).update(`smart-search|${ctx}|${body}`).digest('base64url');
+  return `s1.${body}.${sig}`;
+}
+function readWhere(token, ctx) {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret || typeof token !== 'string') return null;
+  const parts = token.split('.');
+  if (parts.length !== 3 || parts[0] !== 's1') return null;
+  const expected = crypto.createHmac('sha256', secret).update(`smart-search|${ctx}|${parts[1]}`).digest();
+  const given = Buffer.from(parts[2], 'base64url');
+  if (given.length !== expected.length || !crypto.timingSafeEqual(given, expected)) return null;
+  return Buffer.from(parts[1], 'base64url').toString('utf8');
+}
 
 const TABLE_MAP = {
   customers: "Customer",
@@ -22,6 +46,7 @@ const TABLE_MAP = {
 
 export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
+  if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   
   const PAGE_SIZE = 50;
 
@@ -78,11 +103,14 @@ SQL: (lastName LIKE '%כהן%' OR lastName LIKE '%לוי%') AND city LIKE '%יר
     // מעבר עמוד בתוצאות AI קיימות (item 2 - היה LIMIT 100 קבוע בלי דרך לראות עוד) -
     // לא פונים שוב ל-Gemini, רק מריצים שוב את אותו whereClause עם OFFSET אחר.
     if (reuseWhereClause && page > 1) {
-      whereClause = reuseWhereClause;
+      whereClause = readWhere(reuseWhereClause, pageContext);
+      if (!whereClause) {
+        return NextResponse.json({ error: 'החיפוש פג תוקף - יש להריץ אותו מחדש.' }, { status: 400 });
+      }
       query = buildQuery(whereClause, (page - 1) * PAGE_SIZE);
       try {
         assertReadOnlySelect(query);
-        data = await prisma.$queryRawUnsafe(query);
+        data = stripSecretColumns(await prisma.$queryRawUnsafe(query));
         querySuccess = true;
       } catch (dbError) {
         if (dbError.rejectedSql) {
@@ -120,7 +148,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
 
       try {
         assertReadOnlySelect(query);
-        data = await prisma.$queryRawUnsafe(query);
+        data = stripSecretColumns(await prisma.$queryRawUnsafe(query));
         querySuccess = true;
       } catch (dbError) {
         if (dbError.rejectedSql) {
@@ -141,7 +169,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
 
         try {
            assertReadOnlySelect(query);
-           data = await prisma.$queryRawUnsafe(query);
+           data = stripSecretColumns(await prisma.$queryRawUnsafe(query));
            querySuccess = true;
         } catch (retryError) {
            if (retryError.rejectedSql) {
@@ -256,7 +284,7 @@ Here is a helpful calendar mapping for the current Hebrew year: ${getHebrewYearC
     return NextResponse.json({
       data,
       query,
-      whereClause,
+      whereClause: signWhere(whereClause, pageContext),
       total,
       page,
       totalPages: Math.max(1, Math.ceil(total / PAGE_SIZE))

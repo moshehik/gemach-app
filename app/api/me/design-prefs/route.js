@@ -2,6 +2,7 @@ import prisma from '@/app/lib/prisma';
 import { NextResponse } from 'next/server';
 import { cookies } from 'next/headers';
 import { mergeDesignPrefs, parseStoredDesignPrefs } from '@/lib/designPrefsSchema';
+import { getVerifiedAuthCookie } from '@/lib/authTokens';
 
 // העדפות עיצוב פר-עובד — מקור האמת. מאוחסנות כ-JSON בעמודת
 // Employee.themeColor (עמודה שהייתה "פלטת גוונים" מתה — אף רכיב לא קרא
@@ -11,7 +12,7 @@ import { mergeDesignPrefs, parseStoredDesignPrefs } from '@/lib/designPrefsSchem
 
 async function getSessionEmployee() {
   const cookieStore = await cookies();
-  const token = cookieStore.get('auth_token');
+  const token = getVerifiedAuthCookie(cookieStore);
   if (!token || !token.value) return null;
 
   const parsedLegacy = parseInt(token.value, 10);
