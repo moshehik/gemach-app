@@ -32,6 +32,7 @@ import {
   humanizeResultDates,
   finalizeTagsAndText,
 } from '../../../lib/ai/aiCommon';
+import { downloadRecording } from '../../../lib/driveBridgeServer';
 
 // הקלטת מסך + פולינג ל-ACTIVE יכולים לקחת יותר מברירת המחדל של Vercel לפונקציית
 // serverless - ר' Phase 4 בתוכנית.
@@ -89,7 +90,8 @@ export async function POST(req) {
   if (!(await checkAuth())) return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers: { 'Content-Type': 'application/json' } });
   if (!(await checkAiAccess())) return new Response(JSON.stringify({ error: 'Forbidden' }), { status: 403, headers: { 'Content-Type': 'application/json' } });
   try {
-    const { prompt, history = [], context = '', image = null, recordingUrl = null } = await req.json();
+    const { prompt, history = [], context = '', image = null, recordingFileId = null, recordingSteps = null } = await req.json();
+    const hasRecording = Boolean(recordingFileId || recordingSteps);
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -99,26 +101,32 @@ export async function POST(req) {
 
     // שאלה על צילום מסך/הקלטה היא "תסתכל על זה", לא שאילתת נתונים - מדלגים על כל
     // צינור ה-SQL/ACTIONS ופונים ישירות ל-Gemini עם הפרומפט + המדיה.
-    if (image || recordingUrl) {
+    if (image || hasRecording) {
       try {
         const media = [];
         if (image?.mimeType && image?.data) {
           media.push({ mimeType: image.mimeType, data: image.data });
         }
-        if (recordingUrl) {
+        if (hasRecording) {
           const recordingSetting = await getCachedSetting('ai_screen_recording_enabled');
           if (!recordingSetting || recordingSetting.value !== 'true') {
-            return NextResponse.json({ response: 'ניתוח הקלטות מסך אינו מופעל במערכת כרגע.', data: null, sqlQuery: null });
+            return NextResponse.json({ response: 'ניתוח הסרטות מסך אינו מופעל במערכת כרגע.', data: null, sqlQuery: null });
           }
-          const videoRes = await fetch(recordingUrl);
-          if (!videoRes.ok) throw new Error(`Failed to fetch recording (${videoRes.status})`);
-          const contentType = videoRes.headers.get('content-type') || 'video/webm';
-          const buffer = Buffer.from(await videoRes.arrayBuffer());
-          const fileUri = await uploadAndWaitForFile(buffer, contentType);
-          media.push({ mimeType: contentType, fileUri });
+          // הוידאו יושב בדרייב (לא ב-Neon): מורידים משם ומעבירים ל-Gemini. אם ההורדה נכשלה,
+          // ממשיכים עם רשימת הפעולות בלבד במקום להיכשל על כל השאלה.
+          if (recordingFileId) {
+            try {
+              const rec = await downloadRecording(recordingFileId);
+              const fileUri = await uploadAndWaitForFile(rec.buffer, rec.mimeType);
+              media.push({ mimeType: rec.mimeType, fileUri });
+            } catch (videoErr) {
+              console.error('Recording video unavailable, continuing with action steps only:', videoErr);
+              if (!recordingSteps) throw videoErr;
+            }
+          }
         }
 
-        const mediaPrompt = `אתה עוזר וירטואלי למערכת ניהול גמ"ח שמלות. המשתמש/ת צירף/ה ${recordingUrl ? 'הקלטת מסך' : 'צילום מסך'} מהמערכת ושאל/ה: "${prompt}".\n${context ? `הקשר נוסף: ${context}\n` : ''}ענה/י בעברית בצורה קצרה וברורה, בהתבסס על מה שרואים בפועל במדיה המצורפת. אל תשתמש בסימוני markdown כמו כוכביות.`;
+        const mediaPrompt = `אתה עוזר וירטואלי למערכת ניהול גמ"ח שמלות. המשתמש/ת צירף/ה ${hasRecording ? 'הסרטת מסך' : 'צילום מסך'} מהמערכת ושאל/ה: "${prompt}".\n${context ? `הקשר נוסף: ${context}\n` : ''}${recordingSteps ? `רשימת הפעולות שהמשתמש/ת ביצע/ה בזמן ההסרטה (נרשמה אוטומטית, לפי הסדר; ערכים רגישים הוסתרו):\n${String(recordingSteps).slice(0, 8000)}\n` : ''}ענה/י בעברית בצורה קצרה וברורה, בהתבסס על מה שרואים בפועל במדיה המצורפת. אל תשתמש בסימוני markdown כמו כוכביות.`;
         const mediaResponse = await generateContent(mediaPrompt, null, media);
         return NextResponse.json({ response: finalizeAiText(mediaResponse), data: null, sqlQuery: null });
       } catch (mediaErr) {

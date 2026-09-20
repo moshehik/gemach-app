@@ -5,8 +5,10 @@ import { usePathname, useRouter } from 'next/navigation';
 import SettingQuickPanel from './SettingQuickPanel';
 import useElementPicker, { ElementPickerOverlay } from './useElementPicker';
 import useScreenRecorder from './useScreenRecorder';
+import useActionRecorder from './useActionRecorder';
 import { captureElement, captureViewport, dataUrlToParts } from '../../lib/clientCapture';
-import { uploadScreenRecording } from '../../lib/uploadScreenRecording';
+import { uploadScreenRecording, prepareScreenRecordingUpload } from '../../lib/uploadScreenRecording';
+import { formatActionSteps } from '../../lib/actionRecorderCore';
 
 // מפריד תגיות [OPEN_SETTING:key] שה-AI מוסיף (app/api/ai/route.js, ACTION:
 // SETTINGS_GUIDE) מתוך טקסט התשובה - מחזיר את הטקסט לתצוגה בלי התגיות, ואת
@@ -61,7 +63,10 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
 
   // צילום/הקלטה מצורפים להודעה הבאה - ר' תוכנית Phase 3/4.
   const [pendingImage, setPendingImage] = useState(null); // data URL
+  // "הסרטת מסך": pendingRecordingUrl = תצוגה מקדימה מקומית (blob URL, לא נשלח לשרת);
+  // pendingRecordingMeta = מה שנשלח בפועל ל-AI: fileId של הוידאו בדרייב (אם הועלה) + רשימת הצעדים (מאקרו).
   const [pendingRecordingUrl, setPendingRecordingUrl] = useState(null);
+  const [pendingRecordingMeta, setPendingRecordingMeta] = useState(null);
   const [showCaptureMenu, setShowCaptureMenu] = useState(false);
   const [recordingEnabled, setRecordingEnabled] = useState(false);
   const [isUploadingRecording, setIsUploadingRecording] = useState(false);
@@ -92,7 +97,10 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
   };
 
   const screenRecorder = useScreenRecorder();
+  const actionRecorder = useActionRecorder();
 
+  // הסרטת מסך = וידאו (עולה ישר לדרייב) + רשימת פעולות שנרשמה במקביל (לחיצות/הקלדות/ניווט),
+  // שנשלחת ל-Gemini כטקסט. אם הדרייב לא מוגדר או שההעלאה נכשלה — ממשיכים עם רשימת הפעולות בלבד.
   const toggleRecording = async () => {
     setShowCaptureMenu(false);
     if (screenRecorder.isRecording) {
@@ -100,16 +108,28 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
       return;
     }
     setIsOpen(false);
+    actionRecorder.start();
+    // פותחים את ההעלאה לדרייב כבר עכשיו — הפנייה לגשר איטית, וכך היא רצה בזמן ההסרטה
+    const prepared = prepareScreenRecordingUpload();
+    prepared.catch(() => {});
     const blob = await screenRecorder.start();
+    const steps = actionRecorder.stop();
     setIsOpen(true);
     if (!blob) return;
+    const stepsText = formatActionSteps(steps);
+    setPendingRecordingUrl(URL.createObjectURL(blob));
+    setPendingRecordingMeta({ fileId: null, stepsText });
     setIsUploadingRecording(true);
     try {
-      const url = await uploadScreenRecording(blob);
-      setPendingRecordingUrl(url);
+      const fileId = await uploadScreenRecording(blob, prepared);
+      setPendingRecordingMeta({ fileId, stepsText });
     } catch (e) {
-      console.error('Failed to upload screen recording:', e);
-      alert('העלאת ההקלטה נכשלה.');
+      if (e.code !== 'DRIVE_NOT_CONFIGURED') console.error('Failed to upload screen recording:', e);
+      if (!stepsText) {
+        setPendingRecordingUrl(null);
+        setPendingRecordingMeta(null);
+        alert('העלאת ההסרטה נכשלה.');
+      }
     } finally {
       setIsUploadingRecording(false);
     }
@@ -235,12 +255,14 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
     e.preventDefault();
     if ((!input.trim() && !pendingImage && !pendingRecordingUrl) || loading) return;
 
-    const userMsg = input.trim() || (pendingRecordingUrl ? 'מה קרה בהקלטה הזו?' : 'מה רואים בתמונה הזו?');
+    const userMsg = input.trim() || (pendingRecordingUrl ? 'מה קרה בהסרטה הזו?' : 'מה רואים בתמונה הזו?');
     const imageToSend = pendingImage ? dataUrlToParts(pendingImage) : null;
     const recordingToSend = pendingRecordingUrl;
+    const recordingMetaToSend = pendingRecordingMeta;
     setInput('');
     setPendingImage(null);
     setPendingRecordingUrl(null);
+    setPendingRecordingMeta(null);
 
     const newMessages = [...messages, { role: 'user', content: userMsg, attachedImage: pendingImage, attachedRecording: recordingToSend }];
     setMessages(newMessages);
@@ -270,7 +292,8 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
           history: historyContext,
           context: `התאריך היום הוא: ${new Date().toLocaleDateString('he-IL')}. ${currentContext}אתה עוזר וירטואלי עבור עובדי הגמ"ח. מותר לך לספק נתונים על לקוחות, הזמנות, פריטים ומלאי כדי לעזור בשירות לקוחות. אסור לך לחשוף מידע על עובדים אחרים, משמרות או הרשאות. אסור לך להציג סטטיסטיקות כלליות, סיכומי רווחים, דוחות או פילוחים ניהוליים מתקדמים (אם העובד מבקש סטטיסטיקות כאלו, אמור לו שזה זמין רק בממשק מנהל).`,
           image: imageToSend,
-          recordingUrl: recordingToSend,
+          recordingFileId: recordingMetaToSend?.fileId || null,
+          recordingSteps: recordingMetaToSend?.stepsText || null,
         }),
       });
 
@@ -639,8 +662,8 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
             {pendingRecordingUrl && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <svg className="icon" style={{ width: 16, height: 16 }}><use href="#i-check" /></svg>
-                <span style={{ fontSize: 12.5 }}>הקלטת מסך מוכנה לשליחה</span>
-                <button type="button" onClick={() => setPendingRecordingUrl(null)} className="btn btn-ghost btn-icon-only btn-sm">
+                <span style={{ fontSize: 12.5 }}>הסרטת המסך מוכנה לשליחה</span>
+                <button type="button" onClick={() => { setPendingRecordingUrl(null); setPendingRecordingMeta(null); }} className="btn btn-ghost btn-icon-only btn-sm">
                   <svg className="icon"><use href="#i-x" /></svg>
                 </button>
               </div>
@@ -660,7 +683,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
           {screenRecorder.isRecording ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, background: 'var(--danger-tint)', borderRadius: 'var(--radius-full)', padding: '0 14px' }}>
               <span style={{ width: 10, height: 10, borderRadius: '50%', background: 'var(--danger-solid)', animation: 'pulse 1.5s infinite' }} />
-              <span style={{ fontSize: 13, fontWeight: 600 }}>מקליט מסך... {screenRecorder.seconds}/{screenRecorder.maxSeconds} שנ'</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>מסריט מסך... {screenRecorder.seconds}/{screenRecorder.maxSeconds} שנ'</span>
               <button type="button" className="btn btn-secondary btn-sm" style={{ marginInlineStart: 'auto' }} onClick={() => screenRecorder.stop()}>עצור</button>
             </div>
           ) : (
@@ -670,7 +693,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                   type="button"
                   onClick={() => setShowCaptureMenu((v) => !v)}
                   className="icon-btn"
-                  title="צרף צילום/הקלטת מסך"
+                  title="צרף צילום/הסרטת מסך"
                 >
                   <svg className="icon"><use href="#i-grid" /></svg>
                 </button>
@@ -692,7 +715,7 @@ export default function AIFloatingWidget({ hideAIFeatures = false, employeeId = 
                     {recordingEnabled && (
                       <button type="button" className="btn btn-ghost btn-sm" style={{ justifyContent: 'flex-start' }} onClick={toggleRecording}>
                         <svg className="icon"><use href="#i-activity" /></svg>
-                        הקלט מסך
+                        הסרטת מסך
                       </button>
                     )}
                   </div>
