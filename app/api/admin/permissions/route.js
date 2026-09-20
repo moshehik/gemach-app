@@ -35,10 +35,9 @@ export async function GET() {
       return { roleId: department.roleId, name: department.name, values };
     });
 
-    const pageGroups = await buildPermissionGroups(departmentValues, 'pages');
-    const featureGroups = await buildPermissionGroups(departmentValues, 'features');
+    const groups = await buildPermissionGroups(departmentValues);
 
-    return NextResponse.json({ departments: departmentValues, pageGroups, featureGroups });
+    return NextResponse.json({ departments: departmentValues, groups });
   } catch (error) {
     console.error('Error loading permissions matrix:', error);
     return NextResponse.json({ error: 'שגיאה בטעינת מטריצת ההרשאות' }, { status: 500 });
@@ -50,15 +49,15 @@ export async function GET() {
 // simply not returned — see prisma/schema.prisma's PermissionPageGroup doc comment —
 // so /admin/permissions only ever shows rows an admin actually created. See
 // app/api/admin/permissions/page-groups/route.js for the write side.
-export async function buildPermissionGroups(departmentValues, catalogGroup) {
-  const rows = await prisma.permissionPageGroup.findMany({ where: { catalogGroup }, orderBy: { order: 'asc' } });
+export async function buildPermissionGroups(departmentValues) {
+  const rows = await prisma.permissionPageGroup.findMany({ orderBy: { order: 'asc' } });
 
   // Each row carries its OWN access (`access` / `employeeIds` columns) — not derived
   // from the shared per-key DepartmentPermission values, which are the union of every
   // row containing a key (see lib/permissionPageGroups.js syncKeys). That's what lets
   // one page sit in two rows with different access.
   return rows.map((row) => {
-    const keys = parseJson(row.keys, []).filter((k) => getCatalogItem(k)?.group === catalogGroup);
+    const keys = parseJson(row.keys, []).filter((k) => !!getCatalogItem(k));
     const storedAccess = parseJson(row.access, {});
     const access = {};
     for (const dept of departmentValues) access[dept.roleId] = !!storedAccess[dept.roleId];

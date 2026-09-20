@@ -28,8 +28,8 @@ export async function PUT(request, { params }) {
     const priorKeys = parseJson(existing.keys, []);
     let effectiveKeys = priorKeys;
     if (keys !== undefined) {
-      if (!validatePageKeys(keys, existing.catalogGroup)) {
-        return NextResponse.json({ error: 'רשימת עמודים לא תקינה' }, { status: 400 });
+      if (!validatePageKeys(keys)) {
+        return NextResponse.json({ error: 'רשימת עמודים ופיצ\'רים לא תקינה' }, { status: 400 });
       }
       effectiveKeys = keys;
       data.keys = JSON.stringify(keys);
