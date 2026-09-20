@@ -1,5 +1,11 @@
 # System Changes Log
 
+## 2026-09-20: Live test of the courier email (Neve Yaakov real data) - one bug found + fixed
+
+- **Test:** a local server (current main) on Neve Yaakov's real DB and the real mail bridge sent the courier email (`POST /api/deliveries/courier-email`, both directions, events 4-5.10) to Moshe's own mailbox, read back in Gmail. `courier_email` was set temporarily and deleted right after (Neve Yaakov has NO `courier_email` configured - the "send to courier" button on the live site returns 400 until it is set in admin settings). Both emails were logged in `EmailLog` (status success).
+- **Bug found and fixed (PR #105):** `groupDeliveryRowsForCourier` grouped by the UTC date slice of `eventDate`; imported orders carry different hours for the same event day (21:00Z vs 00:00Z), so one event day appeared as two groups with the same title (5 groups instead of 4). Now grouped by Israel calendar day (`lib/deliveryCourier.js`). Verified: 5 -> 4 groups on the real data, second email arrived as "4 groups".
+- **Observation (not changed):** with `delivery_days_before=2` an event on Monday gets its outbound dispatch on **Shabbat** ("משלוח יוצא שבת" in the email). Business decision for the owner (skip Shabbat / shift to Friday?).
+
 ## 2026-09-20: Neve Yaakov email complaint (2026-09-17/18, Ahuvi Pinkel / Rivka Levi) - 5 items verified, 4 fixed
 
 Full detail per item in `docs/email-fixes-2026-09-20/` (README.md = summary + verification matrix).
